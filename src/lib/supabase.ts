@@ -81,7 +81,11 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
     // 1. MUST upsert profiles FIRST to satisfy foreign key constraint user_data_user_id_fkey
     if (state.currentUser) {
       const habitsCompletedCount = (state.habits || []).reduce((acc, h) => acc + (h.completions?.length || 0), 0);
-      const streakDays = Math.min(30, Math.floor(habitsCompletedCount / 2) + 1);
+      const habitsCompletedTodayCount = (state.habits || []).reduce((acc, h) => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        return acc + (h.completions?.includes(todayStr) ? 1 : 0);
+      }, 0);
+      const streakDays = habitsCompletedCount === 0 ? 0 : Math.max(1, Math.min(30, Math.floor(habitsCompletedCount / 2) + (habitsCompletedTodayCount > 0 ? 1 : 0)));
       const exerciseMinutes = (state.workouts || []).reduce((sum, w) => sum + w.durationMinutes, 0);
       const booksRead = (state.books || []).filter((b) => b.isFinished).length;
       const skillsPracticedCount = (state.skillLogs || []).length;
@@ -89,6 +93,7 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
       const userStats = {
         streakDays,
         habitsCompletedCount,
+        habitsCompletedTodayCount,
         journalEntriesCount: (state.journalEntries || []).length,
         exerciseMinutes,
         booksRead,
@@ -304,11 +309,68 @@ export async function fetchPartnerInvitesSupabase(userId: string, username: stri
   }
 }
 
+export async function acceptPartnerInviteAtomicSupabase(
+  inviteId: string,
+  user1Id: string,
+  user1Username: string,
+  user2Id: string,
+  user2Username: string
+): Promise<{ success: boolean; partnershipId?: string; error?: string }> {
+  if (!isSupabaseConfigured) return { success: true, partnershipId: crypto.randomUUID() };
+  try {
+    const { data, error } = await supabase.rpc('accept_partner_invite_atomic', {
+      p_invite_id: inviteId,
+      p_user1_id: user1Id,
+      p_user1_username: user1Username,
+      p_user2_id: user2Id,
+      p_user2_username: user2Username,
+    });
+
+    if (error) {
+      console.warn('RPC accept_partner_invite_atomic fallback check:', error.message);
+      const { data: invCheck } = await supabase.from('partner_invites').select('id, status').eq('id', inviteId).maybeSingle();
+      if (!invCheck || invCheck.status !== 'pending') {
+        return { success: false, error: 'This invite is no longer available' };
+      }
+      await savePartnershipSupabase({
+        id: crypto.randomUUID(),
+        user1Id,
+        user1Username,
+        user2Id,
+        user2Username,
+        pairedAt: new Date().toISOString(),
+      });
+      await deletePartnerInviteSupabase(inviteId);
+      return { success: true };
+    }
+
+    if (data && data.success === false) {
+      return { success: false, error: data.error || 'This invite is no longer available' };
+    }
+
+    return { success: true, partnershipId: data?.partnership_id };
+  } catch (e: any) {
+    console.error('Error in acceptPartnerInviteAtomicSupabase:', e);
+    return { success: false, error: e.message || 'This invite is no longer available' };
+  }
+}
+
 export async function savePartnershipSupabase(partnership: Partnership) {
   if (!isSupabaseConfigured) return;
   try {
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const partId = uuidPattern.test(partnership.id) ? partnership.id : crypto.randomUUID();
+    let partId = uuidPattern.test(partnership.id) ? partnership.id : crypto.randomUUID();
+
+    // Deduplication check: see if a partnership between these 2 users already exists in DB
+    const { data: existing } = await supabase
+      .from('partnerships')
+      .select('id')
+      .or(`and(user1_username.ilike.${partnership.user1Username},user2_username.ilike.${partnership.user2Username}),and(user1_username.ilike.${partnership.user2Username},user2_username.ilike.${partnership.user1Username})`)
+      .maybeSingle();
+
+    if (existing?.id) {
+      partId = existing.id;
+    }
 
     const { error: pErr } = await supabase.from('partnerships').upsert({
       id: partId,
@@ -318,19 +380,33 @@ export async function savePartnershipSupabase(partnership: Partnership) {
       user2_username: partnership.user2Username,
       paired_at: partnership.pairedAt,
     });
-    if (pErr) console.warn('Supabase partnership save warning:', pErr.message);
+    if (pErr) {
+      console.warn('Supabase partnership save warning:', pErr.message);
+      throw new Error(pErr.message || 'Failed to save partnership in database');
+    }
 
-    // Update invite status in DB for both users
-    const isUser1Uuid = uuidPattern.test(partnership.user1Id);
-    const isUser2Uuid = uuidPattern.test(partnership.user2Id);
-    if (isUser1Uuid && isUser2Uuid) {
-      await supabase
-        .from('partner_invites')
-        .update({ status: 'accepted' })
-        .or(`and(from_user_id.eq.${partnership.user1Id},to_user_id.eq.${partnership.user2Id}),and(from_user_id.eq.${partnership.user2Id},to_user_id.eq.${partnership.user1Id})`);
+    // Delete or update invite status in DB for both users
+    await supabase
+      .from('partner_invites')
+      .delete()
+      .or(`and(from_username.ilike.${partnership.user1Username},to_username.ilike.${partnership.user2Username}),and(from_username.ilike.${partnership.user2Username},to_username.ilike.${partnership.user1Username})`);
+  } catch (e) {
+    console.error('Error saving partnership in Supabase:', e);
+    throw e;
+  }
+}
+
+export async function deletePartnerInviteSupabase(inviteId: string) {
+  if (!isSupabaseConfigured || !inviteId) return;
+  try {
+    const { error } = await supabase.from('partner_invites').delete().eq('id', inviteId);
+    if (error) {
+      console.error('Error deleting partner invite in Supabase:', error);
+      throw new Error(error.message || 'Failed to delete partner invite in database');
     }
   } catch (e) {
-    console.warn('Supabase partnership sync skipped:', e);
+    console.error('deletePartnerInviteSupabase failed:', e);
+    throw e;
   }
 }
 
@@ -359,11 +435,115 @@ export async function fetchPartnershipSupabase(userId: string): Promise<Partners
   }
 }
 
+export async function fetchPartnershipsSupabase(userId: string): Promise<Partnership[]> {
+  if (!isSupabaseConfigured || !userId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('partnerships')
+      .select('*')
+      .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
+
+    if (error || !data) return [];
+
+    return data.map((row) => ({
+      id: row.id,
+      user1Id: row.user1_id,
+      user1Username: row.from_username || row.user1_username,
+      user2Id: row.user2_id,
+      user2Username: row.user2_username,
+      pairedAt: row.paired_at,
+    }));
+  } catch (e) {
+    console.error('Error fetching partnerships from Supabase:', e);
+    return [];
+  }
+}
+
 export async function deletePartnershipSupabase(partnershipId: string) {
+  if (!isSupabaseConfigured || !partnershipId) return;
+  try {
+    // Delete associated shared challenges first
+    await supabase.from('shared_challenges').delete().eq('partnership_id', partnershipId);
+
+    const { error } = await supabase.from('partnerships').delete().eq('id', partnershipId);
+    if (error) {
+      console.error('Error deleting partnership in Supabase:', error);
+      throw new Error(error.message || 'Failed to delete partnership in database');
+    }
+  } catch (e) {
+    console.error('deletePartnershipSupabase failed:', e);
+    throw e;
+  }
+}
+
+export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
   if (!isSupabaseConfigured) return;
   try {
-    await supabase.from('partnerships').delete().eq('id', partnershipId);
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const challengeId = uuidPattern.test(challenge.id) ? challenge.id : crypto.randomUUID();
+
+    const payload: Record<string, any> = {
+      id: challengeId,
+      partnership_id: challenge.partnershipId,
+      title: challenge.title,
+      target_habit_name: challenge.targetHabitName,
+      duration_days: challenge.durationDays,
+      joint_streak: challenge.jointStreak,
+      user1_done_date: challenge.user1DoneDate || null,
+      user2_done_date: challenge.user2DoneDate || null,
+      status: challenge.status,
+    };
+
+    const { error } = await supabase.from('shared_challenges').upsert(payload);
+    if (error) {
+      console.warn('Supabase shared challenge sync warning:', error.message);
+    }
   } catch (e) {
-    console.error('Error deleting partnership in Supabase:', e);
+    console.warn('Supabase shared challenge sync skipped:', e);
+  }
+}
+
+export async function fetchSharedChallengesSupabase(partnershipIds: string | string[]): Promise<SharedChallenge[]> {
+  if (!isSupabaseConfigured) return [];
+  const ids = Array.isArray(partnershipIds) ? partnershipIds : [partnershipIds];
+  if (ids.length === 0) return [];
+  try {
+    const { data, error } = await supabase
+      .from('shared_challenges')
+      .select('*')
+      .in('partnership_id', ids)
+      .order('created_at', { ascending: false });
+
+    if (error || !data) return [];
+
+    return data.map((row) => ({
+      id: row.id,
+      partnershipId: row.partnership_id,
+      title: row.title,
+      targetHabitName: row.target_habit_name,
+      durationDays: row.duration_days,
+      jointStreak: row.joint_streak,
+      user1DoneDate: row.user1_done_date || undefined,
+      user2DoneDate: row.user2_done_date || undefined,
+      status: row.status as 'active' | 'completed',
+      createdAt: row.created_at,
+    }));
+  } catch (e) {
+    console.error('Error fetching shared challenges from Supabase:', e);
+    return [];
+  }
+}
+
+export async function deleteSharedChallengeSupabase(challengeId: string) {
+  if (!isSupabaseConfigured || !challengeId) return;
+  try {
+    const { error } = await supabase.from('shared_challenges').delete().eq('id', challengeId);
+    if (error) {
+      console.error('Error deleting shared challenge in Supabase:', error);
+      throw new Error(error.message || 'Failed to delete shared challenge in database');
+    }
+  } catch (e) {
+    console.error('deleteSharedChallengeSupabase failed:', e);
+    throw e;
   }
 }

@@ -109,8 +109,8 @@
     @apply btn bg-error/20 text-error hover:bg-error/30;
   }
 
-  .input {
-    @apply w-full bg-bg-700 border border-white/5 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all;
+  .input, .input-field, input[type='text'], input[type='number'], input[type='email'], input[type='password'], select, textarea {
+    @apply w-full bg-bg-700 border border-white/10 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 transition-all;
   }
 
   .label {

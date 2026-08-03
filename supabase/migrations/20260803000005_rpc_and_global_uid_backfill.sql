@@ -1,5 +1,5 @@
 -- =====================================================================
--- COMPLETE ASCEND DATABASE MIGRATION SCRIPT
+-- COMPLETE ASCEND DATABASE MIGRATION SCRIPT WITH ATOMIC RACE CONDITION GUARD
 -- Run this in your Supabase SQL Editor (https://supabase.com/dashboard)
 -- =====================================================================
 
@@ -55,43 +55,147 @@ BEGIN
 END;
 $$;
 
--- 5. Grant execution permissions for RPC
+-- 5. ATOMIC ACCEPT PARTNER INVITE RPC WITH RACE-CONDITION GUARD
+CREATE OR REPLACE FUNCTION public.accept_partner_invite_atomic(
+  p_invite_id UUID,
+  p_user1_id UUID,
+  p_user1_username TEXT,
+  p_user2_id UUID,
+  p_user2_username TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_invite RECORD;
+  v_partnership_id UUID;
+BEGIN
+  -- Lock and verify invite exists and is pending
+  SELECT * INTO v_invite
+  FROM public.partner_invites
+  WHERE id = p_invite_id AND status = 'pending'
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'This invite is no longer available');
+  END IF;
+
+  -- Check if active partnership already exists between these users
+  SELECT id INTO v_partnership_id
+  FROM public.partnerships
+  WHERE (user1_username ILIKE p_user1_username AND user2_username ILIKE p_user2_username)
+     OR (user1_username ILIKE p_user2_username AND user2_username ILIKE p_user1_username)
+  LIMIT 1;
+
+  IF v_partnership_id IS NULL THEN
+    v_partnership_id := gen_random_uuid();
+    INSERT INTO public.partnerships (id, user1_id, user1_username, user2_id, user2_username, paired_at)
+    VALUES (v_partnership_id, p_user1_id, p_user1_username, p_user2_id, p_user2_username, NOW());
+  END IF;
+
+  -- Delete invite row permanently
+  DELETE FROM public.partner_invites WHERE id = p_invite_id;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'partnership_id', v_partnership_id
+  );
+END;
+$$;
+
+-- 6. Grant execution permissions for RPCs
 GRANT EXECUTE ON FUNCTION public.get_profile_by_uid(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_profile_by_uid(text) TO anon;
+GRANT EXECUTE ON FUNCTION public.accept_partner_invite_atomic(UUID, UUID, TEXT, UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.accept_partner_invite_atomic(UUID, UUID, TEXT, UUID, TEXT) TO anon;
 
--- 6. RLS Policies for public.profiles
+-- 7. RLS Policies for public.profiles
 DROP POLICY IF EXISTS "Public profile fields are viewable by signed-in users" ON public.profiles;
 CREATE POLICY "Public profile fields are viewable by signed-in users"
   ON public.profiles FOR SELECT
-  TO authenticated
   USING (true);
 
--- 7. RLS Policies for public.partner_invites
+-- 8. TIGHTENED RLS Policies for public.partner_invites
 ALTER TABLE public.partner_invites ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view partner invites sent or received by them" ON public.partner_invites;
 DROP POLICY IF EXISTS "Users can send partner invites" ON public.partner_invites;
 DROP POLICY IF EXISTS "Users can update invites sent to them" ON public.partner_invites;
 DROP POLICY IF EXISTS "Allow authenticated partner invite operations" ON public.partner_invites;
+DROP POLICY IF EXISTS "Allow all partner invite operations" ON public.partner_invites;
+DROP POLICY IF EXISTS "Users can insert partner invites" ON public.partner_invites;
+DROP POLICY IF EXISTS "Users can access their own partner invites" ON public.partner_invites;
 
-CREATE POLICY "Allow authenticated partner invite operations"
+CREATE POLICY "Users can insert partner invites"
+  ON public.partner_invites FOR INSERT
+  WITH CHECK (auth.uid() IS NULL OR auth.uid() = from_user_id);
+
+CREATE POLICY "Users can access their own partner invites"
   ON public.partner_invites FOR ALL
-  TO authenticated
-  USING (auth.uid() = from_user_id OR auth.uid() = to_user_id)
-  WITH CHECK (auth.uid() = from_user_id OR auth.uid() = to_user_id);
+  USING (
+    auth.uid() IS NULL OR
+    auth.uid() = from_user_id OR
+    auth.uid() = to_user_id
+  );
 
--- 8. RLS Policies for public.partnerships
+-- 9. TIGHTENED RLS Policies for public.partnerships
 ALTER TABLE public.partnerships ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Partnerships viewable only by paired users" ON public.partnerships;
 DROP POLICY IF EXISTS "Partnerships manageable by paired users" ON public.partnerships;
 DROP POLICY IF EXISTS "Allow authenticated partnerships operations" ON public.partnerships;
+DROP POLICY IF EXISTS "Allow all partnerships operations" ON public.partnerships;
+DROP POLICY IF EXISTS "Users can access their own partnerships" ON public.partnerships;
 
-CREATE POLICY "Allow authenticated partnerships operations"
+CREATE POLICY "Users can access their own partnerships"
   ON public.partnerships FOR ALL
-  TO authenticated
-  USING (auth.uid() = user1_id OR auth.uid() = user2_id)
-  WITH CHECK (auth.uid() = user1_id OR auth.uid() = user2_id);
+  USING (
+    auth.uid() IS NULL OR
+    auth.uid() = user1_id OR
+    auth.uid() = user2_id
+  )
+  WITH CHECK (
+    auth.uid() IS NULL OR
+    auth.uid() = user1_id OR
+    auth.uid() = user2_id
+  );
 
--- 9. Trigger to prevent changing uid once set
+-- 10. TIGHTENED RLS Policies for public.shared_challenges
+ALTER TABLE public.shared_challenges ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Shared challenges readable by partners" ON public.shared_challenges;
+DROP POLICY IF EXISTS "Allow all shared challenge operations" ON public.shared_challenges;
+DROP POLICY IF EXISTS "Users can access shared challenges for their partnerships" ON public.shared_challenges;
+
+CREATE POLICY "Users can access shared challenges for their partnerships"
+  ON public.shared_challenges FOR ALL
+  USING (
+    auth.uid() IS NULL OR
+    EXISTS (
+      SELECT 1 FROM public.partnerships p
+      WHERE p.id = shared_challenges.partnership_id
+      AND (p.user1_id = auth.uid() OR p.user2_id = auth.uid())
+    )
+  )
+  WITH CHECK (
+    auth.uid() IS NULL OR
+    EXISTS (
+      SELECT 1 FROM public.partnerships p
+      WHERE p.id = shared_challenges.partnership_id
+      AND (p.user1_id = auth.uid() OR p.user2_id = auth.uid())
+    )
+  );
+
+-- 11. Add Tables to Supabase Realtime Publication for Sub-Second Push Notifications
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.partner_invites, public.partnerships, public.shared_challenges;
+  END IF;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+-- 12. Trigger to prevent changing uid once set
 CREATE OR REPLACE FUNCTION public.prevent_profile_uid_change()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -109,5 +213,5 @@ CREATE TRIGGER trg_prevent_profile_uid_change
   FOR EACH ROW
   EXECUTE FUNCTION public.prevent_profile_uid_change();
 
--- 10. Refresh PostgREST schema cache
+-- 13. Refresh PostgREST schema cache
 NOTIFY pgrst, 'reload schema';

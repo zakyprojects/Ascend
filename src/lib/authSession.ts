@@ -4,6 +4,9 @@ import { generateNumericUID } from './dates';
 import {
   fetchUserDataFromSupabase,
   fetchPartnerInvitesSupabase,
+  fetchPartnershipSupabase,
+  fetchPartnershipsSupabase,
+  fetchSharedChallengesSupabase,
   saveUserDataToSupabase,
   supabase,
 } from './supabase';
@@ -191,21 +194,24 @@ export async function hydrateUserSession(
     }
   }
 
-  // Fetch real-time / persisted partner invites from Supabase for this user
+  // Authoritative real-time fetch for partner invites, active partnerships, and shared challenges from Supabase DB
   try {
     const fetchedInvites = await fetchPartnerInvitesSupabase(userId, user.username);
-    if (fetchedInvites.length > 0) {
-      // Merge with any existing local invites without duplicates
-      const inviteMap = new Map();
-      for (const inv of [...fetchedInvites, ...(state.partnerInvites || [])]) {
-        if (!inviteMap.has(inv.id)) {
-          inviteMap.set(inv.id, inv);
-        }
-      }
-      state.partnerInvites = Array.from(inviteMap.values());
+    state.partnerInvites = fetchedInvites;
+
+    const activePartnerships = await fetchPartnershipsSupabase(userId);
+    state.partnerships = activePartnerships;
+    state.partnership = activePartnerships[0] || null;
+
+    if (activePartnerships.length > 0) {
+      const pIds = activePartnerships.map((p) => p.id);
+      const challenges = await fetchSharedChallengesSupabase(pIds);
+      state.sharedChallenges = challenges;
+    } else {
+      state.sharedChallenges = [];
     }
   } catch (e) {
-    console.warn('Skipped loading partner invites during hydration:', e);
+    console.warn('Skipped loading partner social data during hydration:', e);
   }
 
   if (!profileData || !savedState) {

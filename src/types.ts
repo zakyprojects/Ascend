@@ -419,6 +419,7 @@ export interface AppState {
   followedPlans: UserPlanFollow[];
   partnerInvites: PartnerInvite[];
   partnership: Partnership | null;
+  partnerships: Partnership[];
   sharedChallenges: SharedChallenge[];
   partnerNotifications: PartnerNotification[];
 }
@@ -450,6 +451,7 @@ export const DEFAULT_STATE: AppState = {
   followedPlans: [],
   partnerInvites: [],
   partnership: null,
+  partnerships: [],
   sharedChallenges: [],
   partnerNotifications: [],
 };

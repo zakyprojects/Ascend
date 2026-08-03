@@ -73,6 +73,11 @@ import {
   savePartnershipSupabase,
   fetchPartnershipSupabase,
   deletePartnershipSupabase,
+  deletePartnerInviteSupabase,
+  saveSharedChallengeSupabase,
+  fetchSharedChallengesSupabase,
+  deleteSharedChallengeSupabase,
+  acceptPartnerInviteAtomicSupabase,
 } from './supabase';
 
 const GUEST_STORAGE_KEY = 'ascend_guest_state_v2';
@@ -283,7 +288,6 @@ export function useAppState() {
         }
 
         if (event === 'PARTNER_INVITE_SENT') {
-          // If sent to current user
           if (payload.toUsername.toLowerCase() === prev.username.toLowerCase()) {
             const exists = prev.partnerInvites.some((i) => i.id === payload.id);
             if (!exists) {
@@ -292,19 +296,45 @@ export function useAppState() {
           }
         }
 
+        if (event === 'PARTNER_INVITE_CANCELLED') {
+          return {
+            ...prev,
+            partnerInvites: prev.partnerInvites.filter((i) => i.id !== payload.inviteId),
+          };
+        }
+
         if (event === 'PARTNER_ACCEPTED') {
-          if (payload.user1Username === prev.username || payload.user2Username === prev.username) {
-            return { ...prev, partnership: payload };
+          if (
+            payload.user1Username.toLowerCase() === prev.username.toLowerCase() ||
+            payload.user2Username.toLowerCase() === prev.username.toLowerCase()
+          ) {
+            const updatedPartnerships = [payload, ...(prev.partnerships || []).filter((p) => p.id !== payload.id)];
+            return {
+              ...prev,
+              partnerInvites: prev.partnerInvites.filter(
+                (i) =>
+                  !(
+                    (i.fromUsername.toLowerCase() === payload.user1Username.toLowerCase() &&
+                      i.toUsername.toLowerCase() === payload.user2Username.toLowerCase()) ||
+                    (i.fromUsername.toLowerCase() === payload.user2Username.toLowerCase() &&
+                      i.toUsername.toLowerCase() === payload.user1Username.toLowerCase())
+                  )
+              ),
+              partnerships: updatedPartnerships,
+              partnership: updatedPartnerships[0] || null,
+            };
           }
         }
 
         if (event === 'PARTNER_ENDED') {
-          if (
-            prev.partnership &&
-            (prev.partnership.user1Username === prev.username || prev.partnership.user2Username === prev.username)
-          ) {
-            return { ...prev, partnership: null, sharedChallenges: [] };
-          }
+          const targetId = payload.partnershipId;
+          const updatedPartnerships = (prev.partnerships || []).filter((p) => p.id !== targetId);
+          return {
+            ...prev,
+            partnerships: updatedPartnerships,
+            partnership: updatedPartnerships[0] || null,
+            sharedChallenges: prev.sharedChallenges.filter((c) => c.partnershipId !== targetId),
+          };
         }
 
         if (event === 'CHALLENGE_UPDATED') {
@@ -317,12 +347,84 @@ export function useAppState() {
           }
         }
 
+        if (event === 'CHALLENGE_DELETED') {
+          return {
+            ...prev,
+            sharedChallenges: prev.sharedChallenges.filter((c) => c.id !== payload.challengeId),
+          };
+        }
+
         return prev;
       });
     });
 
     return () => unsubscribe();
   }, []);
+
+  // Smart Realtime Subscriptions with adaptive fallback polling
+  useEffect(() => {
+    if (!state.currentUser?.id) return;
+    const userId = state.currentUser.id;
+    const username = state.username;
+
+    const syncPartnerDataLive = async () => {
+      try {
+        const fetchedInvites = await fetchPartnerInvitesSupabase(userId, username);
+        const activePartnerships = await fetchPartnershipsSupabase(userId);
+        const pIds = activePartnerships.map((p) => p.id);
+        const challenges = pIds.length > 0 ? await fetchSharedChallengesSupabase(pIds) : [];
+
+        setState((prev) => ({
+          ...prev,
+          partnerInvites: fetchedInvites,
+          partnerships: activePartnerships,
+          partnership: activePartnerships[0] || null,
+          sharedChallenges: challenges,
+        }));
+      } catch (e) {
+        /* ignore background sync error */
+      }
+    };
+
+    let pollInterval: any = null;
+
+    const startFallbackPolling = () => {
+      if (!pollInterval) {
+        pollInterval = setInterval(syncPartnerDataLive, 10000);
+      }
+    };
+
+    const stopFallbackPolling = () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    };
+
+    let channel: any = null;
+    if (isSupabaseConfigured) {
+      channel = supabase
+        .channel(`social_realtime_${userId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_invites' }, () => syncPartnerDataLive())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'partnerships' }, () => syncPartnerDataLive())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_challenges' }, () => syncPartnerDataLive())
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            stopFallbackPolling();
+            syncPartnerDataLive();
+          } else {
+            startFallbackPolling();
+          }
+        });
+    } else {
+      startFallbackPolling();
+    }
+
+    return () => {
+      stopFallbackPolling();
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [state.currentUser?.id, state.username]);
 
   // Check for league period rollovers and missed-habit penalties on mount and every minute
   useEffect(() => {
@@ -430,17 +532,47 @@ export function useAppState() {
         });
 
         const habit = prev.habits.find((h) => h.id === habitId);
-        if (!habit) return { ...prev, habits };
+        let updatedChallenges = prev.sharedChallenges;
+        if (habit && prev.partnership && prev.sharedChallenges.length > 0) {
+          const today = todayKey();
+          const isUser1 =
+            (prev.currentUser?.id && prev.partnership.user1Id === prev.currentUser.id) ||
+            prev.partnership.user1Username.toLowerCase() === prev.username.toLowerCase();
 
-        let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+          updatedChallenges = prev.sharedChallenges.map((target) => {
+            if (target.targetHabitName.trim().toLowerCase() !== habit.name.trim().toLowerCase()) {
+              return target;
+            }
 
-        if (completed && habit.isPreset && habit.points > 0) {
-          pointsUpdate = addPointsInternal(prev, habit.points, `Habit completed: ${habit.name}`, 'habit');
-        } else if (!completed && habit.isPreset && habit.points > 0) {
-          pointsUpdate = addPointsInternal(prev, -habit.points, `Habit un-completed: ${habit.name}`, 'habit');
+            const updatedUser1Date = isUser1 ? (completed ? today : undefined) : target.user1DoneDate;
+            const updatedUser2Date = !isUser1 ? (completed ? today : undefined) : target.user2DoneDate;
+
+            const wereBothDoneBefore = target.user1DoneDate === today && target.user2DoneDate === today;
+            const areBothDoneNow = updatedUser1Date === today && updatedUser2Date === today;
+
+            let newStreak = target.jointStreak || 0;
+            if (areBothDoneNow && !wereBothDoneBefore) {
+              newStreak += 1;
+            } else if (!areBothDoneNow && wereBothDoneBefore && newStreak > 0) {
+              newStreak = Math.max(0, newStreak - 1);
+            }
+
+            const isCompleted = newStreak >= target.durationDays;
+            const updated: SharedChallenge = {
+              ...target,
+              user1DoneDate: updatedUser1Date,
+              user2DoneDate: updatedUser2Date,
+              jointStreak: newStreak,
+              status: isCompleted ? 'completed' : 'active',
+            };
+
+            saveSharedChallengeSupabase(updated);
+            syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+            return updated;
+          });
         }
 
-        return { ...prev, habits, ...pointsUpdate };
+        return { ...prev, habits, sharedChallenges: updatedChallenges, ...pointsUpdate };
       });
       return completed;
     },
@@ -1461,8 +1593,8 @@ export function useAppState() {
         throw new Error("You can't send an accountability invite to yourself.");
       }
 
-      if (state.partnership) {
-        throw new Error('You already have an active accountability partner.');
+      if ((state.partnerships || []).length >= 5) {
+        throw new Error("You've reached the maximum limit of 5 accountability partners. Remove one to add another.");
       }
 
       const profileData = await fetchProfileByUidFromSupabase(trimmedUid);
@@ -1510,54 +1642,86 @@ export function useAppState() {
     [state.username, state.partnership, state.partnerInvites, state.currentUser]
   );
 
-  const acceptPartnerInvite = useCallback(async (inviteId: string) => {
-    const invite = state.partnerInvites.find((i) => i.id === inviteId);
-    if (!invite) return;
+  const acceptPartnerInvite = useCallback(
+    async (inviteId: string) => {
+      if ((state.partnerships || []).length >= 5) {
+        throw new Error("You've reached the maximum limit of 5 accountability partners. Remove one to accept another.");
+      }
+      const invite = state.partnerInvites.find((i) => i.id === inviteId);
+      const fromId = invite?.fromUserId || crypto.randomUUID();
+      const fromUsername = invite?.fromUsername || 'Partner';
+      const toId = state.currentUser?.id || crypto.randomUUID();
+      const toUsername = state.username;
 
-    const partnership: Partnership = {
-      id: crypto.randomUUID(),
-      user1Id: invite.fromUserId,
-      user1Username: invite.fromUsername,
-      user2Id: state.currentUser?.id || 'user_current',
-      user2Username: state.username,
-      pairedAt: new Date().toISOString(),
-    };
+      const result = await acceptPartnerInviteAtomicSupabase(inviteId, fromId, fromUsername, toId, toUsername);
 
-    await savePartnershipSupabase(partnership);
-    syncBroadcaster.broadcast('PARTNER_ACCEPTED', partnership);
+      if (!result.success) {
+        setState((prev) => ({
+          ...prev,
+          partnerInvites: prev.partnerInvites.filter((i) => i.id !== inviteId),
+        }));
+        throw new Error(result.error || 'This invite is no longer available');
+      }
 
-    setState((prev) => {
-      const updatedInvites = prev.partnerInvites.map((i) =>
-        i.id === inviteId ? ({ ...i, status: 'accepted' } as PartnerInvite) : i
-      );
-      return {
-        ...prev,
-        partnerInvites: updatedInvites,
-        partnership,
+      const partnershipId = result.partnershipId || crypto.randomUUID();
+      const partnership: Partnership = {
+        id: partnershipId,
+        user1Id: fromId,
+        user1Username: fromUsername,
+        user2Id: toId,
+        user2Username: toUsername,
+        pairedAt: new Date().toISOString(),
       };
-    });
-  }, [state.partnerInvites, state.currentUser, state.username]);
 
-  const declinePartnerInvite = useCallback((inviteId: string) => {
+      syncBroadcaster.broadcast('PARTNER_ACCEPTED', partnership);
+
+      setState((prev) => {
+        const updatedInvites = prev.partnerInvites.filter((i) => i.id !== inviteId);
+        const updatedPartnerships = [partnership, ...(prev.partnerships || []).filter((p) => p.id !== partnership.id)];
+        return {
+          ...prev,
+          partnerInvites: updatedInvites,
+          partnerships: updatedPartnerships,
+          partnership: updatedPartnerships[0] || null,
+        };
+      });
+    },
+    [state.partnerInvites, state.partnerships, state.currentUser, state.username]
+  );
+
+  const cancelPartnerInvite = useCallback(async (inviteId: string) => {
+    await deletePartnerInviteSupabase(inviteId);
+    syncBroadcaster.broadcast('PARTNER_INVITE_CANCELLED', { inviteId });
     setState((prev) => ({
       ...prev,
-      partnerInvites: prev.partnerInvites.map((i) =>
-        i.id === inviteId ? ({ ...i, status: 'declined' } as PartnerInvite) : i
-      ),
+      partnerInvites: prev.partnerInvites.filter((i) => i.id !== inviteId),
     }));
   }, []);
 
-  const endPartnership = useCallback(async () => {
-    if (state.partnership) {
-      await deletePartnershipSupabase(state.partnership.id);
-    }
-    syncBroadcaster.broadcast('PARTNER_ENDED', {});
+  const declinePartnerInvite = useCallback(async (inviteId: string) => {
+    await deletePartnerInviteSupabase(inviteId);
     setState((prev) => ({
       ...prev,
-      partnership: null,
-      sharedChallenges: [],
+      partnerInvites: prev.partnerInvites.filter((i) => i.id !== inviteId),
     }));
-  }, [state.partnership]);
+  }, []);
+
+  const endPartnership = useCallback(async (partnershipId?: string) => {
+    const targetId = partnershipId || state.partnership?.id || state.partnerships[0]?.id;
+    if (targetId) {
+      await deletePartnershipSupabase(targetId);
+    }
+    syncBroadcaster.broadcast('PARTNER_ENDED', { partnershipId: targetId });
+    setState((prev) => {
+      const updatedPartnerships = (prev.partnerships || []).filter((p) => p.id !== targetId);
+      return {
+        ...prev,
+        partnerships: updatedPartnerships,
+        partnership: updatedPartnerships[0] || null,
+        sharedChallenges: prev.sharedChallenges.filter((c) => c.partnershipId !== targetId),
+      };
+    });
+  }, [state.partnership, state.partnerships]);
 
   const getPartnerProfileStats = useCallback(async (partnerUsername: string) => {
     if (!partnerUsername) return null;
@@ -1573,21 +1737,33 @@ export function useAppState() {
       }
       return null;
     }
+    const rawStats = profile.stats || {};
+    const habitsCompletedCount = rawStats.habitsCompletedCount || 0;
+    const habitsCompletedTodayCount = rawStats.habitsCompletedTodayCount || 0;
+    const streakDays = habitsCompletedCount === 0 ? 0 : (rawStats.streakDays || 0);
+
     return {
       totalPoints: profile.total_points || 0,
-      stats: profile.stats || { streakDays: 0, habitsCompletedCount: 0 },
+      stats: {
+        ...rawStats,
+        streakDays,
+        habitsCompletedCount,
+        habitsCompletedTodayCount,
+      },
       avatar: profile.avatar || '🧑',
+      isProfilePublic: profile.is_profile_public ?? true,
     };
   }, []);
 
-  const createSharedChallenge = useCallback((targetHabitName: string, durationDays: number) => {
+  const createSharedChallenge = useCallback((targetHabitName: string, durationDays: number, targetPartnershipId?: string) => {
     setState((prev) => {
-      if (!prev.partnership) return prev;
+      const pId = targetPartnershipId || prev.partnership?.id || prev.partnerships[0]?.id;
+      if (!pId) return prev;
 
       const challenge: SharedChallenge = {
-        id: uid(),
-        partnershipId: prev.partnership.id,
-        title: `Joint ${durationDays}-Day Challenge: ${targetHabitName}`,
+        id: crypto.randomUUID(),
+        partnershipId: pId,
+        title: `Joint ${durationDays}-Day Challenge: ${targetHabitName.trim()}`,
         targetHabitName: targetHabitName.trim(),
         durationDays,
         jointStreak: 0,
@@ -1595,6 +1771,7 @@ export function useAppState() {
         createdAt: new Date().toISOString(),
       };
 
+      saveSharedChallengeSupabase(challenge);
       syncBroadcaster.broadcast('CHALLENGE_UPDATED', challenge);
 
       return {
@@ -1604,36 +1781,63 @@ export function useAppState() {
     });
   }, []);
 
-  const logSharedChallengeHabit = useCallback((challengeId: string) => {
-    const date = todayKey();
+  const deleteSharedChallenge = useCallback(async (challengeId: string) => {
+    await deleteSharedChallengeSupabase(challengeId);
+    syncBroadcaster.broadcast('CHALLENGE_DELETED', { challengeId });
+    setState((prev) => ({
+      ...prev,
+      sharedChallenges: prev.sharedChallenges.filter((c) => c.id !== challengeId),
+    }));
+  }, []);
+
+  const logSharedChallengeHabit = useCallback((challengeId: string, forcedState?: boolean) => {
+    const today = todayKey();
     setState((prev) => {
       const idx = prev.sharedChallenges.findIndex((c) => c.id === challengeId);
       if (idx === -1) return prev;
       const target = prev.sharedChallenges[idx];
-      if (target.status !== 'active') return prev;
 
-      const isUser1 = prev.partnership?.user1Username === prev.username;
-      const updatedUser1Date = isUser1 ? date : target.user1DoneDate;
-      const updatedUser2Date = !isUser1 ? date : target.user2DoneDate;
+      const isUser1 =
+        (prev.currentUser?.id && prev.partnership?.user1Id === prev.currentUser.id) ||
+        prev.partnership?.user1Username.toLowerCase() === prev.username.toLowerCase();
 
-      let streak = target.jointStreak;
-      if (updatedUser1Date === date && updatedUser2Date === date) {
-        streak += 1;
+      const currentDoneDate = isUser1 ? target.user1DoneDate : target.user2DoneDate;
+
+      let isDoneToday: boolean;
+      if (typeof forcedState === 'boolean') {
+        isDoneToday = forcedState;
+      } else {
+        isDoneToday = currentDoneDate !== today;
       }
 
-      const isCompleted = streak >= target.durationDays;
+      const newCurrentDoneDate = isDoneToday ? today : undefined;
+      const updatedUser1Date = isUser1 ? newCurrentDoneDate : target.user1DoneDate;
+      const updatedUser2Date = !isUser1 ? newCurrentDoneDate : target.user2DoneDate;
+
+      const wereBothDoneBefore = target.user1DoneDate === today && target.user2DoneDate === today;
+      const areBothDoneNow = updatedUser1Date === today && updatedUser2Date === today;
+
+      let newStreak = target.jointStreak || 0;
+      if (areBothDoneNow && !wereBothDoneBefore) {
+        newStreak += 1;
+      } else if (!areBothDoneNow && wereBothDoneBefore && newStreak > 0) {
+        newStreak = Math.max(0, newStreak - 1);
+      }
+
+      const isCompleted = newStreak >= target.durationDays;
 
       const updated: SharedChallenge = {
         ...target,
         user1DoneDate: updatedUser1Date,
         user2DoneDate: updatedUser2Date,
-        jointStreak: streak,
+        jointStreak: newStreak,
         status: isCompleted ? 'completed' : 'active',
       };
 
       const updatedChallenges = [...prev.sharedChallenges];
       updatedChallenges[idx] = updated;
 
+      saveSharedChallengeSupabase(updated);
       syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
 
       return {
@@ -1764,11 +1968,13 @@ export function useAppState() {
     deletePlan,
     sendPartnerInvite,
     acceptPartnerInvite,
+    cancelPartnerInvite,
     declinePartnerInvite,
     endPartnership,
     getPartnerProfileStats,
     createSharedChallenge,
     logSharedChallengeHabit,
+    deleteSharedChallenge,
     dismissPartnerNotification,
   };
 }
