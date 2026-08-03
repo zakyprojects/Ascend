@@ -124,8 +124,13 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
 
       let { error: profErr } = await supabase.from('profiles').upsert(profilePayload);
 
-      if (profErr && profErr.message?.includes('last_username_change_at')) {
-        delete profilePayload.last_username_change_at;
+      if (profErr) {
+        if (profErr.message?.includes('last_username_change_at')) {
+          delete profilePayload.last_username_change_at;
+        }
+        if (profErr.message?.includes('uid')) {
+          delete profilePayload.uid;
+        }
         const { error: fallbackErr } = await supabase.from('profiles').upsert(profilePayload);
         profErr = fallbackErr;
       }
@@ -234,30 +239,54 @@ export async function fetchPublicPlansFromSupabase(): Promise<ImprovementPlan[]>
 
 export async function sendPartnerInviteSupabase(invite: PartnerInvite) {
   if (!isSupabaseConfigured) return;
-  try {
-    await supabase.from('partner_invites').upsert({
-      id: invite.id,
-      from_user_id: invite.fromUserId,
-      from_username: invite.fromUsername,
-      from_avatar: invite.fromAvatar || '🧑',
-      to_user_id: invite.toUserId,
-      to_username: invite.toUsername,
-      status: invite.status,
-    });
-  } catch (e) {
-    console.warn('Supabase invite sync skipped:', e);
+
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const inviteId = uuidPattern.test(invite.id) ? invite.id : crypto.randomUUID();
+
+  const payload: Record<string, any> = {
+    id: inviteId,
+    from_user_id: invite.fromUserId,
+    from_username: invite.fromUsername,
+    from_avatar: invite.fromAvatar || '🧑',
+    to_user_id: invite.toUserId,
+    to_username: invite.toUsername,
+    status: invite.status,
+  };
+
+  let { error } = await supabase.from('partner_invites').insert(payload);
+  if (error && error.message?.includes('duplicate key')) {
+    const { error: updateErr } = await supabase
+      .from('partner_invites')
+      .update({ status: invite.status })
+      .eq('id', inviteId);
+    error = updateErr;
+  }
+
+  if (error) {
+    console.error('Error sending partner invite to Supabase:', error);
+    throw new Error(error.message || 'Failed to persist invite in database.');
   }
 }
 
 export async function fetchPartnerInvitesSupabase(userId: string, username: string): Promise<PartnerInvite[]> {
   if (!isSupabaseConfigured) return [];
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    let filterString = `to_username.ilike.${username},from_username.ilike.${username}`;
+    if (isUuid) {
+      filterString += `,to_user_id.eq.${userId},from_user_id.eq.${userId}`;
+    }
+
     const { data, error } = await supabase
       .from('partner_invites')
       .select('*')
-      .or(`to_user_id.eq.${userId},from_user_id.eq.${userId},to_username.ilike.${username},from_username.ilike.${username}`);
+      .or(filterString)
+      .order('created_at', { ascending: false });
 
-    if (error || !data) return [];
+    if (error || !data) {
+      if (error) console.warn('Supabase fetch partner invites warning:', error.message);
+      return [];
+    }
 
     return data.map((row) => ({
       id: row.id,
@@ -278,16 +307,30 @@ export async function fetchPartnerInvitesSupabase(userId: string, username: stri
 export async function savePartnershipSupabase(partnership: Partnership) {
   if (!isSupabaseConfigured) return;
   try {
-    await supabase.from('partnerships').upsert({
-      id: partnership.id,
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const partId = uuidPattern.test(partnership.id) ? partnership.id : crypto.randomUUID();
+
+    const { error: pErr } = await supabase.from('partnerships').upsert({
+      id: partId,
       user1_id: partnership.user1Id,
       user1_username: partnership.user1Username,
       user2_id: partnership.user2Id,
       user2_username: partnership.user2Username,
       paired_at: partnership.pairedAt,
     });
+    if (pErr) console.warn('Supabase partnership save warning:', pErr.message);
+
+    // Update invite status in DB for both users
+    const isUser1Uuid = uuidPattern.test(partnership.user1Id);
+    const isUser2Uuid = uuidPattern.test(partnership.user2Id);
+    if (isUser1Uuid && isUser2Uuid) {
+      await supabase
+        .from('partner_invites')
+        .update({ status: 'accepted' })
+        .or(`and(from_user_id.eq.${partnership.user1Id},to_user_id.eq.${partnership.user2Id}),and(from_user_id.eq.${partnership.user2Id},to_user_id.eq.${partnership.user1Id})`);
+    }
   } catch (e) {
-    console.warn('Supabase partnership save failed:', e);
+    console.warn('Supabase partnership sync skipped:', e);
   }
 }
 

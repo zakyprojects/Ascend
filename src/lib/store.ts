@@ -1487,7 +1487,7 @@ export function useAppState() {
       }
 
       const invite: PartnerInvite = {
-        id: uid(),
+        id: crypto.randomUUID(),
         fromUserId: state.currentUser?.id || 'user_from',
         fromUsername: state.username,
         fromAvatar: state.currentUser?.avatar || '🧑',
@@ -1515,7 +1515,7 @@ export function useAppState() {
     if (!invite) return;
 
     const partnership: Partnership = {
-      id: uid(),
+      id: crypto.randomUUID(),
       user1Id: invite.fromUserId,
       user1Username: invite.fromUsername,
       user2Id: state.currentUser?.id || 'user_current',

@@ -3,6 +3,7 @@ import { AppState, DEFAULT_STATE, UserProfile } from '@/types';
 import { generateNumericUID } from './dates';
 import {
   fetchUserDataFromSupabase,
+  fetchPartnerInvitesSupabase,
   saveUserDataToSupabase,
   supabase,
 } from './supabase';
@@ -188,6 +189,23 @@ export async function hydrateUserSession(
         username: user.username,
       };
     }
+  }
+
+  // Fetch real-time / persisted partner invites from Supabase for this user
+  try {
+    const fetchedInvites = await fetchPartnerInvitesSupabase(userId, user.username);
+    if (fetchedInvites.length > 0) {
+      // Merge with any existing local invites without duplicates
+      const inviteMap = new Map();
+      for (const inv of [...fetchedInvites, ...(state.partnerInvites || [])]) {
+        if (!inviteMap.has(inv.id)) {
+          inviteMap.set(inv.id, inv);
+        }
+      }
+      state.partnerInvites = Array.from(inviteMap.values());
+    }
+  } catch (e) {
+    console.warn('Skipped loading partner invites during hydration:', e);
   }
 
   if (!profileData || !savedState) {
