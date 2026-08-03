@@ -1,0 +1,458 @@
+export type HabitFrequency = 'daily' | 'weekly';
+
+export type Mood = 'happy' | 'neutral' | 'sad' | 'motivated';
+
+export const EMOJI_AVATARS = [
+  // Row 1: Animals & Energy
+  '🦁', '🦊', '🐺', '🦅', '🐯', '🐻', '🥦', '⚡',
+  // Row 2: Achievements & Mindset
+  '🔥', '💎', '⭐', '🎯', '🚀', '🧠', '🏆', '💪',
+  // Row 3: Humans, Mindfulness & Focus
+  '👩', '👨', '🧘‍♀️', '🧘‍♂️', '🦉', '🦄', '👑', '📚',
+  // Row 4: Growth, Discipline & Activity
+  '🌱', '🐢', '🥋', '🏃‍♂️', '🐉', '🌙', '🐬', '🎮'
+];
+
+export interface UserProfile {
+  id: string;
+  uid: string; // Permanent 6-digit numeric User ID (e.g. "849201")
+  email: string;
+  username: string;
+  avatar: string; // emoji
+  createdAt: string;
+  /** Whether detailed statistics and habits list are visible to other users on leaderboards (default true) */
+  isProfilePublic?: boolean;
+  /** Whether the user is currently an anonymous guest account */
+  isAnonymous?: boolean;
+  /** ISO timestamp string of the last username change */
+  lastUsernameChangeAt?: string;
+}
+
+export interface UserStats {
+  streakDays: number;
+  habitsCompletedCount: number;
+  journalEntriesCount: number;
+  exerciseMinutes: number;
+  booksRead: number;
+  skillsPracticedCount: number;
+}
+
+export interface Habit {
+  id: string;
+  name: string;
+  frequency: HabitFrequency;
+  points: number;
+  /** Whether this habit came from the preset library (earns points) or is custom (no points) */
+  isPreset: boolean;
+  /** Preset category, if from library */
+  category?: string;
+  createdAt: string;
+  /** ISO date strings (YYYY-MM-DD) or week keys of completed periods */
+  completions: string[];
+  createdAtPeriod: string;
+  /** Periods that were missed and penalized */
+  missedPeriods?: string[];
+  /** Consecutive missed periods count (resets to 0 upon completion) */
+  consecutiveMisses?: number;
+}
+
+export interface JournalEntry {
+  id: string;
+  date: string; // YYYY-MM-DD
+  mood: Mood;
+  content: string;
+  createdAt: string;
+  /** Whether points have been awarded for this entry */
+  pointsAwarded: boolean;
+}
+
+export type LeagueType = 'weekly' | 'monthly' | 'ninetyDay';
+
+export interface LeagueCompetitor {
+  id?: string;
+  name: string;
+  avatar: string; // emoji
+  points: number; // period points
+  totalPoints: number; // overall lifetime points driving overall tier
+  isUser?: boolean;
+  isRealUser?: boolean;
+  isSeed?: boolean;
+  isProfilePublic?: boolean;
+  stats?: UserStats;
+  activeHabits?: { name: string; category?: string; frequency: string; isPreset: boolean }[];
+}
+
+export interface LeagueArchive {
+  type: LeagueType;
+  periodLabel: string;
+  competitors: LeagueCompetitor[];
+  userRank: number;
+  userPoints: number;
+  archivedAt: string;
+}
+
+export interface Lesson {
+  id: string;
+  title: string;
+  category: string;
+  readTime: number; // minutes
+  content: string;
+  points: number;
+}
+
+export interface AppState {
+  currentUser: UserProfile | null;
+  habits: Habit[];
+  journalEntries: JournalEntry[];
+  /** Lifetime total points (drives tier, never resets) */
+  totalPoints: number;
+  /** Points ledger entries for history */
+  pointsHistory: PointsEntry[];
+  /** League archives — final standings from completed periods */
+  leagueArchives: LeagueArchive[];
+  /** IDs of lessons the user has read */
+  readLessonIds: string[];
+  /** Username for league display */
+  username: string;
+}
+
+export interface PointsEntry {
+  id: string;
+  amount: number;
+  reason: string;
+  source: string;
+  timestamp: string;
+}
+
+// Module 1: Exercise Tracker
+export interface WorkoutLog {
+  id: string;
+  date: string; // YYYY-MM-DD
+  type: string; // e.g., 'Running', 'Cycling', 'Weightlifting', etc.
+  durationMinutes: number;
+  pointsAwarded: number;
+  createdAt: string;
+}
+
+// Module 2: Reading Tracker
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  totalPages: number;
+  unit: 'pages' | 'chapters';
+  currentPage: number;
+  isFinished: boolean;
+  reflection?: string;
+  finishedAt?: string;
+  createdAt: string;
+}
+
+export interface ReadingProgressLog {
+  id: string;
+  bookId: string;
+  date: string; // YYYY-MM-DD
+  progressAmount: number; // pages/chapters added in this session
+  pointsAwarded: number;
+  createdAt: string;
+}
+
+// Self Improvement Books - Curated Library & User Library
+export type BookCategory =
+  | 'Habits'
+  | 'Mindset'
+  | 'Productivity'
+  | 'Discipline'
+  | 'Finance'
+  | 'Relationships'
+  | 'Spirituality';
+
+export type UserBookStatus = 'to-read' | 'reading' | 'completed';
+
+export interface CuratedBook {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  category: BookCategory;
+  coverImageUrl?: string;
+  isCurated: true;
+  pointsOnCompletion: number;
+}
+
+export interface UserBook {
+  id: string;
+  curatedBookId?: string;
+  title: string;
+  author: string;
+  description?: string;
+  category?: BookCategory;
+  coverImageUrl?: string;
+  isCustom: boolean;
+  status: UserBookStatus;
+  addedAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  pointsAwarded: number;
+  linkedBookId?: string;
+}
+
+// Module 3: Skill Learning Tracker
+export type SkillLevel = 'beginner' | 'intermediate' | 'advanced';
+
+export interface Skill {
+  id: string;
+  name: string;
+  category?: string;
+  manualLevel?: SkillLevel;
+  createdAt: string;
+}
+
+export interface SkillSessionLog {
+  id: string;
+  skillId: string;
+  date: string; // YYYY-MM-DD
+  durationMinutes: number;
+  note: string;
+  pointsAwarded: number;
+  createdAt: string;
+}
+
+// Module 4: Bad Habit Reduction Tracker
+export interface BadHabit {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface BadHabitLog {
+  id: string;
+  badHabitId: string;
+  date: string; // YYYY-MM-DD
+  status: 'resisted' | 'occurred';
+  consecutiveOccurrences?: number;
+  pointsAwardedOrDeducted: number;
+  createdAt: string;
+}
+
+// Module 5: Addiction Recovery Tracker
+export interface AddictionTracker {
+  id: string;
+  title: string;
+  startDate: string; // ISO timestamp
+  milestonesUnlocked: string[]; // ['24h', '1w', '1m']
+  createdAt: string;
+}
+
+export interface CravingLog {
+  id: string;
+  date: string; // ISO timestamp
+  intensity: number; // 1 to 10
+  trigger: string;
+  copingStrategy: string;
+  createdAt: string;
+}
+
+// Module 7: Prefrontal Cortex Module
+export interface FocusSessionLog {
+  id: string;
+  date: string; // YYYY-MM-DD
+  taskName: string;
+  skillId?: string;
+  durationMinutes: number;
+  pointsAwarded: number;
+  createdAt: string;
+}
+
+export interface DecisionLog {
+  id: string;
+  title: string;
+  rationale: string;
+  expectedOutcome: string;
+  revisitDate: string; // YYYY-MM-DD
+  reflection?: string;
+  isReflected: boolean;
+  createdAt: string;
+}
+
+export interface EmotionLog {
+  id: string;
+  date: string; // ISO timestamp
+  emotion: string;
+  intensity: number; // 1 to 10
+  context: string;
+  pointsAwarded: number;
+  createdAt: string;
+}
+
+export interface WeeklyGoalItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface WeeklyGoal {
+  id: string;
+  weekKey: string; // e.g. 2026-W31
+  goals: WeeklyGoalItem[];
+  insights?: string;
+  isReviewed: boolean;
+  createdAt: string;
+}
+
+// Social Features 1: Personal Improvement Plans
+export interface PlanStep {
+  id: string;
+  title: string;
+  description?: string;
+  orderIndex: number;
+  completed: boolean;
+}
+
+export interface ImprovementPlan {
+  id: string;
+  creatorId: string;
+  creatorUsername: string;
+  creatorAvatar?: string;
+  title: string;
+  description: string;
+  category?: string;
+  isPublic: boolean;
+  steps: PlanStep[];
+  copyCount: number;
+  createdAt: string;
+}
+
+export interface UserPlanFollow {
+  id: string;
+  userId: string;
+  originalPlanId: string;
+  title: string;
+  description: string;
+  steps: PlanStep[];
+  isCompleted: boolean;
+  pointsAwarded: number;
+  createdAt: string;
+}
+
+// Social Features 2: Accountability Partner & Shared Challenges
+export interface PartnerInvite {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  fromAvatar: string;
+  toUserId: string;
+  toUsername: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+}
+
+export interface Partnership {
+  id: string;
+  user1Id: string;
+  user1Username: string;
+  user2Id: string;
+  user2Username: string;
+  pairedAt: string;
+}
+
+export interface SharedChallenge {
+  id: string;
+  partnershipId: string;
+  title: string;
+  targetHabitName: string;
+  durationDays: number;
+  jointStreak: number;
+  user1DoneDate?: string;
+  user2DoneDate?: string;
+  status: 'active' | 'completed' | 'broken';
+  createdAt: string;
+}
+
+export interface PartnerNotification {
+  id: string;
+  userId: string;
+  partnerId: string;
+  partnerUsername: string;
+  message: string;
+  habitName?: string;
+  type: 'missed_habit' | 'challenge_update' | 'invite';
+  read: boolean;
+  createdAt: string;
+}
+
+export interface AppState {
+  currentUser: UserProfile | null;
+  habits: Habit[];
+  journalEntries: JournalEntry[];
+  /** Lifetime total points (drives tier, never resets) */
+  totalPoints: number;
+  /** Points ledger entries for history */
+  pointsHistory: PointsEntry[];
+  /** League archives — final standings from completed periods */
+  leagueArchives: LeagueArchive[];
+  /** IDs of lessons the user has read */
+  readLessonIds: string[];
+  /** Username for league display */
+  username: string;
+
+  // New modules state
+  workouts: WorkoutLog[];
+  books: Book[];
+  readingLogs: ReadingProgressLog[];
+  skills: Skill[];
+  skillLogs: SkillSessionLog[];
+  badHabits: BadHabit[];
+  badHabitLogs: BadHabitLog[];
+  addictionTracker: AddictionTracker | null;
+  cravingLogs: CravingLog[];
+  focusLogs: FocusSessionLog[];
+  decisionLogs: DecisionLog[];
+  emotionLogs: EmotionLog[];
+  weeklyGoals: WeeklyGoal[];
+
+  // Self Improvement Books Library
+  libraryBooks: UserBook[];
+
+  // Social features state
+  improvementPlans: ImprovementPlan[];
+  followedPlans: UserPlanFollow[];
+  partnerInvites: PartnerInvite[];
+  partnership: Partnership | null;
+  sharedChallenges: SharedChallenge[];
+  partnerNotifications: PartnerNotification[];
+}
+
+export const DEFAULT_STATE: AppState = {
+  currentUser: null,
+  habits: [],
+  journalEntries: [],
+  totalPoints: 0,
+  pointsHistory: [],
+  leagueArchives: [],
+  readLessonIds: [],
+  username: 'Guest User',
+  workouts: [],
+  books: [],
+  readingLogs: [],
+  skills: [],
+  skillLogs: [],
+  badHabits: [],
+  badHabitLogs: [],
+  addictionTracker: null,
+  cravingLogs: [],
+  focusLogs: [],
+  decisionLogs: [],
+  emotionLogs: [],
+  weeklyGoals: [],
+  libraryBooks: [],
+  improvementPlans: [],
+  followedPlans: [],
+  partnerInvites: [],
+  partnership: null,
+  sharedChallenges: [],
+  partnerNotifications: [],
+};
+
+
+
