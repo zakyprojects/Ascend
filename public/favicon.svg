@@ -1,0 +1,13 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
+  <!-- Medal/ribbon icon -->
+  <circle cx="32" cy="26" r="12" fill="none" stroke="#ffffff" stroke-width="3.5"/>
+  <path d="M25 36 L20 50 L32 44 L44 50 L39 36" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="26" r="5.5" fill="#ffffff"/>
+</svg>
