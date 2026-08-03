@@ -78,6 +78,7 @@ import {
   fetchSharedChallengesSupabase,
   deleteSharedChallengeSupabase,
   acceptPartnerInviteAtomicSupabase,
+  togglePartnerStatsVisibilitySupabase,
 } from './supabase';
 
 const GUEST_STORAGE_KEY = 'ascend_guest_state_v2';
@@ -532,6 +533,19 @@ export function useAppState() {
         });
 
         const habit = prev.habits.find((h) => h.id === habitId);
+        let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
+          totalPoints: prev.totalPoints,
+          pointsHistory: prev.pointsHistory,
+        };
+
+        if (habit && habit.isPreset && habit.points > 0) {
+          if (completed) {
+            pointsUpdate = addPointsInternal(prev, habit.points, `Completed habit: ${habit.name}`, 'habit');
+          } else {
+            pointsUpdate = addPointsInternal(prev, -habit.points, `Unchecked habit: ${habit.name}`, 'habit');
+          }
+        }
+
         let updatedChallenges = prev.sharedChallenges;
         if (habit && prev.partnership && prev.sharedChallenges.length > 0) {
           const today = todayKey();
@@ -1611,6 +1625,11 @@ export function useAppState() {
         throw new Error("You can't send an accountability invite to yourself.");
       }
 
+      const targetPartnerships = await fetchPartnershipsSupabase(targetUserId);
+      if (targetPartnerships.length >= 5) {
+        throw new Error(`The user '${targetUsername}' has reached the maximum limit of 5 accountability partners.`);
+      }
+
       const alreadyPending = state.partnerInvites.some(
         (i) => i.toUserId === targetUserId && i.status === 'pending'
       );
@@ -1652,6 +1671,11 @@ export function useAppState() {
       const fromUsername = invite?.fromUsername || 'Partner';
       const toId = state.currentUser?.id || crypto.randomUUID();
       const toUsername = state.username;
+
+      const inviterPartnerships = await fetchPartnershipsSupabase(fromId);
+      if (inviterPartnerships.length >= 5) {
+        throw new Error(`The inviter '${fromUsername}' has reached the maximum limit of 5 accountability partners.`);
+      }
 
       const result = await acceptPartnerInviteAtomicSupabase(inviteId, fromId, fromUsername, toId, toUsername);
 
@@ -1755,31 +1779,74 @@ export function useAppState() {
     };
   }, []);
 
-  const createSharedChallenge = useCallback((targetHabitName: string, durationDays: number, targetPartnershipId?: string) => {
-    setState((prev) => {
-      const pId = targetPartnershipId || prev.partnership?.id || prev.partnerships[0]?.id;
-      if (!pId) return prev;
+  const togglePartnerStatsVisibility = useCallback(
+    async (partnershipId: string, allow: boolean) => {
+      const currentUserId = state.currentUser?.id || '';
+      try {
+        await togglePartnerStatsVisibilitySupabase(partnershipId, currentUserId, allow);
+      } catch (err: any) {
+        console.warn('Persisting stats visibility to Supabase skipped:', err?.message);
+      }
+      setState((prev) => {
+        const updated = (prev.partnerships || []).map((p) => {
+          if (p.id !== partnershipId) return p;
+          const isUser1 = p.user1Id === currentUserId;
+          return {
+            ...p,
+            user1AllowStats: isUser1 ? allow : p.user1AllowStats,
+            user2AllowStats: isUser1 ? p.user2AllowStats : allow,
+          };
+        });
+        return {
+          ...prev,
+          partnerships: updated,
+          partnership: updated[0] || null,
+        };
+      });
+    },
+    [state.currentUser?.id]
+  );
 
-      const challenge: SharedChallenge = {
-        id: crypto.randomUUID(),
-        partnershipId: pId,
-        title: `Joint ${durationDays}-Day Challenge: ${targetHabitName.trim()}`,
-        targetHabitName: targetHabitName.trim(),
-        durationDays,
-        jointStreak: 0,
-        status: 'active',
-        createdAt: new Date().toISOString(),
-      };
+  const createSharedChallenge = useCallback(
+    (
+      title: string,
+      durationDays: number,
+      user1Category: SharedChallengeCategory = 'habit',
+      user1Target: string = '',
+      user2Category: SharedChallengeCategory = 'habit',
+      user2Target: string = '',
+      targetPartnershipId?: string
+    ) => {
+      setState((prev) => {
+        const pId = targetPartnershipId || prev.partnership?.id || prev.partnerships[0]?.id;
+        if (!pId) return prev;
 
-      saveSharedChallengeSupabase(challenge);
-      syncBroadcaster.broadcast('CHALLENGE_UPDATED', challenge);
+        const challenge: SharedChallenge = {
+          id: crypto.randomUUID(),
+          partnershipId: pId,
+          title: title.trim(),
+          targetHabitName: user1Target || title.trim(),
+          durationDays,
+          jointStreak: 0,
+          user1Category,
+          user1Target: user1Target.trim(),
+          user2Category,
+          user2Target: user2Target.trim(),
+          status: 'active',
+          createdAt: new Date().toISOString(),
+        };
 
-      return {
-        ...prev,
-        sharedChallenges: [challenge, ...prev.sharedChallenges],
-      };
-    });
-  }, []);
+        saveSharedChallengeSupabase(challenge);
+        syncBroadcaster.broadcast('CHALLENGE_UPDATED', challenge);
+
+        return {
+          ...prev,
+          sharedChallenges: [challenge, ...prev.sharedChallenges],
+        };
+      });
+    },
+    []
+  );
 
   const deleteSharedChallenge = useCallback(async (challengeId: string) => {
     await deleteSharedChallengeSupabase(challengeId);
@@ -1972,6 +2039,7 @@ export function useAppState() {
     declinePartnerInvite,
     endPartnership,
     getPartnerProfileStats,
+    togglePartnerStatsVisibility,
     createSharedChallenge,
     logSharedChallengeHabit,
     deleteSharedChallenge,

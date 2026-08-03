@@ -1,10 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Users, UserPlus, Plus, Award, Zap, Trash2, X, Clock, CheckCircle2 } from 'lucide-react';
+import { Users, UserPlus, Plus, Award, Zap, Trash2, X, Clock, CheckCircle2, Shield, Eye, EyeOff, BookOpen, Dumbbell, AlertTriangle, Sparkles, Activity, ShieldAlert, FileText, HeartHandshake } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { getCurrentTier } from '@/lib/tiers';
 import { todayKey } from '@/lib/dates';
-import { Partnership, SharedChallenge } from '@/types';
+import { Partnership, SharedChallenge, SharedChallengeCategory } from '@/types';
+
+const CATEGORY_OPTIONS: { value: SharedChallengeCategory; label: string; icon: any; color: string }[] = [
+  { value: 'habit', label: 'Habit Tracker', icon: CheckCircle2, color: 'text-emerald-400' },
+  { value: 'reading', label: 'Book Reading', icon: BookOpen, color: 'text-sky-400' },
+  { value: 'exercise', label: 'Exercise & Workout', icon: Dumbbell, color: 'text-amber-400' },
+  { value: 'bad_habit', label: 'Bad Habit Reduction', icon: AlertTriangle, color: 'text-rose-400' },
+  { value: 'skill', label: 'Skill Learning', icon: Zap, color: 'text-purple-400' },
+  { value: 'journal', label: 'Daily Journaling', icon: FileText, color: 'text-indigo-400' },
+  { value: 'recovery', label: 'Sobriety / Recovery', icon: ShieldAlert, color: 'text-teal-400' },
+];
 
 export function AccountabilityPartner({ store }: { store: AppStore }) {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -13,8 +23,14 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const [challengeToDelete, setChallengeToDelete] = useState<SharedChallenge | null>(null);
 
   const [partnerUidInput, setPartnerUidInput] = useState('');
-  const [challengeHabitName, setChallengeHabitName] = useState('30-min Exercise');
+  
+  // Shared Challenge Creation Form States
+  const [challengeTitle, setChallengeTitle] = useState('');
   const [challengeDuration, setChallengeDuration] = useState(7);
+  const [user1Category, setUser1Category] = useState<SharedChallengeCategory>('habit');
+  const [user1Target, setUser1Target] = useState('');
+  const [user2Category, setUser2Category] = useState<SharedChallengeCategory>('habit');
+  const [user2Target, setUser2Target] = useState('');
 
   const currentUser = store.state.currentUser;
   const currentUsername = store.state.username;
@@ -22,7 +38,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const partnerInvites = store.state.partnerInvites || [];
   const sharedChallenges = store.state.sharedChallenges || [];
 
-  // Selected partner state (defaults to first partner if not set or out of bounds)
+  // Selected partner relationship state
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,12 +54,24 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const activePartnership: Partnership | null =
     partnerships.find((p) => p.id === selectedPartnerId) || partnerships[0] || null;
 
-  // Active selected partner username
-  const activePartnerUsername = activePartnership
+  // Identify partner username and roles for current user
+  const isUser1InActive = activePartnership
     ? activePartnership.user1Username.toLowerCase() === currentUsername.toLowerCase()
+    : true;
+
+  const activePartnerUsername = activePartnership
+    ? isUser1InActive
       ? activePartnership.user2Username
       : activePartnership.user1Username
     : null;
+
+  // Stats visibility logic (Mutual reciprocal check)
+  const user1AllowStats = activePartnership?.user1AllowStats ?? false;
+  const user2AllowStats = activePartnership?.user2AllowStats ?? false;
+
+  const currentUserAllowStats = isUser1InActive ? user1AllowStats : user2AllowStats;
+  const partnerAllowStats = isUser1InActive ? user2AllowStats : user1AllowStats;
+  const bothStatsAllowed = Boolean(currentUserAllowStats && partnerAllowStats);
 
   // Real Partner high-level stats state loaded from Supabase
   const [partnerStatsData, setPartnerStatsData] = useState<{
@@ -61,7 +89,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
   useEffect(() => {
     let mounted = true;
-    if (activePartnerUsername) {
+    if (activePartnerUsername && bothStatsAllowed) {
       store.getPartnerProfileStats(activePartnerUsername).then((res) => {
         if (mounted && res) {
           setPartnerStatsData(res as any);
@@ -73,7 +101,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     return () => {
       mounted = false;
     };
-  }, [activePartnerUsername, store]);
+  }, [activePartnerUsername, bothStatsAllowed, store]);
 
   const partnerTotalPoints = partnerStatsData ? partnerStatsData.totalPoints : 0;
   const partnerTier = getCurrentTier(partnerTotalPoints);
@@ -121,9 +149,26 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
   const handleCreateChallengeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!challengeHabitName.trim() || !activePartnership) return;
-    store.createSharedChallenge(challengeHabitName, Number(challengeDuration), activePartnership.id);
+    if (!activePartnership) return;
+
+    const u1Target = user1Target.trim() || 'Daily Activity';
+    const u2Target = user2Target.trim() || 'Daily Activity';
+    const title = challengeTitle.trim() || `${user1Category.toUpperCase()} vs ${user2Category.toUpperCase()}`;
+
+    store.createSharedChallenge(
+      title,
+      Number(challengeDuration),
+      isUser1InActive ? user1Category : user2Category,
+      isUser1InActive ? u1Target : u2Target,
+      isUser1InActive ? user2Category : user1Category,
+      isUser1InActive ? u2Target : u1Target,
+      activePartnership.id
+    );
+
     setChallengeModalOpen(false);
+    setChallengeTitle('');
+    setUser1Target('');
+    setUser2Target('');
   };
 
   const handleAcceptInvite = async (inviteId: string) => {
@@ -133,6 +178,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     } catch (err: any) {
       setInviteError(err.message || 'Failed to accept invite.');
     }
+  };
+
+  const handleToggleStats = async () => {
+    if (!activePartnership) return;
+    const newSetting = !currentUserAllowStats;
+    await store.togglePartnerStatsVisibility(activePartnership.id, newSetting);
   };
 
   // Challenges specific to the currently selected partner relationship (isolated!)
@@ -155,7 +206,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             </span>
           </div>
           <p className="text-sm text-slate-400 mt-1">
-            Pair with up to 5 partners, track isolated joint streaks, and share real habit progress
+            Pair with up to 5 partners, build flexible multi-category challenges, and manage reciprocal stats privacy
           </p>
         </div>
 
@@ -198,20 +249,20 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   <div className="flex items-center gap-2.5">
                     <span className="text-xl">{invite.fromAvatar || '🧑'}</span>
                     <div>
-                      <div className="font-bold text-slate-200">{invite.fromUsername}</div>
-                      <div className="text-[10px] text-slate-400">Sent you an accountability partner request</div>
+                      <span className="font-bold text-slate-100">{invite.fromUsername}</span>
+                      <span className="text-slate-400 ml-1.5">wants to connect as accountability partners</span>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleAcceptInvite(invite.id)}
-                      className="btn-primary text-xs py-1 px-3"
+                      className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg transition-all"
                     >
                       Accept
                     </button>
                     <button
                       onClick={() => store.declinePartnerInvite(invite.id)}
-                      className="btn-secondary text-xs py-1 px-3 text-slate-400 hover:text-white"
+                      className="px-3 py-1 bg-bg-800 hover:bg-bg-700 text-slate-300 font-semibold rounded-lg border border-white/10 transition-all"
                     >
                       Decline
                     </button>
@@ -221,32 +272,19 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             </div>
           )}
 
-          {/* Invites Banner */}
-      {inviteError && (
-        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3 rounded-xl text-xs font-semibold flex items-center justify-between">
-          <span>{inviteError}</span>
-          <button onClick={() => setInviteError(null)} className="text-rose-400 hover:text-white">
-            <X size={14} />
-          </button>
-        </div>
-      )}
-
           {/* Sent Invites */}
           {sentInvites.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-2 pt-1">
               <span className="text-[11px] font-semibold text-slate-400">Sent Invites (Pending):</span>
               {sentInvites.map((invite) => (
-                <div key={invite.id} className="flex items-center justify-between bg-bg-700/60 p-3 rounded-xl border border-white/5 text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-xl">📩</span>
-                    <div>
-                      <div className="font-bold text-slate-200">To: {invite.toUsername}</div>
-                      <div className="text-[10px] text-slate-400">Waiting for partner to accept</div>
-                    </div>
+                <div key={invite.id} className="flex items-center justify-between bg-bg-700/40 p-2.5 rounded-xl border border-white/5 text-xs">
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Clock size={14} className="text-amber-400" />
+                    <span>Invite sent to <strong>{invite.toUsername}</strong></span>
                   </div>
                   <button
                     onClick={() => store.cancelPartnerInvite(invite.id)}
-                    className="btn-secondary text-xs py-1 px-3 text-rose-400 hover:text-rose-300"
+                    className="text-xs text-rose-400 hover:text-rose-300 font-medium transition-all px-2 py-1 bg-rose-500/10 rounded-lg hover:bg-rose-500/20"
                   >
                     Cancel Invite
                   </button>
@@ -257,212 +295,259 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         </div>
       )}
 
-      {/* MULTI-PARTNER BLOCK CARDS LIST */}
-      {partnerships.length > 0 ? (
-        <div className="space-y-6">
-          {/* Partner Selector Tabs / Cards */}
-          <div>
-            <span className="text-xs font-semibold text-slate-400 block mb-2">Active Partners:</span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              {partnerships.map((p) => {
-                const pUsername =
-                  p.user1Username.toLowerCase() === currentUsername.toLowerCase() ? p.user2Username : p.user1Username;
-                const isSelected = p.id === activePartnership?.id;
-                const pChallenges = sharedChallenges.filter((c) => c.partnershipId === p.id);
-
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => setSelectedPartnerId(p.id)}
-                    className={`card p-3 text-left transition-all relative overflow-hidden flex items-center justify-between gap-2 border ${
-                      isSelected
-                        ? 'border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10'
-                        : 'border-white/5 bg-bg-800 hover:border-emerald-500/30'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base shrink-0 border border-emerald-500/30">
-                        🧑
-                      </div>
-                      <div className="truncate">
-                        <div className="font-bold text-slate-100 text-xs truncate">{pUsername}</div>
-                        <div className="text-[10px] text-slate-400">{pChallenges.length} shared challenge(s)</div>
-                      </div>
-                    </div>
-
-                    {isSelected && (
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-sm shadow-emerald-400" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+      {/* MULTI-PARTNER LIST / BLOCKS SELECTION HEADER */}
+      {partnerships.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Partner Connections ({partnerships.length}/5)</h2>
           </div>
 
-          {/* SELECTED PARTNER DETAIL VIEW (ISOLATED) */}
-          {activePartnership && activePartnerUsername && (
-            <div className="space-y-6">
-              {/* Partner Overview Card (PART A: Real Data Stats) */}
-              <div className="card p-6 space-y-4 relative overflow-hidden bg-bg-800 border border-emerald-500/30">
-                <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl font-bold border border-emerald-500/40">
-                      {partnerStatsData?.avatar || '🧑'}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-xl font-bold text-slate-100">{activePartnerUsername}</h2>
-                        <span className="badge bg-emerald-500/15 text-emerald-400 text-[10px] font-bold">
-                          Active Partner
-                        </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {partnerships.map((p) => {
+              const pUsername = p.user1Username.toLowerCase() === currentUsername.toLowerCase() ? p.user2Username : p.user1Username;
+              const isSelected = activePartnership?.id === p.id;
+              const pChallenges = sharedChallenges.filter((c) => c.partnershipId === p.id && c.status === 'active');
+
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPartnerId(p.id)}
+                  className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between gap-3 ${
+                    isSelected
+                      ? 'bg-gradient-to-b from-primary-500/20 to-bg-800 border-primary-500/50 shadow-lg ring-1 ring-primary-500/40 scale-[1.02]'
+                      : 'bg-bg-800 border-white/5 hover:border-white/20 text-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                        {pUsername.charAt(0).toUpperCase()}
                       </div>
-                      <p className="text-xs text-slate-400">Paired since {activePartnership.pairedAt.split('T')[0]}</p>
+                      <span className="font-bold text-sm text-slate-100 truncate max-w-[100px]">{pUsername}</span>
                     </div>
+                    {isSelected && <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />}
                   </div>
 
-                  <button
-                    onClick={() => setEndConfirmOpen(true)}
-                    className="btn-ghost text-xs text-slate-500 hover:text-rose-400 flex items-center gap-1"
-                  >
-                    <Trash2 size={15} /> End Pairing
-                  </button>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/5">
+                    <span>Active Challenges:</span>
+                    <span className="font-bold text-emerald-400">{pChallenges.length}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ACTIVE PARTNER ISOLATED DETAIL VIEW */}
+      {activePartnership ? (
+        <div className="space-y-6 animate-fade-in">
+          {/* Active Relationship Sub-Header & Actions */}
+          <div className="card p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xl">
+                  {activePartnerUsername?.charAt(0).toUpperCase()}
                 </div>
-
-                {/* High-level progress summary metrics (REAL DATA) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="bg-bg-700/60 p-3 rounded-xl border border-white/5">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Current Rank Tier</div>
-                    <div className="text-sm font-bold text-emerald-400 mt-1 flex items-center gap-1.5">
-                      <Award size={16} />
-                      <span>{partnerTier.name}</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-bg-700/60 p-3 rounded-xl border border-white/5">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Total Lifetime Points</div>
-                    <div className="text-sm font-bold text-slate-100 mt-1">
-                      {partnerTotalPoints.toLocaleString()} pts
-                    </div>
-                  </div>
-
-                  <div className="bg-bg-700/60 p-3 rounded-xl border border-white/5">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Active Streak</div>
-                    <div className="text-sm font-bold text-blue-400 mt-1 flex items-center gap-1.5">
-                      <Zap size={16} />
-                      <span>
-                        {partnerStreakDays} days streak ({partnerHabitsCompletedToday} done today, {partnerHabitsCompleted} lifetime)
-                      </span>
-                    </div>
-                  </div>
+                <div>
+                  <h2 className="text-lg font-display font-bold text-slate-100 flex items-center gap-2">
+                    <span>Partner: {activePartnerUsername}</span>
+                    <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">Active</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Paired on {new Date(activePartnership.pairedAt).toLocaleDateString()}</p>
                 </div>
+              </div>
 
-                <p className="text-[11px] text-slate-500 italic">
-                  Note: Metrics reflect live account statistics for {activePartnerUsername}.
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button onClick={() => setChallengeModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5">
+                  <Plus size={15} />
+                  <span>Start Shared Challenge</span>
+                </button>
+                <button onClick={() => setEndConfirmOpen(true)} className="btn-secondary text-xs text-rose-400 hover:text-rose-300 border-rose-500/30 hover:bg-rose-500/10">
+                  End Pairing
+                </button>
+              </div>
+            </div>
+
+            {/* PART C: PER-PARTNER STATS VISIBILITY PRIVACY CARD */}
+            <div className="p-3.5 bg-bg-700/50 rounded-xl border border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Shield size={16} className={currentUserAllowStats ? 'text-emerald-400' : 'text-slate-400'} />
+                  <span className="text-xs font-bold text-slate-200">Share Broader Profile Stats with {activePartnerUsername}</span>
+                  {bothStatsAllowed ? (
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <CheckCircle2 size={11} /> Mutual Stats Access Active
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
+                      Mutual Opt-In Required
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  When both you and {activePartnerUsername} enable stats sharing for this specific relationship, both of you can view each other's full profile rank, total points, and total habits completed.
                 </p>
               </div>
 
-              {/* Shared Challenges Section for Active Partner */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="section-title">Shared Streak Challenges with {activePartnerUsername}</h2>
-                    <p className="text-xs text-slate-500">
-                      Joint streak advances only when BOTH you and {activePartnerUsername} complete your daily target!
-                    </p>
-                  </div>
-                  <button onClick={() => setChallengeModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5">
-                    <Plus size={16} />
-                    <span>Start Shared Challenge</span>
-                  </button>
+              <button
+                type="button"
+                onClick={handleToggleStats}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  currentUserAllowStats
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                    : 'bg-bg-800 text-slate-300 border border-white/10 hover:bg-bg-700'
+                }`}
+              >
+                {currentUserAllowStats ? <Eye size={14} /> : <EyeOff size={14} />}
+                <span>{currentUserAllowStats ? 'Sharing Enabled ✓' : 'Sharing Off'}</span>
+              </button>
+            </div>
+
+            {/* BROADER PROFILE STATS CARD (MUTUAL PER-RELATIONSHIP OPT-IN REQUIRED) */}
+            {bothStatsAllowed ? (
+              <div className="p-4 bg-bg-800/80 rounded-2xl border border-white/10 space-y-3">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Sparkles size={15} className="text-amber-400" />
+                    {activePartnerUsername}'s Broader Profile Stats
+                  </span>
+                  <span className="text-[11px] text-emerald-400 font-semibold">{partnerTier.name} Tier</span>
                 </div>
 
-                {isolatedChallenges.length === 0 ? (
-                  <div className="card p-6 text-center text-xs text-slate-500">
-                    No shared challenges active yet with {activePartnerUsername}. Click "Start Shared Challenge" to embark on a joint streak!
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 bg-bg-700/50 rounded-xl border border-white/5">
+                    <span className="block text-[11px] text-slate-400">Total Points</span>
+                    <span className="text-base font-display font-bold text-amber-400">{partnerTotalPoints} pts</span>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {isolatedChallenges.map((challenge) => {
-                      const today = todayKey();
-                      const isUser1 =
-                        (currentUser?.id && activePartnership.user1Id === currentUser.id) ||
-                        activePartnership.user1Username.toLowerCase() === currentUsername.toLowerCase();
-
-                      const userDoneDate = isUser1 ? challenge.user1DoneDate : challenge.user2DoneDate;
-                      const partnerDoneDate = isUser1 ? challenge.user2DoneDate : challenge.user1DoneDate;
-
-                      const linkedHabit = store.state.habits.find(
-                        (h) => h.name.trim().toLowerCase() === challenge.targetHabitName.trim().toLowerCase()
-                      );
-                      const isLinkedHabitDoneToday = linkedHabit ? linkedHabit.completions.includes(today) : false;
-                      const isUserDoneToday = userDoneDate === today || isLinkedHabitDoneToday;
-                      const isPartnerDoneToday = partnerDoneDate === today;
-
-                      return (
-                        <div key={challenge.id} className="card p-4 space-y-3 border-l-4 border-emerald-500">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="font-bold text-slate-200 text-sm flex items-center gap-2">
-                                {challenge.title}
-                                <span className="badge bg-emerald-500/15 text-emerald-400 text-[10px] font-bold">
-                                  {challenge.jointStreak} / {challenge.durationDays} days joint streak
-                                </span>
-                              </h3>
-                              <p className="text-xs text-slate-400">Target habit: {challenge.targetHabitName}</p>
-                            </div>
-                            <button
-                              onClick={() => setChallengeToDelete(challenge)}
-                              className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-                              title="Delete Shared Challenge"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-bg-800 p-3 rounded-xl border border-white/5 text-xs">
-                            <div className="flex items-center justify-between gap-2">
-                              <div>
-                                <span className="text-slate-400">Your status today: </span>
-                                <span className={`font-bold ${isUserDoneToday ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                  {isUserDoneToday ? 'Completed ✓' : 'Pending'}
-                                </span>
-                              </div>
-                              <button
-                                onClick={() => store.logSharedChallengeHabit(challenge.id)}
-                                className={`text-xs py-1 px-3 font-semibold rounded-lg transition-all ${
-                                  isUserDoneToday
-                                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25'
-                                    : 'btn-primary'
-                                }`}
-                              >
-                                {isUserDoneToday ? 'Mark Pending' : 'Log Habit Completed'}
-                              </button>
-                            </div>
-
-                            <div className="flex items-center justify-between sm:border-l sm:border-white/10 sm:pl-3">
-                              <span className="text-slate-400">{activePartnerUsername}'s status: </span>
-                              <span className={`font-bold ${isPartnerDoneToday ? 'text-emerald-400' : 'text-slate-400'}`}>
-                                {isPartnerDoneToday ? 'Completed ✓' : 'Pending'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="p-3 bg-bg-700/50 rounded-xl border border-white/5">
+                    <span className="block text-[11px] text-slate-400">Current Streak</span>
+                    <span className="text-base font-display font-bold text-emerald-400">{partnerStreakDays} days</span>
                   </div>
-                )}
+                  <div className="p-3 bg-bg-700/50 rounded-xl border border-white/5">
+                    <span className="block text-[11px] text-slate-400">Habits Done Today</span>
+                    <span className="text-base font-display font-bold text-sky-400">{partnerHabitsCompletedToday}</span>
+                  </div>
+                  <div className="p-3 bg-bg-700/50 rounded-xl border border-white/5">
+                    <span className="block text-[11px] text-slate-400">Total Habits Done</span>
+                    <span className="text-base font-display font-bold text-purple-400">{partnerHabitsCompleted}</span>
+                  </div>
+                </div>
               </div>
+            ) : (
+              <div className="p-3.5 bg-bg-800/40 rounded-xl border border-white/5 text-center text-xs text-slate-400">
+                <span>Broader profile stats hidden. Enable stats sharing above (requires mutual opt-in) to unlock full profile stats for this partner.</span>
+              </div>
+            )}
+          </div>
+
+          {/* ISOLATED SHARED CHALLENGES SECTION */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="section-title flex items-center gap-2">
+                <Award size={18} className="text-amber-400" />
+                <span>Shared Challenges with {activePartnerUsername} ({isolatedChallenges.length})</span>
+              </h2>
+              <button onClick={() => setChallengeModalOpen(true)} className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5">
+                <Plus size={14} />
+                <span>New Challenge</span>
+              </button>
             </div>
-          )}
+
+            {isolatedChallenges.length === 0 ? (
+              <div className="card p-8 text-center space-y-3">
+                <p className="text-sm text-slate-400">No active shared challenges with {activePartnerUsername} yet.</p>
+                <button onClick={() => setChallengeModalOpen(true)} className="btn-primary mx-auto text-xs flex items-center gap-1.5">
+                  <Plus size={14} />
+                  <span>Start First Shared Challenge</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {isolatedChallenges.map((challenge) => {
+                  const today = todayKey();
+                  const myCategory = isUser1InActive ? (challenge.user1Category || 'habit') : (challenge.user2Category || 'habit');
+                  const myTarget = isUser1InActive ? (challenge.user1Target || challenge.targetHabitName) : (challenge.user2Target || challenge.targetHabitName);
+
+                  const partnerCategory = isUser1InActive ? (challenge.user2Category || 'habit') : (challenge.user1Category || 'habit');
+                  const partnerTarget = isUser1InActive ? (challenge.user2Target || challenge.targetHabitName) : (challenge.user1Target || challenge.targetHabitName);
+
+                  const myDone = (isUser1InActive ? challenge.user1DoneDate : challenge.user2DoneDate) === today;
+                  const partnerDone = (isUser1InActive ? challenge.user2DoneDate : challenge.user1DoneDate) === today;
+
+                  return (
+                    <div key={challenge.id} className="card p-5 space-y-4 relative group">
+                      <button
+                        onClick={() => setChallengeToDelete(challenge)}
+                        className="absolute top-4 right-4 p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                        title="Delete Shared Challenge"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+
+                      <div className="space-y-1 pr-8">
+                        <h3 className="font-display font-bold text-base text-slate-100">{challenge.title}</h3>
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                          <span className="font-mono text-emerald-400 font-bold">{challenge.jointStreak} / {challenge.durationDays} Days Joint Streak</span>
+                        </div>
+                      </div>
+
+                      {/* Multi-Category Activity Targets */}
+                      <div className="grid grid-cols-2 gap-2 text-xs p-3 bg-bg-800 rounded-xl border border-white/5">
+                        <div className="space-y-1">
+                          <span className="block text-[11px] text-slate-500 font-semibold">Your Commit ({myCategory}):</span>
+                          <span className="font-medium text-slate-200 block truncate">{myTarget}</span>
+                          <span className={myDone ? 'text-emerald-400 font-bold flex items-center gap-1' : 'text-slate-500'}>
+                            {myDone ? 'Completed Today ✓' : 'Pending Today'}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1 border-l border-white/5 pl-2.5">
+                          <span className="block text-[11px] text-slate-500 font-semibold">{activePartnerUsername} ({partnerCategory}):</span>
+                          <span className="font-medium text-slate-200 block truncate">{partnerTarget}</span>
+                          <span className={partnerDone ? 'text-emerald-400 font-bold flex items-center gap-1' : 'text-slate-500'}>
+                            {partnerDone ? 'Completed Today ✓' : 'Pending Today'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[11px] text-slate-500">
+                          Joint streak advances when both complete their targets today.
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => store.logSharedChallengeHabit(challenge.id)}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                            myDone
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : 'bg-primary-500 hover:bg-primary-600 text-white shadow-md'
+                          }`}
+                        >
+                          <CheckCircle2 size={14} />
+                          <span>{myDone ? 'Done Today ✓' : 'Mark Done Today'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       ) : (
-        /* NO PARTNERS YET VIEW */
-        <div className="card p-8 text-center space-y-4">
-          <Users size={40} className="mx-auto text-emerald-400" />
-          <h2 className="text-lg font-bold text-slate-100">Find Accountability Partners</h2>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
-            You can add up to 5 accountability partners! Research shows that having dedicated accountability partners increases goal success rates by up to 95%.
-          </p>
+        /* NO ACTIVE PARTNERS EMPYT STATE */
+        <div className="card p-10 text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto text-2xl">
+            <Users size={32} />
+          </div>
+          <div className="max-w-md mx-auto space-y-1">
+            <h2 className="text-xl font-display font-bold text-slate-100">No Active Accountability Partners</h2>
+            <p className="text-xs text-slate-400">
+              Enter a partner's 6-digit User ID to send an invite. You can connect with up to 5 partners simultaneously!
+            </p>
+          </div>
           <button onClick={() => setInviteModalOpen(true)} className="btn-primary mx-auto flex items-center gap-2">
             <UserPlus size={18} />
             <span>Invite Accountability Partner</span>
@@ -470,7 +555,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         </div>
       )}
 
-      {/* Invite Partner Modal */}
+      {/* INVITE PARTNER MODAL */}
       <Modal
         open={inviteModalOpen}
         onClose={() => {
@@ -517,114 +602,185 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         </form>
       </Modal>
 
-      {/* Create Shared Challenge Modal */}
+      {/* PART B: START MULTI-CATEGORY SHARED CHALLENGE MODAL */}
       <Modal
         open={challengeModalOpen}
         onClose={() => setChallengeModalOpen(false)}
         title={`Start Shared Challenge with ${activePartnerUsername || 'Partner'}`}
+        maxWidth="max-w-lg"
       >
         <form onSubmit={handleCreateChallengeSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Target Habit Name</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Challenge Title</label>
             <input
               type="text"
-              placeholder="e.g. 30-min Exercise"
-              value={challengeHabitName}
-              onChange={(e) => setChallengeHabitName(e.target.value)}
+              placeholder="e.g. 30-Day Growth Sprint"
+              value={challengeTitle}
+              onChange={(e) => setChallengeTitle(e.target.value)}
               className="input-field text-sm"
             />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Tip: If this matches a habit in your Habit Tracker, ticking it will automatically complete your status today!
-            </p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Challenge Duration (Days)</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Challenge Duration</label>
             <select
               value={challengeDuration}
               onChange={(e) => setChallengeDuration(Number(e.target.value))}
-              className="input-field text-sm"
+              className="input-field text-sm bg-bg-700 text-slate-100"
             >
               <option value={7}>7 Days</option>
               <option value={14}>14 Days</option>
               <option value={30}>30 Days</option>
-              <option value={60}>60 Days</option>
               <option value={90}>90 Days</option>
             </select>
+          </div>
+
+          {/* User 1 (Your Target) Category & Item Selector */}
+          <div className="p-3 bg-bg-800 rounded-xl border border-white/5 space-y-3">
+            <label className="block text-xs font-bold text-emerald-400">Your Activity Commitment</label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Category</label>
+                <select
+                  value={user1Category}
+                  onChange={(e) => setUser1Category(e.target.value as SharedChallengeCategory)}
+                  className="input-field text-xs bg-bg-700 text-slate-100"
+                >
+                  {CATEGORY_OPTIONS.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Specific Target Item</label>
+                {user1Category === 'habit' && store.state.habits.length > 0 ? (
+                  <select
+                    value={user1Target}
+                    onChange={(e) => setUser1Target(e.target.value)}
+                    className="input-field text-xs bg-bg-700 text-slate-100"
+                  >
+                    <option value="">-- Select Habit --</option>
+                    {store.state.habits.map((h) => (
+                      <option key={h.id} value={h.title}>
+                        {h.title}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="e.g. Read 20 pages / 30m Gym"
+                    value={user1Target}
+                    onChange={(e) => setUser1Target(e.target.value)}
+                    className="input-field text-xs"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* User 2 (Partner's Target) Category & Item Selector */}
+          <div className="p-3 bg-bg-800 rounded-xl border border-white/5 space-y-3">
+            <label className="block text-xs font-bold text-sky-400">{activePartnerUsername}'s Activity Commitment</label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Category</label>
+                <select
+                  value={user2Category}
+                  onChange={(e) => setUser2Category(e.target.value as SharedChallengeCategory)}
+                  className="input-field text-xs bg-bg-700 text-slate-100"
+                >
+                  {CATEGORY_OPTIONS.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Specific Target Item</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 5km Run / Cold Shower"
+                  value={user2Target}
+                  onChange={(e) => setUser2Target(e.target.value)}
+                  className="input-field text-xs"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={() => setChallengeModalOpen(false)} className="btn-secondary text-xs">
               Cancel
             </button>
-            <button type="submit" className="btn-primary text-xs">
-              Create Challenge
+            <button type="submit" className="btn-primary text-xs flex items-center gap-1.5">
+              <Plus size={16} />
+              <span>Create Shared Challenge</span>
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* End Pairing Confirmation Modal */}
+      {/* END PAIRING CONFIRMATION MODAL */}
       <Modal
         open={endConfirmOpen}
         onClose={() => setEndConfirmOpen(false)}
-        title={`End Pairing with ${activePartnerUsername || 'Partner'}`}
+        title={`End Pairing with ${activePartnerUsername || 'Partner'}?`}
       >
-        <div className="space-y-4 text-xs text-slate-300">
-          <p>
-            Are you sure you want to end your accountability pairing with <strong className="text-emerald-400">{activePartnerUsername}</strong>?
+        <div className="space-y-4">
+          <p className="text-xs text-slate-300">
+            Are you sure you want to end your accountability partnership with <strong>{activePartnerUsername}</strong>? All shared challenges with this partner will be removed.
           </p>
-          <p className="text-slate-400">
-            This will remove this partnership block and free up a slot for a new accountability partner. Shared challenges with {activePartnerUsername} will be removed.
-          </p>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setEndConfirmOpen(false)} className="btn-secondary text-xs">
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setEndConfirmOpen(false)} className="btn-secondary text-xs">
               Keep Partner
             </button>
             <button
-              onClick={() => {
+              type="button"
+              onClick={async () => {
                 if (activePartnership) {
-                  store.endPartnership(activePartnership.id);
+                  await store.endPartnership(activePartnership.id);
+                  setEndConfirmOpen(false);
                 }
-                setEndConfirmOpen(false);
               }}
-              className="btn-primary text-xs bg-rose-600 hover:bg-rose-500 border-rose-500"
+              className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition-all"
             >
-              End Pairing
+              End Partnership
             </button>
           </div>
         </div>
       </Modal>
 
-      {/* Delete Shared Challenge Confirmation Modal */}
+      {/* DELETE SHARED CHALLENGE CONFIRMATION MODAL */}
       <Modal
-        open={!!challengeToDelete}
+        open={Boolean(challengeToDelete)}
         onClose={() => setChallengeToDelete(null)}
-        title="Delete Shared Challenge"
+        title="Delete Shared Challenge?"
       >
         <div className="space-y-4">
           <p className="text-xs text-slate-300">
-            Are you sure you want to delete <strong className="text-white">{challengeToDelete?.title}</strong>?
+            Are you sure you want to delete <strong>"{challengeToDelete?.title}"</strong>? This will permanently remove the joint challenge for both partners.
           </p>
-          <p className="text-xs text-slate-400">
-            This will permanently remove this challenge and its joint streak progress for both you and {activePartnerUsername}. Your partnership will remain active.
-          </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <button onClick={() => setChallengeToDelete(null)} className="btn-secondary text-xs">
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setChallengeToDelete(null)} className="btn-secondary text-xs">
               Cancel
             </button>
             <button
+              type="button"
               onClick={async () => {
                 if (challengeToDelete) {
                   await store.deleteSharedChallenge(challengeToDelete.id);
                   setChallengeToDelete(null);
                 }
               }}
-              className="btn-primary text-xs bg-rose-600 hover:bg-rose-500 border-rose-500 flex items-center gap-1.5"
+              className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition-all"
             >
-              <Trash2 size={14} />
-              <span>Delete Challenge</span>
+              Delete Challenge
             </button>
           </div>
         </div>

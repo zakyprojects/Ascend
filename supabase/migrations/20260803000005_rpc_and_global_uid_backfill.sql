@@ -1,5 +1,5 @@
 -- =====================================================================
--- COMPLETE ASCEND DATABASE MIGRATION SCRIPT WITH ATOMIC RACE CONDITION GUARD
+-- COMPLETE ASCEND DATABASE MIGRATION SCRIPT FOR PHASE 3
 -- Run this in your Supabase SQL Editor (https://supabase.com/dashboard)
 -- =====================================================================
 
@@ -34,7 +34,41 @@ BEGIN
   END IF;
 END $$;
 
--- 4. Create SECURITY DEFINER RPC function for cross-user UID lookup
+-- 4. Enable RLS and scoped policies for public.profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public profile fields are viewable by signed-in users" ON public.profiles;
+DROP POLICY IF EXISTS "Profiles viewable by all users" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can delete their own profile" ON public.profiles;
+
+CREATE POLICY "Profiles viewable by all users"
+  ON public.profiles FOR SELECT
+  USING (true);
+
+CREATE POLICY "Users can insert their own profile"
+  ON public.profiles FOR INSERT
+  WITH CHECK (auth.uid() IS NULL OR auth.uid() = id);
+
+CREATE POLICY "Users can update their own profile"
+  ON public.profiles FOR UPDATE
+  USING (auth.uid() IS NULL OR auth.uid() = id);
+
+CREATE POLICY "Users can delete their own profile"
+  ON public.profiles FOR DELETE
+  USING (auth.uid() IS NULL OR auth.uid() = id);
+
+-- 5. Add Phase 3 columns to public.partnerships and public.shared_challenges
+ALTER TABLE public.partnerships ADD COLUMN IF NOT EXISTS user1_allow_stats BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.partnerships ADD COLUMN IF NOT EXISTS user2_allow_stats BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE public.shared_challenges ADD COLUMN IF NOT EXISTS user1_category VARCHAR(50) DEFAULT 'habit';
+ALTER TABLE public.shared_challenges ADD COLUMN IF NOT EXISTS user1_target TEXT;
+ALTER TABLE public.shared_challenges ADD COLUMN IF NOT EXISTS user2_category VARCHAR(50) DEFAULT 'habit';
+ALTER TABLE public.shared_challenges ADD COLUMN IF NOT EXISTS user2_target TEXT;
+
+-- 6. Create SECURITY DEFINER RPC function for cross-user UID lookup
 CREATE OR REPLACE FUNCTION public.get_profile_by_uid(target_uid text)
 RETURNS TABLE (
   id uuid,
@@ -55,7 +89,7 @@ BEGIN
 END;
 $$;
 
--- 5. ATOMIC ACCEPT PARTNER INVITE RPC WITH RACE-CONDITION GUARD
+-- 7. ATOMIC ACCEPT PARTNER INVITE RPC WITH RACE-CONDITION GUARD
 CREATE OR REPLACE FUNCTION public.accept_partner_invite_atomic(
   p_invite_id UUID,
   p_user1_id UUID,
@@ -91,8 +125,8 @@ BEGIN
 
   IF v_partnership_id IS NULL THEN
     v_partnership_id := gen_random_uuid();
-    INSERT INTO public.partnerships (id, user1_id, user1_username, user2_id, user2_username, paired_at)
-    VALUES (v_partnership_id, p_user1_id, p_user1_username, p_user2_id, p_user2_username, NOW());
+    INSERT INTO public.partnerships (id, user1_id, user1_username, user2_id, user2_username, user1_allow_stats, user2_allow_stats, paired_at)
+    VALUES (v_partnership_id, p_user1_id, p_user1_username, p_user2_id, p_user2_username, FALSE, FALSE, NOW());
   END IF;
 
   -- Delete invite row permanently
@@ -105,25 +139,14 @@ BEGIN
 END;
 $$;
 
--- 6. Grant execution permissions for RPCs
+-- 8. Grant execution permissions for RPCs
 GRANT EXECUTE ON FUNCTION public.get_profile_by_uid(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_profile_by_uid(text) TO anon;
 GRANT EXECUTE ON FUNCTION public.accept_partner_invite_atomic(UUID, UUID, TEXT, UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.accept_partner_invite_atomic(UUID, UUID, TEXT, UUID, TEXT) TO anon;
 
--- 7. RLS Policies for public.profiles
-DROP POLICY IF EXISTS "Public profile fields are viewable by signed-in users" ON public.profiles;
-CREATE POLICY "Public profile fields are viewable by signed-in users"
-  ON public.profiles FOR SELECT
-  USING (true);
-
--- 8. TIGHTENED RLS Policies for public.partner_invites
+-- 9. TIGHTENED RLS Policies for public.partner_invites
 ALTER TABLE public.partner_invites ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can view partner invites sent or received by them" ON public.partner_invites;
-DROP POLICY IF EXISTS "Users can send partner invites" ON public.partner_invites;
-DROP POLICY IF EXISTS "Users can update invites sent to them" ON public.partner_invites;
-DROP POLICY IF EXISTS "Allow authenticated partner invite operations" ON public.partner_invites;
-DROP POLICY IF EXISTS "Allow all partner invite operations" ON public.partner_invites;
 DROP POLICY IF EXISTS "Users can insert partner invites" ON public.partner_invites;
 DROP POLICY IF EXISTS "Users can access their own partner invites" ON public.partner_invites;
 
@@ -139,12 +162,8 @@ CREATE POLICY "Users can access their own partner invites"
     auth.uid() = to_user_id
   );
 
--- 9. TIGHTENED RLS Policies for public.partnerships
+-- 10. TIGHTENED RLS Policies for public.partnerships
 ALTER TABLE public.partnerships ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Partnerships viewable only by paired users" ON public.partnerships;
-DROP POLICY IF EXISTS "Partnerships manageable by paired users" ON public.partnerships;
-DROP POLICY IF EXISTS "Allow authenticated partnerships operations" ON public.partnerships;
-DROP POLICY IF EXISTS "Allow all partnerships operations" ON public.partnerships;
 DROP POLICY IF EXISTS "Users can access their own partnerships" ON public.partnerships;
 
 CREATE POLICY "Users can access their own partnerships"
@@ -160,10 +179,8 @@ CREATE POLICY "Users can access their own partnerships"
     auth.uid() = user2_id
   );
 
--- 10. TIGHTENED RLS Policies for public.shared_challenges
+-- 11. TIGHTENED RLS Policies for public.shared_challenges
 ALTER TABLE public.shared_challenges ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Shared challenges readable by partners" ON public.shared_challenges;
-DROP POLICY IF EXISTS "Allow all shared challenge operations" ON public.shared_challenges;
 DROP POLICY IF EXISTS "Users can access shared challenges for their partnerships" ON public.shared_challenges;
 
 CREATE POLICY "Users can access shared challenges for their partnerships"
@@ -185,7 +202,7 @@ CREATE POLICY "Users can access shared challenges for their partnerships"
     )
   );
 
--- 11. Add Tables to Supabase Realtime Publication for Sub-Second Push Notifications
+-- 12. Add Tables to Supabase Realtime Publication for Sub-Second Push Notifications
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
@@ -195,7 +212,7 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
--- 12. Trigger to prevent changing uid once set
+-- 13. Trigger to prevent changing uid once set
 CREATE OR REPLACE FUNCTION public.prevent_profile_uid_change()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -213,5 +230,5 @@ CREATE TRIGGER trg_prevent_profile_uid_change
   FOR EACH ROW
   EXECUTE FUNCTION public.prevent_profile_uid_change();
 
--- 13. Refresh PostgREST schema cache
+-- 14. Refresh PostgREST schema cache
 NOTIFY pgrst, 'reload schema';

@@ -378,6 +378,8 @@ export async function savePartnershipSupabase(partnership: Partnership) {
       user1_username: partnership.user1Username,
       user2_id: partnership.user2Id,
       user2_username: partnership.user2Username,
+      user1_allow_stats: partnership.user1AllowStats ?? false,
+      user2_allow_stats: partnership.user2AllowStats ?? false,
       paired_at: partnership.pairedAt,
     });
     if (pErr) {
@@ -392,6 +394,38 @@ export async function savePartnershipSupabase(partnership: Partnership) {
       .or(`and(from_username.ilike.${partnership.user1Username},to_username.ilike.${partnership.user2Username}),and(from_username.ilike.${partnership.user2Username},to_username.ilike.${partnership.user1Username})`);
   } catch (e) {
     console.error('Error saving partnership in Supabase:', e);
+    throw e;
+  }
+}
+
+export async function togglePartnerStatsVisibilitySupabase(
+  partnershipId: string,
+  currentUserId: string,
+  allow: boolean
+) {
+  if (!isSupabaseConfigured || !partnershipId) return;
+  try {
+    const { data: existing } = await supabase
+      .from('partnerships')
+      .select('user1_id, user2_id')
+      .eq('id', partnershipId)
+      .maybeSingle();
+
+    if (!existing) return;
+
+    const isUser1 = existing.user1_id === currentUserId;
+    const updatePayload = isUser1 ? { user1_allow_stats: allow } : { user2_allow_stats: allow };
+
+    const { error } = await supabase.from('partnerships').update(updatePayload).eq('id', partnershipId);
+    if (error) {
+      console.warn('Supabase stats visibility update warning:', error.message);
+      if (error.message.includes('column') || error.message.includes('schema cache')) {
+        throw new Error('Database migration pending: Please run the SQL migration script in your Supabase Dashboard to enable stats sharing.');
+      }
+      throw new Error(error.message || 'Failed to toggle stats visibility in database');
+    }
+  } catch (e) {
+    console.warn('togglePartnerStatsVisibilitySupabase warning:', e);
     throw e;
   }
 }
@@ -427,6 +461,8 @@ export async function fetchPartnershipSupabase(userId: string): Promise<Partners
       user1Username: data.user1_username,
       user2Id: data.user2_id,
       user2Username: data.user2_username,
+      user1AllowStats: data.user1_allow_stats ?? false,
+      user2AllowStats: data.user2_allow_stats ?? false,
       pairedAt: data.paired_at,
     };
   } catch (e) {
@@ -451,6 +487,8 @@ export async function fetchPartnershipsSupabase(userId: string): Promise<Partner
       user1Username: row.from_username || row.user1_username,
       user2Id: row.user2_id,
       user2Username: row.user2_username,
+      user1AllowStats: row.user1_allow_stats ?? false,
+      user2AllowStats: row.user2_allow_stats ?? false,
       pairedAt: row.paired_at,
     }));
   } catch (e) {
@@ -489,6 +527,10 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
       target_habit_name: challenge.targetHabitName,
       duration_days: challenge.durationDays,
       joint_streak: challenge.jointStreak,
+      user1_category: challenge.user1Category || 'habit',
+      user1_target: challenge.user1Target || challenge.targetHabitName,
+      user2_category: challenge.user2Category || 'habit',
+      user2_target: challenge.user2Target || challenge.targetHabitName,
       user1_done_date: challenge.user1DoneDate || null,
       user2_done_date: challenge.user2DoneDate || null,
       status: challenge.status,
@@ -523,6 +565,10 @@ export async function fetchSharedChallengesSupabase(partnershipIds: string | str
       targetHabitName: row.target_habit_name,
       durationDays: row.duration_days,
       jointStreak: row.joint_streak,
+      user1Category: (row.user1_category as any) || 'habit',
+      user1Target: row.user1_target || row.target_habit_name,
+      user2Category: (row.user2_category as any) || 'habit',
+      user2Target: row.user2_target || row.target_habit_name,
       user1DoneDate: row.user1_done_date || undefined,
       user2DoneDate: row.user2_done_date || undefined,
       status: row.status as 'active' | 'completed',

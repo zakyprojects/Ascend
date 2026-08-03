@@ -347,12 +347,23 @@ export interface PartnerInvite {
   createdAt: string;
 }
 
+export type SharedChallengeCategory =
+  | 'habit'
+  | 'reading'
+  | 'exercise'
+  | 'bad_habit'
+  | 'skill'
+  | 'journal'
+  | 'recovery';
+
 export interface Partnership {
   id: string;
   user1Id: string;
   user1Username: string;
   user2Id: string;
   user2Username: string;
+  user1AllowStats?: boolean;
+  user2AllowStats?: boolean;
   pairedAt: string;
 }
 
@@ -363,6 +374,10 @@ export interface SharedChallenge {
   targetHabitName: string;
   durationDays: number;
   jointStreak: number;
+  user1Category?: SharedChallengeCategory;
+  user1Target?: string;
+  user2Category?: SharedChallengeCategory;
+  user2Target?: string;
   user1DoneDate?: string;
   user2DoneDate?: string;
   status: 'active' | 'completed' | 'broken';
