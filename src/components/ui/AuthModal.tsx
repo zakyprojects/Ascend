@@ -368,7 +368,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                         placeholder="e.g. Alex_Mastery"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        className="w-full pl-9 pr-24 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
+                        className="w-full input-has-icon pr-24 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
                       />
                       {username.trim() && (
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -405,7 +405,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
+                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
                   />
                 </div>
               </div>
@@ -424,7 +424,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
+                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
                   />
                 </div>
               </div>
@@ -444,7 +444,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                       placeholder="••••••••"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
+                      className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
                     />
                   </div>
                   {confirmPassword && password !== confirmPassword && (

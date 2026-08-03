@@ -324,7 +324,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               disabled={isCooldownActive || usernameSaving}
               value={usernameInput}
               onChange={(e) => setUsernameInput(e.target.value)}
-              className="w-full pl-9 pr-28 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all disabled:opacity-60"
+              className="w-full input-has-icon pr-28 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all disabled:opacity-60"
             />
             {usernameInput.trim() && usernameInput.trim() !== currentUser?.username && (
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -432,7 +432,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               type="email"
               disabled
               value={currentUser?.email || (isGuest ? 'Guest User (No Email)' : '')}
-              className="w-full pl-9 pr-3 py-2.5 bg-bg-800/60 border border-white/5 rounded-xl text-sm text-slate-400 font-mono disabled:opacity-80"
+              className="w-full input-has-icon pr-3 py-2.5 bg-bg-800/60 border border-white/5 rounded-xl text-sm text-slate-400 font-mono disabled:opacity-80"
             />
           </div>
         </div>

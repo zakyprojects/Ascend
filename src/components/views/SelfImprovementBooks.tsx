@@ -279,7 +279,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={tab === 'discover' ? 'Search curated books...' : 'Search my library...'}
-              className="input pl-9 py-2 text-sm"
+              className="input input-has-icon py-2 text-sm"
             />
           </div>
           <div className="flex items-center gap-1 text-slate-400 shrink-0">
