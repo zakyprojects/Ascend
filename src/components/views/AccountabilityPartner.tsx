@@ -466,14 +466,22 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {isolatedChallenges.map((challenge) => {
                   const today = todayKey();
-                  const myCategory = isUser1InActive ? (challenge.user1Category || 'habit') : (challenge.user2Category || 'habit');
-                  const myTarget = isUser1InActive ? (challenge.user1Target || challenge.targetHabitName) : (challenge.user2Target || challenge.targetHabitName);
+                  const challengePartnership =
+                    partnerships.find((p) => p.id === challenge.partnershipId) || activePartnership;
 
-                  const partnerCategory = isUser1InActive ? (challenge.user2Category || 'habit') : (challenge.user1Category || 'habit');
-                  const partnerTarget = isUser1InActive ? (challenge.user2Target || challenge.targetHabitName) : (challenge.user1Target || challenge.targetHabitName);
+                  const isUser1ForChallenge = challengePartnership
+                    ? (currentUser?.id && challengePartnership.user1Id === currentUser.id) ||
+                      challengePartnership.user1Username.toLowerCase() === currentUsername.toLowerCase()
+                    : isUser1InActive;
 
-                  const myDone = (isUser1InActive ? challenge.user1DoneDate : challenge.user2DoneDate) === today;
-                  const partnerDone = (isUser1InActive ? challenge.user2DoneDate : challenge.user1DoneDate) === today;
+                  const myCategory = isUser1ForChallenge ? (challenge.user1Category || 'habit') : (challenge.user2Category || 'habit');
+                  const myTarget = isUser1ForChallenge ? (challenge.user1Target || challenge.targetHabitName) : (challenge.user2Target || challenge.targetHabitName);
+
+                  const partnerCategory = isUser1ForChallenge ? (challenge.user2Category || 'habit') : (challenge.user1Category || 'habit');
+                  const partnerTarget = isUser1ForChallenge ? (challenge.user2Target || challenge.targetHabitName) : (challenge.user1Target || challenge.targetHabitName);
+
+                  const myDone = (isUser1ForChallenge ? challenge.user1DoneDate : challenge.user2DoneDate) === today;
+                  const partnerDone = (isUser1ForChallenge ? challenge.user2DoneDate : challenge.user1DoneDate) === today;
 
                   return (
                     <div key={challenge.id} className="card p-5 space-y-4 relative group">
@@ -664,8 +672,34 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   >
                     <option value="">-- Select Habit --</option>
                     {store.state.habits.map((h) => (
-                      <option key={h.id} value={h.title}>
-                        {h.title}
+                      <option key={h.id} value={h.name}>
+                        {h.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : user1Category === 'reading' && store.state.libraryBooks.length > 0 ? (
+                  <select
+                    value={user1Target}
+                    onChange={(e) => setUser1Target(e.target.value)}
+                    className="input-field text-xs bg-bg-700 text-slate-100"
+                  >
+                    <option value="">-- Select Book --</option>
+                    {store.state.libraryBooks.map((b) => (
+                      <option key={b.id} value={b.title}>
+                        {b.title}
+                      </option>
+                    ))}
+                  </select>
+                ) : user1Category === 'skill' && store.state.skills.length > 0 ? (
+                  <select
+                    value={user1Target}
+                    onChange={(e) => setUser1Target(e.target.value)}
+                    className="input-field text-xs bg-bg-700 text-slate-100"
+                  >
+                    <option value="">-- Select Skill --</option>
+                    {store.state.skills.map((s) => (
+                      <option key={s.id} value={s.name}>
+                        {s.name}
                       </option>
                     ))}
                   </select>

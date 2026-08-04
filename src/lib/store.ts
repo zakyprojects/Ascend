@@ -72,6 +72,7 @@ import {
   fetchPartnerInvitesSupabase,
   savePartnershipSupabase,
   fetchPartnershipSupabase,
+  fetchPartnershipsSupabase,
   deletePartnershipSupabase,
   deletePartnerInviteSupabase,
   saveSharedChallengeSupabase,
@@ -547,42 +548,51 @@ export function useAppState() {
         }
 
         let updatedChallenges = prev.sharedChallenges;
-        if (habit && prev.partnership && prev.sharedChallenges.length > 0) {
+        if (habit && prev.sharedChallenges.length > 0) {
           const today = todayKey();
-          const isUser1 =
-            (prev.currentUser?.id && prev.partnership.user1Id === prev.currentUser.id) ||
-            prev.partnership.user1Username.toLowerCase() === prev.username.toLowerCase();
 
           updatedChallenges = prev.sharedChallenges.map((target) => {
-            if (target.targetHabitName.trim().toLowerCase() !== habit.name.trim().toLowerCase()) {
-              return target;
+            const challengePartnership =
+              (prev.partnerships || []).find((p) => p.id === target.partnershipId) || prev.partnership;
+
+            if (!challengePartnership) return target;
+
+            const isUser1 =
+              (prev.currentUser?.id && challengePartnership.user1Id === prev.currentUser.id) ||
+              challengePartnership.user1Username.toLowerCase() === prev.username.toLowerCase();
+
+            const myCategory = isUser1 ? (target.user1Category || 'habit') : (target.user2Category || 'habit');
+            const myTarget = (isUser1 ? (target.user1Target || target.targetHabitName) : (target.user2Target || target.targetHabitName)).trim().toLowerCase();
+
+            if (myCategory === 'habit' && myTarget === habit.name.trim().toLowerCase()) {
+              const updatedUser1Date = isUser1 ? (completed ? today : undefined) : target.user1DoneDate;
+              const updatedUser2Date = !isUser1 ? (completed ? today : undefined) : target.user2DoneDate;
+
+              const wereBothDoneBefore = target.user1DoneDate === today && target.user2DoneDate === today;
+              const areBothDoneNow = updatedUser1Date === today && updatedUser2Date === today;
+
+              let newStreak = target.jointStreak || 0;
+              if (areBothDoneNow && !wereBothDoneBefore) {
+                newStreak += 1;
+              } else if (!areBothDoneNow && wereBothDoneBefore && newStreak > 0) {
+                newStreak = Math.max(0, newStreak - 1);
+              }
+
+              const isCompleted = newStreak >= target.durationDays;
+              const updated: SharedChallenge = {
+                ...target,
+                user1DoneDate: updatedUser1Date,
+                user2DoneDate: updatedUser2Date,
+                jointStreak: newStreak,
+                status: isCompleted ? 'completed' : 'active',
+              };
+
+              saveSharedChallengeSupabase(updated);
+              syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+              return updated;
             }
 
-            const updatedUser1Date = isUser1 ? (completed ? today : undefined) : target.user1DoneDate;
-            const updatedUser2Date = !isUser1 ? (completed ? today : undefined) : target.user2DoneDate;
-
-            const wereBothDoneBefore = target.user1DoneDate === today && target.user2DoneDate === today;
-            const areBothDoneNow = updatedUser1Date === today && updatedUser2Date === today;
-
-            let newStreak = target.jointStreak || 0;
-            if (areBothDoneNow && !wereBothDoneBefore) {
-              newStreak += 1;
-            } else if (!areBothDoneNow && wereBothDoneBefore && newStreak > 0) {
-              newStreak = Math.max(0, newStreak - 1);
-            }
-
-            const isCompleted = newStreak >= target.durationDays;
-            const updated: SharedChallenge = {
-              ...target,
-              user1DoneDate: updatedUser1Date,
-              user2DoneDate: updatedUser2Date,
-              jointStreak: newStreak,
-              status: isCompleted ? 'completed' : 'active',
-            };
-
-            saveSharedChallengeSupabase(updated);
-            syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
-            return updated;
+            return target;
           });
         }
 
@@ -1864,9 +1874,13 @@ export function useAppState() {
       if (idx === -1) return prev;
       const target = prev.sharedChallenges[idx];
 
-      const isUser1 =
-        (prev.currentUser?.id && prev.partnership?.user1Id === prev.currentUser.id) ||
-        prev.partnership?.user1Username.toLowerCase() === prev.username.toLowerCase();
+      const challengePartnership =
+        (prev.partnerships || []).find((p) => p.id === target.partnershipId) || prev.partnership;
+
+      const isUser1 = challengePartnership
+        ? (prev.currentUser?.id && challengePartnership.user1Id === prev.currentUser.id) ||
+          challengePartnership.user1Username.toLowerCase() === prev.username.toLowerCase()
+        : true;
 
       const currentDoneDate = isUser1 ? target.user1DoneDate : target.user2DoneDate;
 

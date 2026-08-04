@@ -1,5 +1,5 @@
 -- ====================================================================================
--- ASCEND MASTER DATABASE MIGRATION SCRIPT (SECURED WITH RLS ON ALL TABLES)
+-- ASCEND MASTER DATABASE MIGRATION SCRIPT (SECURED WITH RLS & MULTI-PARTNER COMPOSITE UNIQUE)
 -- Run this ENTIRE script in your Supabase SQL Editor (https://supabase.com/dashboard)
 -- ====================================================================================
 
@@ -56,7 +56,7 @@ CREATE POLICY "Users can delete their own profile"
   USING (auth.uid() IS NULL OR auth.uid() = id);
 
 
--- 2. PARTNERSHIPS & SHARED CHALLENGES PHASE 3 COLUMNS
+-- 2. PARTNERSHIPS & SHARED CHALLENGES PHASE 3 COLUMNS & MULTI-PARTNER INDEXES
 ALTER TABLE public.partnerships ADD COLUMN IF NOT EXISTS user1_allow_stats BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.partnerships ADD COLUMN IF NOT EXISTS user2_allow_stats BOOLEAN DEFAULT FALSE;
 
@@ -64,6 +64,18 @@ ALTER TABLE public.shared_challenges ADD COLUMN IF NOT EXISTS user1_category VAR
 ALTER TABLE public.shared_challenges ADD COLUMN IF NOT EXISTS user1_target TEXT;
 ALTER TABLE public.shared_challenges ADD COLUMN IF NOT EXISTS user2_category VARCHAR(50) DEFAULT 'habit';
 ALTER TABLE public.shared_challenges ADD COLUMN IF NOT EXISTS user2_target TEXT;
+
+-- Drop legacy single-partner unique constraints that block multi-partner support (up to 5)
+ALTER TABLE public.partnerships DROP CONSTRAINT IF EXISTS unique_user2_partner;
+ALTER TABLE public.partnerships DROP CONSTRAINT IF EXISTS unique_user1_partner;
+ALTER TABLE public.partnerships DROP CONSTRAINT IF EXISTS partnerships_user2_id_key;
+ALTER TABLE public.partnerships DROP CONSTRAINT IF EXISTS partnerships_user1_id_key;
+
+-- Add normalized composite unique index to prevent duplicate partnerships between the exact same pair of users
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_pair_idx ON public.partnerships (
+  LEAST(user1_id, user2_id),
+  GREATEST(user1_id, user2_id)
+);
 
 
 -- 3. LIBRARY BOOKS TABLE & RLS
@@ -257,7 +269,9 @@ BEGIN
 
   SELECT id INTO v_partnership_id
   FROM public.partnerships
-  WHERE (user1_username ILIKE p_user1_username AND user2_username ILIKE p_user2_username)
+  WHERE (user1_id = p_user1_id AND user2_id = p_user2_id)
+     OR (user1_id = p_user2_id AND user2_id = p_user1_id)
+     OR (user1_username ILIKE p_user1_username AND user2_username ILIKE p_user2_username)
      OR (user1_username ILIKE p_user2_username AND user2_username ILIKE p_user1_username)
   LIMIT 1;
 
