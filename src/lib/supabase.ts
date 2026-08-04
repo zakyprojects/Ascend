@@ -593,3 +593,144 @@ export async function deleteSharedChallengeSupabase(challengeId: string) {
     throw e;
   }
 }
+
+/* ==========================================
+   NOTIFICATION SYSTEM HELPERS
+   ========================================== */
+
+export async function fetchNotificationsSupabase(recipientId: string): Promise<AppNotification[]> {
+  if (!isSupabaseConfigured || !recipientId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('recipient_id', recipientId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error || !data) return [];
+
+    return data.map((row) => ({
+      id: row.id,
+      recipientId: row.recipient_id,
+      actorId: row.actor_id || undefined,
+      actorUsername: row.actor_username || undefined,
+      actorAvatar: row.actor_avatar || undefined,
+      type: row.type,
+      title: row.title || undefined,
+      message: row.message,
+      payload: row.payload || {},
+      read: row.read ?? false,
+      createdAt: row.created_at,
+    }));
+  } catch (e) {
+    console.error('Error fetching notifications from Supabase:', e);
+    return [];
+  }
+}
+
+export async function createNotificationSupabase(
+  notif: Omit<AppNotification, 'id' | 'createdAt' | 'read'>
+): Promise<AppNotification | null> {
+  if (!isSupabaseConfigured || !notif.recipientId) return null;
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    const actorId = authData?.user?.id || notif.actorId || null;
+
+    // 1. Try SECURITY DEFINER RPC first (same reliable execution model as daily reminders)
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('create_notification_atomic', {
+      p_recipient_id: notif.recipientId,
+      p_actor_id: actorId,
+      p_actor_username: notif.actorUsername || null,
+      p_actor_avatar: notif.actorAvatar || null,
+      p_type: notif.type,
+      p_title: notif.title || null,
+      p_message: notif.message,
+      p_payload: notif.payload || {},
+    });
+
+    if (!rpcErr && rpcData) {
+      return {
+        id: rpcData.id,
+        recipientId: rpcData.recipient_id,
+        actorId: rpcData.actor_id || undefined,
+        actorUsername: rpcData.actor_username || undefined,
+        actorAvatar: rpcData.actor_avatar || undefined,
+        type: rpcData.type,
+        title: rpcData.title || undefined,
+        message: rpcData.message,
+        payload: rpcData.payload || {},
+        read: rpcData.read ?? false,
+        createdAt: rpcData.created_at,
+      };
+    }
+
+    // 2. Direct table SELECT/INSERT fallback
+    const payloadRow = {
+      recipient_id: notif.recipientId,
+      actor_id: actorId,
+      actor_username: notif.actorUsername || null,
+      actor_avatar: notif.actorAvatar || null,
+      type: notif.type,
+      title: notif.title || null,
+      message: notif.message,
+      payload: notif.payload || {},
+      read: false,
+    };
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert(payloadRow)
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.warn('Supabase notification insertion warning:', error?.message);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      recipientId: data.recipient_id,
+      actorId: data.actor_id || undefined,
+      actorUsername: data.actor_username || undefined,
+      actorAvatar: data.actor_avatar || undefined,
+      type: data.type,
+      title: data.title || undefined,
+      message: data.message,
+      payload: data.payload || {},
+      read: data.read ?? false,
+      createdAt: data.created_at,
+    };
+  } catch (e) {
+    console.warn('createNotificationSupabase skipped:', e);
+    return null;
+  }
+}
+
+export async function markNotificationReadSupabase(notificationId: string) {
+  if (!isSupabaseConfigured || !notificationId) return;
+  try {
+    await supabase.from('notifications').update({ read: true }).eq('id', notificationId);
+  } catch (e) {
+    console.warn('markNotificationReadSupabase skipped:', e);
+  }
+}
+
+export async function markAllNotificationsReadSupabase(recipientId: string) {
+  if (!isSupabaseConfigured || !recipientId) return;
+  try {
+    await supabase.from('notifications').update({ read: true }).eq('recipient_id', recipientId).eq('read', false);
+  } catch (e) {
+    console.warn('markAllNotificationsReadSupabase skipped:', e);
+  }
+}
+
+export async function clearNotificationSupabase(notificationId: string) {
+  if (!isSupabaseConfigured || !notificationId) return;
+  try {
+    await supabase.from('notifications').delete().eq('id', notificationId);
+  } catch (e) {
+    console.warn('clearNotificationSupabase skipped:', e);
+  }
+}

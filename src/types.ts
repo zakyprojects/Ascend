@@ -396,6 +396,20 @@ export interface PartnerNotification {
   createdAt: string;
 }
 
+export interface AppNotification {
+  id: string;
+  recipientId: string;
+  actorId?: string;
+  actorUsername?: string;
+  actorAvatar?: string;
+  type: 'partner_invite' | 'partner_invite_accepted' | 'partner_invite_declined' | 'partner_nudge' | 'missed_habit' | 'challenge_completed' | string;
+  title?: string;
+  message: string;
+  payload?: Record<string, unknown>;
+  read: boolean;
+  createdAt: string;
+}
+
 export interface AppState {
   currentUser: UserProfile | null;
   habits: Habit[];
@@ -437,6 +451,7 @@ export interface AppState {
   partnerships: Partnership[];
   sharedChallenges: SharedChallenge[];
   partnerNotifications: PartnerNotification[];
+  notifications: AppNotification[];
 }
 
 export const DEFAULT_STATE: AppState = {
@@ -469,6 +484,7 @@ export const DEFAULT_STATE: AppState = {
   partnerships: [],
   sharedChallenges: [],
   partnerNotifications: [],
+  notifications: [],
 };
 
 

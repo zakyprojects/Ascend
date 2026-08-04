@@ -1,5 +1,6 @@
 import { AppState, Habit, PartnerNotification } from '@/types';
 import { todayKey, periodKey, previousPeriodKey, uid } from './dates';
+import { createNotificationSupabase } from './supabase';
 
 /**
  * Returns the penalty multiplier based on the number of consecutive misses and user's current total points / tier.
@@ -109,6 +110,11 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
               ? updatedState.partnership.user2Username
               : updatedState.partnership.user1Username;
 
+          const partnerUserId =
+            updatedState.partnership.user1Id === updatedState.currentUser?.id
+              ? updatedState.partnership.user2Id
+              : updatedState.partnership.user1Id;
+
           const notif: PartnerNotification = {
             id: uid(),
             userId: updatedState.currentUser?.id || 'user_current',
@@ -121,6 +127,19 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
             createdAt: new Date().toISOString(),
           };
           newNotifications = [notif, ...newNotifications];
+
+          if (partnerUserId) {
+            createNotificationSupabase({
+              recipientId: partnerUserId,
+              actorId: updatedState.currentUser?.id,
+              actorUsername: updatedState.username,
+              actorAvatar: updatedState.currentUser?.avatar || '🧑',
+              type: 'missed_habit',
+              title: 'Streak Risk Warning',
+              message: `Your partner ${updatedState.username} missed their habit "${habit.name}". Reach out to encourage them!`,
+              payload: { habitName: habit.name },
+            });
+          }
         }
 
         // Deduct penalty points from user's total points and record in points history

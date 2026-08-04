@@ -80,6 +80,11 @@ import {
   deleteSharedChallengeSupabase,
   acceptPartnerInviteAtomicSupabase,
   togglePartnerStatsVisibilitySupabase,
+  fetchNotificationsSupabase,
+  createNotificationSupabase,
+  markNotificationReadSupabase,
+  markAllNotificationsReadSupabase,
+  clearNotificationSupabase,
 } from './supabase';
 
 const GUEST_STORAGE_KEY = 'ascend_guest_state_v2';
@@ -290,11 +295,40 @@ export function useAppState() {
         }
 
         if (event === 'PARTNER_INVITE_SENT') {
-          if (payload.toUsername.toLowerCase() === prev.username.toLowerCase()) {
-            const exists = prev.partnerInvites.some((i) => i.id === payload.id);
-            if (!exists) {
-              return { ...prev, partnerInvites: [payload, ...prev.partnerInvites] };
+          const invite = payload.invite || payload;
+          const notif = payload.notification;
+
+          if (
+            invite.toUsername.toLowerCase() === prev.username.toLowerCase() ||
+            (prev.currentUser?.id && invite.toUserId === prev.currentUser.id)
+          ) {
+            const inviteExists = prev.partnerInvites.some((i) => i.id === invite.id);
+            const updatedInvites = inviteExists ? prev.partnerInvites : [invite, ...prev.partnerInvites];
+
+            let updatedNotifs = prev.notifications || [];
+            const notifObject: AppNotification = notif || {
+              id: crypto.randomUUID(),
+              recipientId: invite.toUserId,
+              actorId: invite.fromUserId,
+              actorUsername: invite.fromUsername,
+              actorAvatar: invite.fromAvatar || '🧑',
+              type: 'partner_invite',
+              title: 'New Partner Invite',
+              message: `${invite.fromUsername} sent you an accountability partner invite!`,
+              payload: { inviteId: invite.id },
+              read: false,
+              createdAt: new Date().toISOString(),
+            };
+
+            if (!updatedNotifs.some((n) => n.payload?.inviteId === invite.id || n.id === notifObject.id)) {
+              updatedNotifs = [notifObject, ...updatedNotifs];
             }
+
+            return {
+              ...prev,
+              partnerInvites: updatedInvites,
+              notifications: updatedNotifs,
+            };
           }
         }
 
@@ -375,6 +409,7 @@ export function useAppState() {
         const activePartnerships = await fetchPartnershipsSupabase(userId);
         const pIds = activePartnerships.map((p) => p.id);
         const challenges = pIds.length > 0 ? await fetchSharedChallengesSupabase(pIds) : [];
+        const fetchedNotifs = await fetchNotificationsSupabase(userId);
 
         setState((prev) => ({
           ...prev,
@@ -382,6 +417,7 @@ export function useAppState() {
           partnerships: activePartnerships,
           partnership: activePartnerships[0] || null,
           sharedChallenges: challenges,
+          notifications: fetchedNotifs,
         }));
       } catch (e) {
         /* ignore background sync error */
@@ -410,6 +446,7 @@ export function useAppState() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_invites' }, () => syncPartnerDataLive())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'partnerships' }, () => syncPartnerDataLive())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_challenges' }, () => syncPartnerDataLive())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => syncPartnerDataLive())
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             stopFallbackPolling();
@@ -1659,7 +1696,20 @@ export function useAppState() {
       };
 
       await sendPartnerInviteSupabase(invite);
-      syncBroadcaster.broadcast('PARTNER_INVITE_SENT', invite);
+
+      const notifData = {
+        recipientId: targetUserId,
+        actorId: state.currentUser?.id,
+        actorUsername: state.username,
+        actorAvatar: state.currentUser?.avatar || '🧑',
+        type: 'partner_invite' as const,
+        title: 'New Partner Invite',
+        message: `${state.username} sent you an accountability partner invite!`,
+        payload: { inviteId: invite.id },
+      };
+
+      const createdNotif = await createNotificationSupabase(notifData);
+      syncBroadcaster.broadcast('PARTNER_INVITE_SENT', { invite, notification: createdNotif || notifData });
 
       setState((prev) => ({
         ...prev,
@@ -1709,6 +1759,17 @@ export function useAppState() {
 
       syncBroadcaster.broadcast('PARTNER_ACCEPTED', partnership);
 
+      await createNotificationSupabase({
+        recipientId: fromId,
+        actorId: toId,
+        actorUsername: toUsername,
+        actorAvatar: state.currentUser?.avatar || '🧑',
+        type: 'partner_invite_accepted',
+        title: 'Partner Invite Accepted 🎉',
+        message: `${toUsername} accepted your partner invite!`,
+        payload: { partnershipId },
+      });
+
       setState((prev) => {
         const updatedInvites = prev.partnerInvites.filter((i) => i.id !== inviteId);
         const updatedPartnerships = [partnership, ...(prev.partnerships || []).filter((p) => p.id !== partnership.id)];
@@ -1733,12 +1794,26 @@ export function useAppState() {
   }, []);
 
   const declinePartnerInvite = useCallback(async (inviteId: string) => {
+    const invite = state.partnerInvites.find((i) => i.id === inviteId);
+    if (invite) {
+      await createNotificationSupabase({
+        recipientId: invite.fromUserId,
+        actorId: state.currentUser?.id,
+        actorUsername: state.username,
+        actorAvatar: state.currentUser?.avatar || '🧑',
+        type: 'partner_invite_declined',
+        title: 'Partner Invite Declined',
+        message: `${state.username} declined your partner invite.`,
+        payload: { inviteId },
+      });
+    }
+
     await deletePartnerInviteSupabase(inviteId);
     setState((prev) => ({
       ...prev,
       partnerInvites: prev.partnerInvites.filter((i) => i.id !== inviteId),
     }));
-  }, []);
+  }, [state.partnerInvites, state.username, state.currentUser]);
 
   const endPartnership = useCallback(async (partnershipId?: string) => {
     const targetId = partnershipId || state.partnership?.id || state.partnerships[0]?.id;
@@ -1921,6 +1996,37 @@ export function useAppState() {
       saveSharedChallengeSupabase(updated);
       syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
 
+      if (challengePartnership) {
+        const partnerUserId = isUser1 ? challengePartnership.user2Id : challengePartnership.user1Id;
+        const partnerUsername = isUser1 ? challengePartnership.user2Username : challengePartnership.user1Username;
+
+        if (isDoneToday && !wereBothDoneBefore) {
+          createNotificationSupabase({
+            recipientId: partnerUserId,
+            actorId: prev.currentUser?.id,
+            actorUsername: prev.username,
+            actorAvatar: prev.currentUser?.avatar || '🧑',
+            type: 'partner_nudge',
+            title: 'Partner Completed Challenge Today',
+            message: `${prev.username} completed today's target for "${target.title}"! Don't break your joint streak!`,
+            payload: { challengeId: target.id },
+          });
+        }
+
+        if (isCompleted) {
+          createNotificationSupabase({
+            recipientId: partnerUserId,
+            actorId: prev.currentUser?.id,
+            actorUsername: prev.username,
+            actorAvatar: prev.currentUser?.avatar || '🧑',
+            type: 'challenge_completed',
+            title: 'Shared Challenge Completed! 🎉',
+            message: `Congratulations! You and ${prev.username} completed the "${target.title}" challenge!`,
+            payload: { challengeId: target.id },
+          });
+        }
+      }
+
       return {
         ...prev,
         sharedChallenges: updatedChallenges,
@@ -1932,6 +2038,34 @@ export function useAppState() {
     setState((prev) => ({
       ...prev,
       partnerNotifications: prev.partnerNotifications.filter((n) => n.id !== notifId),
+    }));
+  }, []);
+
+  const markNotificationRead = useCallback((notificationId: string) => {
+    markNotificationReadSupabase(notificationId);
+    setState((prev) => ({
+      ...prev,
+      notifications: (prev.notifications || []).map((n) =>
+        n.id === notificationId ? { ...n, read: true } : n
+      ),
+    }));
+  }, []);
+
+  const markAllNotificationsRead = useCallback(() => {
+    if (state.currentUser?.id) {
+      markAllNotificationsReadSupabase(state.currentUser.id);
+    }
+    setState((prev) => ({
+      ...prev,
+      notifications: (prev.notifications || []).map((n) => ({ ...n, read: true })),
+    }));
+  }, [state.currentUser?.id]);
+
+  const clearNotification = useCallback((notificationId: string) => {
+    clearNotificationSupabase(notificationId);
+    setState((prev) => ({
+      ...prev,
+      notifications: (prev.notifications || []).filter((n) => n.id !== notificationId),
     }));
   }, []);
 
@@ -2058,6 +2192,9 @@ export function useAppState() {
     logSharedChallengeHabit,
     deleteSharedChallenge,
     dismissPartnerNotification,
+    markNotificationRead,
+    markAllNotificationsRead,
+    clearNotification,
   };
 }
 

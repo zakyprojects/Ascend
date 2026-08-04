@@ -7,6 +7,7 @@ import {
   fetchPartnershipSupabase,
   fetchPartnershipsSupabase,
   fetchSharedChallengesSupabase,
+  fetchNotificationsSupabase,
   saveUserDataToSupabase,
   supabase,
 } from './supabase';
@@ -210,6 +211,9 @@ export async function hydrateUserSession(
     } else {
       state.sharedChallenges = [];
     }
+
+    const fetchedNotifs = await fetchNotificationsSupabase(userId);
+    state.notifications = fetchedNotifs;
   } catch (e) {
     console.warn('Skipped loading partner social data during hydration:', e);
   }

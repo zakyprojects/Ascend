@@ -45,15 +45,15 @@ CREATE POLICY "Profiles viewable by all users"
 
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT
-  WITH CHECK (auth.uid() IS NULL OR auth.uid() = id);
+  WITH CHECK (auth.uid() = id);
 
 CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE
-  USING (auth.uid() IS NULL OR auth.uid() = id);
+  USING (auth.uid() = id);
 
 CREATE POLICY "Users can delete their own profile"
   ON public.profiles FOR DELETE
-  USING (auth.uid() IS NULL OR auth.uid() = id);
+  USING (auth.uid() = id);
 
 
 -- 2. PARTNERSHIPS & SHARED CHALLENGES PHASE 3 COLUMNS & MULTI-PARTNER INDEXES
@@ -102,8 +102,8 @@ DROP POLICY IF EXISTS "Users can access their own library books" ON public.libra
 
 CREATE POLICY "Users can access their own library books"
   ON public.library_books FOR ALL
-  USING (auth.uid() IS NULL OR auth.uid() = user_id)
-  WITH CHECK (auth.uid() IS NULL OR auth.uid() = user_id);
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 
 -- 4. IMPROVEMENT PLANS TABLES & RLS
@@ -129,19 +129,19 @@ DROP POLICY IF EXISTS "Users can delete their own improvement plans" ON public.i
 
 CREATE POLICY "Public plans viewable by everyone"
   ON public.improvement_plans FOR SELECT
-  USING (is_public = true OR auth.uid() IS NULL OR auth.uid() = creator_id);
+  USING (is_public = true OR auth.uid() = creator_id);
 
 CREATE POLICY "Users can insert their own improvement plans"
   ON public.improvement_plans FOR INSERT
-  WITH CHECK (auth.uid() IS NULL OR auth.uid() = creator_id);
+  WITH CHECK (auth.uid() = creator_id);
 
 CREATE POLICY "Users can update their own improvement plans"
   ON public.improvement_plans FOR UPDATE
-  USING (auth.uid() IS NULL OR auth.uid() = creator_id);
+  USING (auth.uid() = creator_id);
 
 CREATE POLICY "Users can delete their own improvement plans"
   ON public.improvement_plans FOR DELETE
-  USING (auth.uid() IS NULL OR auth.uid() = creator_id);
+  USING (auth.uid() = creator_id);
 
 
 CREATE TABLE IF NOT EXISTS public.user_plan_follows (
@@ -161,8 +161,8 @@ DROP POLICY IF EXISTS "Users can access their own followed plans" ON public.user
 
 CREATE POLICY "Users can access their own followed plans"
   ON public.user_plan_follows FOR ALL
-  USING (auth.uid() IS NULL OR auth.uid() = user_id)
-  WITH CHECK (auth.uid() IS NULL OR auth.uid() = user_id);
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 
 -- 5. PARTNER INVITES, PARTNERSHIPS & SHARED CHALLENGES RLS
@@ -172,12 +172,11 @@ DROP POLICY IF EXISTS "Users can access their own partner invites" ON public.par
 
 CREATE POLICY "Users can insert partner invites"
   ON public.partner_invites FOR INSERT
-  WITH CHECK (auth.uid() IS NULL OR auth.uid() = from_user_id);
+  WITH CHECK (auth.uid() = from_user_id);
 
 CREATE POLICY "Users can access their own partner invites"
   ON public.partner_invites FOR ALL
   USING (
-    auth.uid() IS NULL OR
     auth.uid() = from_user_id OR
     auth.uid() = to_user_id
   );
@@ -188,12 +187,10 @@ DROP POLICY IF EXISTS "Users can access their own partnerships" ON public.partne
 CREATE POLICY "Users can access their own partnerships"
   ON public.partnerships FOR ALL
   USING (
-    auth.uid() IS NULL OR
     auth.uid() = user1_id OR
     auth.uid() = user2_id
   )
   WITH CHECK (
-    auth.uid() IS NULL OR
     auth.uid() = user1_id OR
     auth.uid() = user2_id
   );
@@ -204,7 +201,6 @@ DROP POLICY IF EXISTS "Users can access shared challenges for their partnerships
 CREATE POLICY "Users can access shared challenges for their partnerships"
   ON public.shared_challenges FOR ALL
   USING (
-    auth.uid() IS NULL OR
     EXISTS (
       SELECT 1 FROM public.partnerships p
       WHERE p.id = shared_challenges.partnership_id
@@ -212,7 +208,6 @@ CREATE POLICY "Users can access shared challenges for their partnerships"
     )
   )
   WITH CHECK (
-    auth.uid() IS NULL OR
     EXISTS (
       SELECT 1 FROM public.partnerships p
       WHERE p.id = shared_challenges.partnership_id
@@ -297,15 +292,47 @@ GRANT EXECUTE ON FUNCTION public.accept_partner_invite_atomic(UUID, UUID, TEXT, 
 GRANT EXECUTE ON FUNCTION public.accept_partner_invite_atomic(UUID, UUID, TEXT, UUID, TEXT) TO anon;
 
 
--- 8. REALTIME PUBLICATION SETUP
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.partner_invites, public.partnerships, public.shared_challenges;
-  END IF;
-EXCEPTION
-  WHEN duplicate_object THEN NULL;
-END $$;
+-- 8. NOTIFICATIONS TABLE & RLS
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  recipient_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  actor_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  actor_username TEXT,
+  actor_avatar TEXT,
+  type VARCHAR(50) NOT NULL,
+  title TEXT,
+  message TEXT NOT NULL,
+  payload JSONB DEFAULT '{}'::jsonb,
+  read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can read their own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users can update their own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users can delete their own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users can insert notifications for themselves as actor" ON public.notifications;
+
+CREATE POLICY "Users can read their own notifications"
+  ON public.notifications FOR SELECT
+  USING (auth.uid() = recipient_id);
+
+CREATE POLICY "Users can insert notifications for recipients"
+  ON public.notifications FOR INSERT
+  WITH CHECK (
+    (auth.uid() IS NOT NULL AND (actor_id IS NULL OR auth.uid() = actor_id))
+    OR
+    (auth.role() = 'authenticated' OR auth.role() = 'anon')
+  );
+
+CREATE POLICY "Users can update their own notifications"
+  ON public.notifications FOR UPDATE
+  USING (auth.uid() = recipient_id);
+
+CREATE POLICY "Users can delete their own notifications"
+  ON public.notifications FOR DELETE
+  USING (auth.uid() = recipient_id);
 
 
 -- 9. PREVENT PROFILE UID CHANGE TRIGGER
@@ -327,5 +354,16 @@ CREATE TRIGGER trg_prevent_profile_uid_change
   EXECUTE FUNCTION public.prevent_profile_uid_change();
 
 
--- 10. REFRESH POSTGREST SCHEMA CACHE
+-- 10. REALTIME PUBLICATION SETUP
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.partner_invites, public.partnerships, public.shared_challenges, public.notifications;
+  END IF;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+
+-- 11. REFRESH POSTGREST SCHEMA CACHE
 NOTIFY pgrst, 'reload schema';

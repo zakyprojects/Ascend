@@ -24,6 +24,7 @@ import {
 import { TierBadge } from './ui/TierBadge';
 import { AppStore } from '@/lib/store';
 import { GuestLogoutWarningModal } from './ui/GuestLogoutWarningModal';
+import { NotificationCenter } from './ui/NotificationCenter';
 
 export type View =
   | 'dashboard'
@@ -133,6 +134,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                     {currentUser.isAnonymous ? 'Guest Account' : 'Account Active'}
                   </p>
                 </div>
+                <NotificationCenter store={store} compact align="sidebar" />
                 <button
                   onClick={() => onViewChange('settings')}
                   title="Settings & Preferences"
@@ -255,10 +257,11 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
               <div className="flex items-center gap-1.5 bg-bg-800 px-2.5 py-1 rounded-lg border border-white/10 text-xs">
                 <span>{userAvatar}</span>
                 <span className="font-bold text-slate-200 truncate max-w-[80px]">{username}</span>
+                <NotificationCenter store={store} compact />
                 <button
                   onClick={() => onViewChange('settings')}
                   title="Settings"
-                  className="text-slate-400 hover:text-slate-200 ml-1"
+                  className="text-slate-400 hover:text-slate-200 ml-0.5"
                 >
                   <Settings size={13} />
                 </button>

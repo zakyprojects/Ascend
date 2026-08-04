@@ -49,15 +49,15 @@ CREATE POLICY "Profiles viewable by all users"
 
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT
-  WITH CHECK (auth.uid() IS NULL OR auth.uid() = id);
+  WITH CHECK (auth.uid() = id);
 
 CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE
-  USING (auth.uid() IS NULL OR auth.uid() = id);
+  USING (auth.uid() = id);
 
 CREATE POLICY "Users can delete their own profile"
   ON public.profiles FOR DELETE
-  USING (auth.uid() IS NULL OR auth.uid() = id);
+  USING (auth.uid() = id);
 
 -- 5. Add Phase 3 columns to public.partnerships and public.shared_challenges
 ALTER TABLE public.partnerships ADD COLUMN IF NOT EXISTS user1_allow_stats BOOLEAN DEFAULT FALSE;
@@ -166,12 +166,11 @@ DROP POLICY IF EXISTS "Users can access their own partner invites" ON public.par
 
 CREATE POLICY "Users can insert partner invites"
   ON public.partner_invites FOR INSERT
-  WITH CHECK (auth.uid() IS NULL OR auth.uid() = from_user_id);
+  WITH CHECK (auth.uid() = from_user_id);
 
 CREATE POLICY "Users can access their own partner invites"
   ON public.partner_invites FOR ALL
   USING (
-    auth.uid() IS NULL OR
     auth.uid() = from_user_id OR
     auth.uid() = to_user_id
   );
@@ -183,12 +182,10 @@ DROP POLICY IF EXISTS "Users can access their own partnerships" ON public.partne
 CREATE POLICY "Users can access their own partnerships"
   ON public.partnerships FOR ALL
   USING (
-    auth.uid() IS NULL OR
     auth.uid() = user1_id OR
     auth.uid() = user2_id
   )
   WITH CHECK (
-    auth.uid() IS NULL OR
     auth.uid() = user1_id OR
     auth.uid() = user2_id
   );
@@ -200,7 +197,6 @@ DROP POLICY IF EXISTS "Users can access shared challenges for their partnerships
 CREATE POLICY "Users can access shared challenges for their partnerships"
   ON public.shared_challenges FOR ALL
   USING (
-    auth.uid() IS NULL OR
     EXISTS (
       SELECT 1 FROM public.partnerships p
       WHERE p.id = shared_challenges.partnership_id
@@ -208,7 +204,6 @@ CREATE POLICY "Users can access shared challenges for their partnerships"
     )
   )
   WITH CHECK (
-    auth.uid() IS NULL OR
     EXISTS (
       SELECT 1 FROM public.partnerships p
       WHERE p.id = shared_challenges.partnership_id

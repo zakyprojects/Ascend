@@ -503,7 +503,64 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
         )}
       </div>
 
-      {/* 3. PREFERENCES & PRIVACY SECTION */}
+      {/* 3. NOTIFICATIONS MANAGEMENT SECTION */}
+      <div className="card p-5 space-y-4">
+        <div className="flex items-center justify-between border-b border-white/5 pb-3">
+          <h2 className="text-base font-display font-bold text-slate-100 flex items-center gap-2">
+            <Bell size={18} className="text-primary-400" />
+            Notification Center
+          </h2>
+          {store.state.notifications.filter((n) => !n.read).length > 0 && (
+            <button
+              onClick={store.markAllNotificationsRead}
+              className="text-xs text-primary-400 hover:text-primary-300 font-semibold flex items-center gap-1"
+            >
+              <Check size={14} /> Mark all read
+            </button>
+          )}
+        </div>
+
+        <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+          {store.state.notifications.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-4">No notifications yet. Partner invites, nudges, and alerts will appear here live.</p>
+          ) : (
+            store.state.notifications.map((notif) => (
+              <div
+                key={notif.id}
+                onClick={() => !notif.read && store.markNotificationRead(notif.id)}
+                className={`p-3 rounded-xl border transition-all flex items-start gap-3 ${
+                  notif.read ? 'bg-bg-800/40 border-white/5 opacity-80' : 'bg-primary-500/10 border-primary-500/30'
+                }`}
+              >
+                <div className="w-8 h-8 rounded-lg bg-bg-800 border border-white/10 flex items-center justify-center shrink-0 text-sm">
+                  {notif.actorAvatar || '🔔'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-xs font-bold text-slate-200 truncate">{notif.title || 'Notification'}</p>
+                    <span className="text-[10px] text-slate-500 shrink-0">
+                      {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5 leading-snug">{notif.message}</p>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    store.clearNotification(notif.id);
+                  }}
+                  className="p-1 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-white/5"
+                  title="Delete notification"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* 4. PREFERENCES & PRIVACY SECTION */}
       <div className="card p-5 space-y-4">
         <h2 className="text-base font-display font-bold text-slate-100 flex items-center gap-2 border-b border-white/5 pb-3">
           <Eye size={18} className="text-primary-400" />
