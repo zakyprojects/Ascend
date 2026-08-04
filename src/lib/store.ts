@@ -933,11 +933,19 @@ export function useAppState() {
   }, []);
 
   const deleteBook = useCallback((bookId: string) => {
-    setState((prev) => ({
-      ...prev,
-      books: prev.books.filter((b) => b.id !== bookId),
-      readingLogs: prev.readingLogs.filter((l) => l.bookId !== bookId),
-    }));
+    setState((prev) => {
+      const target = prev.books.find((b) => b.id === bookId);
+      let pointsUpdate = {};
+      if (target?.isFinished) {
+        pointsUpdate = addPointsInternal(prev, -30, `Book deleted: ${target.title}`, 'reading');
+      }
+      return {
+        ...prev,
+        books: prev.books.filter((b) => b.id !== bookId),
+        readingLogs: prev.readingLogs.filter((l) => l.bookId !== bookId),
+        ...pointsUpdate,
+      };
+    });
   }, []);
 
   // --- SELF IMPROVEMENT BOOKS LIBRARY ACTIONS ---
@@ -1234,6 +1242,21 @@ export function useAppState() {
     }));
   }, []);
 
+  const deleteSkillLog = useCallback((logId: string) => {
+    setState((prev) => {
+      const target = prev.skillLogs.find((s) => s.id === logId);
+      let pointsUpdate = {};
+      if (target && target.pointsAwarded > 0) {
+        pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Skill practice log deleted`, 'skill');
+      }
+      return {
+        ...prev,
+        skillLogs: prev.skillLogs.filter((s) => s.id !== logId),
+        ...pointsUpdate,
+      };
+    });
+  }, []);
+
   // --- MODULE 4: BAD HABIT REDUCTION TRACKER ACTIONS ---
   const addBadHabit = useCallback((name: string) => {
     const bh: BadHabit = {
@@ -1320,6 +1343,23 @@ export function useAppState() {
     }));
   }, []);
 
+  const deleteBadHabitLog = useCallback((badHabitId: string, date: string) => {
+    setState((prev) => {
+      const target = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
+      let pointsUpdate = {};
+      if (target) {
+        if (target.status === 'resisted') {
+          pointsUpdate = addPointsInternal(prev, -10, `Bad habit log cleared for ${date}`, 'bad_habit');
+        }
+      }
+      return {
+        ...prev,
+        badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === date)),
+        ...pointsUpdate,
+      };
+    });
+  }, []);
+
   // --- MODULE 5: ADDICTION RECOVERY ACTIONS ---
   const setAddictionTracker = useCallback((title: string, startDateIso?: string) => {
     setState((prev) => {
@@ -1399,6 +1439,34 @@ export function useAppState() {
       createdAt: new Date().toISOString(),
     };
     setState((prev) => ({ ...prev, cravingLogs: [log, ...prev.cravingLogs] }));
+  }, []);
+
+  const deleteAddictionTracker = useCallback(() => {
+    setState((prev) => {
+      let milestonePtsDeducted = 0;
+      if (prev.addictionTracker?.milestonesUnlocked) {
+        if (prev.addictionTracker.milestonesUnlocked.includes('24h')) milestonePtsDeducted += 20;
+        if (prev.addictionTracker.milestonesUnlocked.includes('1w')) milestonePtsDeducted += 50;
+        if (prev.addictionTracker.milestonesUnlocked.includes('1m')) milestonePtsDeducted += 150;
+      }
+      let pointsUpdate = {};
+      if (milestonePtsDeducted > 0) {
+        pointsUpdate = addPointsInternal(prev, -milestonePtsDeducted, 'Sobriety tracker deleted', 'addiction_recovery');
+      }
+      return {
+        ...prev,
+        addictionTracker: null,
+        cravingLogs: [],
+        ...pointsUpdate,
+      };
+    });
+  }, []);
+
+  const deleteCravingLog = useCallback((logId: string) => {
+    setState((prev) => ({
+      ...prev,
+      cravingLogs: prev.cravingLogs.filter((l) => l.id !== logId),
+    }));
   }, []);
 
   // --- MODULE 7: PREFRONTAL CORTEX ACTIONS ---
@@ -1504,6 +1572,70 @@ export function useAppState() {
       return {
         ...prev,
         weeklyGoals: newWeeklyGoals,
+        ...pointsUpdate,
+      };
+    });
+  }, []);
+
+  const deleteFocusLog = useCallback((logId: string) => {
+    setState((prev) => {
+      const target = prev.focusLogs.find((f) => f.id === logId);
+      let pointsUpdate = {};
+      if (target && target.pointsAwarded > 0) {
+        pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Focus session deleted: ${target.taskName}`, 'focus');
+      }
+      return {
+        ...prev,
+        focusLogs: prev.focusLogs.filter((f) => f.id !== logId),
+        ...pointsUpdate,
+      };
+    });
+  }, []);
+
+  const deleteDecisionLog = useCallback((logId: string) => {
+    setState((prev) => {
+      const target = prev.decisionLogs.find((d) => d.id === logId);
+      let ptsToDeduct = 0;
+      if (target) {
+        ptsToDeduct = target.isReflected ? 30 : 15;
+      }
+      let pointsUpdate = {};
+      if (ptsToDeduct > 0 && target) {
+        pointsUpdate = addPointsInternal(prev, -ptsToDeduct, `Decision log deleted: ${target.title}`, 'decision_journal');
+      }
+      return {
+        ...prev,
+        decisionLogs: prev.decisionLogs.filter((d) => d.id !== logId),
+        ...pointsUpdate,
+      };
+    });
+  }, []);
+
+  const deleteEmotionLog = useCallback((logId: string) => {
+    setState((prev) => {
+      const target = prev.emotionLogs.find((e) => e.id === logId);
+      let pointsUpdate = {};
+      if (target) {
+        pointsUpdate = addPointsInternal(prev, -5, `Emotion label deleted: ${target.emotion}`, 'emotion_label');
+      }
+      return {
+        ...prev,
+        emotionLogs: prev.emotionLogs.filter((e) => e.id !== logId),
+        ...pointsUpdate,
+      };
+    });
+  }, []);
+
+  const deleteWeeklyGoalDoc = useCallback((weekKey: string) => {
+    setState((prev) => {
+      const target = prev.weeklyGoals.find((w) => w.weekKey === weekKey);
+      let pointsUpdate = {};
+      if (target?.isReviewed) {
+        pointsUpdate = addPointsInternal(prev, -20, `Weekly review deleted for ${weekKey}`, 'weekly_review');
+      }
+      return {
+        ...prev,
+        weeklyGoals: prev.weeklyGoals.filter((w) => w.weekKey !== weekKey),
         ...pointsUpdate,
       };
     });
@@ -2157,18 +2289,26 @@ export function useAppState() {
     logSkillPractice,
     updateSkillLevel,
     deleteSkill,
+    deleteSkillLog,
     addBadHabit,
     logBadHabitDay,
     deleteBadHabit,
+    deleteBadHabitLog,
     setAddictionTracker,
+    deleteAddictionTracker,
     resetAddictionStreak,
     checkAddictionMilestones,
     logCraving,
+    deleteCravingLog,
     logFocusSession,
+    deleteFocusLog,
     addDecision,
     reflectDecision,
+    deleteDecisionLog,
     logEmotion,
+    deleteEmotionLog,
     saveWeeklyGoal,
+    deleteWeeklyGoalDoc,
     // Self Improvement Books Library Actions
     addCuratedBookToLibrary,
     addCustomBookToLibrary,

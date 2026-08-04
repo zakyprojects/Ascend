@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Timer, BrainCircuit, Scale, HeartHandshake, Target, Play, Pause, RotateCcw, Plus, CheckCircle2, Award, Calendar, Sparkles } from 'lucide-react';
+import { Timer, BrainCircuit, Scale, HeartHandshake, Target, Play, Pause, RotateCcw, Plus, CheckCircle2, Award, Calendar, Sparkles, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { todayKey, formatDateLong } from '@/lib/dates';
@@ -262,9 +262,18 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                       {formatDateLong(log.date)} • {log.durationMinutes} mins {skill ? `• ${skill.name}` : ''}
                     </div>
                   </div>
-                  <span className="font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20">
-                    +{log.pointsAwarded} pts
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20">
+                      +{log.pointsAwarded} pts
+                    </span>
+                    <button
+                      onClick={() => store.deleteFocusLog(log.id)}
+                      className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
+                      title="Delete Focus Session Log"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -346,6 +355,13 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                     )}
                   </h3>
                 </div>
+                <button
+                  onClick={() => store.deleteDecisionLog(d.id)}
+                  className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
+                  title="Delete Decision Journal Entry"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-300 bg-bg-800/80 p-3 rounded-xl border border-white/5">
@@ -546,9 +562,18 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
                 {l.context && <p className="text-slate-400 mt-0.5">{l.context}</p>}
                 <p className="text-[10px] text-slate-500 mt-1">{formatDateLong(l.date)}</p>
               </div>
-              <span className="font-bold text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
-                +5 pts
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
+                  +5 pts
+                </span>
+                <button
+                  onClick={() => store.deleteEmotionLog(l.id)}
+                  className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
+                  title="Delete Emotion Log"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -666,11 +691,31 @@ function WeeklyGoalsSubmodule({ store }: { store: AppStore }) {
             <h2 className="section-title">Weekly Goal Planning & Sunday Review</h2>
             <p className="text-xs text-slate-500">Set 1-3 high-leverage goals for this week, review progress, and carry insights forward (+20 pts)</p>
           </div>
-          {isReviewed && (
-            <span className="badge bg-emerald-500/15 text-emerald-400 text-xs font-bold flex items-center gap-1">
-              <CheckCircle2 size={14} /> Weekly Review Completed (+20 pts)
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {isReviewed && (
+              <span className="badge bg-emerald-500/15 text-emerald-400 text-xs font-bold flex items-center gap-1">
+                <CheckCircle2 size={14} /> Weekly Review Completed (+20 pts)
+              </span>
+            )}
+            {(isReviewed || goals.some((g) => g.text.trim().length > 0)) && (
+              <button
+                onClick={() => {
+                  store.deleteWeeklyGoalDoc(currentWeekKey);
+                  setGoals([
+                    { id: '1', text: '', done: false },
+                    { id: '2', text: '', done: false },
+                    { id: '3', text: '', done: false },
+                  ]);
+                  setInsights('');
+                  setIsReviewed(false);
+                }}
+                className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
+                title="Reset / Delete Weekly Goals & Review"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 1-3 Weekly Goals Input */}

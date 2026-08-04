@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { HeartPulse, ShieldCheck, Flame, AlertCircle, Sparkles, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award } from 'lucide-react';
+import { HeartPulse, ShieldCheck, Flame, AlertCircle, Sparkles, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { formatDateLong } from '@/lib/dates';
@@ -19,6 +19,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   const [cravingModalOpen, setCravingModalOpen] = useState(false);
   const [setupTrackerModalOpen, setSetupTrackerModalOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [deleteTrackerConfirmOpen, setDeleteTrackerConfirmOpen] = useState(false);
   const [celebrationMilestone, setCelebrationMilestone] = useState<string | null>(null);
 
   // Form states
@@ -136,10 +137,18 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setResetConfirmOpen(true)}
-                className="btn-ghost text-xs text-slate-400 hover:text-rose-400 flex items-center gap-1.5"
+                className="btn-ghost text-xs text-slate-400 hover:text-amber-400 flex items-center gap-1.5"
               >
                 <RefreshCw size={14} />
                 <span>Reset Timer</span>
+              </button>
+              <button
+                onClick={() => setDeleteTrackerConfirmOpen(true)}
+                className="btn-ghost text-xs text-slate-400 hover:text-rose-400 flex items-center gap-1.5"
+                title="Delete Sobriety Tracker Entirely"
+              >
+                <Trash2 size={14} />
+                <span>Delete Tracker</span>
               </button>
             </div>
           </div>
@@ -227,7 +236,16 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                     <span className="font-bold text-slate-200 flex items-center gap-2">
                       Intensity: <span className={`px-2 py-0.5 rounded font-mono ${log.intensity >= 7 ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-300'}`}>{log.intensity}/10</span>
                     </span>
-                    <span className="text-slate-500 text-[10px]">{formatDateLong(log.date)}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500 text-[10px]">{formatDateLong(log.date)}</span>
+                      <button
+                        onClick={() => store.deleteCravingLog(log.id)}
+                        className="text-slate-600 hover:text-rose-400 p-0.5 transition-colors"
+                        title="Delete Craving Log"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                   {log.trigger && <p className="text-slate-400"><span className="text-slate-500 font-medium">Trigger:</span> {log.trigger}</p>}
                   {log.copingStrategy && <p className="text-emerald-400"><span className="text-slate-500 font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
@@ -389,6 +407,28 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           <button onClick={() => setCelebrationMilestone(null)} className="btn-primary mx-auto">
             Awesome!
           </button>
+        </div>
+      </Modal>
+
+      {/* Delete Tracker Modal */}
+      <Modal open={deleteTrackerConfirmOpen} onClose={() => setDeleteTrackerConfirmOpen(false)} title="Delete Sobriety Tracker?">
+        <div className="space-y-4 text-xs text-slate-300">
+          <p>Are you sure you want to delete your <strong>{tracker?.title}</strong> sobriety counter entirely?</p>
+          <p className="text-rose-400 font-medium">This will clear the active streak counter and remove all logged craving data. Any milestone points earned will be deducted.</p>
+          <div className="flex gap-2 pt-2">
+            <button onClick={() => setDeleteTrackerConfirmOpen(false)} className="btn-secondary flex-1">
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                store.deleteAddictionTracker();
+                setDeleteTrackerConfirmOpen(false);
+              }}
+              className="btn-danger flex-1"
+            >
+              Delete Tracker
+            </button>
+          </div>
         </div>
       </Modal>
     </div>

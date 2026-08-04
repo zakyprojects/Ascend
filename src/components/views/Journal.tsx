@@ -329,6 +329,18 @@ export function Journal({ store }: { store: AppStore }) {
                         +5 pts
                       </span>
                     )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('Are you sure you want to delete this journal entry?')) {
+                          store.deleteJournalEntry(entry.id);
+                        }
+                      }}
+                      className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
+                      title="Delete Journal Entry"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                     <ChevronRight size={16} className="text-slate-600 group-hover:text-slate-300 transition-colors" />
                   </div>
                 </button>

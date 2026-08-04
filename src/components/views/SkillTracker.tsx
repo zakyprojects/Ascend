@@ -224,9 +224,18 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       <p className="text-[10px] text-slate-500 mt-1">{formatDateLong(log.date)}</p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">
-                    +{log.pointsAwarded} pts
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">
+                      +{log.pointsAwarded} pts
+                    </span>
+                    <button
+                      onClick={() => store.deleteSkillLog(log.id)}
+                      className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
+                      title="Delete Practice Session Log"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               );
             })}

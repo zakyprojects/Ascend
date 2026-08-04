@@ -232,9 +232,18 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                     </h3>
                     <p className="text-xs text-slate-400">by {book.author} • {book.totalPages} {book.unit}</p>
                   </div>
-                  <span className="text-xs text-slate-500">
-                    {book.finishedAt ? formatDateLong(book.finishedAt) : ''}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">
+                      {book.finishedAt ? formatDateLong(book.finishedAt) : ''}
+                    </span>
+                    <button
+                      onClick={() => store.deleteBook(book.id)}
+                      className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
+                      title="Delete Finished Book"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
 
                 {book.reflection && (

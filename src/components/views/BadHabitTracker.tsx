@@ -210,19 +210,25 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         const isOccurred = log?.status === 'occurred';
 
                         return (
-                          <div
+                          <button
+                            type="button"
                             key={d}
+                            onClick={() => {
+                              if (log) {
+                                store.deleteBadHabitLog(bh.id, d);
+                              }
+                            }}
                             className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 transition-all ${
                               isResisted
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-pointer hover:border-rose-400'
                                 : isOccurred
-                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
-                                : 'bg-bg-700/50 text-slate-600 border border-white/5'
+                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 cursor-pointer hover:border-slate-400'
+                                : 'bg-bg-700/50 text-slate-600 border border-white/5 cursor-default'
                             }`}
-                            title={`${d}: ${isResisted ? 'Resisted (+10 pts)' : isOccurred ? 'Occurred (Penalized)' : 'Not Logged'}`}
+                            title={`${d}: ${isResisted ? 'Resisted (+10 pts) - Click to clear' : isOccurred ? 'Occurred - Click to clear' : 'Not Logged'}`}
                           >
                             {isResisted ? '✓' : isOccurred ? '✕' : '-'}
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
