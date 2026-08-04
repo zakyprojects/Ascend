@@ -100,9 +100,9 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
   ];
 
   return (
-    <div className="min-h-screen bg-bg-900 flex">
+    <div className="min-h-screen md:h-screen bg-bg-900 flex md:overflow-hidden">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-64 glass border-r border-white/5 shrink-0">
+      <aside className="hidden md:flex flex-col w-64 h-full glass border-r border-white/5 shrink-0 overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
@@ -242,7 +242,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
       </aside>
 
       {/* Mobile view wrapper */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 md:h-full md:overflow-hidden">
         {/* Mobile header */}
         <header className="md:hidden glass border-b border-white/5 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-2">
