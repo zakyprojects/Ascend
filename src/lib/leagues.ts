@@ -123,14 +123,15 @@ export function formatCountdown(ms: number): string {
   return `${seconds}s`;
 }
 
-/** Calculate points earned within a given time range from the points history */
+/** Calculate net points earned within a given time range from the points history (including additions and deductions) */
 export function calculatePeriodPoints(pointsHistory: PointsEntry[], start: Date, end: Date = new Date()): number {
-  return (pointsHistory || [])
+  const sum = (pointsHistory || [])
     .filter((entry) => {
       const ts = new Date(entry.timestamp);
-      return ts >= start && ts <= end && entry.amount > 0;
+      return ts >= start && ts <= end;
     })
-    .reduce((sum, entry) => sum + entry.amount, 0);
+    .reduce((acc, entry) => acc + (entry.amount || 0), 0);
+  return Math.max(0, sum);
 }
 
 /**

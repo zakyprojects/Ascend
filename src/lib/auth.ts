@@ -24,6 +24,35 @@ export function setCachedPublicPlans(plans: ImprovementPlan[]) {
   cachedPublicPlans = plans;
 }
 
+export function updateCachedPublicPlan(updatedPlan: ImprovementPlan) {
+  const idx = cachedPublicPlans.findIndex((p) => p.id === updatedPlan.id);
+  if (updatedPlan.isPublic) {
+    if (idx !== -1) {
+      cachedPublicPlans[idx] = updatedPlan;
+    } else {
+      cachedPublicPlans.unshift(updatedPlan);
+    }
+  } else {
+    if (idx !== -1) {
+      cachedPublicPlans.splice(idx, 1);
+    }
+  }
+}
+
+export function getCachedPublicPlanById(planId: string): ImprovementPlan | undefined {
+  return cachedPublicPlans.find((p) => p.id === planId);
+}
+
+export function removeCachedPublicPlan(planId: string) {
+  cachedPublicPlans = cachedPublicPlans.filter((p) => p.id !== planId);
+}
+
+export function getProfilePointsByUsername(username: string): number {
+  if (!username) return 0;
+  const match = cachedProfiles.find((p) => p.username?.toLowerCase() === username.toLowerCase());
+  return match?.total_points || match?.totalPoints || 0;
+}
+
 /**
  * Check if a username is available (case-insensitive check against seed accounts and Supabase profiles).
  */

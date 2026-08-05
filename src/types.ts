@@ -314,6 +314,7 @@ export interface ImprovementPlan {
   creatorId: string;
   creatorUsername: string;
   creatorAvatar?: string;
+  creatorPoints?: number;
   title: string;
   description: string;
   category?: string;

@@ -54,6 +54,9 @@ import {
   getRegisteredCompetitors,
   setCachedProfiles,
   setCachedPublicPlans,
+  updateCachedPublicPlan,
+  getCachedPublicPlanById,
+  removeCachedPublicPlan,
   fetchProfileByUidFromSupabase,
 } from './auth';
 import { hydrateUserSession } from './authSession';
@@ -63,6 +66,10 @@ import {
   isSupabaseConfigured,
   syncBroadcaster,
   syncPlanToSupabase,
+  deletePlanFromSupabase,
+  incrementPlanCopyCountSupabase,
+  syncFollowedPlanToSupabase,
+  deleteFollowedPlanFromSupabase,
   sendPartnerInviteSupabase,
   fetchUserDataFromSupabase,
   saveUserDataToSupabase,
@@ -101,6 +108,14 @@ function loadInitialState(): AppState {
 }
 
 function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null): AppState {
+  const pointsHistory = st.pointsHistory ?? [];
+  let totalPoints = st.totalPoints ?? 0;
+
+  if (pointsHistory.length > 0) {
+    const historySum = pointsHistory.reduce((acc, entry) => acc + (entry.amount || 0), 0);
+    totalPoints = Math.max(0, historySum);
+  }
+
   return {
     ...DEFAULT_STATE,
     ...st,
@@ -108,8 +123,8 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     username: profile ? profile.username : (st.username ?? 'Guest User'),
     habits: st.habits ?? [],
     journalEntries: st.journalEntries ?? [],
-    totalPoints: st.totalPoints ?? 0,
-    pointsHistory: st.pointsHistory ?? [],
+    totalPoints,
+    pointsHistory,
     leagueArchives: st.leagueArchives ?? [],
     readLessonIds: st.readLessonIds ?? [],
     workouts: st.workouts ?? [],
@@ -543,10 +558,24 @@ export function useAppState() {
   }, []);
 
   const deleteHabit = useCallback((habitId: string) => {
-    setState((prev) => ({
-      ...prev,
-      habits: prev.habits.filter((h) => h.id !== habitId),
-    }));
+    setState((prev) => {
+      const target = prev.habits.find((h) => h.id === habitId);
+      let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+      if (target && target.isPreset && target.points > 0 && target.completions && target.completions.length > 0) {
+        const ptsToDeduct = target.completions.length * target.points;
+        pointsUpdate = addPointsInternal(
+          prev,
+          -ptsToDeduct,
+          `Habit deleted: ${target.name} (${target.completions.length} completion(s) removed)`,
+          'habit'
+        );
+      }
+      return {
+        ...prev,
+        habits: prev.habits.filter((h) => h.id !== habitId),
+        ...pointsUpdate,
+      };
+    });
   }, []);
 
   const toggleHabit = useCallback(
@@ -1643,23 +1672,30 @@ export function useAppState() {
 
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---
   const createImprovementPlan = useCallback(
-    (title: string, description: string, isPublic: boolean, stepTitles: string[], category?: string) => {
-      const steps: PlanStep[] = stepTitles
-        .filter((t) => t.trim().length > 0)
-        .map((t, idx) => ({
-          id: uid(),
-          title: t.trim(),
-          orderIndex: idx,
-          completed: false,
-        }));
-
+    (
+      title: string,
+      description: string,
+      isPublic: boolean,
+      stepTitles: string[],
+      category?: string
+    ) => {
       let newPlan: ImprovementPlan | null = null;
       setState((prev) => {
+        const steps: PlanStep[] = stepTitles
+          .filter((t) => t.trim().length > 0)
+          .map((t, i) => ({
+            id: uid(),
+            title: t.trim(),
+            orderIndex: i,
+            completed: false,
+          }));
+
         newPlan = {
           id: generateUUID(),
           creatorId: prev.currentUser?.id || generateUUID(),
           creatorUsername: prev.username,
           creatorAvatar: prev.currentUser?.avatar || '🧑',
+          creatorPoints: prev.totalPoints,
           title: title.trim(),
           description: description.trim(),
           category: category?.trim() || 'Personal Growth',
@@ -1669,49 +1705,197 @@ export function useAppState() {
           createdAt: new Date().toISOString(),
         };
 
-        syncBroadcaster.broadcast('PLAN_CREATED', newPlan);
-        if (newPlan) syncPlanToSupabase(newPlan);
-
         return {
           ...prev,
           improvementPlans: [newPlan, ...prev.improvementPlans],
         };
       });
+
+      if (newPlan) {
+        updateCachedPublicPlan(newPlan);
+        syncBroadcaster.broadcast('PLAN_CREATED', newPlan);
+        syncPlanToSupabase(newPlan);
+      }
       return newPlan;
     },
     []
   );
 
-  const togglePlanVisibility = useCallback((planId: string) => {
+  const updateImprovementPlan = useCallback((
+    planId: string,
+    title: string,
+    description: string,
+    category: string,
+    isPublic: boolean,
+    stepTitles: string[]
+  ) => {
+    let updatedPlan: ImprovementPlan | null = null;
     setState((prev) => {
       const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
       if (idx === -1) return prev;
       const target = prev.improvementPlans[idx];
-      const updated = { ...target, isPublic: !target.isPublic };
+      const steps: PlanStep[] = stepTitles
+        .filter((t) => t.trim().length > 0)
+        .map((t, i) => ({
+          id: target.steps[i]?.id || uid(),
+          title: t.trim(),
+          orderIndex: i,
+          completed: false,
+        }));
+
+      updatedPlan = {
+        ...target,
+        title: title.trim(),
+        description: description.trim(),
+        category: category.trim() || 'Personal Growth',
+        isPublic,
+        steps,
+        creatorPoints: prev.totalPoints,
+      };
+
       const updatedPlans = [...prev.improvementPlans];
-      updatedPlans[idx] = updated;
-      syncBroadcaster.broadcast('PLAN_UPDATED', updated);
-      syncPlanToSupabase(updated);
+      updatedPlans[idx] = updatedPlan;
+
+      return { ...prev, improvementPlans: updatedPlans };
+    });
+
+    if (updatedPlan) {
+      updateCachedPublicPlan(updatedPlan);
+      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      syncPlanToSupabase(updatedPlan);
+    }
+  }, []);
+
+  const togglePlanVisibility = useCallback(async (planId: string, newVisibility?: boolean) => {
+    try {
+      console.log(`[Visibility Update] Initiating toggle for plan ID: ${planId}`);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        alert("Error: You must be logged in to change plan visibility.");
+        return;
+      }
+
+      let targetNewVisibility = newVisibility;
+      if (targetNewVisibility === undefined) {
+        const currentLocal = state.improvementPlans.find((p) => p.id === planId);
+        targetNewVisibility = currentLocal ? !currentLocal.isPublic : true;
+      }
+
+      console.log(`[Visibility Update] Executing DB update for plan ${planId} to is_public = ${targetNewVisibility}`);
+
+      // 1. Force the database update FIRST
+      const { data, error } = await supabase
+        .from('improvement_plans')
+        .update({ is_public: targetNewVisibility })
+        .eq('id', planId)
+        .eq('creator_id', session.user.id)
+        .select();
+
+      if (error || !data || data.length === 0) {
+        console.error("[Visibility Update] DB Error or 0 rows modified:", error, data);
+        alert(`Database Error (Visibility Update): ${error ? (error.message || error.code) : '0 rows updated in database. Permission denied or plan not found.'}`);
+        return;
+      }
+
+      console.log(`[Visibility Update] DB Success! Updating local Zustand state...`);
+
+      // 2. DB Success! Now update Zustand/UI state safely
+      let updatedPlan: ImprovementPlan | null = null;
+      setState((prev) => {
+        const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
+        if (idx === -1) return prev;
+        updatedPlan = {
+          ...prev.improvementPlans[idx],
+          isPublic: targetNewVisibility,
+          creatorPoints: prev.totalPoints,
+        };
+        const updatedPlans = [...prev.improvementPlans];
+        updatedPlans[idx] = updatedPlan;
+        return { ...prev, improvementPlans: updatedPlans };
+      });
+
+      if (updatedPlan) {
+        updateCachedPublicPlan(updatedPlan);
+        syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      }
+    } catch (err: any) {
+      console.error("[Visibility Update] Fatal error toggling visibility:", err);
+      alert(`Fatal Error: ${err.message || 'Check console'}`);
+    }
+  }, []);
+
+  const updatePlanCopyCount = useCallback((planId: string, newCount: number) => {
+    setState((prev) => {
+      let planFound = false;
+      const updatedPlans = prev.improvementPlans.map((p) => {
+        if (p.id === planId) {
+          planFound = true;
+          return { ...p, copyCount: newCount };
+        }
+        return p;
+      });
+
+      const cached = getCachedPublicPlanById(planId);
+      if (cached) {
+        updateCachedPublicPlan({ ...cached, copyCount: newCount });
+      }
+
+      syncBroadcaster.broadcast('PLAN_UPDATED', { id: planId, copyCount: newCount });
+
+      if (!planFound && !cached) return prev;
       return { ...prev, improvementPlans: updatedPlans };
     });
   }, []);
 
-  const copyPublicPlan = useCallback((originalPlan: ImprovementPlan) => {
-    setState((prev) => {
-      const updatedPlans = prev.improvementPlans.map((p) =>
-        p.id === originalPlan.id ? { ...p, copyCount: p.copyCount + 1 } : p
-      );
+  const copyPublicPlan = useCallback(async (originalPlan: ImprovementPlan) => {
+    const planId = originalPlan.id;
+    try {
+      console.log(`[Copy Plan] Initiating copy for plan ID: ${planId}`);
 
+      // 1. Verify Session First
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        alert("Error: You must be logged in to copy a plan.");
+        return;
+      }
+
+      const isOwnPlan = (originalPlan.creatorUsername || '').toLowerCase() === (state.username || '').toLowerCase() || (originalPlan.creatorId && state.currentUser?.id && originalPlan.creatorId === state.currentUser.id);
+      const alreadyCopied = state.followedPlans.some((f) => f.originalPlanId === planId);
+
+      if (isOwnPlan || alreadyCopied) {
+        return;
+      }
+
+      // 2. ATOMIC RPC EXECUTION FIRST (Do not wait for user_plan_follows)
+      console.log(`[Copy Plan] Calling RPC increment_plan_copy_count...`);
+      const { data: newCount, error: rpcError } = await supabase
+        .rpc('increment_plan_copy_count', { target_plan_id: planId });
+
+      if (rpcError) {
+        console.error("[Copy Plan] RPC FAILED:", rpcError);
+        alert(`Database Error (RPC): ${rpcError.message || rpcError.code}`);
+        throw rpcError;
+      }
+
+      console.log(`[Copy Plan] RPC Success! New copy count is: ${newCount}`);
+      const finalCount = typeof newCount === 'number' && newCount > 0 ? newCount : (originalPlan.copyCount || 0) + 1;
+
+      // 3. Update the global Zustand state optimistically
+      updatePlanCopyCount(planId, finalCount);
+
+      // 4. NOW attempt to create the follow record
+      console.log(`[Copy Plan] Inserting into user_plan_follows...`);
       const stepsCopy: PlanStep[] = originalPlan.steps.map((s) => ({
         ...s,
         id: uid(),
         completed: false,
       }));
 
-      const followedPlan: UserPlanFollow = {
-        id: uid(),
-        userId: prev.currentUser?.id || 'guest_user',
-        originalPlanId: originalPlan.id,
+      const createdFollow: UserPlanFollow = {
+        id: generateUUID(),
+        userId: session.user.id,
+        originalPlanId: planId,
         title: originalPlan.title,
         description: originalPlan.description,
         steps: stepsCopy,
@@ -1720,12 +1904,24 @@ export function useAppState() {
         createdAt: new Date().toISOString(),
       };
 
-      return {
+      setState((prev) => ({
         ...prev,
-        improvementPlans: updatedPlans,
-        followedPlans: [followedPlan, ...prev.followedPlans],
-      };
-    });
+        followedPlans: [createdFollow, ...prev.followedPlans],
+      }));
+
+      syncFollowedPlanToSupabase(createdFollow);
+    } catch (err: any) {
+      console.error("[Copy Plan] FATAL ERROR CATCH:", err);
+      alert(`Fatal Error during copy: ${err.message || 'Check console'}`);
+    }
+  }, [updatePlanCopyCount]);
+
+  const deleteFollowedPlan = useCallback((followedPlanId: string) => {
+    deleteFollowedPlanFromSupabase(followedPlanId);
+    setState((prev) => ({
+      ...prev,
+      followedPlans: prev.followedPlans.filter((f) => f.id !== followedPlanId),
+    }));
   }, []);
 
   const completePlanStep = useCallback((followedPlanId: string, stepId: string) => {
@@ -1766,12 +1962,45 @@ export function useAppState() {
     });
   }, []);
 
-  const deletePlan = useCallback((planId: string) => {
-    setState((prev) => ({
-      ...prev,
-      improvementPlans: prev.improvementPlans.filter((p) => p.id !== planId),
-      followedPlans: prev.followedPlans.filter((f) => f.id !== planId && f.originalPlanId !== planId),
-    }));
+  const deletePlan = useCallback(async (planId: string) => {
+    try {
+      console.log(`[Delete Plan] Initiating DB deletion for plan ID: ${planId}`);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        alert("Error: You must be logged in to delete a plan.");
+        return;
+      }
+
+      // 1. Force the database delete FIRST
+      const { data, error } = await supabase
+        .from('improvement_plans')
+        .delete()
+        .eq('id', planId)
+        .eq('creator_id', session.user.id)
+        .select();
+
+      if (error || !data || data.length === 0) {
+        console.error("[Delete Plan] DB Error or 0 rows deleted:", error, data);
+        alert(`Database Error (Delete Plan): ${error ? (error.message || error.code) : '0 rows deleted in database. Permission denied or plan not found.'}`);
+        return;
+      }
+
+      console.log(`[Delete Plan] DB Success! Removing from local Zustand state...`);
+
+      // 2. DB Success! Now remove from Zustand/UI state
+      removeCachedPublicPlan(planId);
+      syncBroadcaster.broadcast('PLAN_DELETED', { planId });
+
+      setState((prev) => ({
+        ...prev,
+        improvementPlans: prev.improvementPlans.filter((p) => p.id !== planId),
+        followedPlans: prev.followedPlans.filter((f) => f.originalPlanId !== planId),
+      }));
+    } catch (err: any) {
+      console.error("[Delete Plan] Fatal error deleting plan:", err);
+      alert(`Fatal Error during deletion: ${err.message || 'Check console'}`);
+    }
   }, []);
 
   // --- SOCIAL FEATURE 2: ACCOUNTABILITY PARTNER & SHARED CHALLENGES ---
@@ -2317,8 +2546,11 @@ export function useAppState() {
     getUserBookStatus,
     // Social Features Actions
     createImprovementPlan,
+    updateImprovementPlan,
     togglePlanVisibility,
     copyPublicPlan,
+    updatePlanCopyCount,
+    deleteFollowedPlan,
     completePlanStep,
     deletePlan,
     sendPartnerInvite,

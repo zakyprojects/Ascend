@@ -16,18 +16,10 @@
     <title>Ascend - Men's Self-Improvement</title>
     <script>
       window.onerror = function(message, source, lineno, colno, error) {
-        document.body.innerHTML = '<div style="color: red; padding: 20px; font-family: monospace;">' + 
-          '<h3>Runtime Error!</h3>' +
-          '<p>' + message + '</p>' +
-          '<p>Source: ' + source + ':' + lineno + ':' + colno + '</p>' +
-          '<pre>' + (error && error.stack ? error.stack : '') + '</pre>' +
-          '</div>';
+        console.error('[Global Error]', message, source, lineno, colno, error);
       };
       window.onunhandledrejection = function(event) {
-        document.body.innerHTML = '<div style="color: red; padding: 20px; font-family: monospace;">' + 
-          '<h3>Unhandled Promise Rejection!</h3>' +
-          '<p>' + (event.reason ? event.reason.toString() : 'Unknown error') + '</p>' +
-          '</div>';
+        console.error('[Unhandled Rejection]', event.reason);
       };
     </script>
     <meta property="og:image" content="https://bolt.new/static/og_default.png" />

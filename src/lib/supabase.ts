@@ -189,53 +189,247 @@ export async function fetchProfileByUsernameFromSupabase(username: string) {
   }
 }
 
-export async function syncPlanToSupabase(plan: ImprovementPlan) {
-  if (!isSupabaseConfigured) return;
+export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
   try {
+    // 1. Await absolute current session token
+    let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    let sessionUser = session?.user;
+
+    if (!sessionUser) {
+      console.error('[Supabase Sync] No active session found.', sessionError);
+      throw new Error('AUTH_MISSING: You must be fully authenticated to sync a plan.');
+    }
+
+    // 2. FORCE creator_id to match session.user.id (single source of truth for RLS)
+    const creatorId = sessionUser.id;
+
+    // Ensure profile exists in profiles table first if missing
+    const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', creatorId).maybeSingle();
+    if (!existingProfile) {
+      const fallbackUsername = plan.creatorUsername || ('User_' + creatorId.substring(0, 6));
+      await supabase.from('profiles').insert({
+        id: creatorId,
+        username: fallbackUsername,
+        avatar: plan.creatorAvatar || '🧑',
+      });
+    }
+
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const planId = uuidPattern.test(plan.id) ? plan.id : crypto.randomUUID();
+
+    // Preserve existing database copy_count so updates/saves never reset copy_count to 0
+    const { data: existingPlanRow } = await supabase
+      .from('improvement_plans')
+      .select('copy_count')
+      .eq('id', planId)
+      .maybeSingle();
+
+    const dbCopyCount = existingPlanRow?.copy_count ?? 0;
+    const rawCopyCount = plan.copyCount !== undefined && plan.copyCount !== null ? plan.copyCount : 0;
+    const finalCopyCount = Math.max(rawCopyCount, dbCopyCount);
+    const isPublicValue = plan.isPublic !== undefined && plan.isPublic !== null ? Boolean(plan.isPublic) : true;
+
+    // 3. Execute Supabase upsert/insert with forced creator_id
     const { error } = await supabase.from('improvement_plans').upsert({
-      id: plan.id,
-      creator_id: plan.creatorId,
-      creator_username: plan.creatorUsername,
+      id: planId,
+      creator_id: creatorId, // Force session.user.id
+      creator_username: plan.creatorUsername || 'Member',
       creator_avatar: plan.creatorAvatar || '🧑',
-      title: plan.title,
-      description: plan.description,
+      title: plan.title || 'Untitled Plan',
+      description: plan.description || '',
       category: plan.category || 'Personal Growth',
-      is_public: plan.isPublic,
-      steps: plan.steps,
-      copy_count: plan.copyCount,
+      is_public: isPublicValue,
+      steps: plan.steps || [],
+      copy_count: finalCopyCount,
     });
+
     if (error) {
       console.error('Error syncing plan to Supabase:', error);
+      return null;
+    }
+
+    return planId;
+  } catch (e) {
+    console.error('Supabase plan sync error:', e);
+    return null;
+  }
+}
+
+export async function deletePlanFromSupabase(planId: string) {
+  if (!isSupabaseConfigured) return;
+  try {
+    const { error } = await supabase.from('improvement_plans').delete().eq('id', planId);
+    if (error) {
+      console.error('Error deleting plan from Supabase:', error);
     }
   } catch (e) {
-    console.warn('Supabase plan sync error:', e);
+    console.warn('Supabase plan delete error:', e);
   }
+}
+
+export async function syncFollowedPlanToSupabase(followedPlan: UserPlanFollow) {
+  if (!isSupabaseConfigured) return;
+  try {
+    let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    let sessionUser = session?.user;
+
+    if (!sessionUser) {
+      console.error('[Supabase SyncFollowedPlan] No active session found.', sessionError);
+      return;
+    }
+
+    const userId = sessionUser.id;
+
+    const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', userId).maybeSingle();
+    if (!existingProfile) {
+      const fallbackUsername = 'User_' + userId.substring(0, 6);
+      await supabase.from('profiles').insert({
+        id: userId,
+        username: fallbackUsername,
+        avatar: '🧑',
+      });
+    }
+
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const followId = uuidPattern.test(followedPlan.id) ? followedPlan.id : crypto.randomUUID();
+
+    const { error } = await supabase.from('user_plan_follows').upsert({
+      id: followId,
+      user_id: userId,
+      original_plan_id: followedPlan.originalPlanId,
+      title: followedPlan.title,
+      description: followedPlan.description,
+      steps: followedPlan.steps,
+      is_completed: followedPlan.isCompleted,
+      points_awarded: followedPlan.pointsAwarded || 0,
+    });
+
+    if (error) {
+      console.error('Error syncing followed plan to Supabase:', error);
+    }
+  } catch (e) {
+    console.warn('Supabase followed plan sync error:', e);
+  }
+}
+
+export async function incrementPlanCopyCountSupabase(planId: string): Promise<number> {
+  if (!isSupabaseConfigured) return 0;
+  console.log('[Supabase] Executing incrementPlanCopyCountSupabase for planId:', planId);
+  try {
+    // 1. Attempt RPC call (atomic SECURITY DEFINER execution)
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('increment_plan_copy_count', {
+      target_plan_id: planId,
+    });
+
+    if (rpcErr) {
+      console.error('[Supabase] RPC increment_plan_copy_count error:', rpcErr);
+    } else {
+      console.log('[Supabase] RPC increment_plan_copy_count success, return value:', rpcData);
+      if (typeof rpcData === 'number' && rpcData > 0) {
+        return rpcData;
+      }
+    }
+
+    // 2. Direct atomic SQL update attempt (if RLS update policy granted)
+    const { data: fetchCurrent } = await supabase
+      .from('improvement_plans')
+      .select('copy_count')
+      .eq('id', planId)
+      .maybeSingle();
+
+    const newCount = (fetchCurrent?.copy_count || 0) + 1;
+    const { data: updatedRows, error: updateErr } = await supabase
+      .from('improvement_plans')
+      .update({ copy_count: newCount })
+      .eq('id', planId)
+      .select();
+
+    if (updateErr) {
+      console.error('[Supabase] Direct update copy_count error:', updateErr);
+    }
+
+    if (updatedRows && updatedRows.length > 0) {
+      return updatedRows[0].copy_count;
+    }
+
+    // 3. Fallback count from user_plan_follows table
+    const { count, error: countErr } = await supabase
+      .from('user_plan_follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('original_plan_id', planId);
+
+    if (countErr) {
+      console.error('[Supabase] Follow count query error:', countErr);
+    }
+
+    return count || newCount;
+  } catch (e) {
+    console.error('Error incrementing plan copy count:', e);
+    return 0;
+  }
+}
+
+export async function deleteFollowedPlanFromSupabase(followedPlanId: string) {
+  if (!isSupabaseConfigured) return;
+  try {
+    const { error } = await supabase.from('user_plan_follows').delete().eq('id', followedPlanId);
+    if (error) {
+      console.error('Error deleting followed plan from Supabase:', error);
+    }
+  } catch (e) {
+    console.warn('Supabase followed plan delete error:', e);
+  }
+}
+
+export function mapRowToImprovementPlan(row: any): ImprovementPlan {
+  return {
+    id: row?.id || '',
+    creatorId: row?.creator_id || '',
+    creatorUsername: row?.creator_username || 'Member',
+    creatorAvatar: row?.creator_avatar || '🧑',
+    creatorPoints: row?.creator_points || 0,
+    title: row?.title || 'Untitled Plan',
+    description: row?.description || '',
+    category: row?.category || 'Personal Growth',
+    isPublic: Boolean(row?.is_public),
+    steps: Array.isArray(row?.steps) ? row.steps : [],
+    copyCount: typeof row?.copy_count === 'number' ? row.copy_count : 0,
+    createdAt: row?.created_at || new Date().toISOString(),
+  };
 }
 
 export async function fetchPublicPlansFromSupabase(): Promise<ImprovementPlan[]> {
   if (!isSupabaseConfigured) return [];
   try {
-    const { data, error } = await supabase
+    const { data: plansData, error } = await supabase
       .from('improvement_plans')
       .select('*')
       .eq('is_public', true)
       .order('created_at', { ascending: false });
 
-    if (error || !data) return [];
+    if (error || !plansData) return [];
 
-    return data.map((row) => ({
-      id: row.id,
-      creatorId: row.creator_id,
-      creatorUsername: row.creator_username,
-      creatorAvatar: row.creator_avatar || '🧑',
-      title: row.title,
-      description: row.description,
-      category: row.category || 'Personal Growth',
-      isPublic: row.is_public,
-      steps: row.steps || [],
-      copyCount: row.copy_count || 0,
-      createdAt: row.created_at,
-    }));
+    // Fetch follow counts directly from user_plan_follows table
+    const { data: followsData } = await supabase
+      .from('user_plan_follows')
+      .select('original_plan_id');
+
+    const followCounts: Record<string, number> = {};
+    if (followsData) {
+      followsData.forEach((f) => {
+        if (f.original_plan_id) {
+          followCounts[f.original_plan_id] = (followCounts[f.original_plan_id] || 0) + 1;
+        }
+      });
+    }
+
+    return plansData.map((row) => {
+      const plan = mapRowToImprovementPlan(row);
+      const actualFollows = followCounts[row.id] || 0;
+      plan.copyCount = Math.max(plan.copyCount || 0, actualFollows);
+      return plan;
+    });
   } catch (e) {
     console.error('Error fetching public plans from Supabase:', e);
     return [];
