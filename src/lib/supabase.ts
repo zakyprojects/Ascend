@@ -200,29 +200,28 @@ export async function fetchProfileByUsernameFromSupabase(username: string) {
   }
 }
 
-const syncPlanTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+const planSyncLocks = new Map<string, boolean>();
+const planPendingPayloads = new Map<string, any>();
 
 export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string | null> {
   if (!isSupabaseConfigured) return null;
 
-  return new Promise((resolve) => {
-    const existingTimer = syncPlanTimeouts.get(plan.id);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
+  if (planSyncLocks.get(plan.id)) {
+    planPendingPayloads.set(plan.id, plan);
+    return null;
+  }
+
+  planSyncLocks.set(plan.id, true);
+
+  try {
+    // 1. Await absolute current session token
+    let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    let sessionUser = session?.user;
+
+    if (!sessionUser) {
+      console.warn('[Supabase Sync Warning] No active session found.', sessionError);
+      return null;
     }
-
-    const timer = setTimeout(async () => {
-      syncPlanTimeouts.delete(plan.id);
-      try {
-        // 1. Await absolute current session token
-        let { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        let sessionUser = session?.user;
-
-        if (!sessionUser) {
-          console.error('[Supabase Sync] No active session found.', sessionError);
-          resolve(null);
-          return;
-        }
 
     // 2. FORCE creator_id to match session.user.id (single source of truth for RLS)
     const creatorId = sessionUser.id;
@@ -251,92 +250,55 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
     const dbCopyCount = existingPlanRow?.copy_count ?? 0;
     const rawCopyCount = plan.copyCount !== undefined && plan.copyCount !== null ? plan.copyCount : 0;
     const finalCopyCount = Math.max(rawCopyCount, dbCopyCount);
-    const isPublicValue = plan.isPublic !== undefined && plan.isPublic !== null ? Boolean(plan.isPublic) : true;
-
-    const stepsPayload = {
-      items: plan.steps || [],
-      planType: plan.planType || 'milestone',
-      targetValue: plan.targetValue,
-      targetUnit: plan.targetUnit,
-      currentProgress: plan.currentProgress ?? 0,
-      targetDate: plan.targetDate,
-      cadence: plan.cadence,
-      duration: plan.duration,
-      startDate: plan.startDate,
-      streakCount: plan.streakCount ?? 0,
-      lastCompletedDate: plan.lastCompletedDate,
-      targetReviewDate: plan.targetReviewDate,
-      reflectionNotes: plan.reflectionNotes || [],
-    };
-
-    const payload: Record<string, any> = {
+    
+    // Strict Postgres Snake_Case Mapping
+    const anyPlan = plan as any;
+    const cleanPayload = {
       id: planId,
-      creator_id: creatorId, // Force session.user.id
+      creator_id: creatorId,
       creator_username: plan.creatorUsername || 'Member',
       creator_avatar: plan.creatorAvatar || '🧑',
-      title: plan.title || 'Untitled Plan',
+      title: plan.title || '',
       description: plan.description || '',
       category: plan.category || 'Personal Growth',
-      is_public: isPublicValue,
-      steps: stepsPayload,
+      plan_type: plan.planType || anyPlan.plan_type || 'milestone',
+      is_public: Boolean(plan.isPublic ?? anyPlan.is_public ?? false),
       copy_count: finalCopyCount,
-      plan_type: plan.planType || 'milestone',
-      target_value: plan.targetValue,
-      target_unit: plan.targetUnit,
-      current_progress: plan.currentProgress ?? 0,
-      target_date: plan.targetDate,
-      cadence: plan.cadence,
-      duration: plan.duration,
-      start_date: plan.startDate,
-      streak_count: plan.streakCount ?? 0,
-      last_completed_date: plan.lastCompletedDate,
-      target_review_date: plan.targetReviewDate,
-      reflection_notes: plan.reflectionNotes || [],
+      steps: Array.isArray(plan.steps) ? plan.steps : [],
+      target_value: plan.targetValue ?? anyPlan.target_value ?? null,
+      target_unit: plan.targetUnit ?? anyPlan.target_unit ?? null,
+      current_progress: plan.currentProgress ?? anyPlan.current_progress ?? 0,
+      target_date: plan.targetDate ?? anyPlan.target_date ?? null,
+      cadence: plan.cadence ?? null,
+      duration: plan.duration ?? null,
+      start_date: plan.startDate ?? anyPlan.start_date ?? null,
+      streak_count: plan.streakCount ?? anyPlan.streak_count ?? 0,
+      last_completed_date: plan.lastCompletedDate ?? anyPlan.last_completed_date ?? null,
+      target_review_date: plan.targetReviewDate ?? anyPlan.target_review_date ?? null,
+      reflection_notes: Array.isArray(plan.reflectionNotes) ? plan.reflectionNotes : []
     };
 
-    // Strip undefined properties to prevent 400 Bad Request errors from Supabase
-    Object.keys(payload).forEach((key) => {
-      if (payload[key] === undefined) {
-        delete payload[key];
-      }
-    });
-
     // 3. Execute Supabase upsert/insert with forced creator_id
-    let { error } = await supabase.from('improvement_plans').upsert(payload);
-
-    if (error && error.message?.includes('column')) {
-      // Fallback: If new columns don't exist yet on DB, upsert without new columns (data is safely in steps JSONB wrapper)
-      delete payload.plan_type;
-      delete payload.target_value;
-      delete payload.target_unit;
-      delete payload.current_progress;
-      delete payload.target_date;
-      delete payload.cadence;
-      delete payload.duration;
-      delete payload.start_date;
-      delete payload.streak_count;
-      delete payload.last_completed_date;
-      delete payload.target_review_date;
-      delete payload.reflection_notes;
-      payload.steps = stepsPayload;
-      ({ error } = await supabase.from('improvement_plans').upsert(payload));
-    }
+    const { error } = await supabase.from('improvement_plans').upsert(cleanPayload, { onConflict: 'id' });
 
     if (error) {
-      console.error('Error syncing plan to Supabase:', error);
-      resolve(null);
-      return;
+      console.warn(`[Supabase Sync Warning] Error syncing plan to Supabase: ${error.message}`, error.details);
+      return null;
     }
 
-    resolve(planId);
-  } catch (e) {
-    console.error('Supabase plan sync error:', e);
-    resolve(null);
-  }
-    }, 500);
+    return planId;
+  } catch (e: any) {
+    console.warn(`[Supabase Sync Warning] Supabase plan sync error: ${e.message}`, e);
+    return null;
+  } finally {
+    planSyncLocks.set(plan.id, false);
 
-    syncPlanTimeouts.set(plan.id, timer);
-  });
+    if (planPendingPayloads.has(plan.id)) {
+      const nextPlan = planPendingPayloads.get(plan.id);
+      planPendingPayloads.delete(plan.id);
+      void syncPlanToSupabase(nextPlan);
+    }
+  }
 }
 
 export async function deletePlanFromSupabase(planId: string) {
