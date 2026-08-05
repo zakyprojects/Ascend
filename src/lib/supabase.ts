@@ -200,17 +200,29 @@ export async function fetchProfileByUsernameFromSupabase(username: string) {
   }
 }
 
+const syncPlanTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
 export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string | null> {
   if (!isSupabaseConfigured) return null;
-  try {
-    // 1. Await absolute current session token
-    let { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    let sessionUser = session?.user;
 
-    if (!sessionUser) {
-      console.error('[Supabase Sync] No active session found.', sessionError);
-      throw new Error('AUTH_MISSING: You must be fully authenticated to sync a plan.');
+  return new Promise((resolve) => {
+    const existingTimer = syncPlanTimeouts.get(plan.id);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
     }
+
+    const timer = setTimeout(async () => {
+      syncPlanTimeouts.delete(plan.id);
+      try {
+        // 1. Await absolute current session token
+        let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        let sessionUser = session?.user;
+
+        if (!sessionUser) {
+          console.error('[Supabase Sync] No active session found.', sessionError);
+          resolve(null);
+          return;
+        }
 
     // 2. FORCE creator_id to match session.user.id (single source of truth for RLS)
     const creatorId = sessionUser.id;
@@ -282,6 +294,13 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
       reflection_notes: plan.reflectionNotes || [],
     };
 
+    // Strip undefined properties to prevent 400 Bad Request errors from Supabase
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] === undefined) {
+        delete payload[key];
+      }
+    });
+
     // 3. Execute Supabase upsert/insert with forced creator_id
     let { error } = await supabase.from('improvement_plans').upsert(payload);
 
@@ -305,14 +324,19 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
 
     if (error) {
       console.error('Error syncing plan to Supabase:', error);
-      return null;
+      resolve(null);
+      return;
     }
 
-    return planId;
+    resolve(planId);
   } catch (e) {
     console.error('Supabase plan sync error:', e);
-    return null;
+    resolve(null);
   }
+    }, 500);
+
+    syncPlanTimeouts.set(plan.id, timer);
+  });
 }
 
 export async function deletePlanFromSupabase(planId: string) {

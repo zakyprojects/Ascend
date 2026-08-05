@@ -2222,20 +2222,24 @@ export function useAppState() {
       if (toggledState && canEarnPoints) {
         awardPointsNow = true;
         addedPts = 5;
+      } else if (!toggledState && (target.pointsAwarded || 0) > 0) {
+        awardPointsNow = true;
+        addedPts = -5;
       }
 
       updatedFollow = {
         ...target,
         steps: newSteps,
-        pointsAwarded: (target.pointsAwarded || 0) + addedPts,
+        pointsAwarded: Math.max(0, (target.pointsAwarded || 0) + addedPts),
       };
 
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
       let nextState = { ...prev, followedPlans: updatedFollows };
-      if (awardPointsNow) {
-        const pts = addPointsInternal(nextState, 5, `Completed step on followed plan: ${target.title}`, 'plan');
+      if (awardPointsNow && addedPts !== 0) {
+        const msg = addedPts > 0 ? `Completed step on followed plan: ${target.title}` : `Unchecked step on followed plan: ${target.title}`;
+        const pts = addPointsInternal(nextState, addedPts, msg, 'plan');
         nextState = { ...nextState, ...pts };
       }
 
@@ -2259,6 +2263,8 @@ export function useAppState() {
       const validProg = Math.max(0, newProgress);
       const isProgressIncreased = validProg > (target.currentProgress || 0);
 
+      const isProgressDecreased = validProg < (target.currentProgress || 0);
+
       const pointEligibleFollows = prev.followedPlans.filter((f) => (f.pointsAwarded || 0) > 0);
       const isAlreadyPointEligible = (target.pointsAwarded || 0) > 0;
       const canEarnPoints = isAlreadyPointEligible || pointEligibleFollows.length < 2;
@@ -2267,20 +2273,24 @@ export function useAppState() {
       if (isProgressIncreased && canEarnPoints) {
         awardPointsNow = true;
         addedPts = 5;
+      } else if (isProgressDecreased && (target.pointsAwarded || 0) > 0) {
+        awardPointsNow = true;
+        addedPts = -5;
       }
 
       updatedFollow = {
         ...target,
         currentProgress: validProg,
-        pointsAwarded: (target.pointsAwarded || 0) + addedPts,
+        pointsAwarded: Math.max(0, (target.pointsAwarded || 0) + addedPts),
       };
 
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
       let nextState = { ...prev, followedPlans: updatedFollows };
-      if (awardPointsNow) {
-        const pts = addPointsInternal(nextState, 5, `Updated progress on followed goal: ${target.title}`, 'plan');
+      if (awardPointsNow && addedPts !== 0) {
+        const msg = addedPts > 0 ? `Updated progress on followed goal: ${target.title}` : `Decreased progress on followed goal: ${target.title}`;
+        const pts = addPointsInternal(nextState, addedPts, msg, 'plan');
         nextState = { ...nextState, ...pts };
       }
 
@@ -2376,15 +2386,24 @@ export function useAppState() {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
+      let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+      const deductPts = (target.pointsAwarded || 0) >= 5;
+
       updatedFollow = {
         ...target,
         streakCount: newStreak,
         lastCompletedDate: yesterday.toISOString(),
+        pointsAwarded: deductPts ? (target.pointsAwarded || 0) - 5 : (target.pointsAwarded || 0),
       };
 
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
-      return { ...prev, followedPlans: updatedFollows };
+      
+      if (deductPts) {
+        pointsUpdate = addPointsInternal(prev, -5, `Undid habit journey completion: ${target.title}`, 'plan');
+      }
+
+      return { ...prev, ...pointsUpdate, followedPlans: updatedFollows };
     });
 
     if (updatedFollow) {
@@ -2504,6 +2523,8 @@ export function useAppState() {
       let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
       if (isNowCompleted) {
         pointsUpdate = addPointsInternal(prev, 10, `Completed plan step: ${targetStep.title}`, 'plan_step');
+      } else {
+        pointsUpdate = addPointsInternal(prev, -10, `Unchecked plan step: ${targetStep.title}`, 'plan_step');
       }
 
       updatedPlan = {
