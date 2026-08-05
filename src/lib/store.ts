@@ -36,7 +36,7 @@ import {
   BookCategory,
 } from '@/types';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, periodKey, todayKey } from './dates';
+import { uid, generateUUID, periodKey, todayKey, isTodayLocal } from './dates';
 import { PresetHabit } from './presets';
 import { SEED_ACCOUNTS } from './seedAccounts';
 import {
@@ -180,10 +180,17 @@ function addPointsInternal(prev: AppState, amount: number, reason: string, sourc
 
 export function useAppState() {
   const [state, setState] = useState<AppState>(loadInitialState);
+  const isHydrated = useRef(false);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    persistState(state);
+    if (isHydrated.current) {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      debounceTimer.current = setTimeout(() => {
+        persistState(state);
+      }, 2000);
+    }
   }, [state]);
 
   // Initial Supabase data load & auth listener (single source of truth for session state)
@@ -265,6 +272,7 @@ export function useAppState() {
             ]);
 
             if (mounted) {
+              isHydrated.current = true;
               setState(sanitizeLoadedState(hydratedState, user));
             }
           } catch (e) {
@@ -280,9 +288,14 @@ export function useAppState() {
                 createdAt: session.user.created_at || new Date().toISOString(),
                 isProfilePublic: true,
               };
+              isHydrated.current = true;
               setState((prev) => {
                 if (prev.currentUser?.id === userId) return prev;
-                return sanitizeLoadedState({ ...DEFAULT_STATE, currentUser: fallbackUser, username: fallbackUser.username }, fallbackUser);
+                return {
+                  ...prev,
+                  currentUser: fallbackUser,
+                  username: fallbackUser.username,
+                };
               });
             }
           }
@@ -1677,11 +1690,23 @@ export function useAppState() {
       description: string,
       isPublic: boolean,
       stepTitles: string[],
-      category?: string
+      category?: string,
+      planType: PlanType = 'milestone',
+      typeParams?: {
+        targetValue?: number;
+        targetUnit?: string;
+        currentProgress?: number;
+        targetDate?: string;
+        cadence?: 'daily' | 'weekly';
+        duration?: number;
+        startDate?: string;
+        targetReviewDate?: string;
+        initialReflectionNote?: string;
+      }
     ) => {
       let newPlan: ImprovementPlan | null = null;
       setState((prev) => {
-        const steps: PlanStep[] = stepTitles
+        const steps: PlanStep[] = (stepTitles || [])
           .filter((t) => t.trim().length > 0)
           .map((t, i) => ({
             id: uid(),
@@ -1689,6 +1714,10 @@ export function useAppState() {
             orderIndex: i,
             completed: false,
           }));
+
+        const reflectionNotes: VisionReflectionNote[] = typeParams?.initialReflectionNote
+          ? [{ id: uid(), date: new Date().toISOString(), note: typeParams.initialReflectionNote.trim() }]
+          : [];
 
         newPlan = {
           id: generateUUID(),
@@ -1703,6 +1732,20 @@ export function useAppState() {
           steps,
           copyCount: 0,
           createdAt: new Date().toISOString(),
+
+          // Phase B Plan Type Properties
+          planType,
+          targetValue: typeParams?.targetValue,
+          targetUnit: typeParams?.targetUnit,
+          currentProgress: typeParams?.currentProgress ?? 0,
+          targetDate: typeParams?.targetDate,
+          cadence: typeParams?.cadence ?? 'daily',
+          duration: typeParams?.duration ?? 30,
+          startDate: typeParams?.startDate || new Date().toISOString(),
+          streakCount: 0,
+          lastCompletedDate: undefined,
+          targetReviewDate: typeParams?.targetReviewDate,
+          reflectionNotes,
         };
 
         return {
@@ -1721,26 +1764,237 @@ export function useAppState() {
     []
   );
 
+  const updateTargetGoalProgress = useCallback((planId: string, newProgress: number) => {
+    let updatedPlan: ImprovementPlan | null = null;
+    setState((prev) => {
+      const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
+      if (idx === -1) return prev;
+      const target = prev.improvementPlans[idx];
+      const validProgress = Math.max(0, newProgress);
+
+      updatedPlan = {
+        ...target,
+        currentProgress: validProgress,
+      };
+
+      const updatedPlans = [...prev.improvementPlans];
+      updatedPlans[idx] = updatedPlan;
+      return { ...prev, improvementPlans: updatedPlans };
+    });
+
+    if (updatedPlan) {
+      updateCachedPublicPlan(updatedPlan);
+      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      syncPlanToSupabase(updatedPlan);
+    }
+  }, []);
+
+  const markHabitJourneyDone = useCallback((planId: string) => {
+    let updatedPlan: ImprovementPlan | null = null;
+    setState((prev) => {
+      const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
+      if (idx === -1) return prev;
+      const target = prev.improvementPlans[idx];
+
+      const nowIso = new Date().toISOString();
+      const last = target.lastCompletedDate ? new Date(target.lastCompletedDate) : null;
+      const now = new Date();
+
+      let newStreak = target.streakCount || 0;
+      if (!last) {
+        newStreak = 1;
+      } else {
+        const diffHours = (now.getTime() - last.getTime()) / (1000 * 60 * 60);
+        if (target.cadence === 'weekly') {
+          if (diffHours >= 24 && diffHours <= 168 + 48) {
+            newStreak += 1;
+          } else if (diffHours > 168 + 48) {
+            newStreak = 1;
+          }
+        } else {
+          // Daily
+          if (diffHours >= 18 && diffHours <= 48) {
+            newStreak += 1;
+          } else if (diffHours > 48) {
+            newStreak = 1;
+          } else if (diffHours < 18) {
+            // Already done today
+            return prev;
+          }
+        }
+      }
+
+      updatedPlan = {
+        ...target,
+        streakCount: newStreak,
+        lastCompletedDate: nowIso,
+      };
+
+      const updatedPlans = [...prev.improvementPlans];
+      updatedPlans[idx] = updatedPlan;
+      return { ...prev, improvementPlans: updatedPlans };
+    });
+
+    if (updatedPlan) {
+      updateCachedPublicPlan(updatedPlan);
+      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      syncPlanToSupabase(updatedPlan);
+    }
+  }, []);
+
+  const addVisionReflectionNote = useCallback((planId: string, note: string) => {
+    if (!note.trim()) return;
+    let updatedPlan: ImprovementPlan | null = null;
+    setState((prev) => {
+      const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
+      if (idx === -1) return prev;
+      const target = prev.improvementPlans[idx];
+
+      const newNote: VisionReflectionNote = {
+        id: generateUUID(),
+        date: new Date().toISOString(),
+        note: note.trim(),
+      };
+
+      const existingNotes = target.reflectionNotes || [];
+      updatedPlan = {
+        ...target,
+        reflectionNotes: [newNote, ...existingNotes],
+      };
+
+      const updatedPlans = [...prev.improvementPlans];
+      updatedPlans[idx] = updatedPlan;
+      return { ...prev, improvementPlans: updatedPlans };
+    });
+
+    if (updatedPlan) {
+      updateCachedPublicPlan(updatedPlan);
+      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      syncPlanToSupabase(updatedPlan);
+    }
+  }, []);
+
+  const undoHabitJourneyDone = useCallback((planId: string) => {
+    let updatedPlan: ImprovementPlan | null = null;
+    setState((prev) => {
+      const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
+      if (idx === -1) return prev;
+      const target = prev.improvementPlans[idx];
+
+      if (!isTodayLocal(target.lastCompletedDate)) {
+        return prev;
+      }
+
+      const newStreak = Math.max(0, (target.streakCount || 0) - 1);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      updatedPlan = {
+        ...target,
+        streakCount: newStreak,
+        lastCompletedDate: yesterday.toISOString(),
+      };
+
+      const updatedPlans = [...prev.improvementPlans];
+      updatedPlans[idx] = updatedPlan;
+      return { ...prev, improvementPlans: updatedPlans };
+    });
+
+    if (updatedPlan) {
+      updateCachedPublicPlan(updatedPlan);
+      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      syncPlanToSupabase(updatedPlan);
+    }
+  }, []);
+
+  const editVisionReflectionNote = useCallback((planId: string, noteId: string, newNoteText: string) => {
+    if (!newNoteText.trim()) return;
+    let updatedPlan: ImprovementPlan | null = null;
+
+    setState((prev) => {
+      const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
+      if (idx === -1) return prev;
+      const target = prev.improvementPlans[idx];
+
+      const notes = target.reflectionNotes || [];
+      const updatedNotes = notes.map((n) =>
+        n.id === noteId || n.date === noteId ? { ...n, note: newNoteText.trim() } : n
+      );
+
+      updatedPlan = {
+        ...target,
+        reflectionNotes: updatedNotes,
+      };
+
+      const updatedPlans = [...prev.improvementPlans];
+      updatedPlans[idx] = updatedPlan;
+      return { ...prev, improvementPlans: updatedPlans };
+    });
+
+    if (updatedPlan) {
+      updateCachedPublicPlan(updatedPlan);
+      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      syncPlanToSupabase(updatedPlan);
+    }
+  }, []);
+
+  const deleteVisionReflectionNote = useCallback((planId: string, noteId: string) => {
+    let updatedPlan: ImprovementPlan | null = null;
+
+    setState((prev) => {
+      const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
+      if (idx === -1) return prev;
+      const target = prev.improvementPlans[idx];
+
+      const notes = target.reflectionNotes || [];
+      const updatedNotes = notes.filter((n) => n.id !== noteId && n.date !== noteId);
+
+      updatedPlan = {
+        ...target,
+        reflectionNotes: updatedNotes,
+      };
+
+      const updatedPlans = [...prev.improvementPlans];
+      updatedPlans[idx] = updatedPlan;
+      return { ...prev, improvementPlans: updatedPlans };
+    });
+
+    if (updatedPlan) {
+      updateCachedPublicPlan(updatedPlan);
+      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      syncPlanToSupabase(updatedPlan);
+    }
+  }, []);
+
   const updateImprovementPlan = useCallback((
     planId: string,
     title: string,
     description: string,
     category: string,
     isPublic: boolean,
-    stepTitles: string[]
+    stepTitles?: string[],
+    typeParams?: {
+      targetValue?: number;
+      targetUnit?: string;
+      targetDate?: string;
+      cadence?: 'daily' | 'weekly';
+      duration?: number;
+      targetReviewDate?: string;
+    }
   ) => {
     let updatedPlan: ImprovementPlan | null = null;
     setState((prev) => {
       const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
       if (idx === -1) return prev;
       const target = prev.improvementPlans[idx];
-      const steps: PlanStep[] = stepTitles
+
+      const steps: PlanStep[] = (stepTitles || [])
         .filter((t) => t.trim().length > 0)
         .map((t, i) => ({
           id: target.steps[i]?.id || uid(),
           title: t.trim(),
           orderIndex: i,
-          completed: false,
+          completed: target.steps[i]?.completed || false,
         }));
 
       updatedPlan = {
@@ -1749,8 +2003,15 @@ export function useAppState() {
         description: description.trim(),
         category: category.trim() || 'Personal Growth',
         isPublic,
-        steps,
+        steps: steps.length > 0 ? steps : target.steps,
         creatorPoints: prev.totalPoints,
+        // Structural field updates
+        targetValue: typeParams?.targetValue !== undefined ? typeParams.targetValue : target.targetValue,
+        targetUnit: typeParams?.targetUnit !== undefined ? typeParams.targetUnit : target.targetUnit,
+        targetDate: typeParams?.targetDate !== undefined ? typeParams.targetDate : target.targetDate,
+        cadence: typeParams?.cadence !== undefined ? typeParams.cadence : target.cadence,
+        duration: typeParams?.duration !== undefined ? typeParams.duration : target.duration,
+        targetReviewDate: typeParams?.targetReviewDate !== undefined ? typeParams.targetReviewDate : target.targetReviewDate,
       };
 
       const updatedPlans = [...prev.improvementPlans];
@@ -1898,10 +2159,28 @@ export function useAppState() {
         originalPlanId: planId,
         title: originalPlan.title,
         description: originalPlan.description,
-        steps: stepsCopy,
+        steps: (originalPlan.steps || []).map((s) => ({
+          ...s,
+          id: uid(),
+          completed: false,
+        })),
         isCompleted: false,
         pointsAwarded: 0,
         createdAt: new Date().toISOString(),
+
+        // Phase B Plan Type Additions (fresh starting values for follower)
+        planType: originalPlan.planType || 'milestone',
+        targetValue: originalPlan.targetValue,
+        targetUnit: originalPlan.targetUnit,
+        currentProgress: 0, // Reset progress for copier
+        targetDate: originalPlan.targetDate,
+        cadence: originalPlan.cadence,
+        duration: originalPlan.duration,
+        startDate: new Date().toISOString(),
+        streakCount: 0, // Reset streak for copier
+        lastCompletedDate: undefined,
+        targetReviewDate: originalPlan.targetReviewDate,
+        reflectionNotes: [], // Reset reflections to empty for copier
       };
 
       setState((prev) => ({
@@ -1916,6 +2195,289 @@ export function useAppState() {
     }
   }, [updatePlanCopyCount]);
 
+  // --- FOLLOWED & COPIED PLANS INTERACTIVE ACTIONS WITH LIFETIME POINT CAP (MAX 2 PLANS) ---
+  const completeFollowedPlanStep = useCallback((followId: string, stepId: string) => {
+    let updatedFollow: UserPlanFollow | null = null;
+    let awardPointsNow = false;
+
+    setState((prev) => {
+      const idx = prev.followedPlans.findIndex((f) => f.id === followId);
+      if (idx === -1) return prev;
+
+      const target = prev.followedPlans[idx];
+      const stepIdx = (target.steps || []).findIndex((s) => s.id === stepId);
+      if (stepIdx === -1) return prev;
+
+      const newSteps = [...target.steps];
+      const currentStep = newSteps[stepIdx];
+      const toggledState = !currentStep.completed;
+      newSteps[stepIdx] = { ...currentStep, completed: toggledState };
+
+      // Lifetime Point Cap Check (Max 2 followed plans earn points)
+      const pointEligibleFollows = prev.followedPlans.filter((f) => (f.pointsAwarded || 0) > 0);
+      const isAlreadyPointEligible = (target.pointsAwarded || 0) > 0;
+      const canEarnPoints = isAlreadyPointEligible || pointEligibleFollows.length < 2;
+
+      let addedPts = 0;
+      if (toggledState && canEarnPoints) {
+        awardPointsNow = true;
+        addedPts = 5;
+      }
+
+      updatedFollow = {
+        ...target,
+        steps: newSteps,
+        pointsAwarded: (target.pointsAwarded || 0) + addedPts,
+      };
+
+      const updatedFollows = [...prev.followedPlans];
+      updatedFollows[idx] = updatedFollow;
+
+      let nextState = { ...prev, followedPlans: updatedFollows };
+      if (awardPointsNow) {
+        const pts = addPointsInternal(nextState, 5, `Completed step on followed plan: ${target.title}`, 'plan');
+        nextState = { ...nextState, ...pts };
+      }
+
+      return nextState;
+    });
+
+    if (updatedFollow) {
+      syncFollowedPlanToSupabase(updatedFollow);
+    }
+  }, []);
+
+  const updateFollowedTargetGoalProgress = useCallback((followId: string, newProgress: number) => {
+    let updatedFollow: UserPlanFollow | null = null;
+    let awardPointsNow = false;
+
+    setState((prev) => {
+      const idx = prev.followedPlans.findIndex((f) => f.id === followId);
+      if (idx === -1) return prev;
+
+      const target = prev.followedPlans[idx];
+      const validProg = Math.max(0, newProgress);
+      const isProgressIncreased = validProg > (target.currentProgress || 0);
+
+      const pointEligibleFollows = prev.followedPlans.filter((f) => (f.pointsAwarded || 0) > 0);
+      const isAlreadyPointEligible = (target.pointsAwarded || 0) > 0;
+      const canEarnPoints = isAlreadyPointEligible || pointEligibleFollows.length < 2;
+
+      let addedPts = 0;
+      if (isProgressIncreased && canEarnPoints) {
+        awardPointsNow = true;
+        addedPts = 5;
+      }
+
+      updatedFollow = {
+        ...target,
+        currentProgress: validProg,
+        pointsAwarded: (target.pointsAwarded || 0) + addedPts,
+      };
+
+      const updatedFollows = [...prev.followedPlans];
+      updatedFollows[idx] = updatedFollow;
+
+      let nextState = { ...prev, followedPlans: updatedFollows };
+      if (awardPointsNow) {
+        const pts = addPointsInternal(nextState, 5, `Updated progress on followed goal: ${target.title}`, 'plan');
+        nextState = { ...nextState, ...pts };
+      }
+
+      return nextState;
+    });
+
+    if (updatedFollow) {
+      syncFollowedPlanToSupabase(updatedFollow);
+    }
+  }, []);
+
+  const markFollowedHabitJourneyDone = useCallback((followId: string) => {
+    let updatedFollow: UserPlanFollow | null = null;
+    let awardPointsNow = false;
+
+    setState((prev) => {
+      const idx = prev.followedPlans.findIndex((f) => f.id === followId);
+      if (idx === -1) return prev;
+
+      const target = prev.followedPlans[idx];
+      const nowIso = new Date().toISOString();
+      const last = target.lastCompletedDate ? new Date(target.lastCompletedDate) : null;
+      const now = new Date();
+
+      let newStreak = target.streakCount || 0;
+      if (!last) {
+        newStreak = 1;
+      } else {
+        const diffHours = (now.getTime() - last.getTime()) / (1000 * 60 * 60);
+        if (target.cadence === 'weekly') {
+          if (diffHours >= 24 && diffHours <= 168 + 48) {
+            newStreak += 1;
+          } else if (diffHours > 168 + 48) {
+            newStreak = 1;
+          }
+        } else {
+          if (diffHours >= 18 && diffHours <= 48) {
+            newStreak += 1;
+          } else if (diffHours > 48) {
+            newStreak = 1;
+          } else if (diffHours < 18) {
+            return prev;
+          }
+        }
+      }
+
+      const pointEligibleFollows = prev.followedPlans.filter((f) => (f.pointsAwarded || 0) > 0);
+      const isAlreadyPointEligible = (target.pointsAwarded || 0) > 0;
+      const canEarnPoints = isAlreadyPointEligible || pointEligibleFollows.length < 2;
+
+      let addedPts = 0;
+      if (canEarnPoints) {
+        awardPointsNow = true;
+        addedPts = 5;
+      }
+
+      updatedFollow = {
+        ...target,
+        streakCount: newStreak,
+        lastCompletedDate: nowIso,
+        pointsAwarded: (target.pointsAwarded || 0) + addedPts,
+      };
+
+      const updatedFollows = [...prev.followedPlans];
+      updatedFollows[idx] = updatedFollow;
+
+      let nextState = { ...prev, followedPlans: updatedFollows };
+      if (awardPointsNow) {
+        const pts = addPointsInternal(nextState, 5, `Completed habit on followed journey: ${target.title}`, 'plan');
+        nextState = { ...nextState, ...pts };
+      }
+
+      return nextState;
+    });
+
+    if (updatedFollow) {
+      syncFollowedPlanToSupabase(updatedFollow);
+    }
+  }, []);
+
+  const undoFollowedHabitJourneyDone = useCallback((followId: string) => {
+    let updatedFollow: UserPlanFollow | null = null;
+    setState((prev) => {
+      const idx = prev.followedPlans.findIndex((f) => f.id === followId);
+      if (idx === -1) return prev;
+      const target = prev.followedPlans[idx];
+
+      if (!isTodayLocal(target.lastCompletedDate)) {
+        return prev;
+      }
+
+      const newStreak = Math.max(0, (target.streakCount || 0) - 1);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      updatedFollow = {
+        ...target,
+        streakCount: newStreak,
+        lastCompletedDate: yesterday.toISOString(),
+      };
+
+      const updatedFollows = [...prev.followedPlans];
+      updatedFollows[idx] = updatedFollow;
+      return { ...prev, followedPlans: updatedFollows };
+    });
+
+    if (updatedFollow) {
+      syncFollowedPlanToSupabase(updatedFollow);
+    }
+  }, []);
+
+  const addFollowedVisionReflectionNote = useCallback((followId: string, note: string) => {
+    if (!note.trim()) return;
+    let updatedFollow: UserPlanFollow | null = null;
+
+    setState((prev) => {
+      const idx = prev.followedPlans.findIndex((f) => f.id === followId);
+      if (idx === -1) return prev;
+
+      const target = prev.followedPlans[idx];
+      const newNote: VisionReflectionNote = {
+        id: uid(),
+        date: new Date().toISOString(),
+        note: note.trim(),
+      };
+
+      const existingNotes = target.reflectionNotes || [];
+      updatedFollow = {
+        ...target,
+        reflectionNotes: [newNote, ...existingNotes],
+      };
+
+      const updatedFollows = [...prev.followedPlans];
+      updatedFollows[idx] = updatedFollow;
+      return { ...prev, followedPlans: updatedFollows };
+    });
+
+    if (updatedFollow) {
+      syncFollowedPlanToSupabase(updatedFollow);
+    }
+  }, []);
+
+  const editFollowedVisionReflectionNote = useCallback((followId: string, noteId: string, newNoteText: string) => {
+    if (!newNoteText.trim()) return;
+    let updatedFollow: UserPlanFollow | null = null;
+
+    setState((prev) => {
+      const idx = prev.followedPlans.findIndex((f) => f.id === followId);
+      if (idx === -1) return prev;
+      const target = prev.followedPlans[idx];
+
+      const notes = target.reflectionNotes || [];
+      const updatedNotes = notes.map((n) =>
+        n.id === noteId || n.date === noteId ? { ...n, note: newNoteText.trim() } : n
+      );
+
+      updatedFollow = {
+        ...target,
+        reflectionNotes: updatedNotes,
+      };
+
+      const updatedFollows = [...prev.followedPlans];
+      updatedFollows[idx] = updatedFollow;
+      return { ...prev, followedPlans: updatedFollows };
+    });
+
+    if (updatedFollow) {
+      syncFollowedPlanToSupabase(updatedFollow);
+    }
+  }, []);
+
+  const deleteFollowedVisionReflectionNote = useCallback((followId: string, noteId: string) => {
+    let updatedFollow: UserPlanFollow | null = null;
+
+    setState((prev) => {
+      const idx = prev.followedPlans.findIndex((f) => f.id === followId);
+      if (idx === -1) return prev;
+      const target = prev.followedPlans[idx];
+
+      const notes = target.reflectionNotes || [];
+      const updatedNotes = notes.filter((n) => n.id !== noteId && n.date !== noteId);
+
+      updatedFollow = {
+        ...target,
+        reflectionNotes: updatedNotes,
+      };
+
+      const updatedFollows = [...prev.followedPlans];
+      updatedFollows[idx] = updatedFollow;
+      return { ...prev, followedPlans: updatedFollows };
+    });
+
+    if (updatedFollow) {
+      syncFollowedPlanToSupabase(updatedFollow);
+    }
+  }, []);
+
   const deleteFollowedPlan = useCallback((followedPlanId: string) => {
     deleteFollowedPlanFromSupabase(followedPlanId);
     setState((prev) => ({
@@ -1924,13 +2486,14 @@ export function useAppState() {
     }));
   }, []);
 
-  const completePlanStep = useCallback((followedPlanId: string, stepId: string) => {
+  const completePlanStep = useCallback((planId: string, stepId: string) => {
+    let updatedPlan: ImprovementPlan | null = null;
     setState((prev) => {
-      const idx = prev.followedPlans.findIndex((f) => f.id === followedPlanId);
+      const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
       if (idx === -1) return prev;
-      const target = prev.followedPlans[idx];
+      const target = prev.improvementPlans[idx];
 
-      const stepIdx = target.steps.findIndex((s) => s.id === stepId);
+      const stepIdx = (target.steps || []).findIndex((s) => s.id === stepId);
       if (stepIdx === -1) return prev;
       const targetStep = target.steps[stepIdx];
 
@@ -1938,28 +2501,31 @@ export function useAppState() {
       const updatedSteps = [...target.steps];
       updatedSteps[stepIdx] = { ...targetStep, completed: isNowCompleted };
 
-      const allDone = updatedSteps.length > 0 && updatedSteps.every((s) => s.completed);
-
       let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
       if (isNowCompleted) {
         pointsUpdate = addPointsInternal(prev, 10, `Completed plan step: ${targetStep.title}`, 'plan_step');
       }
 
-      const updatedFollowed: UserPlanFollow = {
+      updatedPlan = {
         ...target,
         steps: updatedSteps,
-        isCompleted: allDone,
       };
 
-      const updatedList = [...prev.followedPlans];
-      updatedList[idx] = updatedFollowed;
+      const updatedPlans = [...prev.improvementPlans];
+      updatedPlans[idx] = updatedPlan;
 
       return {
         ...prev,
-        followedPlans: updatedList,
         ...pointsUpdate,
+        improvementPlans: updatedPlans,
       };
     });
+
+    if (updatedPlan) {
+      updateCachedPublicPlan(updatedPlan);
+      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      syncPlanToSupabase(updatedPlan);
+    }
   }, []);
 
   const deletePlan = useCallback(async (planId: string) => {
@@ -2548,6 +3114,19 @@ export function useAppState() {
     createImprovementPlan,
     updateImprovementPlan,
     togglePlanVisibility,
+    updateTargetGoalProgress,
+    markHabitJourneyDone,
+    undoHabitJourneyDone,
+    addVisionReflectionNote,
+    editVisionReflectionNote,
+    deleteVisionReflectionNote,
+    completeFollowedPlanStep,
+    updateFollowedTargetGoalProgress,
+    markFollowedHabitJourneyDone,
+    undoFollowedHabitJourneyDone,
+    addFollowedVisionReflectionNote,
+    editFollowedVisionReflectionNote,
+    deleteFollowedVisionReflectionNote,
     copyPublicPlan,
     updatePlanCopyCount,
     deleteFollowedPlan,

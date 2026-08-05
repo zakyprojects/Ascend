@@ -309,6 +309,14 @@ export interface PlanStep {
   completed: boolean;
 }
 
+export type PlanType = 'milestone' | 'target_goal' | 'habit_journey' | 'vision';
+
+export interface VisionReflectionNote {
+  id: string;
+  date: string;
+  note: string;
+}
+
 export interface ImprovementPlan {
   id: string;
   creatorId: string;
@@ -322,6 +330,23 @@ export interface ImprovementPlan {
   steps: PlanStep[];
   copyCount: number;
   createdAt: string;
+
+  // Phase B Plan Type Additions
+  planType?: PlanType;
+  // Target Goal fields
+  targetValue?: number;
+  targetUnit?: string;
+  currentProgress?: number;
+  targetDate?: string;
+  // Habit Journey fields
+  cadence?: 'daily' | 'weekly';
+  duration?: number;
+  startDate?: string;
+  streakCount?: number;
+  lastCompletedDate?: string;
+  // Vision fields
+  targetReviewDate?: string;
+  reflectionNotes?: VisionReflectionNote[];
 }
 
 export interface UserPlanFollow {
@@ -334,6 +359,23 @@ export interface UserPlanFollow {
   isCompleted: boolean;
   pointsAwarded: number;
   createdAt: string;
+
+  // Phase B Plan Type Additions for Followed Copies
+  planType?: PlanType;
+  // Target Goal fields
+  targetValue?: number;
+  targetUnit?: string;
+  currentProgress?: number;
+  targetDate?: string;
+  // Habit Journey fields
+  cadence?: 'daily' | 'weekly';
+  duration?: number;
+  startDate?: string;
+  streakCount?: number;
+  lastCompletedDate?: string;
+  // Vision fields
+  targetReviewDate?: string;
+  reflectionNotes?: VisionReflectionNote[];
 }
 
 // Social Features 2: Accountability Partner & Shared Challenges

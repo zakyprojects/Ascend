@@ -77,7 +77,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
     }
   };
 
-  const unreadNotifsCount = store.state.partnerNotifications.filter((n) => !n.read).length;
+  const unreadNotifsCount = (store.state.partnerNotifications || []).filter((n) => !n.read).length;
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },

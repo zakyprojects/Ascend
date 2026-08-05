@@ -77,6 +77,17 @@ export async function fetchUserDataFromSupabase(userId: string): Promise<AppStat
 
 export async function saveUserDataToSupabase(userId: string, state: AppState) {
   if (!isSupabaseConfigured) return;
+
+  // GUARD: Never write obviously-default state over existing user data
+  if (state.totalPoints === 0 && (!state.habits || state.habits.length === 0)
+      && (!state.improvementPlans || state.improvementPlans.length === 0)) {
+    const existing = await fetchUserDataFromSupabase(userId);
+    if (existing && (existing.totalPoints > 0 || (existing.habits && existing.habits.length > 0))) {
+      console.warn('[GUARD] Blocked zero-out write to user_data for', userId);
+      return;
+    }
+  }
+
   try {
     // 1. MUST upsert profiles FIRST to satisfy foreign key constraint user_data_user_id_fkey
     if (state.currentUser) {
@@ -230,8 +241,23 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
     const finalCopyCount = Math.max(rawCopyCount, dbCopyCount);
     const isPublicValue = plan.isPublic !== undefined && plan.isPublic !== null ? Boolean(plan.isPublic) : true;
 
-    // 3. Execute Supabase upsert/insert with forced creator_id
-    const { error } = await supabase.from('improvement_plans').upsert({
+    const stepsPayload = {
+      items: plan.steps || [],
+      planType: plan.planType || 'milestone',
+      targetValue: plan.targetValue,
+      targetUnit: plan.targetUnit,
+      currentProgress: plan.currentProgress ?? 0,
+      targetDate: plan.targetDate,
+      cadence: plan.cadence,
+      duration: plan.duration,
+      startDate: plan.startDate,
+      streakCount: plan.streakCount ?? 0,
+      lastCompletedDate: plan.lastCompletedDate,
+      targetReviewDate: plan.targetReviewDate,
+      reflectionNotes: plan.reflectionNotes || [],
+    };
+
+    const payload: Record<string, any> = {
       id: planId,
       creator_id: creatorId, // Force session.user.id
       creator_username: plan.creatorUsername || 'Member',
@@ -240,9 +266,42 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
       description: plan.description || '',
       category: plan.category || 'Personal Growth',
       is_public: isPublicValue,
-      steps: plan.steps || [],
+      steps: stepsPayload,
       copy_count: finalCopyCount,
-    });
+      plan_type: plan.planType || 'milestone',
+      target_value: plan.targetValue,
+      target_unit: plan.targetUnit,
+      current_progress: plan.currentProgress ?? 0,
+      target_date: plan.targetDate,
+      cadence: plan.cadence,
+      duration: plan.duration,
+      start_date: plan.startDate,
+      streak_count: plan.streakCount ?? 0,
+      last_completed_date: plan.lastCompletedDate,
+      target_review_date: plan.targetReviewDate,
+      reflection_notes: plan.reflectionNotes || [],
+    };
+
+    // 3. Execute Supabase upsert/insert with forced creator_id
+    let { error } = await supabase.from('improvement_plans').upsert(payload);
+
+    if (error && error.message?.includes('column')) {
+      // Fallback: If new columns don't exist yet on DB, upsert without new columns (data is safely in steps JSONB wrapper)
+      delete payload.plan_type;
+      delete payload.target_value;
+      delete payload.target_unit;
+      delete payload.current_progress;
+      delete payload.target_date;
+      delete payload.cadence;
+      delete payload.duration;
+      delete payload.start_date;
+      delete payload.streak_count;
+      delete payload.last_completed_date;
+      delete payload.target_review_date;
+      delete payload.reflection_notes;
+      payload.steps = stepsPayload;
+      ({ error } = await supabase.from('improvement_plans').upsert(payload));
+    }
 
     if (error) {
       console.error('Error syncing plan to Supabase:', error);
@@ -294,13 +353,29 @@ export async function syncFollowedPlanToSupabase(followedPlan: UserPlanFollow) {
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const followId = uuidPattern.test(followedPlan.id) ? followedPlan.id : crypto.randomUUID();
 
+    const stepsPayload = {
+      items: followedPlan.steps || [],
+      planType: followedPlan.planType || 'milestone',
+      targetValue: followedPlan.targetValue,
+      targetUnit: followedPlan.targetUnit,
+      currentProgress: followedPlan.currentProgress ?? 0,
+      targetDate: followedPlan.targetDate,
+      cadence: followedPlan.cadence,
+      duration: followedPlan.duration,
+      startDate: followedPlan.startDate,
+      streakCount: followedPlan.streakCount ?? 0,
+      lastCompletedDate: followedPlan.lastCompletedDate,
+      targetReviewDate: followedPlan.targetReviewDate,
+      reflectionNotes: followedPlan.reflectionNotes || [],
+    };
+
     const { error } = await supabase.from('user_plan_follows').upsert({
       id: followId,
       user_id: userId,
       original_plan_id: followedPlan.originalPlanId,
       title: followedPlan.title,
       description: followedPlan.description,
-      steps: followedPlan.steps,
+      steps: stepsPayload,
       is_completed: followedPlan.isCompleted,
       points_awarded: followedPlan.pointsAwarded || 0,
     });
@@ -383,6 +458,13 @@ export async function deleteFollowedPlanFromSupabase(followedPlanId: string) {
 }
 
 export function mapRowToImprovementPlan(row: any): ImprovementPlan {
+  const rawSteps = row?.steps;
+  const isStepsArray = Array.isArray(rawSteps);
+  const stepsMeta = !isStepsArray && typeof rawSteps === 'object' && rawSteps !== null ? rawSteps : {};
+  const stepsList = isStepsArray ? rawSteps : (Array.isArray(stepsMeta.items) ? stepsMeta.items : []);
+
+  const planType = row?.plan_type || stepsMeta.planType || 'milestone';
+
   return {
     id: row?.id || '',
     creatorId: row?.creator_id || '',
@@ -393,9 +475,58 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
     description: row?.description || '',
     category: row?.category || 'Personal Growth',
     isPublic: Boolean(row?.is_public),
-    steps: Array.isArray(row?.steps) ? row.steps : [],
+    steps: stepsList,
     copyCount: typeof row?.copy_count === 'number' ? row.copy_count : 0,
     createdAt: row?.created_at || new Date().toISOString(),
+
+    // Phase B Plan Type Properties
+    planType,
+    targetValue: row?.target_value !== undefined && row?.target_value !== null ? Number(row.target_value) : stepsMeta.targetValue,
+    targetUnit: row?.target_unit || stepsMeta.targetUnit || '',
+    currentProgress: row?.current_progress !== undefined && row?.current_progress !== null ? Number(row.current_progress) : (stepsMeta.currentProgress ?? 0),
+    targetDate: row?.target_date || stepsMeta.targetDate || '',
+    cadence: row?.cadence || stepsMeta.cadence || 'daily',
+    duration: row?.duration !== undefined && row?.duration !== null ? Number(row.duration) : (stepsMeta.duration ?? 30),
+    startDate: row?.start_date || stepsMeta.startDate || new Date().toISOString(),
+    streakCount: row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : (stepsMeta.streakCount ?? 0),
+    lastCompletedDate: row?.last_completed_date || stepsMeta.lastCompletedDate || '',
+    targetReviewDate: row?.target_review_date || stepsMeta.targetReviewDate || '',
+    reflectionNotes: Array.isArray(row?.reflection_notes) ? row.reflection_notes : (Array.isArray(stepsMeta.reflectionNotes) ? stepsMeta.reflectionNotes : []),
+  };
+}
+
+export function mapRowToUserPlanFollow(row: any): UserPlanFollow {
+  const rawSteps = row?.steps;
+  const isStepsArray = Array.isArray(rawSteps);
+  const stepsMeta = !isStepsArray && typeof rawSteps === 'object' && rawSteps !== null ? rawSteps : {};
+  const stepsList = isStepsArray ? rawSteps : (Array.isArray(stepsMeta.items) ? stepsMeta.items : []);
+
+  const planType = row?.plan_type || stepsMeta.planType || 'milestone';
+
+  return {
+    id: row?.id || '',
+    userId: row?.user_id || '',
+    originalPlanId: row?.original_plan_id || '',
+    title: row?.title || 'Untitled Plan',
+    description: row?.description || '',
+    steps: stepsList,
+    isCompleted: Boolean(row?.is_completed),
+    pointsAwarded: row?.points_awarded || 0,
+    createdAt: row?.created_at || new Date().toISOString(),
+
+    // Phase B Plan Type Properties
+    planType,
+    targetValue: row?.target_value !== undefined && row?.target_value !== null ? Number(row.target_value) : stepsMeta.targetValue,
+    targetUnit: row?.target_unit || stepsMeta.targetUnit || '',
+    currentProgress: row?.current_progress !== undefined && row?.current_progress !== null ? Number(row.current_progress) : (stepsMeta.currentProgress ?? 0),
+    targetDate: row?.target_date || stepsMeta.targetDate || '',
+    cadence: row?.cadence || stepsMeta.cadence || 'daily',
+    duration: row?.duration !== undefined && row?.duration !== null ? Number(row.duration) : (stepsMeta.duration ?? 30),
+    startDate: row?.start_date || stepsMeta.startDate || new Date().toISOString(),
+    streakCount: row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : (stepsMeta.streakCount ?? 0),
+    lastCompletedDate: row?.last_completed_date || stepsMeta.lastCompletedDate || '',
+    targetReviewDate: row?.target_review_date || stepsMeta.targetReviewDate || '',
+    reflectionNotes: Array.isArray(row?.reflection_notes) ? row.reflection_notes : (Array.isArray(stepsMeta.reflectionNotes) ? stepsMeta.reflectionNotes : []),
   };
 }
 

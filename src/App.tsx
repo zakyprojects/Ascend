@@ -20,6 +20,8 @@ import { AccountabilityPartner } from '@/components/views/AccountabilityPartner'
 import { SettingsView } from '@/components/views/SettingsView';
 import { AuthModal } from '@/components/ui/AuthModal';
 
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+
 function App() {
   const store = useAppState();
   const [view, setView] = useState<View>('dashboard');
@@ -37,23 +39,25 @@ function App() {
         store={store}
         onOpenAuthModal={() => setUserOpenedAuthModal(true)}
       >
-        {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
-        {view === 'habits' && <HabitTracker store={store} />}
-        {view === 'journal' && <Journal store={store} />}
-        {view === 'exercise' && <ExerciseTracker store={store} />}
-        {view === 'reading' && <ReadingTracker store={store} />}
-        {view === 'books' && <SelfImprovementBooks store={store} />}
-        {view === 'skills' && <SkillTracker store={store} />}
-        {view === 'bad-habits' && <BadHabitTracker store={store} />}
-        {view === 'recovery' && <AddictionRecovery store={store} />}
-        {view === 'prefrontal' && <PrefrontalCortex store={store} />}
-        {view === 'plans' && <ImprovementPlans store={store} />}
-        {view === 'partner' && <AccountabilityPartner store={store} />}
-        {view === 'tiers' && <TierView store={store} />}
-        {view === 'leagues' && <Leagues store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
-        {view === 'lessons' && <Lessons store={store} />}
-        {view === 'neuroplasticity' && <Neuroplasticity onViewChange={setView} />}
-        {view === 'settings' && <SettingsView store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+        <ErrorBoundary fallbackTitle="Section Error">
+          {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+          {view === 'habits' && <HabitTracker store={store} />}
+          {view === 'journal' && <Journal store={store} />}
+          {view === 'exercise' && <ExerciseTracker store={store} />}
+          {view === 'reading' && <ReadingTracker store={store} />}
+          {view === 'books' && <SelfImprovementBooks store={store} />}
+          {view === 'skills' && <SkillTracker store={store} />}
+          {view === 'bad-habits' && <BadHabitTracker store={store} />}
+          {view === 'recovery' && <AddictionRecovery store={store} />}
+          {view === 'prefrontal' && <PrefrontalCortex store={store} />}
+          {view === 'plans' && <ImprovementPlans store={store} />}
+          {view === 'partner' && <AccountabilityPartner store={store} />}
+          {view === 'tiers' && <TierView store={store} />}
+          {view === 'leagues' && <Leagues store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+          {view === 'lessons' && <Lessons store={store} />}
+          {view === 'neuroplasticity' && <Neuroplasticity onViewChange={setView} />}
+          {view === 'settings' && <SettingsView store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+        </ErrorBoundary>
       </AppShell>
 
       <AuthModal

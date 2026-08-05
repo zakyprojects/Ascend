@@ -183,6 +183,18 @@ export function isToday(dateStr: string): boolean {
   return dateStr === todayKey();
 }
 
+export function isTodayLocal(dateIso?: string | null): boolean {
+  if (!dateIso) return false;
+  const d = parseDate(dateIso);
+  if (!d) return false;
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
 export function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }

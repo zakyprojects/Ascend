@@ -10,6 +10,7 @@ import {
   fetchNotificationsSupabase,
   saveUserDataToSupabase,
   supabase,
+  mapRowToImprovementPlan,
 } from './supabase';
 
 export type SignUpDefaults = {
@@ -214,8 +215,20 @@ export async function hydrateUserSession(
 
     const fetchedNotifs = await fetchNotificationsSupabase(userId);
     state.notifications = fetchedNotifs;
+
+    // SINGLE SOURCE OF TRUTH: improvement_plans table
+    const { data: dbPlans, error: dbPlansErr } = await supabase
+      .from('improvement_plans')
+      .select('*')
+      .eq('creator_id', userId);
+
+    if (dbPlans && !dbPlansErr) {
+      state.improvementPlans = dbPlans.map(mapRowToImprovementPlan);
+    } else {
+      state.improvementPlans = [];
+    }
   } catch (e) {
-    console.warn('Skipped loading partner social data during hydration:', e);
+    console.warn('Skipped loading partner social data or plans during hydration:', e);
   }
 
   if (!profileData || !savedState) {
