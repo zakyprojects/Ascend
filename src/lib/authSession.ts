@@ -274,8 +274,10 @@ export async function hydrateUserSession(
           if (savedStreak > streakCount) {
             streakCount = savedStreak;
           }
-          if (!lastCompletedDate && savedPlan.lastCompletedDate) {
-            lastCompletedDate = savedPlan.lastCompletedDate;
+          if (savedPlan.lastCompletedDate) {
+            if (!lastCompletedDate || new Date(savedPlan.lastCompletedDate) > new Date(lastCompletedDate)) {
+              lastCompletedDate = savedPlan.lastCompletedDate;
+            }
           }
 
           // Merge step items: true wins for completed flag
@@ -333,8 +335,10 @@ export async function hydrateUserSession(
           if (savedStreak > streakCount) {
             streakCount = savedStreak;
           }
-          if (!lastCompletedDate && savedFollow.lastCompletedDate) {
-            lastCompletedDate = savedFollow.lastCompletedDate;
+          if (savedFollow.lastCompletedDate) {
+            if (!lastCompletedDate || new Date(savedFollow.lastCompletedDate) > new Date(lastCompletedDate)) {
+              lastCompletedDate = savedFollow.lastCompletedDate;
+            }
           }
 
           // Merge step items: true wins for completed flag

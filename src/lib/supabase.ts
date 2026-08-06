@@ -479,18 +479,19 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
     createdAt: row?.created_at || new Date().toISOString(),
 
     // Phase B Plan Type Properties
-    planType,
-    targetValue: row?.target_value !== undefined && row?.target_value !== null ? Number(row.target_value) : stepsMeta.targetValue,
-    targetUnit: row?.target_unit || stepsMeta.targetUnit || '',
-    currentProgress: row?.current_progress !== undefined && row?.current_progress !== null ? Number(row.current_progress) : (stepsMeta.currentProgress ?? 0),
-    targetDate: row?.target_date || stepsMeta.targetDate || '',
-    cadence: row?.cadence || stepsMeta.cadence || 'daily',
-    duration: row?.duration !== undefined && row?.duration !== null ? Number(row.duration) : (stepsMeta.duration ?? 30),
-    startDate: row?.start_date || stepsMeta.startDate || new Date().toISOString(),
-    streakCount: row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : (stepsMeta.streakCount ?? 0),
-    lastCompletedDate: row?.last_completed_date || stepsMeta.lastCompletedDate || '',
-    targetReviewDate: row?.target_review_date || stepsMeta.targetReviewDate || '',
-    reflectionNotes: Array.isArray(row?.reflection_notes) ? row.reflection_notes : (Array.isArray(stepsMeta.reflectionNotes) ? stepsMeta.reflectionNotes : []),
+    // Phase B Plan Type Properties
+    planType: stepsMeta.planType || row?.plan_type || 'milestone',
+    targetValue: stepsMeta.targetValue !== undefined ? Number(stepsMeta.targetValue) : (row?.target_value !== undefined && row?.target_value !== null ? Number(row.target_value) : undefined),
+    targetUnit: stepsMeta.targetUnit || row?.target_unit || '',
+    currentProgress: stepsMeta.currentProgress !== undefined ? Number(stepsMeta.currentProgress) : (row?.current_progress !== undefined && row?.current_progress !== null ? Number(row.current_progress) : 0),
+    targetDate: stepsMeta.targetDate || row?.target_date || '',
+    cadence: stepsMeta.cadence || row?.cadence || 'daily',
+    duration: stepsMeta.duration !== undefined ? Number(stepsMeta.duration) : (row?.duration !== undefined && row?.duration !== null ? Number(row.duration) : 30),
+    startDate: stepsMeta.startDate || row?.start_date || new Date().toISOString(),
+    streakCount: stepsMeta.streakCount !== undefined ? Number(stepsMeta.streakCount) : (row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : 0),
+    lastCompletedDate: stepsMeta.lastCompletedDate || row?.last_completed_date || '',
+    targetReviewDate: stepsMeta.targetReviewDate || row?.target_review_date || '',
+    reflectionNotes: Array.isArray(stepsMeta.reflectionNotes) ? stepsMeta.reflectionNotes : (Array.isArray(row?.reflection_notes) ? row.reflection_notes : []),
   };
 }
 
@@ -514,18 +515,19 @@ export function mapRowToUserPlanFollow(row: any): UserPlanFollow {
     createdAt: row?.created_at || new Date().toISOString(),
 
     // Phase B Plan Type Properties
-    planType,
-    targetValue: row?.target_value !== undefined && row?.target_value !== null ? Number(row.target_value) : stepsMeta.targetValue,
-    targetUnit: row?.target_unit || stepsMeta.targetUnit || '',
-    currentProgress: row?.current_progress !== undefined && row?.current_progress !== null ? Number(row.current_progress) : (stepsMeta.currentProgress ?? 0),
-    targetDate: row?.target_date || stepsMeta.targetDate || '',
-    cadence: row?.cadence || stepsMeta.cadence || 'daily',
-    duration: row?.duration !== undefined && row?.duration !== null ? Number(row.duration) : (stepsMeta.duration ?? 30),
-    startDate: row?.start_date || stepsMeta.startDate || new Date().toISOString(),
-    streakCount: row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : (stepsMeta.streakCount ?? 0),
-    lastCompletedDate: row?.last_completed_date || stepsMeta.lastCompletedDate || '',
-    targetReviewDate: row?.target_review_date || stepsMeta.targetReviewDate || '',
-    reflectionNotes: Array.isArray(row?.reflection_notes) ? row.reflection_notes : (Array.isArray(stepsMeta.reflectionNotes) ? stepsMeta.reflectionNotes : []),
+    // Phase B Plan Type Properties
+    planType: stepsMeta.planType || row?.plan_type || 'milestone',
+    targetValue: stepsMeta.targetValue !== undefined ? Number(stepsMeta.targetValue) : (row?.target_value !== undefined && row?.target_value !== null ? Number(row.target_value) : undefined),
+    targetUnit: stepsMeta.targetUnit || row?.target_unit || '',
+    currentProgress: stepsMeta.currentProgress !== undefined ? Number(stepsMeta.currentProgress) : (row?.current_progress !== undefined && row?.current_progress !== null ? Number(row.current_progress) : 0),
+    targetDate: stepsMeta.targetDate || row?.target_date || '',
+    cadence: stepsMeta.cadence || row?.cadence || 'daily',
+    duration: stepsMeta.duration !== undefined ? Number(stepsMeta.duration) : (row?.duration !== undefined && row?.duration !== null ? Number(row.duration) : 30),
+    startDate: stepsMeta.startDate || row?.start_date || new Date().toISOString(),
+    streakCount: stepsMeta.streakCount !== undefined ? Number(stepsMeta.streakCount) : (row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : 0),
+    lastCompletedDate: stepsMeta.lastCompletedDate || row?.last_completed_date || '',
+    targetReviewDate: stepsMeta.targetReviewDate || row?.target_review_date || '',
+    reflectionNotes: Array.isArray(stepsMeta.reflectionNotes) ? stepsMeta.reflectionNotes : (Array.isArray(row?.reflection_notes) ? row.reflection_notes : []),
   };
 }
 

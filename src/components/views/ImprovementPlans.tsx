@@ -500,7 +500,11 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div className="pt-1 flex items-center justify-between">
               <button
                 onClick={() => {
-                  store.markHabitJourneyDone(planId);
+                  if (mode === 'follower_interactive') {
+                    store.markFollowedHabitJourneyDone(planId);
+                  } else {
+                    store.markHabitJourneyDone(planId);
+                  }
                 }}
                 className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white"
               >

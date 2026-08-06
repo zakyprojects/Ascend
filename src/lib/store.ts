@@ -1856,8 +1856,42 @@ export function useAppState() {
     // Stub for Step 3 rebuild
   }, []);
 
-  const markFollowedHabitJourneyDone = useCallback((_followId: string) => {
-    // Stub for Step 3 rebuild
+  const markFollowedHabitJourneyDone = useCallback((followId: string) => {
+    let updatedFollow: UserPlanFollow | null = null;
+    setState((prev) => {
+      const idx = prev.followedPlans.findIndex((p) => p.id === followId);
+      if (idx === -1) return prev;
+      const target = prev.followedPlans[idx];
+
+      if (isTodayLocal(target.lastCompletedDate)) {
+        return prev;
+      }
+
+      const nowIso = new Date().toISOString();
+      const currentStreak = target.streakCount || 0;
+      const newStreak = currentStreak + 1;
+
+      updatedFollow = {
+        ...target,
+        streakCount: newStreak,
+        lastCompletedDate: nowIso,
+      };
+
+      const updatedFollows = [...prev.followedPlans];
+      updatedFollows[idx] = updatedFollow;
+
+      const pointsUpdate = addPointsInternal(prev, 15, `Completed followed habit journey: ${target.title}`, 'plan');
+      return { ...prev, ...pointsUpdate, followedPlans: updatedFollows };
+    });
+
+    if (updatedFollow) {
+      const follow = updatedFollow as UserPlanFollow;
+      console.log('[REAL-USER DEBUG: MARK FOLLOWED DONE SUCCESS]', {
+        followId: follow.id,
+        newStreakCount: follow.streakCount,
+      });
+      syncFollowedPlanToSupabase(follow);
+    }
   }, []);
 
   const undoFollowedHabitJourneyDone = useCallback((_followId: string) => {
