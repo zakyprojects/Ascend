@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Compass,
   Plus,
@@ -33,6 +33,42 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { fetchPublicPlansFromSupabase, mapRowToImprovementPlan, supabase, syncBroadcaster } from '@/lib/supabase';
 import { getProfilePointsByUsername } from '@/lib/auth';
 import { isTodayLocal } from '@/lib/dates';
+
+function ExpandableDescription({ text }: { text: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (el) {
+      // Small timeout ensures styles/layout are applied before checking scrollHeight
+      setTimeout(() => {
+        setIsOverflowing(el.scrollHeight > el.clientHeight);
+      }, 0);
+    }
+  }, [text]);
+
+  return (
+    <div className="space-y-1">
+      <p 
+        ref={textRef} 
+        className={`text-xs text-slate-400 whitespace-pre-wrap ${!isExpanded ? 'line-clamp-2' : ''}`}
+      >
+        {text}
+      </p>
+      {isOverflowing && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-[11px] text-purple-400 hover:underline flex items-center gap-1 mt-1"
+        >
+          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />} 
+          {isExpanded ? 'Read less' : 'Read more'}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function ImprovementPlans({ store }: { store: AppStore }) {
   const [activeTab, setActiveTab] = useState<'my_plans' | 'discover'>('my_plans');
@@ -796,7 +832,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               </span>
                             </div>
                             <h3 className="font-bold text-slate-100 text-sm leading-snug break-words">{plan.title}</h3>
-                            <p className="text-xs text-slate-400 line-clamp-2">{plan.description}</p>
+                            <ExpandableDescription text={plan.description} />
                           </div>
 
                           {/* RIGHT SIDE: Action Button Group */}
@@ -870,7 +906,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             {renderPlanTypeBadge(follow.planType)}
                           </div>
                           <h3 className="font-bold text-slate-100 text-sm leading-snug break-words">{follow.title}</h3>
-                          <p className="text-xs text-slate-400 line-clamp-2">{follow.description}</p>
+                          <ExpandableDescription text={follow.description} />
                         </div>
 
                         <button
@@ -975,7 +1011,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           )}
                         </div>
                         <h3 className="font-bold text-slate-100 text-sm leading-snug break-words">{plan.title}</h3>
-                        <p className="text-xs text-slate-400 line-clamp-2">{plan.description}</p>
+                        <ExpandableDescription text={plan.description} />
                       </div>
                     </div>
 
