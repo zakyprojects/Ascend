@@ -1791,7 +1791,7 @@ export function useAppState() {
       const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
       if (idx === -1) return prev;
       const target = prev.improvementPlans[idx];
-      const validProgress = Math.max(0, newProgress);
+      const validProgress = Math.min(target.targetValue || 0, Math.max(0, newProgress));
 
       updatedPlan = {
         ...target,
@@ -1805,6 +1805,31 @@ export function useAppState() {
 
     if (updatedPlan) {
       updateCachedPublicPlan(updatedPlan);
+      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      syncPlanToSupabase(updatedPlan);
+    }
+  }, []);
+
+  const setNewTargetGoal = useCallback((planId: string, newTarget: number) => {
+    let updatedPlan: ImprovementPlan | null = null;
+    setState((prev) => {
+      const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
+      if (idx === -1) return prev;
+      const target = prev.improvementPlans[idx];
+      const validTarget = Math.max(1, newTarget);
+
+      updatedPlan = {
+        ...target,
+        targetValue: validTarget,
+        currentProgress: 0,
+      };
+
+      const updatedPlans = [...prev.improvementPlans];
+      updatedPlans[idx] = updatedPlan;
+      return { ...prev, improvementPlans: updatedPlans };
+    });
+
+    if (updatedPlan) {
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       syncPlanToSupabase(updatedPlan);
     }
@@ -1854,6 +1879,30 @@ export function useAppState() {
 
   const undoHabitJourneyDone = useCallback((_planId: string) => {
     // Stub for Step 3 rebuild
+  }, []);
+
+  const setNewFollowedTargetGoal = useCallback((followId: string, newTarget: number) => {
+    let updatedFollow: UserPlanFollow | null = null;
+    setState((prev) => {
+      const idx = prev.followedPlans.findIndex((f) => f.id === followId);
+      if (idx === -1) return prev;
+      const target = prev.followedPlans[idx];
+      const validTarget = Math.max(1, newTarget);
+
+      updatedFollow = {
+        ...target,
+        targetValue: validTarget,
+        currentProgress: 0,
+      };
+
+      const updatedFollows = [...prev.followedPlans];
+      updatedFollows[idx] = updatedFollow;
+      return { ...prev, followedPlans: updatedFollows };
+    });
+
+    if (updatedFollow) {
+      syncFollowedPlanToSupabase(updatedFollow);
+    }
   }, []);
 
   const markFollowedHabitJourneyDone = useCallback((followId: string) => {
@@ -2283,7 +2332,7 @@ export function useAppState() {
       if (idx === -1) return prev;
 
       const target = prev.followedPlans[idx];
-      const validProg = Math.max(0, newProgress);
+      const validProg = Math.min(target.targetValue || 0, Math.max(0, newProgress));
       const isProgressIncreased = validProg > (target.currentProgress || 0);
 
       const isProgressDecreased = validProg < (target.currentProgress || 0);
@@ -3050,6 +3099,7 @@ export function useAppState() {
     updateImprovementPlan,
     togglePlanVisibility,
     updateTargetGoalProgress,
+    setNewTargetGoal,
     markHabitJourneyDone,
     undoHabitJourneyDone,
     addVisionReflectionNote,
@@ -3057,6 +3107,7 @@ export function useAppState() {
     deleteVisionReflectionNote,
     completeFollowedPlanStep,
     updateFollowedTargetGoalProgress,
+    setNewFollowedTargetGoal,
     markFollowedHabitJourneyDone,
     undoFollowedHabitJourneyDone,
     addFollowedVisionReflectionNote,

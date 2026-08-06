@@ -454,7 +454,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           {/* Progress Bar */}
           <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-            <div className="bg-gradient-to-r from-amber-500 to-emerald-500 h-full transition-all duration-500" style={{ width: `${pct}%` }} />
+            <div 
+              className={`${isGoalCompleted ? 'bg-emerald-500' : 'bg-gradient-to-r from-amber-500 to-emerald-500'} h-full transition-all duration-500`} 
+              style={{ width: `${pct}%` }} 
+            />
           </div>
 
           {plan.targetDate && (
@@ -472,14 +475,15 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             )
           ) : (
             /* Interactive mode in My Plans */
-            <div className="pt-1 flex items-center gap-2">
+            <div className="pt-1 flex flex-wrap items-center gap-2">
               <input
                 type="number"
                 min="0"
                 value={progressInput[planId] !== undefined ? progressInput[planId] : (plan.currentProgress || 0)}
                 onChange={(e) => setProgressInput({ ...progressInput, [planId]: e.target.value })}
-                className="input text-xs w-24 py-1"
+                className="input text-xs w-24 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 placeholder="Value"
+                disabled={isGoalCompleted}
               />
               <button
                 onClick={() => {
@@ -492,12 +496,37 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     }
                   }
                 }}
-                className="btn-secondary text-xs py-1 px-3"
+                className="btn-secondary text-xs py-1 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isGoalCompleted}
               >
                 Update Progress
               </button>
+              
               {isGoalCompleted && (
-                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 ml-auto">
+                <button
+                  onClick={() => {
+                    const newTargetStr = window.prompt(`Goal completed! Enter your new target value:`);
+                    if (newTargetStr === null) return;
+                    
+                    const newTarget = Number(newTargetStr);
+                    if (!isNaN(newTarget) && newTarget > 0) {
+                      if (mode === 'creator_interactive') {
+                        store.setNewTargetGoal(planId, newTarget);
+                      } else {
+                        store.setNewFollowedTargetGoal(planId, newTarget);
+                      }
+                      setProgressInput({ ...progressInput, [planId]: '0' });
+                    } else {
+                      alert("Please enter a valid number greater than 0.");
+                    }
+                  }}
+                  className="btn-primary text-[11px] py-1 px-2 ml-1"
+                >
+                  Set New Target
+                </button>
+              )}
+              {isGoalCompleted && (
+                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 ml-auto mt-1 sm:mt-0">
                   <CheckCircle2 size={13} /> Completed!
                 </span>
               )}
