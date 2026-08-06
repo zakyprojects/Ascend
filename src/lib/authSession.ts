@@ -1,5 +1,5 @@
 import { User } from '@supabase/supabase-js';
-import { AppState, DEFAULT_STATE, UserProfile } from '@/types';
+import { AppState, DEFAULT_STATE, UserProfile, PlanStep } from '@/types';
 import { generateNumericUID } from './dates';
 import {
   fetchUserDataFromSupabase,
@@ -11,6 +11,7 @@ import {
   saveUserDataToSupabase,
   supabase,
   mapRowToImprovementPlan,
+  mapRowToUserPlanFollow,
 } from './supabase';
 
 export type SignUpDefaults = {
@@ -111,6 +112,32 @@ export function buildUserProfile(
     isAnonymous,
     lastUsernameChangeAt: (profileData?.last_username_change_at as string | undefined) || undefined,
   };
+}
+
+function mergePlanSteps(dbSteps: PlanStep[] = [], savedSteps: PlanStep[] = []): PlanStep[] {
+  if (!Array.isArray(dbSteps) || dbSteps.length === 0) {
+    return Array.isArray(savedSteps) ? savedSteps : [];
+  }
+  if (!Array.isArray(savedSteps) || savedSteps.length === 0) {
+    return dbSteps;
+  }
+
+  const savedMap = new Map<string, PlanStep>();
+  savedSteps.forEach((s) => {
+    if (s && s.id) savedMap.set(s.id, s);
+  });
+
+  return dbSteps.map((dbStep) => {
+    const savedStep = savedMap.get(dbStep.id);
+    if (!savedStep) return dbStep;
+
+    const completed = Boolean(dbStep.completed || savedStep.completed);
+    return {
+      ...savedStep,
+      ...dbStep,
+      completed,
+    };
+  });
 }
 
 /**
@@ -216,16 +243,114 @@ export async function hydrateUserSession(
     const fetchedNotifs = await fetchNotificationsSupabase(userId);
     state.notifications = fetchedNotifs;
 
-    // SINGLE SOURCE OF TRUTH: improvement_plans table
+    // SINGLE SOURCE OF TRUTH: improvement_plans table + savedState metadata fallback
     const { data: dbPlans, error: dbPlansErr } = await supabase
       .from('improvement_plans')
       .select('*')
       .eq('creator_id', userId);
 
+    console.log('[REAL-USER DEBUG: STAGE 1 RAW DB FETCH]', {
+      dbPlans: dbPlans?.map((r) => ({ id: r.id, title: r.title, steps: r.steps })),
+      savedStatePlans: savedState?.improvementPlans?.map((p: any) => ({ id: p.id, title: p.title, streakCount: p.streakCount, lastCompletedDate: p.lastCompletedDate, steps: p.steps })),
+      savedStatePoints: savedState?.totalPoints,
+    });
+
+    const savedPlansMap = new Map<string, any>();
+    if (savedState?.improvementPlans) {
+      savedState.improvementPlans.forEach((p: any) => savedPlansMap.set(p.id, p));
+    }
+
     if (dbPlans && !dbPlansErr) {
-      state.improvementPlans = dbPlans.map(mapRowToImprovementPlan);
+      state.improvementPlans = dbPlans.map((row) => {
+        const mapped = mapRowToImprovementPlan(row);
+        const savedPlan = savedPlansMap.get(mapped.id);
+
+        let streakCount = mapped.streakCount || 0;
+        let lastCompletedDate = mapped.lastCompletedDate || '';
+        let steps = mapped.steps || [];
+
+        if (savedPlan) {
+          const savedStreak = savedPlan.streakCount || 0;
+          if (savedStreak > streakCount) {
+            streakCount = savedStreak;
+          }
+          if (!lastCompletedDate && savedPlan.lastCompletedDate) {
+            lastCompletedDate = savedPlan.lastCompletedDate;
+          }
+
+          // Merge step items: true wins for completed flag
+          steps = mergePlanSteps(mapped.steps, savedPlan.steps);
+        }
+
+        const merged = {
+          ...savedPlan,
+          ...mapped,
+          steps,
+          streakCount,
+          lastCompletedDate,
+        };
+
+        console.log('[REAL-USER DEBUG: STAGE 2 MAPPED & MERGED PLAN]', {
+          id: merged.id,
+          title: merged.title,
+          planType: merged.planType,
+          streakCount: merged.streakCount,
+          lastCompletedDate: merged.lastCompletedDate,
+          cadence: merged.cadence,
+          steps: merged.steps,
+        });
+
+        return merged;
+      });
+    } else if (savedState?.improvementPlans && savedState.improvementPlans.length > 0) {
+      state.improvementPlans = savedState.improvementPlans;
     } else {
       state.improvementPlans = [];
+    }
+
+    // SINGLE SOURCE OF TRUTH FOR FOLLOWED PLANS: user_plan_follows table + savedState fallback
+    const { data: dbFollows, error: dbFollowsErr } = await supabase
+      .from('user_plan_follows')
+      .select('*')
+      .eq('user_id', userId);
+
+    const savedFollowsMap = new Map<string, any>();
+    if (savedState?.followedPlans) {
+      savedState.followedPlans.forEach((f: any) => savedFollowsMap.set(f.id, f));
+    }
+
+    if (dbFollows && !dbFollowsErr) {
+      state.followedPlans = dbFollows.map((row) => {
+        const mapped = mapRowToUserPlanFollow(row);
+        const savedFollow = savedFollowsMap.get(mapped.id);
+
+        let streakCount = mapped.streakCount || 0;
+        let lastCompletedDate = mapped.lastCompletedDate || '';
+        let steps = mapped.steps || [];
+
+        if (savedFollow) {
+          const savedStreak = savedFollow.streakCount || 0;
+          if (savedStreak > streakCount) {
+            streakCount = savedStreak;
+          }
+          if (!lastCompletedDate && savedFollow.lastCompletedDate) {
+            lastCompletedDate = savedFollow.lastCompletedDate;
+          }
+
+          // Merge step items: true wins for completed flag
+          steps = mergePlanSteps(mapped.steps, savedFollow.steps);
+        }
+
+        return {
+          ...savedFollow,
+          ...mapped,
+          steps,
+          streakCount,
+          lastCompletedDate,
+        };
+      });
+    } else if (savedState?.followedPlans && savedState.followedPlans.length > 0) {
+      state.followedPlans = savedState.followedPlans;
     }
   } catch (e) {
     console.warn('Skipped loading partner social data or plans during hydration:', e);

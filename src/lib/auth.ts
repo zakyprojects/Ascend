@@ -1,6 +1,7 @@
 import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, PartnerInvite, Partnership } from '@/types';
 import { SEED_ACCOUNTS } from './seedAccounts';
 import { getLeaguePeriodStart, calculatePeriodPoints } from './leagues';
+import { generateNumericUID } from './dates';
 import {
   supabase,
   isSupabaseConfigured,
@@ -440,6 +441,7 @@ export async function updateProfilePrivacy(
 
     return {
       id: data.id,
+      uid: data.uid || generateNumericUID(),
       email: data.email || '',
       username: data.username,
       avatar: data.avatar || '🧑',

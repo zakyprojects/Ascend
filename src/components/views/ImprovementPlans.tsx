@@ -195,13 +195,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       .subscribe();
 
     // 3. Tab-to-tab syncBroadcaster listener for local multi-tab sync
-    const unsubscribeBroadcast = syncBroadcaster.subscribe((event) => {
+    const unsubscribeBroadcast = syncBroadcaster.subscribe((event: any, payload?: any) => {
       if (!mounted) return;
-      if (event.type === 'PLAN_DELETED' && event.data?.planId) {
-        const deletedId = event.data.planId;
+      const eventObj = typeof event === 'object' && event !== null ? event : payload;
+      if (eventObj?.type === 'PLAN_DELETED' && eventObj.data?.planId) {
+        const deletedId = eventObj.data.planId;
         setRemotePublicPlans((prev) => prev.filter((p) => p.id !== deletedId));
-      } else if (event.type === 'PLAN_UPDATED' && event.data) {
-        const updated = event.data;
+      } else if (eventObj?.type === 'PLAN_UPDATED' && eventObj.data) {
+        const updated = eventObj.data;
         if (updated.id) {
           setRemotePublicPlans((prev) => {
             if (updated.isPublic === false) {
@@ -232,8 +233,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       const existing = map.get(p.id);
       if (existing) {
         map.set(p.id, {
-          ...existing,
           ...p,
+          ...existing,
           copyCount: Math.max(existing.copyCount || 0, p.copyCount || 0),
         });
       } else {
@@ -497,34 +498,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           ) : (
             /* Interactive mode in My Plans */
             <div className="pt-1 flex items-center justify-between">
-              {isCompletedToday ? (
-                <button
-                  onClick={() => {
-                    if (mode === 'creator_interactive') {
-                      store.undoHabitJourneyDone(planId);
-                    } else {
-                      store.undoFollowedHabitJourneyDone(planId);
-                    }
-                  }}
-                  className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
-                  title="Revert today's mark and restore pending state for today"
-                >
-                  <RotateCcw size={14} /> Undo Today's Mark
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    if (mode === 'creator_interactive') {
-                      store.markHabitJourneyDone(planId);
-                    } else {
-                      store.markFollowedHabitJourneyDone(planId);
-                    }
-                  }}
-                  className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white"
-                >
-                  <CheckCircle2 size={14} /> Mark Done for {cadenceText}
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  store.markHabitJourneyDone(planId);
+                }}
+                className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white"
+              >
+                <CheckCircle2 size={14} /> Mark Done for {cadenceText}
+              </button>
               {plan.lastCompletedDate && (
                 <span className="text-[10px] text-slate-500">
                   Last completed: {new Date(plan.lastCompletedDate).toLocaleDateString()}
@@ -933,7 +914,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           <div>
                             <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                               {plan.creatorUsername}
-                              <TierBadge tier={tier} />
+                              <TierBadge totalPoints={creatorPts} size="sm" />
                             </div>
                             <span className="text-[10px] text-slate-500">{creatorPts} pts</span>
                           </div>

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, PartnerNotification } from '@/types';
+import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, PartnerNotification, UserPlanFollow, AppNotification } from '@/types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -251,8 +251,33 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
     const rawCopyCount = plan.copyCount !== undefined && plan.copyCount !== null ? plan.copyCount : 0;
     const finalCopyCount = Math.max(rawCopyCount, dbCopyCount);
     
-    // Strict Postgres Snake_Case Mapping
+    // Build steps JSONB object containing step items and plan type metadata
     const anyPlan = plan as any;
+    const stepsItems = Array.isArray(plan.steps)
+      ? plan.steps
+      : (plan.steps && typeof plan.steps === 'object' && Array.isArray((plan.steps as any).items)
+        ? (plan.steps as any).items
+        : []);
+
+    const stepsPayload = {
+      items: stepsItems,
+      planType: plan.planType || anyPlan.plan_type || 'milestone',
+      targetValue: plan.targetValue ?? anyPlan.target_value ?? null,
+      targetUnit: plan.targetUnit ?? anyPlan.target_unit ?? null,
+      currentProgress: plan.currentProgress ?? anyPlan.current_progress ?? 0,
+      targetDate: plan.targetDate ?? anyPlan.target_date ?? null,
+      cadence: plan.cadence ?? anyPlan.cadence ?? null,
+      duration: plan.duration ?? anyPlan.duration ?? null,
+      startDate: plan.startDate ?? anyPlan.start_date ?? null,
+      streakCount: plan.streakCount ?? anyPlan.streak_count ?? 0,
+      lastCompletedDate: plan.lastCompletedDate ?? anyPlan.last_completed_date ?? null,
+      targetReviewDate: plan.targetReviewDate ?? anyPlan.target_review_date ?? null,
+      reflectionNotes: Array.isArray(plan.reflectionNotes)
+        ? plan.reflectionNotes
+        : (Array.isArray(anyPlan.reflection_notes) ? anyPlan.reflection_notes : [])
+    };
+
+    // Strict Postgres Snake_Case Mapping: ONLY actual columns of improvement_plans table
     const cleanPayload = {
       id: planId,
       creator_id: creatorId,
@@ -261,21 +286,9 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
       title: plan.title || '',
       description: plan.description || '',
       category: plan.category || 'Personal Growth',
-      plan_type: plan.planType || anyPlan.plan_type || 'milestone',
       is_public: Boolean(plan.isPublic ?? anyPlan.is_public ?? false),
       copy_count: finalCopyCount,
-      steps: Array.isArray(plan.steps) ? plan.steps : [],
-      target_value: plan.targetValue ?? anyPlan.target_value ?? null,
-      target_unit: plan.targetUnit ?? anyPlan.target_unit ?? null,
-      current_progress: plan.currentProgress ?? anyPlan.current_progress ?? 0,
-      target_date: plan.targetDate ?? anyPlan.target_date ?? null,
-      cadence: plan.cadence ?? null,
-      duration: plan.duration ?? null,
-      start_date: plan.startDate ?? anyPlan.start_date ?? null,
-      streak_count: plan.streakCount ?? anyPlan.streak_count ?? 0,
-      last_completed_date: plan.lastCompletedDate ?? anyPlan.last_completed_date ?? null,
-      target_review_date: plan.targetReviewDate ?? anyPlan.target_review_date ?? null,
-      reflection_notes: Array.isArray(plan.reflectionNotes) ? plan.reflectionNotes : []
+      steps: stepsPayload
     };
 
     // 3. Execute Supabase upsert/insert with forced creator_id
