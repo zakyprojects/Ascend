@@ -1860,8 +1860,7 @@ export function useAppState() {
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
 
-      const pointsUpdate = addPointsInternal(prev, 15, `Completed habit journey: ${target.title}`, 'plan');
-      return { ...prev, ...pointsUpdate, improvementPlans: updatedPlans };
+      return { ...prev, improvementPlans: updatedPlans };
     });
 
     if (updatedPlan) {
@@ -1929,8 +1928,7 @@ export function useAppState() {
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      const pointsUpdate = addPointsInternal(prev, 15, `Completed followed habit journey: ${target.title}`, 'plan');
-      return { ...prev, ...pointsUpdate, followedPlans: updatedFollows };
+      return { ...prev, followedPlans: updatedFollows };
     });
 
     if (updatedFollow) {
@@ -2267,10 +2265,9 @@ export function useAppState() {
     }
   }, [updatePlanCopyCount]);
 
-  // --- FOLLOWED & COPIED PLANS INTERACTIVE ACTIONS WITH LIFETIME POINT CAP (MAX 2 PLANS) ---
+  // --- FOLLOWED & COPIED PLANS INTERACTIVE ACTIONS ---
   const completeFollowedPlanStep = useCallback((followId: string, stepId: string) => {
     let updatedFollow: UserPlanFollow | null = null;
-    let awardPointsNow = false;
 
     setState((prev) => {
       const idx = prev.followedPlans.findIndex((f) => f.id === followId);
@@ -2285,37 +2282,15 @@ export function useAppState() {
       const toggledState = !currentStep.completed;
       newSteps[stepIdx] = { ...currentStep, completed: toggledState };
 
-      // Lifetime Point Cap Check (Max 2 followed plans earn points)
-      const pointEligibleFollows = prev.followedPlans.filter((f) => (f.pointsAwarded || 0) > 0);
-      const isAlreadyPointEligible = (target.pointsAwarded || 0) > 0;
-      const canEarnPoints = isAlreadyPointEligible || pointEligibleFollows.length < 2;
-
-      let addedPts = 0;
-      if (toggledState && canEarnPoints) {
-        awardPointsNow = true;
-        addedPts = 5;
-      } else if (!toggledState && (target.pointsAwarded || 0) > 0) {
-        awardPointsNow = true;
-        addedPts = -5;
-      }
-
       updatedFollow = {
         ...target,
         steps: newSteps,
-        pointsAwarded: Math.max(0, (target.pointsAwarded || 0) + addedPts),
       };
 
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      let nextState = { ...prev, followedPlans: updatedFollows };
-      if (awardPointsNow && addedPts !== 0) {
-        const msg = addedPts > 0 ? `Completed step on followed plan: ${target.title}` : `Unchecked step on followed plan: ${target.title}`;
-        const pts = addPointsInternal(nextState, addedPts, msg, 'plan');
-        nextState = { ...nextState, ...pts };
-      }
-
-      return nextState;
+      return { ...prev, followedPlans: updatedFollows };
     });
 
     if (updatedFollow) {
@@ -2325,7 +2300,6 @@ export function useAppState() {
 
   const updateFollowedTargetGoalProgress = useCallback((followId: string, newProgress: number) => {
     let updatedFollow: UserPlanFollow | null = null;
-    let awardPointsNow = false;
 
     setState((prev) => {
       const idx = prev.followedPlans.findIndex((f) => f.id === followId);
@@ -2333,40 +2307,16 @@ export function useAppState() {
 
       const target = prev.followedPlans[idx];
       const validProg = Math.min(target.targetValue || 0, Math.max(0, newProgress));
-      const isProgressIncreased = validProg > (target.currentProgress || 0);
-
-      const isProgressDecreased = validProg < (target.currentProgress || 0);
-
-      const pointEligibleFollows = prev.followedPlans.filter((f) => (f.pointsAwarded || 0) > 0);
-      const isAlreadyPointEligible = (target.pointsAwarded || 0) > 0;
-      const canEarnPoints = isAlreadyPointEligible || pointEligibleFollows.length < 2;
-
-      let addedPts = 0;
-      if (isProgressIncreased && canEarnPoints) {
-        awardPointsNow = true;
-        addedPts = 5;
-      } else if (isProgressDecreased && (target.pointsAwarded || 0) > 0) {
-        awardPointsNow = true;
-        addedPts = -5;
-      }
 
       updatedFollow = {
         ...target,
         currentProgress: validProg,
-        pointsAwarded: Math.max(0, (target.pointsAwarded || 0) + addedPts),
       };
 
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      let nextState = { ...prev, followedPlans: updatedFollows };
-      if (awardPointsNow && addedPts !== 0) {
-        const msg = addedPts > 0 ? `Updated progress on followed goal: ${target.title}` : `Decreased progress on followed goal: ${target.title}`;
-        const pts = addPointsInternal(nextState, addedPts, msg, 'plan');
-        nextState = { ...nextState, ...pts };
-      }
-
-      return nextState;
+      return { ...prev, followedPlans: updatedFollows };
     });
 
     if (updatedFollow) {
@@ -2483,13 +2433,6 @@ export function useAppState() {
       const updatedSteps = [...target.steps];
       updatedSteps[stepIdx] = { ...targetStep, completed: isNowCompleted };
 
-      let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-      if (isNowCompleted) {
-        pointsUpdate = addPointsInternal(prev, 10, `Completed plan step: ${targetStep.title}`, 'plan_step');
-      } else {
-        pointsUpdate = addPointsInternal(prev, -10, `Unchecked plan step: ${targetStep.title}`, 'plan_step');
-      }
-
       updatedPlan = {
         ...target,
         steps: updatedSteps,
@@ -2500,7 +2443,6 @@ export function useAppState() {
 
       return {
         ...prev,
-        ...pointsUpdate,
         improvementPlans: updatedPlans,
       };
     });
