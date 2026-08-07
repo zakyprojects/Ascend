@@ -2326,6 +2326,7 @@ export function useAppState() {
   // --- FOLLOWED & COPIED PLANS INTERACTIVE ACTIONS ---
   const completeFollowedPlanStep = useCallback((followId: string, stepId: string) => {
     let updatedFollow: UserPlanFollow | null = null;
+    let nextState: AppState | null = null;
 
     setState((prev) => {
       const idx = prev.followedPlans.findIndex((f) => f.id === followId);
@@ -2348,10 +2349,14 @@ export function useAppState() {
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      return { ...prev, followedPlans: updatedFollows };
+      nextState = { ...prev, followedPlans: updatedFollows };
+      return nextState;
     });
 
     if (updatedFollow) {
+      if (nextState && (nextState as AppState).currentUser?.id) {
+        saveUserDataToSupabase((nextState as AppState).currentUser!.id, nextState as AppState);
+      }
       syncFollowedPlanToSupabase(updatedFollow);
     }
   }, []);
@@ -2470,14 +2475,22 @@ export function useAppState() {
 
   const deleteFollowedPlan = useCallback((followedPlanId: string) => {
     deleteFollowedPlanFromSupabase(followedPlanId);
-    setState((prev) => ({
-      ...prev,
-      followedPlans: prev.followedPlans.filter((f) => f.id !== followedPlanId),
-    }));
+    setState((prev) => {
+      const nextState = {
+        ...prev,
+        followedPlans: prev.followedPlans.filter((f) => f.id !== followedPlanId),
+      };
+      if (nextState.currentUser?.id) {
+        saveUserDataToSupabase(nextState.currentUser.id, nextState);
+      }
+      return nextState;
+    });
   }, []);
 
   const completePlanStep = useCallback((planId: string, stepId: string) => {
     let updatedPlan: ImprovementPlan | null = null;
+    let nextState: AppState | null = null;
+
     setState((prev) => {
       const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
       if (idx === -1) return prev;
@@ -2499,15 +2512,20 @@ export function useAppState() {
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
 
-      return {
+      nextState = {
         ...prev,
         improvementPlans: updatedPlans,
       };
+
+      return nextState;
     });
 
     if (updatedPlan) {
       updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      if (nextState && (nextState as AppState).currentUser?.id) {
+        saveUserDataToSupabase((nextState as AppState).currentUser!.id, nextState as AppState);
+      }
       syncPlanToSupabase(updatedPlan);
     }
   }, []);
@@ -2538,15 +2556,21 @@ export function useAppState() {
 
       console.log(`[Delete Plan] DB Success! Removing from local Zustand state...`);
 
-      // 2. DB Success! Now remove from Zustand/UI state
+      // 2. DB Success! Now remove from Zustand/UI state & save clean user_data
       removeCachedPublicPlan(planId);
       syncBroadcaster.broadcast('PLAN_DELETED', { planId });
 
-      setState((prev) => ({
-        ...prev,
-        improvementPlans: prev.improvementPlans.filter((p) => p.id !== planId),
-        followedPlans: prev.followedPlans.filter((f) => f.originalPlanId !== planId),
-      }));
+      setState((prev) => {
+        const nextState = {
+          ...prev,
+          improvementPlans: prev.improvementPlans.filter((p) => p.id !== planId),
+          followedPlans: prev.followedPlans.filter((f) => f.originalPlanId !== planId),
+        };
+        if (session.user.id) {
+          saveUserDataToSupabase(session.user.id, nextState);
+        }
+        return nextState;
+      });
     } catch (err: any) {
       console.error("[Delete Plan] Fatal error deleting plan:", err);
       alert(`Fatal Error during deletion: ${err.message || 'Check console'}`);

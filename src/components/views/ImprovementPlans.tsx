@@ -263,18 +263,25 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     const localPublic = store.getPublicImprovementPlans();
     const map = new Map<string, ImprovementPlan>();
 
-    localPublic.forEach((p) => map.set(p.id, p));
+    // 1. Load remote public plans from database / realtime updates first
+    remotePublicPlans.forEach((p) => map.set(p.id, p));
 
-    remotePublicPlans.forEach((p) => {
-      const existing = map.get(p.id);
-      if (existing) {
-        map.set(p.id, {
-          ...p,
-          ...existing,
-          copyCount: Math.max(existing.copyCount || 0, p.copyCount || 0),
+    // 2. Merge local public plans (highest streak / progress always wins)
+    localPublic.forEach((local) => {
+      const remote = map.get(local.id);
+      if (remote) {
+        map.set(local.id, {
+          ...remote,
+          ...local,
+          streakCount: Math.max(remote.streakCount || 0, local.streakCount || 0),
+          currentProgress: Math.max(remote.currentProgress || 0, local.currentProgress || 0),
+          lastCompletedDate: (remote.lastCompletedDate && local.lastCompletedDate)
+            ? (new Date(remote.lastCompletedDate) > new Date(local.lastCompletedDate) ? remote.lastCompletedDate : local.lastCompletedDate)
+            : (remote.lastCompletedDate || local.lastCompletedDate || ''),
+          copyCount: Math.max(remote.copyCount || 0, local.copyCount || 0),
         });
       } else {
-        map.set(p.id, p);
+        map.set(local.id, local);
       }
     });
 

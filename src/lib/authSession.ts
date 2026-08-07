@@ -12,6 +12,8 @@ import {
   supabase,
   mapRowToImprovementPlan,
   mapRowToUserPlanFollow,
+  syncPlanToSupabase,
+  syncFollowedPlanToSupabase,
 } from './supabase';
 
 export type SignUpDefaults = {
@@ -249,18 +251,14 @@ export async function hydrateUserSession(
       .select('*')
       .eq('creator_id', userId);
 
-    console.log('[REAL-USER DEBUG: STAGE 1 RAW DB FETCH]', {
-      dbPlans: dbPlans?.map((r) => ({ id: r.id, title: r.title, steps: r.steps })),
-      savedStatePlans: savedState?.improvementPlans?.map((p: any) => ({ id: p.id, title: p.title, streakCount: p.streakCount, lastCompletedDate: p.lastCompletedDate, steps: p.steps })),
-      savedStatePoints: savedState?.totalPoints,
-    });
-
     const savedPlansMap = new Map<string, any>();
     if (savedState?.improvementPlans) {
       savedState.improvementPlans.forEach((p: any) => savedPlansMap.set(p.id, p));
     }
 
     if (dbPlans && !dbPlansErr) {
+      const dbPlanIds = new Set(dbPlans.map((r) => r.id));
+
       state.improvementPlans = dbPlans.map((row) => {
         const mapped = mapRowToImprovementPlan(row);
         const savedPlan = savedPlansMap.get(mapped.id);
@@ -269,19 +267,28 @@ export async function hydrateUserSession(
         let lastCompletedDate = mapped.lastCompletedDate || '';
         let steps = mapped.steps || [];
 
+        let needsSyncBack = false;
         if (savedPlan) {
           const savedStreak = savedPlan.streakCount || 0;
           if (savedStreak > streakCount) {
             streakCount = savedStreak;
+            needsSyncBack = true;
           }
           if (savedPlan.lastCompletedDate) {
             if (!lastCompletedDate || new Date(savedPlan.lastCompletedDate) > new Date(lastCompletedDate)) {
               lastCompletedDate = savedPlan.lastCompletedDate;
+              needsSyncBack = true;
             }
           }
 
-          // Merge step items: true wins for completed flag
+          // Merge step items: dbStep.completed takes priority for existing plans
           steps = mergePlanSteps(mapped.steps, savedPlan.steps);
+
+          // Check if savedPlan completed any steps that the DB had as false
+          const hasUnsyncedCompletedStep = steps.some((ms: any, i: number) => ms.completed && (!mapped.steps || !mapped.steps[i] || !mapped.steps[i].completed));
+          if (hasUnsyncedCompletedStep) {
+            needsSyncBack = true;
+          }
         }
 
         const merged = {
@@ -292,18 +299,22 @@ export async function hydrateUserSession(
           lastCompletedDate,
         };
 
-        console.log('[REAL-USER DEBUG: STAGE 2 MAPPED & MERGED PLAN]', {
-          id: merged.id,
-          title: merged.title,
-          planType: merged.planType,
-          streakCount: merged.streakCount,
-          lastCompletedDate: merged.lastCompletedDate,
-          cadence: merged.cadence,
-          steps: merged.steps,
-        });
+        // EXPLICIT GUARD: Never sync back a plan that does not exist in dbPlans (never resurrect deleted plans)
+        if (needsSyncBack && dbPlanIds.has(merged.id)) {
+          void syncPlanToSupabase(merged);
+        }
 
         return merged;
       });
+
+      // CLEANUP STALE DELETED PLANS IN USER_DATA
+      if (savedState?.improvementPlans) {
+        const cleanedPlans = savedState.improvementPlans.filter((p: any) => dbPlanIds.has(p.id));
+        if (cleanedPlans.length !== savedState.improvementPlans.length) {
+          console.log('[HYDRATION CLEANUP] Cleaning deleted plans out of user_data');
+          void saveUserDataToSupabase(userId, { ...savedState, improvementPlans: cleanedPlans });
+        }
+      }
     } else if (savedState?.improvementPlans && savedState.improvementPlans.length > 0) {
       state.improvementPlans = savedState.improvementPlans;
     } else {
@@ -322,6 +333,8 @@ export async function hydrateUserSession(
     }
 
     if (dbFollows && !dbFollowsErr) {
+      const dbFollowIds = new Set(dbFollows.map((r) => r.id));
+
       state.followedPlans = dbFollows.map((row) => {
         const mapped = mapRowToUserPlanFollow(row);
         const savedFollow = savedFollowsMap.get(mapped.id);
@@ -330,34 +343,62 @@ export async function hydrateUserSession(
         let lastCompletedDate = mapped.lastCompletedDate || '';
         let steps = mapped.steps || [];
 
+        let needsSyncBack = false;
         if (savedFollow) {
           const savedStreak = savedFollow.streakCount || 0;
           if (savedStreak > streakCount) {
             streakCount = savedStreak;
+            needsSyncBack = true;
           }
           if (savedFollow.lastCompletedDate) {
             if (!lastCompletedDate || new Date(savedFollow.lastCompletedDate) > new Date(lastCompletedDate)) {
               lastCompletedDate = savedFollow.lastCompletedDate;
+              needsSyncBack = true;
             }
           }
 
-          // Merge step items: true wins for completed flag
+          // Merge step items: dbStep.completed takes priority for existing plans
           steps = mergePlanSteps(mapped.steps, savedFollow.steps);
         }
 
-        return {
+        const merged = {
           ...savedFollow,
           ...mapped,
           steps,
           streakCount,
           lastCompletedDate,
         };
+
+        // EXPLICIT GUARD: Never sync back a followed plan that does not exist in dbFollows (never resurrect deleted followed plans)
+        if (needsSyncBack && dbFollowIds.has(merged.id)) {
+          void syncFollowedPlanToSupabase(merged);
+        }
+
+        return merged;
       });
+
+      // CLEANUP STALE DELETED FOLLOWED PLANS IN USER_DATA
+      if (savedState?.followedPlans) {
+        const cleanedFollows = savedState.followedPlans.filter((f: any) => dbFollowIds.has(f.id));
+        if (cleanedFollows.length !== savedState.followedPlans.length) {
+          console.log('[HYDRATION CLEANUP] Cleaning deleted followed plans out of user_data');
+          void saveUserDataToSupabase(userId, { ...savedState, followedPlans: cleanedFollows });
+        }
+      }
     } else if (savedState?.followedPlans && savedState.followedPlans.length > 0) {
       state.followedPlans = savedState.followedPlans;
+    } else {
+      state.followedPlans = [];
     }
   } catch (e) {
     console.warn('Skipped loading partner social data or plans during hydration:', e);
+  }
+
+  // Clear stale guest localStorage data upon authenticated user hydration
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('ascend_guest_state_v2');
+    } catch (e) {}
   }
 
   if (!profileData || !savedState) {

@@ -457,7 +457,10 @@ export async function deleteFollowedPlanFromSupabase(followedPlanId: string) {
 }
 
 export function mapRowToImprovementPlan(row: any): ImprovementPlan {
-  const rawSteps = row?.steps;
+  let rawSteps = row?.steps;
+  if (typeof rawSteps === 'string') {
+    try { rawSteps = JSON.parse(rawSteps); } catch (e) {}
+  }
   const isStepsArray = Array.isArray(rawSteps);
   const stepsMeta = !isStepsArray && typeof rawSteps === 'object' && rawSteps !== null ? rawSteps : {};
   const stepsList = isStepsArray ? rawSteps : (Array.isArray(stepsMeta.items) ? stepsMeta.items : []);
@@ -479,7 +482,6 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
     createdAt: row?.created_at || new Date().toISOString(),
 
     // Phase B Plan Type Properties
-    // Phase B Plan Type Properties
     planType: stepsMeta.planType || row?.plan_type || 'milestone',
     targetValue: stepsMeta.targetValue !== undefined ? Number(stepsMeta.targetValue) : (row?.target_value !== undefined && row?.target_value !== null ? Number(row.target_value) : undefined),
     targetUnit: stepsMeta.targetUnit || row?.target_unit || '',
@@ -496,7 +498,10 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
 }
 
 export function mapRowToUserPlanFollow(row: any): UserPlanFollow {
-  const rawSteps = row?.steps;
+  let rawSteps = row?.steps;
+  if (typeof rawSteps === 'string') {
+    try { rawSteps = JSON.parse(rawSteps); } catch (e) {}
+  }
   const isStepsArray = Array.isArray(rawSteps);
   const stepsMeta = !isStepsArray && typeof rawSteps === 'object' && rawSteps !== null ? rawSteps : {};
   const stepsList = isStepsArray ? rawSteps : (Array.isArray(stepsMeta.items) ? stepsMeta.items : []);
