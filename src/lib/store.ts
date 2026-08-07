@@ -1876,8 +1876,38 @@ export function useAppState() {
     }
   }, []);
 
-  const undoHabitJourneyDone = useCallback((_planId: string) => {
-    // Stub for Step 3 rebuild
+  const undoHabitJourneyDone = useCallback((planId: string) => {
+    let updatedPlan: ImprovementPlan | null = null;
+    setState((prev) => {
+      const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
+      if (idx === -1) return prev;
+      const target = prev.improvementPlans[idx];
+
+      // Only allow undo if lastCompletedDate is today's local date
+      if (!isTodayLocal(target.lastCompletedDate)) {
+        return prev;
+      }
+
+      const currentStreak = target.streakCount || 0;
+      const newStreak = Math.max(0, currentStreak - 1);
+
+      updatedPlan = {
+        ...target,
+        streakCount: newStreak,
+        lastCompletedDate: undefined,
+      };
+
+      const updatedPlans = [...prev.improvementPlans];
+      updatedPlans[idx] = updatedPlan;
+
+      return { ...prev, improvementPlans: updatedPlans };
+    });
+
+    if (updatedPlan) {
+      updateCachedPublicPlan(updatedPlan);
+      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      syncPlanToSupabase(updatedPlan);
+    }
   }, []);
 
   const setNewFollowedTargetGoal = useCallback((followId: string, newTarget: number) => {
@@ -1941,8 +1971,36 @@ export function useAppState() {
     }
   }, []);
 
-  const undoFollowedHabitJourneyDone = useCallback((_followId: string) => {
-    // Stub for Step 3 rebuild
+  const undoFollowedHabitJourneyDone = useCallback((followId: string) => {
+    let updatedFollow: UserPlanFollow | null = null;
+    setState((prev) => {
+      const idx = prev.followedPlans.findIndex((f) => f.id === followId);
+      if (idx === -1) return prev;
+      const target = prev.followedPlans[idx];
+
+      // Only allow undo if lastCompletedDate is today's local date
+      if (!isTodayLocal(target.lastCompletedDate)) {
+        return prev;
+      }
+
+      const currentStreak = target.streakCount || 0;
+      const newStreak = Math.max(0, currentStreak - 1);
+
+      updatedFollow = {
+        ...target,
+        streakCount: newStreak,
+        lastCompletedDate: undefined,
+      };
+
+      const updatedFollows = [...prev.followedPlans];
+      updatedFollows[idx] = updatedFollow;
+
+      return { ...prev, followedPlans: updatedFollows };
+    });
+
+    if (updatedFollow) {
+      syncFollowedPlanToSupabase(updatedFollow);
+    }
   }, []);
 
   const editVisionReflectionNote = useCallback((planId: string, noteId: string, newNoteText: string) => {

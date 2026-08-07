@@ -562,19 +562,42 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             )
           ) : (
             /* Interactive mode in My Plans */
-            <div className="pt-1 flex items-center justify-between">
-              <button
-                onClick={() => {
-                  if (mode === 'follower_interactive') {
-                    store.markFollowedHabitJourneyDone(planId);
-                  } else {
-                    store.markHabitJourneyDone(planId);
-                  }
-                }}
-                className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white"
-              >
-                <CheckCircle2 size={14} /> Mark Done for {cadenceText}
-              </button>
+            <div className="pt-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {isCompletedToday ? (
+                  <>
+                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 rounded border border-emerald-500/20">
+                      <CheckCircle2 size={13} /> Done for {cadenceText}
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (mode === 'follower_interactive') {
+                          store.undoFollowedHabitJourneyDone(planId);
+                        } else {
+                          store.undoHabitJourneyDone(planId);
+                        }
+                      }}
+                      className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1.5 border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                      title="Undo today's completion and re-enable mark done"
+                    >
+                      <RotateCcw size={13} /> Undo Today's Mark
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (mode === 'follower_interactive') {
+                        store.markFollowedHabitJourneyDone(planId);
+                      } else {
+                        store.markHabitJourneyDone(planId);
+                      }
+                    }}
+                    className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white"
+                  >
+                    <CheckCircle2 size={14} /> Mark Done for {cadenceText}
+                  </button>
+                )}
+              </div>
               {plan.lastCompletedDate && (
                 <span className="text-[10px] text-slate-500">
                   Last completed: {new Date(plan.lastCompletedDate).toLocaleDateString()}
