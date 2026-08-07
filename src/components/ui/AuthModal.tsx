@@ -229,9 +229,11 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
         {mode === 'choice' && (
           <div className="space-y-4 py-2">
             <div className="text-center space-y-1">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mx-auto shadow-lg shadow-primary-500/20 mb-3">
-                <Sparkles size={24} className="text-white" />
-              </div>
+              <img
+                src="/favicon.svg"
+                alt="Ascend Logo"
+                className="w-12 h-12 rounded-2xl mx-auto shadow-lg shadow-emerald-500/20 mb-3 object-cover"
+              />
               <h2 className="text-xl font-display font-bold text-slate-100">
                 Ascend Self-Growth
               </h2>

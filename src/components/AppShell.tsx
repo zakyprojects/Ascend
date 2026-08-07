@@ -105,9 +105,11 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
       <aside className="hidden md:flex flex-col w-64 h-full glass border-r border-white/5 shrink-0 overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-              <Award size={20} className="text-white" />
-            </div>
+            <img
+              src="/favicon.svg"
+              alt="Ascend Logo"
+              className="w-9 h-9 rounded-xl object-cover shrink-0"
+            />
             <div>
               <div className="flex items-center gap-2">
                 <div className="font-display font-bold text-slate-100 text-lg leading-none">Ascend</div>
@@ -246,9 +248,11 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
         {/* Mobile header */}
         <header className="md:hidden glass border-b border-white/5 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-              <Award size={16} className="text-white" />
-            </div>
+            <img
+              src="/favicon.svg"
+              alt="Ascend Logo"
+              className="w-8 h-8 rounded-lg object-cover shrink-0"
+            />
             <span className="font-display font-bold text-slate-100">Ascend</span>
           </div>
 
