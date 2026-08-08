@@ -29,7 +29,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   const pendingToday = habits.filter((h) => !store.isHabitDone(h));
 
   const highestStreakInfo = getHighestUserStreak(store.state);
-  const bestStreak = highestStreakInfo.days;
+  const bestStreak = highestStreakInfo.bestDays ?? highestStreakInfo.days;
 
   const completionRate = habits.length > 0 ? Math.round((completedToday.length / habits.length) * 100) : 0;
 

@@ -191,7 +191,13 @@ function persistState(state: AppState) {
   }
 }
 
-function addPointsInternal(prev: AppState, amount: number, reason: string, source: string): Pick<AppState, 'totalPoints' | 'pointsHistory'> {
+function addPointsInternal(
+  prev: AppState,
+  amount: number,
+  reason: string,
+  source: string,
+  metadata?: Record<string, any>
+): Pick<AppState, 'totalPoints' | 'pointsHistory'> {
   return {
     totalPoints: Math.max(0, prev.totalPoints + amount),
     pointsHistory: [
@@ -201,6 +207,7 @@ function addPointsInternal(prev: AppState, amount: number, reason: string, sourc
         reason,
         source,
         timestamp: new Date().toISOString(),
+        ...(metadata ? { metadata } : {}),
       },
       ...prev.pointsHistory,
     ].slice(0, 500),
@@ -574,10 +581,10 @@ export function useAppState() {
   }, []);
 
   const addPoints = useCallback(
-    (amount: number, reason: string, source: string) => {
+    (amount: number, reason: string, source: string, metadata?: Record<string, any>) => {
       setState((prev) => ({
         ...prev,
-        ...addPointsInternal(prev, amount, reason, source),
+        ...addPointsInternal(prev, amount, reason, source, metadata),
       }));
     },
     []
@@ -666,11 +673,29 @@ export function useAppState() {
           pointsHistory: prev.pointsHistory,
         };
 
-        if (habit && habit.isPreset && habit.points > 0) {
+        if (habit) {
+          const habitMeta = {
+            category: habit.category,
+            habitId: habit.id,
+            habitName: habit.name,
+          };
+          const pts = (habit.isPreset && habit.points > 0) ? habit.points : 0;
           if (completed) {
-            pointsUpdate = addPointsInternal(prev, habit.points, `Completed habit: ${habit.name}`, 'habit');
+            pointsUpdate = addPointsInternal(
+              prev,
+              pts,
+              `Habit completed: ${habit.name}`,
+              'habit_completed',
+              habitMeta
+            );
           } else {
-            pointsUpdate = addPointsInternal(prev, -habit.points, `Unchecked habit: ${habit.name}`, 'habit');
+            pointsUpdate = addPointsInternal(
+              prev,
+              -pts,
+              `Habit unchecked: ${habit.name}`,
+              'habit_unchecked',
+              habitMeta
+            );
           }
         }
 

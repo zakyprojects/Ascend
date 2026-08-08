@@ -524,7 +524,7 @@ export function reconstructStateFromProfile(p: any): AppState {
     habits,
     journalEntries: [],
     totalPoints: p.total_points || 0,
-    pointsHistory: [],
+    pointsHistory: p.points_history || [],
     leagueArchives: [],
     readLessonIds: [],
     workouts,
@@ -559,16 +559,10 @@ export function getRegisteredCompetitors(
     const pointsHistory = p.points_history || [];
     const periodPoints = calculatePeriodPoints(pointsHistory, start, now);
 
-    let streakDays = p.stats?.streakDays || 0;
-    let streakSource = p.stats?.streakSource;
-
-    // If profile stats missing streakSource or if streakDays is suspiciously high (> 10 without valid logs), recompute using getHighestUserStreak
-    if (!streakSource || !p.stats || streakDays > 10) {
-      const reconstructedState = reconstructStateFromProfile(p);
-      const highestInfo = getHighestUserStreak(reconstructedState, now);
-      streakDays = highestInfo.days > 0 ? highestInfo.days : (p.stats?.streakDays || 0);
-      streakSource = highestInfo.source || p.stats?.streakSource || (p.active_habits?.[0]?.name ?? 'Habit Journey');
-    }
+    const reconstructedState = reconstructStateFromProfile(p);
+    const highestInfo = getHighestUserStreak(reconstructedState, now);
+    const streakDays = highestInfo.days;
+    const streakSource = highestInfo.source;
 
     const stats = {
       streakDays,

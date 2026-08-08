@@ -117,7 +117,7 @@ export function CompetitorProfileModal({
                     color="#f97316"
                     label="Current Streak"
                     value={`${stats.streakDays} days`}
-                    subtitle={stats.streakDays > 0 ? stats.streakSource : undefined}
+                    subtitle={stats.streakSource}
                   />
                   <StatCard
                     icon={CheckSquare}

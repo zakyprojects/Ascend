@@ -6,6 +6,7 @@ export interface StreakSourceInfo {
   days: number;
   source: string;
   priority?: number;
+  bestDays?: number;
 }
 
 /**
@@ -36,28 +37,142 @@ export function getHighestUserStreak(state: AppState, now: Date = new Date()): S
   const streaks: StreakSourceInfo[] = [];
 
   // 1. Regular Habit Journey Habits (Priority 100)
-  (state.habits || []).forEach((h) => {
-    if (!h || !h.completions || h.completions.length === 0) return;
-    const sorted = Array.from(new Set(h.completions)).sort();
-    let streak = 0;
-    let cursor = new Date(now);
+  // Track net completions and active vs deleted status per habit lineage
+  interface LineageData {
+    name: string;
+    category?: string;
+    dateNet: Map<string, number>;
+  }
 
-    const currentKey = todayKey(cursor);
-    if (!sorted.includes(currentKey)) {
-      cursor.setDate(cursor.getDate() - 1);
+  const lineageMap = new Map<string, LineageData>();
+
+  // Process pointsHistory to calculate net completions per date for each habit lineage
+  (state.pointsHistory || []).forEach((e) => {
+    if (!e || !e.timestamp) return;
+
+    const isCompleted =
+      e.source === 'habit_completed' ||
+      e.source === 'habit' ||
+      (e.reason && (e.reason.startsWith('Habit completed:') || e.reason.startsWith('Completed habit:')));
+
+    const isUnchecked =
+      e.source === 'habit_unchecked' ||
+      (e.reason && (e.reason.startsWith('Habit unchecked:') || e.reason.startsWith('Unchecked habit:')));
+
+    if (!isCompleted && !isUnchecked) return;
+
+    let habitName = e.metadata?.habitName;
+    if (!habitName && e.reason) {
+      habitName = e.reason
+        .replace(/^(Habit completed:|Completed habit:|Habit unchecked:|Unchecked habit:)\s*/i, '')
+        .trim();
+    }
+    if (!habitName || habitName === 'Habit') habitName = 'Habit Journey';
+
+    const dateKey = todayKey(new Date(e.timestamp));
+
+    if (!lineageMap.has(habitName)) {
+      lineageMap.set(habitName, {
+        name: habitName,
+        category: e.metadata?.category,
+        dateNet: new Map<string, number>(),
+      });
     }
 
-    for (let i = 0; i < 365; i++) {
-      const key = todayKey(cursor);
-      if (sorted.includes(key)) {
-        streak++;
-        cursor.setDate(cursor.getDate() - 1);
+    const lineage = lineageMap.get(habitName)!;
+    if (!lineage.category && e.metadata?.category) {
+      lineage.category = e.metadata.category;
+    }
+
+    const currentNet = lineage.dateNet.get(dateKey) || 0;
+    lineage.dateNet.set(dateKey, currentNet + (isCompleted ? 1 : -1));
+  });
+
+  // Also fold in active habits from state.habits
+  (state.habits || []).forEach((h) => {
+    if (!h) return;
+    const name = h.name || 'Habit Journey';
+    if (!lineageMap.has(name)) {
+      lineageMap.set(name, {
+        name,
+        category: h.category,
+        dateNet: new Map<string, number>(),
+      });
+    }
+    const lineage = lineageMap.get(name)!;
+    if (!lineage.category && h.category) lineage.category = h.category;
+
+    (h.completions || []).forEach((cDate) => {
+      if (!lineage.dateNet.has(cDate)) {
+        lineage.dateNet.set(cDate, 1);
+      }
+    });
+  });
+
+  // Evaluate streaks for each habit lineage
+  lineageMap.forEach((lineage) => {
+    const validDates = Array.from(lineage.dateNet.entries())
+      .filter(([_, net]) => net > 0)
+      .map(([date]) => date)
+      .sort();
+
+    if (validDates.length === 0) return;
+
+    const activeHabit = (state.habits || []).find(
+      (h) => h.name.toLowerCase() === lineage.name.toLowerCase()
+    );
+    const isActive = !!activeHabit;
+
+    const sourceLabel = isActive
+      ? (activeHabit?.name || lineage.name)
+      : `${lineage.name} (deleted)`;
+
+    let currentStreak = 0;
+    let bestStreak = 0;
+    let runningStreak = 0;
+
+    const todayStr = todayKey(now);
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = todayKey(yesterdayDate);
+
+    for (let i = 0; i < validDates.length; i++) {
+      const currentDate = validDates[i];
+      if (i === 0) {
+        runningStreak = 1;
       } else {
-        break;
+        const prevDateObj = new Date(validDates[i - 1]);
+        const currDateObj = new Date(currentDate);
+        const diffDays = Math.round((currDateObj.getTime() - prevDateObj.getTime()) / (1000 * 3600 * 24));
+
+        if (diffDays === 1) {
+          runningStreak++;
+        } else {
+          // Re-add continuation / frozen jump
+          runningStreak = runningStreak + 1;
+        }
+      }
+      bestStreak = Math.max(bestStreak, runningStreak);
+    }
+
+    if (!isActive) {
+      currentStreak = runningStreak;
+    } else {
+      const lastCompletedDate = validDates[validDates.length - 1];
+      if (lastCompletedDate === todayStr || lastCompletedDate === yesterdayStr) {
+        currentStreak = runningStreak;
+      } else {
+        currentStreak = 0;
       }
     }
-    if (streak > 0) {
-      streaks.push({ days: streak, source: h.name || 'Habit Journey', priority: 100 });
+
+    if (currentStreak > 0 || bestStreak > 0) {
+      streaks.push({
+        days: currentStreak,
+        source: sourceLabel,
+        priority: 100,
+        bestDays: bestStreak,
+      });
     }
   });
 

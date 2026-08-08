@@ -124,6 +124,7 @@ export interface PointsEntry {
   reason: string;
   source: string;
   timestamp: string;
+  metadata?: Record<string, any>;
 }
 
 // Module 1: Exercise Tracker
