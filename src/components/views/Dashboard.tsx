@@ -2,6 +2,7 @@ import { Flame, TrendingUp, Star, BookOpen, Check, ArrowRight, Sparkles, Trophy,
 import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
 import { calculateStreak, todayKey, formatDateLong } from '@/lib/dates';
+import { getHighestUserStreak } from '@/lib/habitPenalties';
 import { getCurrentTier, getNextTier } from '@/lib/tiers';
 import { TierBadge, TierProgress } from '@/components/ui/TierBadge';
 import { LEAGUE_CONFIG, formatCountdown, getTimeUntilReset, getSeasonLabel } from '@/lib/leagues';
@@ -27,10 +28,8 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   const completedToday = habits.filter((h) => store.isHabitDone(h));
   const pendingToday = habits.filter((h) => !store.isHabitDone(h));
 
-  const bestStreak = habits.reduce((max, h) => {
-    const s = calculateStreak(h.completions, h.frequency);
-    return Math.max(max, s);
-  }, 0);
+  const highestStreakInfo = getHighestUserStreak(store.state);
+  const bestStreak = highestStreakInfo.days;
 
   const completionRate = habits.length > 0 ? Math.round((completedToday.length / habits.length) * 100) : 0;
 
@@ -155,7 +154,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard icon={<Check size={18} />} label="Done Today" value={`${completedToday.length}/${habits.length}`} color="#34d399" />
         <StatCard icon={<TrendingUp size={18} />} label="Completion" value={`${completionRate}%`} color="#0ea5e9" />
-        <StatCard icon={<Flame size={18} />} label="Best Streak" value={`${bestStreak}d`} color="#f59e0b" />
+        <StatCard icon={<Flame size={18} />} label="Best Streak" value={`${bestStreak}d (${highestStreakInfo.source})`} color="#f59e0b" />
         <StatCard icon={<Star size={18} />} label="Habits" value={String(habits.length)} color="#a855f7" />
       </div>
 

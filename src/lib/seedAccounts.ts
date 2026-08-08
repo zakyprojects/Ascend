@@ -220,6 +220,7 @@ export function getSeedCompetitors(type: LeagueType, date: Date = new Date()): L
     const periodPoints = calculateSeedAccountPoints(seed, type, date);
     return {
       id: seed.id,
+      uid: seed.uid,
       name: seed.username,
       avatar: seed.avatar,
       points: periodPoints,

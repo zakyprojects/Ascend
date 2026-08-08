@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, PartnerNotification, UserPlanFollow, AppNotification } from '@/types';
+import { getHighestUserStreak } from './habitPenalties';
 
 const supabaseUrl = typeof import.meta !== 'undefined' && import.meta?.env ? import.meta.env.VITE_SUPABASE_URL : undefined;
 const supabaseAnonKey = typeof import.meta !== 'undefined' && import.meta?.env ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
@@ -114,13 +115,16 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
         const todayStr = new Date().toISOString().split('T')[0];
         return acc + (h.completions?.includes(todayStr) ? 1 : 0);
       }, 0);
-      const streakDays = habitsCompletedCount === 0 ? 0 : Math.max(1, Math.min(30, Math.floor(habitsCompletedCount / 2) + (habitsCompletedTodayCount > 0 ? 1 : 0)));
+      const highestStreakInfo = getHighestUserStreak(state);
+      const streakDays = highestStreakInfo.days;
+      const streakSource = highestStreakInfo.source;
       const exerciseMinutes = (state.workouts || []).reduce((sum, w) => sum + w.durationMinutes, 0);
       const booksRead = (state.books || []).filter((b) => b.isFinished).length;
       const skillsPracticedCount = (state.skillLogs || []).length;
 
       const userStats = {
         streakDays,
+        streakSource,
         habitsCompletedCount,
         habitsCompletedTodayCount,
         journalEntriesCount: (state.journalEntries || []).length,

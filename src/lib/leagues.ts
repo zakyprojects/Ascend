@@ -154,6 +154,7 @@ export function generateCompetitors(
   // 1. Current active user
   const activeUserCompetitor: LeagueCompetitor = {
     id: currentUserId || 'current_user',
+    uid: currentUser?.uid,
     name: activeUsername,
     avatar: activeAvatar,
     points: userPoints,

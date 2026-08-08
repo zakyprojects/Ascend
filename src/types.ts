@@ -30,6 +30,7 @@ export interface UserProfile {
 
 export interface UserStats {
   streakDays: number;
+  streakSource?: string;
   habitsCompletedCount: number;
   journalEntriesCount: number;
   exerciseMinutes: number;
@@ -70,6 +71,7 @@ export type LeagueType = 'weekly' | 'monthly' | 'ninetyDay';
 
 export interface LeagueCompetitor {
   id?: string;
+  uid?: string;
   name: string;
   avatar: string; // emoji
   points: number; // period points

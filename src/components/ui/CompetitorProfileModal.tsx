@@ -34,24 +34,32 @@ export function CompetitorProfileModal({
       <div className="space-y-5">
         {/* Profile Header */}
         <div className="p-4 bg-bg-800 rounded-2xl border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3.5 min-w-0">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500/20 to-primary-600/30 border border-primary-500/30 flex items-center justify-center text-3xl shrink-0 shadow-lg">
               {competitor.avatar}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-display font-bold text-slate-100">{competitor.name}</h3>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-lg font-display font-bold text-slate-100 truncate">{competitor.name}</h3>
                 {competitor.isUser && (
-                  <span className="text-[10px] bg-primary-500/20 text-primary-300 border border-primary-500/30 px-2 py-0.5 rounded-full font-bold">
+                  <span className="text-[10px] bg-primary-500/20 text-primary-300 border border-primary-500/30 px-2 py-0.5 rounded-full font-bold shrink-0">
                     You
                   </span>
                 )}
                 {competitor.isRealUser && !competitor.isUser && (
-                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium">
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium shrink-0">
                     <CheckCircle2 size={10} /> Member
                   </span>
                 )}
               </div>
+
+              {/* UID Display directly under username */}
+              {(competitor.uid || competitor.id) && (
+                <div className="text-[11px] font-mono text-slate-400 mt-0.5 tracking-tight truncate">
+                  ID: #{competitor.uid || competitor.id?.slice(0, 8)}
+                </div>
+              )}
+
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-slate-400">League Points:</span>
                 <span className="text-xs font-display font-bold text-primary-400">
@@ -62,7 +70,7 @@ export function CompetitorProfileModal({
           </div>
 
           {/* Tier Badge */}
-          <div className="shrink-0 bg-bg-700/80 p-2.5 rounded-xl border border-white/5">
+          <div className="shrink-0 bg-bg-700/80 p-2.5 rounded-xl border border-white/5 self-start sm:self-center">
             <TierBadge totalPoints={competitor.totalPoints || competitor.points} size="md" showName />
           </div>
         </div>
@@ -109,6 +117,7 @@ export function CompetitorProfileModal({
                     color="#f97316"
                     label="Current Streak"
                     value={`${stats.streakDays} days`}
+                    subtitle={stats.streakDays > 0 ? stats.streakSource : undefined}
                   />
                   <StatCard
                     icon={CheckSquare}
@@ -188,18 +197,35 @@ export function CompetitorProfileModal({
   );
 }
 
-function StatCard({ icon: Icon, color, label, value }: { icon: any; color: string; label: string; value: string }) {
+function StatCard({
+  icon: Icon,
+  color,
+  label,
+  value,
+  subtitle,
+}: {
+  icon: any;
+  color: string;
+  label: string;
+  value: string;
+  subtitle?: string;
+}) {
   return (
-    <div className="p-3 bg-bg-800 rounded-xl border border-white/5 flex items-center gap-2.5">
+    <div className="p-3 bg-bg-800 rounded-xl border border-white/5 flex items-center gap-2.5 min-w-0">
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
         style={{ backgroundColor: `${color}15` }}
       >
         <Icon size={16} style={{ color }} />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-[10px] text-slate-400 truncate">{label}</p>
         <p className="text-xs font-bold text-slate-200 truncate">{value}</p>
+        {subtitle && (
+          <p className="text-[10px] text-orange-400/90 font-medium truncate mt-0.5" title={`Source: ${subtitle}`}>
+            {subtitle}
+          </p>
+        )}
       </div>
     </div>
   );

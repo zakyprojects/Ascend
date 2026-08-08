@@ -2,6 +2,12 @@ import { AppState, Habit, BadHabitLog, PartnerNotification } from '@/types';
 import { todayKey, periodKey, previousPeriodKey, uid } from './dates';
 import { createNotificationSupabase } from './supabase';
 
+export interface StreakSourceInfo {
+  days: number;
+  source: string;
+  priority?: number;
+}
+
 /**
  * Returns the penalty multiplier based on the number of consecutive misses and user's current total points / tier.
  * - Below Diamond tier (< 1000 pts: Bronze, Silver, Gold, Platinum): capped at 1.5x max (1st miss = 1x, 2nd+ miss = 1.5x)
@@ -18,6 +24,153 @@ export function getMissPenaltyMultiplier(consecutiveMisses: number, totalPoints:
     if (consecutiveMisses === 2) return 2.0;
     return 2.5;
   }
+}
+
+/**
+ * Computes the single highest streak across all active categories/habits with defined priority tie-breaking:
+ * Priority Order: Habit Journey (100) > Exercise (80) > Reading (60) > Bad Habit Resisted (40) > Skill Practice (20).
+ */
+export function getHighestUserStreak(state: AppState, now: Date = new Date()): StreakSourceInfo {
+  if (!state) return { days: 0, source: '' };
+
+  const streaks: StreakSourceInfo[] = [];
+
+  // 1. Regular Habit Journey Habits (Priority 100)
+  (state.habits || []).forEach((h) => {
+    if (!h || !h.completions || h.completions.length === 0) return;
+    const sorted = Array.from(new Set(h.completions)).sort();
+    let streak = 0;
+    let cursor = new Date(now);
+
+    const currentKey = todayKey(cursor);
+    if (!sorted.includes(currentKey)) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    for (let i = 0; i < 365; i++) {
+      const key = todayKey(cursor);
+      if (sorted.includes(key)) {
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    if (streak > 0) {
+      streaks.push({ days: streak, source: h.name || 'Habit Journey', priority: 100 });
+    }
+  });
+
+  // 2. Exercise Streak (Workouts) (Priority 80)
+  if (state.workouts && state.workouts.length > 0) {
+    const workoutDates = Array.from(new Set(state.workouts.map((w) => w.date))).sort();
+    let streak = 0;
+    let cursor = new Date(now);
+
+    if (!workoutDates.includes(todayKey(cursor))) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    for (let i = 0; i < 365; i++) {
+      const k = todayKey(cursor);
+      if (workoutDates.includes(k)) {
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    if (streak > 0) {
+      streaks.push({ days: streak, source: 'Exercise', priority: 80 });
+    }
+  }
+
+  // 3. Reading Streak (Priority 60)
+  if (state.readingLogs && state.readingLogs.length > 0) {
+    const readingDates = Array.from(new Set(state.readingLogs.map((r) => r.date))).sort();
+    let streak = 0;
+    let cursor = new Date(now);
+
+    if (!readingDates.includes(todayKey(cursor))) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    for (let i = 0; i < 365; i++) {
+      const k = todayKey(cursor);
+      if (readingDates.includes(k)) {
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    if (streak > 0) {
+      streaks.push({ days: streak, source: 'Reading', priority: 60 });
+    }
+  }
+
+  // 4. Bad Habit Resisted Streaks (Priority 40)
+  (state.badHabits || []).filter((bh) => bh && !bh.isCompleted).forEach((bh) => {
+    let streak = 0;
+    let cursor = new Date(now);
+    const logs = (state.badHabitLogs || []).filter((l) => l && l.badHabitId === bh.id);
+
+    const todayStr = todayKey(cursor);
+    const todayLog = logs.find((l) => l.date === todayStr);
+    if (!todayLog) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    for (let i = 0; i < 365; i++) {
+      const k = todayKey(cursor);
+      const log = logs.find((l) => l.date === k);
+      if (log && log.status === 'resisted') {
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    if (streak > 0) {
+      streaks.push({ days: streak, source: `${bh.name} (Resisted)`, priority: 40 });
+    }
+  });
+
+  // 5. Skill Practice Streak (Priority 20)
+  if (state.skillLogs && state.skillLogs.length > 0) {
+    const skillDates = Array.from(new Set(state.skillLogs.map((s) => s.date))).sort();
+    let streak = 0;
+    let cursor = new Date(now);
+
+    if (!skillDates.includes(todayKey(cursor))) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    for (let i = 0; i < 365; i++) {
+      const k = todayKey(cursor);
+      if (skillDates.includes(k)) {
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    if (streak > 0) {
+      streaks.push({ days: streak, source: 'Skill Practice', priority: 20 });
+    }
+  }
+
+  if (streaks.length === 0) {
+    return { days: 0, source: '' };
+  }
+
+  // Tie-breaking: Maximum streak days first, then highest priority source
+  streaks.sort((a, b) => {
+    if (b.days !== a.days) return b.days - a.days;
+    return (b.priority || 0) - (a.priority || 0);
+  });
+
+  return streaks[0];
 }
 
 /**

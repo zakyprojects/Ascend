@@ -218,11 +218,6 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                       You
                     </span>
                   )}
-                  {isRealUser && !isUser && (
-                    <span className="text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
-                      <UserCheck size={10} /> Member
-                    </span>
-                  )}
                 </div>
 
                 {/* Tier Badge visible for EVERY entry */}

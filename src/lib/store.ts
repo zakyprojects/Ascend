@@ -64,7 +64,7 @@ import {
   fetchProfileByUidFromSupabase,
 } from './auth';
 import { hydrateUserSession } from './authSession';
-import { processHabitPenalties, processBadHabitNoReports, getMissPenaltyMultiplier } from './habitPenalties';
+import { processHabitPenalties, processBadHabitNoReports, getMissPenaltyMultiplier, getHighestUserStreak } from './habitPenalties';
 import {
   supabase,
   isSupabaseConfigured,
@@ -3147,15 +3147,18 @@ export function useAppState() {
       const start = getLeaguePeriodStart(type);
       const userPoints = calculatePeriodPoints(state.pointsHistory, start, new Date());
 
-      const habitsCompletedCount = state.habits.reduce((acc, h) => acc + (h.completions?.length || 0), 0);
-      const streakDays = Math.min(30, Math.floor(habitsCompletedCount / 2) + 1);
+      const highestStreakInfo = getHighestUserStreak(state);
+      const streakDays = highestStreakInfo.days;
+      const streakSource = highestStreakInfo.source;
 
+      const habitsCompletedCount = state.habits.reduce((acc, h) => acc + (h.completions?.length || 0), 0);
       const exerciseMinutes = state.workouts.reduce((sum, w) => sum + w.durationMinutes, 0);
       const booksRead = state.books.filter((b) => b.isFinished).length;
       const skillsPracticedCount = state.skillLogs.length;
 
       const userStats = {
         streakDays,
+        streakSource: streakDays > 0 ? streakSource : undefined,
         habitsCompletedCount,
         journalEntriesCount: state.journalEntries.length,
         exerciseMinutes,

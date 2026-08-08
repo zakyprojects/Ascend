@@ -1,7 +1,8 @@
 import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, PartnerInvite, Partnership } from '@/types';
 import { SEED_ACCOUNTS } from './seedAccounts';
 import { getLeaguePeriodStart, calculatePeriodPoints } from './leagues';
-import { generateNumericUID } from './dates';
+import { generateNumericUID, todayKey } from './dates';
+import { getHighestUserStreak } from './habitPenalties';
 import {
   supabase,
   isSupabaseConfigured,
@@ -454,6 +455,91 @@ export async function updateProfilePrivacy(
   }
 }
 
+export function reconstructStateFromProfile(p: any): AppState {
+  const pointsHistory = p.points_history || [];
+  const activeHabits = p.active_habits || [];
+
+  const habitCompletionsMap: Record<string, string[]> = {};
+  pointsHistory.forEach((e: any) => {
+    if (!e || e.amount <= 0 || !e.timestamp) return;
+    const dateStr = todayKey(new Date(e.timestamp));
+    if (e.source === 'habit_completed' || (e.reason && e.reason.startsWith('Habit completed:'))) {
+      const habitName = e.reason ? e.reason.replace('Habit completed: ', '').trim() : 'Habit';
+      if (!habitCompletionsMap[habitName]) habitCompletionsMap[habitName] = [];
+      if (!habitCompletionsMap[habitName].includes(dateStr)) {
+        habitCompletionsMap[habitName].push(dateStr);
+      }
+    }
+  });
+
+  const habits = activeHabits.map((h: any, i: number) => ({
+    id: `h-${i}`,
+    name: h.name,
+    category: h.category,
+    frequency: h.frequency || 'daily',
+    completions: habitCompletionsMap[h.name] || [],
+    createdAtPeriod: todayKey(),
+  }));
+
+  const workoutDates: string[] = [];
+  pointsHistory.forEach((e: any) => {
+    if (!e || e.amount <= 0 || !e.timestamp) return;
+    const dateStr = todayKey(new Date(e.timestamp));
+    if (e.source === 'workout_logged' || (e.reason && e.reason.toLowerCase().includes('workout'))) {
+      if (!workoutDates.includes(dateStr)) workoutDates.push(dateStr);
+    }
+  });
+
+  const workouts = workoutDates.map((d, i) => ({
+    id: `w-${i}`,
+    type: 'workout' as const,
+    activityType: 'Workout',
+    durationMinutes: 30,
+    date: d,
+    createdAt: d,
+    pointsAwarded: 10,
+  }));
+
+  const readingDates: string[] = [];
+  pointsHistory.forEach((e: any) => {
+    if (!e || e.amount <= 0 || !e.timestamp) return;
+    const dateStr = todayKey(new Date(e.timestamp));
+    if (e.source === 'book_read' || (e.reason && e.reason.toLowerCase().includes('book'))) {
+      if (!readingDates.includes(dateStr)) readingDates.push(dateStr);
+    }
+  });
+
+  const readingLogs = readingDates.map((d, i) => ({
+    id: `r-${i}`,
+    bookId: `b-${i}`,
+    progressAmount: 10,
+    pagesRead: 10,
+    date: d,
+    createdAt: d,
+    pointsAwarded: 10,
+  }));
+
+  return {
+    currentUser: null,
+    habits,
+    journalEntries: [],
+    totalPoints: p.total_points || 0,
+    pointsHistory: [],
+    leagueArchives: [],
+    readLessonIds: [],
+    workouts,
+    readingLogs,
+    badHabits: [],
+    badHabitLogs: [],
+    skillLogs: [],
+    books: [],
+    skills: [],
+    improvementPlans: [],
+    followedPlans: [],
+    focusLogs: [],
+  } as unknown as AppState;
+}
+
 /**
  * Get all registered real users as LeagueCompetitors for a specific league period.
  */
@@ -472,17 +558,31 @@ export function getRegisteredCompetitors(
 
     const pointsHistory = p.points_history || [];
     const periodPoints = calculatePeriodPoints(pointsHistory, start, now);
-    const stats = p.stats || {
-      streakDays: 1,
-      habitsCompletedCount: 0,
-      journalEntriesCount: 0,
-      exerciseMinutes: 0,
-      booksRead: 0,
-      skillsPracticedCount: 0,
+
+    let streakDays = p.stats?.streakDays || 0;
+    let streakSource = p.stats?.streakSource;
+
+    // If profile stats missing streakSource or if streakDays is suspiciously high (> 10 without valid logs), recompute using getHighestUserStreak
+    if (!streakSource || !p.stats || streakDays > 10) {
+      const reconstructedState = reconstructStateFromProfile(p);
+      const highestInfo = getHighestUserStreak(reconstructedState, now);
+      streakDays = highestInfo.days > 0 ? highestInfo.days : (p.stats?.streakDays || 0);
+      streakSource = highestInfo.source || p.stats?.streakSource || (p.active_habits?.[0]?.name ?? 'Habit Journey');
+    }
+
+    const stats = {
+      streakDays,
+      streakSource: streakDays > 0 ? streakSource : undefined,
+      habitsCompletedCount: p.stats?.habitsCompletedCount || 0,
+      journalEntriesCount: p.stats?.journalEntriesCount || 0,
+      exerciseMinutes: p.stats?.exerciseMinutes || 0,
+      booksRead: p.stats?.booksRead || 0,
+      skillsPracticedCount: p.stats?.skillsPracticedCount || 0,
     };
 
     competitors.push({
       id: p.id,
+      uid: p.uid,
       name: p.username || 'Member',
       avatar: p.avatar || '🧑',
       points: periodPoints,
