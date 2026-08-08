@@ -222,6 +222,9 @@ export interface SkillSessionLog {
 export interface BadHabit {
   id: string;
   name: string;
+  commitmentDays: number;
+  isCompleted?: boolean;
+  completedAt?: string;
   createdAt: string;
 }
 
@@ -229,7 +232,7 @@ export interface BadHabitLog {
   id: string;
   badHabitId: string;
   date: string; // YYYY-MM-DD
-  status: 'resisted' | 'occurred';
+  status: 'resisted' | 'occurred' | 'no_report';
   consecutiveOccurrences?: number;
   pointsAwardedOrDeducted: number;
   createdAt: string;

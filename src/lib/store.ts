@@ -64,7 +64,7 @@ import {
   fetchProfileByUidFromSupabase,
 } from './auth';
 import { hydrateUserSession } from './authSession';
-import { processHabitPenalties, getMissPenaltyMultiplier } from './habitPenalties';
+import { processHabitPenalties, processBadHabitNoReports, getMissPenaltyMultiplier } from './habitPenalties';
 import {
   supabase,
   isSupabaseConfigured,
@@ -119,7 +119,27 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
         ? Math.max(0, pointsHistory.reduce((acc, entry) => acc + (entry.amount || 0), 0))
         : 0);
 
-  return {
+  // Deduplicate badHabitLogs by (badHabitId, date) keeping latest entry
+  const logsMap = new Map<string, BadHabitLog>();
+  (st.badHabitLogs ?? []).forEach((l) => {
+    if (!l || !l.badHabitId || !l.date) return;
+    const key = `${l.badHabitId}_${l.date}`;
+    const existing = logsMap.get(key);
+    if (!existing) {
+      logsMap.set(key, l);
+    } else {
+      const existingTime = existing.createdAt ? new Date(existing.createdAt).getTime() : 0;
+      const newTime = l.createdAt ? new Date(l.createdAt).getTime() : 0;
+      if (newTime >= existingTime) {
+        logsMap.set(key, l);
+      }
+    }
+  });
+  const sanitizedBadHabitLogs = Array.from(logsMap.values()).sort(
+    (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+  );
+
+  const baseState: AppState = {
     ...DEFAULT_STATE,
     ...st,
     currentUser: profile,
@@ -135,8 +155,12 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     readingLogs: st.readingLogs ?? [],
     skills: st.skills ?? [],
     skillLogs: st.skillLogs ?? [],
-    badHabits: st.badHabits ?? [],
-    badHabitLogs: st.badHabitLogs ?? [],
+    badHabits: (st.badHabits ?? []).map((bh) => ({
+      ...bh,
+      commitmentDays: bh.commitmentDays || 30,
+      isCompleted: bh.isCompleted ?? false,
+    })),
+    badHabitLogs: sanitizedBadHabitLogs,
     addictionTracker: st.addictionTracker ?? null,
     cravingLogs: st.cravingLogs ?? [],
     focusLogs: st.focusLogs ?? [],
@@ -151,6 +175,8 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     sharedChallenges: st.sharedChallenges ?? [],
     partnerNotifications: st.partnerNotifications ?? [],
   };
+
+  return processBadHabitNoReports(baseState);
 }
 
 function persistState(state: AppState) {
@@ -519,7 +545,8 @@ export function useAppState() {
     const checkUpdates = () => {
       setState((prev) => {
         const archivedState = checkAndArchiveLeagues(prev);
-        return processHabitPenalties(archivedState);
+        const habitPenalized = processHabitPenalties(archivedState);
+        return processBadHabitNoReports(habitPenalized);
       });
     };
     checkUpdates();
@@ -1321,99 +1348,209 @@ export function useAppState() {
   }, []);
 
   // --- MODULE 4: BAD HABIT REDUCTION TRACKER ACTIONS ---
-  const addBadHabit = useCallback((name: string) => {
+  const addBadHabit = useCallback((name: string, commitmentDays: number = 30) => {
+    const finalCommitment = Math.max(30, Math.floor(Number(commitmentDays) || 30));
     const bh: BadHabit = {
       id: uid(),
       name: name.trim(),
+      commitmentDays: finalCommitment,
+      isCompleted: false,
       createdAt: new Date().toISOString(),
     };
-    setState((prev) => ({ ...prev, badHabits: [...prev.badHabits, bh] }));
+    setState((prev) => {
+      const newState = { ...prev, badHabits: [...prev.badHabits, bh] };
+      persistState(newState);
+      return newState;
+    });
     return bh;
   }, []);
 
   const logBadHabitDay = useCallback((badHabitId: string, date: string, status: 'resisted' | 'occurred') => {
     setState((prev) => {
-      const bh = prev.badHabits.find((b) => b.id === badHabitId);
-      if (!bh) return prev;
+      try {
+        const bh = prev.badHabits.find((b) => b.id === badHabitId);
+        if (!bh || bh.isCompleted) return prev;
 
-      const existingLog = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
+        // Lock check: Once logged for today, both actions lock for the rest of that day
+        const existingLog = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
+        if (existingLog) return prev;
 
-      let currentTotalPoints = prev.totalPoints;
-      let currentHistory = prev.pointsHistory;
-      if (existingLog) {
-        currentTotalPoints = Math.max(0, currentTotalPoints - existingLog.pointsAwardedOrDeducted);
-      }
+        // Determine point-eligibility based on creation order among active habits
+        const activeHabits = prev.badHabits
+          .filter((h) => !h.isCompleted)
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        const activeIndex = activeHabits.findIndex((h) => h.id === badHabitId);
+        const isPointEligible = activeIndex >= 0 && activeIndex < 2;
 
-      let consecutiveOccurrences = 0;
-      let pointsChange = 0;
-      let reason = '';
+        let pointsChange = 0;
+        let reason = '';
+        let consecutiveOccurrences = 0;
 
-      if (status === 'resisted') {
-        pointsChange = 10;
-        reason = `Bad habit resisted: ${bh.name}`;
-      } else {
-        const pastLogs = prev.badHabitLogs
-          .filter((l) => l.badHabitId === badHabitId && l.date < date)
-          .sort((a, b) => b.date.localeCompare(a.date));
+        if (status === 'resisted') {
+          pointsChange = isPointEligible ? 10 : 0;
+          reason = `Bad habit resisted: ${bh.name}`;
+        } else {
+          const pastLogs = (prev.badHabitLogs || [])
+            .filter((l) => l && l.badHabitId === badHabitId && l.date < date)
+            .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-        consecutiveOccurrences = 1;
-        for (const log of pastLogs) {
-          if (log.status === 'occurred') {
-            consecutiveOccurrences++;
-          } else {
-            break;
+          consecutiveOccurrences = 1;
+          for (const log of pastLogs) {
+            if (log && (log.status === 'occurred' || log.status === 'no_report')) {
+              consecutiveOccurrences++;
+            } else {
+              break;
+            }
           }
+
+          const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, prev.totalPoints || 0);
+          const penaltyAmount = isPointEligible ? Math.round(10 * multiplier) : 0;
+          pointsChange = -penaltyAmount;
+          reason = `Bad habit occurred (${multiplier}x penalty): ${bh.name}`;
         }
 
-        const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, currentTotalPoints);
-        const penaltyAmount = Math.round(10 * multiplier);
-        pointsChange = -penaltyAmount;
-        reason = `Bad habit occurred (${multiplier}x penalty): ${bh.name}`;
+        let pointsUpdate = {};
+        if (pointsChange !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            pointsChange,
+            reason,
+            status === 'resisted' ? 'bad_habit_resisted' : 'bad_habit_occurred'
+          );
+        }
+
+        const newLog: BadHabitLog = {
+          id: uid(),
+          badHabitId,
+          date,
+          status,
+          consecutiveOccurrences: status === 'occurred' ? consecutiveOccurrences : 0,
+          pointsAwardedOrDeducted: pointsChange,
+          createdAt: new Date().toISOString(),
+        };
+
+        const filteredLogs = (prev.badHabitLogs || []).filter((l) => !(l && l.badHabitId === badHabitId && l.date === date));
+        const newState: AppState = {
+          ...prev,
+          badHabitLogs: [newLog, ...filteredLogs],
+          ...pointsUpdate,
+        };
+
+        console.log(`[BAD HABIT ACTION LOGGED: ${status.toUpperCase()}]`, {
+          badHabitId,
+          habitName: bh.name,
+          date,
+          status,
+          pointsChange,
+          newTotalPoints: newState.totalPoints,
+          logId: newLog.id
+        });
+
+        // Immediate synchronous persistence to Supabase DB
+        persistState(newState);
+        return newState;
+      } catch (err) {
+        console.error(`[ERROR IN logBadHabitDay FOR STATUS ${status}]:`, err);
+        return prev;
+      }
+    });
+  }, []);
+
+  const undoTodayBadHabitLog = useCallback((badHabitId: string) => {
+    setState((prev) => {
+      const today = todayKey();
+      const target = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === today);
+      if (!target) return prev;
+      // Automatic no-report penalty CANNOT be undone
+      if (target.status === 'no_report') return prev;
+
+      let pointsUpdate = {};
+      if (target.pointsAwardedOrDeducted !== 0) {
+        const reverseAmount = -target.pointsAwardedOrDeducted;
+        const bh = prev.badHabits.find((b) => b.id === badHabitId);
+        pointsUpdate = addPointsInternal(
+          prev,
+          reverseAmount,
+          `Undid today's action for bad habit: ${bh?.name || badHabitId}`,
+          'bad_habit_undo'
+        );
       }
 
-      const pointsUpdate = addPointsInternal(
-        { ...prev, totalPoints: currentTotalPoints, pointsHistory: currentHistory },
-        pointsChange,
-        reason,
-        status === 'resisted' ? 'bad_habit_resisted' : 'bad_habit_occurred'
-      );
-
-      const newLog: BadHabitLog = {
-        id: existingLog ? existingLog.id : uid(),
-        badHabitId,
-        date,
-        status,
-        consecutiveOccurrences: status === 'occurred' ? consecutiveOccurrences : 0,
-        pointsAwardedOrDeducted: pointsChange,
-        createdAt: new Date().toISOString(),
-      };
-
-      const filteredLogs = prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === date));
-
-      return {
+      const newState: AppState = {
         ...prev,
-        badHabitLogs: [newLog, ...filteredLogs],
+        badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === today)),
         ...pointsUpdate,
       };
+
+      // Immediate synchronous persistence to Supabase DB
+      persistState(newState);
+      return newState;
     });
   }, []);
 
   const deleteBadHabit = useCallback((badHabitId: string) => {
-    setState((prev) => ({
-      ...prev,
-      badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
-      badHabitLogs: prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId),
-    }));
+    setState((prev) => {
+      const habitLogs = prev.badHabitLogs.filter((l) => l.badHabitId === badHabitId);
+      const bh = prev.badHabits.find((b) => b.id === badHabitId);
+
+      // Reverses ALL net points earned/lost through that habit
+      const netPoints = habitLogs.reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
+
+      let pointsUpdate = {};
+      if (netPoints !== 0 && bh) {
+        const reverseAmount = -netPoints;
+        pointsUpdate = addPointsInternal(
+          prev,
+          reverseAmount,
+          `Bad habit deleted (reversed net points): ${bh.name}`,
+          'bad_habit_delete'
+        );
+      }
+
+      const newState: AppState = {
+        ...prev,
+        badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
+        badHabitLogs: prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId),
+        ...pointsUpdate,
+      };
+
+      // Immediate synchronous persistence to Supabase DB
+      persistState(newState);
+      return newState;
+    });
+  }, []);
+
+  const completeBadHabit = useCallback((badHabitId: string) => {
+    setState((prev) => {
+      const bh = prev.badHabits.find((b) => b.id === badHabitId);
+      if (!bh) return prev;
+
+      const newState: AppState = {
+        ...prev,
+        badHabits: prev.badHabits.map((b) =>
+          b.id === badHabitId
+            ? { ...b, isCompleted: true, completedAt: new Date().toISOString() }
+            : b
+        ),
+      };
+
+      // Immediate synchronous persistence to Supabase DB
+      persistState(newState);
+      return newState;
+    });
   }, []);
 
   const deleteBadHabitLog = useCallback((badHabitId: string, date: string) => {
     setState((prev) => {
       const target = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
       let pointsUpdate = {};
-      if (target) {
-        if (target.status === 'resisted') {
-          pointsUpdate = addPointsInternal(prev, -10, `Bad habit log cleared for ${date}`, 'bad_habit');
-        }
+      if (target && target.pointsAwardedOrDeducted !== 0) {
+        pointsUpdate = addPointsInternal(
+          prev,
+          -target.pointsAwardedOrDeducted,
+          `Bad habit log cleared for ${date}`,
+          'bad_habit_clear'
+        );
       }
       return {
         ...prev,
@@ -3095,7 +3232,9 @@ export function useAppState() {
     deleteSkillLog,
     addBadHabit,
     logBadHabitDay,
+    undoTodayBadHabitLog,
     deleteBadHabit,
+    completeBadHabit,
     deleteBadHabitLog,
     setAddictionTracker,
     deleteAddictionTracker,

@@ -1,4 +1,4 @@
-import { AppState, Habit, PartnerNotification } from '@/types';
+import { AppState, Habit, BadHabitLog, PartnerNotification } from '@/types';
 import { todayKey, periodKey, previousPeriodKey, uid } from './dates';
 import { createNotificationSupabase } from './supabase';
 
@@ -180,4 +180,101 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
     habits: updatedHabits,
   };
 }
+
+/**
+ * Evaluates all active bad habits for past unlogged days and applies retroactive no-report penalties (-5 pts base * multiplier).
+ * Breaks resistance streak and escalates future penalties.
+ */
+export function processBadHabitNoReports(state: AppState, now: Date = new Date()): AppState {
+  let updatedState = state;
+  const badHabits = updatedState.badHabits || [];
+  if (badHabits.length === 0) return updatedState;
+
+  // Active bad habits in creation order
+  const activeHabits = badHabits
+    .filter((h) => !h.isCompleted)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  let newLogs = [...(updatedState.badHabitLogs || [])];
+  let logsAdded = false;
+
+  for (let idx = 0; idx < activeHabits.length; idx++) {
+    const habit = activeHabits[idx];
+    const isPointEligible = idx < 2; // Only first 2 active habits in creation order are point-eligible
+
+    const createdDate = habit.createdAt ? new Date(habit.createdAt) : now;
+    const start = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+
+    if (start > yesterday) continue;
+
+    const cursor = new Date(start);
+    let loops = 0;
+    while (cursor <= yesterday && loops < 90) {
+      const key = todayKey(cursor);
+
+      // Check if a log already exists for this habit on key date
+      const existingLog = newLogs.find((l) => l.badHabitId === habit.id && l.date === key);
+      if (!existingLog) {
+        // Find consecutive occurrences/no_reports before key date
+        const pastLogs = newLogs
+          .filter((l) => l.badHabitId === habit.id && l.date < key)
+          .sort((a, b) => b.date.localeCompare(a.date));
+
+        let consecutiveOccurrences = 1;
+        for (const l of pastLogs) {
+          if (l.status === 'occurred' || l.status === 'no_report') {
+            consecutiveOccurrences++;
+          } else {
+            break;
+          }
+        }
+
+        const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, updatedState.totalPoints);
+        const penaltyAmount = isPointEligible ? Math.round(5 * multiplier) : 0;
+
+        const newLog: BadHabitLog = {
+          id: uid(),
+          badHabitId: habit.id,
+          date: key,
+          status: 'no_report',
+          consecutiveOccurrences,
+          pointsAwardedOrDeducted: -penaltyAmount,
+          createdAt: new Date().toISOString(),
+        };
+
+        newLogs.unshift(newLog);
+        logsAdded = true;
+
+        if (penaltyAmount > 0) {
+          updatedState = {
+            ...updatedState,
+            totalPoints: Math.max(0, updatedState.totalPoints - penaltyAmount),
+            pointsHistory: [
+              {
+                id: uid(),
+                amount: -penaltyAmount,
+                reason: `No-report bad habit penalty (${multiplier}x penalty): ${habit.name}`,
+                source: 'bad_habit_no_report',
+                timestamp: new Date().toISOString(),
+              },
+              ...updatedState.pointsHistory,
+            ].slice(0, 500),
+          };
+        }
+      }
+
+      cursor.setDate(cursor.getDate() + 1);
+      loops++;
+    }
+  }
+
+  if (!logsAdded) return state;
+
+  return {
+    ...updatedState,
+    badHabitLogs: newLogs,
+  };
+}
+
 

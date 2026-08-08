@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, PartnerNotification, UserPlanFollow, AppNotification } from '@/types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = typeof import.meta !== 'undefined' && import.meta?.env ? import.meta.env.VITE_SUPABASE_URL : undefined;
+const supabaseAnonKey = typeof import.meta !== 'undefined' && import.meta?.env ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase URL or Anon Key is missing from environment variables.');
@@ -78,11 +78,29 @@ export async function fetchUserDataFromSupabase(userId: string): Promise<AppStat
 export async function saveUserDataToSupabase(userId: string, state: AppState) {
   if (!isSupabaseConfigured) return;
 
-  // GUARD: Never write obviously-default state over existing user data
-  if (state.totalPoints === 0 && (!state.habits || state.habits.length === 0)
-      && (!state.improvementPlans || state.improvementPlans.length === 0)) {
+  // GUARD: Never write obviously-default/unhydrated state over existing user data
+  const hasNoData =
+    state.totalPoints === 0 &&
+    (!state.habits || state.habits.length === 0) &&
+    (!state.badHabits || state.badHabits.length === 0) &&
+    (!state.badHabitLogs || state.badHabitLogs.length === 0) &&
+    (!state.improvementPlans || state.improvementPlans.length === 0) &&
+    (!state.followedPlans || state.followedPlans.length === 0) &&
+    (!state.journalEntries || state.journalEntries.length === 0) &&
+    (!state.workouts || state.workouts.length === 0) &&
+    (!state.books || state.books.length === 0) &&
+    (!state.skills || state.skills.length === 0);
+
+  if (hasNoData) {
     const existing = await fetchUserDataFromSupabase(userId);
-    if (existing && (existing.totalPoints > 0 || (existing.habits && existing.habits.length > 0))) {
+    const existingHasData =
+      existing &&
+      (existing.totalPoints > 0 ||
+        (existing.habits && existing.habits.length > 0) ||
+        (existing.badHabits && existing.badHabits.length > 0) ||
+        (existing.improvementPlans && existing.improvementPlans.length > 0));
+
+    if (existingHasData) {
       console.warn('[GUARD] Blocked zero-out write to user_data for', userId);
       return;
     }
