@@ -78,6 +78,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     totalPoints: number;
     stats: {
       streakDays: number;
+      streakSource?: string;
+      currentStreakDays?: number;
+      currentStreakCategory?: string;
+      currentStreakIsActive?: boolean;
+      bestStreakDays?: number;
+      bestStreakCategory?: string;
       habitsCompletedCount: number;
       habitsCompletedTodayCount?: number;
       exerciseMinutes?: number;
@@ -85,6 +91,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       booksRead?: number;
     };
     avatar?: string;
+    isProfilePublic?: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -107,7 +114,13 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const partnerTier = getCurrentTier(partnerTotalPoints);
   const partnerHabitsCompleted = partnerStatsData?.stats?.habitsCompletedCount ?? 0;
   const partnerHabitsCompletedToday = partnerStatsData?.stats?.habitsCompletedTodayCount ?? 0;
-  const partnerStreakDays = partnerStatsData?.stats?.streakDays ?? 0;
+  const partnerCurrentStreakDays = partnerStatsData?.stats?.currentStreakDays ?? partnerStatsData?.stats?.streakDays ?? 0;
+  const partnerCurrentStreakCategory = partnerStatsData?.stats?.currentStreakCategory ?? partnerStatsData?.stats?.streakSource ?? '';
+  const partnerCurrentStreakIsActive = partnerStatsData?.stats?.currentStreakIsActive !== undefined
+    ? partnerStatsData.stats.currentStreakIsActive
+    : true;
+  const partnerBestStreakDays = partnerStatsData?.stats?.bestStreakDays ?? partnerStatsData?.stats?.streakDays ?? 0;
+  const partnerBestStreakCategory = partnerStatsData?.stats?.bestStreakCategory ?? partnerStatsData?.stats?.streakSource ?? '';
 
   // Pending incoming & sent invites
   const incomingInvites = partnerInvites.filter(
@@ -415,14 +428,34 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   <span className="text-[11px] text-emerald-400 font-semibold">{partnerTier.name} Tier</span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                   <div className="p-3 bg-bg-700/50 rounded-xl border border-white/5">
                     <span className="block text-[11px] text-slate-400">Total Points</span>
                     <span className="text-base font-display font-bold text-amber-400">{partnerTotalPoints} pts</span>
                   </div>
                   <div className="p-3 bg-bg-700/50 rounded-xl border border-white/5">
-                    <span className="block text-[11px] text-slate-400">Current Streak</span>
-                    <span className="text-base font-display font-bold text-emerald-400">{partnerStreakDays} days</span>
+                    <span className="block text-[11px] text-slate-400">
+                      {partnerCurrentStreakIsActive ? 'Current Streak' : 'Current Streak (deleted)'}
+                    </span>
+                    <span className="text-base font-display font-bold text-orange-400">
+                      {partnerCurrentStreakDays}d
+                      {partnerCurrentStreakCategory ? (
+                        <span className="block text-[10px] text-orange-300/90 font-medium mt-0.5">
+                          {partnerCurrentStreakCategory}
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-bg-700/50 rounded-xl border border-white/5">
+                    <span className="block text-[11px] text-slate-400">Best Streak</span>
+                    <span className="text-base font-display font-bold text-purple-400">
+                      {partnerBestStreakDays}d
+                      {partnerBestStreakCategory ? (
+                        <span className="block text-[10px] text-purple-300/90 font-medium mt-0.5">
+                          {partnerBestStreakCategory}
+                        </span>
+                      ) : null}
+                    </span>
                   </div>
                   <div className="p-3 bg-bg-700/50 rounded-xl border border-white/5">
                     <span className="block text-[11px] text-slate-400">Habits Done Today</span>
@@ -430,7 +463,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   </div>
                   <div className="p-3 bg-bg-700/50 rounded-xl border border-white/5">
                     <span className="block text-[11px] text-slate-400">Total Habits Done</span>
-                    <span className="text-base font-display font-bold text-purple-400">{partnerHabitsCompleted}</span>
+                    <span className="text-base font-display font-bold text-emerald-400">{partnerHabitsCompleted}</span>
                   </div>
                 </div>
               </div>

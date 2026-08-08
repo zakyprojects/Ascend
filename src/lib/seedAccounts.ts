@@ -22,6 +22,11 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     totalPoints: 1250, // Diamond tier
     stats: {
       streakDays: 14,
+      currentStreakDays: 14,
+      currentStreakCategory: 'Mindfulness',
+      currentStreakIsActive: true,
+      bestStreakDays: 14,
+      bestStreakCategory: 'Mindfulness',
       habitsCompletedCount: 142,
       journalEntriesCount: 22,
       exerciseMinutes: 420,
@@ -44,6 +49,11 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     totalPoints: 780, // Platinum tier
     stats: {
       streakDays: 8,
+      currentStreakDays: 8,
+      currentStreakCategory: 'Fitness',
+      currentStreakIsActive: true,
+      bestStreakDays: 8,
+      bestStreakCategory: 'Fitness',
       habitsCompletedCount: 95,
       journalEntriesCount: 15,
       exerciseMinutes: 310,
@@ -65,6 +75,11 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     totalPoints: 2450, // Ace tier
     stats: {
       streakDays: 28,
+      currentStreakDays: 28,
+      currentStreakCategory: 'Productivity',
+      currentStreakIsActive: true,
+      bestStreakDays: 28,
+      bestStreakCategory: 'Productivity',
       habitsCompletedCount: 260,
       journalEntriesCount: 45,
       exerciseMinutes: 890,
@@ -87,6 +102,11 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     totalPoints: 420, // Gold tier
     stats: {
       streakDays: 4,
+      currentStreakDays: 4,
+      currentStreakCategory: 'Fitness',
+      currentStreakIsActive: true,
+      bestStreakDays: 4,
+      bestStreakCategory: 'Fitness',
       habitsCompletedCount: 52,
       journalEntriesCount: 9,
       exerciseMinutes: 180,
@@ -107,6 +127,11 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     totalPoints: 1680, // Crown tier
     stats: {
       streakDays: 19,
+      currentStreakDays: 19,
+      currentStreakCategory: 'Mindfulness',
+      currentStreakIsActive: true,
+      bestStreakDays: 19,
+      bestStreakCategory: 'Mindfulness',
       habitsCompletedCount: 184,
       journalEntriesCount: 31,
       exerciseMinutes: 540,
@@ -128,6 +153,11 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     totalPoints: 520, // Gold tier
     stats: {
       streakDays: 6,
+      currentStreakDays: 6,
+      currentStreakCategory: 'Fitness',
+      currentStreakIsActive: true,
+      bestStreakDays: 6,
+      bestStreakCategory: 'Fitness',
       habitsCompletedCount: 68,
       journalEntriesCount: 11,
       exerciseMinutes: 210,
@@ -148,6 +178,11 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     totalPoints: 1120, // Diamond tier
     stats: {
       streakDays: 12,
+      currentStreakDays: 12,
+      currentStreakCategory: 'Skills',
+      currentStreakIsActive: true,
+      bestStreakDays: 12,
+      bestStreakCategory: 'Skills',
       habitsCompletedCount: 130,
       journalEntriesCount: 20,
       exerciseMinutes: 380,

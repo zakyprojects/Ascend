@@ -31,6 +31,11 @@ export interface UserProfile {
 export interface UserStats {
   streakDays: number;
   streakSource?: string;
+  currentStreakDays: number;
+  currentStreakCategory: string;
+  currentStreakIsActive: boolean;
+  bestStreakDays: number;
+  bestStreakCategory: string;
   habitsCompletedCount: number;
   journalEntriesCount: number;
   exerciseMinutes: number;

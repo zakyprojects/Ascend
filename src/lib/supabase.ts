@@ -116,15 +116,18 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
         return acc + (h.completions?.includes(todayStr) ? 1 : 0);
       }, 0);
       const highestStreakInfo = getHighestUserStreak(state);
-      const streakDays = highestStreakInfo.days;
-      const streakSource = highestStreakInfo.source;
       const exerciseMinutes = (state.workouts || []).reduce((sum, w) => sum + w.durationMinutes, 0);
       const booksRead = (state.books || []).filter((b) => b.isFinished).length;
       const skillsPracticedCount = (state.skillLogs || []).length;
 
       const userStats = {
-        streakDays,
-        streakSource,
+        streakDays: highestStreakInfo.currentStreak.days,
+        streakSource: highestStreakInfo.currentStreak.days > 0 ? highestStreakInfo.currentStreak.category : undefined,
+        currentStreakDays: highestStreakInfo.currentStreak.days,
+        currentStreakCategory: highestStreakInfo.currentStreak.category,
+        currentStreakIsActive: highestStreakInfo.currentStreak.isActive,
+        bestStreakDays: highestStreakInfo.bestStreak.days,
+        bestStreakCategory: highestStreakInfo.bestStreak.category,
         habitsCompletedCount,
         habitsCompletedTodayCount,
         journalEntriesCount: (state.journalEntries || []).length,

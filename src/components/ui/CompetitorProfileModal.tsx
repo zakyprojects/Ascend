@@ -1,7 +1,7 @@
 import { Modal } from './Modal';
 import { LeagueCompetitor } from '@/types';
 import { TierBadge } from './TierBadge';
-import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, ShieldCheck, CheckCircle2, EyeOff } from 'lucide-react';
+import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, ShieldCheck, CheckCircle2, EyeOff, Trophy } from 'lucide-react';
 
 interface CompetitorProfileModalProps {
   competitor: LeagueCompetitor | null;
@@ -111,44 +111,68 @@ export function CompetitorProfileModal({
                   <ShieldCheck size={14} className="text-primary-400" />
                   Activity Statistics
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  <StatCard
-                    icon={Flame}
-                    color="#f97316"
-                    label="Current Streak"
-                    value={`${stats.streakDays} days`}
-                    subtitle={stats.streakSource}
-                  />
-                  <StatCard
-                    icon={CheckSquare}
-                    color="#34d399"
-                    label="Habits Done"
-                    value={stats.habitsCompletedCount.toLocaleString()}
-                  />
-                  <StatCard
-                    icon={BookOpen}
-                    color="#a855f7"
-                    label="Journal Entries"
-                    value={stats.journalEntriesCount.toLocaleString()}
-                  />
-                  <StatCard
-                    icon={Activity}
-                    color="#0ea5e9"
-                    label="Exercise Mins"
-                    value={`${stats.exerciseMinutes}m`}
-                  />
-                  <StatCard
-                    icon={Book}
-                    color="#fbbf24"
-                    label="Books Read"
-                    value={`${stats.booksRead}`}
-                  />
-                  <StatCard
-                    icon={Target}
-                    color="#f472b6"
-                    label="Skills Practiced"
-                    value={`${stats.skillsPracticedCount}`}
-                  />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {(() => {
+                    const cDays = stats.currentStreakDays ?? stats.streakDays ?? 0;
+                    const cCat = stats.currentStreakCategory ?? stats.streakSource ?? '';
+                    const cActive = stats.currentStreakIsActive !== undefined
+                      ? stats.currentStreakIsActive
+                      : true;
+                    const bDays = stats.bestStreakDays ?? stats.streakDays ?? 0;
+                    const bCat = stats.bestStreakCategory ?? stats.streakSource ?? '';
+                    const currentSubtitle = cCat
+                      ? `${cCat}${cActive ? '' : ' (deleted)'}`
+                      : undefined;
+                    const bestSubtitle = bCat || undefined;
+                    return (
+                      <>
+                        <StatCard
+                          icon={Flame}
+                          color="#f59e0b"
+                          label={cActive ? 'Current Streak' : 'Current Streak · Frozen (deleted)'}
+                          value={`${cDays} days`}
+                          subtitle={currentSubtitle}
+                        />
+                        <StatCard
+                          icon={Trophy}
+                          color="#a855f7"
+                          label="Best Streak"
+                          value={`${bDays} days`}
+                          subtitle={bestSubtitle}
+                        />
+                        <StatCard
+                          icon={CheckSquare}
+                          color="#34d399"
+                          label="Habits Done"
+                          value={stats.habitsCompletedCount.toLocaleString()}
+                        />
+                        <StatCard
+                          icon={BookOpen}
+                          color="#0ea5e9"
+                          label="Journal Entries"
+                          value={stats.journalEntriesCount.toLocaleString()}
+                        />
+                        <StatCard
+                          icon={Activity}
+                          color="#14b8a6"
+                          label="Exercise Mins"
+                          value={`${stats.exerciseMinutes}m`}
+                        />
+                        <StatCard
+                          icon={Book}
+                          color="#fbbf24"
+                          label="Books Read"
+                          value={`${stats.booksRead}`}
+                        />
+                        <StatCard
+                          icon={Target}
+                          color="#f472b6"
+                          label="Skills Practiced"
+                          value={`${stats.skillsPracticedCount}`}
+                        />
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             )}

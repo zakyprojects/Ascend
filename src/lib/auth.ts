@@ -561,12 +561,23 @@ export function getRegisteredCompetitors(
 
     const reconstructedState = reconstructStateFromProfile(p);
     const highestInfo = getHighestUserStreak(reconstructedState, now);
-    const streakDays = highestInfo.days;
-    const streakSource = highestInfo.source;
+
+    const prefCurrentDays = p.stats?.currentStreakDays ?? highestInfo.currentStreak.days;
+    const prefCurrentCat = p.stats?.currentStreakCategory ?? highestInfo.currentStreak.category;
+    const prefCurrentActive = p.stats?.currentStreakIsActive !== undefined
+      ? p.stats.currentStreakIsActive
+      : highestInfo.currentStreak.isActive;
+    const prefBestDays = p.stats?.bestStreakDays ?? highestInfo.bestStreak.days;
+    const prefBestCat = p.stats?.bestStreakCategory ?? highestInfo.bestStreak.category;
 
     const stats = {
-      streakDays,
-      streakSource: streakDays > 0 ? streakSource : undefined,
+      streakDays: prefCurrentDays,
+      streakSource: prefCurrentDays > 0 ? prefCurrentCat : undefined,
+      currentStreakDays: prefCurrentDays,
+      currentStreakCategory: prefCurrentCat,
+      currentStreakIsActive: prefCurrentActive,
+      bestStreakDays: prefBestDays,
+      bestStreakCategory: prefBestCat,
       habitsCompletedCount: p.stats?.habitsCompletedCount || 0,
       journalEntriesCount: p.stats?.journalEntriesCount || 0,
       exerciseMinutes: p.stats?.exerciseMinutes || 0,

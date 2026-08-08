@@ -2,6 +2,25 @@ import { AppState, Habit, BadHabitLog, PartnerNotification } from '@/types';
 import { todayKey, periodKey, previousPeriodKey, uid } from './dates';
 import { createNotificationSupabase } from './supabase';
 
+export interface StreakInfo {
+  days: number;
+  category: string;
+}
+
+export interface CurrentStreakInfo extends StreakInfo {
+  isActive: boolean;
+  label: string;
+}
+
+export interface BestStreakInfo extends StreakInfo {
+  label: 'Best Streak';
+}
+
+export interface StreakInfoPair {
+  currentStreak: CurrentStreakInfo;
+  bestStreak: BestStreakInfo;
+}
+
 export interface StreakSourceInfo {
   days: number;
   source: string;
@@ -9,11 +28,54 @@ export interface StreakSourceInfo {
   bestDays?: number;
 }
 
-/**
- * Returns the penalty multiplier based on the number of consecutive misses and user's current total points / tier.
- * - Below Diamond tier (< 1000 pts: Bronze, Silver, Gold, Platinum): capped at 1.5x max (1st miss = 1x, 2nd+ miss = 1.5x)
- * - Diamond tier or above (>= 1000 pts: Diamond, Crown, Ace, Conqueror, Legend): capped at 2.5x max (1st miss = 1x, 2nd miss = 2x, 3rd+ miss = 2.5x)
- */
+function getBestStreakFromSortedDates(sortedDates: string[]): number {
+  if (sortedDates.length === 0) return 0;
+  let best = 0;
+  let running = 0;
+  for (let i = 0; i < sortedDates.length; i++) {
+    if (i === 0) {
+      running = 1;
+    } else {
+      const prev = new Date(sortedDates[i - 1]);
+      const curr = new Date(sortedDates[i]);
+      const diff = Math.round((curr.getTime() - prev.getTime()) / (1000 * 3600 * 24));
+      if (diff === 1) {
+        running++;
+      } else {
+        running = 1;
+      }
+    }
+    if (running >= best) {
+      best = running;
+    }
+  }
+  return best;
+}
+
+function getCurrentStreakFromSortedDates(sortedDates: string[], now: Date): number {
+  if (sortedDates.length === 0) return 0;
+  const todayStr = todayKey(now);
+  const yesterdayDate = new Date(now);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = todayKey(yesterdayDate);
+
+  const last = sortedDates[sortedDates.length - 1];
+  if (last !== todayStr && last !== yesterdayStr) return 0;
+
+  let streak = 1;
+  for (let i = sortedDates.length - 2; i >= 0; i--) {
+    const prev = new Date(sortedDates[i]);
+    const curr = new Date(sortedDates[i + 1]);
+    const diff = Math.round((curr.getTime() - prev.getTime()) / (1000 * 3600 * 24));
+    if (diff === 1) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 export function getMissPenaltyMultiplier(consecutiveMisses: number, totalPoints: number = 0): number {
   const isDiamondOrAbove = totalPoints >= 1000;
 
@@ -27,17 +89,16 @@ export function getMissPenaltyMultiplier(consecutiveMisses: number, totalPoints:
   }
 }
 
-/**
- * Computes the single highest streak across all active categories/habits with defined priority tie-breaking:
- * Priority Order: Habit Journey (100) > Exercise (80) > Reading (60) > Bad Habit Resisted (40) > Skill Practice (20).
- */
-export function getHighestUserStreak(state: AppState, now: Date = new Date()): StreakSourceInfo {
-  if (!state) return { days: 0, source: '' };
-
-  const streaks: StreakSourceInfo[] = [];
+export function getHighestUserStreak(state: AppState, now: Date = new Date()): StreakInfoPair {
+  const candidates: Array<{
+    currentDays: number;
+    bestDays: number;
+    category: string;
+    priority: number;
+    isActive: boolean;
+  }> = [];
 
   // 1. Regular Habit Journey Habits (Priority 100)
-  // Track net completions and active vs deleted status per habit lineage
   interface LineageData {
     name: string;
     category?: string;
@@ -46,7 +107,6 @@ export function getHighestUserStreak(state: AppState, now: Date = new Date()): S
 
   const lineageMap = new Map<string, LineageData>();
 
-  // Process pointsHistory to calculate net completions per date for each habit lineage
   (state.pointsHistory || []).forEach((e) => {
     if (!e || !e.timestamp) return;
 
@@ -88,7 +148,6 @@ export function getHighestUserStreak(state: AppState, now: Date = new Date()): S
     lineage.dateNet.set(dateKey, currentNet + (isCompleted ? 1 : -1));
   });
 
-  // Also fold in active habits from state.habits
   (state.habits || []).forEach((h) => {
     if (!h) return;
     const name = h.name || 'Habit Journey';
@@ -109,7 +168,6 @@ export function getHighestUserStreak(state: AppState, now: Date = new Date()): S
     });
   });
 
-  // Evaluate streaks for each habit lineage
   lineageMap.forEach((lineage) => {
     const validDates = Array.from(lineage.dateNet.entries())
       .filter(([_, net]) => net > 0)
@@ -123,55 +181,20 @@ export function getHighestUserStreak(state: AppState, now: Date = new Date()): S
     );
     const isActive = !!activeHabit;
 
-    const sourceLabel = isActive
-      ? (activeHabit?.name || lineage.name)
-      : `${lineage.name} (deleted)`;
+    const category = (activeHabit?.category || lineage.category || 'Habit Journey').trim();
 
-    let currentStreak = 0;
-    let bestStreak = 0;
-    let runningStreak = 0;
+    const current = getCurrentStreakFromSortedDates(validDates, now);
+    const best = getBestStreakFromSortedDates(validDates);
 
-    const todayStr = todayKey(now);
-    const yesterdayDate = new Date(now);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = todayKey(yesterdayDate);
+    const finalCurrent = isActive ? current : best;
 
-    for (let i = 0; i < validDates.length; i++) {
-      const currentDate = validDates[i];
-      if (i === 0) {
-        runningStreak = 1;
-      } else {
-        const prevDateObj = new Date(validDates[i - 1]);
-        const currDateObj = new Date(currentDate);
-        const diffDays = Math.round((currDateObj.getTime() - prevDateObj.getTime()) / (1000 * 3600 * 24));
-
-        if (diffDays === 1) {
-          runningStreak++;
-        } else {
-          // Re-add continuation / frozen jump
-          runningStreak = runningStreak + 1;
-        }
-      }
-      bestStreak = Math.max(bestStreak, runningStreak);
-    }
-
-    if (!isActive) {
-      currentStreak = runningStreak;
-    } else {
-      const lastCompletedDate = validDates[validDates.length - 1];
-      if (lastCompletedDate === todayStr || lastCompletedDate === yesterdayStr) {
-        currentStreak = runningStreak;
-      } else {
-        currentStreak = 0;
-      }
-    }
-
-    if (currentStreak > 0 || bestStreak > 0) {
-      streaks.push({
-        days: currentStreak,
-        source: sourceLabel,
+    if (finalCurrent > 0 || best > 0) {
+      candidates.push({
+        currentDays: finalCurrent,
+        bestDays: best,
+        category,
         priority: 100,
-        bestDays: bestStreak,
+        isActive,
       });
     }
   });
@@ -179,118 +202,119 @@ export function getHighestUserStreak(state: AppState, now: Date = new Date()): S
   // 2. Exercise Streak (Workouts) (Priority 80)
   if (state.workouts && state.workouts.length > 0) {
     const workoutDates = Array.from(new Set(state.workouts.map((w) => w.date))).sort();
-    let streak = 0;
-    let cursor = new Date(now);
-
-    if (!workoutDates.includes(todayKey(cursor))) {
-      cursor.setDate(cursor.getDate() - 1);
-    }
-
-    for (let i = 0; i < 365; i++) {
-      const k = todayKey(cursor);
-      if (workoutDates.includes(k)) {
-        streak++;
-        cursor.setDate(cursor.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    if (streak > 0) {
-      streaks.push({ days: streak, source: 'Exercise', priority: 80 });
+    const current = getCurrentStreakFromSortedDates(workoutDates, now);
+    const best = getBestStreakFromSortedDates(workoutDates);
+    if (current > 0 || best > 0) {
+      candidates.push({
+        currentDays: current,
+        bestDays: best,
+        category: 'Exercise',
+        priority: 80,
+        isActive: true,
+      });
     }
   }
 
   // 3. Reading Streak (Priority 60)
   if (state.readingLogs && state.readingLogs.length > 0) {
     const readingDates = Array.from(new Set(state.readingLogs.map((r) => r.date))).sort();
-    let streak = 0;
-    let cursor = new Date(now);
-
-    if (!readingDates.includes(todayKey(cursor))) {
-      cursor.setDate(cursor.getDate() - 1);
-    }
-
-    for (let i = 0; i < 365; i++) {
-      const k = todayKey(cursor);
-      if (readingDates.includes(k)) {
-        streak++;
-        cursor.setDate(cursor.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    if (streak > 0) {
-      streaks.push({ days: streak, source: 'Reading', priority: 60 });
+    const current = getCurrentStreakFromSortedDates(readingDates, now);
+    const best = getBestStreakFromSortedDates(readingDates);
+    if (current > 0 || best > 0) {
+      candidates.push({
+        currentDays: current,
+        bestDays: best,
+        category: 'Reading',
+        priority: 60,
+        isActive: true,
+      });
     }
   }
 
   // 4. Bad Habit Resisted Streaks (Priority 40)
   (state.badHabits || []).filter((bh) => bh && !bh.isCompleted).forEach((bh) => {
-    let streak = 0;
-    let cursor = new Date(now);
     const logs = (state.badHabitLogs || []).filter((l) => l && l.badHabitId === bh.id);
+    const resistedDates = logs
+      .filter((l) => l.status === 'resisted')
+      .map((l) => l.date)
+      .sort();
+    if (resistedDates.length === 0) return;
 
-    const todayStr = todayKey(cursor);
-    const todayLog = logs.find((l) => l.date === todayStr);
-    if (!todayLog) {
-      cursor.setDate(cursor.getDate() - 1);
-    }
+    const current = getCurrentStreakFromSortedDates(resistedDates, now);
+    const best = getBestStreakFromSortedDates(resistedDates);
 
-    for (let i = 0; i < 365; i++) {
-      const k = todayKey(cursor);
-      const log = logs.find((l) => l.date === k);
-      if (log && log.status === 'resisted') {
-        streak++;
-        cursor.setDate(cursor.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    if (streak > 0) {
-      streaks.push({ days: streak, source: `${bh.name} (Resisted)`, priority: 40 });
+    if (current > 0 || best > 0) {
+      candidates.push({
+        currentDays: current,
+        bestDays: best,
+        category: 'Resisted',
+        priority: 40,
+        isActive: true,
+      });
     }
   });
 
   // 5. Skill Practice Streak (Priority 20)
   if (state.skillLogs && state.skillLogs.length > 0) {
     const skillDates = Array.from(new Set(state.skillLogs.map((s) => s.date))).sort();
-    let streak = 0;
-    let cursor = new Date(now);
-
-    if (!skillDates.includes(todayKey(cursor))) {
-      cursor.setDate(cursor.getDate() - 1);
-    }
-
-    for (let i = 0; i < 365; i++) {
-      const k = todayKey(cursor);
-      if (skillDates.includes(k)) {
-        streak++;
-        cursor.setDate(cursor.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    if (streak > 0) {
-      streaks.push({ days: streak, source: 'Skill Practice', priority: 20 });
+    const current = getCurrentStreakFromSortedDates(skillDates, now);
+    const best = getBestStreakFromSortedDates(skillDates);
+    if (current > 0 || best > 0) {
+      candidates.push({
+        currentDays: current,
+        bestDays: best,
+        category: 'Skill Practice',
+        priority: 20,
+        isActive: true,
+      });
     }
   }
 
-  if (streaks.length === 0) {
-    return { days: 0, source: '' };
+  if (candidates.length === 0) {
+    return {
+      currentStreak: {
+        days: 0,
+        category: '',
+        isActive: true,
+        label: 'Current Streak',
+      },
+      bestStreak: {
+        days: 0,
+        category: '',
+        label: 'Best Streak',
+      },
+    };
   }
 
-  // Tie-breaking: Maximum streak days first, then highest priority source
-  streaks.sort((a, b) => {
-    if (b.days !== a.days) return b.days - a.days;
-    return (b.priority || 0) - (a.priority || 0);
+  const sortedForCurrent = [...candidates].sort((a, b) => {
+    if (b.currentDays !== a.currentDays) return b.currentDays - a.currentDays;
+    return b.priority - a.priority;
   });
 
-  return streaks[0];
+  const topCurrent = sortedForCurrent[0];
+
+  const sortedForBest = [...candidates].sort((a, b) => {
+    if (b.bestDays !== a.bestDays) return b.bestDays - a.bestDays;
+    return b.priority - a.priority;
+  });
+
+  const topBest = sortedForBest[0];
+
+  return {
+    currentStreak: {
+      days: topCurrent.currentDays,
+      category: topCurrent.category,
+      isActive: topCurrent.isActive,
+      label: topCurrent.isActive ? 'Current Streak' : 'Current Streak · Frozen (deleted)',
+    },
+    bestStreak: {
+      days: topBest.bestDays,
+      category: topBest.category,
+      label: 'Best Streak',
+    },
+  };
 }
 
-/**
- * Get all past due periods for a habit up to yesterday (daily) or last week (weekly).
- */
 export function getPastDuePeriods(habit: Habit, now: Date = new Date()): string[] {
   const pastPeriods: string[] = [];
   const freq = habit.frequency;
@@ -303,7 +327,6 @@ export function getPastDuePeriods(habit: Habit, now: Date = new Date()): string[
     if (start > yesterday) return [];
 
     const cursor = new Date(start);
-    // Limit loop to max 90 days
     let loops = 0;
     while (cursor <= yesterday && loops < 90) {
       const key = todayKey(cursor);
@@ -314,7 +337,6 @@ export function getPastDuePeriods(habit: Habit, now: Date = new Date()): string[
       loops++;
     }
   } else {
-    // Weekly habit
     const currentWeekKey = periodKey('weekly', now);
     const lastWeekKey = previousPeriodKey('weekly', 1, now);
     const createdWeekKey = habit.createdAtPeriod || periodKey('weekly', habit.createdAt ? new Date(habit.createdAt) : now);
@@ -337,15 +359,11 @@ export function getPastDuePeriods(habit: Habit, now: Date = new Date()): string[
   return pastPeriods;
 }
 
-/**
- * Evaluate all habits for past due missed periods and apply escalating penalties based on user's tier.
- */
 export function processHabitPenalties(state: AppState, now: Date = new Date()): AppState {
   let updatedState = state;
   let habitsChanged = false;
 
   const updatedHabits = state.habits.map((habit) => {
-    // Penalties apply ONLY to preset habits that award points (> 0)
     if (!habit.isPreset || habit.points <= 0) return habit;
 
     const missedPeriods = habit.missedPeriods ? [...habit.missedPeriods] : [];
@@ -359,10 +377,8 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
       const isAlreadyMissed = missedPeriods.includes(p);
 
       if (isCompleted) {
-        // Completion breaks the consecutive miss streak!
         consecutiveMisses = 0;
       } else if (!isAlreadyMissed) {
-        // New missed period detected!
         consecutiveMisses += 1;
         const multiplier = getMissPenaltyMultiplier(consecutiveMisses, updatedState.totalPoints);
         const penaltyAmount = Math.round(habit.points * multiplier);
@@ -370,7 +386,6 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
         missedPeriods.push(p);
         habitModified = true;
 
-        // Create partner notification if user has an active partner
         let newNotifications = updatedState.partnerNotifications || [];
         if (updatedState.partnership) {
           const partnerUsername =
@@ -410,7 +425,6 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
           }
         }
 
-        // Deduct penalty points from user's total points and record in points history
         updatedState = {
           ...updatedState,
           partnerNotifications: newNotifications,
@@ -449,16 +463,11 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
   };
 }
 
-/**
- * Evaluates all active bad habits for past unlogged days and applies retroactive no-report penalties (-5 pts base * multiplier).
- * Breaks resistance streak and escalates future penalties.
- */
 export function processBadHabitNoReports(state: AppState, now: Date = new Date()): AppState {
   let updatedState = state;
   const badHabits = updatedState.badHabits || [];
   if (badHabits.length === 0) return updatedState;
 
-  // Active bad habits in creation order
   const activeHabits = badHabits
     .filter((h) => !h.isCompleted)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -468,7 +477,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
 
   for (let idx = 0; idx < activeHabits.length; idx++) {
     const habit = activeHabits[idx];
-    const isPointEligible = idx < 2; // Only first 2 active habits in creation order are point-eligible
+    const isPointEligible = idx < 2;
 
     const createdDate = habit.createdAt ? new Date(habit.createdAt) : now;
     const start = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
@@ -481,10 +490,8 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
     while (cursor <= yesterday && loops < 90) {
       const key = todayKey(cursor);
 
-      // Check if a log already exists for this habit on key date
       const existingLog = newLogs.find((l) => l.badHabitId === habit.id && l.date === key);
       if (!existingLog) {
-        // Find consecutive occurrences/no_reports before key date
         const pastLogs = newLogs
           .filter((l) => l.badHabitId === habit.id && l.date < key)
           .sort((a, b) => b.date.localeCompare(a.date));
@@ -544,5 +551,3 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
     badHabitLogs: newLogs,
   };
 }
-
-
