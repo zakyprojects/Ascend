@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, PartnerNotification, UserPlanFollow, AppNotification } from '@/types';
+import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, PartnerNotification, UserPlanFollow, AppNotification, PlanReflectionNote } from '@/types';
 import { getHighestUserStreak } from './habitPenalties';
 import { calculateUnifiedStreak } from './streakLogic';
 
@@ -329,6 +329,8 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
       streakCount: plan.streakCount ?? anyPlan.streak_count ?? 0,
       lastCompletedDate: plan.lastCompletedDate ?? anyPlan.last_completed_date ?? null,
       targetReviewDate: plan.targetReviewDate ?? anyPlan.target_review_date ?? null,
+      reviewCadence: plan.reviewCadence ?? anyPlan.review_cadence ?? null,
+      nextReviewDueAt: plan.nextReviewDueAt ?? anyPlan.next_review_due_at ?? null,
       reflectionNotes: Array.isArray(plan.reflectionNotes)
         ? plan.reflectionNotes
         : (Array.isArray(anyPlan.reflection_notes) ? anyPlan.reflection_notes : [])
@@ -345,7 +347,9 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
       category: plan.category || 'Personal Growth',
       is_public: Boolean(plan.isPublic ?? anyPlan.is_public ?? false),
       copy_count: finalCopyCount,
-      steps: stepsPayload
+      steps: stepsPayload,
+      review_cadence: plan.reviewCadence || null,
+      next_review_due_at: plan.nextReviewDueAt || null,
     };
 
     // 3. Execute Supabase upsert/insert with forced creator_id
@@ -422,6 +426,8 @@ export async function syncFollowedPlanToSupabase(followedPlan: UserPlanFollow) {
       streakCount: followedPlan.streakCount ?? 0,
       lastCompletedDate: followedPlan.lastCompletedDate,
       targetReviewDate: followedPlan.targetReviewDate,
+      reviewCadence: followedPlan.reviewCadence ?? null,
+      nextReviewDueAt: followedPlan.nextReviewDueAt ?? null,
       reflectionNotes: followedPlan.reflectionNotes || [],
     };
 
@@ -434,6 +440,8 @@ export async function syncFollowedPlanToSupabase(followedPlan: UserPlanFollow) {
       steps: stepsPayload,
       is_completed: followedPlan.isCompleted,
       points_awarded: followedPlan.pointsAwarded || 0,
+      review_cadence: followedPlan.reviewCadence || null,
+      next_review_due_at: followedPlan.nextReviewDueAt || null,
     });
 
     if (error) {
@@ -513,6 +521,17 @@ export async function deleteFollowedPlanFromSupabase(followedPlanId: string) {
   }
 }
 
+function parseArrayField(val: any): any[] {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {}
+  }
+  return [];
+}
+
 export function mapRowToImprovementPlan(row: any): ImprovementPlan {
   let rawSteps = row?.steps;
   if (typeof rawSteps === 'string') {
@@ -522,7 +541,9 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
   const stepsMeta = !isStepsArray && typeof rawSteps === 'object' && rawSteps !== null ? rawSteps : {};
   const stepsList = isStepsArray ? rawSteps : (Array.isArray(stepsMeta.items) ? stepsMeta.items : []);
 
-  const planType = row?.plan_type || stepsMeta.planType || 'milestone';
+  const metaReflections = parseArrayField(stepsMeta.reflectionNotes);
+  const rowReflections = parseArrayField(row?.reflection_notes);
+  const reflectionNotes = metaReflections.length > 0 ? metaReflections : rowReflections;
 
   return {
     id: row?.id || '',
@@ -534,7 +555,7 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
     description: row?.description || '',
     category: row?.category || 'Personal Growth',
     isPublic: Boolean(row?.is_public),
-    steps: stepsList,
+    steps: Array.isArray(stepsList) ? stepsList : [],
     copyCount: typeof row?.copy_count === 'number' ? row.copy_count : 0,
     createdAt: row?.created_at || new Date().toISOString(),
 
@@ -550,7 +571,9 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
     streakCount: stepsMeta.streakCount !== undefined ? Number(stepsMeta.streakCount) : (row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : 0),
     lastCompletedDate: stepsMeta.lastCompletedDate || row?.last_completed_date || '',
     targetReviewDate: stepsMeta.targetReviewDate || row?.target_review_date || '',
-    reflectionNotes: Array.isArray(stepsMeta.reflectionNotes) ? stepsMeta.reflectionNotes : (Array.isArray(row?.reflection_notes) ? row.reflection_notes : []),
+    reviewCadence: row?.review_cadence || stepsMeta.reviewCadence || null,
+    nextReviewDueAt: row?.next_review_due_at || stepsMeta.nextReviewDueAt || null,
+    reflectionNotes,
   };
 }
 
@@ -563,7 +586,9 @@ export function mapRowToUserPlanFollow(row: any): UserPlanFollow {
   const stepsMeta = !isStepsArray && typeof rawSteps === 'object' && rawSteps !== null ? rawSteps : {};
   const stepsList = isStepsArray ? rawSteps : (Array.isArray(stepsMeta.items) ? stepsMeta.items : []);
 
-  const planType = row?.plan_type || stepsMeta.planType || 'milestone';
+  const metaReflections = parseArrayField(stepsMeta.reflectionNotes);
+  const rowReflections = parseArrayField(row?.reflection_notes);
+  const reflectionNotes = metaReflections.length > 0 ? metaReflections : rowReflections;
 
   return {
     id: row?.id || '',
@@ -571,12 +596,11 @@ export function mapRowToUserPlanFollow(row: any): UserPlanFollow {
     originalPlanId: row?.original_plan_id || '',
     title: row?.title || 'Untitled Plan',
     description: row?.description || '',
-    steps: stepsList,
+    steps: Array.isArray(stepsList) ? stepsList : [],
     isCompleted: Boolean(row?.is_completed),
     pointsAwarded: row?.points_awarded || 0,
     createdAt: row?.created_at || new Date().toISOString(),
 
-    // Phase B Plan Type Properties
     // Phase B Plan Type Properties
     planType: stepsMeta.planType || row?.plan_type || 'milestone',
     targetValue: stepsMeta.targetValue !== undefined ? Number(stepsMeta.targetValue) : (row?.target_value !== undefined && row?.target_value !== null ? Number(row.target_value) : undefined),
@@ -589,20 +613,54 @@ export function mapRowToUserPlanFollow(row: any): UserPlanFollow {
     streakCount: stepsMeta.streakCount !== undefined ? Number(stepsMeta.streakCount) : (row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : 0),
     lastCompletedDate: stepsMeta.lastCompletedDate || row?.last_completed_date || '',
     targetReviewDate: stepsMeta.targetReviewDate || row?.target_review_date || '',
-    reflectionNotes: Array.isArray(stepsMeta.reflectionNotes) ? stepsMeta.reflectionNotes : (Array.isArray(row?.reflection_notes) ? row.reflection_notes : []),
+    reviewCadence: row?.review_cadence || stepsMeta.reviewCadence || null,
+    nextReviewDueAt: row?.next_review_due_at || stepsMeta.nextReviewDueAt || null,
+    reflectionNotes,
   };
 }
 
-export async function fetchPublicPlansFromSupabase(): Promise<ImprovementPlan[]> {
+export interface FetchPublicPlansParams {
+  search?: string;
+  category?: string;
+  planType?: string;
+  sortBy?: 'recent' | 'followed' | 'creator_rank';
+}
+
+export async function fetchPublicPlansFromSupabase(options?: FetchPublicPlansParams): Promise<ImprovementPlan[]> {
   if (!isSupabaseConfigured) return [];
   try {
-    const { data: plansData, error } = await supabase
+    let query = supabase
       .from('improvement_plans')
-      .select('*')
-      .eq('is_public', true)
-      .order('created_at', { ascending: false });
+      .select('*, profiles:creator_id(total_points, username, avatar)')
+      .eq('is_public', true);
 
-    if (error || !plansData) return [];
+    if (options?.category && options.category !== 'All') {
+      query = query.eq('category', options.category);
+    }
+
+    if (options?.planType && options.planType !== 'all') {
+      query = query.or(`plan_type.eq.${options.planType},steps->>planType.eq.${options.planType}`);
+    }
+
+    if (options?.search && options.search.trim()) {
+      const term = `%${options.search.trim()}%`;
+      query = query.or(`title.ilike.${term},description.ilike.${term}`);
+    }
+
+    if (options?.sortBy === 'followed') {
+      query = query.order('copy_count', { ascending: false });
+    } else if (options?.sortBy === 'creator_rank') {
+      query = query.order('profiles(total_points)', { ascending: false, foreignTable: 'profiles' });
+    } else {
+      query = query.order('created_at', { ascending: false });
+    }
+
+    const { data: plansData, error } = await query;
+
+    if (error || !plansData) {
+      console.warn('Error querying public plans from Supabase:', error);
+      return [];
+    }
 
     // Fetch follow counts directly from user_plan_follows table
     const { data: followsData } = await supabase
@@ -622,11 +680,114 @@ export async function fetchPublicPlansFromSupabase(): Promise<ImprovementPlan[]>
       const plan = mapRowToImprovementPlan(row);
       const actualFollows = followCounts[row.id] || 0;
       plan.copyCount = Math.max(plan.copyCount || 0, actualFollows);
+      if (row.profiles && typeof row.profiles === 'object' && row.profiles?.total_points !== undefined) {
+        plan.creatorPoints = Number(row.profiles.total_points) || 0;
+      }
       return plan;
     });
   } catch (e) {
     console.error('Error fetching public plans from Supabase:', e);
     return [];
+  }
+}
+
+export async function fetchPlanReflectionNotes(
+  planId: string,
+  isFollowed: boolean = false
+): Promise<PlanReflectionNote[]> {
+  if (!isSupabaseConfigured) return [];
+  try {
+    const col = isFollowed ? 'followed_plan_id' : 'original_plan_id';
+    const { data, error } = await supabase
+      .from('plan_reflection_notes')
+      .select('*')
+      .eq(col, planId)
+      .order('created_at', { ascending: false });
+
+    if (error || !data) return [];
+
+    return data.map((r) => ({
+      id: r.id,
+      originalPlanId: r.original_plan_id,
+      followedPlanId: r.followed_plan_id,
+      ownerId: r.owner_id,
+      note: r.note,
+      createdAt: r.created_at,
+    }));
+  } catch (e) {
+    console.error('Error fetching reflection notes:', e);
+    return [];
+  }
+}
+
+export async function addReflectionNoteToSupabase(params: {
+  originalPlanId?: string;
+  followedPlanId?: string;
+  note: string;
+  nextReviewDueAt?: string | null;
+  reviewCadence?: 'weekly' | 'monthly' | null;
+}): Promise<PlanReflectionNote | null> {
+  if (!isSupabaseConfigured) return null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const ownerId = session?.user?.id;
+    if (!ownerId) return null;
+
+    const noteId = crypto.randomUUID();
+    const { data, error } = await supabase
+      .from('plan_reflection_notes')
+      .insert({
+        id: noteId,
+        original_plan_id: params.originalPlanId || null,
+        followed_plan_id: params.followedPlanId || null,
+        owner_id: ownerId,
+        note: params.note,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error inserting reflection note:', error);
+      return null;
+    }
+
+    // Recalculate and update next_review_due_at on target plan table
+    if (params.nextReviewDueAt !== undefined) {
+      if (params.originalPlanId) {
+        await supabase
+          .from('improvement_plans')
+          .update({ next_review_due_at: params.nextReviewDueAt })
+          .eq('id', params.originalPlanId);
+      } else if (params.followedPlanId) {
+        await supabase
+          .from('user_plan_follows')
+          .update({ next_review_due_at: params.nextReviewDueAt })
+          .eq('id', params.followedPlanId);
+      }
+    }
+
+    return {
+      id: data.id,
+      originalPlanId: data.original_plan_id,
+      followedPlanId: data.followed_plan_id,
+      ownerId: data.owner_id,
+      note: data.note,
+      createdAt: data.created_at,
+    };
+  } catch (e) {
+    console.error('Error in addReflectionNoteToSupabase:', e);
+    return null;
+  }
+}
+
+export async function deleteReflectionNoteFromSupabase(noteId: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  try {
+    const { error } = await supabase.from('plan_reflection_notes').delete().eq('id', noteId);
+    return !error;
+  } catch (e) {
+    console.error('Error deleting reflection note:', e);
+    return false;
   }
 }
 

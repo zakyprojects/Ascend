@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Users, UserPlus, Plus, Award, Zap, Trash2, X, Clock, CheckCircle2, Shield, Eye, EyeOff, BookOpen, Dumbbell, AlertTriangle, Sparkles, Activity, ShieldAlert, FileText, HeartHandshake } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { getCurrentTier } from '@/lib/tiers';
 import { todayKey } from '@/lib/dates';
-import { Partnership, SharedChallenge, SharedChallengeCategory } from '@/types';
+import { Partnership, SharedChallenge, SharedChallengeCategory, PartnerInvite } from '@/types';
+
+const EMPTY_PARTNERSHIPS: Partnership[] = [];
+const EMPTY_INVITES: PartnerInvite[] = [];
+const EMPTY_CHALLENGES: SharedChallenge[] = [];
 
 const CATEGORY_OPTIONS: { value: SharedChallengeCategory; label: string; icon: any; color: string }[] = [
   { value: 'habit', label: 'Habit Tracker', icon: CheckCircle2, color: 'text-emerald-400' },
@@ -21,6 +26,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const [challengeModalOpen, setChallengeModalOpen] = useState(false);
   const [endConfirmOpen, setEndConfirmOpen] = useState(false);
   const [challengeToDelete, setChallengeToDelete] = useState<SharedChallenge | null>(null);
+  const [inviteToCancel, setInviteToCancel] = useState<PartnerInvite | null>(null);
 
   const [partnerUidInput, setPartnerUidInput] = useState('');
   
@@ -34,9 +40,15 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
   const currentUser = store.state.currentUser;
   const currentUsername = store.state.username;
-  const partnerships = store.state.partnerships || (store.state.partnership ? [store.state.partnership] : []);
-  const partnerInvites = store.state.partnerInvites || [];
-  const sharedChallenges = store.state.sharedChallenges || [];
+
+  const rawPartnerships = store.state.partnerships;
+  const singlePartnership = store.state.partnership;
+  const partnerships = useMemo(() => {
+    return rawPartnerships || (singlePartnership ? [singlePartnership] : EMPTY_PARTNERSHIPS);
+  }, [rawPartnerships, singlePartnership]);
+
+  const partnerInvites = store.state.partnerInvites || EMPTY_INVITES;
+  const sharedChallenges = store.state.sharedChallenges || EMPTY_CHALLENGES;
 
   // Selected partner relationship state
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
@@ -296,7 +308,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     <span>Invite sent to <strong>{invite.toUsername}</strong></span>
                   </div>
                   <button
-                    onClick={() => store.cancelPartnerInvite(invite.id)}
+                    onClick={() => setInviteToCancel(invite)}
                     className="text-xs text-rose-400 hover:text-rose-300 font-medium transition-all px-2 py-1 bg-rose-500/10 rounded-lg hover:bg-rose-500/20"
                   >
                     Cancel Invite
@@ -783,64 +795,52 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       </Modal>
 
       {/* END PAIRING CONFIRMATION MODAL */}
-      <Modal
+      <ConfirmDeleteModal
         open={endConfirmOpen}
         onClose={() => setEndConfirmOpen(false)}
+        onConfirm={async () => {
+          if (activePartnership) {
+            await store.endPartnership(activePartnership.id);
+            setEndConfirmOpen(false);
+          }
+        }}
         title={`End Pairing with ${activePartnerUsername || 'Partner'}?`}
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-slate-300">
-            Are you sure you want to end your accountability partnership with <strong>{activePartnerUsername}</strong>? All shared challenges with this partner will be removed.
-          </p>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setEndConfirmOpen(false)} className="btn-secondary text-xs">
-              Keep Partner
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                if (activePartnership) {
-                  await store.endPartnership(activePartnership.id);
-                  setEndConfirmOpen(false);
-                }
-              }}
-              className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition-all"
-            >
-              End Partnership
-            </button>
-          </div>
-        </div>
-      </Modal>
+        itemName={activePartnerUsername || undefined}
+        description={`Are you sure you want to end your accountability partnership with ${activePartnerUsername}? All shared challenges with this partner will be removed.`}
+        confirmText="End Partnership"
+      />
 
       {/* DELETE SHARED CHALLENGE CONFIRMATION MODAL */}
-      <Modal
+      <ConfirmDeleteModal
         open={Boolean(challengeToDelete)}
         onClose={() => setChallengeToDelete(null)}
+        onConfirm={async () => {
+          if (challengeToDelete) {
+            await store.deleteSharedChallenge(challengeToDelete.id);
+            setChallengeToDelete(null);
+          }
+        }}
         title="Delete Shared Challenge?"
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-slate-300">
-            Are you sure you want to delete <strong>"{challengeToDelete?.title}"</strong>? This will permanently remove the joint challenge for both partners.
-          </p>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setChallengeToDelete(null)} className="btn-secondary text-xs">
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                if (challengeToDelete) {
-                  await store.deleteSharedChallenge(challengeToDelete.id);
-                  setChallengeToDelete(null);
-                }
-              }}
-              className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md transition-all"
-            >
-              Delete Challenge
-            </button>
-          </div>
-        </div>
-      </Modal>
+        itemName={challengeToDelete?.title}
+        description={`Are you sure you want to delete "${challengeToDelete?.title}"? This will permanently remove the joint challenge for both partners.`}
+        confirmText="Delete Challenge"
+      />
+
+      {/* CANCEL SENT INVITE CONFIRMATION MODAL */}
+      <ConfirmDeleteModal
+        open={Boolean(inviteToCancel)}
+        onClose={() => setInviteToCancel(null)}
+        onConfirm={async () => {
+          if (inviteToCancel) {
+            await store.cancelPartnerInvite(inviteToCancel.id);
+            setInviteToCancel(null);
+          }
+        }}
+        title="Cancel Partner Invite?"
+        itemName={`Invite to ${inviteToCancel?.toUsername}`}
+        description={`Are you sure you want to cancel the pending invite sent to ${inviteToCancel?.toUsername}?`}
+        confirmText="Cancel Invite"
+      />
     </div>
   );
 }

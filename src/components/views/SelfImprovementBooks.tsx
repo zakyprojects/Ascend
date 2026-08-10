@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
 import { formatDateLong } from '@/lib/dates';
@@ -28,6 +29,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<BookCategory | 'all'>('all');
   const [libraryStatusFilter, setLibraryStatusFilter] = useState<UserBookStatus | 'all'>('all');
+  const [bookToRemove, setBookToRemove] = useState<UserBook | null>(null);
 
   const [addCustomModalOpen, setAddCustomModalOpen] = useState(false);
   const [customTitle, setCustomTitle] = useState('');
@@ -397,7 +399,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
                         <LibraryCard
                           key={lb.id}
                           userBook={lb}
-                          onRemove={() => store.removeBookFromLibrary(lb.id)}
+                          onRemove={() => setBookToRemove(lb)}
                           onStatusChange={(s) => store.updateUserBookStatus(lb.id, s)}
                         />
                       ))}
@@ -412,7 +414,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
                 <LibraryCard
                   key={lb.id}
                   userBook={lb}
-                  onRemove={() => store.removeBookFromLibrary(lb.id)}
+                  onRemove={() => setBookToRemove(lb)}
                   onStatusChange={(s) => store.updateUserBookStatus(lb.id, s)}
                 />
               ))}
@@ -513,6 +515,22 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
           </div>
         </form>
       </Modal>
+
+      {/* Confirm Remove Book Modal */}
+      <ConfirmDeleteModal
+        open={Boolean(bookToRemove)}
+        onClose={() => setBookToRemove(null)}
+        onConfirm={() => {
+          if (bookToRemove) {
+            store.removeBookFromLibrary(bookToRemove.id);
+            setBookToRemove(null);
+          }
+        }}
+        title="Remove Book from Library?"
+        itemName={bookToRemove?.title}
+        description={`Are you sure you want to remove "${bookToRemove?.title}" from your library?`}
+        confirmText="Remove Book"
+      />
     </div>
   );
 }

@@ -2,6 +2,8 @@ import { AppState, Habit, BadHabitLog, PartnerNotification } from '@/types';
 import { todayKey, periodKey, previousPeriodKey, uid } from './dates';
 import { createNotificationSupabase } from './supabase';
 
+export const MAX_RETROACTIVE_PENALTY_DAYS = 90;
+
 export interface StreakInfo {
   days: number;
   category: string;
@@ -122,7 +124,7 @@ export function getPastDuePeriods(habit: Habit, now: Date = new Date()): string[
 
     const cursor = new Date(start);
     let loops = 0;
-    while (cursor <= yesterday && loops < 90) {
+    while (cursor <= yesterday && loops < MAX_RETROACTIVE_PENALTY_DAYS) {
       const key = todayKey(cursor);
       if (key !== todayKey(now)) {
         pastPeriods.push(key);
@@ -281,7 +283,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
 
     const cursor = new Date(start);
     let loops = 0;
-    while (cursor <= yesterday && loops < 90) {
+    while (cursor <= yesterday && loops < MAX_RETROACTIVE_PENALTY_DAYS) {
       const key = todayKey(cursor);
 
       const existingLog = newLogs.find((l) => l.badHabitId === habit.id && l.date === key);

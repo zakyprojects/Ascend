@@ -24,15 +24,19 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCcw,
+  Search,
+  Filter,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
-import { ImprovementPlan, PlanType, UserPlanFollow, VisionReflectionNote } from '@/types';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
 import { getCurrentTier } from '@/lib/tiers';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { fetchPublicPlansFromSupabase, mapRowToImprovementPlan, supabase, syncBroadcaster } from '@/lib/supabase';
 import { getProfilePointsByUsername } from '@/lib/auth';
-import { isTodayLocal } from '@/lib/dates';
+import { isTodayLocal, calculateActivePlanStreak } from '@/lib/dates';
+import { STARTER_TEMPLATES } from '@/data/planTemplates';
 
 function ExpandableDescription({ text }: { text: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -95,9 +99,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   const [duration, setDuration] = useState<number>(30);
   const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
-  // Vision Plan states
+  // Vision Plan & Phase C Review Loop states
   const [targetReviewDate, setTargetReviewDate] = useState<string>('');
   const [initialReflectionNote, setInitialReflectionNote] = useState<string>('');
+  const [reviewCadence, setReviewCadence] = useState<'weekly' | 'monthly' | null>(null);
 
   // Edit Form states (Structural fields ONLY)
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
@@ -112,7 +117,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   const [editCadence, setEditCadence] = useState<'daily' | 'weekly'>('daily');
   const [editDuration, setEditDuration] = useState<number>(30);
   const [editTargetReviewDate, setEditTargetReviewDate] = useState<string>('');
+  const [editReviewCadence, setEditReviewCadence] = useState<'weekly' | 'monthly' | null>(null);
   const [editingPlanType, setEditingPlanType] = useState<PlanType>('milestone');
+
+  // Discover tab filter/search/sort state
+  const [discoverSearch, setDiscoverSearch] = useState<string>('');
+  const [discoverCategory, setDiscoverCategory] = useState<string>('All');
+  const [discoverPlanType, setDiscoverPlanType] = useState<string>('all');
+  const [discoverSortBy, setDiscoverSortBy] = useState<'recent' | 'followed' | 'creator_rank'>('recent');
 
   // Interactive inline UI state (Progress inputs & Reflection note inputs)
   const [progressInput, setProgressInput] = useState<{ [planId: string]: string }>({});
@@ -121,6 +133,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   const [editingNoteId, setEditingNoteId] = useState<{ [noteKey: string]: boolean }>({});
   const [editingNoteText, setEditingNoteText] = useState<{ [noteKey: string]: string }>({});
 
+  const [planToDelete, setPlanToDelete] = useState<ImprovementPlan | null>(null);
+  const [followToDelete, setFollowToDelete] = useState<UserPlanFollow | null>(null);
+  const [noteToDelete, setNoteToDelete] = useState<{ planId: string; noteKey: string; mode: 'creator_interactive' | 'follower_interactive' } | null>(null);
+
   const improvementPlans = store.state.improvementPlans;
   const followedPlans = store.state.followedPlans;
   const currentUsername = store.state.username;
@@ -128,10 +144,20 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   // Remote public plans fetched & updated via Supabase Realtime & syncBroadcaster
   const [remotePublicPlans, setRemotePublicPlans] = useState<ImprovementPlan[]>([]);
 
-  const loadPlans = async () => {
+  const loadPlans = async (
+    overrideSearch?: string,
+    overrideCat?: string,
+    overrideType?: string,
+    overrideSort?: 'recent' | 'followed' | 'creator_rank'
+  ) => {
     setIsRefreshing(true);
     try {
-      const plans = await fetchPublicPlansFromSupabase();
+      const search = overrideSearch !== undefined ? overrideSearch : discoverSearch;
+      const category = overrideCat !== undefined ? overrideCat : discoverCategory;
+      const planType = overrideType !== undefined ? overrideType : discoverPlanType;
+      const sortBy = overrideSort !== undefined ? overrideSort : discoverSortBy;
+
+      const plans = await fetchPublicPlansFromSupabase({ search, category, planType, sortBy });
       if (plans) {
         setRemotePublicPlans(plans);
         plans.forEach((p) => {
@@ -145,6 +171,11 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     }
   };
 
+  const storeRef = useRef(store);
+  useEffect(() => {
+    storeRef.current = store;
+  });
+
   useEffect(() => {
     let mounted = true;
 
@@ -154,7 +185,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         setRemotePublicPlans(plans);
         plans.forEach((p) => {
           if (p.copyCount !== undefined) {
-            store.updatePlanCopyCount(p.id, p.copyCount);
+            storeRef.current.updatePlanCopyCount(p.id, p.copyCount);
           }
         });
       }
@@ -184,7 +215,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             if (newRow) {
               const updatedPlan = mapRowToImprovementPlan(newRow);
               if (newRow.copy_count !== undefined) {
-                store.updatePlanCopyCount(newRow.id, newRow.copy_count);
+                storeRef.current.updatePlanCopyCount(newRow.id, newRow.copy_count);
               }
               setRemotePublicPlans((prev) => {
                 if (!newRow.is_public) {
@@ -221,9 +252,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             setRemotePublicPlans((prev) =>
               prev.map((p) => (p.id === targetId ? { ...p, copyCount: (p.copyCount || 0) + 1 } : p))
             );
-            const currentLocal = store.state.improvementPlans.find((p) => p.id === targetId);
+            const currentLocal = storeRef.current.state.improvementPlans.find((p) => p.id === targetId);
             if (currentLocal) {
-              store.updatePlanCopyCount(targetId, (currentLocal.copyCount || 0) + 1);
+              storeRef.current.updatePlanCopyCount(targetId, (currentLocal.copyCount || 0) + 1);
             }
           }
         }
@@ -329,6 +360,26 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     setSteps(steps.filter((_, idx) => idx !== index));
   };
 
+  // Starter Template application helper
+  const applyTemplate = (tpl: typeof STARTER_TEMPLATES[number]) => {
+    setPlanType(tpl.planType);
+    setTitle(tpl.title);
+    setDescription(tpl.description);
+    setCategory(tpl.category);
+    setIsPublic(false); // Default visibility: Private
+    setReviewCadence(null); // Default review cadence: None
+    if (tpl.planType === 'habit_journey') {
+      if (tpl.cadence) setCadence(tpl.cadence);
+      if (tpl.duration) setDuration(tpl.duration);
+    } else if (tpl.planType === 'target_goal') {
+      if (tpl.targetValue) setTargetValue(tpl.targetValue);
+      if (tpl.targetUnit) setTargetUnit(tpl.targetUnit);
+      if (tpl.getTargetDate) setTargetDate(tpl.getTargetDate().split('T')[0]);
+    } else if (tpl.planType === 'milestone') {
+      if (tpl.steps) setSteps(tpl.steps);
+    }
+  };
+
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) return;
@@ -350,6 +401,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         startDate,
         targetReviewDate,
         initialReflectionNote,
+        reviewCadence,
       }
     );
 
@@ -358,6 +410,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     setDescription('');
     setSteps(['Step 1: ', 'Step 2: ', 'Step 3: ']);
     setInitialReflectionNote('');
+    setReviewCadence(null);
   };
 
   // Edit Structural Fields Modal handlers (Does NOT touch progress/streaks/reflections)
@@ -374,6 +427,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     setEditCadence(plan.cadence || 'daily');
     setEditDuration(plan.duration || 30);
     setEditTargetReviewDate(plan.targetReviewDate || '');
+    setEditReviewCadence(plan.reviewCadence || null);
     setEditingPlanType(plan.planType || 'milestone');
     setEditModalOpen(true);
   };
@@ -395,6 +449,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         cadence: editCadence,
         duration: editDuration,
         targetReviewDate: editTargetReviewDate,
+        reviewCadence: editReviewCadence,
       }
     );
     setEditModalOpen(false);
@@ -443,217 +498,71 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   ) => {
     const resolvedType = plan.planType || 'milestone';
     const planId = plan.id;
+    const notes = (plan.reflectionNotes || []) as any[];
+    const isExpanded = expandedReflections[planId] ?? false;
 
-    if (resolvedType === 'target_goal') {
-      const targetVal = plan.targetValue || 1;
-      const curProg = plan.currentProgress || 0;
-      const pct = Math.min(100, Math.round((curProg / targetVal) * 100));
-      const isGoalCompleted = curProg >= targetVal;
+    const isReviewDue =
+      mode !== 'read_only' &&
+      !!plan.reviewCadence &&
+      !!plan.nextReviewDueAt &&
+      new Date(plan.nextReviewDueAt).getTime() <= Date.now();
 
+    const renderReviewDueBadge = () => {
+      if (!isReviewDue) return null;
       return (
-        <div className="space-y-3 mt-3 bg-slate-900/40 p-3 rounded-lg border border-slate-800/60">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-slate-300">
-              Progress: <span className="text-amber-400 font-bold">{curProg}</span> / {targetVal} {plan.targetUnit || 'units'}
-            </span>
-            <span className="font-bold text-amber-400">{pct}%</span>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-            <div 
-              className={`${isGoalCompleted ? 'bg-emerald-500' : 'bg-gradient-to-r from-amber-500 to-emerald-500'} h-full transition-all duration-500`} 
-              style={{ width: `${pct}%` }} 
-            />
-          </div>
-
-          {plan.targetDate && (
-            <div className="text-[11px] text-slate-400 flex items-center gap-1">
-              <Calendar size={12} className="text-slate-500" /> Target Date: <span className="text-slate-300">{plan.targetDate}</span>
-            </div>
-          )}
-
-          {/* Read-Only mode in Discover: NO input field or button */}
-          {mode === 'read_only' ? (
-            isGoalCompleted && (
-              <div className="text-xs font-bold text-emerald-400 flex items-center gap-1 pt-1">
-                <CheckCircle2 size={13} /> Completed!
-              </div>
-            )
-          ) : (
-            /* Interactive mode in My Plans */
-            <div className="pt-1 flex flex-wrap items-center gap-2">
-              <input
-                type="number"
-                min="0"
-                value={progressInput[planId] !== undefined ? progressInput[planId] : (plan.currentProgress || 0)}
-                onChange={(e) => setProgressInput({ ...progressInput, [planId]: e.target.value })}
-                className="input text-xs w-24 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="Value"
-                disabled={isGoalCompleted}
-              />
-              <button
-                onClick={() => {
-                  const val = Number(progressInput[planId]);
-                  if (!isNaN(val)) {
-                    if (mode === 'creator_interactive') {
-                      store.updateTargetGoalProgress(planId, val);
-                    } else {
-                      store.updateFollowedTargetGoalProgress(planId, val);
-                    }
-                  }
-                }}
-                className="btn-secondary text-xs py-1 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isGoalCompleted}
-              >
-                Update Progress
-              </button>
-              
-              {isGoalCompleted && (
-                <button
-                  onClick={() => {
-                    const newTargetStr = window.prompt(`Goal completed! Enter your new target value:`);
-                    if (newTargetStr === null) return;
-                    
-                    const newTarget = Number(newTargetStr);
-                    if (!isNaN(newTarget) && newTarget > 0) {
-                      if (mode === 'creator_interactive') {
-                        store.setNewTargetGoal(planId, newTarget);
-                      } else {
-                        store.setNewFollowedTargetGoal(planId, newTarget);
-                      }
-                      setProgressInput({ ...progressInput, [planId]: '0' });
-                    } else {
-                      alert("Please enter a valid number greater than 0.");
-                    }
-                  }}
-                  className="btn-primary text-[11px] py-1 px-2 ml-1"
-                >
-                  Set New Target
-                </button>
-              )}
-              {isGoalCompleted && (
-                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 ml-auto mt-1 sm:mt-0">
-                  <CheckCircle2 size={13} /> Completed!
-                </span>
-              )}
-            </div>
-          )}
+        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-md mb-2 animate-pulse">
+          <Sparkles size={13} className="text-amber-400 shrink-0" />
+          <span>Review Due ({plan.reviewCadence === 'weekly' ? 'Weekly' : 'Monthly'} Check-in)</span>
         </div>
       );
-    }
+    };
 
-    if (resolvedType === 'habit_journey') {
-      const streak = plan.streakCount || 0;
-      const cadenceText = plan.cadence === 'weekly' ? 'Week' : 'Day';
-      const durationText = plan.duration ? `${plan.duration} ${plan.cadence === 'weekly' ? 'weeks' : 'days'}` : 'Ongoing';
-      const isCompletedToday = isTodayLocal(plan.lastCompletedDate);
+    const renderReflectionSection = () => {
+      // PHASE 1 FIX: Hide Reflection UI if reviewCadence is null, 'none', or not weekly/monthly
+      if (!plan.reviewCadence || (plan.reviewCadence !== 'weekly' && plan.reviewCadence !== 'monthly')) {
+        return null;
+      }
 
-      return (
-        <div className="space-y-3 mt-3 bg-slate-900/40 p-3 rounded-lg border border-slate-800/60">
-          <div className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5 font-bold text-rose-400">
-              <Flame size={15} className="animate-pulse" /> {streak} {cadenceText} Streak
-            </span>
-            <span className="text-slate-400 text-[11px]">
-              Commitment: <span className="text-slate-200">{durationText}</span> ({plan.cadence || 'daily'})
-            </span>
-          </div>
-
-          {/* Read-Only mode in Discover: NO "Mark Done" button */}
-          {mode === 'read_only' ? (
-            plan.lastCompletedDate && (
-              <div className="text-[10px] text-slate-500 pt-1">
-                Last completed: {new Date(plan.lastCompletedDate).toLocaleDateString()}
-              </div>
-            )
-          ) : (
-            /* Interactive mode in My Plans */
-            <div className="pt-1 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {isCompletedToday ? (
-                  <>
-                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 rounded border border-emerald-500/20">
-                      <CheckCircle2 size={13} /> Done for {cadenceText}
-                    </span>
-                    <button
-                      onClick={() => {
-                        if (mode === 'follower_interactive') {
-                          store.undoFollowedHabitJourneyDone(planId);
-                        } else {
-                          store.undoHabitJourneyDone(planId);
-                        }
-                      }}
-                      className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1.5 border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
-                      title="Undo today's completion and re-enable mark done"
-                    >
-                      <RotateCcw size={13} /> Undo Today's Mark
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => {
-                      if (mode === 'follower_interactive') {
-                        store.markFollowedHabitJourneyDone(planId);
-                      } else {
-                        store.markHabitJourneyDone(planId);
-                      }
-                    }}
-                    className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white"
-                  >
-                    <CheckCircle2 size={14} /> Mark Done for {cadenceText}
-                  </button>
-                )}
-              </div>
-              {plan.lastCompletedDate && (
-                <span className="text-[10px] text-slate-500">
-                  Last completed: {new Date(plan.lastCompletedDate).toLocaleDateString()}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (resolvedType === 'vision') {
-      const notes = plan.reflectionNotes || [];
-      const isExpanded = expandedReflections[planId] ?? false;
+      if (mode === 'read_only' && notes.length === 0) return null;
 
       return (
         <div className="space-y-3 mt-3 bg-slate-900/40 p-3 rounded-lg border border-slate-800/60">
-          {plan.targetReviewDate && (
-            <div className="text-[11px] text-purple-300 flex items-center gap-1">
-              <Calendar size={12} className="text-purple-400" /> Target Review Date: {plan.targetReviewDate}
-            </div>
-          )}
-
           {/* Add Reflection Note Field (Interactive mode ONLY) */}
           {mode !== 'read_only' && (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={reflectionInput[planId] || ''}
-                onChange={(e) => setReflectionInput({ ...reflectionInput, [planId]: e.target.value })}
-                placeholder="Add dated check-in reflection note..."
-                className="input text-xs flex-1 py-1"
-              />
-              <button
-                onClick={() => {
-                  const text = reflectionInput[planId];
-                  if (text && text.trim()) {
-                    if (mode === 'creator_interactive') {
-                      store.addVisionReflectionNote(planId, text);
-                    } else {
-                      store.addFollowedVisionReflectionNote(planId, text);
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-semibold text-slate-400">Add Reflection Note</span>
+                {plan.reviewCadence && (
+                  <span className="text-[10px] text-purple-400 font-mono">
+                    Cadence: {plan.reviewCadence === 'weekly' ? 'Weekly' : 'Monthly'}
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={reflectionInput[planId] || ''}
+                  onChange={(e) => setReflectionInput({ ...reflectionInput, [planId]: e.target.value })}
+                  placeholder="Add dated check-in reflection note..."
+                  className="input text-xs flex-1 py-1"
+                />
+                <button
+                  onClick={() => {
+                    const text = reflectionInput[planId];
+                    if (text && text.trim()) {
+                      if (mode === 'creator_interactive') {
+                        store.addVisionReflectionNote(planId, text);
+                      } else {
+                        store.addFollowedVisionReflectionNote(planId, text);
+                      }
+                      setReflectionInput({ ...reflectionInput, [planId]: '' });
                     }
-                    setReflectionInput({ ...reflectionInput, [planId]: '' });
-                  }
-                }}
-                className="btn-secondary text-xs py-1 px-3 flex items-center gap-1 text-purple-300 hover:text-purple-200"
-              >
-                <Send size={12} /> Post
-              </button>
+                  }}
+                  className="btn-secondary text-xs py-1 px-3 flex items-center gap-1 text-purple-300 hover:text-purple-200 shrink-0"
+                >
+                  <Send size={12} /> Post
+                </button>
+              </div>
             </div>
           )}
 
@@ -676,13 +585,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {isExpanded && notes.length > 0 && (
             <div className="space-y-2 pt-1 border-t border-slate-800">
               {notes.map((n) => {
-                const noteKey = n.id || n.date;
+                const noteKey = n.id || n.date || n.createdAt;
+                const noteDate = n.createdAt || n.date || new Date().toISOString();
                 const isEditingThisNote = editingNoteId[noteKey] ?? false;
 
                 return (
                   <div key={noteKey} className="text-xs p-2 rounded bg-slate-800/60 border border-slate-700/50 space-y-1">
                     <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
-                      <span>{new Date(n.date).toLocaleString()}</span>
+                      <span>{new Date(noteDate).toLocaleString()}</span>
                       {mode !== 'read_only' && (
                         <div className="flex items-center gap-1.5">
                           <button
@@ -696,13 +606,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             <Edit3 size={12} />
                           </button>
                           <button
-                            onClick={() => {
-                              if (mode === 'creator_interactive') {
-                                store.deleteVisionReflectionNote(planId, noteKey);
-                              } else {
-                                store.deleteFollowedVisionReflectionNote(planId, noteKey);
-                              }
-                            }}
+                            onClick={() => setNoteToDelete({ planId, noteKey, mode })}
                             className="text-slate-400 hover:text-rose-400 transition-colors"
                             title="Delete Note"
                           >
@@ -754,46 +658,244 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
         </div>
       );
+    };
+
+    if (resolvedType === 'target_goal') {
+      const targetVal = plan.targetValue || 1;
+      const curProg = plan.currentProgress || 0;
+      const pct = Math.min(100, Math.round((curProg / targetVal) * 100));
+      const isGoalCompleted = curProg >= targetVal;
+
+      return (
+        <div>
+          {renderReviewDueBadge()}
+          <div className="space-y-3 bg-slate-900/40 p-3 rounded-lg border border-slate-800/60">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-300">
+                Progress: <span className="text-amber-400 font-bold">{curProg}</span> / {targetVal} {plan.targetUnit || 'units'}
+              </span>
+              <span className="font-bold text-amber-400">{pct}%</span>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+              <div 
+                className={`${isGoalCompleted ? 'bg-emerald-500' : 'bg-gradient-to-r from-amber-500 to-emerald-500'} h-full transition-all duration-500`} 
+                style={{ width: `${pct}%` }} 
+              />
+            </div>
+
+            {plan.targetDate && (
+              <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                <Calendar size={12} className="text-slate-500" /> Target Date: <span className="text-slate-300">{plan.targetDate}</span>
+              </div>
+            )}
+
+            {/* Read-Only mode in Discover: NO input field or button */}
+            {mode === 'read_only' ? (
+              isGoalCompleted && (
+                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1 pt-1">
+                  <CheckCircle2 size={13} /> Completed!
+                </div>
+              )
+            ) : (
+              /* Interactive mode in My Plans */
+              <div className="pt-1 flex flex-wrap items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  value={progressInput[planId] !== undefined ? progressInput[planId] : (plan.currentProgress || 0)}
+                  onChange={(e) => setProgressInput({ ...progressInput, [planId]: e.target.value })}
+                  className="input text-xs w-24 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="Value"
+                  disabled={isGoalCompleted}
+                />
+                <button
+                  onClick={() => {
+                    const val = Number(progressInput[planId]);
+                    if (!isNaN(val)) {
+                      if (mode === 'creator_interactive') {
+                        store.updateTargetGoalProgress(planId, val);
+                      } else {
+                        store.updateFollowedTargetGoalProgress(planId, val);
+                      }
+                    }
+                  }}
+                  className="btn-secondary text-xs py-1 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isGoalCompleted}
+                >
+                  Update Progress
+                </button>
+                
+                {isGoalCompleted && (
+                  <button
+                    onClick={() => {
+                      const newTargetStr = window.prompt(`Goal completed! Enter your new target value:`);
+                      if (newTargetStr === null) return;
+                      
+                      const newTarget = Number(newTargetStr);
+                      if (!isNaN(newTarget) && newTarget > 0) {
+                        if (mode === 'creator_interactive') {
+                          store.setNewTargetGoal(planId, newTarget);
+                        } else {
+                          store.setNewFollowedTargetGoal(planId, newTarget);
+                        }
+                        setProgressInput({ ...progressInput, [planId]: '0' });
+                      } else {
+                        alert("Please enter a valid number greater than 0.");
+                      }
+                    }}
+                    className="btn-primary text-[11px] py-1 px-2 ml-1"
+                  >
+                    Set New Target
+                  </button>
+                )}
+                {isGoalCompleted && (
+                  <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 ml-auto mt-1 sm:mt-0">
+                    <CheckCircle2 size={13} /> Completed!
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          {renderReflectionSection()}
+        </div>
+      );
+    }
+
+    if (resolvedType === 'habit_journey') {
+      const streak = calculateActivePlanStreak(plan.streakCount || 0, plan.lastCompletedDate, plan.cadence || 'daily');
+      const cadenceText = plan.cadence === 'weekly' ? 'Week' : 'Day';
+      const durationText = plan.duration ? `${plan.duration} ${plan.cadence === 'weekly' ? 'weeks' : 'days'}` : 'Ongoing';
+      const isCompletedToday = isTodayLocal(plan.lastCompletedDate);
+
+      return (
+        <div>
+          {renderReviewDueBadge()}
+          <div className="space-y-3 bg-slate-900/40 p-3 rounded-lg border border-slate-800/60">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 font-bold text-rose-400">
+                <Flame size={15} className="animate-pulse" /> {streak} {cadenceText} Streak
+              </span>
+              <span className="text-slate-400 text-[11px]">
+                Commitment: <span className="text-slate-200">{durationText}</span> ({plan.cadence || 'daily'})
+              </span>
+            </div>
+
+            {/* Read-Only mode in Discover: NO "Mark Done" button */}
+            {mode === 'read_only' ? (
+              plan.lastCompletedDate && (
+                <div className="text-[10px] text-slate-500 pt-1">
+                  Last completed: {new Date(plan.lastCompletedDate).toLocaleDateString()}
+                </div>
+              )
+            ) : (
+              /* Interactive mode in My Plans */
+              <div className="pt-1 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {isCompletedToday ? (
+                    <>
+                      <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 rounded border border-emerald-500/20">
+                        <CheckCircle2 size={13} /> Done for {cadenceText}
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (mode === 'follower_interactive') {
+                            store.undoFollowedHabitJourneyDone(planId);
+                          } else {
+                            store.undoHabitJourneyDone(planId);
+                          }
+                        }}
+                        className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1.5 border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                        title="Undo today's completion and re-enable mark done"
+                      >
+                        <RotateCcw size={13} /> Undo Today's Mark
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (mode === 'follower_interactive') {
+                          store.markFollowedHabitJourneyDone(planId);
+                        } else {
+                          store.markHabitJourneyDone(planId);
+                        }
+                      }}
+                      className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white"
+                    >
+                      <CheckCircle2 size={14} /> Mark Done for {cadenceText}
+                    </button>
+                  )}
+                </div>
+                {plan.lastCompletedDate && (
+                  <span className="text-[10px] text-slate-500">
+                    Last completed: {new Date(plan.lastCompletedDate).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          {renderReflectionSection()}
+        </div>
+      );
+    }
+
+    if (resolvedType === 'vision') {
+      return (
+        <div>
+          {renderReviewDueBadge()}
+          {plan.targetReviewDate && (
+            <div className="text-[11px] text-purple-300 flex items-center gap-1 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/60 mb-2">
+              <Calendar size={12} className="text-purple-400" /> Target Review Date: {plan.targetReviewDate}
+            </div>
+          )}
+          {renderReflectionSection()}
+        </div>
+      );
     }
 
     // Default: Milestone Steps List
     return (
-      <div className="space-y-1.5 mt-2">
-        {plan.steps && plan.steps.map((step) => (
-          <div key={step.id} className="flex items-center gap-2 text-xs">
-            {mode === 'read_only' ? (
-              /* Read-only static checkbox indicator in Discover */
-              <div className="text-slate-600">
-                {step.completed ? (
-                  <CheckCircle2 size={15} className="text-emerald-400" />
-                ) : (
-                  <Circle size={15} />
-                )}
-              </div>
-            ) : (
-              /* Working checkbox in My Plans (Creator or Follower) */
-              <button
-                onClick={() => {
-                  if (mode === 'creator_interactive') {
-                    store.completePlanStep(planId, step.id);
-                  } else {
-                    store.completeFollowedPlanStep(planId, step.id);
-                  }
-                }}
-                className="text-slate-500 hover:text-emerald-400 transition-colors"
-              >
-                {step.completed ? (
-                  <CheckCircle2 size={15} className="text-emerald-400" />
-                ) : (
-                  <Circle size={15} />
-                )}
-              </button>
-            )}
-            <span className={step.completed ? 'line-through text-slate-600' : 'text-slate-300'}>
-              {step.title}
-            </span>
-          </div>
-        ))}
+      <div>
+        {renderReviewDueBadge()}
+        <div className="space-y-1.5 mt-2 bg-slate-900/40 p-3 rounded-lg border border-slate-800/60">
+          {plan.steps && plan.steps.map((step) => (
+            <div key={step.id} className="flex items-center gap-2 text-xs">
+              {mode === 'read_only' ? (
+                /* Read-only static checkbox indicator in Discover */
+                <div className="text-slate-600">
+                  {step.completed ? (
+                    <CheckCircle2 size={15} className="text-emerald-400" />
+                  ) : (
+                    <Circle size={15} />
+                  )}
+                </div>
+              ) : (
+                /* Working checkbox in My Plans (Creator or Follower) */
+                <button
+                  onClick={() => {
+                    if (mode === 'creator_interactive') {
+                      store.completePlanStep(planId, step.id);
+                    } else {
+                      store.completeFollowedPlanStep(planId, step.id);
+                    }
+                  }}
+                  className="text-slate-500 hover:text-emerald-400 transition-colors"
+                >
+                  {step.completed ? (
+                    <CheckCircle2 size={15} className="text-emerald-400" />
+                  ) : (
+                    <Circle size={15} />
+                  )}
+                </button>
+              )}
+              <span className={step.completed ? 'line-through text-slate-600' : 'text-slate-300'}>
+                {step.title}
+              </span>
+            </div>
+          ))}
+        </div>
+        {renderReflectionSection()}
       </div>
     );
   };
@@ -844,7 +946,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
         {activeTab === 'discover' && (
           <button
-            onClick={loadPlans}
+            onClick={() => loadPlans()}
             disabled={isRefreshing}
             className="btn-ghost text-xs flex items-center gap-1.5 text-slate-400 hover:text-blue-400"
           >
@@ -926,9 +1028,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
                             {/* Trash Delete Icon */}
                             <button
-                              onClick={async () => {
-                                await store.deletePlan(plan.id);
-                              }}
+                              onClick={() => setPlanToDelete(plan)}
                               className="p-1.5 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                               title="Delete Plan"
                             >
@@ -969,7 +1069,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                         </div>
 
                         <button
-                          onClick={() => store.deleteFollowedPlan(follow.id)}
+                          onClick={() => setFollowToDelete(follow)}
                           className="p-1.5 rounded text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center gap-1 text-xs shrink-0 border border-rose-500/20 transition-colors"
                           title="Remove copied plan from your account"
                         >
@@ -988,18 +1088,121 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         </div>
       )}
 
-      {/* DISCOVER TAB (READ-ONLY PREVIEW SHOWCASE ONLY) */}
+      {/* DISCOVER TAB (READ-ONLY PREVIEW SHOWCASE ONLY WITH SERVER-SIDE FILTERING & SORTING) */}
       {activeTab === 'discover' && (
         <div className="space-y-4">
-          {publicDiscoverPlans.length === 0 ? (
-            <div className="card p-6 text-center text-slate-500 text-sm">
-              No public plans discoverable right now. Be the first to publish a plan!
+          {/* Server-Side Search, Filter, & Sort Control Bar */}
+          <div className="card p-4 space-y-3 bg-slate-900/60 border-slate-800">
+            {/* Search Input & Sort Dropdown */}
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+              <div className="relative flex-1">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  value={discoverSearch}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setDiscoverSearch(val);
+                    loadPlans(val, discoverCategory, discoverPlanType, discoverSortBy);
+                  }}
+                  placeholder="Search public plans by title, description, or keyword..."
+                  className="input text-xs pl-9 py-2 w-full"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="text-xs font-medium text-slate-400 flex items-center gap-1">
+                  <Filter size={13} className="text-blue-400" /> Sort:
+                </label>
+                <select
+                  value={discoverSortBy}
+                  onChange={(e) => {
+                    const sort = e.target.value as 'recent' | 'followed' | 'creator_rank';
+                    setDiscoverSortBy(sort);
+                    loadPlans(discoverSearch, discoverCategory, discoverPlanType, sort);
+                  }}
+                  className="input text-xs py-1.5 px-3 bg-slate-800 border-slate-700 text-slate-200"
+                >
+                  <option value="recent">Most Recent</option>
+                  <option value="followed">Most Followed (Copy Count)</option>
+                  <option value="creator_rank">Creator Rank (Tier Points)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Category Filter Chips */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-800/80">
+              <span className="text-[11px] font-semibold text-slate-500 mr-1">Category:</span>
+              {['All', ...PLAN_CATEGORIES].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    setDiscoverCategory(cat);
+                    loadPlans(discoverSearch, cat, discoverPlanType, discoverSortBy);
+                  }}
+                  className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
+                    discoverCategory === cat
+                      ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 font-semibold'
+                      : 'bg-slate-800/60 text-slate-400 border-slate-700/50 hover:bg-slate-800 hover:text-slate-200'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Plan Type Filter Chips */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-500 mr-1">Plan Type:</span>
+              {[
+                { id: 'all', label: 'All Types' },
+                { id: 'milestone', label: 'Milestone' },
+                { id: 'target_goal', label: 'Target Goal' },
+                { id: 'habit_journey', label: 'Habit Journey' },
+                { id: 'vision', label: 'Vision & Reflection' },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    setDiscoverPlanType(t.id);
+                    loadPlans(discoverSearch, discoverCategory, t.id, discoverSortBy);
+                  }}
+                  className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
+                    discoverPlanType === t.id
+                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 font-semibold'
+                      : 'bg-slate-800/60 text-slate-400 border-slate-700/50 hover:bg-slate-800 hover:text-slate-200'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {remotePublicPlans.length === 0 ? (
+            <div className="card p-8 text-center text-slate-500 text-sm space-y-3">
+              <Compass size={32} className="mx-auto text-slate-600 mb-1" />
+              <p className="font-semibold text-slate-400">No public plans found matching your filters.</p>
+              <p className="text-xs text-slate-500">Try adjusting your search query, category, or plan type filters.</p>
+              {(discoverSearch || discoverCategory !== 'All' || discoverPlanType !== 'all') && (
+                <button
+                  onClick={() => {
+                    setDiscoverSearch('');
+                    setDiscoverCategory('All');
+                    setDiscoverPlanType('all');
+                    setDiscoverSortBy('recent');
+                    loadPlans('', 'All', 'all', 'recent');
+                  }}
+                  className="btn-secondary text-xs py-1.5 px-4 mx-auto inline-block"
+                >
+                  Clear All Filters
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {publicDiscoverPlans.map((plan) => {
+              {remotePublicPlans.map((plan) => {
                 const creatorPts = plan.creatorPoints || getProfilePointsByUsername(plan.creatorUsername) || 0;
-                const tier = getCurrentTier(creatorPts);
                 const isOwnPlan = (plan.creatorUsername || '').toLowerCase() === (currentUsername || '').toLowerCase();
                 const isAlreadyCopied = followedPlans.some((f) => f.originalPlanId === plan.id);
 
@@ -1046,9 +1249,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                 <Edit3 size={14} />
                               </button>
                               <button
-                                onClick={async () => {
-                                  await store.deletePlan(plan.id);
-                                }}
+                                onClick={() => setPlanToDelete(plan)}
                                 className="p-1.5 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                                 title="Delete Plan"
                               >
@@ -1105,6 +1306,30 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       {/* CREATE PLAN MODAL */}
       <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create Personal Improvement Plan">
         <form onSubmit={handleCreateSubmit} className="space-y-4">
+          {/* STARTER TEMPLATE ACCELERATOR */}
+          <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <Sparkles size={13} className="text-blue-400" /> Start from Template (Optional)
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {STARTER_TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  onClick={() => applyTemplate(tpl)}
+                  className="text-left p-2 rounded border border-slate-800 hover:border-blue-500/50 bg-slate-800/40 hover:bg-slate-800/80 transition-all text-xs group"
+                >
+                  <div className="font-bold text-slate-200 group-hover:text-blue-300 flex items-center justify-between">
+                    <span>{tpl.title}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 line-clamp-2 mt-0.5">{tpl.description}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* STEP 1: PLAN TYPE SELECTOR */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Select Plan Type</label>
@@ -1207,12 +1432,11 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">Category</label>
               <select value={category} onChange={(e) => setCategory(e.target.value)} className="input text-xs">
-                <option value="Personal Growth">Personal Growth</option>
-                <option value="Career">Career</option>
-                <option value="Health">Health</option>
-                <option value="Finance">Finance</option>
-                <option value="Relationships">Relationships</option>
-                <option value="Learning">Learning</option>
+                {PLAN_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -1226,6 +1450,20 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <option value="private">Private (Only for me)</option>
               </select>
             </div>
+          </div>
+
+          {/* Phase C Review Cadence Selector */}
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1">Review Cadence (Check-in Loop)</label>
+            <select
+              value={reviewCadence || ''}
+              onChange={(e) => setReviewCadence(e.target.value ? (e.target.value as 'weekly' | 'monthly') : null)}
+              className="input text-xs"
+            >
+              <option value="">None (No scheduled check-in review)</option>
+              <option value="weekly">Weekly Check-in Loop</option>
+              <option value="monthly">Monthly Check-in Loop</option>
+            </select>
           </div>
 
           {/* TYPE-SPECIFIC FIELDS */}
@@ -1413,12 +1651,11 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">Category</label>
               <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="input text-xs">
-                <option value="Personal Growth">Personal Growth</option>
-                <option value="Career">Career</option>
-                <option value="Health">Health</option>
-                <option value="Finance">Finance</option>
-                <option value="Relationships">Relationships</option>
-                <option value="Learning">Learning</option>
+                {PLAN_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -1432,6 +1669,20 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <option value="private">Private (Only for me)</option>
               </select>
             </div>
+          </div>
+
+          {/* Phase C Review Cadence Selector */}
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1">Review Cadence (Check-in Loop)</label>
+            <select
+              value={editReviewCadence || ''}
+              onChange={(e) => setEditReviewCadence(e.target.value ? (e.target.value as 'weekly' | 'monthly') : null)}
+              className="input text-xs"
+            >
+              <option value="">None (No scheduled check-in review)</option>
+              <option value="weekly">Weekly Check-in Loop</option>
+              <option value="monthly">Monthly Check-in Loop</option>
+            </select>
           </div>
 
           {/* TYPE-SPECIFIC STRUCTURAL EDIT FIELDS */}
@@ -1564,6 +1815,55 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Plan Confirm Modal */}
+      <ConfirmDeleteModal
+        open={Boolean(planToDelete)}
+        onClose={() => setPlanToDelete(null)}
+        onConfirm={async () => {
+          if (planToDelete) {
+            await store.deletePlan(planToDelete.id);
+            setPlanToDelete(null);
+          }
+        }}
+        title="Delete Improvement Plan?"
+        itemName={planToDelete?.title}
+        description={`Are you sure you want to delete "${planToDelete?.title}"? This will permanently remove the plan and all attached reflection notes or logs.`}
+      />
+
+      {/* Remove Followed Plan Confirm Modal */}
+      <ConfirmDeleteModal
+        open={Boolean(followToDelete)}
+        onClose={() => setFollowToDelete(null)}
+        onConfirm={async () => {
+          if (followToDelete) {
+            await store.deleteFollowedPlan(followToDelete.id);
+            setFollowToDelete(null);
+          }
+        }}
+        title="Remove Saved Plan?"
+        itemName={followToDelete?.title}
+        description={`Are you sure you want to remove "${followToDelete?.title}" from your saved plans?`}
+        confirmText="Remove Plan"
+      />
+
+      {/* Delete Reflection Note Confirm Modal */}
+      <ConfirmDeleteModal
+        open={Boolean(noteToDelete)}
+        onClose={() => setNoteToDelete(null)}
+        onConfirm={() => {
+          if (noteToDelete) {
+            if (noteToDelete.mode === 'creator_interactive') {
+              store.deleteVisionReflectionNote(noteToDelete.planId, noteToDelete.noteKey);
+            } else {
+              store.deleteFollowedVisionReflectionNote(noteToDelete.planId, noteToDelete.noteKey);
+            }
+            setNoteToDelete(null);
+          }
+        }}
+        title="Delete Reflection Note?"
+        description="Are you sure you want to delete this reflection note?"
+      />
     </div>
   );
 }

@@ -35,12 +35,13 @@ import {
   CuratedBook,
   BookCategory,
   VisionReflectionNote,
+  PlanReflectionNote,
   PlanType,
   SharedChallengeCategory,
   AppNotification,
 } from '@/types';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak } from './dates';
 import { PresetHabit } from './presets';
 import { SEED_ACCOUNTS } from './seedAccounts';
 import {
@@ -75,6 +76,8 @@ import {
   incrementPlanCopyCountSupabase,
   syncFollowedPlanToSupabase,
   deleteFollowedPlanFromSupabase,
+  addReflectionNoteToSupabase,
+  deleteReflectionNoteFromSupabase,
   sendPartnerInviteSupabase,
   fetchUserDataFromSupabase,
   saveUserDataToSupabase,
@@ -301,9 +304,9 @@ export function useAppState() {
             // sessionStorage unavailable — ignore
           }
 
-          // 8-second hard timeout: if hydration hangs, abort gracefully
+          // 15-second hard timeout: if hydration hangs, abort gracefully
           const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Auth hydration timed out after 8s')), 8000)
+            setTimeout(() => reject(new Error('Auth hydration timed out after 15s')), 15000)
           );
 
           try {
@@ -362,6 +365,7 @@ export function useAppState() {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -1051,9 +1055,16 @@ export function useAppState() {
   const deleteBook = useCallback((bookId: string) => {
     setState((prev) => {
       const target = prev.books.find((b) => b.id === bookId);
+      if (!target) return prev;
+
+      const bookLogs = prev.readingLogs.filter((l) => l.bookId === bookId);
+      const logPointsTotal = bookLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+      const finishPoints = target.isFinished ? 30 : 0;
+      const totalBookPoints = logPointsTotal + finishPoints;
+
       let pointsUpdate = {};
-      if (target?.isFinished) {
-        pointsUpdate = addPointsInternal(prev, -30, `Book deleted: ${target.title}`, 'reading');
+      if (totalBookPoints > 0) {
+        pointsUpdate = addPointsInternal(prev, -totalBookPoints, `Book deleted: ${target.title}`, 'reading');
       }
       return {
         ...prev,
@@ -1909,6 +1920,7 @@ export function useAppState() {
         startDate?: string;
         targetReviewDate?: string;
         initialReflectionNote?: string;
+        reviewCadence?: 'weekly' | 'monthly' | null;
       }
     ) => {
       let newPlan: ImprovementPlan | null = null;
@@ -1922,9 +1934,17 @@ export function useAppState() {
             completed: false,
           }));
 
-        const reflectionNotes: VisionReflectionNote[] = typeParams?.initialReflectionNote
-          ? [{ id: uid(), date: new Date().toISOString(), note: typeParams.initialReflectionNote.trim() }]
+        const reflectionNotes: PlanReflectionNote[] = typeParams?.initialReflectionNote
+          ? [{ id: uid(), createdAt: new Date().toISOString(), note: typeParams.initialReflectionNote.trim() }]
           : [];
+
+        const reviewCadence = typeParams?.reviewCadence || null;
+        let nextReviewDueAt: string | null = null;
+        if (reviewCadence === 'weekly') {
+          nextReviewDueAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        } else if (reviewCadence === 'monthly') {
+          nextReviewDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        }
 
         newPlan = {
           id: generateUUID(),
@@ -1953,6 +1973,10 @@ export function useAppState() {
           lastCompletedDate: undefined,
           targetReviewDate: typeParams?.targetReviewDate,
           reflectionNotes,
+
+          // Phase C Review Loop
+          reviewCadence,
+          nextReviewDueAt,
         };
 
         return {
@@ -2034,8 +2058,12 @@ export function useAppState() {
       }
 
       const nowIso = new Date().toISOString();
-      const currentStreak = target.streakCount || 0;
-      const newStreak = currentStreak + 1;
+      const activeStreak = calculateActivePlanStreak(
+        target.streakCount || 0,
+        target.lastCompletedDate,
+        target.cadence || 'daily'
+      );
+      const newStreak = activeStreak + 1;
 
       updatedPlan = {
         ...target,
@@ -2132,8 +2160,12 @@ export function useAppState() {
       }
 
       const nowIso = new Date().toISOString();
-      const currentStreak = target.streakCount || 0;
-      const newStreak = currentStreak + 1;
+      const activeStreak = calculateActivePlanStreak(
+        target.streakCount || 0,
+        target.lastCompletedDate,
+        target.cadence || 'daily'
+      );
+      const newStreak = activeStreak + 1;
 
       updatedFollow = {
         ...target,
@@ -2200,7 +2232,7 @@ export function useAppState() {
 
       const notes = target.reflectionNotes || [];
       const updatedNotes = notes.map((n) =>
-        n.id === noteId || n.date === noteId ? { ...n, note: newNoteText.trim() } : n
+        n.id === noteId || (n as any).date === noteId ? { ...n, note: newNoteText.trim() } : n
       );
 
       updatedPlan = {
@@ -2223,20 +2255,32 @@ export function useAppState() {
   const addVisionReflectionNote = useCallback((planId: string, note: string) => {
     if (!note.trim()) return;
     let updatedPlan: ImprovementPlan | null = null;
+    let nextDue: string | null = null;
+
     setState((prev) => {
       const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
       if (idx === -1) return prev;
       const target = prev.improvementPlans[idx];
 
-      const newNote: VisionReflectionNote = {
+      const newNote: PlanReflectionNote = {
         id: generateUUID(),
-        date: new Date().toISOString(),
+        originalPlanId: planId,
+        createdAt: new Date().toISOString(),
         note: note.trim(),
       };
+
+      if (target.reviewCadence === 'weekly') {
+        nextDue = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      } else if (target.reviewCadence === 'monthly') {
+        nextDue = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      } else {
+        nextDue = target.nextReviewDueAt || null;
+      }
 
       const existingNotes = target.reflectionNotes || [];
       updatedPlan = {
         ...target,
+        nextReviewDueAt: nextDue,
         reflectionNotes: [newNote, ...existingNotes],
       };
 
@@ -2246,9 +2290,16 @@ export function useAppState() {
     });
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      const p = updatedPlan as ImprovementPlan;
+      updateCachedPublicPlan(p);
+      syncBroadcaster.broadcast('PLAN_UPDATED', p);
+      syncPlanToSupabase(p);
+      addReflectionNoteToSupabase({
+        originalPlanId: planId,
+        note: note.trim(),
+        nextReviewDueAt: nextDue,
+        reviewCadence: p.reviewCadence,
+      });
     }
   }, []);
 
@@ -2261,7 +2312,7 @@ export function useAppState() {
       const target = prev.improvementPlans[idx];
 
       const notes = target.reflectionNotes || [];
-      const updatedNotes = notes.filter((n) => n.id !== noteId && n.date !== noteId);
+      const updatedNotes = notes.filter((n) => n.id !== noteId && (n as any).date !== noteId);
 
       updatedPlan = {
         ...target,
@@ -2294,6 +2345,7 @@ export function useAppState() {
       cadence?: 'daily' | 'weekly';
       duration?: number;
       targetReviewDate?: string;
+      reviewCadence?: 'weekly' | 'monthly' | null;
     }
   ) => {
     let updatedPlan: ImprovementPlan | null = null;
@@ -2311,6 +2363,18 @@ export function useAppState() {
           completed: target.steps[i]?.completed || false,
         }));
 
+      const newReviewCadence = typeParams?.reviewCadence !== undefined ? typeParams.reviewCadence : target.reviewCadence;
+      let newNextReviewDueAt = target.nextReviewDueAt;
+      if (newReviewCadence !== target.reviewCadence || (newReviewCadence && !newNextReviewDueAt)) {
+        if (newReviewCadence === 'weekly') {
+          newNextReviewDueAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        } else if (newReviewCadence === 'monthly') {
+          newNextReviewDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        } else {
+          newNextReviewDueAt = null;
+        }
+      }
+
       updatedPlan = {
         ...target,
         title: title.trim(),
@@ -2326,6 +2390,8 @@ export function useAppState() {
         cadence: typeParams?.cadence !== undefined ? typeParams.cadence : target.cadence,
         duration: typeParams?.duration !== undefined ? typeParams.duration : target.duration,
         targetReviewDate: typeParams?.targetReviewDate !== undefined ? typeParams.targetReviewDate : target.targetReviewDate,
+        reviewCadence: newReviewCadence,
+        nextReviewDueAt: newNextReviewDueAt,
       };
 
       const updatedPlans = [...prev.improvementPlans];
@@ -2398,7 +2464,7 @@ export function useAppState() {
       console.error("[Visibility Update] Fatal error toggling visibility:", err);
       alert(`Fatal Error: ${err.message || 'Check console'}`);
     }
-  }, []);
+  }, [state.improvementPlans]);
 
   const updatePlanCopyCount = useCallback((planId: string, newCount: number) => {
     setState((prev) => {
@@ -2507,7 +2573,7 @@ export function useAppState() {
       console.error("[Copy Plan] FATAL ERROR CATCH:", err);
       alert(`Fatal Error during copy: ${err.message || 'Check console'}`);
     }
-  }, [updatePlanCopyCount]);
+  }, [updatePlanCopyCount, state.username, state.currentUser?.id, state.followedPlans]);
 
   // --- FOLLOWED & COPIED PLANS INTERACTIVE ACTIONS ---
   const completeFollowedPlanStep = useCallback((followId: string, stepId: string) => {
@@ -2576,21 +2642,32 @@ export function useAppState() {
   const addFollowedVisionReflectionNote = useCallback((followId: string, note: string) => {
     if (!note.trim()) return;
     let updatedFollow: UserPlanFollow | null = null;
+    let nextDue: string | null = null;
 
     setState((prev) => {
       const idx = prev.followedPlans.findIndex((f) => f.id === followId);
       if (idx === -1) return prev;
 
       const target = prev.followedPlans[idx];
-      const newNote: VisionReflectionNote = {
+      const newNote: PlanReflectionNote = {
         id: uid(),
-        date: new Date().toISOString(),
+        followedPlanId: followId,
+        createdAt: new Date().toISOString(),
         note: note.trim(),
       };
+
+      if (target.reviewCadence === 'weekly') {
+        nextDue = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      } else if (target.reviewCadence === 'monthly') {
+        nextDue = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      } else {
+        nextDue = target.nextReviewDueAt || null;
+      }
 
       const existingNotes = target.reflectionNotes || [];
       updatedFollow = {
         ...target,
+        nextReviewDueAt: nextDue,
         reflectionNotes: [newNote, ...existingNotes],
       };
 
@@ -2600,7 +2677,14 @@ export function useAppState() {
     });
 
     if (updatedFollow) {
-      syncFollowedPlanToSupabase(updatedFollow);
+      const f = updatedFollow as UserPlanFollow;
+      syncFollowedPlanToSupabase(f);
+      addReflectionNoteToSupabase({
+        followedPlanId: followId,
+        note: note.trim(),
+        nextReviewDueAt: nextDue,
+        reviewCadence: f.reviewCadence,
+      });
     }
   }, []);
 
@@ -2615,7 +2699,7 @@ export function useAppState() {
 
       const notes = target.reflectionNotes || [];
       const updatedNotes = notes.map((n) =>
-        n.id === noteId || n.date === noteId ? { ...n, note: newNoteText.trim() } : n
+        n.id === noteId || (n as any).date === noteId ? { ...n, note: newNoteText.trim() } : n
       );
 
       updatedFollow = {
@@ -2642,7 +2726,7 @@ export function useAppState() {
       const target = prev.followedPlans[idx];
 
       const notes = target.reflectionNotes || [];
-      const updatedNotes = notes.filter((n) => n.id !== noteId && n.date !== noteId);
+      const updatedNotes = notes.filter((n) => n.id !== noteId && (n as any).date !== noteId);
 
       updatedFollow = {
         ...target,
@@ -2839,7 +2923,7 @@ export function useAppState() {
 
       return invite;
     },
-    [state.username, state.partnership, state.partnerInvites, state.currentUser]
+    [state.username, state.partnerships, state.partnerInvites, state.currentUser]
   );
 
   const acceptPartnerInvite = useCallback(
@@ -3249,7 +3333,21 @@ export function useAppState() {
       const userRank = getUserRank(competitors);
       return { competitors, userRank, userPoints };
     },
-    [state.pointsHistory, state.currentUser, state.username, state.totalPoints, state.habits, state.journalEntries, state.workouts, state.books, state.skillLogs]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      state.pointsHistory,
+      state.habits,
+      state.workouts,
+      state.books,
+      state.readingLogs,
+      state.badHabits,
+      state.badHabitLogs,
+      state.skillLogs,
+      state.journalEntries,
+      state.currentUser,
+      state.username,
+      state.totalPoints,
+    ]
   );
 
   const getPublicImprovementPlans = useCallback(() => {

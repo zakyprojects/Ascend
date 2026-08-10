@@ -154,7 +154,12 @@ export async function hydrateUserSession(
   authUser?: User | null,
   signupDefaults?: SignUpDefaults
 ): Promise<{ user: UserProfile; state: AppState }> {
-  const profileData = await fetchProfileForUser(userId);
+  // Fetch profile and saved user_data in parallel
+  const [profileData, savedState] = await Promise.all([
+    fetchProfileForUser(userId),
+    fetchUserDataFromSupabase(userId),
+  ]);
+
   const user = buildUserProfile(userId, email, profileData, authUser, signupDefaults);
 
   // If DB profile row does not exist yet, insert it ONCE with permanent uid
@@ -179,8 +184,6 @@ export async function hydrateUserSession(
       console.warn('Profile UID backfill skipped:', e);
     }
   }
-
-  let savedState = await fetchUserDataFromSupabase(userId);
 
   let state: AppState;
   if (savedState) {
@@ -225,31 +228,36 @@ export async function hydrateUserSession(
     }
   }
 
-  // Authoritative real-time fetch for partner invites, active partnerships, and shared challenges from Supabase DB
+  // Authoritative real-time fetch in parallel for partner invites, active partnerships, notifications, improvement plans, and followed plans
   try {
-    const fetchedInvites = await fetchPartnerInvitesSupabase(userId, user.username);
-    state.partnerInvites = fetchedInvites;
+    const [
+      fetchedInvites,
+      activePartnerships,
+      fetchedNotifs,
+      dbPlansResult,
+      dbFollowsResult,
+    ] = await Promise.all([
+      fetchPartnerInvitesSupabase(userId, user.username),
+      fetchPartnershipsSupabase(userId),
+      fetchNotificationsSupabase(userId),
+      supabase.from('improvement_plans').select('*').eq('creator_id', userId),
+      supabase.from('user_plan_follows').select('*').eq('user_id', userId),
+    ]);
 
-    const activePartnerships = await fetchPartnershipsSupabase(userId);
+    state.partnerInvites = fetchedInvites;
     state.partnerships = activePartnerships;
     state.partnership = activePartnerships[0] || null;
 
     if (activePartnerships.length > 0) {
       const pIds = activePartnerships.map((p) => p.id);
-      const challenges = await fetchSharedChallengesSupabase(pIds);
-      state.sharedChallenges = challenges;
+      state.sharedChallenges = await fetchSharedChallengesSupabase(pIds);
     } else {
       state.sharedChallenges = [];
     }
 
-    const fetchedNotifs = await fetchNotificationsSupabase(userId);
     state.notifications = fetchedNotifs;
 
-    // SINGLE SOURCE OF TRUTH: improvement_plans table + savedState metadata fallback
-    const { data: dbPlans, error: dbPlansErr } = await supabase
-      .from('improvement_plans')
-      .select('*')
-      .eq('creator_id', userId);
+    const { data: dbPlans, error: dbPlansErr } = dbPlansResult;
 
     const savedPlansMap = new Map<string, any>();
     if (savedState?.improvementPlans) {
@@ -322,10 +330,7 @@ export async function hydrateUserSession(
     }
 
     // SINGLE SOURCE OF TRUTH FOR FOLLOWED PLANS: user_plan_follows table + savedState fallback
-    const { data: dbFollows, error: dbFollowsErr } = await supabase
-      .from('user_plan_follows')
-      .select('*')
-      .eq('user_id', userId);
+    const { data: dbFollows, error: dbFollowsErr } = dbFollowsResult;
 
     const savedFollowsMap = new Map<string, any>();
     if (savedState?.followedPlans) {

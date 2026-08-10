@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Activity, Dumbbell, Flame, Plus, Trash2, Calendar, Award } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
-import { todayKey, formatDateLong } from '@/lib/dates';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { WorkoutLog } from '@/types';
+import { todayKey, formatDateLong, parseDate } from '@/lib/dates';
 
 const COMMON_WORKOUT_TYPES = [
   'Running',
@@ -18,6 +20,7 @@ const COMMON_WORKOUT_TYPES = [
 
 export function ExerciseTracker({ store }: { store: AppStore }) {
   const [logModalOpen, setLogModalOpen] = useState(false);
+  const [deleteModalWorkout, setDeleteModalWorkout] = useState<WorkoutLog | null>(null);
   const [workoutType, setWorkoutType] = useState('Running');
   const [customType, setCustomType] = useState('');
   const [duration, setDuration] = useState(30);
@@ -33,7 +36,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   startOfWeek.setDate(now.getDate() + diffToMon);
   startOfWeek.setHours(0, 0, 0, 0);
 
-  const thisWeekWorkouts = workouts.filter((w) => new Date(w.date) >= startOfWeek);
+  const thisWeekWorkouts = workouts.filter((w) => (parseDate(w.date) || new Date(0)) >= startOfWeek);
   const totalWeeklyMinutes = thisWeekWorkouts.reduce((sum, w) => sum + w.durationMinutes, 0);
   const totalWeeklySessions = thisWeekWorkouts.length;
 
@@ -198,7 +201,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                     +{w.pointsAwarded} pts
                   </span>
                   <button
-                    onClick={() => store.deleteWorkout(w.id)}
+                    onClick={() => setDeleteModalWorkout(w)}
                     className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
                     title="Delete Workout"
                   >
@@ -267,6 +270,21 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           </div>
         </form>
       </Modal>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        open={!!deleteModalWorkout}
+        onClose={() => setDeleteModalWorkout(null)}
+        onConfirm={() => {
+          if (deleteModalWorkout) {
+            store.deleteWorkout(deleteModalWorkout.id);
+            setDeleteModalWorkout(null);
+          }
+        }}
+        title="Delete Workout Log?"
+        itemName={deleteModalWorkout ? `${deleteModalWorkout.type} (${deleteModalWorkout.durationMinutes} mins)` : ''}
+        description={`Are you sure you want to delete this ${deleteModalWorkout?.type} workout log? Any points awarded (+${deleteModalWorkout?.pointsAwarded || 0} pts) will be reversed.`}
+      />
     </div>
   );
 }

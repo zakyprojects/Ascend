@@ -58,11 +58,19 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
   // Calculate current "Days Resisted" overall streak
   let overallStreak = 0;
   let cursor = new Date();
+  const todayStr = todayKey(cursor);
   while (true) {
     const k = todayKey(cursor);
     const logsOnDate = badHabitLogs.filter((l) => l.date === k);
-    if (logsOnDate.length > 0 && logsOnDate.every((l) => l.status === 'resisted')) {
-      overallStreak++;
+    if (logsOnDate.length > 0) {
+      if (logsOnDate.every((l) => l.status === 'resisted')) {
+        overallStreak++;
+        cursor.setDate(cursor.getDate() - 1);
+      } else {
+        break;
+      }
+    } else if (k === todayStr) {
+      // Today not logged yet, check yesterday to see if active streak continues
       cursor.setDate(cursor.getDate() - 1);
     } else {
       break;

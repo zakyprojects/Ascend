@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { Target, Zap, Plus, Trash2, Clock, Award, ChevronRight, Edit3 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
-import { Skill, SkillLevel } from '@/types';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { Skill, SkillLevel, SkillSessionLog } from '@/types';
 import { todayKey, formatDateLong } from '@/lib/dates';
 
 export function SkillTracker({ store }: { store: AppStore }) {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [logModalSkill, setLogModalSkill] = useState<Skill | null>(null);
   const [editLevelSkill, setEditLevelSkill] = useState<Skill | null>(null);
+  const [deleteModalSkill, setDeleteModalSkill] = useState<Skill | null>(null);
+  const [deleteModalLog, setDeleteModalLog] = useState<SkillSessionLog | null>(null);
 
   // Form states
   const [skillName, setSkillName] = useState('');
@@ -158,7 +161,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                         {skill.category && <p className="text-xs text-slate-500">{skill.category}</p>}
                       </div>
                       <button
-                        onClick={() => store.deleteSkill(skill.id)}
+                        onClick={() => setDeleteModalSkill(skill)}
                         className="text-slate-600 hover:text-rose-400 p-1"
                         title="Delete Skill"
                       >
@@ -229,7 +232,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       +{log.pointsAwarded} pts
                     </span>
                     <button
-                      onClick={() => store.deleteSkillLog(log.id)}
+                      onClick={() => setDeleteModalLog(log)}
                       className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
                       title="Delete Practice Session Log"
                     >
@@ -355,6 +358,36 @@ export function SkillTracker({ store }: { store: AppStore }) {
           </div>
         </form>
       </Modal>
+
+      {/* Confirm Delete Skill Modal */}
+      <ConfirmDeleteModal
+        open={!!deleteModalSkill}
+        onClose={() => setDeleteModalSkill(null)}
+        onConfirm={() => {
+          if (deleteModalSkill) {
+            store.deleteSkill(deleteModalSkill.id);
+            setDeleteModalSkill(null);
+          }
+        }}
+        title="Delete Skill?"
+        itemName={deleteModalSkill?.name}
+        description={`Are you sure you want to delete "${deleteModalSkill?.name}"? This will remove the skill and its recorded practice history.`}
+      />
+
+      {/* Confirm Delete Skill Log Modal */}
+      <ConfirmDeleteModal
+        open={!!deleteModalLog}
+        onClose={() => setDeleteModalLog(null)}
+        onConfirm={() => {
+          if (deleteModalLog) {
+            store.deleteSkillLog(deleteModalLog.id);
+            setDeleteModalLog(null);
+          }
+        }}
+        title="Delete Practice Session Log?"
+        itemName={skills.find((s) => s.id === deleteModalLog?.skillId)?.name}
+        description={`Are you sure you want to delete this ${deleteModalLog?.durationMinutes}-minute practice log? Any points awarded (+${deleteModalLog?.pointsAwarded || 0} pts) will be reversed.`}
+      />
     </div>
   );
 }

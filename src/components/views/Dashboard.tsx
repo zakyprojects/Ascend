@@ -1,7 +1,7 @@
 import { Flame, TrendingUp, Star, BookOpen, Check, ArrowRight, Sparkles, Trophy, Brain, Calendar, CalendarDays, Activity, BookMarked, Zap, ShieldAlert, HeartPulse, Timer } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
-import { calculateStreak, todayKey, formatDateLong } from '@/lib/dates';
+import { calculateStreak, todayKey, formatDateLong, parseDate } from '@/lib/dates';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { getCurrentTier, getNextTier } from '@/lib/tiers';
 import { TierBadge, TierProgress } from '@/components/ui/TierBadge';
@@ -48,7 +48,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   startOfWeek.setDate(now.getDate() + diffToMon);
   startOfWeek.setHours(0, 0, 0, 0);
 
-  const weeklyWorkouts = store.state.workouts.filter((w) => new Date(w.date) >= startOfWeek);
+  const weeklyWorkouts = store.state.workouts.filter((w) => (parseDate(w.date) || new Date(0)) >= startOfWeek);
   const weeklyExerciseMins = weeklyWorkouts.reduce((sum, w) => sum + w.durationMinutes, 0);
 
   const activeBooks = store.state.books.filter((b) => !b.isFinished).length;
@@ -57,7 +57,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   const totalSkillHours = (store.state.skillLogs.reduce((sum, l) => sum + l.durationMinutes, 0) / 60).toFixed(1);
 
   const weeklyFocusMins = store.state.focusLogs
-    .filter((l) => new Date(l.date) >= startOfWeek)
+    .filter((l) => (parseDate(l.date) || new Date(0)) >= startOfWeek)
     .reduce((sum, l) => sum + l.durationMinutes, 0);
 
   const badHabitCount = store.state.badHabits.length;

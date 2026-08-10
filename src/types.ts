@@ -326,6 +326,28 @@ export interface PlanStep {
 
 export type PlanType = 'milestone' | 'target_goal' | 'habit_journey' | 'vision';
 
+export const PLAN_CATEGORIES = [
+  'Personal Growth',
+  'Career',
+  'Health',
+  'Finance',
+  'Relationships',
+  'Learning',
+] as const;
+
+export type PlanCategory = (typeof PLAN_CATEGORIES)[number];
+
+export interface PlanReflectionNote {
+  id: string;
+  originalPlanId?: string;
+  followedPlanId?: string;
+  ownerId?: string;
+  note: string;
+  createdAt: string;
+  date?: string;
+  reviewCadence?: 'weekly' | 'monthly' | null;
+}
+
 export interface VisionReflectionNote {
   id: string;
   date: string;
@@ -361,7 +383,11 @@ export interface ImprovementPlan {
   lastCompletedDate?: string;
   // Vision fields
   targetReviewDate?: string;
-  reflectionNotes?: VisionReflectionNote[];
+  reflectionNotes?: PlanReflectionNote[];
+
+  // Phase C Review Loop Cadence
+  reviewCadence?: 'weekly' | 'monthly' | null;
+  nextReviewDueAt?: string | null;
 }
 
 export interface UserPlanFollow {
@@ -390,7 +416,11 @@ export interface UserPlanFollow {
   lastCompletedDate?: string;
   // Vision fields
   targetReviewDate?: string;
-  reflectionNotes?: VisionReflectionNote[];
+  reflectionNotes?: PlanReflectionNote[];
+
+  // Phase C Review Loop Cadence
+  reviewCadence?: 'weekly' | 'monthly' | null;
+  nextReviewDueAt?: string | null;
 }
 
 // Social Features 2: Accountability Partner & Shared Challenges

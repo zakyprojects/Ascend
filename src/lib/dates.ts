@@ -195,6 +195,55 @@ export function isTodayLocal(dateIso?: string | null): boolean {
   );
 }
 
+export function isYesterdayLocal(dateIso?: string | null): boolean {
+  if (!dateIso) return false;
+  const d = parseDate(dateIso);
+  if (!d) return false;
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return (
+    d.getFullYear() === yesterday.getFullYear() &&
+    d.getMonth() === yesterday.getMonth() &&
+    d.getDate() === yesterday.getDate()
+  );
+}
+
+/**
+ * Calculates active streak for an Improvement Plan / Habit Journey.
+ * If last completed date was today or yesterday (or within 7 days for weekly cadence),
+ * returns streakCount.
+ * If missed by >1 calendar day (or >7 days for weekly cadence), violently resets streak to 0.
+ */
+export function calculateActivePlanStreak(
+  streakCount: number = 0,
+  lastCompletedDate?: string | null,
+  cadence: 'daily' | 'weekly' = 'daily',
+  now = new Date()
+): number {
+  if (!lastCompletedDate || streakCount <= 0) return 0;
+  const lastD = parseDate(lastCompletedDate);
+  if (!lastD) return 0;
+
+  // Normalize dates to local midnight for exact calendar day diff
+  const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const lastLocal = new Date(lastD.getFullYear(), lastD.getMonth(), lastD.getDate());
+
+  const diffMs = todayLocal.getTime() - lastLocal.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (cadence === 'weekly') {
+    if (diffDays <= 7) {
+      return streakCount;
+    }
+    return 0; // Missed by > 7 days -> streak reset to 0
+  } else {
+    if (diffDays <= 1) {
+      return streakCount;
+    }
+    return 0; // Missed by > 1 calendar day -> violent streak reset to 0
+  }
+}
+
 export function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }

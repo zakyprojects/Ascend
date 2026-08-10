@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BookOpen, Flame, Plus, CheckCircle, Trash2, Award, Sparkles, BookMarked } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Book } from '@/types';
 import { todayKey, formatDateLong } from '@/lib/dates';
 
@@ -9,6 +10,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [progressModalBook, setProgressModalBook] = useState<Book | null>(null);
   const [finishModalBook, setFinishModalBook] = useState<Book | null>(null);
+  const [deleteModalBook, setDeleteModalBook] = useState<Book | null>(null);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -165,7 +167,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                         <p className="text-xs text-slate-400">by {book.author}</p>
                       </div>
                       <button
-                        onClick={() => store.deleteBook(book.id)}
+                        onClick={() => setDeleteModalBook(book)}
                         className="text-slate-600 hover:text-rose-400 p-1"
                         title="Delete Book"
                       >
@@ -237,7 +239,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                       {book.finishedAt ? formatDateLong(book.finishedAt) : ''}
                     </span>
                     <button
-                      onClick={() => store.deleteBook(book.id)}
+                      onClick={() => setDeleteModalBook(book)}
                       className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
                       title="Delete Finished Book"
                     >
@@ -391,6 +393,21 @@ export function ReadingTracker({ store }: { store: AppStore }) {
           </div>
         </form>
       </Modal>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        open={!!deleteModalBook}
+        onClose={() => setDeleteModalBook(null)}
+        onConfirm={() => {
+          if (deleteModalBook) {
+            store.deleteBook(deleteModalBook.id);
+            setDeleteModalBook(null);
+          }
+        }}
+        title="Delete Book?"
+        itemName={deleteModalBook?.title}
+        description={`Are you sure you want to delete "${deleteModalBook?.title}"? This will remove the book and its reading history.`}
+      />
     </div>
   );
 }

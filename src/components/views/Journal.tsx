@@ -4,6 +4,7 @@ import { AppStore } from '@/lib/store';
 import { Mood, JournalEntry } from '@/types';
 import { formatDateLong, todayKey } from '@/lib/dates';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 const MOODS: { value: Mood; label: string; icon: typeof Smile; color: string }[] = [
   { value: 'happy', label: 'Happy', icon: Smile, color: '#fbbf24' },
@@ -20,6 +21,7 @@ export function Journal({ store }: { store: AppStore }) {
   const [isEditingToday, setIsEditingToday] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+  const [deleteModalEntry, setDeleteModalEntry] = useState<JournalEntry | null>(null);
 
   // Synchronize state with today's existing entry when present
   useEffect(() => {
@@ -31,7 +33,8 @@ export function Journal({ store }: { store: AppStore }) {
     } else {
       setIsEditingToday(true);
     }
-  }, [existingToday?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingToday?.id, existingToday?.createdAt, existingToday?.content, existingToday?.mood]);
 
   const handleSave = () => {
     const trimmed = content.trim();
@@ -291,10 +294,10 @@ export function Journal({ store }: { store: AppStore }) {
               const Icon = moodConfig.icon;
 
               return (
-                <button
+                <div
                   key={entry.id}
                   onClick={() => setSelectedEntry(entry)}
-                  className="card p-4 card-hover w-full text-left flex items-center gap-3.5 transition-all group"
+                  className="card p-4 card-hover w-full text-left flex items-center gap-3.5 transition-all group cursor-pointer"
                 >
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-white/5"
@@ -330,11 +333,10 @@ export function Journal({ store }: { store: AppStore }) {
                       </span>
                     )}
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm('Are you sure you want to delete this journal entry?')) {
-                          store.deleteJournalEntry(entry.id);
-                        }
+                        setDeleteModalEntry(entry);
                       }}
                       className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
                       title="Delete Journal Entry"
@@ -343,7 +345,7 @@ export function Journal({ store }: { store: AppStore }) {
                     </button>
                     <ChevronRight size={16} className="text-slate-600 group-hover:text-slate-300 transition-colors" />
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -397,11 +399,11 @@ export function Journal({ store }: { store: AppStore }) {
 
               <div className="flex items-center justify-between pt-2">
                 <button
+                  type="button"
                   onClick={() => {
-                    if (confirm('Are you sure you want to delete this journal entry?')) {
-                      store.deleteJournalEntry(selectedEntry.id);
-                      setSelectedEntry(null);
-                    }
+                    const target = selectedEntry;
+                    setSelectedEntry(null);
+                    setDeleteModalEntry(target);
                   }}
                   className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all"
                 >
@@ -420,6 +422,25 @@ export function Journal({ store }: { store: AppStore }) {
           );
         })()}
       </Modal>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        open={!!deleteModalEntry}
+        onClose={() => setDeleteModalEntry(null)}
+        onConfirm={() => {
+          if (deleteModalEntry) {
+            store.deleteJournalEntry(deleteModalEntry.id);
+            setDeleteModalEntry(null);
+          }
+        }}
+        title="Delete Journal Entry?"
+        itemName={`Journal Entry (${deleteModalEntry?.date})`}
+        description={
+          deleteModalEntry?.pointsAwarded
+            ? `Are you sure you want to delete your journal entry for ${deleteModalEntry.date}? This will reverse the +5 points awarded.`
+            : `Are you sure you want to delete your journal entry for ${deleteModalEntry?.date}?`
+        }
+      />
     </div>
   );
 }

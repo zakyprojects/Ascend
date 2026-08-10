@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Timer, BrainCircuit, Scale, HeartHandshake, Target, Play, Pause, RotateCcw, Plus, CheckCircle2, Award, Calendar, Sparkles, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
-import { todayKey, formatDateLong } from '@/lib/dates';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { todayKey, formatDateLong, parseDate } from '@/lib/dates';
 import { WeeklyGoalItem } from '@/types';
 
 type PFCTab = 'focus' | 'decision' | 'emotion' | 'goals';
@@ -75,10 +76,18 @@ export function PrefrontalCortex({ store }: { store: AppStore }) {
       </div>
 
       {/* Tab Contents */}
-      {activeTab === 'focus' && <FocusTimerSubmodule store={store} />}
-      {activeTab === 'decision' && <DecisionJournalSubmodule store={store} />}
-      {activeTab === 'emotion' && <EmotionLabelerSubmodule store={store} />}
-      {activeTab === 'goals' && <WeeklyGoalsSubmodule store={store} />}
+      <div className={activeTab === 'focus' ? 'block' : 'hidden'}>
+        <FocusTimerSubmodule store={store} />
+      </div>
+      <div className={activeTab === 'decision' ? 'block' : 'hidden'}>
+        <DecisionJournalSubmodule store={store} />
+      </div>
+      <div className={activeTab === 'emotion' ? 'block' : 'hidden'}>
+        <EmotionLabelerSubmodule store={store} />
+      </div>
+      <div className={activeTab === 'goals' ? 'block' : 'hidden'}>
+        <WeeklyGoalsSubmodule store={store} />
+      </div>
     </div>
   );
 }
@@ -87,6 +96,7 @@ export function PrefrontalCortex({ store }: { store: AppStore }) {
 // 1. DEEP FOCUS POMODORO TIMER SUBMODULE
 // ----------------------------------------------------------------------
 function FocusTimerSubmodule({ store }: { store: AppStore }) {
+  const [deleteModalLog, setDeleteModalLog] = useState<any | null>(null);
   const [focusMinutes, setFocusMinutes] = useState(25);
   const [breakMinutes, setBreakMinutes] = useState(5);
   const [taskName, setTaskName] = useState('Deep Work');
@@ -107,7 +117,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
   startOfWeek.setDate(now.getDate() + diffToMon);
   startOfWeek.setHours(0, 0, 0, 0);
 
-  const weeklyFocusLogs = focusLogs.filter((l) => new Date(l.date) >= startOfWeek);
+  const weeklyFocusLogs = focusLogs.filter((l) => (parseDate(l.date) || new Date(0)) >= startOfWeek);
   const weeklyFocusMinutes = weeklyFocusLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
 
   // Timer Effect
@@ -267,7 +277,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                       +{log.pointsAwarded} pts
                     </span>
                     <button
-                      onClick={() => store.deleteFocusLog(log.id)}
+                      onClick={() => setDeleteModalLog(log)}
                       className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
                       title="Delete Focus Session Log"
                     >
@@ -280,6 +290,21 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
           </div>
         </div>
       )}
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        open={!!deleteModalLog}
+        onClose={() => setDeleteModalLog(null)}
+        onConfirm={() => {
+          if (deleteModalLog) {
+            store.deleteFocusLog(deleteModalLog.id);
+            setDeleteModalLog(null);
+          }
+        }}
+        title="Delete Focus Session?"
+        itemName={deleteModalLog?.taskName}
+        description={`Are you sure you want to delete focus log "${deleteModalLog?.taskName}"? Any points awarded (+${deleteModalLog?.pointsAwarded || 0} pts) will be reversed.`}
+      />
     </div>
   );
 }
@@ -290,6 +315,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 function DecisionJournalSubmodule({ store }: { store: AppStore }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [reflectModalDecision, setReflectModalDecision] = useState<any | null>(null);
+  const [deleteModalDecision, setDeleteModalDecision] = useState<any | null>(null);
 
   const [title, setTitle] = useState('');
   const [rationale, setRationale] = useState('');
@@ -356,7 +382,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                   </h3>
                 </div>
                 <button
-                  onClick={() => store.deleteDecisionLog(d.id)}
+                  onClick={() => setDeleteModalDecision(d)}
                   className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
                   title="Delete Decision Journal Entry"
                 >
@@ -477,6 +503,21 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           </div>
         </form>
       </Modal>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        open={!!deleteModalDecision}
+        onClose={() => setDeleteModalDecision(null)}
+        onConfirm={() => {
+          if (deleteModalDecision) {
+            store.deleteDecisionLog(deleteModalDecision.id);
+            setDeleteModalDecision(null);
+          }
+        }}
+        title="Delete Decision Journal Entry?"
+        itemName={deleteModalDecision?.title}
+        description={`Are you sure you want to delete decision entry "${deleteModalDecision?.title}"?`}
+      />
     </div>
   );
 }
@@ -486,6 +527,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
 // ----------------------------------------------------------------------
 function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteModalEmotion, setDeleteModalEmotion] = useState<any | null>(null);
   const [emotion, setEmotion] = useState('Anxiety');
   const [customEmotion, setCustomEmotion] = useState('');
   const [intensity, setIntensity] = useState(5);
@@ -567,7 +609,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
                   +5 pts
                 </span>
                 <button
-                  onClick={() => store.deleteEmotionLog(l.id)}
+                  onClick={() => setDeleteModalEmotion(l)}
                   className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
                   title="Delete Emotion Log"
                 >
@@ -637,6 +679,21 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
           </div>
         </form>
       </Modal>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        open={!!deleteModalEmotion}
+        onClose={() => setDeleteModalEmotion(null)}
+        onConfirm={() => {
+          if (deleteModalEmotion) {
+            store.deleteEmotionLog(deleteModalEmotion.id);
+            setDeleteModalEmotion(null);
+          }
+        }}
+        title="Delete Emotion Log?"
+        itemName={deleteModalEmotion?.emotion}
+        description={`Are you sure you want to delete the emotion log for "${deleteModalEmotion?.emotion}"? Any points awarded (+5 pts) will be reversed.`}
+      />
     </div>
   );
 }
@@ -664,6 +721,7 @@ function WeeklyGoalsSubmodule({ store }: { store: AppStore }) {
   const [goals, setGoals] = useState<WeeklyGoalItem[]>(currentGoalDoc.goals);
   const [insights, setInsights] = useState(currentGoalDoc.insights || '');
   const [isReviewed, setIsReviewed] = useState(currentGoalDoc.isReviewed);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const handleGoalChange = (idx: number, text: string) => {
     const updated = [...goals];
@@ -699,16 +757,7 @@ function WeeklyGoalsSubmodule({ store }: { store: AppStore }) {
             )}
             {(isReviewed || goals.some((g) => g.text.trim().length > 0)) && (
               <button
-                onClick={() => {
-                  store.deleteWeeklyGoalDoc(currentWeekKey);
-                  setGoals([
-                    { id: '1', text: '', done: false },
-                    { id: '2', text: '', done: false },
-                    { id: '3', text: '', done: false },
-                  ]);
-                  setInsights('');
-                  setIsReviewed(false);
-                }}
+                onClick={() => setDeleteConfirmOpen(true)}
                 className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
                 title="Reset / Delete Weekly Goals & Review"
               >
@@ -763,6 +812,25 @@ function WeeklyGoalsSubmodule({ store }: { store: AppStore }) {
           </button>
         </div>
       </div>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={() => {
+          store.deleteWeeklyGoalDoc(currentWeekKey);
+          setGoals([
+            { id: '1', text: '', done: false },
+            { id: '2', text: '', done: false },
+            { id: '3', text: '', done: false },
+          ]);
+          setInsights('');
+          setIsReviewed(false);
+          setDeleteConfirmOpen(false);
+        }}
+        title="Reset Weekly Goals & Review?"
+        description="Are you sure you want to reset and delete your weekly goal plan and Sunday review notes for this week?"
+      />
     </div>
   );
 }
