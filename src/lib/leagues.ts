@@ -124,14 +124,84 @@ export function formatCountdown(ms: number): string {
 }
 
 /** Calculate net points earned within a given time range from the points history (including additions and deductions) */
-export function calculatePeriodPoints(pointsHistory: PointsEntry[], start: Date, end: Date = new Date()): number {
-  const sum = (pointsHistory || [])
-    .filter((entry) => {
-      const ts = new Date(entry.timestamp);
-      return ts >= start && ts <= end;
-    })
-    .reduce((acc, entry) => acc + (entry.amount || 0), 0);
-  return Math.max(0, sum);
+export function calculatePeriodPoints(
+  pointsHistory: PointsEntry[],
+  start: Date,
+  end: Date = new Date(),
+  totalPointsFallback?: number
+): number {
+  if (!pointsHistory || pointsHistory.length === 0) {
+    return Math.max(0, totalPointsFallback || 0);
+  }
+
+  // Sort history ascending by timestamp
+  const history = [...pointsHistory].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+
+  let runningTotal = 0;
+  let pointsAtStart = 0;
+  let hasStartSet = false;
+
+  for (const entry of history) {
+    const ts = new Date(entry.timestamp);
+    if (!hasStartSet && ts >= start) {
+      pointsAtStart = runningTotal;
+      hasStartSet = true;
+    }
+    runningTotal = Math.max(0, runningTotal + (entry.amount || 0));
+  }
+
+  if (!hasStartSet) {
+    // All entries occurred before 'start'
+    pointsAtStart = runningTotal;
+  }
+
+  let periodPoints = Math.max(0, runningTotal - pointsAtStart);
+
+  if (totalPointsFallback !== undefined && totalPointsFallback > 0) {
+    const fallbackMax = Math.max(0, totalPointsFallback);
+    if (periodPoints === 0 && history.length > 0) {
+      const allInPeriod = history.every((e) => new Date(e.timestamp) >= start);
+      if (allInPeriod) {
+        periodPoints = fallbackMax;
+      }
+    }
+    periodPoints = Math.min(periodPoints, fallbackMax);
+  }
+
+  return periodPoints;
+}
+
+/**
+ * Sanitizes a pointsHistory array chronologically so that running totals never drop below 0.
+ * Replaces any historical over-deductions (phantom negatives) with the actual amount deducted from total points.
+ */
+export function sanitizePointsHistory(pointsHistory: PointsEntry[]): PointsEntry[] {
+  if (!pointsHistory || pointsHistory.length === 0) return [];
+
+  // Sort ascending by timestamp to trace running total chronologically
+  const sorted = [...pointsHistory].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+
+  let runningTotal = 0;
+  const sanitizedAsc: PointsEntry[] = [];
+
+  for (const entry of sorted) {
+    const rawAmount = entry.amount || 0;
+    const newTotal = Math.max(0, runningTotal + rawAmount);
+    const actualAmount = newTotal - runningTotal;
+    runningTotal = newTotal;
+
+    sanitizedAsc.push({
+      ...entry,
+      amount: actualAmount,
+    });
+  }
+
+  // Preserve reverse chronological order (newest first)
+  return sanitizedAsc.reverse();
 }
 
 /**

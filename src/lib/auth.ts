@@ -1,6 +1,6 @@
 import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, PartnerInvite, Partnership } from '@/types';
 import { SEED_ACCOUNTS } from './seedAccounts';
-import { getLeaguePeriodStart, calculatePeriodPoints } from './leagues';
+import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory } from './leagues';
 import { generateNumericUID, todayKey } from './dates';
 import { getHighestUserStreak } from './habitPenalties';
 import {
@@ -524,7 +524,7 @@ export function reconstructStateFromProfile(p: any): AppState {
     habits,
     journalEntries: [],
     totalPoints: p.total_points || 0,
-    pointsHistory: p.points_history || [],
+    pointsHistory: sanitizePointsHistory(p.points_history || []),
     leagueArchives: [],
     readLessonIds: [],
     workouts,
@@ -557,7 +557,7 @@ export function getRegisteredCompetitors(
     if (p.id === currentUserId) continue;
 
     const pointsHistory = p.points_history || [];
-    const periodPoints = calculatePeriodPoints(pointsHistory, start, now);
+    const periodPoints = calculatePeriodPoints(pointsHistory, start, now, p.total_points);
 
     const reconstructedState = reconstructStateFromProfile(p);
     const highestInfo = getHighestUserStreak(reconstructedState, now);

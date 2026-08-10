@@ -858,6 +858,28 @@ export async function fetchPartnerInvitesSupabase(userId: string, username: stri
   }
 }
 
+export async function cleanupPendingInvitesBetweenUsersSupabase(
+  user1Id: string,
+  user1Username: string,
+  user2Id: string,
+  user2Username: string
+) {
+  if (!isSupabaseConfigured) return;
+  try {
+    const isUuid1 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user1Id);
+    const isUuid2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user2Id);
+
+    let orFilter = `and(from_username.ilike.${user1Username},to_username.ilike.${user2Username}),and(from_username.ilike.${user2Username},to_username.ilike.${user1Username})`;
+    if (isUuid1 && isUuid2) {
+      orFilter += `,and(from_user_id.eq.${user1Id},to_user_id.eq.${user2Id}),and(from_user_id.eq.${user2Id},to_user_id.eq.${user1Id})`;
+    }
+
+    await supabase.from('partner_invites').delete().or(orFilter);
+  } catch (e) {
+    console.warn('Error cleaning up partner invites between users:', e);
+  }
+}
+
 export async function acceptPartnerInviteAtomicSupabase(
   inviteId: string,
   user1Id: string,
@@ -889,13 +911,16 @@ export async function acceptPartnerInviteAtomicSupabase(
         user2Username,
         pairedAt: new Date().toISOString(),
       });
-      await deletePartnerInviteSupabase(inviteId);
+      await cleanupPendingInvitesBetweenUsersSupabase(user1Id, user1Username, user2Id, user2Username);
       return { success: true };
     }
 
     if (data && data.success === false) {
       return { success: false, error: data.error || 'This invite is no longer available' };
     }
+
+    // Always ensure all pending invites between these 2 users are deleted
+    await cleanupPendingInvitesBetweenUsersSupabase(user1Id, user1Username, user2Id, user2Username);
 
     return { success: true, partnershipId: data?.partnership_id };
   } catch (e: any) {
@@ -937,10 +962,12 @@ export async function savePartnershipSupabase(partnership: Partnership) {
     }
 
     // Delete or update invite status in DB for both users
-    await supabase
-      .from('partner_invites')
-      .delete()
-      .or(`and(from_username.ilike.${partnership.user1Username},to_username.ilike.${partnership.user2Username}),and(from_username.ilike.${partnership.user2Username},to_username.ilike.${partnership.user1Username})`);
+    await cleanupPendingInvitesBetweenUsersSupabase(
+      partnership.user1Id,
+      partnership.user1Username,
+      partnership.user2Id,
+      partnership.user2Username
+    );
   } catch (e) {
     console.error('Error saving partnership in Supabase:', e);
     throw e;

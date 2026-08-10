@@ -221,14 +221,18 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
           }
         }
 
+        const prevTotalPts = updatedState.totalPoints;
+        const newTotalPts = Math.max(0, prevTotalPts - penaltyAmount);
+        const actualDeduction = prevTotalPts - newTotalPts;
+
         updatedState = {
           ...updatedState,
           partnerNotifications: newNotifications,
-          totalPoints: Math.max(0, updatedState.totalPoints - penaltyAmount),
+          totalPoints: newTotalPts,
           pointsHistory: [
             {
               id: uid(),
-              amount: -penaltyAmount,
+              amount: -actualDeduction,
               reason: `Missed habit (${multiplier}x penalty): ${habit.name}`,
               source: 'habit_missed',
               timestamp: new Date().toISOString(),
@@ -318,13 +322,17 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
         logsAdded = true;
 
         if (penaltyAmount > 0) {
+          const prevTotalPts = updatedState.totalPoints;
+          const newTotalPts = Math.max(0, prevTotalPts - penaltyAmount);
+          const actualDeduction = prevTotalPts - newTotalPts;
+
           updatedState = {
             ...updatedState,
-            totalPoints: Math.max(0, updatedState.totalPoints - penaltyAmount),
+            totalPoints: newTotalPts,
             pointsHistory: [
               {
                 id: uid(),
-                amount: -penaltyAmount,
+                amount: -actualDeduction,
                 reason: `No-report bad habit penalty (${multiplier}x penalty): ${habit.name}`,
                 source: 'bad_habit_no_report',
                 timestamp: new Date().toISOString(),

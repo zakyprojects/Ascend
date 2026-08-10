@@ -94,6 +94,7 @@ import {
   fetchSharedChallengesSupabase,
   deleteSharedChallengeSupabase,
   acceptPartnerInviteAtomicSupabase,
+  cleanupPendingInvitesBetweenUsersSupabase,
   togglePartnerStatsVisibilitySupabase,
   fetchNotificationsSupabase,
   createNotificationSupabase,
@@ -202,12 +203,14 @@ function addPointsInternal(
   source: string,
   metadata?: Record<string, any>
 ): Pick<AppState, 'totalPoints' | 'pointsHistory'> {
+  const newTotalPoints = Math.max(0, prev.totalPoints + amount);
+  const actualAmount = newTotalPoints - prev.totalPoints;
   return {
-    totalPoints: Math.max(0, prev.totalPoints + amount),
+    totalPoints: newTotalPoints,
     pointsHistory: [
       {
         id: uid(),
-        amount,
+        amount: actualAmount,
         reason,
         source,
         timestamp: new Date().toISOString(),
@@ -498,9 +501,39 @@ export function useAppState() {
         const challenges = pIds.length > 0 ? await fetchSharedChallengesSupabase(pIds) : [];
         const fetchedNotifs = await fetchNotificationsSupabase(userId);
 
+        // Sanitize invites: filter out any invites for users who are already active partners
+        let validInvites = fetchedInvites;
+        if (activePartnerships.length > 0) {
+          const activePartnerUsernames = new Set(
+            activePartnerships.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])
+          );
+          const activePartnerUserIds = new Set(
+            activePartnerships.flatMap((p) => [p.user1Id, p.user2Id])
+          );
+
+          validInvites = fetchedInvites.filter((inv) => {
+            if (inv.status !== 'pending') return false;
+            const otherUserId = inv.fromUserId === userId ? inv.toUserId : inv.fromUserId;
+            const otherUsername = (
+              inv.fromUsername.toLowerCase() === username.toLowerCase() ? inv.toUsername : inv.fromUsername
+            ).toLowerCase();
+
+            const isAlreadyPartner =
+              (otherUserId && activePartnerUserIds.has(otherUserId)) ||
+              (otherUsername && activePartnerUsernames.has(otherUsername));
+
+            return !isAlreadyPartner;
+          });
+
+          // Clean up stale invites in Supabase DB for all active partnerships
+          for (const p of activePartnerships) {
+            cleanupPendingInvitesBetweenUsersSupabase(p.user1Id, p.user1Username, p.user2Id, p.user2Username).catch(() => {});
+          }
+        }
+
         setState((prev) => ({
           ...prev,
-          partnerInvites: fetchedInvites,
+          partnerInvites: validInvites,
           partnerships: activePartnerships,
           partnership: activePartnerships[0] || null,
           sharedChallenges: challenges,
@@ -2882,11 +2915,60 @@ export function useAppState() {
         throw new Error(`The user '${targetUsername}' has reached the maximum limit of 5 accountability partners.`);
       }
 
-      const alreadyPending = state.partnerInvites.some(
-        (i) => i.toUserId === targetUserId && i.status === 'pending'
+      // 1. Check if target user is ALREADY an active partner with current user (local + DB)
+      const isAlreadyPartnerLocal = (state.partnerships || []).some(
+        (p) =>
+          p.user1Id === targetUserId ||
+          p.user2Id === targetUserId ||
+          p.user1Username?.toLowerCase() === targetUsername.toLowerCase() ||
+          p.user2Username?.toLowerCase() === targetUsername.toLowerCase()
       );
-      if (alreadyPending) {
-        throw new Error(`An invite to '${targetUsername}' (ID: ${trimmedUid}) is already pending.`);
+      if (isAlreadyPartnerLocal) {
+        throw new Error(`You are already accountability partners with '${targetUsername}'.`);
+      }
+
+      const isAlreadyPartnerDb = targetPartnerships.some(
+        (p) =>
+          p.user1Id === state.currentUser?.id ||
+          p.user2Id === state.currentUser?.id ||
+          p.user1Username?.toLowerCase() === state.username.toLowerCase() ||
+          p.user2Username?.toLowerCase() === state.username.toLowerCase()
+      );
+      if (isAlreadyPartnerDb) {
+        throw new Error(`You are already accountability partners with '${targetUsername}'.`);
+      }
+
+      // 2. Check if an invite is already pending between these two users in EITHER direction (local + DB)
+      const alreadyPendingLocal = (state.partnerInvites || []).some((i) => {
+        if (i.status !== 'pending') return false;
+        const matchesTarget =
+          i.toUserId === targetUserId ||
+          i.toUsername?.toLowerCase() === targetUsername.toLowerCase() ||
+          i.fromUserId === targetUserId ||
+          i.fromUsername?.toLowerCase() === targetUsername.toLowerCase();
+        const matchesCurrent =
+          i.toUserId === state.currentUser?.id ||
+          i.toUsername?.toLowerCase() === state.username.toLowerCase() ||
+          i.fromUserId === state.currentUser?.id ||
+          i.fromUsername?.toLowerCase() === state.username.toLowerCase();
+        return matchesTarget && matchesCurrent;
+      });
+      if (alreadyPendingLocal) {
+        throw new Error(`An invite between you and '${targetUsername}' is already pending.`);
+      }
+
+      const existingDbInvites = await fetchPartnerInvitesSupabase(state.currentUser?.id || '', state.username);
+      const alreadyPendingDb = existingDbInvites.some((i) => {
+        if (i.status !== 'pending') return false;
+        return (
+          i.fromUserId === targetUserId ||
+          i.fromUsername?.toLowerCase() === targetUsername.toLowerCase() ||
+          i.toUserId === targetUserId ||
+          i.toUsername?.toLowerCase() === targetUsername.toLowerCase()
+        );
+      });
+      if (alreadyPendingDb) {
+        throw new Error(`An invite between you and '${targetUsername}' is already pending.`);
       }
 
       const invite: PartnerInvite = {
@@ -2976,7 +3058,15 @@ export function useAppState() {
       });
 
       setState((prev) => {
-        const updatedInvites = prev.partnerInvites.filter((i) => i.id !== inviteId);
+        const updatedInvites = (prev.partnerInvites || []).filter((i) => {
+          const isFromUser1 = i.fromUserId === fromId || i.fromUsername?.toLowerCase() === fromUsername.toLowerCase();
+          const isToUser1 = i.toUserId === fromId || i.toUsername?.toLowerCase() === fromUsername.toLowerCase();
+          const isFromUser2 = i.fromUserId === toId || i.fromUsername?.toLowerCase() === toUsername.toLowerCase();
+          const isToUser2 = i.toUserId === toId || i.toUsername?.toLowerCase() === toUsername.toLowerCase();
+
+          const isBetweenPair = (isFromUser1 && isToUser2) || (isFromUser2 && isToUser1);
+          return !isBetweenPair;
+        });
         const updatedPartnerships = [partnership, ...(prev.partnerships || []).filter((p) => p.id !== partnership.id)];
         return {
           ...prev,
@@ -3291,7 +3381,7 @@ export function useAppState() {
   const getLeagueData = useCallback(
     (type: LeagueType) => {
       const start = getLeaguePeriodStart(type);
-      const userPoints = calculatePeriodPoints(state.pointsHistory, start, new Date());
+      const userPoints = calculatePeriodPoints(state.pointsHistory, start, new Date(), state.totalPoints);
 
       const unified = calculateUnifiedStreak(state);
 

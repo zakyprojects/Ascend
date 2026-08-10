@@ -134,16 +134,35 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const partnerBestStreakDays = partnerStatsData?.stats?.bestStreakDays ?? partnerStatsData?.stats?.streakDays ?? 0;
   const partnerBestStreakCategory = partnerStatsData?.stats?.bestStreakCategory ?? partnerStatsData?.stats?.streakSource ?? '';
 
-  // Pending incoming & sent invites
-  const incomingInvites = partnerInvites.filter(
-    (i) => i.toUsername.toLowerCase() === currentUsername.toLowerCase() && i.status === 'pending'
+  // Sets of active partner usernames & user IDs
+  const activePartnerUsernamesSet = useMemo(
+    () => new Set(partnerships.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])),
+    [partnerships]
+  );
+  const activePartnerUserIdsSet = useMemo(
+    () => new Set(partnerships.flatMap((p) => [p.user1Id, p.user2Id])),
+    [partnerships]
   );
 
-  const sentInvites = partnerInvites.filter(
-    (i) =>
-      (i.fromUserId === currentUser?.id || i.fromUsername.toLowerCase() === currentUsername.toLowerCase()) &&
-      i.status === 'pending'
-  );
+  // Pending incoming & sent invites excluding users who are already active partners
+  const incomingInvites = partnerInvites.filter((i) => {
+    if (i.status !== 'pending') return false;
+    if (i.toUsername.toLowerCase() !== currentUsername.toLowerCase()) return false;
+    const isPartnerAlready =
+      activePartnerUserIdsSet.has(i.fromUserId) ||
+      activePartnerUsernamesSet.has(i.fromUsername.toLowerCase());
+    return !isPartnerAlready;
+  });
+
+  const sentInvites = partnerInvites.filter((i) => {
+    if (i.status !== 'pending') return false;
+    const isFromMe = i.fromUserId === currentUser?.id || i.fromUsername.toLowerCase() === currentUsername.toLowerCase();
+    if (!isFromMe) return false;
+    const isPartnerAlready =
+      activePartnerUserIdsSet.has(i.toUserId) ||
+      activePartnerUsernamesSet.has(i.toUsername.toLowerCase());
+    return !isPartnerAlready;
+  });
 
   const [inviteError, setInviteError] = useState<string | null>(null);
 

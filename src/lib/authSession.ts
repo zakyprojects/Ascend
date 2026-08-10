@@ -14,6 +14,7 @@ import {
   mapRowToUserPlanFollow,
   syncPlanToSupabase,
   syncFollowedPlanToSupabase,
+  cleanupPendingInvitesBetweenUsersSupabase,
 } from './supabase';
 
 export type SignUpDefaults = {
@@ -244,9 +245,37 @@ export async function hydrateUserSession(
       supabase.from('user_plan_follows').select('*').eq('user_id', userId),
     ]);
 
-    state.partnerInvites = fetchedInvites;
     state.partnerships = activePartnerships;
     state.partnership = activePartnerships[0] || null;
+
+    if (activePartnerships.length > 0) {
+      const activePartnerUsernames = new Set(
+        activePartnerships.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])
+      );
+      const activePartnerUserIds = new Set(
+        activePartnerships.flatMap((p) => [p.user1Id, p.user2Id])
+      );
+
+      state.partnerInvites = fetchedInvites.filter((inv) => {
+        if (inv.status !== 'pending') return false;
+        const otherUserId = inv.fromUserId === userId ? inv.toUserId : inv.fromUserId;
+        const otherUsername = (
+          inv.fromUsername.toLowerCase() === user.username.toLowerCase() ? inv.toUsername : inv.fromUsername
+        ).toLowerCase();
+
+        const isAlreadyPartner =
+          (otherUserId && activePartnerUserIds.has(otherUserId)) ||
+          (otherUsername && activePartnerUsernames.has(otherUsername));
+
+        return !isAlreadyPartner;
+      });
+
+      for (const p of activePartnerships) {
+        cleanupPendingInvitesBetweenUsersSupabase(p.user1Id, p.user1Username, p.user2Id, p.user2Username).catch(() => {});
+      }
+    } else {
+      state.partnerInvites = fetchedInvites;
+    }
 
     if (activePartnerships.length > 0) {
       const pIds = activePartnerships.map((p) => p.id);
