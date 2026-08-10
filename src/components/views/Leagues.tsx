@@ -179,7 +179,6 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
           {leagueData.competitors.map((competitor, idx) => {
             const rank = idx + 1;
             const isUser = competitor.isUser;
-            const isRealUser = competitor.isRealUser;
             const isTop3 = rank <= 3;
             const medalColors = ['#fbbf24', '#c0c0c0', '#cd7f32'];
 
@@ -187,37 +186,31 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
               <button
                 key={competitor.id || idx}
                 onClick={() => setSelectedCompetitor(competitor)}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left cursor-pointer group ${
+                className={`w-full flex items-center gap-2 sm:gap-4 px-2.5 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all text-left cursor-pointer group ${
                   isUser
-                    ? 'glass-strong border-2 shadow-lg hover:border-primary-400'
+                    ? 'bg-emerald-950/40 border-2 border-emerald-500/80 shadow-lg shadow-emerald-950/20 hover:border-emerald-400'
                     : 'bg-bg-700/50 hover:bg-bg-700 border border-white/5'
                 }`}
-                style={isUser ? { borderColor: `${config.color}60` } : {}}
               >
                 {/* Rank Position */}
-                <div className="w-7 text-center shrink-0">
+                <div className="w-5 sm:w-7 text-center shrink-0">
                   {isTop3 ? (
-                    <Crown size={16} style={{ color: medalColors[rank - 1] }} />
+                    <Crown size={15} className="mx-auto" style={{ color: medalColors[rank - 1] }} />
                   ) : (
-                    <span className="text-sm font-bold text-slate-500">{rank}</span>
+                    <span className="text-xs sm:text-sm font-bold text-slate-500">{rank}</span>
                   )}
                 </div>
 
                 {/* Avatar */}
-                <div className="w-9 h-9 rounded-lg bg-bg-600 flex items-center justify-center text-lg shrink-0 border border-white/5">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-bg-600 flex items-center justify-center text-base sm:text-lg shrink-0 border border-white/5">
                   {competitor.avatar}
                 </div>
 
-                {/* Name & Badges */}
-                <div className="flex-1 min-w-0 flex items-center gap-2">
-                  <span className={`text-sm font-medium truncate ${isUser ? 'text-slate-100 font-bold' : 'text-slate-300'}`}>
+                {/* Name */}
+                <div className="flex-1 min-w-0">
+                  <span className={`text-xs sm:text-sm font-medium truncate block ${isUser ? 'text-emerald-200 font-bold' : 'text-slate-300'}`}>
                     {competitor.name}
                   </span>
-                  {isUser && (
-                    <span className="text-[10px] bg-primary-500/20 text-primary-300 px-2 py-0.5 rounded-full border border-primary-500/30 font-bold">
-                      You
-                    </span>
-                  )}
                 </div>
 
                 {/* Tier Badge visible for EVERY entry */}
@@ -226,14 +219,14 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                 </div>
 
                 {/* Period Points */}
-                <div className="text-right shrink-0 min-w-[70px]">
-                  <span className="text-sm font-display font-bold text-slate-200">
+                <div className="text-right shrink-0 min-w-[55px] sm:min-w-[70px]">
+                  <span className={`text-xs sm:text-sm font-display font-bold ${isUser ? 'text-emerald-200' : 'text-slate-200'}`}>
                     {competitor.points.toLocaleString()}
                   </span>
-                  <span className="text-xs text-slate-500 ml-1">pts</span>
+                  <span className="text-[10px] sm:text-xs text-slate-500 ml-0.5 sm:ml-1">pts</span>
                 </div>
 
-                <ChevronRight size={16} className="text-slate-600 group-hover:text-slate-300 transition-colors shrink-0" />
+                <ChevronRight size={15} className="text-slate-600 group-hover:text-slate-300 transition-colors shrink-0" />
               </button>
             );
           })}
@@ -293,7 +286,9 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                   <div
                     key={idx}
                     className={`flex items-center gap-3 p-3 rounded-xl ${
-                      c.isUser ? 'glass-strong border border-primary-500/40' : 'bg-bg-700/50'
+                      c.isUser
+                        ? 'bg-emerald-950/40 border border-emerald-500/80 shadow-lg shadow-emerald-950/20'
+                        : 'bg-bg-700/50 border border-white/5'
                     }`}
                   >
                     <div className="w-7 text-center shrink-0">
@@ -302,9 +297,8 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                     <div className="w-9 h-9 rounded-lg bg-bg-600 flex items-center justify-center text-lg shrink-0">
                       {c.avatar}
                     </div>
-                    <span className={`text-sm font-medium flex-1 ${c.isUser ? 'text-slate-100 font-bold' : 'text-slate-300'}`}>
+                    <span className={`text-sm font-medium flex-1 truncate ${c.isUser ? 'text-emerald-200 font-bold' : 'text-slate-300'}`}>
                       {c.name}
-                      {c.isUser && <span className="text-xs text-slate-400 ml-1.5">(You)</span>}
                     </span>
                     <TierBadge totalPoints={c.totalPoints || c.points} size="sm" showName={false} />
                     <span className="text-sm font-display font-bold text-slate-200">

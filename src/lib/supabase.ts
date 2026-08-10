@@ -1,19 +1,52 @@
 import { createClient } from '@supabase/supabase-js';
 import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, PartnerNotification, UserPlanFollow, AppNotification } from '@/types';
 import { getHighestUserStreak } from './habitPenalties';
+import { calculateUnifiedStreak } from './streakLogic';
 
-const supabaseUrl = typeof import.meta !== 'undefined' && import.meta?.env ? import.meta.env.VITE_SUPABASE_URL : undefined;
-const supabaseAnonKey = typeof import.meta !== 'undefined' && import.meta?.env ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase URL or Anon Key is missing from environment variables.');
+function getValidSupabaseUrl(url: unknown): string | null {
+  if (typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+function getValidAnonKey(key: unknown): string | null {
+  if (typeof key !== 'string') return null;
+  const trimmed = key.trim();
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
+  return trimmed;
+}
+
+const rawUrl = typeof import.meta !== 'undefined' && import.meta?.env ? import.meta.env.VITE_SUPABASE_URL : undefined;
+const rawKey = typeof import.meta !== 'undefined' && import.meta?.env ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
+
+const validatedUrl = getValidSupabaseUrl(rawUrl);
+const validatedAnonKey = getValidAnonKey(rawKey);
+
+export const isSupabaseConfigured = Boolean(validatedUrl && validatedAnonKey);
+
+const DEFAULT_SUPABASE_URL = 'https://placeholder.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder';
+
+const supabaseUrl = validatedUrl || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = validatedAnonKey || DEFAULT_SUPABASE_KEY;
+
+if (!isSupabaseConfigured) {
+  console.warn('Supabase URL or Anon Key is missing or invalid in environment variables. Operating in local state fallback mode.');
+}
 
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key',
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       persistSession: true,
@@ -115,19 +148,18 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
         const todayStr = new Date().toISOString().split('T')[0];
         return acc + (h.completions?.includes(todayStr) ? 1 : 0);
       }, 0);
-      const highestStreakInfo = getHighestUserStreak(state);
+      const unified = calculateUnifiedStreak(state);
       const exerciseMinutes = (state.workouts || []).reduce((sum, w) => sum + w.durationMinutes, 0);
       const booksRead = (state.books || []).filter((b) => b.isFinished).length;
       const skillsPracticedCount = (state.skillLogs || []).length;
 
       const userStats = {
-        streakDays: highestStreakInfo.currentStreak.days,
-        streakSource: highestStreakInfo.currentStreak.days > 0 ? highestStreakInfo.currentStreak.category : undefined,
-        currentStreakDays: highestStreakInfo.currentStreak.days,
-        currentStreakCategory: highestStreakInfo.currentStreak.category,
-        currentStreakIsActive: highestStreakInfo.currentStreak.isActive,
-        bestStreakDays: highestStreakInfo.bestStreak.days,
-        bestStreakCategory: highestStreakInfo.bestStreak.category,
+        streakDays: unified.currentStreakDays,
+        streakSource: unified.currentStreakDays > 0 ? unified.currentStreakCategory : undefined,
+        currentStreakDays: unified.currentStreakDays,
+        currentStreakCategory: unified.currentStreakCategory,
+        currentStreakIsActive: unified.currentStreakIsActive,
+        lastActiveDate: unified.lastActiveDate,
         habitsCompletedCount,
         habitsCompletedTodayCount,
         journalEntriesCount: (state.journalEntries || []).length,

@@ -447,17 +447,6 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     </span>
                   </div>
                   <div className="p-3 bg-bg-700/50 rounded-xl border border-white/5">
-                    <span className="block text-[11px] text-slate-400">Best Streak</span>
-                    <span className="text-base font-display font-bold text-purple-400">
-                      {partnerBestStreakDays}d
-                      {partnerBestStreakCategory ? (
-                        <span className="block text-[10px] text-purple-300/90 font-medium mt-0.5">
-                          {partnerBestStreakCategory}
-                        </span>
-                      ) : null}
-                    </span>
-                  </div>
-                  <div className="p-3 bg-bg-700/50 rounded-xl border border-white/5">
                     <span className="block text-[11px] text-slate-400">Habits Done Today</span>
                     <span className="text-base font-display font-bold text-sky-400">{partnerHabitsCompletedToday}</span>
                   </div>

@@ -65,6 +65,7 @@ import {
 } from './auth';
 import { hydrateUserSession } from './authSession';
 import { processHabitPenalties, processBadHabitNoReports, getMissPenaltyMultiplier, getHighestUserStreak } from './habitPenalties';
+import { calculateUnifiedStreak } from './streakLogic';
 import {
   supabase,
   isSupabaseConfigured,
@@ -2946,13 +2947,13 @@ export function useAppState() {
     const rawStats = profile.stats || {};
     const habitsCompletedCount = rawStats.habitsCompletedCount || 0;
     const habitsCompletedTodayCount = rawStats.habitsCompletedTodayCount || 0;
-    const streakDays = habitsCompletedCount === 0 ? 0 : (rawStats.streakDays || 0);
-    const currentStreakDays = habitsCompletedCount === 0 ? 0 : (rawStats.currentStreakDays ?? rawStats.streakDays ?? 0);
+    const streakDays = rawStats.streakDays || 0;
+    const currentStreakDays = rawStats.currentStreakDays ?? rawStats.streakDays ?? 0;
     const currentStreakCategory = rawStats.currentStreakCategory ?? rawStats.streakSource ?? '';
     const currentStreakIsActive = rawStats.currentStreakIsActive !== undefined
       ? rawStats.currentStreakIsActive
       : true;
-    const bestStreakDays = habitsCompletedCount === 0 ? 0 : (rawStats.bestStreakDays ?? rawStats.streakDays ?? 0);
+    const bestStreakDays = rawStats.bestStreakDays ?? rawStats.streakDays ?? 0;
     const bestStreakCategory = rawStats.bestStreakCategory ?? rawStats.streakSource ?? '';
 
     return {
@@ -3185,7 +3186,7 @@ export function useAppState() {
       const start = getLeaguePeriodStart(type);
       const userPoints = calculatePeriodPoints(state.pointsHistory, start, new Date());
 
-      const highestStreakInfo = getHighestUserStreak(state);
+      const unified = calculateUnifiedStreak(state);
 
       const habitsCompletedCount = state.habits.reduce((acc, h) => acc + (h.completions?.length || 0), 0);
       const exerciseMinutes = state.workouts.reduce((sum, w) => sum + w.durationMinutes, 0);
@@ -3193,13 +3194,12 @@ export function useAppState() {
       const skillsPracticedCount = state.skillLogs.length;
 
       const userStats = {
-        streakDays: highestStreakInfo.currentStreak.days,
-        streakSource: highestStreakInfo.currentStreak.days > 0 ? highestStreakInfo.currentStreak.category : undefined,
-        currentStreakDays: highestStreakInfo.currentStreak.days,
-        currentStreakCategory: highestStreakInfo.currentStreak.category,
-        currentStreakIsActive: highestStreakInfo.currentStreak.isActive,
-        bestStreakDays: highestStreakInfo.bestStreak.days,
-        bestStreakCategory: highestStreakInfo.bestStreak.category,
+        streakDays: unified.currentStreakDays,
+        streakSource: unified.currentStreakDays > 0 ? unified.currentStreakCategory : undefined,
+        currentStreakDays: unified.currentStreakDays,
+        currentStreakCategory: unified.currentStreakCategory,
+        currentStreakIsActive: unified.currentStreakIsActive,
+        lastActiveDate: unified.lastActiveDate,
         habitsCompletedCount,
         journalEntriesCount: state.journalEntries.length,
         exerciseMinutes,

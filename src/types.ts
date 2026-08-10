@@ -34,8 +34,8 @@ export interface UserStats {
   currentStreakDays: number;
   currentStreakCategory: string;
   currentStreakIsActive: boolean;
-  bestStreakDays: number;
-  bestStreakCategory: string;
+  bestStreakDays?: number;
+  bestStreakCategory?: string;
   habitsCompletedCount: number;
   journalEntriesCount: number;
   exerciseMinutes: number;

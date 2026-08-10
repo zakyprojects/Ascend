@@ -1,7 +1,8 @@
 import { Modal } from './Modal';
 import { LeagueCompetitor } from '@/types';
 import { TierBadge } from './TierBadge';
-import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, ShieldCheck, CheckCircle2, EyeOff, Trophy } from 'lucide-react';
+import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, ShieldCheck, CheckCircle2, EyeOff } from 'lucide-react';
+import { getProfileStreakStats } from '@/lib/streakLogic';
 
 interface CompetitorProfileModalProps {
   competitor: LeagueCompetitor | null;
@@ -113,32 +114,17 @@ export function CompetitorProfileModal({
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {(() => {
-                    const cDays = stats.currentStreakDays ?? stats.streakDays ?? 0;
-                    const cCat = stats.currentStreakCategory ?? stats.streakSource ?? '';
-                    const cActive = stats.currentStreakIsActive !== undefined
-                      ? stats.currentStreakIsActive
-                      : true;
-                    const bDays = stats.bestStreakDays ?? stats.streakDays ?? 0;
-                    const bCat = stats.bestStreakCategory ?? stats.streakSource ?? '';
-                    const currentSubtitle = cCat
-                      ? `${cCat}${cActive ? '' : ' (deleted)'}`
-                      : undefined;
-                    const bestSubtitle = bCat || undefined;
+                    const streakStats = getProfileStreakStats(stats);
+                    const cDays = streakStats.currentStreakDays;
+                    const cCat = streakStats.currentStreakCategory;
                     return (
                       <>
                         <StatCard
                           icon={Flame}
                           color="#f59e0b"
-                          label={cActive ? 'Current Streak' : 'Current Streak · Frozen (deleted)'}
+                          label="Current Streak"
                           value={`${cDays} days`}
-                          subtitle={currentSubtitle}
-                        />
-                        <StatCard
-                          icon={Trophy}
-                          color="#a855f7"
-                          label="Best Streak"
-                          value={`${bDays} days`}
-                          subtitle={bestSubtitle}
+                          subtitle={cCat || undefined}
                         />
                         <StatCard
                           icon={CheckSquare}

@@ -2,7 +2,7 @@ import { Flame, TrendingUp, Star, BookOpen, Check, ArrowRight, Sparkles, Trophy,
 import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
 import { calculateStreak, todayKey, formatDateLong } from '@/lib/dates';
-import { getHighestUserStreak } from '@/lib/habitPenalties';
+import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { getCurrentTier, getNextTier } from '@/lib/tiers';
 import { TierBadge, TierProgress } from '@/components/ui/TierBadge';
 import { LEAGUE_CONFIG, formatCountdown, getTimeUntilReset, getSeasonLabel } from '@/lib/leagues';
@@ -28,17 +28,10 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   const completedToday = habits.filter((h) => store.isHabitDone(h));
   const pendingToday = habits.filter((h) => !store.isHabitDone(h));
 
-  const highestStreakInfo = getHighestUserStreak(store.state);
+  const streakResult = calculateUnifiedStreak(store.state);
 
-  const currentStreak = highestStreakInfo.currentStreak;
-  const bestStreak = highestStreakInfo.bestStreak;
-
-  const currentStreakValue = currentStreak.days > 0
-    ? `${currentStreak.days}d - ${currentStreak.category}${currentStreak.isActive ? '' : ' (deleted)'}`
-    : `0d${currentStreak.category ? ` - ${currentStreak.category}` : ''}`;
-  const bestStreakValue = bestStreak.days > 0
-    ? `${bestStreak.days}d - ${bestStreak.category}`
-    : '0d';
+  const currentStreakLabel = 'Current Streak';
+  const currentStreakValue = streakResult.formattedCurrentStreak;
 
   const completionRate = habits.length > 0 ? Math.round((completedToday.length / habits.length) * 100) : 0;
 
@@ -160,11 +153,10 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard icon={<Check size={18} />} label="Done Today" value={`${completedToday.length}/${habits.length}`} color="#34d399" />
         <StatCard icon={<TrendingUp size={18} />} label="Completion" value={`${completionRate}%`} color="#0ea5e9" />
-        <StatCard icon={<Flame size={18} />} label={currentStreak.label} value={currentStreakValue} color="#f59e0b" />
-        <StatCard icon={<Trophy size={18} />} label={bestStreak.label} value={bestStreakValue} color="#a855f7" />
+        <StatCard icon={<Flame size={18} />} label={currentStreakLabel} value={currentStreakValue} color="#f59e0b" />
         <StatCard icon={<Star size={18} />} label="Habits" value={String(habits.length)} color="#6366f1" />
       </div>
 

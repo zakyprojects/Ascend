@@ -567,17 +567,12 @@ export function getRegisteredCompetitors(
     const prefCurrentActive = p.stats?.currentStreakIsActive !== undefined
       ? p.stats.currentStreakIsActive
       : highestInfo.currentStreak.isActive;
-    const prefBestDays = p.stats?.bestStreakDays ?? highestInfo.bestStreak.days;
-    const prefBestCat = p.stats?.bestStreakCategory ?? highestInfo.bestStreak.category;
-
     const stats = {
       streakDays: prefCurrentDays,
       streakSource: prefCurrentDays > 0 ? prefCurrentCat : undefined,
       currentStreakDays: prefCurrentDays,
       currentStreakCategory: prefCurrentCat,
       currentStreakIsActive: prefCurrentActive,
-      bestStreakDays: prefBestDays,
-      bestStreakCategory: prefBestCat,
       habitsCompletedCount: p.stats?.habitsCompletedCount || 0,
       journalEntriesCount: p.stats?.journalEntriesCount || 0,
       exerciseMinutes: p.stats?.exerciseMinutes || 0,

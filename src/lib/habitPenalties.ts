@@ -13,7 +13,7 @@ export interface CurrentStreakInfo extends StreakInfo {
 }
 
 export interface BestStreakInfo extends StreakInfo {
-  label: 'Best Streak';
+  label: string;
 }
 
 export interface StreakInfoPair {
@@ -89,228 +89,22 @@ export function getMissPenaltyMultiplier(consecutiveMisses: number, totalPoints:
   }
 }
 
+import { calculateUnifiedStreak } from './streakLogic';
+
 export function getHighestUserStreak(state: AppState, now: Date = new Date()): StreakInfoPair {
-  const candidates: Array<{
-    currentDays: number;
-    bestDays: number;
-    category: string;
-    priority: number;
-    isActive: boolean;
-  }> = [];
-
-  // 1. Regular Habit Journey Habits (Priority 100)
-  interface LineageData {
-    name: string;
-    category?: string;
-    dateNet: Map<string, number>;
-  }
-
-  const lineageMap = new Map<string, LineageData>();
-
-  (state.pointsHistory || []).forEach((e) => {
-    if (!e || !e.timestamp) return;
-
-    const isCompleted =
-      e.source === 'habit_completed' ||
-      e.source === 'habit' ||
-      (e.reason && (e.reason.startsWith('Habit completed:') || e.reason.startsWith('Completed habit:')));
-
-    const isUnchecked =
-      e.source === 'habit_unchecked' ||
-      (e.reason && (e.reason.startsWith('Habit unchecked:') || e.reason.startsWith('Unchecked habit:')));
-
-    if (!isCompleted && !isUnchecked) return;
-
-    let habitName = e.metadata?.habitName;
-    if (!habitName && e.reason) {
-      habitName = e.reason
-        .replace(/^(Habit completed:|Completed habit:|Habit unchecked:|Unchecked habit:)\s*/i, '')
-        .trim();
-    }
-    if (!habitName || habitName === 'Habit') habitName = 'Habit Journey';
-
-    const dateKey = todayKey(new Date(e.timestamp));
-
-    if (!lineageMap.has(habitName)) {
-      lineageMap.set(habitName, {
-        name: habitName,
-        category: e.metadata?.category,
-        dateNet: new Map<string, number>(),
-      });
-    }
-
-    const lineage = lineageMap.get(habitName)!;
-    if (!lineage.category && e.metadata?.category) {
-      lineage.category = e.metadata.category;
-    }
-
-    const currentNet = lineage.dateNet.get(dateKey) || 0;
-    lineage.dateNet.set(dateKey, currentNet + (isCompleted ? 1 : -1));
-  });
-
-  (state.habits || []).forEach((h) => {
-    if (!h) return;
-    const name = h.name || 'Habit Journey';
-    if (!lineageMap.has(name)) {
-      lineageMap.set(name, {
-        name,
-        category: h.category,
-        dateNet: new Map<string, number>(),
-      });
-    }
-    const lineage = lineageMap.get(name)!;
-    if (!lineage.category && h.category) lineage.category = h.category;
-
-    (h.completions || []).forEach((cDate) => {
-      if (!lineage.dateNet.has(cDate)) {
-        lineage.dateNet.set(cDate, 1);
-      }
-    });
-  });
-
-  lineageMap.forEach((lineage) => {
-    const validDates = Array.from(lineage.dateNet.entries())
-      .filter(([_, net]) => net > 0)
-      .map(([date]) => date)
-      .sort();
-
-    if (validDates.length === 0) return;
-
-    const activeHabit = (state.habits || []).find(
-      (h) => h.name.toLowerCase() === lineage.name.toLowerCase()
-    );
-    const isActive = !!activeHabit;
-
-    const category = (activeHabit?.category || lineage.category || 'Habit Journey').trim();
-
-    const current = getCurrentStreakFromSortedDates(validDates, now);
-    const best = getBestStreakFromSortedDates(validDates);
-
-    const finalCurrent = isActive ? current : best;
-
-    if (finalCurrent > 0 || best > 0) {
-      candidates.push({
-        currentDays: finalCurrent,
-        bestDays: best,
-        category,
-        priority: 100,
-        isActive,
-      });
-    }
-  });
-
-  // 2. Exercise Streak (Workouts) (Priority 80)
-  if (state.workouts && state.workouts.length > 0) {
-    const workoutDates = Array.from(new Set(state.workouts.map((w) => w.date))).sort();
-    const current = getCurrentStreakFromSortedDates(workoutDates, now);
-    const best = getBestStreakFromSortedDates(workoutDates);
-    if (current > 0 || best > 0) {
-      candidates.push({
-        currentDays: current,
-        bestDays: best,
-        category: 'Exercise',
-        priority: 80,
-        isActive: true,
-      });
-    }
-  }
-
-  // 3. Reading Streak (Priority 60)
-  if (state.readingLogs && state.readingLogs.length > 0) {
-    const readingDates = Array.from(new Set(state.readingLogs.map((r) => r.date))).sort();
-    const current = getCurrentStreakFromSortedDates(readingDates, now);
-    const best = getBestStreakFromSortedDates(readingDates);
-    if (current > 0 || best > 0) {
-      candidates.push({
-        currentDays: current,
-        bestDays: best,
-        category: 'Reading',
-        priority: 60,
-        isActive: true,
-      });
-    }
-  }
-
-  // 4. Bad Habit Resisted Streaks (Priority 40)
-  (state.badHabits || []).filter((bh) => bh && !bh.isCompleted).forEach((bh) => {
-    const logs = (state.badHabitLogs || []).filter((l) => l && l.badHabitId === bh.id);
-    const resistedDates = logs
-      .filter((l) => l.status === 'resisted')
-      .map((l) => l.date)
-      .sort();
-    if (resistedDates.length === 0) return;
-
-    const current = getCurrentStreakFromSortedDates(resistedDates, now);
-    const best = getBestStreakFromSortedDates(resistedDates);
-
-    if (current > 0 || best > 0) {
-      candidates.push({
-        currentDays: current,
-        bestDays: best,
-        category: 'Resisted',
-        priority: 40,
-        isActive: true,
-      });
-    }
-  });
-
-  // 5. Skill Practice Streak (Priority 20)
-  if (state.skillLogs && state.skillLogs.length > 0) {
-    const skillDates = Array.from(new Set(state.skillLogs.map((s) => s.date))).sort();
-    const current = getCurrentStreakFromSortedDates(skillDates, now);
-    const best = getBestStreakFromSortedDates(skillDates);
-    if (current > 0 || best > 0) {
-      candidates.push({
-        currentDays: current,
-        bestDays: best,
-        category: 'Skill Practice',
-        priority: 20,
-        isActive: true,
-      });
-    }
-  }
-
-  if (candidates.length === 0) {
-    return {
-      currentStreak: {
-        days: 0,
-        category: '',
-        isActive: true,
-        label: 'Current Streak',
-      },
-      bestStreak: {
-        days: 0,
-        category: '',
-        label: 'Best Streak',
-      },
-    };
-  }
-
-  const sortedForCurrent = [...candidates].sort((a, b) => {
-    if (b.currentDays !== a.currentDays) return b.currentDays - a.currentDays;
-    return b.priority - a.priority;
-  });
-
-  const topCurrent = sortedForCurrent[0];
-
-  const sortedForBest = [...candidates].sort((a, b) => {
-    if (b.bestDays !== a.bestDays) return b.bestDays - a.bestDays;
-    return b.priority - a.priority;
-  });
-
-  const topBest = sortedForBest[0];
+  const unified = calculateUnifiedStreak(state, todayKey(now));
 
   return {
     currentStreak: {
-      days: topCurrent.currentDays,
-      category: topCurrent.category,
-      isActive: topCurrent.isActive,
-      label: topCurrent.isActive ? 'Current Streak' : 'Current Streak · Frozen (deleted)',
+      days: unified.currentStreakDays,
+      category: unified.currentStreakCategory,
+      isActive: unified.currentStreakIsActive,
+      label: 'Current Streak',
     },
     bestStreak: {
-      days: topBest.bestDays,
-      category: topBest.category,
-      label: 'Best Streak',
+      days: unified.currentStreakDays,
+      category: unified.currentStreakCategory,
+      label: 'Current Streak',
     },
   };
 }
