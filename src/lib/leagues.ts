@@ -165,6 +165,7 @@ export function generateCompetitors(
     isProfilePublic: currentUser?.isProfilePublic ?? true,
     stats: userStats,
     activeHabits: activeHabits,
+    season_history: currentUser?.season_history || userStats?.season_history,
   };
 
   // 2. All other registered real users

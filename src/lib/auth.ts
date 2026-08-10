@@ -592,6 +592,7 @@ export function getRegisteredCompetitors(
       isProfilePublic: p.is_profile_public ?? true,
       stats,
       activeHabits: p.active_habits || [],
+      season_history: p.season_history || p.stats?.season_history || [],
     });
   }
 

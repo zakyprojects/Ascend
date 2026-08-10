@@ -1,8 +1,9 @@
 import { Modal } from './Modal';
 import { LeagueCompetitor } from '@/types';
 import { TierBadge } from './TierBadge';
-import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, ShieldCheck, CheckCircle2, EyeOff } from 'lucide-react';
+import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, ShieldCheck, CheckCircle2, EyeOff, Trophy } from 'lucide-react';
 import { getProfileStreakStats } from '@/lib/streakLogic';
+import { getCurrentTier } from '@/lib/tiers';
 
 interface CompetitorProfileModalProps {
   competitor: LeagueCompetitor | null;
@@ -24,6 +25,7 @@ export function CompetitorProfileModal({
   const canViewDetailed = isSelf || (viewerIsPublic && targetIsPublic);
 
   const stats = competitor.stats;
+  const seasonHistory = competitor.season_history || competitor.stats?.season_history;
 
   return (
     <Modal
@@ -200,6 +202,51 @@ export function CompetitorProfileModal({
                 </div>
               )}
             </div>
+
+            {/* Past Seasons & Trophies */}
+            {seasonHistory && seasonHistory.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                  <Trophy size={14} className="text-amber-400" />
+                  Past Seasons & Trophies ({seasonHistory.length})
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
+                  {seasonHistory.map((historyRecord, idx) => {
+                    const tier = getCurrentTier(historyRecord.points);
+                    return (
+                      <div
+                        key={idx}
+                        className="p-3 bg-bg-800 rounded-xl border border-white/5 flex items-center justify-between gap-2.5"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="shrink-0">
+                            <TierBadge totalPoints={historyRecord.points} size="sm" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-200 truncate">
+                              {historyRecord.seasonName}
+                            </p>
+                            <p className="text-[10px] font-medium truncate" style={{ color: tier.color }}>
+                              {tier.name} Tier
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs font-bold text-primary-400">
+                            {historyRecord.points.toLocaleString()} pts
+                          </p>
+                          {historyRecord.date && (
+                            <p className="text-[10px] text-slate-500">
+                              {historyRecord.date}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

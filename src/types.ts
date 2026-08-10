@@ -26,6 +26,8 @@ export interface UserProfile {
   isAnonymous?: boolean;
   /** ISO timestamp string of the last username change */
   lastUsernameChangeAt?: string;
+  /** Past season history and trophy badges */
+  season_history?: Array<{ seasonName: string; points: number; date: string }>;
 }
 
 export interface UserStats {
@@ -41,6 +43,7 @@ export interface UserStats {
   exerciseMinutes: number;
   booksRead: number;
   skillsPracticedCount: number;
+  season_history?: Array<{ seasonName: string; points: number; date: string }>;
 }
 
 export interface Habit {
@@ -87,6 +90,7 @@ export interface LeagueCompetitor {
   isProfilePublic?: boolean;
   stats?: UserStats;
   activeHabits?: { name: string; category?: string; frequency: string; isPreset: boolean }[];
+  season_history?: Array<{ seasonName: string; points: number; date: string }>;
 }
 
 export interface LeagueArchive {
