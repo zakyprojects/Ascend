@@ -1519,18 +1519,20 @@ export function useAppState() {
       const habitLogs = prev.badHabitLogs.filter((l) => l.badHabitId === badHabitId);
       const bh = prev.badHabits.find((b) => b.id === badHabitId);
 
-      // Reverses ALL net points earned/lost through that habit
-      const netPoints = habitLogs.reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
-
       let pointsUpdate = {};
-      if (netPoints !== 0 && bh) {
-        const reverseAmount = -netPoints;
-        pointsUpdate = addPointsInternal(
-          prev,
-          reverseAmount,
-          `Bad habit deleted (reversed net points): ${bh.name}`,
-          'bad_habit_delete'
-        );
+      // Reverses ALL net points earned/lost through that habit ONLY if habit is NOT completed
+      if (bh && !bh.isCompleted) {
+        const netPoints = habitLogs.reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
+
+        if (netPoints !== 0) {
+          const reverseAmount = -netPoints;
+          pointsUpdate = addPointsInternal(
+            prev,
+            reverseAmount,
+            `Bad habit deleted (reversed net points): ${bh.name}`,
+            'bad_habit_delete'
+          );
+        }
       }
 
       const newState: AppState = {
@@ -1566,6 +1568,25 @@ export function useAppState() {
     });
   }, []);
 
+  const updateBadHabit = useCallback((badHabitId: string, updates: Partial<BadHabit>) => {
+    setState((prev) => {
+      const bh = prev.badHabits.find((b) => b.id === badHabitId);
+      if (!bh) return prev;
+
+      const newState: AppState = {
+        ...prev,
+        badHabits: prev.badHabits.map((b) =>
+          b.id === badHabitId
+            ? { ...b, ...updates }
+            : b
+        ),
+      };
+
+      persistState(newState);
+      return newState;
+    });
+  }, []);
+
   const deleteBadHabitLog = useCallback((badHabitId: string, date: string) => {
     setState((prev) => {
       const target = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
@@ -1578,11 +1599,13 @@ export function useAppState() {
           'bad_habit_clear'
         );
       }
-      return {
+      const newState: AppState = {
         ...prev,
         badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === date)),
         ...pointsUpdate,
       };
+      persistState(newState);
+      return newState;
     });
   }, []);
 
@@ -3279,6 +3302,7 @@ export function useAppState() {
     undoTodayBadHabitLog,
     deleteBadHabit,
     completeBadHabit,
+    updateBadHabit,
     deleteBadHabitLog,
     setAddictionTracker,
     deleteAddictionTracker,

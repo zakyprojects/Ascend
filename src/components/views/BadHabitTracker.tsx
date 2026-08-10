@@ -578,28 +578,40 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
           return (
             <div className="space-y-4">
-              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-slate-200 space-y-2">
-                <p className="font-bold text-rose-400 flex items-center gap-1.5">
-                  <AlertTriangle size={16} />
-                  Warning: Strict Point Reversal Rule
-                </p>
-                <p>
-                  Deleting <strong className="text-slate-100">"{deleteModalHabit.name}"</strong> will permanently remove all logs and streak history.
-                </p>
-                <p>
-                  Current net point contribution: <strong className={netPoints >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{netPoints >= 0 ? `+${netPoints}` : netPoints} pts</strong>.
-                </p>
-                <p className="text-slate-400 italic">
-                  Deleting will reverse all {netPoints} pts from your total score so your balance is adjusted as if this habit was never created.
-                </p>
-              </div>
+              {deleteModalHabit.isCompleted ? (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-slate-200 space-y-2">
+                  <p className="font-bold text-emerald-400 flex items-center gap-1.5">
+                    <CheckCheck size={16} />
+                    Mastered Bad Habit
+                  </p>
+                  <p>
+                    This habit is Mastered. Deleting this record will clean up your dashboard, but you will safely keep all points earned.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-slate-200 space-y-2">
+                  <p className="font-bold text-rose-400 flex items-center gap-1.5">
+                    <AlertTriangle size={16} />
+                    Warning: Strict Point Reversal Rule
+                  </p>
+                  <p>
+                    Deleting <strong className="text-slate-100">"{deleteModalHabit.name}"</strong> will permanently remove all logs and streak history.
+                  </p>
+                  <p>
+                    Current net point contribution: <strong className={netPoints >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{netPoints >= 0 ? `+${netPoints}` : netPoints} pts</strong>.
+                  </p>
+                  <p className="text-slate-400 italic">
+                    Deleting will reverse all {netPoints} pts from your total score so your balance is adjusted as if this habit was never created.
+                  </p>
+                </div>
+              )}
 
               <div className="flex gap-2 pt-2">
                 <button type="button" onClick={() => setDeleteModalHabit(null)} className="btn-secondary flex-1">
                   Cancel
                 </button>
                 <button type="button" onClick={handleConfirmDelete} className="btn-primary bg-rose-600 hover:bg-rose-500 flex-1">
-                  Confirm Delete & Reverse Pts
+                  {deleteModalHabit.isCompleted ? 'Delete Record' : 'Confirm Delete & Reverse Pts'}
                 </button>
               </div>
             </div>
