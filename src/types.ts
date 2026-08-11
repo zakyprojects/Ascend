@@ -158,6 +158,22 @@ export interface Book {
   reflection?: string;
   finishedAt?: string;
   createdAt: string;
+  targetFinishDate?: string;
+  consecutiveMisses?: number;
+  lastPenalizedDate?: string;
+}
+
+export interface ExerciseGoal {
+  targetWeeklySessions: number;
+  consecutiveMisses?: number;
+  lastEvaluatedWeek?: string;
+}
+
+export interface ReadingGoal {
+  cadence: 'daily' | 'weekly';
+  targetPages?: number;
+  consecutiveMisses?: number;
+  lastEvaluatedPeriod?: string;
 }
 
 export interface ReadingProgressLog {
@@ -515,8 +531,10 @@ export interface AppState {
 
   // New modules state
   workouts: WorkoutLog[];
+  exerciseGoal?: ExerciseGoal | null;
   books: Book[];
   readingLogs: ReadingProgressLog[];
+  readingGoal?: ReadingGoal | null;
   skills: Skill[];
   skillLogs: SkillSessionLog[];
   badHabits: BadHabit[];
@@ -552,8 +570,10 @@ export const DEFAULT_STATE: AppState = {
   readLessonIds: [],
   username: 'Guest User',
   workouts: [],
+  exerciseGoal: null,
   books: [],
   readingLogs: [],
+  readingGoal: null,
   skills: [],
   skillLogs: [],
   badHabits: [],

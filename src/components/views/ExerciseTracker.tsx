@@ -20,10 +20,14 @@ const COMMON_WORKOUT_TYPES = [
 
 export function ExerciseTracker({ store }: { store: AppStore }) {
   const [logModalOpen, setLogModalOpen] = useState(false);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [deleteModalWorkout, setDeleteModalWorkout] = useState<WorkoutLog | null>(null);
   const [workoutType, setWorkoutType] = useState('Running');
   const [customType, setCustomType] = useState('');
   const [duration, setDuration] = useState(30);
+
+  const exerciseGoal = store.state.exerciseGoal;
+  const [targetSessionsInput, setTargetSessionsInput] = useState<number>(exerciseGoal?.targetWeeklySessions || 3);
 
   const workouts = store.state.workouts;
   const today = todayKey();
@@ -82,13 +86,24 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             Log workouts, track weekly activity, and earn points (1 pt/min up to 60 pts/day)
           </p>
         </div>
-        <button
-          onClick={() => setLogModalOpen(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus size={18} />
-          <span>Log Workout</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setTargetSessionsInput(exerciseGoal?.targetWeeklySessions || 3);
+              setGoalModalOpen(true);
+            }}
+            className="btn-secondary flex items-center gap-2 text-xs"
+          >
+            <span>{exerciseGoal ? `Goal: ${exerciseGoal.targetWeeklySessions}/wk` : 'Set Target Goal'}</span>
+          </button>
+          <button
+            onClick={() => setLogModalOpen(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus size={18} />
+            <span>Log Workout</span>
+          </button>
+        </div>
       </div>
 
       {/* Hero Stats */}
@@ -285,6 +300,43 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         itemName={deleteModalWorkout ? `${deleteModalWorkout.type} (${deleteModalWorkout.durationMinutes} mins)` : ''}
         description={`Are you sure you want to delete this ${deleteModalWorkout?.type} workout log? Any points awarded (+${deleteModalWorkout?.pointsAwarded || 0} pts) will be reversed.`}
       />
+
+      {/* Target Weekly Goal Modal */}
+      <Modal open={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set Weekly Exercise Target">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            store.setExerciseGoal(targetSessionsInput);
+            setGoalModalOpen(false);
+          }}
+          className="space-y-4"
+        >
+          <p className="text-xs text-slate-400">
+            Set a target number of workout sessions per week. If you complete fewer sessions than your target by the end of the week, a miss penalty will be applied.
+          </p>
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1">Target Workout Sessions / Week</label>
+            <input
+              type="number"
+              min="0"
+              max="21"
+              value={targetSessionsInput}
+              onChange={(e) => setTargetSessionsInput(Number(e.target.value))}
+              className="input"
+              required
+            />
+            <span className="text-[11px] text-slate-500 mt-1 block">Set to 0 to disable weekly target penalty checks.</span>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={() => setGoalModalOpen(false)} className="btn-secondary flex-1">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary flex-1">
+              Save Goal
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

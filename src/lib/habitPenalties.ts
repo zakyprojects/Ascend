@@ -1,5 +1,5 @@
 import { AppState, Habit, BadHabitLog, PartnerNotification } from '@/types';
-import { todayKey, periodKey, previousPeriodKey, uid } from './dates';
+import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, uid } from './dates';
 import { createNotificationSupabase } from './supabase';
 
 export const MAX_RETROACTIVE_PENALTY_DAYS = 90;
@@ -225,6 +225,23 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
         const newTotalPts = Math.max(0, prevTotalPts - penaltyAmount);
         const actualDeduction = prevTotalPts - newTotalPts;
 
+        if (updatedState.currentUser?.id) {
+          const userId = updatedState.currentUser.id;
+          const alreadyNotified = (updatedState.notifications || []).some(
+            (n) => n.payload?.habitId === habit.id && n.payload?.period === p
+          );
+          if (!alreadyNotified) {
+            const dedupKey = `missed_habit_${habit.id}_${p}`;
+            createNotificationSupabase({
+              recipientId: userId,
+              type: 'missed_habit',
+              title: 'Habit Missed Penalty',
+              message: `You missed your habit "${habit.name}" for period ${p}. ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
+              payload: { habitId: habit.id, habitName: habit.name, period: p, dedupKey },
+            });
+          }
+        }
+
         updatedState = {
           ...updatedState,
           partnerNotifications: newNotifications,
@@ -326,6 +343,23 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
           const newTotalPts = Math.max(0, prevTotalPts - penaltyAmount);
           const actualDeduction = prevTotalPts - newTotalPts;
 
+          if (updatedState.currentUser?.id) {
+            const userId = updatedState.currentUser.id;
+            const alreadyNotified = (updatedState.notifications || []).some(
+              (n) => n.payload?.badHabitId === habit.id && n.payload?.date === key
+            );
+            if (!alreadyNotified) {
+              const dedupKey = `bad_habit_${habit.id}_${key}`;
+              createNotificationSupabase({
+                recipientId: userId,
+                type: 'bad_habit_no_report',
+                title: 'Bad Habit No-Report Penalty',
+                message: `No status reported for "${habit.name}" on ${key}. ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
+                payload: { badHabitId: habit.id, badHabitName: habit.name, date: key, dedupKey },
+              });
+            }
+          }
+
           updatedState = {
             ...updatedState,
             totalPoints: newTotalPts,
@@ -353,5 +387,271 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
   return {
     ...updatedState,
     badHabitLogs: newLogs,
+  };
+}
+
+export function processExerciseTargetPenalties(state: AppState, now: Date = new Date()): AppState {
+  if (!state.exerciseGoal || !state.exerciseGoal.targetWeeklySessions || state.exerciseGoal.targetWeeklySessions <= 0) {
+    return state;
+  }
+
+  const lastWeekKey = previousPeriodKey('weekly', 1, now);
+  if (state.exerciseGoal.lastEvaluatedWeek === lastWeekKey) {
+    return state;
+  }
+
+  const loggedInLastWeek = (state.workouts || []).filter((w) => {
+    const d = parseDate(w.date);
+    return d && weekKey(d) === lastWeekKey;
+  }).length;
+
+  const target = state.exerciseGoal.targetWeeklySessions;
+  let consecutiveMisses = state.exerciseGoal.consecutiveMisses || 0;
+  let updatedState = state;
+
+  if (loggedInLastWeek < target) {
+    consecutiveMisses += 1;
+    const multiplier = getMissPenaltyMultiplier(consecutiveMisses, state.totalPoints);
+    // Base award derived from user's average logged workout duration (or 30 mins default from ExerciseTracker log form state)
+    const avgDuration = state.workouts.length > 0
+      ? Math.round(state.workouts.reduce((sum, w) => sum + w.durationMinutes, 0) / state.workouts.length)
+      : 30;
+    const baseAward = avgDuration;
+    const penaltyAmount = Math.round(baseAward * multiplier);
+
+    const prevPts = updatedState.totalPoints;
+    const newPts = Math.max(0, prevPts - penaltyAmount);
+    const actualDeduction = prevPts - newPts;
+
+    if (updatedState.currentUser?.id) {
+      const dedupKey = `missed_exercise_${lastWeekKey}`;
+      createNotificationSupabase({
+        recipientId: updatedState.currentUser.id,
+        type: 'missed_exercise_target',
+        title: 'Exercise Goal Missed',
+        message: `You logged ${loggedInLastWeek}/${target} workout sessions for week ${lastWeekKey}. ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
+        payload: { weekKey: lastWeekKey, logged: loggedInLastWeek, target, dedupKey },
+      });
+    }
+
+    updatedState = {
+      ...updatedState,
+      totalPoints: newPts,
+      pointsHistory: [
+        {
+          id: uid(),
+          amount: -actualDeduction,
+          reason: `Missed weekly workout goal (${loggedInLastWeek}/${target} sessions, ${multiplier}x penalty)`,
+          source: 'exercise_missed',
+          timestamp: new Date().toISOString(),
+        },
+        ...updatedState.pointsHistory,
+      ].slice(0, 500),
+    };
+  } else {
+    consecutiveMisses = 0;
+  }
+
+  return {
+    ...updatedState,
+    exerciseGoal: {
+      ...state.exerciseGoal,
+      consecutiveMisses,
+      lastEvaluatedWeek: lastWeekKey,
+    },
+  };
+}
+
+export function processReadingTargetPenalties(state: AppState, now: Date = new Date()): AppState {
+  if (!state.readingGoal) return state;
+
+  let updatedState = state;
+  const goal = state.readingGoal;
+
+  if (goal.cadence === 'daily') {
+    const yesterdayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const yesterdayStr = todayKey(yesterdayDate);
+
+    if (goal.lastEvaluatedPeriod === yesterdayStr) return state;
+
+    const hasReadingLog = (state.readingLogs || []).some((l) => l.date === yesterdayStr);
+    let consecutiveMisses = goal.consecutiveMisses || 0;
+
+    if (!hasReadingLog) {
+      consecutiveMisses += 1;
+      const multiplier = getMissPenaltyMultiplier(consecutiveMisses, state.totalPoints);
+      const baseAward = 5;
+      const penaltyAmount = Math.round(baseAward * multiplier);
+
+      const prevPts = updatedState.totalPoints;
+      const newPts = Math.max(0, prevPts - penaltyAmount);
+      const actualDeduction = prevPts - newPts;
+
+      if (updatedState.currentUser?.id) {
+        const dedupKey = `missed_reading_daily_${yesterdayStr}`;
+        createNotificationSupabase({
+          recipientId: updatedState.currentUser.id,
+          type: 'missed_reading_target',
+          title: 'Daily Reading Target Missed',
+          message: `No reading logged on ${yesterdayStr}. ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
+          payload: { date: yesterdayStr, dedupKey },
+        });
+      }
+
+      updatedState = {
+        ...updatedState,
+        totalPoints: newPts,
+        pointsHistory: [
+          {
+            id: uid(),
+            amount: -actualDeduction,
+            reason: `Missed daily reading target on ${yesterdayStr} (${multiplier}x penalty)`,
+            source: 'reading_missed',
+            timestamp: new Date().toISOString(),
+          },
+          ...updatedState.pointsHistory,
+        ].slice(0, 500),
+      };
+    } else {
+      consecutiveMisses = 0;
+    }
+
+    return {
+      ...updatedState,
+      readingGoal: {
+        ...goal,
+        consecutiveMisses,
+        lastEvaluatedPeriod: yesterdayStr,
+      },
+    };
+  }
+
+  if (goal.targetPages && goal.targetPages > 0) {
+    const lastWeekKey = previousPeriodKey('weekly', 1, now);
+    if (goal.lastEvaluatedPeriod === lastWeekKey) return state;
+
+    const totalPagesLastWeek = (state.readingLogs || [])
+      .filter((l) => {
+        const d = parseDate(l.date);
+        return d && weekKey(d) === lastWeekKey;
+      })
+      .reduce((sum, l) => sum + (l.progressAmount || 0), 0);
+
+    let consecutiveMisses = goal.consecutiveMisses || 0;
+
+    if (totalPagesLastWeek < goal.targetPages) {
+      consecutiveMisses += 1;
+      const multiplier = getMissPenaltyMultiplier(consecutiveMisses, state.totalPoints);
+      // Base award derived from 7 days of daily reading log awards (5 pts/day in store.ts line 1071 = 35 pts/week)
+      const baseAward = 35;
+      const penaltyAmount = Math.round(baseAward * multiplier);
+
+      const prevPts = updatedState.totalPoints;
+      const newPts = Math.max(0, prevPts - penaltyAmount);
+      const actualDeduction = prevPts - newPts;
+
+      if (updatedState.currentUser?.id) {
+        const dedupKey = `missed_reading_weekly_${lastWeekKey}`;
+        createNotificationSupabase({
+          recipientId: updatedState.currentUser.id,
+          type: 'missed_reading_target',
+          title: 'Weekly Reading Goal Missed',
+          message: `Read ${totalPagesLastWeek}/${goal.targetPages} pages in week ${lastWeekKey}. ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
+          payload: { weekKey: lastWeekKey, logged: totalPagesLastWeek, target: goal.targetPages, dedupKey },
+        });
+      }
+
+      updatedState = {
+        ...updatedState,
+        totalPoints: newPts,
+        pointsHistory: [
+          {
+            id: uid(),
+            amount: -actualDeduction,
+            reason: `Missed weekly reading goal (${totalPagesLastWeek}/${goal.targetPages} pages, ${multiplier}x penalty)`,
+            source: 'reading_missed',
+            timestamp: new Date().toISOString(),
+          },
+          ...updatedState.pointsHistory,
+        ].slice(0, 500),
+      };
+    } else {
+      consecutiveMisses = 0;
+    }
+
+    return {
+      ...updatedState,
+      readingGoal: {
+        ...goal,
+        consecutiveMisses,
+        lastEvaluatedPeriod: lastWeekKey,
+      },
+    };
+  }
+
+  return state;
+}
+
+export function processBookDeadlinePenalties(state: AppState, now: Date = new Date()): AppState {
+  const books = state.books || [];
+  const todayStr = todayKey(now);
+  let updatedState = state;
+  let booksChanged = false;
+
+  const updatedBooks = books.map((book) => {
+    if (book.isFinished || !book.targetFinishDate) return book;
+
+    if (book.targetFinishDate < todayStr && book.lastPenalizedDate !== todayStr) {
+      const consecutiveMisses = (book.consecutiveMisses || 0) + 1;
+      const multiplier = getMissPenaltyMultiplier(consecutiveMisses, updatedState.totalPoints);
+      const baseAward = 30;
+      const penaltyAmount = Math.round(baseAward * multiplier);
+
+      const prevPts = updatedState.totalPoints;
+      const newPts = Math.max(0, prevPts - penaltyAmount);
+      const actualDeduction = prevPts - newPts;
+
+      if (updatedState.currentUser?.id) {
+        const dedupKey = `missed_book_${book.id}_${todayStr}`;
+        createNotificationSupabase({
+          recipientId: updatedState.currentUser.id,
+          type: 'missed_book_deadline',
+          title: 'Book Deadline Passed',
+          message: `Target finish date (${book.targetFinishDate}) passed for "${book.title}". ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
+          payload: { bookId: book.id, bookTitle: book.title, targetFinishDate: book.targetFinishDate, dedupKey },
+        });
+      }
+
+      updatedState = {
+        ...updatedState,
+        totalPoints: newPts,
+        pointsHistory: [
+          {
+            id: uid(),
+            amount: -actualDeduction,
+            reason: `Missed book completion deadline for "${book.title}" (${multiplier}x penalty)`,
+            source: 'book_deadline_missed',
+            timestamp: new Date().toISOString(),
+          },
+          ...updatedState.pointsHistory,
+        ].slice(0, 500),
+      };
+
+      booksChanged = true;
+      return {
+        ...book,
+        consecutiveMisses,
+        lastPenalizedDate: todayStr,
+      };
+    }
+
+    return book;
+  });
+
+  if (!booksChanged) return updatedState;
+
+  return {
+    ...updatedState,
+    books: updatedBooks,
   };
 }

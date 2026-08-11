@@ -65,7 +65,15 @@ import {
   fetchProfileByUidFromSupabase,
 } from './auth';
 import { hydrateUserSession } from './authSession';
-import { processHabitPenalties, processBadHabitNoReports, getMissPenaltyMultiplier, getHighestUserStreak } from './habitPenalties';
+import {
+  processHabitPenalties,
+  processBadHabitNoReports,
+  processExerciseTargetPenalties,
+  processReadingTargetPenalties,
+  processBookDeadlinePenalties,
+  getMissPenaltyMultiplier,
+  getHighestUserStreak,
+} from './habitPenalties';
 import { calculateUnifiedStreak } from './streakLogic';
 import {
   supabase,
@@ -184,10 +192,98 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
   return processBadHabitNoReports(baseState);
 }
 
+function mergeHydratedWithCurrent(hydratedState: AppState, current: AppState): AppState {
+  const merged: AppState = { ...hydratedState };
+
+  // 1. Point accounting: preserve points earned locally during cold boot hydration window
+  if (current.pointsHistory && current.pointsHistory.length > 0) {
+    const hydPointIds = new Set((hydratedState.pointsHistory || []).map((p) => p.id));
+    const localNewPoints = current.pointsHistory.filter((p) => !hydPointIds.has(p.id));
+    if (localNewPoints.length > 0) {
+      const addedPoints = localNewPoints.reduce((sum, p) => sum + (p.amount || 0), 0);
+      merged.pointsHistory = [...localNewPoints, ...(merged.pointsHistory || [])];
+      merged.totalPoints = Math.max(0, (merged.totalPoints || 0) + addedPoints);
+    }
+  }
+
+  // 2. Generic array merge across all entity collections
+  const arrayKeys: (keyof AppState)[] = [
+    'habits',
+    'journalEntries',
+    'leagueArchives',
+    'workouts',
+    'books',
+    'readingLogs',
+    'skills',
+    'skillLogs',
+    'badHabits',
+    'badHabitLogs',
+    'cravingLogs',
+    'focusLogs',
+    'decisionLogs',
+    'emotionLogs',
+    'weeklyGoals',
+    'libraryBooks',
+    'improvementPlans',
+    'followedPlans',
+    'partnerInvites',
+    'sharedChallenges',
+    'partnerNotifications',
+    'notifications',
+  ];
+
+  for (const key of arrayKeys) {
+    const hydArr = (hydratedState[key] as any[]) || [];
+    const currArr = (current[key] as any[]) || [];
+
+    if (!currArr.length) continue;
+
+    const hydMap = new Map<string, any>();
+    hydArr.forEach((item) => {
+      if (item && typeof item === 'object' && item.id) hydMap.set(item.id, item);
+    });
+
+    const mergedArr = [...hydArr];
+
+    currArr.forEach((currItem) => {
+      if (!currItem || typeof currItem !== 'object' || !currItem.id) return;
+
+      const hydItem = hydMap.get(currItem.id);
+      if (!hydItem) {
+        // Item created locally during hydration window
+        mergedArr.unshift(currItem);
+      } else if (JSON.stringify(currItem) !== JSON.stringify(hydItem)) {
+        // Item updated locally during hydration window
+        const idx = mergedArr.findIndex((x) => x.id === currItem.id);
+        if (idx !== -1) {
+          mergedArr[idx] = currItem;
+        }
+      }
+    });
+
+    (merged as any)[key] = mergedArr;
+  }
+
+  // 3. Primitive set merges
+  if (current.readLessonIds?.length) {
+    const existing = new Set(hydratedState.readLessonIds || []);
+    current.readLessonIds.forEach((id) => existing.add(id));
+    merged.readLessonIds = Array.from(existing);
+  }
+
+  return merged;
+}
+
 function persistState(state: AppState) {
   try {
     if (state.currentUser?.id) {
       saveUserDataToSupabase(state.currentUser.id, state);
+      // Clean up local guest storage key once session is authenticated
+      try {
+        localStorage.removeItem(GUEST_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
     } else {
       localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(state));
     }
@@ -222,17 +318,45 @@ function addPointsInternal(
 }
 
 export function useAppState() {
-  const [state, setState] = useState<AppState>(loadInitialState);
+  const [state, setStateRaw] = useState<AppState>(loadInitialState);
   const isHydrated = useRef(false);
+  const currentUserRef = useRef<UserProfile | null>(state.currentUser);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveTimer = useRef<number | null>(null);
+  const pendingImmediateFlush = useRef(false);
+
+  useEffect(() => {
+    currentUserRef.current = state.currentUser;
+  }, [state.currentUser]);
+
+  const setState = useCallback(
+    (
+      updater: AppState | ((prev: AppState) => AppState),
+      options?: { immediate?: boolean }
+    ) => {
+      if (options?.immediate) {
+        pendingImmediateFlush.current = true;
+      }
+      setStateRaw(updater);
+    },
+    []
+  );
 
   useEffect(() => {
     if (isHydrated.current) {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-      debounceTimer.current = setTimeout(() => {
+      if (pendingImmediateFlush.current) {
+        pendingImmediateFlush.current = false;
+        if (debounceTimer.current) {
+          clearTimeout(debounceTimer.current);
+          debounceTimer.current = null;
+        }
         persistState(state);
-      }, 2000);
+      } else {
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        debounceTimer.current = setTimeout(() => {
+          persistState(state);
+        }, 500);
+      }
     }
   }, [state]);
 
@@ -288,7 +412,7 @@ export function useAppState() {
           (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') &&
           session?.user
         ) {
-          if (isHydrated.current && state.currentUser?.id === session.user.id) {
+          if (isHydrated.current && currentUserRef.current?.id === session.user.id) {
             return;
           }
 
@@ -333,7 +457,7 @@ export function useAppState() {
                   lastCompletedDate: p.lastCompletedDate,
                 })),
               });
-              setState(sanitizedState);
+              setState((current) => mergeHydratedWithCurrent(sanitizedState, current));
             }
           } catch (e) {
             console.error('Error hydrating auth session:', e);
@@ -531,14 +655,20 @@ export function useAppState() {
           }
         }
 
-        setState((prev) => ({
-          ...prev,
-          partnerInvites: validInvites,
-          partnerships: activePartnerships,
-          partnership: activePartnerships[0] || null,
-          sharedChallenges: challenges,
-          notifications: fetchedNotifs,
-        }));
+        setState((prev) => {
+          const mergedNotifs = fetchedNotifs.map((fn) => {
+            const local = prev.notifications?.find((n) => n.id === fn.id);
+            return local && local.read ? { ...fn, read: true } : fn;
+          });
+          return {
+            ...prev,
+            partnerInvites: validInvites,
+            partnerships: activePartnerships,
+            partnership: activePartnerships[0] || null,
+            sharedChallenges: challenges,
+            notifications: mergedNotifs,
+          };
+        });
       } catch (e) {
         /* ignore background sync error */
       }
@@ -587,17 +717,29 @@ export function useAppState() {
 
   // Check for league period rollovers and missed-habit penalties on mount and every minute
   useEffect(() => {
-    const checkUpdates = () => {
+    const checkUpdates = (simulatedNow?: Date) => {
+      const targetNow = simulatedNow || new Date();
       setState((prev) => {
-        const archivedState = checkAndArchiveLeagues(prev);
-        const habitPenalized = processHabitPenalties(archivedState);
-        return processBadHabitNoReports(habitPenalized);
+        const archivedState = checkAndArchiveLeagues(prev, targetNow);
+        const habitPenalized = processHabitPenalties(archivedState, targetNow);
+        const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
+        const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
+        const readingPenalized = processReadingTargetPenalties(exercisePenalized, targetNow);
+        return processBookDeadlinePenalties(readingPenalized, targetNow);
       });
     };
     checkUpdates();
-    archiveTimer.current = window.setInterval(checkUpdates, 60000);
+    archiveTimer.current = window.setInterval(() => checkUpdates(), 60000);
+
+    (window as any).__triggerPenaltyCheck = (simulatedDateIso?: string) => {
+      const simDate = simulatedDateIso ? new Date(simulatedDateIso) : new Date();
+      console.log('Manually triggering penalty check for:', simDate.toISOString());
+      checkUpdates(simDate);
+    };
+
     return () => {
       if (archiveTimer.current) window.clearInterval(archiveTimer.current);
+      delete (window as any).__triggerPenaltyCheck;
     };
   }, []);
 
@@ -664,24 +806,27 @@ export function useAppState() {
   }, []);
 
   const deleteHabit = useCallback((habitId: string) => {
-    setState((prev) => {
-      const target = prev.habits.find((h) => h.id === habitId);
-      let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-      if (target && target.isPreset && target.points > 0 && target.completions && target.completions.length > 0) {
-        const ptsToDeduct = target.completions.length * target.points;
-        pointsUpdate = addPointsInternal(
-          prev,
-          -ptsToDeduct,
-          `Habit deleted: ${target.name} (${target.completions.length} completion(s) removed)`,
-          'habit'
-        );
-      }
-      return {
-        ...prev,
-        habits: prev.habits.filter((h) => h.id !== habitId),
-        ...pointsUpdate,
-      };
-    });
+    setState(
+      (prev) => {
+        const target = prev.habits.find((h) => h.id === habitId);
+        let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        if (target && target.isPreset && target.points > 0 && target.completions && target.completions.length > 0) {
+          const ptsToDeduct = target.completions.length * target.points;
+          pointsUpdate = addPointsInternal(
+            prev,
+            -ptsToDeduct,
+            `Habit deleted: ${target.name} (${target.completions.length} completion(s) removed)`,
+            'habit'
+          );
+        }
+        return {
+          ...prev,
+          habits: prev.habits.filter((h) => h.id !== habitId),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const toggleHabit = useCallback(
@@ -855,25 +1000,28 @@ export function useAppState() {
   );
 
   const deleteJournalEntry = useCallback((entryId: string) => {
-    setState((prev) => {
-      const entry = prev.journalEntries.find((e) => e.id === entryId);
-      if (!entry) return prev;
+    setState(
+      (prev) => {
+        const entry = prev.journalEntries.find((e) => e.id === entryId);
+        if (!entry) return prev;
 
-      let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
-        totalPoints: prev.totalPoints,
-        pointsHistory: prev.pointsHistory,
-      };
+        let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
+          totalPoints: prev.totalPoints,
+          pointsHistory: prev.pointsHistory,
+        };
 
-      if (entry.pointsAwarded) {
-        pointsUpdate = addPointsInternal(prev, -5, 'Journal entry deleted', 'journal');
-      }
+        if (entry.pointsAwarded) {
+          pointsUpdate = addPointsInternal(prev, -5, 'Journal entry deleted', 'journal');
+        }
 
-      return {
-        ...prev,
-        journalEntries: prev.journalEntries.filter((e) => e.id !== entryId),
-        ...pointsUpdate,
-      };
-    });
+        return {
+          ...prev,
+          journalEntries: prev.journalEntries.filter((e) => e.id !== entryId),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const getTodayJournalEntry = useCallback((date = new Date()): JournalEntry | null => {
@@ -984,35 +1132,63 @@ export function useAppState() {
   }, []);
 
   const deleteWorkout = useCallback((workoutId: string) => {
-    setState((prev) => {
-      const target = prev.workouts.find((w) => w.id === workoutId);
-      if (!target) return prev;
-      let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-      if (target.pointsAwarded > 0) {
-        pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Workout deleted: ${target.type}`, 'exercise');
-      }
-      return {
-        ...prev,
-        workouts: prev.workouts.filter((w) => w.id !== workoutId),
-        ...pointsUpdate,
-      };
-    });
+    setState(
+      (prev) => {
+        const target = prev.workouts.find((w) => w.id === workoutId);
+        if (!target) return prev;
+        let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        if (target.pointsAwarded > 0) {
+          pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Workout deleted: ${target.type}`, 'exercise');
+        }
+        return {
+          ...prev,
+          workouts: prev.workouts.filter((w) => w.id !== workoutId),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
+  }, []);
+
+  const setExerciseGoal = useCallback((targetWeeklySessions: number) => {
+    setState((prev) => ({
+      ...prev,
+      exerciseGoal: targetWeeklySessions > 0 ? { targetWeeklySessions, consecutiveMisses: 0 } : null,
+    }));
   }, []);
 
   // --- MODULE 2: READING TRACKER ACTIONS ---
-  const addBook = useCallback((title: string, author: string, totalPages: number, unit: 'pages' | 'chapters') => {
-    const book: Book = {
-      id: uid(),
-      title: title.trim(),
-      author: author.trim() || 'Unknown Author',
-      totalPages: Math.max(1, totalPages),
-      unit,
-      currentPage: 0,
-      isFinished: false,
-      createdAt: new Date().toISOString(),
-    };
-    setState((prev) => ({ ...prev, books: [book, ...prev.books] }));
-    return book;
+  const addBook = useCallback(
+    (title: string, author: string, totalPages: number, unit: 'pages' | 'chapters', targetFinishDate?: string) => {
+      const book: Book = {
+        id: uid(),
+        title: title.trim(),
+        author: author.trim() || 'Unknown Author',
+        totalPages: Math.max(1, totalPages),
+        unit,
+        currentPage: 0,
+        isFinished: false,
+        targetFinishDate: targetFinishDate?.trim() || undefined,
+        createdAt: new Date().toISOString(),
+      };
+      setState((prev) => ({ ...prev, books: [book, ...prev.books] }));
+      return book;
+    },
+    []
+  );
+
+  const setReadingGoal = useCallback((goal: { cadence: 'daily' | 'weekly'; targetPages?: number } | null) => {
+    setState((prev) => ({
+      ...prev,
+      readingGoal: goal ? { ...goal, consecutiveMisses: 0 } : null,
+    }));
+  }, []);
+
+  const updateBookTargetDate = useCallback((bookId: string, targetFinishDate?: string) => {
+    setState((prev) => ({
+      ...prev,
+      books: prev.books.map((b) => (b.id === bookId ? { ...b, targetFinishDate: targetFinishDate?.trim() || undefined } : b)),
+    }));
   }, []);
 
   const updateReadingProgress = useCallback((bookId: string, progressAmount: number, newCurrentPage: number) => {
@@ -1086,26 +1262,35 @@ export function useAppState() {
   }, []);
 
   const deleteBook = useCallback((bookId: string) => {
-    setState((prev) => {
-      const target = prev.books.find((b) => b.id === bookId);
-      if (!target) return prev;
+    setState(
+      (prev) => {
+        const target = prev.books.find((b) => b.id === bookId);
+        if (!target) return prev;
 
-      const bookLogs = prev.readingLogs.filter((l) => l.bookId === bookId);
-      const logPointsTotal = bookLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-      const finishPoints = target.isFinished ? 30 : 0;
-      const totalBookPoints = logPointsTotal + finishPoints;
+        const bookLogs = prev.readingLogs.filter((l) => l.bookId === bookId);
+        const logPointsTotal = bookLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+        const finishPoints = target.isFinished ? 30 : 0;
+        const totalBookPoints = logPointsTotal + finishPoints;
 
-      let pointsUpdate = {};
-      if (totalBookPoints > 0) {
-        pointsUpdate = addPointsInternal(prev, -totalBookPoints, `Book deleted: ${target.title}`, 'reading');
-      }
-      return {
-        ...prev,
-        books: prev.books.filter((b) => b.id !== bookId),
-        readingLogs: prev.readingLogs.filter((l) => l.bookId !== bookId),
-        ...pointsUpdate,
-      };
-    });
+        let pointsUpdate = {};
+        if (totalBookPoints > 0) {
+          pointsUpdate = addPointsInternal(prev, -totalBookPoints, `Book deleted: ${target.title}`, 'reading');
+        }
+
+        const targetTitleLower = target.title.toLowerCase();
+
+        return {
+          ...prev,
+          books: prev.books.filter((b) => b.id !== bookId),
+          readingLogs: prev.readingLogs.filter((l) => l.bookId !== bookId),
+          libraryBooks: prev.libraryBooks.filter(
+            (lb) => lb.linkedBookId !== bookId && lb.title.toLowerCase() !== targetTitleLower
+          ),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   // --- SELF IMPROVEMENT BOOKS LIBRARY ACTIONS ---
@@ -1305,29 +1490,48 @@ export function useAppState() {
   }, []);
 
   const removeBookFromLibrary = useCallback((userBookId: string) => {
-    setState((prev) => {
-      const target = prev.libraryBooks.find((lb) => lb.id === userBookId);
-      if (!target) return prev;
+    setState(
+      (prev) => {
+        const target = prev.libraryBooks.find((lb) => lb.id === userBookId);
+        if (!target) return prev;
 
-      let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
-        totalPoints: prev.totalPoints,
-        pointsHistory: prev.pointsHistory,
-      };
-      if (target.pointsAwarded > 0) {
-        pointsUpdate = addPointsInternal(
-          prev,
-          -target.pointsAwarded,
-          `Book removed from library: ${target.title}`,
-          'library_book_bonus'
+        const linkedBookId = target.linkedBookId;
+        const targetTitleLower = target.title.toLowerCase();
+
+        // Calculate points awarded across associated reading logs being removed
+        const associatedLogs = prev.readingLogs.filter((l) =>
+          linkedBookId ? l.bookId === linkedBookId || l.bookId === userBookId : l.bookId === userBookId
         );
-      }
+        const logPointsToDeduct = associatedLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
 
-      return {
-        ...prev,
-        libraryBooks: prev.libraryBooks.filter((lb) => lb.id !== userBookId),
-        ...pointsUpdate,
-      };
-    });
+        let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
+          totalPoints: prev.totalPoints,
+          pointsHistory: prev.pointsHistory,
+        };
+        const totalDeduction = (target.pointsAwarded || 0) + logPointsToDeduct;
+        if (totalDeduction > 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            -totalDeduction,
+            `Book removed from library: ${target.title}`,
+            'library_book_bonus'
+          );
+        }
+
+        return {
+          ...prev,
+          libraryBooks: prev.libraryBooks.filter((lb) => lb.id !== userBookId),
+          books: prev.books.filter(
+            (b) => (linkedBookId ? b.id !== linkedBookId : b.title.toLowerCase() !== targetTitleLower)
+          ),
+          readingLogs: prev.readingLogs.filter((l) =>
+            linkedBookId ? l.bookId !== linkedBookId && l.bookId !== userBookId : l.bookId !== userBookId
+          ),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const getUserBookStatus = useCallback(
@@ -1395,26 +1599,50 @@ export function useAppState() {
   }, []);
 
   const deleteSkill = useCallback((skillId: string) => {
-    setState((prev) => ({
-      ...prev,
-      skills: prev.skills.filter((s) => s.id !== skillId),
-      skillLogs: prev.skillLogs.filter((l) => l.skillId !== skillId),
-    }));
+    setState(
+      (prev) => {
+        const skillLogs = prev.skillLogs.filter((l) => l.skillId === skillId);
+        const totalPointsToDeduct = skillLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+        let pointsUpdate = {};
+        if (totalPointsToDeduct > 0) {
+          const targetSkill = prev.skills.find((s) => s.id === skillId);
+          const skillName = targetSkill ? targetSkill.name : 'Skill';
+          pointsUpdate = addPointsInternal(
+            prev,
+            -totalPointsToDeduct,
+            `Skill deleted (${skillLogs.length} session log(s) removed): ${skillName}`,
+            'skill'
+          );
+        }
+
+        return {
+          ...prev,
+          skills: prev.skills.filter((s) => s.id !== skillId),
+          skillLogs: prev.skillLogs.filter((l) => l.skillId !== skillId),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const deleteSkillLog = useCallback((logId: string) => {
-    setState((prev) => {
-      const target = prev.skillLogs.find((s) => s.id === logId);
-      let pointsUpdate = {};
-      if (target && target.pointsAwarded > 0) {
-        pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Skill practice log deleted`, 'skill');
-      }
-      return {
-        ...prev,
-        skillLogs: prev.skillLogs.filter((s) => s.id !== logId),
-        ...pointsUpdate,
-      };
-    });
+    setState(
+      (prev) => {
+        const target = prev.skillLogs.find((s) => s.id === logId);
+        let pointsUpdate = {};
+        if (target && target.pointsAwarded > 0) {
+          pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Skill practice log deleted`, 'skill');
+        }
+        return {
+          ...prev,
+          skillLogs: prev.skillLogs.filter((s) => s.id !== logId),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   // --- MODULE 4: BAD HABIT REDUCTION TRACKER ACTIONS ---
@@ -1427,11 +1655,7 @@ export function useAppState() {
       isCompleted: false,
       createdAt: new Date().toISOString(),
     };
-    setState((prev) => {
-      const newState = { ...prev, badHabits: [...prev.badHabits, bh] };
-      persistState(newState);
-      return newState;
-    });
+    setState((prev) => ({ ...prev, badHabits: [...prev.badHabits, bh] }));
     return bh;
   }, []);
 
@@ -1441,11 +1665,9 @@ export function useAppState() {
         const bh = prev.badHabits.find((b) => b.id === badHabitId);
         if (!bh || bh.isCompleted) return prev;
 
-        // Lock check: Once logged for today, both actions lock for the rest of that day
         const existingLog = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
         if (existingLog) return prev;
 
-        // Determine point-eligibility based on creation order among active habits
         const activeHabits = prev.badHabits
           .filter((h) => !h.isCompleted)
           .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -1500,25 +1722,11 @@ export function useAppState() {
         };
 
         const filteredLogs = (prev.badHabitLogs || []).filter((l) => !(l && l.badHabitId === badHabitId && l.date === date));
-        const newState: AppState = {
+        return {
           ...prev,
           badHabitLogs: [newLog, ...filteredLogs],
           ...pointsUpdate,
         };
-
-        console.log(`[BAD HABIT ACTION LOGGED: ${status.toUpperCase()}]`, {
-          badHabitId,
-          habitName: bh.name,
-          date,
-          status,
-          pointsChange,
-          newTotalPoints: newState.totalPoints,
-          logId: newLog.id
-        });
-
-        // Immediate synchronous persistence to Supabase DB
-        persistState(newState);
-        return newState;
       } catch (err) {
         console.error(`[ERROR IN logBadHabitDay FOR STATUS ${status}]:`, err);
         return prev;
@@ -1531,7 +1739,6 @@ export function useAppState() {
       const today = todayKey();
       const target = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === today);
       if (!target) return prev;
-      // Automatic no-report penalty CANNOT be undone
       if (target.status === 'no_report') return prev;
 
       let pointsUpdate = {};
@@ -1546,50 +1753,44 @@ export function useAppState() {
         );
       }
 
-      const newState: AppState = {
+      return {
         ...prev,
         badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === today)),
         ...pointsUpdate,
       };
-
-      // Immediate synchronous persistence to Supabase DB
-      persistState(newState);
-      return newState;
     });
   }, []);
 
   const deleteBadHabit = useCallback((badHabitId: string) => {
-    setState((prev) => {
-      const habitLogs = prev.badHabitLogs.filter((l) => l.badHabitId === badHabitId);
-      const bh = prev.badHabits.find((b) => b.id === badHabitId);
+    setState(
+      (prev) => {
+        const habitLogs = prev.badHabitLogs.filter((l) => l.badHabitId === badHabitId);
+        const bh = prev.badHabits.find((b) => b.id === badHabitId);
 
-      let pointsUpdate = {};
-      // Reverses ALL net points earned/lost through that habit ONLY if habit is NOT completed
-      if (bh && !bh.isCompleted) {
-        const netPoints = habitLogs.reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
+        let pointsUpdate = {};
+        if (bh && !bh.isCompleted) {
+          const netPoints = habitLogs.reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
 
-        if (netPoints !== 0) {
-          const reverseAmount = -netPoints;
-          pointsUpdate = addPointsInternal(
-            prev,
-            reverseAmount,
-            `Bad habit deleted (reversed net points): ${bh.name}`,
-            'bad_habit_delete'
-          );
+          if (netPoints !== 0) {
+            const reverseAmount = -netPoints;
+            pointsUpdate = addPointsInternal(
+              prev,
+              reverseAmount,
+              `Bad habit deleted (reversed net points): ${bh.name}`,
+              'bad_habit_delete'
+            );
+          }
         }
-      }
 
-      const newState: AppState = {
-        ...prev,
-        badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
-        badHabitLogs: prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId),
-        ...pointsUpdate,
-      };
-
-      // Immediate synchronous persistence to Supabase DB
-      persistState(newState);
-      return newState;
-    });
+        return {
+          ...prev,
+          badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
+          badHabitLogs: prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const completeBadHabit = useCallback((badHabitId: string) => {
@@ -1597,7 +1798,7 @@ export function useAppState() {
       const bh = prev.badHabits.find((b) => b.id === badHabitId);
       if (!bh) return prev;
 
-      const newState: AppState = {
+      return {
         ...prev,
         badHabits: prev.badHabits.map((b) =>
           b.id === badHabitId
@@ -1605,10 +1806,6 @@ export function useAppState() {
             : b
         ),
       };
-
-      // Immediate synchronous persistence to Supabase DB
-      persistState(newState);
-      return newState;
     });
   }, []);
 
@@ -1617,7 +1814,7 @@ export function useAppState() {
       const bh = prev.badHabits.find((b) => b.id === badHabitId);
       if (!bh) return prev;
 
-      const newState: AppState = {
+      return {
         ...prev,
         badHabits: prev.badHabits.map((b) =>
           b.id === badHabitId
@@ -1625,32 +1822,30 @@ export function useAppState() {
             : b
         ),
       };
-
-      persistState(newState);
-      return newState;
     });
   }, []);
 
   const deleteBadHabitLog = useCallback((badHabitId: string, date: string) => {
-    setState((prev) => {
-      const target = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
-      let pointsUpdate = {};
-      if (target && target.pointsAwardedOrDeducted !== 0) {
-        pointsUpdate = addPointsInternal(
-          prev,
-          -target.pointsAwardedOrDeducted,
-          `Bad habit log cleared for ${date}`,
-          'bad_habit_clear'
-        );
-      }
-      const newState: AppState = {
-        ...prev,
-        badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === date)),
-        ...pointsUpdate,
-      };
-      persistState(newState);
-      return newState;
-    });
+    setState(
+      (prev) => {
+        const target = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
+        let pointsUpdate = {};
+        if (target && target.pointsAwardedOrDeducted !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            -target.pointsAwardedOrDeducted,
+            `Bad habit log cleared for ${date}`,
+            'bad_habit_clear'
+          );
+        }
+        return {
+          ...prev,
+          badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === date)),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   // --- MODULE 5: ADDICTION RECOVERY ACTIONS ---
@@ -1692,23 +1887,39 @@ export function useAppState() {
       let addedPoints = 0;
       const historyToAdd: PointsEntry[] = [];
 
+      const newlyUnlockedLabels: string[] = [];
       if (hoursElapsed >= 24 && !unlocked.includes('24h')) {
         unlocked.push('24h');
         addedPoints += 20;
+        newlyUnlockedLabels.push('24 Hours Clean');
         historyToAdd.push({ id: uid(), amount: 20, reason: 'Sobriety Milestone: 24 Hours Clean! 🎉', source: 'recovery_milestone', timestamp: new Date().toISOString() });
       }
       if (hoursElapsed >= 168 && !unlocked.includes('1w')) {
         unlocked.push('1w');
         addedPoints += 50;
+        newlyUnlockedLabels.push('1 Week Clean');
         historyToAdd.push({ id: uid(), amount: 50, reason: 'Sobriety Milestone: 1 Week Clean! 🏅', source: 'recovery_milestone', timestamp: new Date().toISOString() });
       }
       if (hoursElapsed >= 720 && !unlocked.includes('1m')) {
         unlocked.push('1m');
         addedPoints += 150;
+        newlyUnlockedLabels.push('1 Month Clean');
         historyToAdd.push({ id: uid(), amount: 150, reason: 'Sobriety Milestone: 1 Month Clean! 🏆', source: 'recovery_milestone', timestamp: new Date().toISOString() });
       }
 
       if (addedPoints === 0) return prev;
+
+      if (prev.currentUser?.id && newlyUnlockedLabels.length > 0) {
+        const substance = prev.addictionTracker.title || 'Sobriety';
+        const dedupKey = `sobriety_${prev.addictionTracker.id}_${unlocked.sort().join('_')}`;
+        createNotificationSupabase({
+          recipientId: prev.currentUser.id,
+          type: 'addiction_milestone',
+          title: 'Sobriety Milestone Reached! 🎉',
+          message: `Congratulations! You unlocked milestone(s): ${newlyUnlockedLabels.join(', ')} for ${substance}.`,
+          payload: { substance, milestones: newlyUnlockedLabels, dedupKey },
+        });
+      }
 
       return {
         ...prev,
@@ -1735,31 +1946,37 @@ export function useAppState() {
   }, []);
 
   const deleteAddictionTracker = useCallback(() => {
-    setState((prev) => {
-      let milestonePtsDeducted = 0;
-      if (prev.addictionTracker?.milestonesUnlocked) {
-        if (prev.addictionTracker.milestonesUnlocked.includes('24h')) milestonePtsDeducted += 20;
-        if (prev.addictionTracker.milestonesUnlocked.includes('1w')) milestonePtsDeducted += 50;
-        if (prev.addictionTracker.milestonesUnlocked.includes('1m')) milestonePtsDeducted += 150;
-      }
-      let pointsUpdate = {};
-      if (milestonePtsDeducted > 0) {
-        pointsUpdate = addPointsInternal(prev, -milestonePtsDeducted, 'Sobriety tracker deleted', 'addiction_recovery');
-      }
-      return {
-        ...prev,
-        addictionTracker: null,
-        cravingLogs: [],
-        ...pointsUpdate,
-      };
-    });
+    setState(
+      (prev) => {
+        let milestonePtsDeducted = 0;
+        if (prev.addictionTracker?.milestonesUnlocked) {
+          if (prev.addictionTracker.milestonesUnlocked.includes('24h')) milestonePtsDeducted += 20;
+          if (prev.addictionTracker.milestonesUnlocked.includes('1w')) milestonePtsDeducted += 50;
+          if (prev.addictionTracker.milestonesUnlocked.includes('1m')) milestonePtsDeducted += 150;
+        }
+        let pointsUpdate = {};
+        if (milestonePtsDeducted > 0) {
+          pointsUpdate = addPointsInternal(prev, -milestonePtsDeducted, 'Sobriety tracker deleted', 'addiction_recovery');
+        }
+        return {
+          ...prev,
+          addictionTracker: null,
+          cravingLogs: [],
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const deleteCravingLog = useCallback((logId: string) => {
-    setState((prev) => ({
-      ...prev,
-      cravingLogs: prev.cravingLogs.filter((l) => l.id !== logId),
-    }));
+    setState(
+      (prev) => ({
+        ...prev,
+        cravingLogs: prev.cravingLogs.filter((l) => l.id !== logId),
+      }),
+      { immediate: true }
+    );
   }, []);
 
   // --- MODULE 7: PREFRONTAL CORTEX ACTIONS ---
@@ -1871,67 +2088,79 @@ export function useAppState() {
   }, []);
 
   const deleteFocusLog = useCallback((logId: string) => {
-    setState((prev) => {
-      const target = prev.focusLogs.find((f) => f.id === logId);
-      let pointsUpdate = {};
-      if (target && target.pointsAwarded > 0) {
-        pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Focus session deleted: ${target.taskName}`, 'focus');
-      }
-      return {
-        ...prev,
-        focusLogs: prev.focusLogs.filter((f) => f.id !== logId),
-        ...pointsUpdate,
-      };
-    });
+    setState(
+      (prev) => {
+        const target = prev.focusLogs.find((f) => f.id === logId);
+        let pointsUpdate = {};
+        if (target && target.pointsAwarded > 0) {
+          pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Focus session deleted: ${target.taskName}`, 'focus');
+        }
+        return {
+          ...prev,
+          focusLogs: prev.focusLogs.filter((f) => f.id !== logId),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const deleteDecisionLog = useCallback((logId: string) => {
-    setState((prev) => {
-      const target = prev.decisionLogs.find((d) => d.id === logId);
-      let ptsToDeduct = 0;
-      if (target) {
-        ptsToDeduct = target.isReflected ? 30 : 15;
-      }
-      let pointsUpdate = {};
-      if (ptsToDeduct > 0 && target) {
-        pointsUpdate = addPointsInternal(prev, -ptsToDeduct, `Decision log deleted: ${target.title}`, 'decision_journal');
-      }
-      return {
-        ...prev,
-        decisionLogs: prev.decisionLogs.filter((d) => d.id !== logId),
-        ...pointsUpdate,
-      };
-    });
+    setState(
+      (prev) => {
+        const target = prev.decisionLogs.find((d) => d.id === logId);
+        let ptsToDeduct = 0;
+        if (target) {
+          ptsToDeduct = target.isReflected ? 30 : 15;
+        }
+        let pointsUpdate = {};
+        if (ptsToDeduct > 0 && target) {
+          pointsUpdate = addPointsInternal(prev, -ptsToDeduct, `Decision log deleted: ${target.title}`, 'decision_journal');
+        }
+        return {
+          ...prev,
+          decisionLogs: prev.decisionLogs.filter((d) => d.id !== logId),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const deleteEmotionLog = useCallback((logId: string) => {
-    setState((prev) => {
-      const target = prev.emotionLogs.find((e) => e.id === logId);
-      let pointsUpdate = {};
-      if (target) {
-        pointsUpdate = addPointsInternal(prev, -5, `Emotion label deleted: ${target.emotion}`, 'emotion_label');
-      }
-      return {
-        ...prev,
-        emotionLogs: prev.emotionLogs.filter((e) => e.id !== logId),
-        ...pointsUpdate,
-      };
-    });
+    setState(
+      (prev) => {
+        const target = prev.emotionLogs.find((e) => e.id === logId);
+        let pointsUpdate = {};
+        if (target) {
+          pointsUpdate = addPointsInternal(prev, -5, `Emotion label deleted: ${target.emotion}`, 'emotion_label');
+        }
+        return {
+          ...prev,
+          emotionLogs: prev.emotionLogs.filter((e) => e.id !== logId),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const deleteWeeklyGoalDoc = useCallback((weekKey: string) => {
-    setState((prev) => {
-      const target = prev.weeklyGoals.find((w) => w.weekKey === weekKey);
-      let pointsUpdate = {};
-      if (target?.isReviewed) {
-        pointsUpdate = addPointsInternal(prev, -20, `Weekly review deleted for ${weekKey}`, 'weekly_review');
-      }
-      return {
-        ...prev,
-        weeklyGoals: prev.weeklyGoals.filter((w) => w.weekKey !== weekKey),
-        ...pointsUpdate,
-      };
-    });
+    setState(
+      (prev) => {
+        const target = prev.weeklyGoals.find((w) => w.weekKey === weekKey);
+        let pointsUpdate = {};
+        if (target?.isReviewed) {
+          pointsUpdate = addPointsInternal(prev, -20, `Weekly review deleted for ${weekKey}`, 'weekly_review');
+        }
+        return {
+          ...prev,
+          weeklyGoals: prev.weeklyGoals.filter((w) => w.weekKey !== weekKey),
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---
@@ -2339,23 +2568,26 @@ export function useAppState() {
   const deleteVisionReflectionNote = useCallback((planId: string, noteId: string) => {
     let updatedPlan: ImprovementPlan | null = null;
 
-    setState((prev) => {
-      const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
-      if (idx === -1) return prev;
-      const target = prev.improvementPlans[idx];
+    setState(
+      (prev) => {
+        const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
+        if (idx === -1) return prev;
+        const target = prev.improvementPlans[idx];
 
-      const notes = target.reflectionNotes || [];
-      const updatedNotes = notes.filter((n) => n.id !== noteId && (n as any).date !== noteId);
+        const notes = target.reflectionNotes || [];
+        const updatedNotes = notes.filter((n) => n.id !== noteId && (n as any).date !== noteId);
 
-      updatedPlan = {
-        ...target,
-        reflectionNotes: updatedNotes,
-      };
+        updatedPlan = {
+          ...target,
+          reflectionNotes: updatedNotes,
+        };
 
-      const updatedPlans = [...prev.improvementPlans];
-      updatedPlans[idx] = updatedPlan;
-      return { ...prev, improvementPlans: updatedPlans };
-    });
+        const updatedPlans = [...prev.improvementPlans];
+        updatedPlans[idx] = updatedPlan;
+        return { ...prev, improvementPlans: updatedPlans };
+      },
+      { immediate: true }
+    );
 
     if (updatedPlan) {
       updateCachedPublicPlan(updatedPlan);
@@ -2753,23 +2985,26 @@ export function useAppState() {
   const deleteFollowedVisionReflectionNote = useCallback((followId: string, noteId: string) => {
     let updatedFollow: UserPlanFollow | null = null;
 
-    setState((prev) => {
-      const idx = prev.followedPlans.findIndex((f) => f.id === followId);
-      if (idx === -1) return prev;
-      const target = prev.followedPlans[idx];
+    setState(
+      (prev) => {
+        const idx = prev.followedPlans.findIndex((f) => f.id === followId);
+        if (idx === -1) return prev;
+        const target = prev.followedPlans[idx];
 
-      const notes = target.reflectionNotes || [];
-      const updatedNotes = notes.filter((n) => n.id !== noteId && (n as any).date !== noteId);
+        const notes = target.reflectionNotes || [];
+        const updatedNotes = notes.filter((n) => n.id !== noteId && (n as any).date !== noteId);
 
-      updatedFollow = {
-        ...target,
-        reflectionNotes: updatedNotes,
-      };
+        updatedFollow = {
+          ...target,
+          reflectionNotes: updatedNotes,
+        };
 
-      const updatedFollows = [...prev.followedPlans];
-      updatedFollows[idx] = updatedFollow;
-      return { ...prev, followedPlans: updatedFollows };
-    });
+        const updatedFollows = [...prev.followedPlans];
+        updatedFollows[idx] = updatedFollow;
+        return { ...prev, followedPlans: updatedFollows };
+      },
+      { immediate: true }
+    );
 
     if (updatedFollow) {
       syncFollowedPlanToSupabase(updatedFollow);
@@ -2778,16 +3013,15 @@ export function useAppState() {
 
   const deleteFollowedPlan = useCallback((followedPlanId: string) => {
     deleteFollowedPlanFromSupabase(followedPlanId);
-    setState((prev) => {
-      const nextState = {
-        ...prev,
-        followedPlans: prev.followedPlans.filter((f) => f.id !== followedPlanId),
-      };
-      if (nextState.currentUser?.id) {
-        saveUserDataToSupabase(nextState.currentUser.id, nextState);
-      }
-      return nextState;
-    });
+    setState(
+      (prev) => {
+        return {
+          ...prev,
+          followedPlans: prev.followedPlans.filter((f) => f.id !== followedPlanId),
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const completePlanStep = useCallback((planId: string, stepId: string) => {
@@ -2863,17 +3097,14 @@ export function useAppState() {
       removeCachedPublicPlan(planId);
       syncBroadcaster.broadcast('PLAN_DELETED', { planId });
 
-      setState((prev) => {
-        const nextState = {
+      setState(
+        (prev) => ({
           ...prev,
           improvementPlans: prev.improvementPlans.filter((p) => p.id !== planId),
           followedPlans: prev.followedPlans.filter((f) => f.originalPlanId !== planId),
-        };
-        if (session.user.id) {
-          saveUserDataToSupabase(session.user.id, nextState);
-        }
-        return nextState;
-      });
+        }),
+        { immediate: true }
+      );
     } catch (err: any) {
       console.error("[Delete Plan] Fatal error deleting plan:", err);
       alert(`Fatal Error during deletion: ${err.message || 'Check console'}`);
@@ -3057,6 +3288,14 @@ export function useAppState() {
         payload: { partnershipId },
       });
 
+      // Clear/mark-read the recipient's incoming partner_invite notification so it doesn't linger unread
+      const staleNotif = (state.notifications || []).find(
+        (n) => n.type === 'partner_invite' && (n.payload?.inviteId === inviteId || n.actorId === fromId)
+      );
+      if (staleNotif) {
+        markNotificationReadSupabase(staleNotif.id);
+      }
+
       setState((prev) => {
         const updatedInvites = (prev.partnerInvites || []).filter((i) => {
           const isFromUser1 = i.fromUserId === fromId || i.fromUsername?.toLowerCase() === fromUsername.toLowerCase();
@@ -3073,10 +3312,15 @@ export function useAppState() {
           partnerInvites: updatedInvites,
           partnerships: updatedPartnerships,
           partnership: updatedPartnerships[0] || null,
+          notifications: (prev.notifications || []).map((n) =>
+            n.type === 'partner_invite' && (n.payload?.inviteId === inviteId || n.actorId === fromId)
+              ? { ...n, read: true }
+              : n
+          ),
         };
       });
     },
-    [state.partnerInvites, state.partnerships, state.currentUser, state.username]
+    [state.partnerInvites, state.partnerships, state.notifications, state.currentUser, state.username]
   );
 
   const cancelPartnerInvite = useCallback(async (inviteId: string) => {
@@ -3103,12 +3347,24 @@ export function useAppState() {
       });
     }
 
+    const staleNotif = (state.notifications || []).find(
+      (n) => n.type === 'partner_invite' && (n.payload?.inviteId === inviteId || (invite && n.actorId === invite.fromUserId))
+    );
+    if (staleNotif) {
+      markNotificationReadSupabase(staleNotif.id);
+    }
+
     await deletePartnerInviteSupabase(inviteId);
     setState((prev) => ({
       ...prev,
       partnerInvites: prev.partnerInvites.filter((i) => i.id !== inviteId),
+      notifications: (prev.notifications || []).map((n) =>
+        n.type === 'partner_invite' && (n.payload?.inviteId === inviteId || (invite && n.actorId === invite.fromUserId))
+          ? { ...n, read: true }
+          : n
+      ),
     }));
-  }, [state.partnerInvites, state.username, state.currentUser]);
+  }, [state.partnerInvites, state.notifications, state.username, state.currentUser]);
 
   const endPartnership = useCallback(async (partnershipId?: string) => {
     const targetId = partnershipId || state.partnership?.id || state.partnerships[0]?.id;
@@ -3244,10 +3500,13 @@ export function useAppState() {
   const deleteSharedChallenge = useCallback(async (challengeId: string) => {
     await deleteSharedChallengeSupabase(challengeId);
     syncBroadcaster.broadcast('CHALLENGE_DELETED', { challengeId });
-    setState((prev) => ({
-      ...prev,
-      sharedChallenges: prev.sharedChallenges.filter((c) => c.id !== challengeId),
-    }));
+    setState(
+      (prev) => ({
+        ...prev,
+        sharedChallenges: prev.sharedChallenges.filter((c) => c.id !== challengeId),
+      }),
+      { immediate: true }
+    );
   }, []);
 
   const logSharedChallengeHabit = useCallback((challengeId: string, forcedState?: boolean) => {
@@ -3476,8 +3735,11 @@ export function useAppState() {
     // New Module Actions
     logWorkout,
     deleteWorkout,
+    setExerciseGoal,
     addBook,
+    updateBookTargetDate,
     updateReadingProgress,
+    setReadingGoal,
     finishBook,
     deleteBook,
     addSkill,
@@ -3556,8 +3818,7 @@ export function useAppState() {
 
 export type AppStore = ReturnType<typeof useAppState>;
 
-function checkAndArchiveLeagues(state: AppState): AppState {
-  const now = new Date();
+function checkAndArchiveLeagues(state: AppState, now: Date = new Date()): AppState {
   const types: LeagueType[] = ['weekly', 'monthly', 'ninetyDay'];
   const newArchives: LeagueArchive[] = [];
 

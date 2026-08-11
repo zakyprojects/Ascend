@@ -8,6 +8,7 @@ import { todayKey, formatDateLong } from '@/lib/dates';
 
 export function ReadingTracker({ store }: { store: AppStore }) {
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [progressModalBook, setProgressModalBook] = useState<Book | null>(null);
   const [finishModalBook, setFinishModalBook] = useState<Book | null>(null);
   const [deleteModalBook, setDeleteModalBook] = useState<Book | null>(null);
@@ -17,6 +18,11 @@ export function ReadingTracker({ store }: { store: AppStore }) {
   const [author, setAuthor] = useState('');
   const [totalPages, setTotalPages] = useState(200);
   const [unit, setUnit] = useState<'pages' | 'chapters'>('pages');
+  const [targetFinishDate, setTargetFinishDate] = useState('');
+
+  const readingGoal = store.state.readingGoal;
+  const [goalCadenceInput, setGoalCadenceInput] = useState<'daily' | 'weekly'>(readingGoal?.cadence || 'daily');
+  const [targetPagesInput, setTargetPagesInput] = useState<number>(readingGoal?.targetPages || 50);
 
   const [progressInput, setProgressInput] = useState(0);
   const [reflectionInput, setReflectionInput] = useState('');
@@ -53,12 +59,13 @@ export function ReadingTracker({ store }: { store: AppStore }) {
   const handleAddBookSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || totalPages <= 0) return;
-    store.addBook(title, author, Number(totalPages), unit);
+    store.addBook(title, author, Number(totalPages), unit, targetFinishDate);
     setAddModalOpen(false);
     setTitle('');
     setAuthor('');
     setTotalPages(200);
     setUnit('pages');
+    setTargetFinishDate('');
   };
 
   const handleProgressSubmit = (e: React.FormEvent) => {
@@ -96,10 +103,28 @@ export function ReadingTracker({ store }: { store: AppStore }) {
             Track your reading progress, maintain daily reading streaks, and reflect on finished books
           </p>
         </div>
-        <button onClick={() => setAddModalOpen(true)} className="btn-primary flex items-center gap-2">
-          <Plus size={18} />
-          <span>Add Book</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setGoalCadenceInput(readingGoal?.cadence || 'daily');
+              setTargetPagesInput(readingGoal?.targetPages || 50);
+              setGoalModalOpen(true);
+            }}
+            className="btn-secondary flex items-center gap-2 text-xs"
+          >
+            <span>
+              {readingGoal
+                ? readingGoal.cadence === 'daily'
+                  ? 'Goal: Read Daily'
+                  : `Goal: ${readingGoal.targetPages} pgs/wk`
+                : 'Set Reading Goal'}
+            </span>
+          </button>
+          <button onClick={() => setAddModalOpen(true)} className="btn-primary flex items-center gap-2">
+            <Plus size={18} />
+            <span>Add Book</span>
+          </button>
+        </div>
       </div>
 
       {/* Hero Stats */}
@@ -188,6 +213,14 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                           style={{ width: `${percent}%` }}
                         />
                       </div>
+                      {book.targetFinishDate && (
+                        <div className="text-[11px] text-slate-400 mt-2 flex items-center justify-between">
+                          <span>Target Deadline:</span>
+                          <span className={`font-mono font-medium ${book.targetFinishDate < today ? 'text-rose-400' : 'text-slate-300'}`}>
+                            {book.targetFinishDate} {book.targetFinishDate < today ? '(Overdue)' : ''}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -310,6 +343,17 @@ export function ReadingTracker({ store }: { store: AppStore }) {
             </div>
           </div>
 
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1">Optional Target Finish Date</label>
+            <input
+              type="date"
+              value={targetFinishDate}
+              onChange={(e) => setTargetFinishDate(e.target.value)}
+              className="input font-mono text-xs"
+            />
+            <span className="text-[11px] text-slate-500 mt-1 block">Set a target completion deadline to get notified if missed.</span>
+          </div>
+
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setAddModalOpen(false)} className="btn-secondary flex-1">
               Cancel
@@ -408,6 +452,70 @@ export function ReadingTracker({ store }: { store: AppStore }) {
         itemName={deleteModalBook?.title}
         description={`Are you sure you want to delete "${deleteModalBook?.title}"? This will remove the book and its reading history.`}
       />
+
+      {/* Target Reading Goal Modal */}
+      <Modal open={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set Target Reading Goal">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            store.setReadingGoal({
+              cadence: goalCadenceInput,
+              targetPages: goalCadenceInput === 'weekly' ? targetPagesInput : undefined,
+            });
+            setGoalModalOpen(false);
+          }}
+          className="space-y-4"
+        >
+          <p className="text-xs text-slate-400">
+            Opt into a daily or weekly target reading expectation. Misses will incur an escalating penalty and trigger a notification.
+          </p>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1">Cadence Type</label>
+            <select
+              value={goalCadenceInput}
+              onChange={(e) => setGoalCadenceInput(e.target.value as 'daily' | 'weekly')}
+              className="input text-xs"
+            >
+              <option value="daily">Daily Habit (Log progress every day)</option>
+              <option value="weekly">Weekly Target Pages/Chapters Goal</option>
+            </select>
+          </div>
+
+          {goalCadenceInput === 'weekly' && (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Target Pages / Chapters Per Week</label>
+              <input
+                type="number"
+                min="1"
+                value={targetPagesInput}
+                onChange={(e) => setTargetPagesInput(Number(e.target.value))}
+                className="input text-xs"
+                required
+              />
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                store.setReadingGoal(null);
+                setGoalModalOpen(false);
+              }}
+              className="btn-secondary text-rose-400 border-rose-500/20 hover:bg-rose-500/10 text-xs px-3"
+            >
+              Disable Goal
+            </button>
+            <button type="button" onClick={() => setGoalModalOpen(false)} className="btn-secondary flex-1 text-xs">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary flex-1 text-xs">
+              Save Goal
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { Timer, BrainCircuit, Scale, HeartHandshake, Target, Play, Pause, Rotate
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { todayKey, formatDateLong, parseDate } from '@/lib/dates';
+import { todayKey, formatDateLong, parseDate, weekKey, startOfWeek as getStartOfWeek } from '@/lib/dates';
 import { WeeklyGoalItem } from '@/types';
 
 type PFCTab = 'focus' | 'decision' | 'emotion' | 'goals';
@@ -111,13 +111,9 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
   // Weekly focus minutes
   const now = new Date();
-  const startOfWeek = new Date(now);
-  const dayOfWeek = now.getDay();
-  const diffToMon = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
-  startOfWeek.setDate(now.getDate() + diffToMon);
-  startOfWeek.setHours(0, 0, 0, 0);
+  const weekStart = getStartOfWeek(now);
 
-  const weeklyFocusLogs = focusLogs.filter((l) => (parseDate(l.date) || new Date(0)) >= startOfWeek);
+  const weeklyFocusLogs = focusLogs.filter((l) => (parseDate(l.date) || new Date(0)) >= weekStart);
   const weeklyFocusMinutes = weeklyFocusLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
 
   // Timer Effect
@@ -702,7 +698,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
 // 4. WEEKLY GOAL PLANNING & REVIEW SUBMODULE
 // ----------------------------------------------------------------------
 function WeeklyGoalsSubmodule({ store }: { store: AppStore }) {
-  const currentWeekKey = '2026-W31'; // active week
+  const currentWeekKey = weekKey(); // active week key (YYYY-Www)
   const weeklyGoals = store.state.weeklyGoals;
 
   const currentGoalDoc = weeklyGoals.find((w) => w.weekKey === currentWeekKey) || {

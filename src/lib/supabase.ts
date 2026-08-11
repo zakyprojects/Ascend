@@ -112,8 +112,18 @@ export async function fetchUserDataFromSupabase(userId: string): Promise<AppStat
 export async function saveUserDataToSupabase(userId: string, state: AppState) {
   if (!isSupabaseConfigured) return;
 
-  // GUARD: Never write obviously-default/unhydrated state over existing user data
-  const hasNoData =
+  // SAFETY CHECK 1: Ensure user ID matches the logged-in state user
+  if (!userId || !state.currentUser || state.currentUser.id !== userId) {
+    console.warn('[GUARD] Blocked saveUserDataToSupabase due to missing or mismatched userId:', {
+      userId,
+      stateUserId: state.currentUser?.id,
+    });
+    return;
+  }
+
+  // SAFETY CHECK 2: Middle-ground zero-out wipe protection
+  // Only evaluate if the incoming state is completely empty across ALL modules
+  const isIncomingStateCompletelyEmpty =
     state.totalPoints === 0 &&
     (!state.habits || state.habits.length === 0) &&
     (!state.badHabits || state.badHabits.length === 0) &&
@@ -123,26 +133,53 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
     (!state.journalEntries || state.journalEntries.length === 0) &&
     (!state.workouts || state.workouts.length === 0) &&
     (!state.books || state.books.length === 0) &&
-    (!state.skills || state.skills.length === 0);
+    (!state.libraryBooks || state.libraryBooks.length === 0) &&
+    (!state.skills || state.skills.length === 0) &&
+    (!state.focusLogs || state.focusLogs.length === 0) &&
+    (!state.decisionLogs || state.decisionLogs.length === 0) &&
+    (!state.emotionLogs || state.emotionLogs.length === 0) &&
+    (!state.weeklyGoals || state.weeklyGoals.length === 0) &&
+    !state.addictionTracker;
 
-  if (hasNoData) {
+  if (isIncomingStateCompletelyEmpty) {
     const existing = await fetchUserDataFromSupabase(userId);
-    const existingHasData =
-      existing &&
-      (existing.totalPoints > 0 ||
-        (existing.habits && existing.habits.length > 0) ||
-        (existing.badHabits && existing.badHabits.length > 0) ||
-        (existing.improvementPlans && existing.improvementPlans.length > 0));
+    if (existing) {
+      const MIN_ESTABLISHED_POINTS = 50;
+      const MIN_ESTABLISHED_ITEMS = 5;
 
-    if (existingHasData) {
-      console.warn('[GUARD] Blocked zero-out write to user_data for', userId);
-      return;
+      const existingItemCount =
+        (existing.habits?.length || 0) +
+        (existing.badHabits?.length || 0) +
+        (existing.journalEntries?.length || 0) +
+        (existing.workouts?.length || 0) +
+        (existing.books?.length || 0) +
+        (existing.libraryBooks?.length || 0) +
+        (existing.skills?.length || 0) +
+        (existing.improvementPlans?.length || 0) +
+        (existing.followedPlans?.length || 0);
+
+      const existingHasSubstantialData =
+        existing.totalPoints >= MIN_ESTABLISHED_POINTS ||
+        existingItemCount >= MIN_ESTABLISHED_ITEMS;
+
+      if (existingHasSubstantialData) {
+        console.warn('[GUARD] Blocked accidental zero-out wipe to user_data for established account:', userId);
+        return;
+      }
     }
   }
 
   try {
-    // 1. MUST upsert profiles FIRST to satisfy foreign key constraint user_data_user_id_fkey
-    if (state.currentUser) {
+    // Execute user_data upsert and profiles upsert in parallel for maximum speed
+    const userDataPromise = supabase.from('user_data').upsert({
+      user_id: userId,
+      state: state,
+      updated_at: new Date().toISOString(),
+    });
+
+    const profilePromise = (async () => {
+      if (!state.currentUser) return null;
+
       const habitsCompletedCount = (state.habits || []).reduce((acc, h) => acc + (h.completions?.length || 0), 0);
       const habitsCompletedTodayCount = (state.habits || []).reduce((acc, h) => {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -211,17 +248,26 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
       if (profErr) {
         console.error('Error upserting profile in Supabase:', profErr);
       }
-    }
+      return profErr;
+    })();
 
-    // 2. Save full state to user_data table SECOND
-    const { error: dataErr } = await supabase.from('user_data').upsert({
-      user_id: userId,
-      state: state,
-      updated_at: new Date().toISOString(),
-    });
+    const [dataResult] = await Promise.all([userDataPromise, profilePromise]);
 
-    if (dataErr) {
-      console.error('Error upserting user_data in Supabase:', dataErr);
+    if (dataResult.error) {
+      if (dataResult.error.code === '23503') {
+        // Foreign key constraint: Wait for profile creation then retry user_data upsert
+        await profilePromise;
+        const { error: retryErr } = await supabase.from('user_data').upsert({
+          user_id: userId,
+          state: state,
+          updated_at: new Date().toISOString(),
+        });
+        if (retryErr) {
+          console.error('Error retrying user_data upsert in Supabase:', retryErr);
+        }
+      } else {
+        console.error('Error upserting user_data in Supabase:', dataResult.error);
+      }
     }
   } catch (e) {
     console.error('Error saving user_data to Supabase:', e);
@@ -1213,7 +1259,7 @@ export async function createNotificationSupabase(
     const { data: authData } = await supabase.auth.getUser();
     const actorId = authData?.user?.id || notif.actorId || null;
 
-    // 1. Try SECURITY DEFINER RPC first (same reliable execution model as daily reminders)
+    // 1. Try SECURITY DEFINER RPC first (executes atomic check-and-insert in 1 database transaction)
     const { data: rpcData, error: rpcErr } = await supabase.rpc('create_notification_atomic', {
       p_recipient_id: notif.recipientId,
       p_actor_id: actorId,
@@ -1225,7 +1271,8 @@ export async function createNotificationSupabase(
       p_payload: notif.payload || {},
     });
 
-    if (!rpcErr && rpcData) {
+    if (!rpcErr) {
+      if (!rpcData) return null; // Deduplicated by atomic Postgres RPC
       return {
         id: rpcData.id,
         recipientId: rpcData.recipient_id,
@@ -1239,6 +1286,8 @@ export async function createNotificationSupabase(
         read: rpcData.read ?? false,
         createdAt: rpcData.created_at,
       };
+    } else {
+      console.warn('[createNotificationSupabase] RPC create_notification_atomic failed:', rpcErr.message, 'Code:', rpcErr.code);
     }
 
     // 2. Direct table SELECT/INSERT fallback
@@ -1261,6 +1310,10 @@ export async function createNotificationSupabase(
       .single();
 
     if (error || !data) {
+      if (error?.code === '23505' || error?.message?.includes('unique constraint') || error?.message?.includes('idx_notifications_dedup')) {
+        console.info('[createNotificationSupabase] Notification deduplicated via idx_notifications_dedup constraint');
+        return null;
+      }
       console.warn('Supabase notification insertion warning:', error?.message);
       return null;
     }
