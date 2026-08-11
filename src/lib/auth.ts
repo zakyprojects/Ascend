@@ -448,10 +448,64 @@ export async function updateProfilePrivacy(
       avatar: data.avatar || '🧑',
       createdAt: data.created_at,
       isProfilePublic: data.is_profile_public ?? true,
+      acceptPartnerInvites: data.accept_partner_invites ?? true,
     };
   } catch (e) {
     console.error('Error updating profile privacy:', e);
     return null;
+  }
+}
+
+/**
+ * Update accept_partner_invites setting in Supabase profiles.
+ */
+export async function updateProfileAcceptPartnerInvites(
+  userId: string,
+  accept: boolean
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ accept_partner_invites: accept })
+      .eq('id', userId);
+
+    if (error) {
+      console.warn('Error updating accept_partner_invites in Supabase:', error.message);
+    }
+  } catch (e) {
+    console.warn('updateProfileAcceptPartnerInvites error:', e);
+  }
+}
+
+/**
+ * Update notification preferences in Supabase profiles.
+ */
+export async function updateProfileNotificationPreferences(
+  userId: string,
+  prefs: {
+    notifDailyReminder?: boolean;
+    notifPartnerActivity?: boolean;
+    notifLeagueUpdates?: boolean;
+  }
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  try {
+    const payload: Record<string, boolean> = {};
+    if (prefs.notifDailyReminder !== undefined) payload.notif_daily_reminder = prefs.notifDailyReminder;
+    if (prefs.notifPartnerActivity !== undefined) payload.notif_partner_activity = prefs.notifPartnerActivity;
+    if (prefs.notifLeagueUpdates !== undefined) payload.notif_league_updates = prefs.notifLeagueUpdates;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(payload)
+      .eq('id', userId);
+
+    if (error) {
+      console.warn('Error updating notification preferences in Supabase:', error.message);
+    }
+  } catch (e) {
+    console.warn('updateProfileNotificationPreferences error:', e);
   }
 }
 
@@ -622,7 +676,7 @@ export function getAllPublicImprovementPlans(plansOverride?: ImprovementPlan[]):
  */
 export async function fetchProfileByUidFromSupabase(
   targetUid: string
-): Promise<{ id: string; username: string; avatar: string; uid: string } | null> {
+): Promise<{ id: string; username: string; avatar: string; uid: string; accept_partner_invites?: boolean; acceptPartnerInvites?: boolean } | null> {
   const trimmed = targetUid.trim();
   if (!trimmed) return null;
 
@@ -633,20 +687,29 @@ export async function fetchProfileByUidFromSupabase(
         .rpc('get_profile_by_uid', { target_uid: trimmed });
 
       if (!rpcErr && rpcData && rpcData.length > 0) {
-        return rpcData[0] as { id: string; username: string; avatar: string; uid: string };
+        const item = rpcData[0];
+        return {
+          ...item,
+          accept_partner_invites: item.accept_partner_invites ?? true,
+          acceptPartnerInvites: item.accept_partner_invites ?? item.acceptPartnerInvites ?? true,
+        };
       }
 
       // 2. Direct table SELECT fallback
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, avatar, uid')
+        .select('id, username, avatar, uid, accept_partner_invites')
         .eq('uid', trimmed)
         .maybeSingle();
 
       if (error) {
         console.warn('Supabase UID lookup warning:', error.message);
       } else if (data) {
-        return data as { id: string; username: string; avatar: string; uid: string };
+        return {
+          ...data,
+          accept_partner_invites: data.accept_partner_invites ?? true,
+          acceptPartnerInvites: data.accept_partner_invites ?? true,
+        };
       }
     } catch (e) {
       console.warn('Error executing UID lookup query:', e);
@@ -661,6 +724,8 @@ export async function fetchProfileByUidFromSupabase(
       username: cachedMatch.username,
       avatar: cachedMatch.avatar || '🧑',
       uid: cachedMatch.uid,
+      accept_partner_invites: cachedMatch.accept_partner_invites ?? cachedMatch.acceptPartnerInvites ?? true,
+      acceptPartnerInvites: cachedMatch.accept_partner_invites ?? cachedMatch.acceptPartnerInvites ?? true,
     };
   }
 
@@ -672,6 +737,8 @@ export async function fetchProfileByUidFromSupabase(
       username: seedMatch.username,
       avatar: seedMatch.avatar,
       uid: seedMatch.uid,
+      accept_partner_invites: true,
+      acceptPartnerInvites: true,
     };
   }
 

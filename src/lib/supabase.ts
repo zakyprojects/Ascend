@@ -218,6 +218,10 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
         email: state.currentUser.email,
         avatar: state.currentUser.avatar || '🧑',
         is_profile_public: state.currentUser.isProfilePublic ?? true,
+        accept_partner_invites: state.currentUser.acceptPartnerInvites ?? true,
+        notif_daily_reminder: state.currentUser.notifDailyReminder ?? true,
+        notif_partner_activity: state.currentUser.notifPartnerActivity ?? true,
+        notif_league_updates: state.currentUser.notifLeagueUpdates ?? true,
         total_points: state.totalPoints || 0,
         points_history: state.pointsHistory || [],
         stats: userStats,
@@ -235,6 +239,14 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
       let { error: profErr } = await supabase.from('profiles').upsert(profilePayload);
 
       if (profErr) {
+        if (profErr.message?.includes('accept_partner_invites')) {
+          delete profilePayload.accept_partner_invites;
+        }
+        if (profErr.message?.includes('notif_')) {
+          delete profilePayload.notif_daily_reminder;
+          delete profilePayload.notif_partner_activity;
+          delete profilePayload.notif_league_updates;
+        }
         if (profErr.message?.includes('last_username_change_at')) {
           delete profilePayload.last_username_change_at;
         }
@@ -1291,6 +1303,27 @@ export async function createNotificationSupabase(
     }
 
     // 2. Direct table SELECT/INSERT fallback
+    const { data: recipientProfile } = await supabase
+      .from('profiles')
+      .select('notif_partner_activity, notif_league_updates, notif_daily_reminder')
+      .eq('id', notif.recipientId)
+      .maybeSingle();
+
+    if (recipientProfile) {
+      if (['partner_nudge', 'challenge_completed'].includes(notif.type) && recipientProfile.notif_partner_activity === false) {
+        console.info(`[createNotificationSupabase] Notification type '${notif.type}' suppressed for user ${notif.recipientId} (notif_partner_activity is false)`);
+        return null;
+      }
+      if (['league_reset', 'league_promotion', 'league_demotion', 'league_update'].includes(notif.type) && recipientProfile.notif_league_updates === false) {
+        console.info(`[createNotificationSupabase] Notification type '${notif.type}' suppressed for user ${notif.recipientId} (notif_league_updates is false)`);
+        return null;
+      }
+      if (['daily_reminder'].includes(notif.type) && recipientProfile.notif_daily_reminder === false) {
+        console.info(`[createNotificationSupabase] Notification type '${notif.type}' suppressed for user ${notif.recipientId} (notif_daily_reminder is false)`);
+        return null;
+      }
+    }
+
     const payloadRow = {
       recipient_id: notif.recipientId,
       actor_id: actorId,

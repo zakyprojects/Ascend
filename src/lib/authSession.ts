@@ -112,6 +112,10 @@ export function buildUserProfile(
       authUser?.created_at ||
       new Date().toISOString(),
     isProfilePublic: (profileData?.is_profile_public as boolean | undefined) ?? true,
+    acceptPartnerInvites: (profileData?.accept_partner_invites as boolean | undefined) ?? true,
+    notifDailyReminder: (profileData?.notif_daily_reminder as boolean | undefined) ?? true,
+    notifPartnerActivity: (profileData?.notif_partner_activity as boolean | undefined) ?? true,
+    notifLeagueUpdates: (profileData?.notif_league_updates as boolean | undefined) ?? true,
     isAnonymous,
     lastUsernameChangeAt: (profileData?.last_username_change_at as string | undefined) || undefined,
   };

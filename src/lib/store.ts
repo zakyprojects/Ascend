@@ -55,6 +55,8 @@ import {
 import {
   logoutUser,
   updateProfilePrivacy,
+  updateProfileAcceptPartnerInvites,
+  updateProfileNotificationPreferences,
   getAllPublicImprovementPlans,
   getRegisteredCompetitors,
   setCachedProfiles,
@@ -1096,6 +1098,94 @@ export function useAppState() {
         ? { ...prev.currentUser, isProfilePublic: updated?.isProfilePublic ?? newPrivacy }
         : null,
     }));
+  }, [state.currentUser]);
+
+  const toggleAcceptPartnerInvites = useCallback(async () => {
+    const current = state.currentUser;
+    if (!current) return;
+
+    const currentSetting = current.acceptPartnerInvites ?? true;
+    const nextSetting = !currentSetting;
+
+    setState(
+      (prev) => ({
+        ...prev,
+        currentUser: prev.currentUser
+          ? { ...prev.currentUser, acceptPartnerInvites: nextSetting }
+          : null,
+      }),
+      { immediate: true }
+    );
+
+    if (current.id) {
+      await updateProfileAcceptPartnerInvites(current.id, nextSetting);
+    }
+  }, [state.currentUser]);
+
+  const toggleNotifDailyReminder = useCallback(async () => {
+    const current = state.currentUser;
+    if (!current) return;
+
+    const currentSetting = current.notifDailyReminder ?? true;
+    const nextSetting = !currentSetting;
+
+    setState(
+      (prev) => ({
+        ...prev,
+        currentUser: prev.currentUser
+          ? { ...prev.currentUser, notifDailyReminder: nextSetting }
+          : null,
+      }),
+      { immediate: true }
+    );
+
+    if (current.id) {
+      await updateProfileNotificationPreferences(current.id, { notifDailyReminder: nextSetting });
+    }
+  }, [state.currentUser]);
+
+  const toggleNotifPartnerActivity = useCallback(async () => {
+    const current = state.currentUser;
+    if (!current) return;
+
+    const currentSetting = current.notifPartnerActivity ?? true;
+    const nextSetting = !currentSetting;
+
+    setState(
+      (prev) => ({
+        ...prev,
+        currentUser: prev.currentUser
+          ? { ...prev.currentUser, notifPartnerActivity: nextSetting }
+          : null,
+      }),
+      { immediate: true }
+    );
+
+    if (current.id) {
+      await updateProfileNotificationPreferences(current.id, { notifPartnerActivity: nextSetting });
+    }
+  }, [state.currentUser]);
+
+  const toggleNotifLeagueUpdates = useCallback(async () => {
+    const current = state.currentUser;
+    if (!current) return;
+
+    const currentSetting = current.notifLeagueUpdates ?? true;
+    const nextSetting = !currentSetting;
+
+    setState(
+      (prev) => ({
+        ...prev,
+        currentUser: prev.currentUser
+          ? { ...prev.currentUser, notifLeagueUpdates: nextSetting }
+          : null,
+      }),
+      { immediate: true }
+    );
+
+    if (current.id) {
+      await updateProfileNotificationPreferences(current.id, { notifLeagueUpdates: nextSetting });
+    }
   }, [state.currentUser]);
 
   // --- MODULE 1: EXERCISE TRACKER ACTIONS ---
@@ -3133,6 +3223,12 @@ export function useAppState() {
         throw new Error(`No user found with User ID '${trimmedUid}'. Please verify the 6-digit User ID and try again.`);
       }
 
+      // Check if target user accepts partnership invites
+      const acceptsInvites = profileData.accept_partner_invites ?? profileData.acceptPartnerInvites ?? true;
+      if (!acceptsInvites) {
+        throw new Error("This user isn't accepting partner invites right now");
+      }
+
       const targetUserId = profileData.id;
       const targetUsername = profileData.username;
       const targetAvatar = profileData.avatar || '🧑';
@@ -3730,6 +3826,10 @@ export function useAppState() {
     updateProfileUsername,
     updateProfileAvatar,
     toggleProfilePrivacy,
+    toggleAcceptPartnerInvites,
+    toggleNotifDailyReminder,
+    toggleNotifPartnerActivity,
+    toggleNotifLeagueUpdates,
     getLeagueData,
     getPublicImprovementPlans,
     // New Module Actions

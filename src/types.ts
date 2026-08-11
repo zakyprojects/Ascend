@@ -22,6 +22,12 @@ export interface UserProfile {
   createdAt: string;
   /** Whether detailed statistics and habits list are visible to other users on leaderboards (default true) */
   isProfilePublic?: boolean;
+  /** Whether the user accepts new incoming accountability partner invites (default true) */
+  acceptPartnerInvites?: boolean;
+  /** Notification preferences (default true) */
+  notifDailyReminder?: boolean;
+  notifPartnerActivity?: boolean;
+  notifLeagueUpdates?: boolean;
   /** Whether the user is currently an anonymous guest account */
   isAnonymous?: boolean;
   /** ISO timestamp string of the last username change */
