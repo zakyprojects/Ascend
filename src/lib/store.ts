@@ -2085,7 +2085,7 @@ export function useAppState() {
   }, []);
 
   // --- MODULE 7: PREFRONTAL CORTEX ACTIONS ---
-  const logFocusSession = useCallback((taskName: string, durationMinutes: number, skillId?: string) => {
+  const logFocusSession = useCallback((taskName: string, durationMinutes: number, skillId?: string, reflection?: string) => {
     const date = todayKey();
     const pointsToAward = Math.max(5, Math.round(durationMinutes * 0.6));
     setState((prev) => {
@@ -2096,6 +2096,7 @@ export function useAppState() {
         skillId,
         durationMinutes,
         pointsAwarded: pointsToAward,
+        reflection: reflection?.trim() || undefined,
         createdAt: new Date().toISOString(),
       };
       const pointsUpdate = addPointsInternal(prev, pointsToAward, `Focus session completed (${durationMinutes}m)`, 'focus');

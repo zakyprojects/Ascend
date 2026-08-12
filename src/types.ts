@@ -298,6 +298,7 @@ export interface FocusSessionLog {
   skillId?: string;
   durationMinutes: number;
   pointsAwarded: number;
+  reflection?: string;
   createdAt: string;
 }
 

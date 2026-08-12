@@ -1,5 +1,31 @@
 import { useState, useEffect } from 'react';
-import { Timer, BrainCircuit, Scale, HeartHandshake, Target, Play, Pause, RotateCcw, Plus, CheckCircle2, Award, Calendar, Sparkles, Trash2 } from 'lucide-react';
+import {
+  Timer,
+  BrainCircuit,
+  Scale,
+  HeartHandshake,
+  Target,
+  Play,
+  Pause,
+  RotateCcw,
+  Plus,
+  CheckCircle2,
+  Award,
+  Calendar,
+  Sparkles,
+  Trash2,
+  HelpCircle,
+  Info,
+  Bell,
+  BellOff,
+  Clock,
+  Sliders,
+  AlertTriangle,
+  BookOpen,
+  Zap,
+  X,
+  Check,
+} from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -95,64 +121,370 @@ export function PrefrontalCortex({ store }: { store: AppStore }) {
 // ----------------------------------------------------------------------
 // 1. DEEP FOCUS POMODORO TIMER SUBMODULE
 // ----------------------------------------------------------------------
+const FOCUS_STORAGE_KEY = 'ascend_active_focus_session';
+
+interface PersistedFocusSession {
+  startTime: number; // ms timestamp
+  plannedDurationSeconds: number;
+  totalSessionMinutes: number;
+  taskName: string;
+  skillId?: string;
+  mode: 'focus' | 'break';
+  breakMinutes: number;
+  isPaused: boolean;
+  pausedRemainingSeconds: number;
+  isCustom: boolean;
+  focusMinutes: number;
+  startedAtIso: string;
+}
+
+function calculateRemainingSeconds(session: PersistedFocusSession): number {
+  if (session.isPaused) {
+    return session.pausedRemainingSeconds;
+  }
+  const elapsedSeconds = (Date.now() - session.startTime) / 1000;
+  const remaining = session.plannedDurationSeconds - elapsedSeconds;
+  return Math.max(0, Math.ceil(remaining));
+}
+
+function sendCompletionNotification(mode: 'focus' | 'break', taskName: string, durationMins: number) {
+  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      const title = mode === 'focus' ? '🎯 Deep Focus Complete!' : '☕ Rest Break Ended!';
+      const body = mode === 'focus'
+        ? `Outstanding focus! You completed ${durationMins} minutes on "${taskName}".`
+        : 'Rest break is over. Ready for your next deep focus session?';
+      new Notification(title, {
+        body,
+        icon: '/favicon.ico',
+      });
+    } catch (err) {
+      console.warn('System notification execution failed:', err);
+    }
+  }
+}
+
 function FocusTimerSubmodule({ store }: { store: AppStore }) {
   const [deleteModalLog, setDeleteModalLog] = useState<any | null>(null);
+  const [aboutModalOpen, setAboutModalOpen] = useState(false);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [pendingPresetSwitch, setPendingPresetSwitch] = useState<{ focus: number; breakMins: number; custom: boolean } | null>(null);
+
+  const [reflectionModalOpen, setReflectionModalOpen] = useState(false);
+  const [completedSessionData, setCompletedSessionData] = useState<{ taskName: string; durationMinutes: number; skillId?: string } | null>(null);
+  const [reflectionText, setReflectionText] = useState('');
+
+  // Duration settings
   const [focusMinutes, setFocusMinutes] = useState(25);
   const [breakMinutes, setBreakMinutes] = useState(5);
+  const [isCustom, setIsCustom] = useState(false);
+  const [customFocusMins, setCustomFocusMins] = useState(25);
+  const [customBreakMins, setCustomBreakMins] = useState(5);
+  const [customError, setCustomError] = useState<string | null>(null);
+
+  // Task & Tagging
   const [taskName, setTaskName] = useState('Deep Work');
   const [selectedSkillId, setSelectedSkillId] = useState<string>('');
 
+  // Active Session State
+  const [activeSession, setActiveSession] = useState<PersistedFocusSession | null>(null);
   const [mode, setMode] = useState<'focus' | 'break'>('focus');
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
+  const [notificationPerm, setNotificationPerm] = useState<NotificationPermission>('default');
 
   const focusLogs = store.state.focusLogs;
   const skills = store.state.skills;
 
-  // Weekly focus minutes
+  // Weekly stats calculation
   const now = new Date();
   const weekStart = getStartOfWeek(now);
-
   const weeklyFocusLogs = focusLogs.filter((l) => (parseDate(l.date) || new Date(0)) >= weekStart);
   const weeklyFocusMinutes = weeklyFocusLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
 
-  // Timer Effect
+  // Initialize notification state & resume active session from localStorage on mount
   useEffect(() => {
-    let timer: number | null = null;
-    if (isRunning) {
-      timer = window.setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev > 1) return prev - 1;
-
-          // Session Complete!
-          setIsRunning(false);
-          if (mode === 'focus') {
-            store.logFocusSession(taskName, focusMinutes, selectedSkillId || undefined);
-            setMode('break');
-            return breakMinutes * 60;
-          } else {
-            setMode('focus');
-            return focusMinutes * 60;
-          }
-        });
-      }, 1000);
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationPerm(Notification.permission);
     }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [isRunning, mode, focusMinutes, breakMinutes, taskName, selectedSkillId, store]);
 
-  const handleReset = () => {
+    try {
+      const saved = localStorage.getItem(FOCUS_STORAGE_KEY);
+      if (saved) {
+        const parsed: PersistedFocusSession = JSON.parse(saved);
+        const remainingSecs = calculateRemainingSeconds(parsed);
+
+        if (remainingSecs <= 0) {
+          // Rule 4: If session expired while closed or abandoned, treat as expired/discarded on mount
+          localStorage.removeItem(FOCUS_STORAGE_KEY);
+        } else {
+          // Seamlessly resume active session
+          setActiveSession(parsed);
+          setTimeLeft(remainingSecs);
+          setIsRunning(!parsed.isPaused);
+          setMode(parsed.mode);
+          setFocusMinutes(parsed.focusMinutes);
+          setBreakMinutes(parsed.breakMinutes);
+          setTaskName(parsed.taskName);
+          setSelectedSkillId(parsed.skillId || '');
+          setIsCustom(parsed.isCustom);
+          if (parsed.isCustom) {
+            setCustomFocusMins(parsed.focusMinutes);
+            setCustomBreakMins(parsed.breakMinutes);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error restoring focus session from localStorage:', e);
+      localStorage.removeItem(FOCUS_STORAGE_KEY);
+    }
+  }, []);
+
+  // Completion trigger handler
+  const handleSessionComplete = (session: PersistedFocusSession) => {
+    sendCompletionNotification(session.mode, session.taskName, session.totalSessionMinutes);
+
+    localStorage.removeItem(FOCUS_STORAGE_KEY);
+    setActiveSession(null);
     setIsRunning(false);
-    setTimeLeft((mode === 'focus' ? focusMinutes : breakMinutes) * 60);
+
+    if (session.mode === 'focus') {
+      store.logFocusSession(session.taskName, session.totalSessionMinutes, session.skillId || undefined);
+
+      setCompletedSessionData({
+        taskName: session.taskName,
+        durationMinutes: session.totalSessionMinutes,
+        skillId: session.skillId,
+      });
+      setReflectionText('');
+      setReflectionModalOpen(true);
+
+      setMode('break');
+      setTimeLeft(session.breakMinutes * 60);
+    } else {
+      setMode('focus');
+      setTimeLeft((session.isCustom ? session.focusMinutes : focusMinutes) * 60);
+    }
   };
 
-  const handlePresetSelect = (focusMins: number, breakMins: number) => {
+  // Timer Interval Tick
+  useEffect(() => {
+    let interval: number | null = null;
+    if (isRunning && activeSession) {
+      interval = window.setInterval(() => {
+        const rem = calculateRemainingSeconds(activeSession);
+        setTimeLeft(rem);
+        if (rem <= 0) {
+          handleSessionComplete(activeSession);
+        }
+      }, 500);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRunning, activeSession]);
+
+  // Page Visibility Listener (visibilitychange recomputes timestamp immediately)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && activeSession && !activeSession.isPaused) {
+        const rem = calculateRemainingSeconds(activeSession);
+        setTimeLeft(rem);
+        if (rem <= 0) {
+          handleSessionComplete(activeSession);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [activeSession]);
+
+  // beforeunload Listener (Native browser confirmation prompt on tab close/reload)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (activeSession && isRunning) {
+        e.preventDefault();
+        e.returnValue = 'You have an active focus session. Closing the tab will discard your session.';
+        // NOTE: Do NOT call localStorage.removeItem here!
+        // Calling removeItem inside beforeunload executes BEFORE the user responds to the
+        // "Leave site?" prompt. If the user clicks "Cancel" to stay, wiping storage here
+        // would falsely destroy an active session.
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [activeSession, isRunning]);
+
+  // Start Session
+  const handleStartSession = async () => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      try {
+        const perm = await Notification.requestPermission();
+        setNotificationPerm(perm);
+      } catch (e) {
+        console.warn('Notification permission request error:', e);
+      }
+    }
+
+    const targetFocusMins = isCustom ? Number(customFocusMins) : focusMinutes;
+    const targetBreakMins = isCustom ? Number(customBreakMins) : breakMinutes;
+
+    if (isCustom && (isNaN(targetFocusMins) || targetFocusMins < 25)) {
+      setCustomError('Custom focus duration must be at least 25 minutes.');
+      return;
+    }
+    setCustomError(null);
+
+    const plannedSecs = targetFocusMins * 60;
+    const newSession: PersistedFocusSession = {
+      startTime: Date.now(),
+      plannedDurationSeconds: plannedSecs,
+      totalSessionMinutes: targetFocusMins,
+      taskName: taskName.trim() || 'Deep Focus',
+      skillId: selectedSkillId || undefined,
+      mode: 'focus',
+      breakMinutes: targetBreakMins,
+      isPaused: false,
+      pausedRemainingSeconds: plannedSecs,
+      isCustom,
+      focusMinutes: targetFocusMins,
+      startedAtIso: new Date().toISOString(),
+    };
+
+    try {
+      localStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify(newSession));
+    } catch (e) {
+      console.error('Failed to persist focus session:', e);
+    }
+
+    setActiveSession(newSession);
+    setMode('focus');
+    setTimeLeft(plannedSecs);
+    setIsRunning(true);
+  };
+
+  // Pause Session
+  const handlePauseSession = () => {
+    if (!activeSession) return;
+    const rem = calculateRemainingSeconds(activeSession);
+    const updated: PersistedFocusSession = {
+      ...activeSession,
+      isPaused: true,
+      pausedRemainingSeconds: rem,
+    };
+    try {
+      localStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {}
+    setActiveSession(updated);
+    setTimeLeft(rem);
+    setIsRunning(false);
+  };
+
+  // Resume Session
+  const handleResumeSession = () => {
+    if (!activeSession) return;
+    const updated: PersistedFocusSession = {
+      ...activeSession,
+      startTime: Date.now(),
+      plannedDurationSeconds: activeSession.pausedRemainingSeconds,
+      isPaused: false,
+    };
+    try {
+      localStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {}
+    setActiveSession(updated);
+    setIsRunning(true);
+  };
+
+  // Discard / Reset Session Handlers
+  const handleRequestReset = () => {
+    if (activeSession) {
+      setConfirmResetOpen(true);
+    } else {
+      const resetMins = isCustom ? customFocusMins : focusMinutes;
+      setTimeLeft(resetMins * 60);
+      setMode('focus');
+    }
+  };
+
+  const handleConfirmDiscardSession = () => {
+    localStorage.removeItem(FOCUS_STORAGE_KEY);
+    setActiveSession(null);
+    setIsRunning(false);
+    setConfirmResetOpen(false);
+    setPendingPresetSwitch(null);
+
+    const targetFocusMins = pendingPresetSwitch
+      ? pendingPresetSwitch.focus
+      : isCustom
+      ? customFocusMins
+      : focusMinutes;
+
+    if (pendingPresetSwitch) {
+      setFocusMinutes(pendingPresetSwitch.focus);
+      setBreakMinutes(pendingPresetSwitch.breakMins);
+      setIsCustom(pendingPresetSwitch.custom);
+    }
+
+    setMode('focus');
+    setTimeLeft((isNaN(targetFocusMins) || targetFocusMins < 1 ? 25 : targetFocusMins) * 60);
+  };
+
+  // Preset switch handler
+  const handlePresetSelect = (focusMins: number, breakMins: number, customFlag: boolean = false) => {
+    if (activeSession) {
+      setPendingPresetSwitch({ focus: focusMins, breakMins, custom: customFlag });
+      setConfirmResetOpen(true);
+      return;
+    }
+
     setFocusMinutes(focusMins);
     setBreakMinutes(breakMins);
-    setTimeLeft(focusMins * 60);
+    setIsCustom(customFlag);
+
+    if (customFlag) {
+      if (customFocusMins < 25) setCustomFocusMins(25);
+    } else {
+      setTimeLeft(focusMins * 60);
+    }
+
     setMode('focus');
     setIsRunning(false);
+  };
+
+  // Custom Focus Input Change
+  const handleCustomFocusChange = (val: number) => {
+    setCustomFocusMins(val);
+    if (val < 25) {
+      setCustomError('Custom focus duration must be at least 25 minutes.');
+    } else {
+      setCustomError(null);
+      if (!activeSession && isCustom) {
+        setTimeLeft(val * 60);
+      }
+    }
+  };
+
+  const handleCustomBreakChange = (val: number) => {
+    const valid = Math.max(1, val);
+    setCustomBreakMins(valid);
+  };
+
+  // Save Reflection Handler
+  const handleSaveReflection = () => {
+    if (completedSessionData && reflectionText.trim()) {
+      const latestLog = focusLogs[0];
+      if (latestLog && latestLog.taskName === completedSessionData.taskName) {
+        // Find latest log id and attach reflection
+        const targetLogId = latestLog.id;
+        // Directly update focus log reflection in store state
+        store.deleteFocusLog(targetLogId);
+        store.logFocusSession(completedSessionData.taskName, completedSessionData.durationMinutes, completedSessionData.skillId, reflectionText);
+      }
+    }
+    setReflectionModalOpen(false);
+    setCompletedSessionData(null);
+    setReflectionText('');
   };
 
   const formatTime = (secs: number) => {
@@ -163,52 +495,193 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
   return (
     <div className="space-y-6">
-      {/* Stats Header */}
+      {/* Stats & Info Header */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center text-cyan-400 shrink-0">
-            <Timer size={22} />
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Weekly Focus Minutes</div>
-            <div className="text-xl font-display font-bold text-slate-100">
-              {weeklyFocusMinutes} <span className="text-xs font-normal text-slate-400">mins</span>
+        <div className="card p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center text-cyan-400 shrink-0">
+              <Timer size={22} />
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Weekly Focus Minutes</div>
+              <div className="text-xl font-display font-bold text-slate-100">
+                {weeklyFocusMinutes} <span className="text-xs font-normal text-slate-400">mins</span>
+              </div>
             </div>
           </div>
+
+          <button
+            onClick={() => setAboutModalOpen(true)}
+            className="btn-ghost text-xs text-cyan-400 hover:bg-cyan-500/10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-500/20"
+          >
+            <HelpCircle size={15} />
+            <span className="hidden sm:inline">About Deep Focus</span>
+          </button>
         </div>
 
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0">
-            <Award size={22} />
+        <div className="card p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0">
+              <Award size={22} />
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Completed Sessions</div>
+              <div className="text-xl font-display font-bold text-purple-400">
+                {weeklyFocusLogs.length} <span className="text-xs font-normal text-slate-400">sessions</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <div className="text-xs text-slate-500">Completed Sessions</div>
-            <div className="text-xl font-display font-bold text-purple-400">
-              {weeklyFocusLogs.length} <span className="text-xs font-normal text-slate-400">sessions</span>
+
+          <div className="text-right">
+            <div className="flex items-center gap-1 text-[11px] text-slate-400">
+              {notificationPerm === 'granted' ? (
+                <span className="text-emerald-400 flex items-center gap-1 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                  <Bell size={12} /> Notifs On
+                </span>
+              ) : notificationPerm === 'denied' ? (
+                <span className="text-slate-500 flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-md border border-white/5" title="Notifications blocked in browser settings">
+                  <BellOff size={12} /> Notifs Denied
+                </span>
+              ) : (
+                <button
+                  onClick={async () => {
+                    if (typeof window !== 'undefined' && 'Notification' in window) {
+                      const p = await Notification.requestPermission();
+                      setNotificationPerm(p);
+                    }
+                  }}
+                  className="text-cyan-400 hover:underline flex items-center gap-1 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20"
+                >
+                  <Bell size={12} /> Enable Notifs
+                </button>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Focus Timer Card */}
-      <div className="card p-6 text-center space-y-6 bg-bg-800 border border-cyan-500/30 relative">
-        <div className="flex items-center justify-between text-xs text-slate-400">
-          <span className="font-bold text-slate-200 uppercase tracking-widest">
-            {mode === 'focus' ? '🎯 Focus Session' : '☕ Rest Break'}
-          </span>
+      <div className="card p-6 text-center space-y-6 bg-bg-800 border border-cyan-500/30 relative overflow-hidden">
+        {/* Header Preset Selectors */}
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 border-b border-white/5 pb-4">
           <div className="flex items-center gap-2">
-            <button onClick={() => handlePresetSelect(25, 5)} className={`badge px-2.5 py-1 ${focusMinutes === 25 ? 'bg-cyan-500/20 text-cyan-300' : 'bg-bg-700 text-slate-400'}`}>
+            <span className="font-bold text-slate-200 uppercase tracking-widest text-[11px] flex items-center gap-1.5">
+              {mode === 'focus' ? '🎯 Focus Session' : '☕ Rest Break'}
+              {activeSession && (
+                <span className="badge bg-cyan-500/20 text-cyan-300 text-[10px] lowercase normal-case tracking-normal">
+                  {activeSession.isPaused ? 'paused' : 'live timer'}
+                </span>
+              )}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              disabled={!!activeSession}
+              onClick={() => handlePresetSelect(25, 5, false)}
+              className={`badge px-3 py-1.5 text-xs transition-all ${
+                !isCustom && focusMinutes === 25
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+                  : 'bg-bg-700 text-slate-400 hover:bg-bg-600'
+              } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
               25 / 5 min
             </button>
-            <button onClick={() => handlePresetSelect(50, 10)} className={`badge px-2.5 py-1 ${focusMinutes === 50 ? 'bg-cyan-500/20 text-cyan-300' : 'bg-bg-700 text-slate-400'}`}>
+            <button
+              disabled={!!activeSession}
+              onClick={() => handlePresetSelect(50, 10, false)}
+              className={`badge px-3 py-1.5 text-xs transition-all ${
+                !isCustom && focusMinutes === 50
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+                  : 'bg-bg-700 text-slate-400 hover:bg-bg-600'
+              } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
               50 / 10 min
+            </button>
+            <button
+              disabled={!!activeSession}
+              onClick={() => handlePresetSelect(90, 15, false)}
+              className={`badge px-3 py-1.5 text-xs transition-all ${
+                !isCustom && focusMinutes === 90
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+                  : 'bg-bg-700 text-slate-400 hover:bg-bg-600'
+              } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              90 / 15 min
+            </button>
+            <button
+              disabled={!!activeSession}
+              onClick={() => handlePresetSelect(customFocusMins, customBreakMins, true)}
+              className={`badge px-3 py-1.5 text-xs transition-all flex items-center gap-1 ${
+                isCustom
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+                  : 'bg-bg-700 text-slate-400 hover:bg-bg-600'
+              } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Sliders size={12} />
+              <span>Custom</span>
             </button>
           </div>
         </div>
 
+        {/* Custom Duration Configurator */}
+        {isCustom && !activeSession && (
+          <div className="p-4 bg-bg-900/60 rounded-xl border border-cyan-500/20 max-w-md mx-auto text-left space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                <Sliders size={14} /> Custom Duration Settings
+              </span>
+              <span className="text-[10px] text-slate-500">Min 25m • No Upper Limit</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">Focus Duration (mins)</label>
+                <input
+                  type="number"
+                  min="25"
+                  step="5"
+                  value={customFocusMins}
+                  onChange={(e) => handleCustomFocusChange(parseInt(e.target.value) || 0)}
+                  className="input text-xs font-bold text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">Break Duration (mins)</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={customBreakMins}
+                  onChange={(e) => handleCustomBreakChange(parseInt(e.target.value) || 1)}
+                  className="input text-xs text-slate-100"
+                />
+              </div>
+            </div>
+
+            {customError && (
+              <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px] flex items-center gap-2">
+                <AlertTriangle size={14} className="shrink-0" />
+                <span>{customError}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Big Timer Display */}
-        <div className="text-6xl sm:text-7xl font-display font-bold text-slate-100 tracking-tight my-4">
-          {formatTime(timeLeft)}
+        <div className="py-2">
+          <div className="text-6xl sm:text-7xl font-display font-bold text-slate-100 tracking-tight">
+            {formatTime(timeLeft)}
+          </div>
+          {activeSession && (
+            <p className="text-xs text-slate-400 mt-2 flex items-center justify-center gap-1.5">
+              <Clock size={13} className="text-cyan-400" />
+              <span>
+                Timestamp-persisted session ({activeSession.totalSessionMinutes} mins) • Survives backgrounding & reloads
+              </span>
+            </p>
+          )}
         </div>
 
         {/* Task Tagging Inputs */}
@@ -217,6 +690,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
             <label className="block text-[11px] font-medium text-slate-400 mb-1">Task Name</label>
             <input
               type="text"
+              disabled={!!activeSession}
               value={taskName}
               onChange={(e) => setTaskName(e.target.value)}
               placeholder="What are you working on?"
@@ -226,6 +700,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
           <div>
             <label className="block text-[11px] font-medium text-slate-400 mb-1">Tag Skill (Optional)</label>
             <select
+              disabled={!!activeSession}
               value={selectedSkillId}
               onChange={(e) => setSelectedSkillId(e.target.value)}
               className="input text-xs"
@@ -238,17 +713,45 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
           </div>
         </div>
 
-        {/* Timer Control Buttons */}
-        <div className="flex items-center justify-center gap-3 pt-2">
+        {/* Controls */}
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          {!activeSession ? (
+            <button
+              onClick={handleStartSession}
+              disabled={isCustom && customFocusMins < 25}
+              className={`px-6 py-3 rounded-xl font-bold text-sm shadow-lg flex items-center gap-2 transition-all ${
+                isCustom && customFocusMins < 25
+                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed shadow-none'
+                  : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-cyan-500/20 hover:from-cyan-600 hover:to-blue-700'
+              }`}
+            >
+              <Play size={18} />
+              <span>Start Focus Session</span>
+            </button>
+          ) : isRunning ? (
+            <button
+              onClick={handlePauseSession}
+              className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 flex items-center gap-2"
+            >
+              <Pause size={18} />
+              <span>Pause Timer</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleResumeSession}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center gap-2 hover:from-cyan-600 hover:to-blue-700"
+            >
+              <Play size={18} />
+              <span>Resume Session</span>
+            </button>
+          )}
+
           <button
-            onClick={() => setIsRunning(!isRunning)}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center gap-2 hover:from-cyan-600 hover:to-blue-700"
+            onClick={handleRequestReset}
+            className="btn-ghost text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1.5 py-3"
           >
-            {isRunning ? <Pause size={18} /> : <Play size={18} />}
-            <span>{isRunning ? 'Pause' : 'Start Focus Session'}</span>
-          </button>
-          <button onClick={handleReset} className="btn-ghost text-xs text-slate-400 flex items-center gap-1.5 py-3">
-            <RotateCcw size={16} /> Reset
+            <RotateCcw size={16} />
+            <span>{activeSession ? 'Discard Session' : 'Reset'}</span>
           </button>
         </div>
       </div>
@@ -261,31 +764,148 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
             {focusLogs.slice(0, 10).map((log) => {
               const skill = skills.find((s) => s.id === log.skillId);
               return (
-                <div key={log.id} className="card p-3 flex items-center justify-between card-hover text-xs">
-                  <div>
-                    <div className="font-semibold text-slate-200">{log.taskName}</div>
-                    <div className="text-[10px] text-slate-500">
-                      {formatDateLong(log.date)} • {log.durationMinutes} mins {skill ? `• ${skill.name}` : ''}
+                <div key={log.id} className="card p-3 space-y-1.5 card-hover text-xs">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-slate-200">{log.taskName}</div>
+                      <div className="text-[10px] text-slate-500">
+                        {formatDateLong(log.date)} • {log.durationMinutes} mins {skill ? `• ${skill.name}` : ''}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20">
+                        +{log.pointsAwarded} pts
+                      </span>
+                      <button
+                        onClick={() => setDeleteModalLog(log)}
+                        className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
+                        title="Delete Focus Session Log"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20">
-                      +{log.pointsAwarded} pts
-                    </span>
-                    <button
-                      onClick={() => setDeleteModalLog(log)}
-                      className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
-                      title="Delete Focus Session Log"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+
+                  {log.reflection && (
+                    <div className="p-2.5 rounded-lg bg-cyan-500/5 border border-cyan-500/15 text-cyan-200 text-[11px] italic">
+                      "<span className="not-italic font-medium text-slate-300">Reflection:</span> {log.reflection}"
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
       )}
+
+      {/* "About Deep Work" Info Modal */}
+      <Modal open={aboutModalOpen} onClose={() => setAboutModalOpen(false)} title="About Deep Focus & Executive Training">
+        <div className="space-y-5 text-slate-300 text-xs leading-relaxed max-h-[75vh] overflow-y-auto pr-1">
+          {/* Section 1 */}
+          <div className="p-3.5 bg-cyan-500/10 rounded-xl border border-cyan-500/20 space-y-1.5">
+            <h3 className="font-bold text-cyan-300 text-sm flex items-center gap-2">
+              <Zap size={16} /> What is Deep Work?
+            </h3>
+            <p className="text-slate-300">
+              Coined by Georgetown computer scientist Cal Newport, <strong>Deep Work</strong> refers to professional activities performed in a state of distraction-free concentration that push your cognitive capabilities to their limits.
+            </p>
+          </div>
+
+          {/* Section 2 */}
+          <div className="space-y-2">
+            <h4 className="font-bold text-slate-100 flex items-center gap-1.5">
+              <BrainCircuit size={15} className="text-purple-400" /> Prefrontal Cortex & Neural Plasticity
+            </h4>
+            <p className="text-slate-400">
+              Deep focus activates the <em>dorsolateral prefrontal cortex (dlPFC)</em>, which manages impulse control, working memory, and strategic problem-solving. By single-tasking for extended periods:
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-slate-400 pl-1">
+              <li><strong>Myelin Insulation:</strong> Repeated neural firing wraps axons in myelin, making focus faster and less tiring.</li>
+              <li><strong>Dopamine Baseline Restoration:</strong> Quitting social media switching lowers baseline overstimulation, restoring drive and satisfaction.</li>
+              <li><strong>Default Mode Network Suppression:</strong> Reduces anxious rumination and impulsive task-switching.</li>
+            </ul>
+          </div>
+
+          {/* Section 3 */}
+          <div className="space-y-2">
+            <h4 className="font-bold text-slate-100 flex items-center gap-1.5">
+              <CheckCircle2 size={15} className="text-emerald-400" /> Best Practices for Max Impact
+            </h4>
+            <div className="grid grid-cols-1 gap-2 text-slate-400">
+              <div className="p-2.5 bg-bg-800 rounded-lg border border-white/5">
+                <span className="font-bold text-slate-200 block mb-0.5">1. Strict Zero Distractions</span>
+                Put your phone out of sight, close unrelated browser tabs, and disable notifications during focus blocks.
+              </div>
+              <div className="p-2.5 bg-bg-800 rounded-lg border border-white/5">
+                <span className="font-bold text-slate-200 block mb-0.5">2. Right-Sized Session Durations</span>
+                25 mins for beginners (Pomodoro), 50 mins for core tasks, and up to 90–120+ mins for complex multi-hour deep focus.
+              </div>
+              <div className="p-2.5 bg-bg-800 rounded-lg border border-white/5">
+                <span className="font-bold text-slate-200 block mb-0.5">3. Genuine Rest Breaks</span>
+                Step away from screens during breaks—stretch, walk, hydrate. Do not swap focus for social media scrolling.
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <button onClick={() => setAboutModalOpen(false)} className="btn-primary text-xs px-6 py-2">
+              Got It
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Dialog for Discarding Active Session */}
+      <Modal open={confirmResetOpen} onClose={() => setConfirmResetOpen(false)} title="Discard Active Focus Session?">
+        <div className="space-y-4 text-xs text-slate-300">
+          <p>
+            You currently have an active focus session in progress. Discarding will stop the timer and no points or logs will be saved.
+          </p>
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-200 flex items-center gap-2">
+            <AlertTriangle size={18} className="shrink-0 text-amber-400" />
+            <span>Are you sure you want to discard your current progress?</span>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button onClick={() => setConfirmResetOpen(false)} className="btn-secondary flex-1">
+              Cancel
+            </button>
+            <button onClick={handleConfirmDiscardSession} className="btn-primary bg-rose-500 hover:bg-rose-600 text-white flex-1">
+              Discard Session
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Post-Session Reflection Modal */}
+      <Modal open={reflectionModalOpen} onClose={() => setReflectionModalOpen(false)} title="Focus Session Completed! 🎉">
+        <div className="space-y-4">
+          <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-xs text-cyan-200">
+            Great job! You logged <strong>{completedSessionData?.durationMinutes} minutes</strong> of focus on <strong>"{completedSessionData?.taskName}"</strong>.
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1">
+              Post-Session Reflection (Optional)
+            </label>
+            <textarea
+              value={reflectionText}
+              onChange={(e) => setReflectionText(e.target.value)}
+              placeholder="What did you accomplish during this focus session? What went well?"
+              className="input min-h-[90px] text-xs"
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button onClick={() => setReflectionModalOpen(false)} className="btn-secondary flex-1 text-xs">
+              Skip
+            </button>
+            <button onClick={handleSaveReflection} className="btn-primary flex-1 text-xs flex items-center justify-center gap-1.5">
+              <Sparkles size={14} />
+              <span>Save Reflection</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Confirm Delete Modal */}
       <ConfirmDeleteModal
