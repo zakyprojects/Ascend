@@ -5,6 +5,8 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Book } from '@/types';
 import { todayKey, formatDateLong } from '@/lib/dates';
+import { useAsyncAction } from '@/lib/useAsyncAction';
+import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 
 export function ReadingTracker({ store }: { store: AppStore }) {
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -56,38 +58,48 @@ export function ReadingTracker({ store }: { store: AppStore }) {
     }
   }
 
-  const handleAddBookSubmit = (e: React.FormEvent) => {
+  const { isLoading: isAdding, executeFn: executeAdd } = useAsyncAction();
+  const { isLoading: isUpdatingProgress, executeFn: executeProgress } = useAsyncAction();
+  const { isLoading: isFinishing, executeFn: executeFinish } = useAsyncAction();
+  const { isLoading: isDeleting, executeFn: executeDelete } = useAsyncAction();
+
+  const handleAddBookSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || totalPages <= 0) return;
-    store.addBook(title, author, Number(totalPages), unit, targetFinishDate);
-    setAddModalOpen(false);
-    setTitle('');
-    setAuthor('');
-    setTotalPages(200);
-    setUnit('pages');
-    setTargetFinishDate('');
+    await executeAdd(async () => {
+      await store.addBook(title, author, Number(totalPages), unit, targetFinishDate);
+      setAddModalOpen(false);
+      setTitle('');
+      setAuthor('');
+      setTotalPages(200);
+      setUnit('pages');
+      setTargetFinishDate('');
+    });
   };
 
-  const handleProgressSubmit = (e: React.FormEvent) => {
+  const handleProgressSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!progressModalBook) return;
-    const progressAmount = Number(progressInput);
-    const newCurrent = progressModalBook.currentPage + progressAmount;
-    store.updateReadingProgress(progressModalBook.id, progressAmount, newCurrent);
+    await executeProgress(async () => {
+      const progressAmount = Number(progressInput);
+      const newCurrent = progressModalBook.currentPage + progressAmount;
+      await store.updateReadingProgress(progressModalBook.id, progressAmount, newCurrent);
 
-    if (newCurrent >= progressModalBook.totalPages) {
-      // Auto trigger finish modal
-      setFinishModalBook({ ...progressModalBook, currentPage: progressModalBook.totalPages });
-    }
-    setProgressModalBook(null);
+      if (newCurrent >= progressModalBook.totalPages) {
+        setFinishModalBook({ ...progressModalBook, currentPage: progressModalBook.totalPages });
+      }
+      setProgressModalBook(null);
+    });
   };
 
-  const handleFinishSubmit = (e: React.FormEvent) => {
+  const handleFinishSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!finishModalBook) return;
-    store.finishBook(finishModalBook.id, reflectionInput);
-    setFinishModalBook(null);
-    setReflectionInput('');
+    await executeFinish(async () => {
+      await store.finishBook(finishModalBook.id, reflectionInput);
+      setFinishModalBook(null);
+      setReflectionInput('');
+    });
   };
 
   return (
@@ -431,8 +443,9 @@ export function ReadingTracker({ store }: { store: AppStore }) {
             <button type="button" onClick={() => setFinishModalBook(null)} className="btn-secondary flex-1">
               Cancel
             </button>
-            <button type="submit" className="btn-primary flex-1">
-              Save & Claim +30 pts
+            <button type="submit" disabled={isFinishing} className="btn-primary flex-1 flex items-center justify-center gap-2">
+              {isFinishing ? <AscendLoadingIndicator size="sm" /> : null}
+              <span>{isFinishing ? 'Saving...' : 'Save & Claim +30 pts'}</span>
             </button>
           </div>
         </form>
@@ -442,10 +455,13 @@ export function ReadingTracker({ store }: { store: AppStore }) {
       <ConfirmDeleteModal
         open={!!deleteModalBook}
         onClose={() => setDeleteModalBook(null)}
-        onConfirm={() => {
+        isDeleting={isDeleting}
+        onConfirm={async () => {
           if (deleteModalBook) {
-            store.deleteBook(deleteModalBook.id);
-            setDeleteModalBook(null);
+            await executeDelete(async () => {
+              store.deleteBook(deleteModalBook.id);
+              setDeleteModalBook(null);
+            });
           }
         }}
         title="Delete Book?"

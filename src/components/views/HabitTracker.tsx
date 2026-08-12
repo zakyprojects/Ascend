@@ -5,7 +5,10 @@ import { Habit, HabitFrequency } from '@/types';
 import { calculateStreak, calculateBestStreak, periodKey } from '@/lib/dates';
 import { PRESET_CATEGORIES, PresetHabit } from '@/lib/presets';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { getMissPenaltyMultiplier } from '@/lib/habitPenalties';
+import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
+import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 
 export function HabitTracker({ store }: { store: AppStore }) {
   const [showAdd, setShowAdd] = useState(false);
@@ -253,27 +256,19 @@ export function HabitTracker({ store }: { store: AppStore }) {
       </Modal>
 
       {/* Delete confirm */}
-      <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Delete Habit">
-        <div className="space-y-4">
-          <p className="text-sm text-slate-400">
-            Are you sure you want to delete <span className="text-slate-200 font-medium">{confirmDelete?.name}</span>? This will remove all its streak history.
-          </p>
-          <div className="flex gap-2">
-            <button onClick={() => setConfirmDelete(null)} className="btn-secondary flex-1">
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                if (confirmDelete) store.deleteHabit(confirmDelete.id);
-                setConfirmDelete(null);
-              }}
-              className="btn-danger flex-1"
-            >
-              <Trash2 size={16} /> Delete
-            </button>
-          </div>
-        </div>
-      </Modal>
+      <ConfirmDeleteModal
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={async () => {
+          if (confirmDelete) {
+            await store.deleteHabit(confirmDelete.id);
+            setConfirmDelete(null);
+          }
+        }}
+        title="Delete Habit?"
+        itemName={confirmDelete?.name}
+        description="Are you sure you want to delete this habit? This will permanently remove its completion history and streak count."
+      />
     </div>
   );
 }
@@ -282,19 +277,32 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
   const done = store.isHabitDone(habit);
   const streak = calculateStreak(habit.completions, habit.frequency);
   const bestStreak = calculateBestStreak(habit.completions, habit.frequency);
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
+  const isToggling = isKeyLoading(habit.id);
+
+  const handleToggle = async () => {
+    await executeWithKey(habit.id, async () => {
+      await store.toggleHabit(habit.id);
+    });
+  };
 
   return (
     <div className={`card p-4 card-hover group ${done ? 'opacity-75' : ''}`}>
       <div className="flex items-center gap-3">
         <button
-          onClick={() => store.toggleHabit(habit.id)}
+          onClick={handleToggle}
+          disabled={isToggling}
           className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90 ${
             done
               ? 'bg-primary-500 text-white'
               : 'bg-bg-600 text-slate-500 hover:bg-bg-500 hover:text-slate-300 border border-white/5'
           }`}
         >
-          <Check size={22} className={done ? 'animate-scale-in' : ''} />
+          {isToggling ? (
+            <AscendLoadingIndicator size="sm" />
+          ) : (
+            <Check size={22} className={done ? 'animate-scale-in' : ''} />
+          )}
         </button>
 
         <div className="flex-1 min-w-0">

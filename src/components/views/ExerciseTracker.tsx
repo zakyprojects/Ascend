@@ -5,6 +5,8 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
 import { todayKey, formatDateLong, parseDate } from '@/lib/dates';
+import { useAsyncAction } from '@/lib/useAsyncAction';
+import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 
 const COMMON_WORKOUT_TYPES = [
   'Running',
@@ -63,14 +65,21 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
     .filter((w) => w.date === today)
     .reduce((sum, w) => sum + w.pointsAwarded, 0);
 
-  const handleLogSubmit = (e: React.FormEvent) => {
+  const { isLoading: isLogging, executeFn: executeLog } = useAsyncAction();
+  const { isLoading: isSavingGoal, executeFn: executeGoalSave } = useAsyncAction();
+  const { isLoading: isDeleting, executeFn: executeDelete } = useAsyncAction();
+
+  const handleLogSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const finalType = workoutType === 'Other' ? customType : workoutType;
     if (!finalType.trim() || duration <= 0) return;
-    store.logWorkout(finalType, Number(duration));
-    setLogModalOpen(false);
-    setCustomType('');
-    setDuration(30);
+
+    await executeLog(async () => {
+      await store.logWorkout(finalType, Number(duration));
+      setLogModalOpen(false);
+      setCustomType('');
+      setDuration(30);
+    });
   };
 
   return (
@@ -279,8 +288,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             <button type="button" onClick={() => setLogModalOpen(false)} className="btn-secondary flex-1">
               Cancel
             </button>
-            <button type="submit" className="btn-primary flex-1">
-              Save Workout
+            <button type="submit" disabled={isLogging} className="btn-primary flex-1 flex items-center justify-center gap-2">
+              {isLogging ? <AscendLoadingIndicator size="sm" /> : null}
+              <span>{isLogging ? 'Saving...' : 'Save Workout'}</span>
             </button>
           </div>
         </form>
@@ -290,10 +300,13 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       <ConfirmDeleteModal
         open={!!deleteModalWorkout}
         onClose={() => setDeleteModalWorkout(null)}
-        onConfirm={() => {
+        isDeleting={isDeleting}
+        onConfirm={async () => {
           if (deleteModalWorkout) {
-            store.deleteWorkout(deleteModalWorkout.id);
-            setDeleteModalWorkout(null);
+            await executeDelete(async () => {
+              store.deleteWorkout(deleteModalWorkout.id);
+              setDeleteModalWorkout(null);
+            });
           }
         }}
         title="Delete Workout Log?"
@@ -304,10 +317,12 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       {/* Target Weekly Goal Modal */}
       <Modal open={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set Weekly Exercise Target">
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            store.setExerciseGoal(targetSessionsInput);
-            setGoalModalOpen(false);
+            await executeGoalSave(async () => {
+              store.setExerciseGoal(targetSessionsInput);
+              setGoalModalOpen(false);
+            });
           }}
           className="space-y-4"
         >
@@ -331,8 +346,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             <button type="button" onClick={() => setGoalModalOpen(false)} className="btn-secondary flex-1">
               Cancel
             </button>
-            <button type="submit" className="btn-primary flex-1">
-              Save Goal
+            <button type="submit" disabled={isSavingGoal} className="btn-primary flex-1 flex items-center justify-center gap-2">
+              {isSavingGoal ? <AscendLoadingIndicator size="sm" /> : null}
+              <span>{isSavingGoal ? 'Saving...' : 'Save Goal'}</span>
             </button>
           </div>
         </form>

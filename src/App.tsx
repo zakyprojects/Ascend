@@ -19,20 +19,32 @@ import { ImprovementPlans } from '@/components/views/ImprovementPlans';
 import { AccountabilityPartner } from '@/components/views/AccountabilityPartner';
 import { SettingsView } from '@/components/views/SettingsView';
 import { AuthModal } from '@/components/ui/AuthModal';
-
+import { AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { ToastProvider } from '@/components/ui/Toast';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 
 function App() {
   const store = useAppState();
   const [view, setView] = useState<View>('dashboard');
   const [userOpenedAuthModal, setUserOpenedAuthModal] = useState(false);
 
+  if (store.isAuthChecking) {
+    return (
+      <AscendLoadingOverlay
+        message="Verifying session..."
+        submessage="Preparing your personal growth workspace"
+      />
+    );
+  }
+
   const currentUser = store.state.currentUser;
   const isUnauthenticated = !currentUser;
   const authModalOpen = isUnauthenticated || userOpenedAuthModal;
 
   return (
-    <>
+    <ToastProvider>
+      <OfflineBanner />
       <AppShell
         currentView={view}
         onViewChange={setView}
@@ -65,7 +77,7 @@ function App() {
         onClose={() => setUserOpenedAuthModal(false)}
         guestState={store.state}
       />
-    </>
+    </ToastProvider>
   );
 }
 

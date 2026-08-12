@@ -3,6 +3,7 @@ import { Modal } from './Modal';
 import { Mail, Lock, User, Check, AlertCircle, Sparkles, LogIn, UserPlus, UserCheck, Shield, Zap, ArrowLeft } from 'lucide-react';
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
+import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 
 /** Wraps a promise with an 8-second hard timeout. */
 function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
@@ -484,7 +485,10 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                 className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-medium text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
-                  <span>Processing...</span>
+                  <>
+                    <AscendLoadingIndicator size="sm" />
+                    <span>Processing...</span>
+                  </>
                 ) : mode === 'upgrade' ? (
                   <>
                     <Shield size={18} /> Convert to Permanent Account

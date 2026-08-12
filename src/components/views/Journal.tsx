@@ -5,6 +5,9 @@ import { Mood, JournalEntry } from '@/types';
 import { formatDateLong, todayKey } from '@/lib/dates';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
+import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
+import { useToast } from '@/components/ui/Toast';
 
 const MOODS: { value: Mood; label: string; icon: typeof Smile; color: string }[] = [
   { value: 'happy', label: 'Happy', icon: Smile, color: '#fbbf24' },
@@ -36,25 +39,37 @@ export function Journal({ store }: { store: AppStore }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingToday?.id, existingToday?.createdAt, existingToday?.content, existingToday?.mood]);
 
-  const handleSave = () => {
-    const trimmed = content.trim();
-    const wasAwarded = existingToday?.pointsAwarded ?? false;
-    const willBeAwarded = trimmed.length > 0;
+  const { showErrorToast, showSuccessToast, showInfoToast } = useToast();
+  const { isLoading: isSaving, executeFn: executeSave } = useAsyncAction();
+  const { isLoading: isDeleting, executeFn: executeDelete } = useAsyncAction();
 
-    store.saveJournalEntry(mood, content);
+  const handleSave = async () => {
+    try {
+      await executeSave(async () => {
+        const trimmed = content.trim();
+        const wasAwarded = existingToday?.pointsAwarded ?? false;
+        const willBeAwarded = trimmed.length > 0;
 
-    if (willBeAwarded && !wasAwarded) {
-      setSavedMessage('Entry saved! +5 points awarded 🎉');
-    } else if (!willBeAwarded && wasAwarded) {
-      setSavedMessage('Content cleared. Points deducted.');
-    } else {
-      setSavedMessage('Entry updated successfully!');
+        await store.saveJournalEntry(mood, content);
+
+        if (willBeAwarded && !wasAwarded) {
+          setSavedMessage('Entry saved! +5 points awarded 🎉');
+          showSuccessToast('Journal Saved', 'Earned +5 points for today\'s reflection!');
+        } else if (!willBeAwarded && wasAwarded) {
+          setSavedMessage('Content cleared. Points deducted.');
+          showInfoToast('Journal Cleared', 'Entry content cleared.');
+        } else {
+          setSavedMessage('Entry updated successfully!');
+          showSuccessToast('Journal Updated', 'Your reflection has been updated.');
+        }
+
+        setTimeout(() => setSavedMessage(null), 3000);
+      });
+      // Switch view back AFTER executeSave minimum duration completes
+      setIsEditingToday(false);
+    } catch (err: any) {
+      showErrorToast('Save Failed', err?.message || 'Could not save journal entry. Please try again.');
     }
-
-    // Immediately switch back to Read-Only Confirmation View (State 2)
-    setIsEditingToday(false);
-
-    setTimeout(() => setSavedMessage(null), 3000);
   };
 
   const handleCancelEdit = () => {
@@ -217,10 +232,10 @@ export function Journal({ store }: { store: AppStore }) {
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2">
-              <button onClick={handleSave} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                <Save size={16} />
+              <button onClick={handleSave} disabled={isSaving} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                {isSaving ? <AscendLoadingIndicator size="sm" /> : <Save size={16} />}
                 <span>
-                  {existingToday ? 'Update Entry' : 'Save Today\'s Entry (+5 pts)'}
+                  {isSaving ? 'Saving...' : existingToday ? 'Update Entry' : 'Save Today\'s Entry (+5 pts)'}
                 </span>
               </button>
 
@@ -427,10 +442,13 @@ export function Journal({ store }: { store: AppStore }) {
       <ConfirmDeleteModal
         open={!!deleteModalEntry}
         onClose={() => setDeleteModalEntry(null)}
-        onConfirm={() => {
+        isDeleting={isDeleting}
+        onConfirm={async () => {
           if (deleteModalEntry) {
-            store.deleteJournalEntry(deleteModalEntry.id);
-            setDeleteModalEntry(null);
+            await executeDelete(async () => {
+              store.deleteJournalEntry(deleteModalEntry.id);
+              setDeleteModalEntry(null);
+            });
           }
         }}
         title="Delete Journal Entry?"

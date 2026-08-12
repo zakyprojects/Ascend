@@ -321,6 +321,7 @@ function addPointsInternal(
 
 export function useAppState() {
   const [state, setStateRaw] = useState<AppState>(loadInitialState);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const isHydrated = useRef(false);
   const currentUserRef = useRef<UserProfile | null>(state.currentUser);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -367,20 +368,28 @@ export function useAppState() {
     let mounted = true;
 
     async function initSupabaseData() {
-      if (!isSupabaseConfigured) return;
+      if (!isSupabaseConfigured) {
+        if (mounted) setIsAuthChecking(false);
+        return;
+      }
 
       try {
-        const [profiles, publicPlans] = await Promise.all([
+        const [profiles, publicPlans, sessionRes] = await Promise.all([
           fetchAllProfilesFromSupabase(),
           fetchPublicPlansFromSupabase(),
+          supabase.auth.getSession(),
         ]);
 
         if (mounted) {
           setCachedProfiles(profiles);
           setCachedPublicPlans(publicPlans);
+          if (!sessionRes.data?.session) {
+            setIsAuthChecking(false);
+          }
         }
       } catch (e) {
         console.error('Error loading Supabase data:', e);
+        if (mounted) setIsAuthChecking(false);
       }
     }
 
@@ -407,6 +416,7 @@ export function useAppState() {
             }
           }
           setState(sanitizeLoadedState(guestState, null));
+          setIsAuthChecking(false);
           return;
         }
 
@@ -415,6 +425,7 @@ export function useAppState() {
           session?.user
         ) {
           if (isHydrated.current && currentUserRef.current?.id === session.user.id) {
+            setIsAuthChecking(false);
             return;
           }
 
@@ -485,7 +496,11 @@ export function useAppState() {
                 };
               });
             }
+          } finally {
+            if (mounted) setIsAuthChecking(false);
           }
+        } else {
+          if (mounted) setIsAuthChecking(false);
         }
       }, 0);
     });
@@ -3810,6 +3825,7 @@ export function useAppState() {
 
   return {
     state,
+    isAuthChecking,
     setAuthSessionState,
     logout,
     addPoints,

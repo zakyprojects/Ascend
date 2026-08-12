@@ -33,6 +33,9 @@ import {
 } from '@/lib/auth';
 import { Modal } from '@/components/ui/Modal';
 import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
+import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
+import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
+import { AscendLoadingIndicator, AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
 
 type SettingsSection =
   | 'profile'
@@ -95,6 +98,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteSaving, setDeleteSaving] = useState(false);
   const [showGuestLogoutWarning, setShowGuestLogoutWarning] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const [copiedUid, setCopiedUid] = useState(false);
 
@@ -139,6 +143,12 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
   const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
   const minsLeft = Math.ceil((msLeft % (1000 * 60 * 60)) / (1000 * 60));
 
+  const { isLoading: isDeletingAccount, executeFn: executeDeleteAccount } = useAsyncAction();
+  const { isLoading: isLoggingOut, executeFn: executeLogout } = useAsyncAction();
+  const { isLoading: isUsernameSaving, executeFn: executeUsernameSave } = useAsyncAction();
+  const { isLoading: isPasswordSaving, executeFn: executePasswordSave } = useAsyncAction();
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
+
   // Save username handler
   const handleSaveUsername = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,38 +171,35 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       return;
     }
 
-    setUsernameSaving(true);
-
-    try {
-      const nowIso = await updateUsernameWithCooldown(userId, trimmed);
-      store.updateProfileUsername(trimmed, nowIso);
-      setUsernameMsg({ type: 'success', text: 'Username updated successfully!' });
-      setUsernameStatus(null);
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      setUsernameMsg({ type: 'error', text: error.message || 'Failed to update username.' });
-    } finally {
-      setUsernameSaving(false);
-    }
+    await executeUsernameSave(async () => {
+      try {
+        const nowIso = await updateUsernameWithCooldown(userId, trimmed);
+        store.updateProfileUsername(trimmed, nowIso);
+        setUsernameMsg({ type: 'success', text: 'Username updated successfully!' });
+        setUsernameStatus(null);
+      } catch (err: unknown) {
+        const error = err as { message?: string };
+        setUsernameMsg({ type: 'error', text: error.message || 'Failed to update username.' });
+      }
+    });
   };
 
   // Avatar change handler
   const handleSelectAvatar = async (emoji: string) => {
     if (emoji === currentUser?.avatar) return;
     setSelectedAvatar(emoji);
-    setAvatarSaving(true);
     setAvatarMsg(null);
 
-    try {
-      await updateUserAvatar(userId, emoji);
-      store.updateProfileAvatar(emoji);
-      setAvatarMsg(`Avatar updated to ${emoji}!`);
-      setTimeout(() => setAvatarMsg(null), 3000);
-    } catch (err: unknown) {
-      console.error('Failed to update avatar:', err);
-    } finally {
-      setAvatarSaving(false);
-    }
+    await executeWithKey(`avatar-${emoji}`, async () => {
+      try {
+        await updateUserAvatar(userId, emoji);
+        store.updateProfileAvatar(emoji);
+        setAvatarMsg(`Avatar updated to ${emoji}!`);
+        setTimeout(() => setAvatarMsg(null), 3000);
+      } catch (err: unknown) {
+        console.error('Failed to update avatar:', err);
+      }
+    });
   };
 
   // Change password handler
@@ -209,20 +216,18 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       return;
     }
 
-    setPasswordSaving(true);
-
-    try {
-      await changeUserPassword(newPassword);
-      setPasswordMsg({ type: 'success', text: 'Password changed successfully!' });
-      setNewPassword('');
-      setConfirmPassword('');
-      setShowPasswordForm(false);
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      setPasswordMsg({ type: 'error', text: error.message || 'Failed to change password.' });
-    } finally {
-      setPasswordSaving(false);
-    }
+    await executePasswordSave(async () => {
+      try {
+        await changeUserPassword(newPassword);
+        setPasswordMsg({ type: 'success', text: 'Password changed successfully!' });
+        setNewPassword('');
+        setConfirmPassword('');
+        setShowPasswordForm(false);
+      } catch (err: unknown) {
+        const error = err as { message?: string };
+        setPasswordMsg({ type: 'error', text: error.message || 'Failed to change password.' });
+      }
+    });
   };
 
   // Logout click handler
@@ -230,22 +235,24 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
     if (isGuest) {
       setShowGuestLogoutWarning(true);
     } else {
-      store.logout();
+      setShowLogoutConfirm(true);
     }
+  };
+
+  const handleConfirmLogout = async () => {
+    await executeLogout(async () => {
+      await store.logout();
+      setShowLogoutConfirm(false);
+    });
   };
 
   // Delete account handler
   const handleDeleteAccount = async () => {
-    setDeleteSaving(true);
-    try {
+    await executeDeleteAccount(async () => {
       await deleteUserProfileAndData(userId);
       setShowDeleteConfirm(false);
-      store.logout();
-    } catch (err) {
-      console.error('Failed to delete account:', err);
-    } finally {
-      setDeleteSaving(false);
-    }
+      await store.logout();
+    });
   };
 
   // Sidebar section definitions
@@ -865,6 +872,14 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
         onLogoutAnyway={store.logout}
       />
 
+      {/* Account Logout Confirmation Modal */}
+      <LogoutConfirmModal
+        open={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleConfirmLogout}
+        isLoggingOut={isLoggingOut}
+      />
+
       {/* Delete Account Confirmation Modal */}
       <Modal open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete Account Permanently" maxWidth="max-w-md">
         <div className="space-y-4">
@@ -890,15 +905,35 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
             </button>
             <button
               type="button"
-              disabled={deleteSaving}
+              disabled={isDeletingAccount}
               onClick={handleDeleteAccount}
-              className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-lg transition-all disabled:opacity-50"
+              className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {deleteSaving ? 'Purging Data...' : 'Confirm Delete'}
+              {isDeletingAccount ? (
+                <>
+                  <AscendLoadingIndicator size="sm" />
+                  <span>Purging Data...</span>
+                </>
+              ) : (
+                'Confirm Delete'
+              )}
             </button>
           </div>
         </div>
       </Modal>
+      {/* Loading Overlays for Major Actions */}
+      {isDeletingAccount && (
+        <AscendLoadingOverlay
+          message="Purging account & data..."
+          submessage="Permanently removing all profile records"
+        />
+      )}
+      {isLoggingOut && (
+        <AscendLoadingOverlay
+          message="Logging out..."
+          submessage="Securing your account session"
+        />
+      )}
     </div>
   );
 }

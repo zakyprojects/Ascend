@@ -24,6 +24,7 @@ import {
 import { TierBadge } from './ui/TierBadge';
 import { AppStore } from '@/lib/store';
 import { GuestLogoutWarningModal } from './ui/GuestLogoutWarningModal';
+import { LogoutConfirmModal } from './ui/LogoutConfirmModal';
 import { NotificationCenter } from './ui/NotificationCenter';
 
 export type View =
@@ -63,6 +64,8 @@ interface AppShellProps {
 export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, children }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [guestLogoutWarningOpen, setGuestLogoutWarningOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const currentUser = store.state.currentUser;
   const username = store.state.username;
@@ -73,7 +76,17 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
     if (currentUser?.isAnonymous) {
       setGuestLogoutWarningOpen(true);
     } else {
-      store.logout();
+      setLogoutConfirmOpen(true);
+    }
+  };
+
+  const handleConfirmLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await store.logout();
+      setLogoutConfirmOpen(false);
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -401,6 +414,13 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
         onClose={() => setGuestLogoutWarningOpen(false)}
         onSaveProgressFirst={onOpenAuthModal}
         onLogoutAnyway={store.logout}
+      />
+
+      <LogoutConfirmModal
+        open={logoutConfirmOpen}
+        onClose={() => setLogoutConfirmOpen(false)}
+        onConfirm={handleConfirmLogout}
+        isLoggingOut={isLoggingOut}
       />
     </div>
   );

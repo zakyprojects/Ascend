@@ -7,6 +7,8 @@ import { getCurrentTier, getNextTier } from '@/lib/tiers';
 import { TierBadge, TierProgress } from '@/components/ui/TierBadge';
 import { LEAGUE_CONFIG, formatCountdown, getTimeUntilReset, getSeasonLabel } from '@/lib/leagues';
 import { LeagueType } from '@/types';
+import { useAsyncActionKey } from '@/lib/useAsyncAction';
+import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 
 const LEAGUE_ICONS: Record<string, typeof Trophy> = {
   Calendar, CalendarDays, Brain,
@@ -23,6 +25,8 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   const totalPoints = store.state.totalPoints;
   const tier = getCurrentTier(totalPoints);
   const nextTier = getNextTier(totalPoints);
+
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
 
   const todayEntry = store.getTodayJournalEntry();
   const completedToday = habits.filter((h) => store.isHabitDone(h));
@@ -279,22 +283,26 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
         ) : (
           <div className="space-y-2">
             {pendingToday.length > 0 ? (
-              pendingToday.slice(0, 4).map((habit) => (
-                <div key={habit.id} className="card p-3 flex items-center gap-3 card-hover">
-                  <button
-                    onClick={() => store.toggleHabit(habit.id)}
-                    className="shrink-0 w-9 h-9 rounded-lg bg-bg-600 text-slate-500 hover:bg-bg-500 hover:text-slate-300 border border-white/5 flex items-center justify-center transition-all active:scale-90"
-                  >
-                    <Check size={18} />
-                  </button>
-                  <span className="text-sm text-slate-300 flex-1 truncate">{habit.name}</span>
-                  {habit.isPreset ? (
-                    <span className="text-xs text-primary-400">+{habit.points} pts</span>
-                  ) : (
-                    <span className="text-xs text-slate-600">No pts</span>
-                  )}
-                </div>
-              ))
+              pendingToday.slice(0, 4).map((habit) => {
+                const isToggling = isKeyLoading(habit.id);
+                return (
+                  <div key={habit.id} className="card p-3 flex items-center gap-3 card-hover">
+                    <button
+                      disabled={isToggling}
+                      onClick={() => executeWithKey(habit.id, async () => { store.toggleHabit(habit.id); })}
+                      className="shrink-0 w-9 h-9 rounded-lg bg-bg-600 text-slate-500 hover:bg-bg-500 hover:text-slate-300 border border-white/5 flex items-center justify-center transition-all active:scale-90"
+                    >
+                      {isToggling ? <AscendLoadingIndicator size="sm" /> : <Check size={18} />}
+                    </button>
+                    <span className="text-sm text-slate-300 flex-1 truncate">{habit.name}</span>
+                    {habit.isPreset ? (
+                      <span className="text-xs text-primary-400">+{habit.points} pts</span>
+                    ) : (
+                      <span className="text-xs text-slate-600">No pts</span>
+                    )}
+                  </div>
+                );
+              })
             ) : (
               <div className="card p-5 text-center">
                 <div className="w-12 h-12 rounded-xl bg-primary-500/15 flex items-center justify-center mx-auto mb-2">

@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { Modal } from './Modal';
 import { Trash2, AlertTriangle } from 'lucide-react';
+import { AscendLoadingIndicator } from './AscendLoadingIndicator';
+import { useToast } from './Toast';
 
 interface ConfirmDeleteModalProps {
   open: boolean;
@@ -20,8 +23,28 @@ export function ConfirmDeleteModal({
   itemName,
   description,
   confirmText = 'Delete',
-  isDeleting = false,
+  isDeleting: externalIsDeleting = false,
 }: ConfirmDeleteModalProps) {
+  const [internalDeleting, setInternalDeleting] = useState(false);
+  const isDeleting = externalIsDeleting || internalDeleting;
+  const { showErrorToast } = useToast();
+
+  const handleConfirmClick = async () => {
+    setInternalDeleting(true);
+    const start = Date.now();
+    try {
+      await onConfirm();
+      const elapsed = Date.now() - start;
+      if (elapsed < 400) {
+        await new Promise((r) => setTimeout(r, 400 - elapsed));
+      }
+    } catch (err: any) {
+      showErrorToast('Deletion Failed', err?.message || 'Failed to delete item. Please check your connection.');
+    } finally {
+      setInternalDeleting(false);
+    }
+  };
+
   return (
     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-md">
       <div className="space-y-4">
@@ -47,12 +70,21 @@ export function ConfirmDeleteModal({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={handleConfirmClick}
             disabled={isDeleting}
             className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-rose-900/20"
           >
-            <Trash2 size={14} />
-            <span>{isDeleting ? 'Deleting...' : confirmText}</span>
+            {isDeleting ? (
+              <>
+                <AscendLoadingIndicator size="sm" />
+                <span>Deleting...</span>
+              </>
+            ) : (
+              <>
+                <Trash2 size={14} />
+                <span>{confirmText}</span>
+              </>
+            )}
           </button>
         </div>
       </div>
