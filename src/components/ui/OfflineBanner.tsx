@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WifiOff, Wifi } from 'lucide-react';
 
 export function OfflineBanner() {
@@ -6,30 +6,91 @@ export function OfflineBanner() {
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
   const [showRestored, setShowRestored] = useState<boolean>(false);
+  const wasOfflineRef = useRef<boolean>(!isOnline);
+
+  const performHeartbeatCheck = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+
+    // Fast check: if browser explicitly says offline, set false immediately
+    if (navigator.onLine === false) {
+      setIsOnline((prev) => {
+        if (prev) wasOfflineRef.current = true;
+        return false;
+      });
+      setShowRestored(false);
+      return;
+    }
+
+    // Active reachability check via HEAD fetch to local asset
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      const res = await fetch(`/favicon.svg?_hb=${Date.now()}`, {
+        method: 'HEAD',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        setIsOnline((prev) => {
+          if (!prev || wasOfflineRef.current) {
+            setShowRestored(true);
+            setTimeout(() => setShowRestored(false), 4000);
+            wasOfflineRef.current = false;
+          }
+          return true;
+        });
+      } else {
+        setIsOnline((prev) => {
+          if (prev) wasOfflineRef.current = true;
+          return false;
+        });
+        setShowRestored(false);
+      }
+    } catch {
+      setIsOnline((prev) => {
+        if (prev) wasOfflineRef.current = true;
+        return false;
+      });
+      setShowRestored(false);
+    }
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => {
-      setIsOnline(true);
-      setShowRestored(true);
-      const timer = setTimeout(() => {
-        setShowRestored(false);
-      }, 4000);
-      return () => clearTimeout(timer);
+      performHeartbeatCheck();
     };
 
     const handleOffline = () => {
       setIsOnline(false);
+      wasOfflineRef.current = true;
       setShowRestored(false);
+    };
+
+    const handleNetworkErrorEvent = () => {
+      performHeartbeatCheck();
     };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('app-network-error', handleNetworkErrorEvent);
+
+    // Initial check on mount
+    performHeartbeatCheck();
+
+    // Active heartbeat check every 12 seconds
+    const heartbeatInterval = setInterval(performHeartbeatCheck, 12000);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('app-network-error', handleNetworkErrorEvent);
+      clearInterval(heartbeatInterval);
     };
-  }, []);
+  }, [performHeartbeatCheck]);
 
   if (!isOnline) {
     return (

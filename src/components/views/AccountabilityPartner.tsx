@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Users, UserPlus, Plus, Award, Zap, Trash2, X, Clock, CheckCircle2, Shield, Eye, EyeOff, BookOpen, Dumbbell, AlertTriangle, Sparkles, Activity, ShieldAlert, FileText, HeartHandshake } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
@@ -105,17 +106,25 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     avatar?: string;
     isProfilePublic?: boolean;
   } | null>(null);
+  const [isStatsLoading, setIsStatsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     let mounted = true;
     if (activePartnerUsername && bothStatsAllowed) {
+      setIsStatsLoading(true);
       store.getPartnerProfileStats(activePartnerUsername).then((res) => {
-        if (mounted && res) {
-          setPartnerStatsData(res as any);
+        if (mounted) {
+          if (res) {
+            setPartnerStatsData(res as any);
+          }
+          setIsStatsLoading(false);
         }
+      }).catch(() => {
+        if (mounted) setIsStatsLoading(false);
       });
     } else {
       setPartnerStatsData(null);
+      setIsStatsLoading(false);
     }
     return () => {
       mounted = false;
@@ -450,7 +459,13 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
             {/* BROADER PROFILE STATS CARD (MUTUAL PER-RELATIONSHIP OPT-IN REQUIRED) */}
             {bothStatsAllowed ? (
-              <div className="p-4 bg-bg-800/80 rounded-2xl border border-white/10 space-y-3">
+              isStatsLoading ? (
+                <div className="p-8 bg-bg-800/80 rounded-2xl border border-white/10 flex items-center justify-center gap-3 text-slate-400 text-xs">
+                  <AscendLoadingIndicator size="md" />
+                  <span>Loading {activePartnerUsername}'s Stats...</span>
+                </div>
+              ) : (
+                <div className="p-4 bg-bg-800/80 rounded-2xl border border-white/10 space-y-3">
                 <div className="flex items-center justify-between border-b border-white/5 pb-2">
                   <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
                     <Sparkles size={15} className="text-amber-400" />
@@ -487,7 +502,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   </div>
                 </div>
               </div>
-            ) : (
+            )) : (
               <div className="p-3.5 bg-bg-800/40 rounded-xl border border-white/5 text-center text-xs text-slate-400">
                 <span>Broader profile stats hidden. Enable stats sharing above (requires mutual opt-in) to unlock full profile stats for this partner.</span>
               </div>

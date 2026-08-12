@@ -276,13 +276,46 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
         });
         if (retryErr) {
           console.error('Error retrying user_data upsert in Supabase:', retryErr);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('app-toast-error', {
+                detail: {
+                  title: 'Cloud Sync Failed',
+                  message: 'Could not sync user data to cloud.',
+                },
+              })
+            );
+            window.dispatchEvent(new CustomEvent('app-network-error'));
+          }
         }
       } else {
         console.error('Error upserting user_data in Supabase:', dataResult.error);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('app-toast-error', {
+              detail: {
+                title: 'Cloud Sync Failed',
+                message: 'Could not sync user data to cloud.',
+              },
+            })
+          );
+          window.dispatchEvent(new CustomEvent('app-network-error'));
+        }
       }
     }
   } catch (e) {
     console.error('Error saving user_data to Supabase:', e);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('app-toast-error', {
+          detail: {
+            title: 'Cloud Sync Failed',
+            message: 'Network error saving data. Please check connection.',
+          },
+        })
+      );
+      window.dispatchEvent(new CustomEvent('app-network-error'));
+    }
   }
 }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import {
   Compass,
   Plus,
@@ -143,6 +144,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
   // Remote public plans fetched & updated via Supabase Realtime & syncBroadcaster
   const [remotePublicPlans, setRemotePublicPlans] = useState<ImprovementPlan[]>([]);
+  const [isInitialLoadingPlans, setIsInitialLoadingPlans] = useState<boolean>(true);
 
   const loadPlans = async (
     overrideSearch?: string,
@@ -168,6 +170,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       }
     } finally {
       setIsRefreshing(false);
+      setIsInitialLoadingPlans(false);
     }
   };
 
@@ -180,14 +183,21 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     let mounted = true;
 
     const fetchInitialPlans = async () => {
-      const plans = await fetchPublicPlansFromSupabase();
-      if (mounted && plans) {
-        setRemotePublicPlans(plans);
-        plans.forEach((p) => {
-          if (p.copyCount !== undefined) {
-            storeRef.current.updatePlanCopyCount(p.id, p.copyCount);
-          }
-        });
+      setIsInitialLoadingPlans(true);
+      try {
+        const plans = await fetchPublicPlansFromSupabase();
+        if (mounted && plans) {
+          setRemotePublicPlans(plans);
+          plans.forEach((p) => {
+            if (p.copyCount !== undefined) {
+              storeRef.current.updatePlanCopyCount(p.id, p.copyCount);
+            }
+          });
+        }
+      } finally {
+        if (mounted) {
+          setIsInitialLoadingPlans(false);
+        }
       }
     };
 
@@ -1179,7 +1189,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             </div>
           </div>
 
-          {remotePublicPlans.length === 0 ? (
+          {isInitialLoadingPlans || isRefreshing ? (
+            <div className="card p-12 text-center text-slate-400 text-sm space-y-4 flex flex-col items-center justify-center min-h-[220px]">
+              <AscendLoadingIndicator size="lg" />
+              <p className="text-xs font-medium text-slate-300 animate-pulse">Loading Public Plans...</p>
+            </div>
+          ) : remotePublicPlans.length === 0 ? (
             <div className="card p-8 text-center text-slate-500 text-sm space-y-3">
               <Compass size={32} className="mx-auto text-slate-600 mb-1" />
               <p className="font-semibold text-slate-400">No public plans found matching your filters.</p>

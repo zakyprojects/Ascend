@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -23,12 +23,24 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const lastShownRef = useRef<Map<string, number>>(new Map());
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const showToast = useCallback((toast: Omit<ToastItem, 'id'>) => {
+    const key = `${toast.type}:${toast.title}:${toast.message || ''}`;
+    const now = Date.now();
+    const lastTime = lastShownRef.current.get(key) || 0;
+
+    // Suppress identical toasts shown within the last 6 seconds to prevent spam
+    if (now - lastTime < 6000) {
+      return;
+    }
+
+    lastShownRef.current.set(key, now);
+
     const id = Math.random().toString(36).substring(2, 9);
     const duration = toast.duration ?? (toast.type === 'error' ? 5000 : 3500);
 
@@ -58,6 +70,31 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const showInfoToast = useCallback((title: string, message?: string) => {
     showToast({ type: 'info', title, message });
   }, [showToast]);
+
+  // Global window event listener for central choke point calls
+  useEffect(() => {
+    const handleToastErrorEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ title: string; message?: string }>;
+      if (customEvent.detail?.title) {
+        showErrorToast(customEvent.detail.title, customEvent.detail.message);
+      }
+    };
+
+    const handleToastSuccessEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ title: string; message?: string }>;
+      if (customEvent.detail?.title) {
+        showSuccessToast(customEvent.detail.title, customEvent.detail.message);
+      }
+    };
+
+    window.addEventListener('app-toast-error', handleToastErrorEvent);
+    window.addEventListener('app-toast-success', handleToastSuccessEvent);
+
+    return () => {
+      window.removeEventListener('app-toast-error', handleToastErrorEvent);
+      window.removeEventListener('app-toast-success', handleToastSuccessEvent);
+    };
+  }, [showErrorToast, showSuccessToast]);
 
   return (
     <ToastContext.Provider value={{ showToast, showSuccessToast, showErrorToast, showWarningToast, showInfoToast }}>
