@@ -4,6 +4,7 @@ import {
   User,
   Lock,
   Bell,
+  BellOff,
   Eye,
   Sun,
   Moon,
@@ -90,6 +91,22 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
   const [notifDailyReminder, setNotifDailyReminder] = useState(true);
   const [notifPartnerActivity, setNotifPartnerActivity] = useState(true);
   const [notifLeagueUpdates, setNotifLeagueUpdates] = useState(true);
+  const [focusNotifsEnabled, setFocusNotifsEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const saved = localStorage.getItem('ascend_focus_notifs_enabled');
+      return saved === null ? true : saved === 'true';
+    } catch {
+      return true;
+    }
+  });
+  const [notifBrowserPerm, setNotifBrowserPerm] = useState<NotificationPermission>('default');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotifBrowserPerm(Notification.permission);
+    }
+  }, []);
 
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -664,6 +681,56 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     className="rounded border-white/20 bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                   />
                 </label>
+
+                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-white/5 cursor-pointer hover:border-white/10 transition-all">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-200 block">Focus Session Completion Alerts</span>
+                    <span className="text-[11px] text-slate-400">Receive system and browser alerts when deep focus sessions complete</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={focusNotifsEnabled && notifBrowserPerm === 'granted'}
+                    onChange={async () => {
+                      if (typeof window === 'undefined' || !('Notification' in window)) {
+                        alert('Web Notifications are not supported by your browser.');
+                        return;
+                      }
+
+                      if (notifBrowserPerm === 'default') {
+                        try {
+                          const perm = await Notification.requestPermission();
+                          setNotifBrowserPerm(perm);
+                          if (perm === 'granted') {
+                            setFocusNotifsEnabled(true);
+                            localStorage.setItem('ascend_focus_notifs_enabled', 'true');
+                          }
+                        } catch (e) {
+                          console.warn('Notification permission request error:', e);
+                        }
+                        return;
+                      }
+
+                      if (notifBrowserPerm === 'granted') {
+                        const next = !focusNotifsEnabled;
+                        setFocusNotifsEnabled(next);
+                        localStorage.setItem('ascend_focus_notifs_enabled', String(next));
+                      }
+                    }}
+                    className="rounded border-white/20 bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                  />
+                </label>
+
+                {notifBrowserPerm === 'denied' && (
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-2.5 text-xs text-rose-300">
+                    <BellOff size={16} className="text-rose-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="font-bold text-rose-200">Browser Notification Permission Denied</p>
+                      <p className="text-[11px] text-rose-300/80 leading-relaxed">
+                        Notifications are currently blocked by your browser settings. Even if enabled here, focus completion alerts cannot fire until you allow notification permissions for this website in your browser settings.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

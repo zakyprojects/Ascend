@@ -122,6 +122,8 @@ export function PrefrontalCortex({ store }: { store: AppStore }) {
 // 1. DEEP FOCUS POMODORO TIMER SUBMODULE
 // ----------------------------------------------------------------------
 const FOCUS_STORAGE_KEY = 'ascend_active_focus_session';
+const FOCUS_SENTINEL_KEY = 'ascend_focus_tab_alive';
+const FOCUS_NOTIFS_PREF_KEY = 'ascend_focus_notifs_enabled';
 
 interface PersistedFocusSession {
   startTime: number; // ms timestamp
@@ -147,20 +149,47 @@ function calculateRemainingSeconds(session: PersistedFocusSession): number {
   return Math.max(0, Math.ceil(remaining));
 }
 
-function sendCompletionNotification(mode: 'focus' | 'break', taskName: string, durationMins: number) {
-  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+async function sendCompletionNotification(mode: 'focus' | 'break', taskName: string, durationMins: number) {
+  if (typeof window === 'undefined' || !('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+
+  try {
+    const pref = localStorage.getItem(FOCUS_NOTIFS_PREF_KEY);
+    if (pref === 'false') return;
+  } catch (e) {
+    /* ignore */
+  }
+
+  const title = mode === 'focus' ? '🎯 Deep Focus Complete!' : '☕ Rest Break Ended!';
+  const body = mode === 'focus'
+    ? `Outstanding focus! You completed ${durationMins} minutes on "${taskName}".`
+    : 'Rest break is over. Ready for your next deep focus session?';
+
+  const options: NotificationOptions & { renotify?: boolean } = {
+    body,
+    icon: '/favicon.ico',
+    tag: 'ascend-focus-completion',
+    renotify: true,
+  };
+
+  // 1. Service Worker registration showNotification (for Mobile / PWA / Background tabs)
+  if ('serviceWorker' in navigator) {
     try {
-      const title = mode === 'focus' ? '🎯 Deep Focus Complete!' : '☕ Rest Break Ended!';
-      const body = mode === 'focus'
-        ? `Outstanding focus! You completed ${durationMins} minutes on "${taskName}".`
-        : 'Rest break is over. Ready for your next deep focus session?';
-      new Notification(title, {
-        body,
-        icon: '/favicon.ico',
-      });
-    } catch (err) {
-      console.warn('System notification execution failed:', err);
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && typeof reg.showNotification === 'function') {
+        await reg.showNotification(title, options);
+        return;
+      }
+    } catch (e) {
+      console.warn('Service worker showNotification failed, falling back to Notification constructor:', e);
     }
+  }
+
+  // 2. Fallback to standard Notification constructor
+  try {
+    new Notification(title, options);
+  } catch (err) {
+    console.warn('Notification constructor failed:', err);
   }
 }
 
@@ -168,6 +197,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
   const [deleteModalLog, setDeleteModalLog] = useState<any | null>(null);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [deniedNotifModalOpen, setDeniedNotifModalOpen] = useState(false);
   const [pendingPresetSwitch, setPendingPresetSwitch] = useState<{ focus: number; breakMins: number; custom: boolean } | null>(null);
 
   const [reflectionModalOpen, setReflectionModalOpen] = useState(false);
@@ -192,6 +222,15 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [notificationPerm, setNotificationPerm] = useState<NotificationPermission>('default');
+  const [focusNotifsEnabled, setFocusNotifsEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const saved = localStorage.getItem(FOCUS_NOTIFS_PREF_KEY);
+      return saved === null ? true : saved === 'true';
+    } catch {
+      return true;
+    }
+  });
 
   const focusLogs = store.state.focusLogs;
   const skills = store.state.skills;
@@ -202,7 +241,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
   const weeklyFocusLogs = focusLogs.filter((l) => (parseDate(l.date) || new Date(0)) >= weekStart);
   const weeklyFocusMinutes = weeklyFocusLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
 
-  // Initialize notification state & resume active session from localStorage on mount
+  // Initialize notification state & resume active session from localStorage on mount (BUG 1 FIX)
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setNotificationPerm(Notification.permission);
@@ -210,41 +249,55 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
     try {
       const saved = localStorage.getItem(FOCUS_STORAGE_KEY);
-      if (saved) {
-        const parsed: PersistedFocusSession = JSON.parse(saved);
-        const remainingSecs = calculateRemainingSeconds(parsed);
+      const sentinel = sessionStorage.getItem(FOCUS_SENTINEL_KEY);
 
-        if (remainingSecs <= 0) {
-          // Rule 4: If session expired while closed or abandoned, treat as expired/discarded on mount
+      if (saved) {
+        if (sentinel !== '1') {
+          // Tab was genuinely closed and reopened in a new tab context -> discard session immediately
+          console.log('[FocusTimer] Tab sentinel missing — session originated from a closed tab. Discarding session.');
           localStorage.removeItem(FOCUS_STORAGE_KEY);
+          sessionStorage.removeItem(FOCUS_SENTINEL_KEY);
         } else {
-          // Seamlessly resume active session
-          setActiveSession(parsed);
-          setTimeLeft(remainingSecs);
-          setIsRunning(!parsed.isPaused);
-          setMode(parsed.mode);
-          setFocusMinutes(parsed.focusMinutes);
-          setBreakMinutes(parsed.breakMinutes);
-          setTaskName(parsed.taskName);
-          setSelectedSkillId(parsed.skillId || '');
-          setIsCustom(parsed.isCustom);
-          if (parsed.isCustom) {
-            setCustomFocusMins(parsed.focusMinutes);
-            setCustomBreakMins(parsed.breakMinutes);
+          // Same tab reload (F5) or active tab -> calculate remaining time
+          const parsed: PersistedFocusSession = JSON.parse(saved);
+          const remainingSecs = calculateRemainingSeconds(parsed);
+
+          if (remainingSecs <= 0) {
+            localStorage.removeItem(FOCUS_STORAGE_KEY);
+            sessionStorage.removeItem(FOCUS_SENTINEL_KEY);
+          } else {
+            // Seamlessly resume active session
+            setActiveSession(parsed);
+            setTimeLeft(remainingSecs);
+            setIsRunning(!parsed.isPaused);
+            setMode(parsed.mode);
+            setFocusMinutes(parsed.focusMinutes);
+            setBreakMinutes(parsed.breakMinutes);
+            setTaskName(parsed.taskName);
+            setSelectedSkillId(parsed.skillId || '');
+            setIsCustom(parsed.isCustom);
+            if (parsed.isCustom) {
+              setCustomFocusMins(parsed.focusMinutes);
+              setCustomBreakMins(parsed.breakMinutes);
+            }
+            // Re-arm sentinel
+            sessionStorage.setItem(FOCUS_SENTINEL_KEY, '1');
           }
         }
       }
     } catch (e) {
       console.error('Error restoring focus session from localStorage:', e);
       localStorage.removeItem(FOCUS_STORAGE_KEY);
+      sessionStorage.removeItem(FOCUS_SENTINEL_KEY);
     }
   }, []);
 
   // Completion trigger handler
   const handleSessionComplete = (session: PersistedFocusSession) => {
-    sendCompletionNotification(session.mode, session.taskName, session.totalSessionMinutes);
+    void sendCompletionNotification(session.mode, session.taskName, session.totalSessionMinutes);
 
     localStorage.removeItem(FOCUS_STORAGE_KEY);
+    sessionStorage.removeItem(FOCUS_SENTINEL_KEY);
     setActiveSession(null);
     setIsRunning(false);
 
@@ -353,6 +406,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
     try {
       localStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify(newSession));
+      sessionStorage.setItem(FOCUS_SENTINEL_KEY, '1');
     } catch (e) {
       console.error('Failed to persist focus session:', e);
     }
@@ -374,6 +428,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
     };
     try {
       localStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify(updated));
+      sessionStorage.setItem(FOCUS_SENTINEL_KEY, '1');
     } catch (e) {}
     setActiveSession(updated);
     setTimeLeft(rem);
@@ -391,9 +446,45 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
     };
     try {
       localStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify(updated));
+      sessionStorage.setItem(FOCUS_SENTINEL_KEY, '1');
     } catch (e) {}
     setActiveSession(updated);
     setIsRunning(true);
+  };
+
+  // Notification Toggle Handler (BUG 2 FIX)
+  const handleToggleNotification = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('Web Notifications are not supported by your current browser.');
+      return;
+    }
+
+    if (Notification.permission === 'default') {
+      try {
+        const perm = await Notification.requestPermission();
+        setNotificationPerm(perm);
+        if (perm === 'granted') {
+          setFocusNotifsEnabled(true);
+          localStorage.setItem(FOCUS_NOTIFS_PREF_KEY, 'true');
+        } else if (perm === 'denied') {
+          setDeniedNotifModalOpen(true);
+        }
+      } catch (e) {
+        console.warn('Error requesting notification permission:', e);
+      }
+      return;
+    }
+
+    if (Notification.permission === 'denied') {
+      setDeniedNotifModalOpen(true);
+      return;
+    }
+
+    if (Notification.permission === 'granted') {
+      const nextVal = !focusNotifsEnabled;
+      setFocusNotifsEnabled(nextVal);
+      localStorage.setItem(FOCUS_NOTIFS_PREF_KEY, String(nextVal));
+    }
   };
 
   // Discard / Reset Session Handlers
@@ -409,6 +500,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
   const handleConfirmDiscardSession = () => {
     localStorage.removeItem(FOCUS_STORAGE_KEY);
+    sessionStorage.removeItem(FOCUS_SENTINEL_KEY);
     setActiveSession(null);
     setIsRunning(false);
     setConfirmResetOpen(false);
@@ -533,29 +625,31 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div className="text-right">
-            <div className="flex items-center gap-1 text-[11px] text-slate-400">
-              {notificationPerm === 'granted' ? (
-                <span className="text-emerald-400 flex items-center gap-1 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                  <Bell size={12} /> Notifs On
-                </span>
-              ) : notificationPerm === 'denied' ? (
-                <span className="text-slate-500 flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-md border border-white/5" title="Notifications blocked in browser settings">
+            <button
+              onClick={handleToggleNotification}
+              className="transition-all hover:scale-105 active:scale-95"
+              title="Click to toggle or configure focus completion notifications"
+            >
+              {notificationPerm === 'denied' ? (
+                <span className="text-rose-400 flex items-center gap-1.5 bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/20 font-medium text-[11px]">
                   <BellOff size={12} /> Notifs Denied
                 </span>
+              ) : notificationPerm === 'granted' ? (
+                focusNotifsEnabled ? (
+                  <span className="text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 font-medium text-[11px]">
+                    <Bell size={12} /> Notifs On
+                  </span>
+                ) : (
+                  <span className="text-amber-400 flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20 font-medium text-[11px]">
+                    <BellOff size={12} /> Notifs Muted
+                  </span>
+                )
               ) : (
-                <button
-                  onClick={async () => {
-                    if (typeof window !== 'undefined' && 'Notification' in window) {
-                      const p = await Notification.requestPermission();
-                      setNotificationPerm(p);
-                    }
-                  }}
-                  className="text-cyan-400 hover:underline flex items-center gap-1 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20"
-                >
+                <span className="text-cyan-400 flex items-center gap-1.5 bg-cyan-500/10 px-2.5 py-1 rounded-md border border-cyan-500/20 font-medium text-[11px]">
                   <Bell size={12} /> Enable Notifs
-                </button>
+                </span>
               )}
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -902,6 +996,43 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
             <button onClick={handleSaveReflection} className="btn-primary flex-1 text-xs flex items-center justify-center gap-1.5">
               <Sparkles size={14} />
               <span>Save Reflection</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Browser Notifications Denied Help Modal */}
+      <Modal open={deniedNotifModalOpen} onClose={() => setDeniedNotifModalOpen(false)} title="Browser Notifications Blocked" maxWidth="max-w-md">
+        <div className="space-y-4">
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+              <BellOff size={20} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-slate-100">Notification Permission Required</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Your web browser is currently blocking notification permissions for Ascend. Web browsers do not allow websites to re-prompt for permissions once blocked.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-bg-800 p-3.5 rounded-xl border border-white/5 space-y-2 text-xs text-slate-300">
+            <p className="font-bold text-slate-200">How to allow notifications in browser settings:</p>
+            <ol className="list-decimal list-inside space-y-1 text-slate-400 text-[11px]">
+              <li>Click the site security or lock icon next to the URL in your browser address bar.</li>
+              <li>Select <strong className="text-slate-200">Site settings</strong> or <strong className="text-slate-200">Permissions</strong>.</li>
+              <li>Find <strong className="text-slate-200">Notifications</strong> and set it to <strong className="text-emerald-400">Allow</strong>.</li>
+              <li>Reload the page to apply changes.</li>
+            </ol>
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setDeniedNotifModalOpen(false)}
+              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all"
+            >
+              Got It
             </button>
           </div>
         </div>

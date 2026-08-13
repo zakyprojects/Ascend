@@ -406,6 +406,14 @@ export function useAppState() {
         if (!mounted) return;
 
         if (event === 'SIGNED_OUT') {
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.removeItem('ascend_active_focus_session');
+              sessionStorage.removeItem('ascend_focus_tab_alive');
+            } catch (e) {
+              /* ignore */
+            }
+          }
           const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
           let guestState = DEFAULT_STATE;
           if (guestRaw) {

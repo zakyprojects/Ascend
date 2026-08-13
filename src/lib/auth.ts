@@ -268,6 +268,14 @@ export async function upgradeAnonymousUser(
  * Logout current user session from Supabase.
  */
 export async function logoutUser(): Promise<void> {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('ascend_active_focus_session');
+      sessionStorage.removeItem('ascend_focus_tab_alive');
+    } catch (e) {
+      /* ignore */
+    }
+  }
   if (isSupabaseConfigured) {
     await supabase.auth.signOut();
   }
