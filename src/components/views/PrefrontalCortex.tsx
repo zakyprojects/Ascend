@@ -850,27 +850,27 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
       {/* Focus History */}
       {focusLogs.length > 0 && (
-        <div>
+        <div className="w-full max-w-full min-w-0 overflow-x-hidden">
           <h2 className="section-title mb-3">Recent Focus Sessions</h2>
-          <div className="space-y-2">
+          <div className="space-y-2 w-full max-w-full min-w-0">
             {focusLogs.slice(0, 10).map((log) => {
               const skill = skills.find((s) => s.id === log.skillId);
               return (
-                <div key={log.id} className="card p-3 space-y-1.5 card-hover text-xs">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-slate-200">{log.taskName}</div>
-                      <div className="text-[10px] text-slate-500">
+                <div key={log.id} className="card p-3 space-y-1.5 card-hover text-xs w-full max-w-full min-w-0 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-slate-200 truncate">{log.taskName}</div>
+                      <div className="text-[10px] text-slate-500 truncate">
                         {formatDateLong(log.date)} • {log.durationMinutes} mins {skill ? `• ${skill.name}` : ''}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20">
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20 whitespace-nowrap">
                         +{log.pointsAwarded} pts
                       </span>
                       <button
                         onClick={() => setDeleteModalLog(log)}
-                        className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
+                        className="text-slate-600 hover:text-rose-400 p-1 transition-colors shrink-0"
                         title="Delete Focus Session Log"
                       >
                         <Trash2 size={16} />
@@ -879,7 +879,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                   </div>
 
                   {log.reflection && (
-                    <div className="p-2.5 rounded-lg bg-cyan-500/5 border border-cyan-500/15 text-cyan-200 text-[11px] italic">
+                    <div className="p-2.5 rounded-lg bg-cyan-500/5 border border-cyan-500/15 text-cyan-200 text-[11px] italic break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full min-w-0">
                       "<span className="not-italic font-medium text-slate-300">Reflection:</span> {log.reflection}"
                     </div>
                   )}
@@ -1110,7 +1110,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
               </div>
 
               {d.reflection ? (
-                <div className="p-3 bg-purple-500/10 rounded-xl text-xs text-purple-200 border border-purple-500/20">
+                <div className="p-3 bg-purple-500/10 rounded-xl text-xs text-purple-200 border border-purple-500/20 break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full min-w-0">
                   <span className="font-bold text-purple-300 block mb-1">Reflection & Learnings:</span>
                   "{d.reflection}"
                 </div>
