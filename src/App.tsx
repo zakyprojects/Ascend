@@ -3,6 +3,7 @@ import { useAppState } from '@/lib/store';
 import { AppShell, View } from '@/components/AppShell';
 import { Dashboard } from '@/components/views/Dashboard';
 import { HabitTracker } from '@/components/views/HabitTracker';
+import { WeeklyGoalsView } from '@/components/views/WeeklyGoalsView';
 import { Journal } from '@/components/views/Journal';
 import { ExerciseTracker } from '@/components/views/ExerciseTracker';
 import { ReadingTracker } from '@/components/views/ReadingTracker';
@@ -54,6 +55,7 @@ function App() {
         <ErrorBoundary fallbackTitle="Section Error">
           {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
           {view === 'habits' && <HabitTracker store={store} />}
+          {view === 'weekly-goals' && <WeeklyGoalsView store={store} />}
           {view === 'journal' && <Journal store={store} />}
           {view === 'exercise' && <ExerciseTracker store={store} />}
           {view === 'reading' && <ReadingTracker store={store} />}

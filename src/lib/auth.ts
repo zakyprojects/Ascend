@@ -495,6 +495,7 @@ export async function updateProfileNotificationPreferences(
     notifDailyReminder?: boolean;
     notifPartnerActivity?: boolean;
     notifLeagueUpdates?: boolean;
+    notifSundayPlanning?: boolean;
   }
 ): Promise<void> {
   if (!isSupabaseConfigured) return;
@@ -503,6 +504,7 @@ export async function updateProfileNotificationPreferences(
     if (prefs.notifDailyReminder !== undefined) payload.notif_daily_reminder = prefs.notifDailyReminder;
     if (prefs.notifPartnerActivity !== undefined) payload.notif_partner_activity = prefs.notifPartnerActivity;
     if (prefs.notifLeagueUpdates !== undefined) payload.notif_league_updates = prefs.notifLeagueUpdates;
+    if (prefs.notifSundayPlanning !== undefined) payload.notif_sunday_planning = prefs.notifSundayPlanning;
 
     const { error } = await supabase
       .from('profiles')

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Flame, Trash2, Check, Calendar, Repeat, BookMarked, Pencil, Info, AlertTriangle } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Habit, HabitFrequency } from '@/types';
@@ -23,6 +23,19 @@ export function HabitTracker({ store }: { store: AppStore }) {
     setName('');
     setFrequency('daily');
   };
+
+  const linkedGoalsCount = useMemo(() => {
+    if (!confirmDelete) return 0;
+    let count = 0;
+    store.state.weeklyGoals.forEach((doc) => {
+      doc.goals.forEach((g) => {
+        if (g.linkedModule === 'habit' && g.linkedItemId === confirmDelete.id) {
+          count++;
+        }
+      });
+    });
+    return count;
+  }, [confirmDelete, store.state.weeklyGoals]);
 
   const handleAddCustom = () => {
     if (!name.trim()) return;
@@ -267,7 +280,11 @@ export function HabitTracker({ store }: { store: AppStore }) {
         }}
         title="Delete Habit?"
         itemName={confirmDelete?.name}
-        description="Are you sure you want to delete this habit? This will permanently remove its completion history and streak count."
+        description={`Are you sure you want to delete this habit? This will permanently remove its completion history and streak count.${
+          linkedGoalsCount > 0
+            ? ` Deleting this habit will also delete ${linkedGoalsCount} linked Weekly Goal${linkedGoalsCount > 1 ? 's' : ''}.`
+            : ''
+        }`}
       />
     </div>
   );

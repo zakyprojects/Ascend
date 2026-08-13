@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Target, Zap, Plus, Trash2, Clock, Award, ChevronRight, Edit3 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
@@ -22,6 +22,19 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
   const skills = store.state.skills;
   const skillLogs = store.state.skillLogs;
+
+  const linkedSkillGoalsCount = useMemo(() => {
+    if (!deleteModalSkill) return 0;
+    let count = 0;
+    store.state.weeklyGoals.forEach((doc) => {
+      doc.goals.forEach((g) => {
+        if (g.linkedModule === 'skill' && g.linkedItemId === deleteModalSkill.id) {
+          count++;
+        }
+      });
+    });
+    return count;
+  }, [deleteModalSkill, store.state.weeklyGoals]);
 
   const totalPracticeMinutes = skillLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
   const totalPracticeHours = (totalPracticeMinutes / 60).toFixed(1);
@@ -371,7 +384,11 @@ export function SkillTracker({ store }: { store: AppStore }) {
         }}
         title="Delete Skill?"
         itemName={deleteModalSkill?.name}
-        description={`Are you sure you want to delete "${deleteModalSkill?.name}"? This will remove the skill and its recorded practice history.`}
+        description={`Are you sure you want to delete "${deleteModalSkill?.name}"? This will remove the skill and its recorded practice history.${
+          linkedSkillGoalsCount > 0
+            ? ` Deleting this skill will also delete ${linkedSkillGoalsCount} linked Weekly Goal${linkedSkillGoalsCount > 1 ? 's' : ''}.`
+            : ''
+        }`}
       />
 
       {/* Confirm Delete Skill Log Modal */}

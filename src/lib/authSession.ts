@@ -116,6 +116,7 @@ export function buildUserProfile(
     notifDailyReminder: (profileData?.notif_daily_reminder as boolean | undefined) ?? true,
     notifPartnerActivity: (profileData?.notif_partner_activity as boolean | undefined) ?? true,
     notifLeagueUpdates: (profileData?.notif_league_updates as boolean | undefined) ?? true,
+    notifSundayPlanning: (profileData?.notif_sunday_planning as boolean | undefined) ?? true,
     isAnonymous,
     lastUsernameChangeAt: (profileData?.last_username_change_at as string | undefined) || undefined,
   };

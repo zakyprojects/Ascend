@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { BookOpen, Flame, Plus, CheckCircle, Trash2, Award, Sparkles, BookMarked } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
@@ -31,6 +31,19 @@ export function ReadingTracker({ store }: { store: AppStore }) {
 
   const books = store.state.books;
   const readingLogs = store.state.readingLogs;
+
+  const linkedBookGoalsCount = useMemo(() => {
+    if (!deleteModalBook) return 0;
+    let count = 0;
+    store.state.weeklyGoals.forEach((doc) => {
+      doc.goals.forEach((g) => {
+        if (g.linkedModule === 'reading' && g.linkedItemId === deleteModalBook.id) {
+          count++;
+        }
+      });
+    });
+    return count;
+  }, [deleteModalBook, store.state.weeklyGoals]);
 
   const inProgressBooks = books.filter((b) => !b.isFinished);
   const finishedBooks = books.filter((b) => b.isFinished);
@@ -466,7 +479,11 @@ export function ReadingTracker({ store }: { store: AppStore }) {
         }}
         title="Delete Book?"
         itemName={deleteModalBook?.title}
-        description={`Are you sure you want to delete "${deleteModalBook?.title}"? This will remove the book and its reading history.`}
+        description={`Are you sure you want to delete "${deleteModalBook?.title}"? This will remove the book and its reading history.${
+          linkedBookGoalsCount > 0
+            ? ` Deleting this book will also delete ${linkedBookGoalsCount} linked Weekly Goal${linkedBookGoalsCount > 1 ? 's' : ''}.`
+            : ''
+        }`}
       />
 
       {/* Target Reading Goal Modal */}

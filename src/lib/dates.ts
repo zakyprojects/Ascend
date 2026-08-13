@@ -265,3 +265,75 @@ export function generateUUID(): string {
   });
 }
 
+/**
+ * Returns the Monday start date and Sunday end date for a given week key (YYYY-Www),
+ * along with the list of YYYY-MM-DD date strings within that Monday-Sunday week.
+ */
+export function getWeekDates(targetWeekKey?: string): {
+  start: Date;
+  end: Date;
+  dateStrings: string[];
+} {
+  let baseDate = new Date();
+  if (targetWeekKey) {
+    const match = targetWeekKey.match(/^(\d{4})-W(\d{2})$/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const week = parseInt(match[2], 10);
+      const jan1 = new Date(year, 0, 1);
+      const dayOfWeek = jan1.getDay();
+      const offset = dayOfWeek === 0 ? 1 : 1 - dayOfWeek; // Monday offset
+      baseDate = new Date(year, 0, 1 + offset + (week - 1) * 7);
+    }
+  }
+
+  const start = startOfWeek(baseDate);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  const dateStrings: string[] = [];
+  const curr = new Date(start);
+  for (let i = 0; i < 7; i++) {
+    dateStrings.push(todayKey(curr));
+    curr.setDate(curr.getDate() + 1);
+  }
+
+  return { start, end, dateStrings };
+}
+
+/**
+ * Computes Sunday 17:00 local time cutoff for a given week key (YYYY-Www).
+ */
+export function getWeekReflectionCutoff(targetWeekKey: string): Date {
+  const { start } = getWeekDates(targetWeekKey);
+  const cutoff = new Date(start);
+  cutoff.setDate(cutoff.getDate() + 6); // Sunday
+  cutoff.setHours(17, 0, 0, 0); // 17:00 local time
+  return cutoff;
+}
+
+/** Offset a week key by N weeks (+1 for next week, -1 for previous week) */
+export function offsetWeekKey(currentWeekKey: string, weeksOffset: number): string {
+  const { start } = getWeekDates(currentWeekKey);
+  const targetDate = new Date(start);
+  targetDate.setDate(targetDate.getDate() + weeksOffset * 7);
+  return weekKey(targetDate);
+}
+
+/** Formats week range for display (e.g., "Aug 10 – Aug 16, 2026") */
+export function formatWeekRange(targetWeekKey: string): string {
+  const { start, end } = getWeekDates(targetWeekKey);
+  const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
+  const startDay = start.getDate();
+  const endMonth = end.toLocaleDateString('en-US', { month: 'short' });
+  const endDay = end.getDate();
+  const year = end.getFullYear();
+
+  if (startMonth === endMonth) {
+    return `${startMonth} ${startDay} – ${endDay}, ${year}`;
+  }
+  return `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${year}`;
+}
+
+

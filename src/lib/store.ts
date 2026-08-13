@@ -23,6 +23,7 @@ import {
   EmotionLog,
   WeeklyGoal,
   WeeklyGoalItem,
+  WeeklyGoalReflection,
   PlanStep,
   ImprovementPlan,
   UserPlanFollow,
@@ -41,7 +42,7 @@ import {
   AppNotification,
 } from '@/types';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff } from './dates';
 import { PresetHabit } from './presets';
 import { SEED_ACCOUNTS } from './seedAccounts';
 import {
@@ -113,6 +114,28 @@ import {
   clearNotificationSupabase,
 } from './supabase';
 
+function removeLinkedWeeklyGoals(
+  weeklyGoals: WeeklyGoal[],
+  linkedModule: 'habit' | 'skill' | 'reading',
+  itemIds: (string | undefined)[]
+): WeeklyGoal[] {
+  const validIds = new Set(itemIds.filter((id): id is string => Boolean(id)));
+  if (validIds.size === 0) return weeklyGoals;
+
+  return weeklyGoals.map((w) => {
+    const hasLinked = w.goals.some(
+      (g) => g.linkedModule === linkedModule && g.linkedItemId && validIds.has(g.linkedItemId)
+    );
+    if (!hasLinked) return w;
+    return {
+      ...w,
+      goals: w.goals.filter(
+        (g) => !(g.linkedModule === linkedModule && g.linkedItemId && validIds.has(g.linkedItemId))
+      ),
+    };
+  });
+}
+
 const GUEST_STORAGE_KEY = 'ascend_guest_state_v2';
 
 function loadInitialState(): AppState {
@@ -181,7 +204,38 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     focusLogs: st.focusLogs ?? [],
     decisionLogs: st.decisionLogs ?? [],
     emotionLogs: st.emotionLogs ?? [],
-    weeklyGoals: st.weeklyGoals ?? [],
+    weeklyGoals: (st.weeklyGoals ?? []).map((wg) => {
+      let reflections: WeeklyGoalReflection[] = Array.isArray(wg.reflections) ? wg.reflections : [];
+      if (reflections.length === 0 && wg.insights && wg.insights.trim()) {
+        reflections = [
+          {
+            id: uid(),
+            content: wg.insights.trim(),
+            createdAt: wg.createdAt || new Date().toISOString(),
+            pointsAwarded: Boolean(wg.isReviewed),
+          },
+        ];
+      }
+      return {
+        ...wg,
+        reflections,
+        goals: (wg.goals ?? []).map((g: any) => ({
+          id: g.id || uid(),
+          title: g.title || g.text || 'Weekly Goal',
+          targetDescription: g.targetDescription || '',
+          priority: g.priority || 'medium',
+          linkedModule: g.linkedModule || 'none',
+          linkedItemId: g.linkedItemId || undefined,
+          targetValue: typeof g.targetValue === 'number' ? g.targetValue : undefined,
+          unit: g.unit || undefined,
+          manualProgress: typeof g.manualProgress === 'number' ? g.manualProgress : undefined,
+          completed: Boolean(g.completed ?? g.done),
+          archived: Boolean(g.archived),
+          carriedOverFromWeekKey: g.carriedOverFromWeekKey || undefined,
+          createdAt: g.createdAt || new Date().toISOString(),
+        })),
+      };
+    }),
     libraryBooks: st.libraryBooks ?? [],
     improvementPlans: st.improvementPlans ?? [],
     followedPlans: st.followedPlans ?? [],
@@ -191,7 +245,25 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     partnerNotifications: st.partnerNotifications ?? [],
   };
 
-  return processBadHabitNoReports(baseState);
+  let sweptState = baseState;
+  const now = new Date();
+  const updatedWeeklyGoals = sweptState.weeklyGoals.map((wg) => {
+    const cutoff = getWeekReflectionCutoff(wg.weekKey);
+    if (now >= cutoff) {
+      const { updatedReflections, nextState } = reconcileReflectionPoints(
+        sweptState,
+        wg.weekKey,
+        wg.reflections || [],
+        now
+      );
+      sweptState = nextState;
+      return { ...wg, reflections: updatedReflections };
+    }
+    return wg;
+  });
+  sweptState = { ...sweptState, weeklyGoals: updatedWeeklyGoals };
+
+  return processBadHabitNoReports(sweptState);
 }
 
 function mergeHydratedWithCurrent(hydratedState: AppState, current: AppState): AppState {
@@ -316,6 +388,86 @@ function addPointsInternal(
       },
       ...prev.pointsHistory,
     ].slice(0, 500),
+  };
+}
+
+function reconcileReflectionPoints(
+  prevState: AppState,
+  weekKey: string,
+  reflections: WeeklyGoalReflection[],
+  now = new Date()
+): {
+  updatedReflections: WeeklyGoalReflection[];
+  nextState: AppState;
+} {
+  const cutoff = getWeekReflectionCutoff(weekKey);
+  let updatedReflections = [...reflections];
+  let currentState = prevState;
+
+  if (now < cutoff) {
+    updatedReflections = updatedReflections.map((r) =>
+      r.pointsAwarded ? { ...r, pointsAwarded: false } : r
+    );
+    return {
+      updatedReflections,
+      nextState: currentState,
+    };
+  }
+
+  const previousHolder = (
+    prevState.weeklyGoals.find((w) => w.weekKey === weekKey)?.reflections || []
+  ).find((r) => r.pointsAwarded);
+
+  let latest: WeeklyGoalReflection | undefined = undefined;
+  if (updatedReflections.length > 0) {
+    latest = updatedReflections.reduce(
+      (prevMax, curr) =>
+        new Date(curr.createdAt).getTime() > new Date(prevMax.createdAt).getTime()
+          ? curr
+          : prevMax,
+      updatedReflections[0]
+    );
+  }
+
+  if (latest && previousHolder?.id !== latest.id) {
+    if (previousHolder) {
+      const pointsDeduct = addPointsInternal(
+        currentState,
+        -20,
+        `Weekly reflection points reassigned for ${weekKey}`,
+        'weekly_review'
+      );
+      currentState = { ...currentState, ...pointsDeduct };
+    }
+
+    updatedReflections = updatedReflections.map((r) =>
+      r.id === latest!.id ? { ...r, pointsAwarded: true } : { ...r, pointsAwarded: false }
+    );
+
+    const pointsAward = addPointsInternal(
+      currentState,
+      20,
+      `Weekly reflection completed for ${weekKey}`,
+      'weekly_review'
+    );
+    currentState = { ...currentState, ...pointsAward };
+  } else if (!latest && previousHolder) {
+    const pointsDeduct = addPointsInternal(
+      currentState,
+      -20,
+      `Weekly reflection deleted for ${weekKey}`,
+      'weekly_review'
+    );
+    currentState = { ...currentState, ...pointsDeduct };
+  } else if (latest) {
+    updatedReflections = updatedReflections.map((r) =>
+      r.id === latest!.id ? { ...r, pointsAwarded: true } : { ...r, pointsAwarded: false }
+    );
+  }
+
+  return {
+    updatedReflections,
+    nextState: currentState,
   };
 }
 
@@ -847,6 +999,7 @@ export function useAppState() {
         return {
           ...prev,
           habits: prev.habits.filter((h) => h.id !== habitId),
+          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'habit', [habitId]),
           ...pointsUpdate,
         };
       },
@@ -1399,6 +1552,7 @@ export function useAppState() {
           libraryBooks: prev.libraryBooks.filter(
             (lb) => lb.linkedBookId !== bookId && lb.title.toLowerCase() !== targetTitleLower
           ),
+          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', [bookId]),
           ...pointsUpdate,
         };
       },
@@ -1631,6 +1785,11 @@ export function useAppState() {
           );
         }
 
+        const matchingBookIds = prev.books
+          .filter((b) => (linkedBookId ? b.id === linkedBookId : b.title.toLowerCase() === targetTitleLower))
+          .map((b) => b.id);
+        const idsToRemove = [userBookId, linkedBookId, ...matchingBookIds];
+
         return {
           ...prev,
           libraryBooks: prev.libraryBooks.filter((lb) => lb.id !== userBookId),
@@ -1640,6 +1799,7 @@ export function useAppState() {
           readingLogs: prev.readingLogs.filter((l) =>
             linkedBookId ? l.bookId !== linkedBookId && l.bookId !== userBookId : l.bookId !== userBookId
           ),
+          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsToRemove),
           ...pointsUpdate,
         };
       },
@@ -1733,6 +1893,7 @@ export function useAppState() {
           ...prev,
           skills: prev.skills.filter((s) => s.id !== skillId),
           skillLogs: prev.skillLogs.filter((l) => l.skillId !== skillId),
+          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId]),
           ...pointsUpdate,
         };
       },
@@ -2275,6 +2436,262 @@ export function useAppState() {
       },
       { immediate: true }
     );
+  }, []);
+
+  const addWeeklyReflection = useCallback((weekKey: string, content: string) => {
+    if (!content.trim()) return;
+    setState((prev) => {
+      const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      const existingDoc = idx >= 0 ? prev.weeklyGoals[idx] : null;
+
+      const existingReflections = existingDoc?.reflections || [];
+
+      const newRef: WeeklyGoalReflection = {
+        id: uid(),
+        content: content.trim(),
+        createdAt: new Date().toISOString(),
+        pointsAwarded: false,
+      };
+
+      const candidateReflections = [...existingReflections, newRef];
+
+      const { updatedReflections, nextState } = reconcileReflectionPoints(
+        prev,
+        weekKey,
+        candidateReflections
+      );
+
+      const updatedDoc: WeeklyGoal = {
+        id: existingDoc ? existingDoc.id : uid(),
+        weekKey,
+        goals: existingDoc ? existingDoc.goals : [],
+        reflections: updatedReflections,
+        createdAt: existingDoc ? existingDoc.createdAt : new Date().toISOString(),
+      };
+
+      let newWeeklyGoals = [...nextState.weeklyGoals];
+      if (idx >= 0) {
+        newWeeklyGoals[idx] = updatedDoc;
+      } else {
+        newWeeklyGoals = [updatedDoc, ...newWeeklyGoals];
+      }
+
+      return {
+        ...nextState,
+        weeklyGoals: newWeeklyGoals,
+      };
+    });
+  }, []);
+
+  const updateWeeklyReflection = useCallback((weekKey: string, reflectionId: string, content: string) => {
+    if (!content.trim()) return;
+    setState((prev) => {
+      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      if (docIdx === -1) return prev;
+
+      const doc = prev.weeklyGoals[docIdx];
+      const refIdx = (doc.reflections || []).findIndex((r) => r.id === reflectionId);
+      if (refIdx === -1) return prev;
+
+      const existingRef = doc.reflections![refIdx];
+      const updatedRef: WeeklyGoalReflection = {
+        ...existingRef,
+        content: content.trim(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const candidateReflections = [...doc.reflections!];
+      candidateReflections[refIdx] = updatedRef;
+
+      const { updatedReflections, nextState } = reconcileReflectionPoints(
+        prev,
+        weekKey,
+        candidateReflections
+      );
+
+      const updatedDoc = { ...doc, reflections: updatedReflections };
+      const newWeeklyGoals = [...nextState.weeklyGoals];
+      newWeeklyGoals[docIdx] = updatedDoc;
+
+      return {
+        ...nextState,
+        weeklyGoals: newWeeklyGoals,
+      };
+    });
+  }, []);
+
+  const deleteWeeklyReflection = useCallback((weekKey: string, reflectionId: string) => {
+    setState((prev) => {
+      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      if (docIdx === -1) return prev;
+
+      const doc = prev.weeklyGoals[docIdx];
+      const targetRef = (doc.reflections || []).find((r) => r.id === reflectionId);
+      if (!targetRef) return prev;
+
+      const candidateReflections = (doc.reflections || []).filter((r) => r.id !== reflectionId);
+
+      const { updatedReflections, nextState } = reconcileReflectionPoints(
+        prev,
+        weekKey,
+        candidateReflections
+      );
+
+      const updatedDoc = { ...doc, reflections: updatedReflections };
+      const newWeeklyGoals = [...nextState.weeklyGoals];
+      newWeeklyGoals[docIdx] = updatedDoc;
+
+      return {
+        ...nextState,
+        weeklyGoals: newWeeklyGoals,
+      };
+    });
+  }, []);
+
+  const addWeeklyGoalItem = useCallback((weekKey: string, goalData: Partial<WeeklyGoalItem>) => {
+    setState((prev) => {
+      const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      const existingDoc = idx >= 0 ? prev.weeklyGoals[idx] : null;
+
+      const newItem: WeeklyGoalItem = {
+        id: uid(),
+        title: (goalData.title || goalData.text || '').trim() || 'New Weekly Goal',
+        targetDescription: goalData.targetDescription?.trim() || '',
+        priority: goalData.priority || 'medium',
+        linkedModule: goalData.linkedModule || 'none',
+        linkedItemId: goalData.linkedItemId || undefined,
+        targetValue: typeof goalData.targetValue === 'number' && goalData.targetValue > 0 ? goalData.targetValue : undefined,
+        unit: goalData.unit?.trim() || undefined,
+        manualProgress: typeof goalData.manualProgress === 'number' ? goalData.manualProgress : 0,
+        completed: Boolean(goalData.completed),
+        carriedOverFromWeekKey: goalData.carriedOverFromWeekKey,
+        createdAt: new Date().toISOString(),
+      };
+
+      const updatedGoals = existingDoc ? [...existingDoc.goals, newItem] : [newItem];
+      const updatedDoc: WeeklyGoal = {
+        id: existingDoc ? existingDoc.id : uid(),
+        weekKey,
+        goals: updatedGoals,
+        reflections: existingDoc?.reflections || [],
+        createdAt: existingDoc ? existingDoc.createdAt : new Date().toISOString(),
+      };
+
+      const newWeeklyGoals = [...prev.weeklyGoals];
+      if (idx >= 0) {
+        newWeeklyGoals[idx] = updatedDoc;
+      } else {
+        newWeeklyGoals.unshift(updatedDoc);
+      }
+
+      return { ...prev, weeklyGoals: newWeeklyGoals };
+    });
+  }, []);
+
+  const updateWeeklyGoalItem = useCallback((weekKey: string, goalId: string, updates: Partial<WeeklyGoalItem>) => {
+    setState((prev) => {
+      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      if (docIdx === -1) return prev;
+
+      const doc = prev.weeklyGoals[docIdx];
+      const goalIdx = doc.goals.findIndex((g) => g.id === goalId);
+      if (goalIdx === -1) return prev;
+
+      const existingGoal = doc.goals[goalIdx];
+      const updatedGoal: WeeklyGoalItem = {
+        ...existingGoal,
+        ...updates,
+        title: updates.title !== undefined ? updates.title.trim() : existingGoal.title,
+        targetDescription: updates.targetDescription !== undefined ? updates.targetDescription.trim() : existingGoal.targetDescription,
+      };
+
+      const updatedGoals = [...doc.goals];
+      updatedGoals[goalIdx] = updatedGoal;
+
+      const updatedDoc = { ...doc, goals: updatedGoals };
+      const newWeeklyGoals = [...prev.weeklyGoals];
+      newWeeklyGoals[docIdx] = updatedDoc;
+
+      return { ...prev, weeklyGoals: newWeeklyGoals };
+    });
+  }, []);
+
+  const deleteWeeklyGoalItem = useCallback((weekKey: string, goalId: string) => {
+    setState((prev) => {
+      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      if (docIdx === -1) return prev;
+
+      const doc = prev.weeklyGoals[docIdx];
+      const updatedGoals = doc.goals.filter((g) => g.id !== goalId);
+
+      const updatedDoc = { ...doc, goals: updatedGoals };
+      const newWeeklyGoals = [...prev.weeklyGoals];
+      newWeeklyGoals[docIdx] = updatedDoc;
+
+      return { ...prev, weeklyGoals: newWeeklyGoals };
+    });
+  }, []);
+
+  const carryOverGoal = useCallback((sourceWeekKey: string, targetWeekKey: string, goalId: string, options?: { resumeProgress?: boolean }) => {
+    setState((prev) => {
+      const sourceDoc = prev.weeklyGoals.find((w) => w.weekKey === sourceWeekKey);
+      if (!sourceDoc) return prev;
+
+      const targetGoal = sourceDoc.goals.find((g) => g.id === goalId);
+      if (!targetGoal) return prev;
+
+      // Check if already carried over to targetWeekKey
+      const targetDocIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
+      const targetDoc = targetDocIdx >= 0 ? prev.weeklyGoals[targetDocIdx] : null;
+
+      if (targetDoc && targetDoc.goals.some((g) => g.carriedOverFromWeekKey === sourceWeekKey && g.title === targetGoal.title)) {
+        return prev;
+      }
+
+      const carriedItem: WeeklyGoalItem = {
+        ...targetGoal,
+        id: uid(),
+        completed: false,
+        manualProgress: options?.resumeProgress ? (targetGoal.manualProgress || 0) : 0,
+        carriedOverFromWeekKey: sourceWeekKey,
+        createdAt: new Date().toISOString(),
+      };
+
+      const newGoals = targetDoc ? [...targetDoc.goals, carriedItem] : [carriedItem];
+      const newDoc: WeeklyGoal = {
+        id: targetDoc ? targetDoc.id : uid(),
+        weekKey: targetWeekKey,
+        goals: newGoals,
+        reflections: targetDoc?.reflections || [],
+        createdAt: targetDoc ? targetDoc.createdAt : new Date().toISOString(),
+      };
+
+      let newWeeklyGoals = [...prev.weeklyGoals];
+      if (targetDocIdx >= 0) {
+        newWeeklyGoals[targetDocIdx] = newDoc;
+      } else {
+        newWeeklyGoals.unshift(newDoc);
+      }
+
+      return { ...prev, weeklyGoals: newWeeklyGoals };
+    });
+  }, []);
+
+  const toggleNotifSundayPlanning = useCallback(() => {
+    setState((prev) => {
+      if (!prev.currentUser) return prev;
+      const nextVal = !(prev.currentUser.notifSundayPlanning ?? true);
+      const updatedUser: UserProfile = {
+        ...prev.currentUser,
+        notifSundayPlanning: nextVal,
+      };
+
+      if (prev.currentUser.id) {
+        updateProfileNotificationPreferences(prev.currentUser.id, { notifSundayPlanning: nextVal });
+      }
+
+      return { ...prev, currentUser: updatedUser };
+    });
   }, []);
 
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---
@@ -3894,6 +4311,14 @@ export function useAppState() {
     deleteEmotionLog,
     saveWeeklyGoal,
     deleteWeeklyGoalDoc,
+    addWeeklyReflection,
+    updateWeeklyReflection,
+    deleteWeeklyReflection,
+    addWeeklyGoalItem,
+    updateWeeklyGoalItem,
+    deleteWeeklyGoalItem,
+    carryOverGoal,
+    toggleNotifSundayPlanning,
     // Self Improvement Books Library Actions
     addCuratedBookToLibrary,
     addCustomBookToLibrary,

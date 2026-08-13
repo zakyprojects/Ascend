@@ -20,6 +20,7 @@ import {
   Users,
   BookMarked,
   Settings,
+  Target,
 } from 'lucide-react';
 import { TierBadge } from './ui/TierBadge';
 import { AppStore } from '@/lib/store';
@@ -30,6 +31,7 @@ import { NotificationCenter } from './ui/NotificationCenter';
 export type View =
   | 'dashboard'
   | 'habits'
+  | 'weekly-goals'
   | 'journal'
   | 'exercise'
   | 'reading'
@@ -95,6 +97,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
   const navItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'habits', label: 'Habits', icon: CheckSquare },
+    { id: 'weekly-goals', label: 'Weekly Goals', icon: Target },
     { id: 'journal', label: 'Journal', icon: BookOpen },
     { id: 'exercise', label: 'Exercise', icon: Activity },
     { id: 'reading', label: 'Reading', icon: BookOpen },

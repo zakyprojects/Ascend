@@ -39,6 +39,31 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
 
   const libraryBooks = store.state.libraryBooks;
 
+  const linkedLibraryBookGoalsCount = useMemo(() => {
+    if (!bookToRemove) return 0;
+    const target = store.state.libraryBooks.find((lb) => lb.id === bookToRemove.id);
+    if (!target) return 0;
+    const linkedBookId = target.linkedBookId;
+    const targetTitleLower = target.title.toLowerCase();
+    const matchingBookIds = new Set(
+      store.state.books
+        .filter((b) => (linkedBookId ? b.id === linkedBookId : b.title.toLowerCase() === targetTitleLower))
+        .map((b) => b.id)
+    );
+    if (target.id) matchingBookIds.add(target.id);
+    if (linkedBookId) matchingBookIds.add(linkedBookId);
+
+    let count = 0;
+    store.state.weeklyGoals.forEach((doc) => {
+      doc.goals.forEach((g) => {
+        if (g.linkedModule === 'reading' && g.linkedItemId && matchingBookIds.has(g.linkedItemId)) {
+          count++;
+        }
+      });
+    });
+    return count;
+  }, [bookToRemove, store.state.libraryBooks, store.state.books, store.state.weeklyGoals]);
+
   const filteredCurated = useMemo(() => {
     let list = [...CURATED_BOOKS];
     if (categoryFilter !== 'all') {
@@ -528,7 +553,11 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
         }}
         title="Remove Book from Library?"
         itemName={bookToRemove?.title}
-        description={`Are you sure you want to remove "${bookToRemove?.title}" from your library?`}
+        description={`Are you sure you want to remove "${bookToRemove?.title}" from your library?${
+          linkedLibraryBookGoalsCount > 0
+            ? ` Removing this book will also delete ${linkedLibraryBookGoalsCount} linked Weekly Goal${linkedLibraryBookGoalsCount > 1 ? 's' : ''}.`
+            : ''
+        }`}
         confirmText="Remove Book"
       />
     </div>

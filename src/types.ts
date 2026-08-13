@@ -28,6 +28,7 @@ export interface UserProfile {
   notifDailyReminder?: boolean;
   notifPartnerActivity?: boolean;
   notifLeagueUpdates?: boolean;
+  notifSundayPlanning?: boolean;
   /** Whether the user is currently an anonymous guest account */
   isAnonymous?: boolean;
   /** ISO timestamp string of the last username change */
@@ -323,19 +324,46 @@ export interface EmotionLog {
   createdAt: string;
 }
 
+export type WeeklyGoalPriority = 'high' | 'medium' | 'low';
+export type WeeklyGoalLinkedModule = 'none' | 'habit' | 'exercise' | 'reading' | 'skill';
+
 export interface WeeklyGoalItem {
   id: string;
-  text: string;
-  done: boolean;
+  title: string;
+  targetDescription?: string;
+  priority: WeeklyGoalPriority;
+  linkedModule?: WeeklyGoalLinkedModule;
+  linkedItemId?: string;
+  targetValue?: number;
+  unit?: string;
+  manualProgress?: number;
+  completed: boolean;
+  archived?: boolean;
+  carriedOverFromWeekKey?: string;
+  carryOverDismissed?: boolean;
+  createdAt: string;
+  /** Legacy fields kept optional for backward compatibility */
+  text?: string;
+  done?: boolean;
+}
+
+export interface WeeklyGoalReflection {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt?: string;
+  pointsAwarded: boolean;
 }
 
 export interface WeeklyGoal {
   id: string;
-  weekKey: string; // e.g. 2026-W31
+  weekKey: string; // e.g. 2026-W33
   goals: WeeklyGoalItem[];
-  insights?: string;
-  isReviewed: boolean;
+  reflections?: WeeklyGoalReflection[];
   createdAt: string;
+  /** Legacy fields kept optional for backward compatibility */
+  insights?: string;
+  isReviewed?: boolean;
 }
 
 // Social Features 1: Personal Improvement Plans

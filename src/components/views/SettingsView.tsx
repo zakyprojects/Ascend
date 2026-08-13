@@ -91,6 +91,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
   const [notifDailyReminder, setNotifDailyReminder] = useState(true);
   const [notifPartnerActivity, setNotifPartnerActivity] = useState(true);
   const [notifLeagueUpdates, setNotifLeagueUpdates] = useState(true);
+  const [notifSundayPlanning, setNotifSundayPlanning] = useState(true);
   const [focusNotifsEnabled, setFocusNotifsEnabled] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     try {
@@ -127,6 +128,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       setNotifDailyReminder(currentUser.notifDailyReminder ?? true);
       setNotifPartnerActivity(currentUser.notifPartnerActivity ?? true);
       setNotifLeagueUpdates(currentUser.notifLeagueUpdates ?? true);
+      setNotifSundayPlanning(currentUser.notifSundayPlanning ?? true);
     }
   }, [currentUser]);
 
@@ -677,6 +679,22 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     onChange={() => {
                       setNotifLeagueUpdates(!notifLeagueUpdates);
                       store.toggleNotifLeagueUpdates();
+                    }}
+                    className="rounded border-white/20 bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-white/5 cursor-pointer hover:border-white/10 transition-all">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-200 block">Sunday Evening Goal Planning Reminders</span>
+                    <span className="text-[11px] text-slate-400">Receive a Sunday 7 PM notification to review past weekly goals and plan high-leverage priorities</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notifSundayPlanning}
+                    onChange={() => {
+                      setNotifSundayPlanning(!notifSundayPlanning);
+                      store.toggleNotifSundayPlanning();
                     }}
                     className="rounded border-white/20 bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                   />

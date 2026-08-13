@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Timer,
   BrainCircuit,
   Scale,
   HeartHandshake,
-  Target,
   Play,
   Pause,
   RotateCcw,
@@ -25,14 +24,19 @@ import {
   Zap,
   X,
   Check,
+  Edit3,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { todayKey, formatDateLong, parseDate, weekKey, startOfWeek as getStartOfWeek } from '@/lib/dates';
-import { WeeklyGoalItem } from '@/types';
+import {
+  todayKey,
+  formatDateLong,
+  parseDate,
+  startOfWeek as getStartOfWeek,
+} from '@/lib/dates';
 
-type PFCTab = 'focus' | 'decision' | 'emotion' | 'goals';
+type PFCTab = 'focus' | 'decision' | 'emotion';
 
 export function PrefrontalCortex({ store }: { store: AppStore }) {
   const [activeTab, setActiveTab] = useState<PFCTab>('focus');
@@ -46,7 +50,7 @@ export function PrefrontalCortex({ store }: { store: AppStore }) {
           Prefrontal Cortex Module
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Train executive functions: deep focus sessions, decision journaling, emotion labeling, and weekly reviews
+          Train executive functions: deep focus sessions, decision journaling, and emotion labeling
         </p>
       </div>
 
@@ -87,18 +91,6 @@ export function PrefrontalCortex({ store }: { store: AppStore }) {
           <HeartHandshake size={16} />
           <span>Emotion Labeler</span>
         </button>
-
-        <button
-          onClick={() => setActiveTab('goals')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
-            activeTab === 'goals'
-              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-              : 'text-slate-400 hover:bg-white/5'
-          }`}
-        >
-          <Target size={16} />
-          <span>Weekly Goals & Review</span>
-        </button>
       </div>
 
       {/* Tab Contents */}
@@ -110,9 +102,6 @@ export function PrefrontalCortex({ store }: { store: AppStore }) {
       </div>
       <div className={activeTab === 'emotion' ? 'block' : 'hidden'}>
         <EmotionLabelerSubmodule store={store} />
-      </div>
-      <div className={activeTab === 'goals' ? 'block' : 'hidden'}>
-        <WeeklyGoalsSubmodule store={store} />
       </div>
     </div>
   );
@@ -1401,143 +1390,6 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
         title="Delete Emotion Log?"
         itemName={deleteModalEmotion?.emotion}
         description={`Are you sure you want to delete the emotion log for "${deleteModalEmotion?.emotion}"? Any points awarded (+5 pts) will be reversed.`}
-      />
-    </div>
-  );
-}
-
-// ----------------------------------------------------------------------
-// 4. WEEKLY GOAL PLANNING & REVIEW SUBMODULE
-// ----------------------------------------------------------------------
-function WeeklyGoalsSubmodule({ store }: { store: AppStore }) {
-  const currentWeekKey = weekKey(); // active week key (YYYY-Www)
-  const weeklyGoals = store.state.weeklyGoals;
-
-  const currentGoalDoc = weeklyGoals.find((w) => w.weekKey === currentWeekKey) || {
-    id: '',
-    weekKey: currentWeekKey,
-    goals: [
-      { id: '1', text: '', done: false },
-      { id: '2', text: '', done: false },
-      { id: '3', text: '', done: false },
-    ],
-    insights: '',
-    isReviewed: false,
-    createdAt: new Date().toISOString(),
-  };
-
-  const [goals, setGoals] = useState<WeeklyGoalItem[]>(currentGoalDoc.goals);
-  const [insights, setInsights] = useState(currentGoalDoc.insights || '');
-  const [isReviewed, setIsReviewed] = useState(currentGoalDoc.isReviewed);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-
-  const handleGoalChange = (idx: number, text: string) => {
-    const updated = [...goals];
-    updated[idx] = { ...updated[idx], text };
-    setGoals(updated);
-  };
-
-  const handleGoalToggle = (idx: number) => {
-    const updated = [...goals];
-    updated[idx] = { ...updated[idx], done: !updated[idx].done };
-    setGoals(updated);
-  };
-
-  const handleSave = (reviewed: boolean) => {
-    const validGoals = goals.filter((g) => g.text.trim().length > 0);
-    store.saveWeeklyGoal(currentWeekKey, validGoals, insights, reviewed);
-    if (reviewed) setIsReviewed(true);
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="card p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-white/5 pb-3">
-          <div>
-            <h2 className="section-title">Weekly Goal Planning & Sunday Review</h2>
-            <p className="text-xs text-slate-500">Set 1-3 high-leverage goals for this week, review progress, and carry insights forward (+20 pts)</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isReviewed && (
-              <span className="badge bg-emerald-500/15 text-emerald-400 text-xs font-bold flex items-center gap-1">
-                <CheckCircle2 size={14} /> Weekly Review Completed (+20 pts)
-              </span>
-            )}
-            {(isReviewed || goals.some((g) => g.text.trim().length > 0)) && (
-              <button
-                onClick={() => setDeleteConfirmOpen(true)}
-                className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
-                title="Reset / Delete Weekly Goals & Review"
-              >
-                <Trash2 size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* 1-3 Weekly Goals Input */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-300">Target Priorities (1-3 Goals)</h3>
-          {goals.map((g, idx) => (
-            <div key={g.id || idx} className="flex items-center gap-3">
-              <button
-                onClick={() => handleGoalToggle(idx)}
-                className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold transition-all border ${
-                  g.done ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-bg-700 border-white/10 text-slate-500 hover:border-white/20'
-                }`}
-              >
-                {g.done ? '✓' : idx + 1}
-              </button>
-              <input
-                type="text"
-                value={g.text}
-                onChange={(e) => handleGoalChange(idx, e.target.value)}
-                placeholder={`Weekly Goal #${idx + 1}...`}
-                className={`input flex-1 text-xs ${g.done ? 'line-through text-slate-500' : ''}`}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Insights / Review Text */}
-        <div className="pt-2">
-          <label className="block text-xs font-medium text-slate-400 mb-1">Weekly Review Insights & Reflection</label>
-          <textarea
-            value={insights}
-            onChange={(e) => setInsights(e.target.value)}
-            placeholder="What went well? What got in the way? What will you carry forward?"
-            className="input min-h-[90px] text-xs"
-          />
-        </div>
-
-        <div className="flex gap-2 pt-2">
-          <button onClick={() => handleSave(false)} className="btn-secondary text-xs flex-1">
-            Save Goals Draft
-          </button>
-          <button onClick={() => handleSave(true)} className="btn-primary text-xs flex-1 flex items-center justify-center gap-1.5">
-            <Sparkles size={16} />
-            <span>Complete Weekly Review (+20 pts)</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Confirm Delete Modal */}
-      <ConfirmDeleteModal
-        open={deleteConfirmOpen}
-        onClose={() => setDeleteConfirmOpen(false)}
-        onConfirm={() => {
-          store.deleteWeeklyGoalDoc(currentWeekKey);
-          setGoals([
-            { id: '1', text: '', done: false },
-            { id: '2', text: '', done: false },
-            { id: '3', text: '', done: false },
-          ]);
-          setInsights('');
-          setIsReviewed(false);
-          setDeleteConfirmOpen(false);
-        }}
-        title="Reset Weekly Goals & Review?"
-        description="Are you sure you want to reset and delete your weekly goal plan and Sunday review notes for this week?"
       />
     </div>
   );
