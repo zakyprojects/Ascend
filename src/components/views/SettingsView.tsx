@@ -685,35 +685,23 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-white/5 cursor-pointer hover:border-white/10 transition-all">
                   <div>
                     <span className="text-xs font-semibold text-slate-200 block">Focus Session Completion Alerts</span>
-                    <span className="text-[11px] text-slate-400">Receive system and browser alerts when deep focus sessions complete</span>
+                    <span className="text-[11px] text-slate-400">App-level preference to attempt system alerts when focus sessions finish</span>
                   </div>
                   <input
                     type="checkbox"
-                    checked={focusNotifsEnabled && notifBrowserPerm === 'granted'}
+                    checked={focusNotifsEnabled}
                     onChange={async () => {
-                      if (typeof window === 'undefined' || !('Notification' in window)) {
-                        alert('Web Notifications are not supported by your browser.');
-                        return;
-                      }
+                      const next = !focusNotifsEnabled;
+                      setFocusNotifsEnabled(next);
+                      localStorage.setItem('ascend_focus_notifs_enabled', String(next));
 
-                      if (notifBrowserPerm === 'default') {
+                      if (next && typeof window !== 'undefined' && 'Notification' in window && notifBrowserPerm === 'default') {
                         try {
                           const perm = await Notification.requestPermission();
                           setNotifBrowserPerm(perm);
-                          if (perm === 'granted') {
-                            setFocusNotifsEnabled(true);
-                            localStorage.setItem('ascend_focus_notifs_enabled', 'true');
-                          }
                         } catch (e) {
-                          console.warn('Notification permission request error:', e);
+                          console.warn('Error requesting notification permission:', e);
                         }
-                        return;
-                      }
-
-                      if (notifBrowserPerm === 'granted') {
-                        const next = !focusNotifsEnabled;
-                        setFocusNotifsEnabled(next);
-                        localStorage.setItem('ascend_focus_notifs_enabled', String(next));
                       }
                     }}
                     className="rounded border-white/20 bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
@@ -726,7 +714,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     <div className="space-y-1">
                       <p className="font-bold text-rose-200">Browser Notification Permission Denied</p>
                       <p className="text-[11px] text-rose-300/80 leading-relaxed">
-                        Notifications are currently blocked by your browser settings. Even if enabled here, focus completion alerts cannot fire until you allow notification permissions for this website in your browser settings.
+                        Notifications are blocked by your browser settings. Even with this preference enabled, alerts cannot fire until you allow notification permissions for this website in your browser's site settings.
                       </p>
                     </div>
                   </div>

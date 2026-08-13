@@ -197,7 +197,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
   const [deleteModalLog, setDeleteModalLog] = useState<any | null>(null);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
-  const [deniedNotifModalOpen, setDeniedNotifModalOpen] = useState(false);
+  const [showNotifHint, setShowNotifHint] = useState(false);
   const [pendingPresetSwitch, setPendingPresetSwitch] = useState<{ focus: number; breakMins: number; custom: boolean } | null>(null);
 
   const [reflectionModalOpen, setReflectionModalOpen] = useState(false);
@@ -222,15 +222,6 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [notificationPerm, setNotificationPerm] = useState<NotificationPermission>('default');
-  const [focusNotifsEnabled, setFocusNotifsEnabled] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    try {
-      const saved = localStorage.getItem(FOCUS_NOTIFS_PREF_KEY);
-      return saved === null ? true : saved === 'true';
-    } catch {
-      return true;
-    }
-  });
 
   const focusLogs = store.state.focusLogs;
   const skills = store.state.skills;
@@ -452,8 +443,8 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
     setIsRunning(true);
   };
 
-  // Notification Toggle Handler (BUG 2 FIX)
-  const handleToggleNotification = async () => {
+  // Header Notification Button Click Handler
+  const handleHeaderNotifButtonClick = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
       alert('Web Notifications are not supported by your current browser.');
       return;
@@ -463,28 +454,15 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
       try {
         const perm = await Notification.requestPermission();
         setNotificationPerm(perm);
-        if (perm === 'granted') {
-          setFocusNotifsEnabled(true);
-          localStorage.setItem(FOCUS_NOTIFS_PREF_KEY, 'true');
-        } else if (perm === 'denied') {
-          setDeniedNotifModalOpen(true);
-        }
+        setShowNotifHint(false);
       } catch (e) {
         console.warn('Error requesting notification permission:', e);
       }
       return;
     }
 
-    if (Notification.permission === 'denied') {
-      setDeniedNotifModalOpen(true);
-      return;
-    }
-
-    if (Notification.permission === 'granted') {
-      const nextVal = !focusNotifsEnabled;
-      setFocusNotifsEnabled(nextVal);
-      localStorage.setItem(FOCUS_NOTIFS_PREF_KEY, String(nextVal));
-    }
+    // If permission is already granted or denied, toggle non-intrusive tooltip hint
+    setShowNotifHint((prev) => !prev);
   };
 
   // Discard / Reset Session Handlers
@@ -624,32 +602,52 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
             </div>
           </div>
 
-          <div className="text-right">
+          <div className="text-right relative">
             <button
-              onClick={handleToggleNotification}
+              type="button"
+              onClick={handleHeaderNotifButtonClick}
               className="transition-all hover:scale-105 active:scale-95"
-              title="Click to toggle or configure focus completion notifications"
+              title={
+                notificationPerm === 'default'
+                  ? 'Click to request browser notification permission'
+                  : 'Click for browser permission settings info'
+              }
             >
               {notificationPerm === 'denied' ? (
                 <span className="text-rose-400 flex items-center gap-1.5 bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/20 font-medium text-[11px]">
-                  <BellOff size={12} /> Notifs Denied
+                  <BellOff size={12} /> Notifs Blocked
                 </span>
               ) : notificationPerm === 'granted' ? (
-                focusNotifsEnabled ? (
-                  <span className="text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 font-medium text-[11px]">
-                    <Bell size={12} /> Notifs On
-                  </span>
-                ) : (
-                  <span className="text-amber-400 flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20 font-medium text-[11px]">
-                    <BellOff size={12} /> Notifs Muted
-                  </span>
-                )
+                <span className="text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 font-medium text-[11px]">
+                  <Bell size={12} /> Notifs Allowed
+                </span>
               ) : (
                 <span className="text-cyan-400 flex items-center gap-1.5 bg-cyan-500/10 px-2.5 py-1 rounded-md border border-cyan-500/20 font-medium text-[11px]">
                   <Bell size={12} /> Enable Notifs
                 </span>
               )}
             </button>
+
+            {showNotifHint && notificationPerm !== 'default' && (
+              <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-bg-800 border border-white/10 rounded-xl shadow-xl z-30 text-left text-xs space-y-1.5 text-slate-300 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between text-slate-100 font-semibold text-[11px]">
+                  <span>Browser Settings Required</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowNotifHint(false);
+                    }}
+                    className="text-slate-400 hover:text-white text-xs px-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Browsers restrict websites from changing permissions directly. To change notification access, tap the lock/info icon near your address bar → <strong className="text-slate-200">Site settings</strong> → <strong className="text-slate-200">Notifications</strong>.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -996,43 +994,6 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
             <button onClick={handleSaveReflection} className="btn-primary flex-1 text-xs flex items-center justify-center gap-1.5">
               <Sparkles size={14} />
               <span>Save Reflection</span>
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Browser Notifications Denied Help Modal */}
-      <Modal open={deniedNotifModalOpen} onClose={() => setDeniedNotifModalOpen(false)} title="Browser Notifications Blocked" maxWidth="max-w-md">
-        <div className="space-y-4">
-          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-              <BellOff size={20} />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-100">Notification Permission Required</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Your web browser is currently blocking notification permissions for Ascend. Web browsers do not allow websites to re-prompt for permissions once blocked.
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-bg-800 p-3.5 rounded-xl border border-white/5 space-y-2 text-xs text-slate-300">
-            <p className="font-bold text-slate-200">How to allow notifications in browser settings:</p>
-            <ol className="list-decimal list-inside space-y-1 text-slate-400 text-[11px]">
-              <li>Click the site security or lock icon next to the URL in your browser address bar.</li>
-              <li>Select <strong className="text-slate-200">Site settings</strong> or <strong className="text-slate-200">Permissions</strong>.</li>
-              <li>Find <strong className="text-slate-200">Notifications</strong> and set it to <strong className="text-emerald-400">Allow</strong>.</li>
-              <li>Reload the page to apply changes.</li>
-            </ol>
-          </div>
-
-          <div className="pt-2 flex justify-end">
-            <button
-              type="button"
-              onClick={() => setDeniedNotifModalOpen(false)}
-              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all"
-            >
-              Got It
             </button>
           </div>
         </div>
