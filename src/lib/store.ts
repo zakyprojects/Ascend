@@ -430,6 +430,7 @@ function reconcileReflectionPoints(
   }
 
   if (latest && previousHolder?.id !== latest.id) {
+    const latestId = latest.id;
     if (previousHolder) {
       const pointsDeduct = addPointsInternal(
         currentState,
@@ -441,7 +442,7 @@ function reconcileReflectionPoints(
     }
 
     updatedReflections = updatedReflections.map((r) =>
-      r.id === latest!.id ? { ...r, pointsAwarded: true } : { ...r, pointsAwarded: false }
+      r.id === latestId ? { ...r, pointsAwarded: true } : { ...r, pointsAwarded: false }
     );
 
     const pointsAward = addPointsInternal(
@@ -460,8 +461,9 @@ function reconcileReflectionPoints(
     );
     currentState = { ...currentState, ...pointsDeduct };
   } else if (latest) {
+    const latestId = latest.id;
     updatedReflections = updatedReflections.map((r) =>
-      r.id === latest!.id ? { ...r, pointsAwarded: true } : { ...r, pointsAwarded: false }
+      r.id === latestId ? { ...r, pointsAwarded: true } : { ...r, pointsAwarded: false }
     );
   }
 
@@ -2327,41 +2329,6 @@ export function useAppState() {
     });
   }, []);
 
-  const saveWeeklyGoal = useCallback((weekKey: string, goals: WeeklyGoalItem[], insights?: string, isReviewed?: boolean) => {
-    setState((prev) => {
-      const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
-      const existing = idx >= 0 ? prev.weeklyGoals[idx] : null;
-      const wasReviewed = existing ? existing.isReviewed : false;
-
-      let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-      if (isReviewed && !wasReviewed) {
-        pointsUpdate = addPointsInternal(prev, 20, `Weekly goal review completed`, 'weekly_review');
-      }
-
-      const item: WeeklyGoal = {
-        id: existing ? existing.id : uid(),
-        weekKey,
-        goals,
-        insights: insights?.trim(),
-        isReviewed: isReviewed ?? wasReviewed,
-        createdAt: existing ? existing.createdAt : new Date().toISOString(),
-      };
-
-      let newWeeklyGoals = [...prev.weeklyGoals];
-      if (idx >= 0) {
-        newWeeklyGoals[idx] = item;
-      } else {
-        newWeeklyGoals = [item, ...newWeeklyGoals];
-      }
-
-      return {
-        ...prev,
-        weeklyGoals: newWeeklyGoals,
-        ...pointsUpdate,
-      };
-    });
-  }, []);
-
   const deleteFocusLog = useCallback((logId: string) => {
     setState(
       (prev) => {
@@ -2413,24 +2380,6 @@ export function useAppState() {
         return {
           ...prev,
           emotionLogs: prev.emotionLogs.filter((e) => e.id !== logId),
-          ...pointsUpdate,
-        };
-      },
-      { immediate: true }
-    );
-  }, []);
-
-  const deleteWeeklyGoalDoc = useCallback((weekKey: string) => {
-    setState(
-      (prev) => {
-        const target = prev.weeklyGoals.find((w) => w.weekKey === weekKey);
-        let pointsUpdate = {};
-        if (target?.isReviewed) {
-          pointsUpdate = addPointsInternal(prev, -20, `Weekly review deleted for ${weekKey}`, 'weekly_review');
-        }
-        return {
-          ...prev,
-          weeklyGoals: prev.weeklyGoals.filter((w) => w.weekKey !== weekKey),
           ...pointsUpdate,
         };
       },
@@ -2490,17 +2439,18 @@ export function useAppState() {
       if (docIdx === -1) return prev;
 
       const doc = prev.weeklyGoals[docIdx];
-      const refIdx = (doc.reflections || []).findIndex((r) => r.id === reflectionId);
+      const reflections = doc.reflections || [];
+      const refIdx = reflections.findIndex((r) => r.id === reflectionId);
       if (refIdx === -1) return prev;
 
-      const existingRef = doc.reflections![refIdx];
+      const existingRef = reflections[refIdx];
       const updatedRef: WeeklyGoalReflection = {
         ...existingRef,
         content: content.trim(),
         updatedAt: new Date().toISOString(),
       };
 
-      const candidateReflections = [...doc.reflections!];
+      const candidateReflections = [...reflections];
       candidateReflections[refIdx] = updatedRef;
 
       const { updatedReflections, nextState } = reconcileReflectionPoints(
@@ -2644,7 +2594,12 @@ export function useAppState() {
       const targetDocIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
       const targetDoc = targetDocIdx >= 0 ? prev.weeklyGoals[targetDocIdx] : null;
 
-      if (targetDoc && targetDoc.goals.some((g) => g.carriedOverFromWeekKey === sourceWeekKey && g.title === targetGoal.title)) {
+      if (
+        targetDoc &&
+        targetDoc.goals.some(
+          (g) => g.title.trim().toLowerCase() === targetGoal.title.trim().toLowerCase()
+        )
+      ) {
         return prev;
       }
 
@@ -4309,8 +4264,6 @@ export function useAppState() {
     deleteDecisionLog,
     logEmotion,
     deleteEmotionLog,
-    saveWeeklyGoal,
-    deleteWeeklyGoalDoc,
     addWeeklyReflection,
     updateWeeklyReflection,
     deleteWeeklyReflection,

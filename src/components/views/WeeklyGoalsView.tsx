@@ -14,7 +14,6 @@ import {
   Edit3,
   Trash2,
   Sparkles,
-  CheckCircle2,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
@@ -115,17 +114,31 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     if (selectedWeekKey !== currentWeekKey) return [];
 
     const pastDocs = weeklyGoals.filter((w) => w.weekKey < currentWeekKey);
-    const result: { weekKey: string; goal: WeeklyGoalItem }[] = [];
     const currentGoalTitles = new Set(activeGoalDoc.goals.map((g) => g.title.trim().toLowerCase()));
+
+    // Collect all past goal instances that were carried forward to a later past week
+    const supersededPastGoalKeys = new Set<string>();
+    pastDocs.forEach((doc) => {
+      doc.goals.forEach((g) => {
+        if (g.carriedOverFromWeekKey && g.carriedOverFromWeekKey < currentWeekKey) {
+          supersededPastGoalKeys.add(`${g.carriedOverFromWeekKey}:${g.title.trim().toLowerCase()}`);
+        }
+      });
+    });
+
+    const result: { weekKey: string; goal: WeeklyGoalItem }[] = [];
 
     pastDocs.forEach((doc) => {
       doc.goals.forEach((g) => {
+        const titleKey = g.title.trim().toLowerCase();
+        const goalKey = `${doc.weekKey}:${titleKey}`;
         const prog = getLinkedGoalProgress(g, doc.weekKey);
         if (
           prog.percent < 100 &&
           !g.archived &&
           !g.carryOverDismissed &&
-          !currentGoalTitles.has(g.title.trim().toLowerCase())
+          !currentGoalTitles.has(titleKey) &&
+          !supersededPastGoalKeys.has(goalKey)
         ) {
           result.push({ weekKey: doc.weekKey, goal: g });
         }
