@@ -228,6 +228,12 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
     }
 
     try {
+      const pendingTask = sessionStorage.getItem('ascend_pending_focus_task');
+      if (pendingTask) {
+        setTaskName(pendingTask);
+        sessionStorage.removeItem('ascend_pending_focus_task');
+      }
+
       const saved = localStorage.getItem(FOCUS_STORAGE_KEY);
       const sentinel = sessionStorage.getItem(FOCUS_SENTINEL_KEY);
 

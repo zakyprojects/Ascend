@@ -40,6 +40,13 @@ import {
   PlanType,
   SharedChallengeCategory,
   AppNotification,
+  Goal,
+  Project,
+  Task,
+  TaskSubtask,
+  GoalStatus,
+  ProjectStatus,
+  TaskPriority,
 } from '@/types';
 import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff } from './dates';
@@ -236,6 +243,12 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
         })),
       };
     }),
+    goals: st.goals ?? [],
+    projects: st.projects ?? [],
+    tasks: (st.tasks ?? []).map((t) => ({
+      ...t,
+      subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+    })),
     libraryBooks: st.libraryBooks ?? [],
     improvementPlans: st.improvementPlans ?? [],
     followedPlans: st.followedPlans ?? [],
@@ -297,6 +310,9 @@ function mergeHydratedWithCurrent(hydratedState: AppState, current: AppState): A
     'decisionLogs',
     'emotionLogs',
     'weeklyGoals',
+    'goals',
+    'projects',
+    'tasks',
     'libraryBooks',
     'improvementPlans',
     'followedPlans',
@@ -2649,6 +2665,264 @@ export function useAppState() {
     });
   }, []);
 
+  // --- MODULE: PROJECTS & GOALS ACTIONS ---
+  const createGoal = useCallback(
+    (data: {
+      title: string;
+      description?: string;
+      category?: string;
+      targetDate?: string;
+      status?: GoalStatus;
+    }) => {
+      const newGoal: Goal = {
+        id: uid(),
+        title: data.title.trim(),
+        description: data.description?.trim() || undefined,
+        category: data.category?.trim() || undefined,
+        targetDate: data.targetDate || undefined,
+        status: data.status || 'active',
+        createdAt: new Date().toISOString(),
+      };
+      setState((prev) => ({
+        ...prev,
+        goals: [newGoal, ...prev.goals],
+      }));
+      return newGoal;
+    },
+    []
+  );
+
+  const updateGoal = useCallback(
+    (id: string, updates: Partial<Omit<Goal, 'id' | 'createdAt'>>) => {
+      setState((prev) => ({
+        ...prev,
+        goals: prev.goals.map((g) => (g.id === id ? { ...g, ...updates } : g)),
+      }));
+    },
+    []
+  );
+
+  const deleteGoal = useCallback((id: string) => {
+    setState(
+      (prev) => ({
+        ...prev,
+        // Unlink linked projects by setting their goalId to undefined
+        projects: prev.projects.map((p) => (p.goalId === id ? { ...p, goalId: undefined } : p)),
+        // Remove goal
+        goals: prev.goals.filter((g) => g.id !== id),
+      }),
+      { immediate: true }
+    );
+  }, []);
+
+  // Helper to compute updated completedAt timestamp on project status changes
+  const resolveProjectCompletedAt = (
+    currentStatus: ProjectStatus,
+    newStatus: ProjectStatus | undefined,
+    currentCompletedAt?: string,
+    explicitCompletedAt?: string
+  ): string | undefined => {
+    if (newStatus === undefined || newStatus === currentStatus) {
+      return explicitCompletedAt !== undefined ? explicitCompletedAt : currentCompletedAt;
+    }
+    if (newStatus === 'completed') {
+      return currentCompletedAt || new Date().toISOString();
+    }
+    return undefined;
+  };
+
+  const createProject = useCallback(
+    (data: {
+      title: string;
+      description?: string;
+      goalId?: string;
+      startDate?: string;
+      dueDate?: string;
+      status?: ProjectStatus;
+    }) => {
+      const isCompleted = data.status === 'completed';
+      const newProject: Project = {
+        id: uid(),
+        title: data.title.trim(),
+        description: data.description?.trim() || undefined,
+        goalId: data.goalId || undefined,
+        startDate: data.startDate || undefined,
+        dueDate: data.dueDate || undefined,
+        status: data.status || 'not_started',
+        completedAt: isCompleted ? new Date().toISOString() : undefined,
+        createdAt: new Date().toISOString(),
+      };
+      setState((prev) => ({
+        ...prev,
+        projects: [newProject, ...prev.projects],
+      }));
+      return newProject;
+    },
+    []
+  );
+
+  const updateProject = useCallback(
+    (id: string, updates: Partial<Omit<Project, 'id' | 'createdAt'>>) => {
+      setState((prev) => ({
+        ...prev,
+        projects: prev.projects.map((p) => {
+          if (p.id !== id) return p;
+          const completedAt = resolveProjectCompletedAt(p.status, updates.status, p.completedAt, updates.completedAt);
+          return { ...p, ...updates, completedAt };
+        }),
+      }));
+    },
+    []
+  );
+
+  const moveProjectStatus = useCallback((id: string, newStatus: ProjectStatus) => {
+    setState((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => {
+        if (p.id !== id) return p;
+        const completedAt = resolveProjectCompletedAt(p.status, newStatus, p.completedAt);
+        return { ...p, status: newStatus, completedAt };
+      }),
+    }));
+  }, []);
+
+  const deleteProject = useCallback((id: string) => {
+    setState(
+      (prev) => ({
+        ...prev,
+        // Unlink linked tasks by setting their projectId to undefined
+        tasks: prev.tasks.map((t) => (t.projectId === id ? { ...t, projectId: undefined } : t)),
+        // Remove project
+        projects: prev.projects.filter((p) => p.id !== id),
+      }),
+      { immediate: true }
+    );
+  }, []);
+
+  const createTask = useCallback(
+    (data: {
+      title: string;
+      description?: string;
+      projectId?: string;
+      dueDate?: string;
+      priority?: TaskPriority;
+      completed?: boolean;
+      subtasks?: TaskSubtask[];
+    }) => {
+      const subtasks = Array.isArray(data.subtasks) ? data.subtasks : [];
+      const isCompleted = subtasks.length > 0
+        ? subtasks.every((st) => st.completed)
+        : Boolean(data.completed);
+
+      const newTask: Task = {
+        id: uid(),
+        title: data.title.trim(),
+        description: data.description?.trim() || undefined,
+        projectId: data.projectId || undefined,
+        dueDate: data.dueDate || undefined,
+        priority: data.priority || 'medium',
+        completed: isCompleted,
+        subtasks,
+        createdAt: new Date().toISOString(),
+      };
+      setState((prev) => ({
+        ...prev,
+        tasks: [newTask, ...prev.tasks],
+      }));
+      return newTask;
+    },
+    []
+  );
+
+  const updateTask = useCallback(
+    (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => {
+      setState((prev) => ({
+        ...prev,
+        tasks: prev.tasks.map((t) => {
+          if (t.id !== id) return t;
+          const updatedSubtasks = updates.subtasks !== undefined ? updates.subtasks : t.subtasks;
+          const updatedCompleted = (updatedSubtasks && updatedSubtasks.length > 0)
+            ? updatedSubtasks.every((st) => st.completed)
+            : updates.completed !== undefined
+            ? updates.completed
+            : t.completed;
+          return { ...t, ...updates, completed: updatedCompleted };
+        }),
+      }));
+    },
+    []
+  );
+
+  const toggleTaskCompleted = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) => {
+        if (t.id !== id) return t;
+        // If task has subtasks, do not allow manual toggle directly (completion is driven by subtasks)
+        if ((t.subtasks || []).length > 0) return t;
+        return { ...t, completed: !t.completed };
+      }),
+    }));
+  }, []);
+
+  const deleteTask = useCallback((id: string) => {
+    setState(
+      (prev) => ({
+        ...prev,
+        tasks: prev.tasks.filter((t) => t.id !== id),
+      }),
+      { immediate: true }
+    );
+  }, []);
+
+  const toggleSubtask = useCallback((taskId: string, subtaskId: string) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) => {
+        if (t.id !== taskId) return t;
+        const updatedSubtasks = (t.subtasks || []).map((st) =>
+          st.id === subtaskId ? { ...st, completed: !st.completed } : st
+        );
+        const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
+        return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
+      }),
+    }));
+  }, []);
+
+  const addSubtask = useCallback((taskId: string, title: string) => {
+    if (!title.trim()) return;
+    const newSubtask: TaskSubtask = {
+      id: uid(),
+      title: title.trim(),
+      completed: false,
+    };
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) => {
+        if (t.id !== taskId) return t;
+        const updatedSubtasks = [...(t.subtasks || []), newSubtask];
+        const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
+        return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
+      }),
+    }));
+  }, []);
+
+  const deleteSubtask = useCallback((taskId: string, subtaskId: string) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) => {
+        if (t.id !== taskId) return t;
+        const updatedSubtasks = (t.subtasks || []).filter((st) => st.id !== subtaskId);
+        const allCompleted = updatedSubtasks.length > 0 ? updatedSubtasks.every((st) => st.completed) : t.completed;
+        return {
+          ...t,
+          subtasks: updatedSubtasks,
+          completed: allCompleted,
+        };
+      }),
+    }));
+  }, []);
+
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---
   const createImprovementPlan = useCallback(
     (
@@ -4316,6 +4590,21 @@ export function useAppState() {
     markNotificationRead,
     markAllNotificationsRead,
     clearNotification,
+    // Projects & Goals Module Actions
+    createGoal,
+    updateGoal,
+    deleteGoal,
+    createProject,
+    updateProject,
+    moveProjectStatus,
+    deleteProject,
+    createTask,
+    updateTask,
+    toggleTaskCompleted,
+    deleteTask,
+    toggleSubtask,
+    addSubtask,
+    deleteSubtask,
   };
 }
 

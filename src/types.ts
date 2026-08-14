@@ -549,6 +549,51 @@ export interface AppNotification {
   createdAt: string;
 }
 
+// Module: Projects & Goals Hierarchy
+export type GoalStatus = 'active' | 'achieved' | 'abandoned';
+export type ProjectStatus = 'not_started' | 'in_progress' | 'on_hold' | 'completed';
+export type TaskPriority = 'high' | 'medium' | 'low';
+
+export interface TaskSubtask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  projectId?: string;
+  dueDate?: string; // YYYY-MM-DD
+  priority: TaskPriority;
+  completed: boolean;
+  subtasks: TaskSubtask[];
+  createdAt: string;
+}
+
+export interface Project {
+  id: string;
+  title: string;
+  description?: string;
+  goalId?: string;
+  startDate?: string; // YYYY-MM-DD
+  dueDate?: string; // YYYY-MM-DD
+  status: ProjectStatus;
+  completedAt?: string; // ISO string timestamp when status became 'completed'
+  createdAt: string;
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  targetDate?: string; // YYYY-MM-DD
+  status: GoalStatus;
+  createdAt: string;
+}
+
 export interface AppState {
   currentUser: UserProfile | null;
   habits: Habit[];
@@ -580,6 +625,11 @@ export interface AppState {
   decisionLogs: DecisionLog[];
   emotionLogs: EmotionLog[];
   weeklyGoals: WeeklyGoal[];
+
+  // Projects & Goals Module
+  goals: Goal[];
+  projects: Project[];
+  tasks: Task[];
 
   // Self Improvement Books Library
   libraryBooks: UserBook[];
@@ -619,6 +669,9 @@ export const DEFAULT_STATE: AppState = {
   decisionLogs: [],
   emotionLogs: [],
   weeklyGoals: [],
+  goals: [],
+  projects: [],
+  tasks: [],
   libraryBooks: [],
   improvementPlans: [],
   followedPlans: [],
