@@ -4,6 +4,7 @@ import {
   FolderKanban,
   CheckSquare,
   Plus,
+  Minus,
   ArrowRight,
   ArrowLeft,
   Calendar,
@@ -42,7 +43,7 @@ import {
   ProjectStatus,
   TaskPriority,
 } from '@/types';
-import { todayKey, weekKey, formatDateLong } from '@/lib/dates';
+import { todayKey, weekKey, formatDateLong, formatDateShort } from '@/lib/dates';
 
 type SubViewTab = 'goals' | 'projects' | 'tasks';
 
@@ -67,7 +68,7 @@ export function ProjectsGoalsView({
   const { isKeyLoading, executeWithKey } = useAsyncActionKey(300);
 
   // Active sub-view tab
-  const [activeTab, setActiveTab] = useState<SubViewTab>('goals');
+  const [activeTab, setActiveTab] = useState<SubViewTab>('tasks');
 
   // Filter drilldown state
   const [filterGoalId, setFilterGoalId] = useState<string | null>(null);
@@ -147,20 +148,40 @@ export function ProjectsGoalsView({
   // --------------------------------------------------------------------------
 
   // 1. Task progress: returns completion percentage of a project
+  // Task-linked mode if >= 1 task (calculates fractional progress from subtasks if present), manual mode if 0 tasks
   const getProjectProgress = useCallback(
-    (projectId: string): { total: number; completed: number; percent: number } => {
+    (projectId: string): { total: number; completed: number; percent: number; isManual: boolean } => {
+      const project = projects.find((p) => p.id === projectId);
       const linkedTasks = tasks.filter((t) => t.projectId === projectId);
       const total = linkedTasks.length;
-      if (total === 0) return { total: 0, completed: 0, percent: 0 };
+      if (total === 0) {
+        const percent = Math.min(100, Math.max(0, project?.manualProgress ?? 0));
+        return { total: 0, completed: 0, percent, isManual: true };
+      }
+      
       const completed = linkedTasks.filter((t) => t.completed).length;
-      const percent = Math.round((completed / total) * 100);
-      return { total, completed, percent };
+
+      // Sum of fractional task contributions
+      let sumOfTaskContributions = 0;
+      for (const t of linkedTasks) {
+        const subtasks = t.subtasks || [];
+        if (subtasks.length > 0) {
+          const completedSub = subtasks.filter((st) => st.completed).length;
+          sumOfTaskContributions += completedSub / subtasks.length;
+        } else {
+          sumOfTaskContributions += t.completed ? 1 : 0;
+        }
+      }
+
+      const percent = Math.round((sumOfTaskContributions / total) * 100);
+      return { total, completed, percent, isManual: false };
     },
-    [tasks]
+    [tasks, projects]
   );
 
-  // 2. Goal progress: computed live from linked Projects' completion percentages
-  // Only averages across projects that either have >= 1 task OR are explicitly completed (excluding taskless, non-completed projects)
+  // 2. Goal progress:
+  // Linked-projects mode (>= 1 project): flat simple average of ALL linked projects' percentages (task-based or manual)
+  // Standalone mode (0 projects): manual mode using goal.manualProgress (default 0)
   const getGoalProgress = useCallback(
     (goalId: string): {
       linkedProjectsCount: number;
@@ -168,23 +189,25 @@ export function ProjectsGoalsView({
       totalTasksCount: number;
       completedTasksCount: number;
       percent: number;
-      hasTrackedProgress: boolean;
+      isManual: boolean;
     } => {
+      const goal = goals.find((g) => g.id === goalId);
       const linkedProjects = projects.filter((p) => p.goalId === goalId);
       const linkedProjectsCount = linkedProjects.length;
+
       if (linkedProjectsCount === 0) {
+        const percent = Math.min(100, Math.max(0, goal?.manualProgress ?? 0));
         return {
           linkedProjectsCount: 0,
           completedProjectsCount: 0,
           totalTasksCount: 0,
           completedTasksCount: 0,
-          percent: 0,
-          hasTrackedProgress: false,
+          percent,
+          isManual: true,
         };
       }
 
-      let trackablePercentSum = 0;
-      let trackableProjectsCount = 0;
+      let totalPercentSum = 0;
       let completedProjectsCount = 0;
       let totalTasksCount = 0;
       let completedTasksCount = 0;
@@ -193,23 +216,13 @@ export function ProjectsGoalsView({
         const prog = getProjectProgress(p.id);
         totalTasksCount += prog.total;
         completedTasksCount += prog.completed;
-        const isExplicitlyCompleted = p.status === 'completed';
-        const isTasksCompleted = prog.total > 0 && prog.completed === prog.total;
-
-        if (isExplicitlyCompleted || isTasksCompleted) {
+        totalPercentSum += prog.percent;
+        if (p.status === 'completed' || prog.percent === 100) {
           completedProjectsCount++;
-          trackableProjectsCount++;
-          trackablePercentSum += 100;
-        } else if (prog.total > 0) {
-          // Project has >= 1 task being worked on
-          trackableProjectsCount++;
-          trackablePercentSum += prog.percent;
         }
-        // Taskless projects with status != completed are excluded from the denominator
       });
 
-      const hasTrackedProgress = trackableProjectsCount > 0;
-      const percent = hasTrackedProgress ? Math.round(trackablePercentSum / trackableProjectsCount) : 0;
+      const percent = Math.round(totalPercentSum / linkedProjectsCount);
 
       return {
         linkedProjectsCount,
@@ -217,10 +230,10 @@ export function ProjectsGoalsView({
         totalTasksCount,
         completedTasksCount,
         percent,
-        hasTrackedProgress,
+        isManual: false,
       };
     },
-    [projects, getProjectProgress]
+    [goals, projects, getProjectProgress]
   );
 
   // Overall Hierarchy Stats
@@ -235,10 +248,9 @@ export function ProjectsGoalsView({
   // FILTERING LOGIC
   // --------------------------------------------------------------------------
 
-  // Filtered Goals
-  const filteredGoals = useMemo(() => {
+  // Base filtered goals matching search
+  const baseSearchGoals = useMemo(() => {
     return goals.filter((g) => {
-      if (goalStatusFilter !== 'all' && g.status !== goalStatusFilter) return false;
       if (goalSearch.trim()) {
         const q = goalSearch.toLowerCase();
         const matchesTitle = g.title.toLowerCase().includes(q);
@@ -248,7 +260,25 @@ export function ProjectsGoalsView({
       }
       return true;
     });
-  }, [goals, goalStatusFilter, goalSearch]);
+  }, [goals, goalSearch]);
+
+  // Status counts for Goal filter tabs
+  const goalStatusCounts = useMemo(() => {
+    return {
+      all: baseSearchGoals.length,
+      active: baseSearchGoals.filter((g) => g.status === 'active').length,
+      achieved: baseSearchGoals.filter((g) => g.status === 'achieved').length,
+      abandoned: baseSearchGoals.filter((g) => g.status === 'abandoned').length,
+    };
+  }, [baseSearchGoals]);
+
+  // Filtered Goals
+  const filteredGoals = useMemo(() => {
+    return baseSearchGoals.filter((g) => {
+      if (goalStatusFilter !== 'all' && g.status !== goalStatusFilter) return false;
+      return true;
+    });
+  }, [baseSearchGoals, goalStatusFilter]);
 
   // Base filtered projects matching active goal filter and search
   const baseGoalAndSearchProjects = useMemo(() => {
@@ -400,6 +430,40 @@ export function ProjectsGoalsView({
     });
   };
 
+  const handleUpdateGoalManualProgress = (goal: Goal, val: number) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(val / 5) * 5));
+    let newStatus = goal.status;
+
+    if (clamped === 100 && goal.status !== 'achieved') {
+      newStatus = 'achieved';
+    } else if (clamped < 100 && goal.status === 'achieved') {
+      newStatus = 'active';
+    }
+
+    store.updateGoal(goal.id, {
+      manualProgress: clamped,
+      status: newStatus,
+    });
+  };
+
+  const handleMoveGoalStatus = async (goalId: string, newStatus: GoalStatus) => {
+    await executeWithKey(`move_goal_${goalId}`, async () => {
+      const linkedProjects = projects.filter((p) => p.goalId === goalId);
+      const isManual = linkedProjects.length === 0;
+
+      if (isManual && newStatus === 'achieved') {
+        store.updateGoal(goalId, {
+          status: newStatus,
+          manualProgress: 100,
+        });
+      } else {
+        store.updateGoal(goalId, {
+          status: newStatus,
+        });
+      }
+    });
+  };
+
   const handleDeleteGoalConfirm = async () => {
     if (!deleteGoalTarget) return;
     await executeWithKey(`delete_goal_${deleteGoalTarget.id}`, async () => {
@@ -468,9 +532,40 @@ export function ProjectsGoalsView({
     });
   };
 
+  const handleUpdateProjectManualProgress = (project: Project, val: number) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(val / 5) * 5));
+    let newStatus = project.status;
+    let newCompletedAt = project.completedAt;
+
+    if (clamped === 100 && project.status !== 'completed') {
+      newStatus = 'completed';
+      newCompletedAt = new Date().toISOString();
+    } else if (clamped < 100 && project.status === 'completed') {
+      newStatus = 'in_progress';
+      newCompletedAt = undefined;
+    }
+
+    store.updateProject(project.id, {
+      manualProgress: clamped,
+      status: newStatus,
+      completedAt: newCompletedAt,
+    });
+  };
+
   const handleMoveProjectStatus = async (projectId: string, newStatus: ProjectStatus) => {
     await executeWithKey(`move_project_${projectId}`, async () => {
-      store.moveProjectStatus(projectId, newStatus);
+      const linkedTasks = tasks.filter((t) => t.projectId === projectId);
+      const isManual = linkedTasks.length === 0;
+
+      if (isManual && newStatus === 'completed') {
+        store.updateProject(projectId, {
+          status: 'completed',
+          manualProgress: 100,
+          completedAt: new Date().toISOString(),
+        });
+      } else {
+        store.moveProjectStatus(projectId, newStatus);
+      }
     });
   };
 
@@ -651,29 +746,29 @@ export function ProjectsGoalsView({
               Projects & Goals
             </h1>
             <div className="mt-2 inline-flex items-center gap-2 bg-bg-900/60 border border-white/5 px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold uppercase tracking-wider">
-              <div className="flex items-center gap-1.5 text-purple-400">
-                <Target size={14} /> <span>1. Goals</span>
+              <div className="flex items-center gap-1.5 text-emerald-400">
+                <CheckSquare size={14} /> <span>1. Tasks</span>
               </div>
               <ArrowRight className="text-slate-600" size={12} />
               <div className="flex items-center gap-1.5 text-cyan-400">
                 <FolderKanban size={14} /> <span>2. Projects</span>
               </div>
               <ArrowRight className="text-slate-600" size={12} />
-              <div className="flex items-center gap-1.5 text-emerald-400">
-                <CheckSquare size={14} /> <span>3. Tasks</span>
+              <div className="flex items-center gap-1.5 text-purple-400">
+                <Target size={14} /> <span>3. Goals</span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2 self-stretch sm:self-auto">
-            {activeTab === 'goals' && (
+            {activeTab === 'tasks' && (
               <button
-                id="btn-new-goal"
-                onClick={openCreateGoalModal}
+                id="btn-new-task-modal"
+                onClick={() => openCreateTaskModal()}
                 className="btn-primary text-xs flex items-center justify-center gap-1.5 px-3.5 py-2 w-full sm:w-auto"
               >
                 <Plus size={15} />
-                <span>New Goal</span>
+                <span>New Task</span>
               </button>
             )}
 
@@ -688,27 +783,27 @@ export function ProjectsGoalsView({
               </button>
             )}
 
-            {activeTab === 'tasks' && (
+            {activeTab === 'goals' && (
               <button
-                id="btn-new-task-modal"
-                onClick={() => openCreateTaskModal()}
+                id="btn-new-goal"
+                onClick={openCreateGoalModal}
                 className="btn-primary text-xs flex items-center justify-center gap-1.5 px-3.5 py-2 w-full sm:w-auto"
               >
                 <Plus size={15} />
-                <span>New Task</span>
+                <span>New Goal</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* STATS OVERVIEW BAR */}
+        {/* STATS OVERVIEW BAR (Tasks -> Projects -> Goals) */}
         <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">
           <div className="p-2.5 rounded-xl bg-bg-900/60 border border-white/5 flex items-center justify-between">
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Active Goals</span>
-              <p className="text-base font-bold text-slate-100">{hierarchyStats.activeGoals}</p>
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Pending Tasks</span>
+              <p className="text-base font-bold text-slate-100">{hierarchyStats.pendingTasks}</p>
             </div>
-            <Target size={18} className="text-purple-400 opacity-60" />
+            <CheckSquare size={18} className="text-emerald-400 opacity-60" />
           </div>
 
           <div className="p-2.5 rounded-xl bg-bg-900/60 border border-white/5 flex items-center justify-between">
@@ -721,26 +816,26 @@ export function ProjectsGoalsView({
 
           <div className="p-2.5 rounded-xl bg-bg-900/60 border border-white/5 flex items-center justify-between">
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Pending Tasks</span>
-              <p className="text-base font-bold text-slate-100">{hierarchyStats.pendingTasks}</p>
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Active Goals</span>
+              <p className="text-base font-bold text-slate-100">{hierarchyStats.activeGoals}</p>
             </div>
-            <CheckSquare size={18} className="text-emerald-400 opacity-60" />
+            <Target size={18} className="text-purple-400 opacity-60" />
           </div>
         </div>
 
-        {/* SUB-VIEW TABS */}
+        {/* SUB-VIEW TABS (1. Tasks -> 2. Projects -> 3. Goals) */}
         <div className="flex border-b border-white/5 gap-2 overflow-x-auto pb-1">
           <button
-            id="tab-goals-view"
-            onClick={() => setActiveTab('goals')}
+            id="tab-tasks-view"
+            onClick={() => setActiveTab('tasks')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
-              activeTab === 'goals'
-                ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+              activeTab === 'tasks'
+                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                 : 'text-slate-400 hover:bg-white/5'
             }`}
           >
-            <Target size={16} />
-            <span>1. Goals ({goals.length})</span>
+            <CheckSquare size={16} />
+            <span>1. Tasks ({tasks.length})</span>
           </button>
 
           <button
@@ -757,29 +852,30 @@ export function ProjectsGoalsView({
           </button>
 
           <button
-            id="tab-tasks-view"
-            onClick={() => setActiveTab('tasks')}
+            id="tab-goals-view"
+            onClick={() => setActiveTab('goals')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
-              activeTab === 'tasks'
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+              activeTab === 'goals'
+                ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
                 : 'text-slate-400 hover:bg-white/5'
             }`}
           >
-            <CheckSquare size={16} />
-            <span>3. Tasks ({tasks.length})</span>
+            <Target size={16} />
+            <span>3. Goals ({goals.length})</span>
           </button>
         </div>
       </div>
 
       {/* -------------------------------------------------------------------- */}
-      {/* 1. GOALS SUB-VIEW */}
+      {/* 1. GOALS SUB-VIEW (Full-Width List) */}
       {/* -------------------------------------------------------------------- */}
       {activeTab === 'goals' && (
         <div className="space-y-4">
-          {/* Filter Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-bg-800/50 p-3 rounded-2xl border border-white/5">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          {/* Goals Control Bar with Status Filter Tabs & Search */}
+          <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 bg-bg-800/50 p-3 rounded-2xl border border-white/5">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 xl:pb-0 scrollbar-none">
               <button
+                id="filter-goals-all"
                 onClick={() => setGoalStatusFilter('all')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                   goalStatusFilter === 'all'
@@ -787,9 +883,10 @@ export function ProjectsGoalsView({
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                All ({goals.length})
+                All ({goalStatusCounts.all})
               </button>
               <button
+                id="filter-goals-active"
                 onClick={() => setGoalStatusFilter('active')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                   goalStatusFilter === 'active'
@@ -797,9 +894,10 @@ export function ProjectsGoalsView({
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Active ({goals.filter((g) => g.status === 'active').length})
+                Active ({goalStatusCounts.active})
               </button>
               <button
+                id="filter-goals-achieved"
                 onClick={() => setGoalStatusFilter('achieved')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                   goalStatusFilter === 'achieved'
@@ -807,9 +905,10 @@ export function ProjectsGoalsView({
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Achieved ({goals.filter((g) => g.status === 'achieved').length})
+                Achieved ({goalStatusCounts.achieved})
               </button>
               <button
+                id="filter-goals-abandoned"
                 onClick={() => setGoalStatusFilter('abandoned')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                   goalStatusFilter === 'abandoned'
@@ -817,11 +916,11 @@ export function ProjectsGoalsView({
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Abandoned ({goals.filter((g) => g.status === 'abandoned').length})
+                Abandoned ({goalStatusCounts.abandoned})
               </button>
             </div>
 
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-full xl:w-64 shrink-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
               <input
                 type="text"
@@ -833,7 +932,7 @@ export function ProjectsGoalsView({
             </div>
           </div>
 
-          {/* Goals Grid */}
+          {/* Full-Width Goals List */}
           {filteredGoals.length === 0 ? (
             <div className="card p-12 text-center border border-dashed border-white/10 bg-bg-800/40 rounded-2xl space-y-4">
               <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mx-auto">
@@ -856,115 +955,174 @@ export function ProjectsGoalsView({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-3">
               {filteredGoals.map((goal) => {
                 const prog = getGoalProgress(goal.id);
                 return (
                   <div
                     key={goal.id}
-                    className="card p-5 border border-white/10 bg-bg-800/90 rounded-2xl flex flex-col justify-between space-y-4 hover:border-purple-500/30 transition-all group"
+                    className="card p-4 sm:p-4.5 border border-white/10 bg-bg-800 rounded-2xl space-y-3.5 hover:border-purple-500/30 transition-all shadow-sm group"
                   >
-                    <div className="space-y-3">
-                      {/* Top Meta */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
+                    {/* Top Row: Info & Metadata (Left) + Actions & Controls (Right) */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      {/* Left: Status Badges, Title, Description */}
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
                           {goalStatusBadge(goal.status)}
                           {goal.category && (
                             <span className="badge bg-white/5 text-slate-300 border border-white/10 text-[10px] flex items-center gap-1">
-                              <Tag size={10} className="text-purple-400" />
-                              {goal.category}
+                              <Tag size={10} className="text-purple-400 shrink-0" />
+                              <span className="truncate max-w-[140px]">{goal.category}</span>
                             </span>
+                          )}
+                          {goal.targetDate ? (
+                            <span className="badge bg-white/5 text-slate-300 border border-white/10 text-[10px] flex items-center gap-1">
+                              <Calendar size={10} className="text-purple-400 shrink-0" />
+                              <span>Target: {formatDateShort(goal.targetDate)}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">No target date</span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
+                        <h4 className="text-sm sm:text-base font-bold text-slate-100 leading-snug" title={goal.title}>
+                          {goal.title}
+                        </h4>
+
+                        {goal.description && (
+                          <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                            {goal.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Right: Status Dropdown, Linked Button, Edit/Delete */}
+                      <div className="flex items-center gap-2 shrink-0 self-start pt-0.5 flex-wrap sm:flex-nowrap">
+                        <select
+                          value={goal.status}
+                          onChange={(e) => handleMoveGoalStatus(goal.id, e.target.value as GoalStatus)}
+                          className="bg-bg-900 border border-white/10 text-xs rounded-xl px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-purple-500/50"
+                        >
+                          <option value="active">🟢 Active</option>
+                          <option
+                            value="achieved"
+                            disabled={!prog.isManual && prog.percent < 100}
+                            title={!prog.isManual && prog.percent < 100 ? 'All linked projects must reach 100% first' : undefined}
+                          >
+                            🏆 Achieved {!prog.isManual && prog.percent < 100 ? '(100% req)' : ''}
+                          </option>
+                          <option value="abandoned">⚪ Abandoned</option>
+                        </select>
+
+                        {prog.linkedProjectsCount > 0 ? (
+                          <button
+                            onClick={() => {
+                              setFilterGoalId(goal.id);
+                              setActiveTab('projects');
+                            }}
+                            className="text-xs text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-colors shrink-0 whitespace-nowrap"
+                            title="View linked projects"
+                          >
+                            <span>Projects</span>
+                            <ArrowRight size={12} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openCreateProjectModal(goal.id)}
+                            className="text-xs text-slate-400 hover:text-purple-300 font-medium flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-white/5 border border-white/10 transition-colors shrink-0 whitespace-nowrap"
+                            title="Create first project for this goal"
+                          >
+                            <Plus size={12} />
+                            <span>Project</span>
+                          </button>
+                        )}
+
+                        <div className="flex items-center gap-0.5 shrink-0">
                           <button
                             onClick={() => openEditGoalModal(goal)}
-                            className="p-1 text-slate-400 hover:text-slate-200 transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-lg transition-colors"
                             title="Edit Goal"
                           >
                             <Edit3 size={14} />
                           </button>
                           <button
                             onClick={() => setDeleteGoalTarget(goal)}
-                            className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
                             title="Delete Goal"
                           >
                             <Trash2 size={14} />
                           </button>
                         </div>
                       </div>
-
-                      {/* Title & Description */}
-                      <div>
-                        <h3 className="text-base font-bold text-slate-100 leading-snug">{goal.title}</h3>
-                        {goal.description && (
-                          <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                            {goal.description}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Target Date */}
-                      {goal.targetDate && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                          <Calendar size={13} className="text-purple-400 shrink-0" />
-                          <span>Target: {formatDateLong(goal.targetDate)}</span>
-                        </div>
-                      )}
                     </div>
 
-                    {/* Progress Section & Navigation */}
-                    <div className="space-y-3 pt-3 border-t border-white/5">
-                      {prog.linkedProjectsCount === 0 || !prog.hasTrackedProgress ? (
-                        <div className="flex items-center justify-between text-[11px] py-1 text-slate-500 italic">
-                          <span className="flex items-center gap-1 font-medium not-italic text-slate-400">
-                            <FolderKanban size={12} className="text-cyan-400" />
-                            {prog.linkedProjectsCount} Linked Project{prog.linkedProjectsCount === 1 ? '' : 's'}
+                    {/* Bottom Row: Full-Width Progress Section with High-Contrast Percentage */}
+                    <div className="pt-2.5 border-t border-white/5 space-y-2">
+                      <div className="flex items-center justify-between text-xs text-slate-300">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                            {prog.isManual ? 'Manual Progress' : 'Overall Progress'}
                           </span>
-                          <span>No progress tracked yet</span>
-                        </div>
-                      ) : (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-slate-400 flex items-center gap-1 font-medium">
-                              <FolderKanban size={12} className="text-cyan-400" />
-                              {prog.linkedProjectsCount} Linked Project{prog.linkedProjectsCount === 1 ? '' : 's'}
+                          {prog.isManual ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 font-semibold border border-purple-500/20">
+                              0 linked projects
                             </span>
-                            <span className="font-bold text-slate-200">{prog.percent}%</span>
-                          </div>
-
-                          <div className="w-full bg-bg-900 rounded-full h-2 overflow-hidden border border-white/5">
-                            <div
-                              className={`h-2 rounded-full transition-all duration-300 ${
-                                prog.percent >= 100
-                                  ? 'bg-emerald-400'
-                                  : prog.percent > 0
-                                  ? 'bg-purple-500'
-                                  : 'bg-slate-700'
-                              }`}
-                              style={{ width: `${Math.min(100, Math.max(prog.percent, 0))}%` }}
-                            />
-                          </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 font-medium">
+                              ({prog.completedProjectsCount}/{prog.linkedProjectsCount} projects complete)
+                            </span>
+                          )}
                         </div>
-                      )}
 
-                      {prog.linkedProjectsCount === 0 ? (
-                        <div className="w-full py-2 px-3 bg-bg-900/40 border border-white/5 text-xs text-slate-500 rounded-xl text-center font-medium">
-                          No projects linked yet
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-100 tabular-nums">
+                            {prog.percent}%
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">
+                            • Created {formatDateShort(goal.createdAt)}
+                          </span>
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setFilterGoalId(goal.id);
-                            setActiveTab('projects');
-                          }}
-                          className="w-full py-2 px-3 bg-bg-900/80 hover:bg-purple-500/15 border border-white/10 hover:border-purple-500/30 text-xs font-semibold text-slate-200 hover:text-purple-300 rounded-xl flex items-center justify-center gap-1.5 transition-all"
-                        >
-                          <span>View Linked Projects ({prog.linkedProjectsCount})</span>
-                          <ArrowRight size={13} />
-                        </button>
-                      )}
+                      </div>
+
+                      {/* Progress Bar with Steppers (if manual) */}
+                      <div className="flex items-center gap-2.5">
+                        {prog.isManual && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateGoalManualProgress(goal, prog.percent - 5)}
+                            disabled={prog.percent <= 0}
+                            className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30 disabled:hover:bg-white/5 flex items-center justify-center text-xs transition-colors shrink-0 border border-white/10"
+                            title="Decrease 5%"
+                          >
+                            <Minus size={12} />
+                          </button>
+                        )}
+
+                        <div className="flex-1 bg-bg-900 rounded-full h-2.5 overflow-hidden border border-white/5 shadow-inner">
+                          <div
+                            className={`h-2.5 rounded-full transition-all duration-300 ${
+                              prog.percent >= 100
+                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-sm shadow-emerald-500/30'
+                                : prog.percent > 0
+                                ? 'bg-gradient-to-r from-purple-600 to-purple-400 shadow-sm shadow-purple-500/20'
+                                : 'bg-slate-700'
+                            }`}
+                            style={{ width: `${Math.min(100, Math.max(prog.percent, 0))}%` }}
+                          />
+                        </div>
+
+                        {prog.isManual && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateGoalManualProgress(goal, prog.percent + 5)}
+                            disabled={prog.percent >= 100}
+                            className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30 disabled:hover:bg-white/5 flex items-center justify-center text-xs transition-colors shrink-0 border border-white/10"
+                            title="Increase 5%"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1011,9 +1169,9 @@ export function ProjectsGoalsView({
           )}
 
           {/* Projects Control Bar with Status Filter Tabs & Search/Goal Filters */}
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-bg-800/50 p-3 rounded-2xl border border-white/5">
+          <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 bg-bg-800/50 p-3 rounded-2xl border border-white/5">
             {/* Status Filter Tab Bar */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 xl:pb-0 scrollbar-none">
               <button
                 id="filter-projects-all"
                 onClick={() => setProjectStatusFilter('all')}
@@ -1072,7 +1230,7 @@ export function ProjectsGoalsView({
             </div>
 
             {/* Goal Filter & Search */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-2.5 shrink-0">
               {!filterGoalId && (
                 <div className="flex items-center gap-2 flex-1 sm:flex-none">
                   <Filter size={14} className="text-slate-400 shrink-0" />
@@ -1137,135 +1295,177 @@ export function ProjectsGoalsView({
                 return (
                   <div
                     key={project.id}
-                    className="card p-4 border border-white/10 bg-bg-800 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 hover:border-cyan-500/30 transition-all shadow-sm group"
+                    className="card p-4 sm:p-4.5 border border-white/10 bg-bg-800 rounded-2xl space-y-3.5 hover:border-cyan-500/30 transition-all shadow-sm group"
                   >
-                    {/* Left: Goal badge, Title, Description */}
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {project.goalId ? (
-                          <button
-                            onClick={() => {
-                              setFilterGoalId(project.goalId || null);
-                              setActiveTab('goals');
-                            }}
-                            className="badge bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border border-purple-500/20 text-[10px] truncate flex items-center gap-1 transition-colors"
-                            title={`Linked to Goal: ${getGoalName(project.goalId)}`}
-                          >
-                            <Target size={10} className="shrink-0" />
-                            <span className="truncate max-w-[160px]">{getGoalName(project.goalId)}</span>
-                          </button>
-                        ) : (
-                          <span className="badge bg-white/5 text-slate-400 text-[10px]">Standalone</span>
-                        )}
-                        <span className="text-[10px] text-slate-500">
-                          Created {formatDateLong(project.createdAt)}
-                        </span>
-                      </div>
+                    {/* Top Row: Info & Metadata (Left) + Actions & Controls (Right) */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      {/* Left: Badges, Title, Description */}
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
+                          {project.goalId ? (
+                            <button
+                              onClick={() => {
+                                setFilterGoalId(project.goalId || null);
+                                setActiveTab('goals');
+                              }}
+                              className="badge bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border border-purple-500/20 text-[10px] truncate flex items-center gap-1 transition-colors"
+                              title={`Linked to Goal: ${getGoalName(project.goalId)}`}
+                            >
+                              <Target size={10} className="shrink-0" />
+                              <span className="truncate max-w-[150px]">{getGoalName(project.goalId)}</span>
+                            </button>
+                          ) : (
+                            <span className="badge bg-white/5 text-slate-400 border border-white/10 text-[10px]">Standalone</span>
+                          )}
 
-                      <h4 className="text-sm font-bold text-slate-100 leading-snug">
-                        {project.title}
-                      </h4>
-
-                      {project.description && (
-                        <p className="text-xs text-slate-400 line-clamp-1 leading-relaxed">
-                          {project.description}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Middle: Due Date & Task Progress */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0 py-2 md:py-0 border-y md:border-y-0 border-white/5">
-                      {/* Due Date */}
-                      <div className="min-w-[130px]">
-                        {project.dueDate ? (
-                          <div
-                            className={`flex items-center gap-1.5 text-xs ${
-                              isOverdue
-                                ? 'text-rose-400 font-semibold'
-                                : isDueToday
-                                ? 'text-amber-400 font-semibold'
-                                : 'text-slate-300'
-                            }`}
-                          >
-                            <Calendar size={13} className="shrink-0" />
-                            <span>Due: {formatDateLong(project.dueDate)}</span>
-                            {isOverdue && <span className="text-[10px] uppercase font-bold text-rose-400">(Overdue)</span>}
-                            {isDueToday && <span className="text-[10px] uppercase font-bold text-amber-400">(Today)</span>}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-500 italic">No due date</span>
-                        )}
-                      </div>
-
-                      {/* Task Progress */}
-                      <div className="min-w-[150px]">
-                        {prog.total === 0 ? (
-                          <span className="text-xs text-slate-500 italic">No tasks yet</span>
-                        ) : (
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[11px] text-slate-400">
-                              <span>Tasks</span>
-                              <span className="font-bold text-slate-200">
-                                {prog.completed}/{prog.total} ({prog.percent}%)
+                          {project.dueDate ? (
+                            <span
+                              className={`badge text-[10px] flex items-center gap-1 border ${
+                                isOverdue
+                                  ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 font-bold'
+                                  : isDueToday
+                                  ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 font-bold'
+                                  : 'bg-white/5 text-slate-300 border border-white/10'
+                              }`}
+                            >
+                              <Calendar size={10} className="shrink-0" />
+                              <span>
+                                {isOverdue ? 'Overdue: ' : isDueToday ? 'Today: ' : 'Due: '}
+                                {formatDateShort(project.dueDate)}
                               </span>
-                            </div>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">No due date</span>
+                          )}
+                        </div>
 
-                            <div className="w-28 sm:w-36 bg-bg-900 rounded-full h-1.5 overflow-hidden border border-white/5">
-                              <div
-                                className={`h-1.5 rounded-full transition-all duration-300 ${
-                                  prog.percent >= 100
-                                    ? 'bg-emerald-400'
-                                    : prog.percent > 0
-                                    ? 'bg-cyan-400'
-                                    : 'bg-slate-700'
-                                }`}
-                                style={{ width: `${Math.min(100, Math.max(prog.percent, 0))}%` }}
-                              />
-                            </div>
-                          </div>
+                        <h4 className="text-sm sm:text-base font-bold text-slate-100 leading-snug" title={project.title}>
+                          {project.title}
+                        </h4>
+
+                        {project.description && (
+                          <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                            {project.description}
+                          </p>
                         )}
+                      </div>
+
+                      {/* Right: Status Dropdown, Tasks Button, Edit/Delete */}
+                      <div className="flex items-center gap-2 shrink-0 self-start pt-0.5 flex-wrap sm:flex-nowrap">
+                        <select
+                          value={project.status}
+                          onChange={(e) => handleMoveProjectStatus(project.id, e.target.value as ProjectStatus)}
+                          className="bg-bg-900 border border-white/10 text-xs rounded-xl px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-cyan-500/50"
+                        >
+                          <option value="not_started">📌 Not Started</option>
+                          <option value="in_progress">🚀 In Progress</option>
+                          <option value="on_hold">⏸️ On Hold</option>
+                          <option
+                            value="completed"
+                            disabled={!prog.isManual && prog.percent < 100}
+                            title={!prog.isManual && prog.percent < 100 ? 'Complete all tasks first' : undefined}
+                          >
+                            ✅ Completed {!prog.isManual && prog.percent < 100 ? '(100% req)' : ''}
+                          </option>
+                        </select>
+
+                        <button
+                          onClick={() => {
+                            setFilterProjectId(project.id);
+                            setActiveTab('tasks');
+                          }}
+                          className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 transition-colors shrink-0 whitespace-nowrap"
+                          title="View project tasks"
+                        >
+                          <span>Tasks</span>
+                          <ArrowRight size={12} />
+                        </button>
+
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <button
+                            onClick={() => openEditProjectModal(project)}
+                            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-lg transition-colors"
+                            title="Edit Project"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteProjectTarget(project)}
+                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                            title="Delete Project"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Right: Status Dropdown, Tasks button, Edit, Delete */}
-                    <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                      <select
-                        value={project.status}
-                        onChange={(e) => handleMoveProjectStatus(project.id, e.target.value as ProjectStatus)}
-                        className="bg-bg-900 border border-white/10 text-xs rounded-xl px-2.5 py-1.5 text-slate-300 focus:outline-none text-ellipsis overflow-hidden whitespace-nowrap"
-                      >
-                        <option value="not_started">📌 Not Started</option>
-                        <option value="in_progress">🚀 In Progress</option>
-                        <option value="on_hold">⏸️ On Hold</option>
-                        <option value="completed">✅ Completed</option>
-                      </select>
+                    {/* Bottom Row: Full-Width Progress Section with High-Contrast Percentage */}
+                    <div className="pt-2.5 border-t border-white/5 space-y-2">
+                      <div className="flex items-center justify-between text-xs text-slate-300">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                            {prog.isManual ? 'Manual Progress' : 'Task Completion'}
+                          </span>
+                          {prog.isManual ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 font-semibold border border-cyan-500/20">
+                              0 linked tasks
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 font-medium">
+                              ({prog.completed}/{prog.total} tasks complete)
+                            </span>
+                          )}
+                        </div>
 
-                      <button
-                        onClick={() => {
-                          setFilterProjectId(project.id);
-                          setActiveTab('tasks');
-                        }}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-cyan-500/10 border border-cyan-500/20 transition-colors shrink-0"
-                      >
-                        <span>Tasks</span>
-                        <ArrowRight size={13} />
-                      </button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-100 tabular-nums">
+                            {prog.percent}%
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">
+                            • Created {formatDateShort(project.createdAt)}
+                          </span>
+                        </div>
+                      </div>
 
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => openEditProjectModal(project)}
-                          className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-lg transition-colors"
-                          title="Edit Project"
-                        >
-                          <Edit3 size={14} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteProjectTarget(project)}
-                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-                          title="Delete Project"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                      {/* Progress Bar with Steppers (if manual) */}
+                      <div className="flex items-center gap-2.5">
+                        {prog.isManual && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateProjectManualProgress(project, prog.percent - 5)}
+                            disabled={prog.percent <= 0}
+                            className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30 disabled:hover:bg-white/5 flex items-center justify-center text-xs transition-colors shrink-0 border border-white/10"
+                            title="Decrease 5%"
+                          >
+                            <Minus size={12} />
+                          </button>
+                        )}
+
+                        <div className="flex-1 bg-bg-900 rounded-full h-2.5 overflow-hidden border border-white/5 shadow-inner">
+                          <div
+                            className={`h-2.5 rounded-full transition-all duration-300 ${
+                              prog.percent >= 100
+                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-sm shadow-emerald-500/30'
+                                : prog.percent > 0
+                                ? 'bg-gradient-to-r from-cyan-500 to-cyan-400 shadow-sm shadow-cyan-500/20'
+                                : 'bg-slate-700'
+                            }`}
+                            style={{ width: `${Math.min(100, Math.max(prog.percent, 0))}%` }}
+                          />
+                        </div>
+
+                        {prog.isManual && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateProjectManualProgress(project, prog.percent + 5)}
+                            disabled={prog.percent >= 100}
+                            className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30 disabled:hover:bg-white/5 flex items-center justify-center text-xs transition-colors shrink-0 border border-white/10"
+                            title="Increase 5%"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1315,7 +1515,7 @@ export function ProjectsGoalsView({
           {/* QUICK-ADD TASK BAR */}
           <form
             onSubmit={handleQuickAddTask}
-            className="card p-3.5 border border-white/10 bg-bg-800 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shadow-md"
+            className="card p-3.5 border border-white/10 bg-bg-800 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shadow-md"
           >
             <div className="flex-1 relative">
               <CheckSquare className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
@@ -1329,7 +1529,7 @@ export function ProjectsGoalsView({
               />
             </div>
 
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-2.5 w-full sm:w-auto">
               <select
                 value={quickTaskPriority}
                 onChange={(e) => setQuickTaskPriority(e.target.value as TaskPriority)}
@@ -1368,9 +1568,9 @@ export function ProjectsGoalsView({
           </form>
 
           {/* FILTERS & SEARCH */}
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-bg-800/50 p-3 rounded-2xl border border-white/5">
+          <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 bg-bg-800/50 p-3 rounded-2xl border border-white/5">
             {/* Quick Segment Filter */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 xl:pb-0 scrollbar-none">
               {(
                 [
                   { id: 'all', label: 'All' },
@@ -1395,7 +1595,7 @@ export function ProjectsGoalsView({
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-2.5 shrink-0">
               {/* Priority Dropdown Filter */}
               <select
                 value={taskPriorityFilter}
@@ -1501,7 +1701,7 @@ export function ProjectsGoalsView({
                         </button>
 
                         <div className="space-y-1 flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-x-2 gap-y-1.5 flex-wrap">
                             <span
                               className={`text-sm font-bold leading-snug break-words ${
                                 task.completed ? 'line-through text-slate-400' : 'text-slate-100'
@@ -1541,7 +1741,7 @@ export function ProjectsGoalsView({
                                 <Calendar size={10} />
                                 <span>
                                   {isOverdue ? 'Overdue: ' : isDueToday ? 'Today: ' : 'Due: '}
-                                  {formatDateLong(task.dueDate)}
+                                  {formatDateShort(task.dueDate)}
                                 </span>
                               </span>
                             )}
@@ -1722,7 +1922,7 @@ export function ProjectsGoalsView({
               className="w-full px-3 py-2 bg-bg-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-purple-500/50 mb-1.5"
             />
             {/* Quick Suggestions */}
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-x-1.5 gap-y-1.5">
               {GOAL_CATEGORY_SUGGESTIONS.map((cat) => (
                 <button
                   key={cat}

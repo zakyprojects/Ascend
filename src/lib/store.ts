@@ -2673,6 +2673,7 @@ export function useAppState() {
       category?: string;
       targetDate?: string;
       status?: GoalStatus;
+      manualProgress?: number;
     }) => {
       const newGoal: Goal = {
         id: uid(),
@@ -2681,6 +2682,7 @@ export function useAppState() {
         category: data.category?.trim() || undefined,
         targetDate: data.targetDate || undefined,
         status: data.status || 'active',
+        manualProgress: data.manualProgress !== undefined ? data.manualProgress : 0,
         createdAt: new Date().toISOString(),
       };
       setState((prev) => ({
@@ -2739,6 +2741,7 @@ export function useAppState() {
       startDate?: string;
       dueDate?: string;
       status?: ProjectStatus;
+      manualProgress?: number;
     }) => {
       const isCompleted = data.status === 'completed';
       const newProject: Project = {
@@ -2750,6 +2753,7 @@ export function useAppState() {
         dueDate: data.dueDate || undefined,
         status: data.status || 'not_started',
         completedAt: isCompleted ? new Date().toISOString() : undefined,
+        manualProgress: data.manualProgress !== undefined ? data.manualProgress : 0,
         createdAt: new Date().toISOString(),
       };
       setState((prev) => ({

@@ -581,6 +581,7 @@ export interface Project {
   dueDate?: string; // YYYY-MM-DD
   status: ProjectStatus;
   completedAt?: string; // ISO string timestamp when status became 'completed'
+  manualProgress?: number; // 0-100 when project has 0 tasks
   createdAt: string;
 }
 
@@ -591,6 +592,7 @@ export interface Goal {
   category?: string;
   targetDate?: string; // YYYY-MM-DD
   status: GoalStatus;
+  manualProgress?: number; // 0-100 when goal has 0 linked projects
   createdAt: string;
 }
 
