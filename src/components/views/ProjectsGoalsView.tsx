@@ -27,6 +27,8 @@ import {
   TrendingUp,
   X,
   Briefcase,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
@@ -78,12 +80,12 @@ export function ProjectsGoalsView({
   const [goalStatusFilter, setGoalStatusFilter] = useState<'all' | GoalStatus>('all');
   const [goalSearch, setGoalSearch] = useState('');
 
-  const [projectStatusFilter, setProjectStatusFilter] = useState<'all' | ProjectStatus>('all');
+  const [projectStatusFilter, setProjectStatusFilter] = useState<'all' | ProjectStatus | 'locked'>('all');
   const [projectGoalFilter, setProjectGoalFilter] = useState<string>('all');
   const [projectSearch, setProjectSearch] = useState('');
 
   const [taskViewFilter, setTaskViewFilter] = useState<
-    'all' | 'today' | 'overdue' | 'this_week' | 'active' | 'completed'
+    'all' | 'today' | 'overdue' | 'this_week' | 'active' | 'completed' | 'locked'
   >('all');
   const [taskPriorityFilter, setTaskPriorityFilter] = useState<'all' | TaskPriority>('all');
   const [taskProjectFilter, setTaskProjectFilter] = useState<string>('all');
@@ -111,6 +113,7 @@ export function ProjectsGoalsView({
   const [goalFormCategory, setGoalFormCategory] = useState('');
   const [goalFormTargetDate, setGoalFormTargetDate] = useState('');
   const [goalFormStatus, setGoalFormStatus] = useState<GoalStatus>('active');
+  const [goalFormSequentialMode, setGoalFormSequentialMode] = useState<boolean>(false);
 
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -143,8 +146,21 @@ export function ProjectsGoalsView({
   const currentToday = todayKey();
   const currentWeek = weekKey();
 
+  // Date input bounds (e.g. today minus 2 years to today plus 20 years)
+  const currentYear = new Date().getFullYear();
+  const minAllowedDate = `${currentYear - 2}-01-01`;
+  const maxAllowedDate = `${currentYear + 20}-12-31`;
+
+  const sanitizeDateBounds = (dateStr?: string): string | undefined => {
+    if (!dateStr || !dateStr.trim()) return undefined;
+    const trimmed = dateStr.trim();
+    if (trimmed < minAllowedDate) return minAllowedDate;
+    if (trimmed > maxAllowedDate) return maxAllowedDate;
+    return trimmed;
+  };
+
   // --------------------------------------------------------------------------
-  // COMPUTED PROGRESS HELPERS (Bottom-Up Hierarchy)
+  // COMPUTED PROGRESS & COMPLETION HELPERS (Bottom-Up Hierarchy)
   // --------------------------------------------------------------------------
 
   // 1. Task progress: returns completion percentage of a project
@@ -158,7 +174,7 @@ export function ProjectsGoalsView({
         const percent = Math.min(100, Math.max(0, project?.manualProgress ?? 0));
         return { total: 0, completed: 0, percent, isManual: true };
       }
-      
+
       const completed = linkedTasks.filter((t) => t.completed).length;
 
       // Sum of fractional task contributions
@@ -177,6 +193,81 @@ export function ProjectsGoalsView({
       return { total, completed, percent, isManual: false };
     },
     [tasks, projects]
+  );
+
+  // Checks whether a project is completed either explicitly via status or by reaching 100% progress
+  const isProjectComplete = useCallback(
+    (projectId: string): boolean => {
+      const p = projects.find((proj) => proj.id === projectId);
+      if (!p) return false;
+      if (p.status === 'completed') return true;
+      const prog = getProjectProgress(p.id);
+      return prog.percent === 100;
+    },
+    [projects, getProjectProgress]
+  );
+
+  // --------------------------------------------------------------------------
+  // SEQUENTIAL LOCK HELPER (Live-computed single source of truth for both Views)
+  // --------------------------------------------------------------------------
+  const getProjectLockStatus = useCallback(
+    (projectId: string): {
+      isLocked: boolean;
+      reason?: string;
+      blockingProject?: Project;
+      stepIndex?: number;
+      totalSteps?: number;
+      isSequentialGoal: boolean;
+    } => {
+      const project = projects.find((p) => p.id === projectId);
+      if (!project || !project.goalId) {
+        return { isLocked: false, isSequentialGoal: false };
+      }
+      const goal = goals.find((g) => g.id === project.goalId);
+      if (!goal || !goal.sequentialMode) {
+        return { isLocked: false, isSequentialGoal: false };
+      }
+
+      // Projects under this goal sorted by defined order ascending, then createdAt ascending
+      const linked = projects
+        .filter((p) => p.goalId === project.goalId)
+        .sort(
+          (a, b) =>
+            (a.order ?? 0) - (b.order ?? 0) ||
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+            a.id.localeCompare(b.id)
+        );
+
+      const index = linked.findIndex((p) => p.id === projectId);
+      if (index <= 0) {
+        return { isLocked: false, stepIndex: 1, totalSteps: linked.length, isSequentialGoal: true };
+      }
+
+      // Check all previous projects in sequence
+      const priorProjects = linked.slice(0, index);
+      const uncompletedPrior = priorProjects.find((p) => !isProjectComplete(p.id));
+
+      if (uncompletedPrior) {
+        return {
+          isLocked: true,
+          reason: `Locked: Complete previous project "${uncompletedPrior.title}" first.`,
+          blockingProject: uncompletedPrior,
+          stepIndex: index + 1,
+          totalSteps: linked.length,
+          isSequentialGoal: true,
+        };
+      }
+
+      return { isLocked: false, stepIndex: index + 1, totalSteps: linked.length, isSequentialGoal: true };
+    },
+    [projects, goals, isProjectComplete]
+  );
+
+  const isProjectLocked = useCallback(
+    (projectId: string): boolean => {
+      return getProjectLockStatus(projectId).isLocked;
+    },
+    [getProjectLockStatus]
   );
 
   // 2. Goal progress:
@@ -236,13 +327,42 @@ export function ProjectsGoalsView({
     [goals, projects, getProjectProgress]
   );
 
-  // Overall Hierarchy Stats
+  // --------------------------------------------------------------------------
+  // REACTIVE AUTO TRANSITIONS: ACTIVE <-> ACHIEVED FOR PROJECT-LINKED GOALS
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    goals.forEach((goal) => {
+      // Rule 3: Abandoned goals are intentional manual choices and NEVER auto-transition
+      if (goal.status === 'abandoned') return;
+
+      const linkedProjects = projects.filter((p) => p.goalId === goal.id);
+      // Only applies to goals with at least 1 linked project (manual-only goals are untouched)
+      if (linkedProjects.length === 0) return;
+
+      const prog = getGoalProgress(goal.id);
+
+      // Rule 1: Active -> Achieved when all linked projects reach 100%
+      if (goal.status === 'active' && prog.percent === 100) {
+        store.updateGoal(goal.id, { status: 'achieved' });
+      }
+      // Rule 2: Achieved -> Active when progress drops below 100% (e.g. project uncompleted or new project added)
+      else if (goal.status === 'achieved' && prog.percent < 100) {
+        store.updateGoal(goal.id, { status: 'active' });
+      }
+    });
+  }, [goals, projects, tasks, getGoalProgress, store]);
+
+  // Overall Hierarchy Stats (Excluding locked items from active actionable work metrics)
   const hierarchyStats = useMemo(() => {
     const activeGoals = goals.filter((g) => g.status === 'active').length;
-    const activeProjects = projects.filter((p) => p.status === 'in_progress' || p.status === 'not_started').length;
-    const pendingTasks = tasks.filter((t) => !t.completed).length;
+    const activeProjects = projects.filter(
+      (p) => (p.status === 'in_progress' || p.status === 'not_started') && !isProjectLocked(p.id)
+    ).length;
+    const pendingTasks = tasks.filter(
+      (t) => !t.completed && (!t.projectId || !isProjectLocked(t.projectId))
+    ).length;
     return { activeGoals, activeProjects, pendingTasks };
-  }, [goals, projects, tasks]);
+  }, [goals, projects, tasks, isProjectLocked]);
 
   // --------------------------------------------------------------------------
   // FILTERING LOGIC
@@ -299,23 +419,40 @@ export function ProjectsGoalsView({
     });
   }, [projects, filterGoalId, projectGoalFilter, projectSearch]);
 
-  // Live counts for status tabs
+  // Live counts for status tabs (with single source of truth for locked status)
   const projectStatusCounts = useMemo(() => {
     return {
       all: baseGoalAndSearchProjects.length,
-      not_started: baseGoalAndSearchProjects.filter((p) => p.status === 'not_started').length,
-      in_progress: baseGoalAndSearchProjects.filter((p) => p.status === 'in_progress').length,
-      on_hold: baseGoalAndSearchProjects.filter((p) => p.status === 'on_hold').length,
+      in_progress: baseGoalAndSearchProjects.filter((p) => p.status === 'in_progress' && !isProjectLocked(p.id)).length,
+      not_started: baseGoalAndSearchProjects.filter((p) => p.status === 'not_started' && !isProjectLocked(p.id)).length,
+      on_hold: baseGoalAndSearchProjects.filter((p) => p.status === 'on_hold' && !isProjectLocked(p.id)).length,
       completed: baseGoalAndSearchProjects.filter((p) => p.status === 'completed').length,
+      locked: baseGoalAndSearchProjects.filter((p) => isProjectLocked(p.id)).length,
     };
-  }, [baseGoalAndSearchProjects]);
+  }, [baseGoalAndSearchProjects, isProjectLocked]);
 
   // Filtered & Sorted Projects for the single list view
   const filteredProjects = useMemo(() => {
     let list = baseGoalAndSearchProjects.filter((p) => {
-      if (projectStatusFilter !== 'all' && p.status !== projectStatusFilter) return false;
+      if (projectStatusFilter === 'all') return true;
+      if (projectStatusFilter === 'locked') return isProjectLocked(p.id);
+      if (projectStatusFilter === 'in_progress') {
+        return p.status === 'in_progress' && !isProjectLocked(p.id);
+      }
+      if (projectStatusFilter === 'not_started') {
+        return p.status === 'not_started' && !isProjectLocked(p.id);
+      }
+      if (projectStatusFilter === 'on_hold') {
+        return p.status === 'on_hold' && !isProjectLocked(p.id);
+      }
+      if (projectStatusFilter === 'completed') {
+        return p.status === 'completed';
+      }
       return true;
     });
+
+    const activeGoalFilter = filterGoalId || (projectGoalFilter !== 'all' ? projectGoalFilter : null);
+    const activeGoal = activeGoalFilter && activeGoalFilter !== 'standalone' ? goals.find((g) => g.id === activeGoalFilter) : null;
 
     if (projectStatusFilter === 'completed') {
       // Sort by most-recently-completed first
@@ -324,13 +461,16 @@ export function ProjectsGoalsView({
         const timeB = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.createdAt).getTime();
         return timeB - timeA;
       });
+    } else if (activeGoal?.sequentialMode) {
+      // Sort by defined sequence order within sequential goal
+      list = [...list].sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     } else {
       // Sort by createdAt descending (newest first)
       list = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
     return list;
-  }, [baseGoalAndSearchProjects, projectStatusFilter]);
+  }, [baseGoalAndSearchProjects, projectStatusFilter, filterGoalId, projectGoalFilter, goals, isProjectLocked]);
 
   // Filtered Tasks
   const filteredTasks = useMemo(() => {
@@ -346,7 +486,16 @@ export function ProjectsGoalsView({
       // Priority filter
       if (taskPriorityFilter !== 'all' && t.priority !== taskPriorityFilter) return false;
 
+      const isParentLocked = t.projectId ? isProjectLocked(t.projectId) : false;
+      const hasSearch = taskSearch.trim().length > 0;
+
+      // View Filters: Exclude tasks under locked projects only from 'active' view unless searching
+      if (isParentLocked && !hasSearch && taskViewFilter === 'active') {
+        return false;
+      }
+
       // View Filters
+      if (taskViewFilter === 'locked' && !isParentLocked) return false;
       if (taskViewFilter === 'active' && t.completed) return false;
       if (taskViewFilter === 'completed' && !t.completed) return false;
       if (taskViewFilter === 'today') {
@@ -367,8 +516,8 @@ export function ProjectsGoalsView({
         if (due > maxDue) return false;
       }
 
-      // Search filter
-      if (taskSearch.trim()) {
+      // Search filter (Search finds locked tasks too)
+      if (hasSearch) {
         const q = taskSearch.toLowerCase();
         const matchesTitle = t.title.toLowerCase().includes(q);
         const matchesDesc = (t.description || '').toLowerCase().includes(q);
@@ -377,7 +526,7 @@ export function ProjectsGoalsView({
 
       return true;
     });
-  }, [tasks, filterProjectId, taskProjectFilter, taskPriorityFilter, taskViewFilter, taskSearch, currentToday]);
+  }, [tasks, filterProjectId, taskProjectFilter, taskPriorityFilter, taskViewFilter, taskSearch, currentToday, isProjectLocked]);
 
   // --------------------------------------------------------------------------
   // GOAL ACTIONS
@@ -390,6 +539,7 @@ export function ProjectsGoalsView({
     setGoalFormCategory('');
     setGoalFormTargetDate('');
     setGoalFormStatus('active');
+    setGoalFormSequentialMode(false);
     setGoalModalOpen(true);
   };
 
@@ -400,6 +550,7 @@ export function ProjectsGoalsView({
     setGoalFormCategory(goal.category || '');
     setGoalFormTargetDate(goal.targetDate || '');
     setGoalFormStatus(goal.status);
+    setGoalFormSequentialMode(goal.sequentialMode ?? false);
     setGoalModalOpen(true);
   };
 
@@ -407,13 +558,15 @@ export function ProjectsGoalsView({
     if (!goalFormTitle.trim()) return;
 
     await executeWithKey('save_goal', async () => {
+      const sanitizedTargetDate = sanitizeDateBounds(goalFormTargetDate);
       if (editingGoal) {
         store.updateGoal(editingGoal.id, {
           title: goalFormTitle.trim(),
           description: goalFormDescription.trim() || undefined,
           category: goalFormCategory.trim() || undefined,
-          targetDate: goalFormTargetDate || undefined,
+          targetDate: sanitizedTargetDate,
           status: goalFormStatus,
+          sequentialMode: goalFormSequentialMode,
         });
         showSuccessToast('Goal Updated', `"${goalFormTitle.trim()}" saved.`);
       } else {
@@ -421,8 +574,9 @@ export function ProjectsGoalsView({
           title: goalFormTitle.trim(),
           description: goalFormDescription.trim() || undefined,
           category: goalFormCategory.trim() || undefined,
-          targetDate: goalFormTargetDate || undefined,
+          targetDate: sanitizedTargetDate,
           status: goalFormStatus,
+          sequentialMode: goalFormSequentialMode,
         });
         showSuccessToast('Goal Created', `"${goalFormTitle.trim()}" is now active.`);
       }
@@ -434,10 +588,13 @@ export function ProjectsGoalsView({
     const clamped = Math.max(0, Math.min(100, Math.round(val / 5) * 5));
     let newStatus = goal.status;
 
-    if (clamped === 100 && goal.status !== 'achieved') {
-      newStatus = 'achieved';
-    } else if (clamped < 100 && goal.status === 'achieved') {
-      newStatus = 'active';
+    // Abandoned goals are never auto-overridden
+    if (goal.status !== 'abandoned') {
+      if (clamped === 100 && goal.status !== 'achieved') {
+        newStatus = 'achieved';
+      } else if (clamped < 100 && goal.status === 'achieved') {
+        newStatus = 'active';
+      }
     }
 
     store.updateGoal(goal.id, {
@@ -487,7 +644,9 @@ export function ProjectsGoalsView({
     setProjectFormGoalId(preselectedGoalId || filterGoalId || '');
     setProjectFormStartDate(todayKey());
     setProjectFormDueDate('');
-    const initialStatus = defaultStatus || (projectStatusFilter !== 'all' ? projectStatusFilter : 'not_started');
+    const initialStatus =
+      defaultStatus ||
+      (projectStatusFilter !== 'all' && projectStatusFilter !== 'locked' ? projectStatusFilter : 'not_started');
     setProjectFormStatus(initialStatus);
     setProjectModalOpen(true);
   };
@@ -507,13 +666,16 @@ export function ProjectsGoalsView({
     if (!projectFormTitle.trim()) return;
 
     await executeWithKey('save_project', async () => {
+      const sanitizedStartDate = sanitizeDateBounds(projectFormStartDate);
+      const sanitizedDueDate = sanitizeDateBounds(projectFormDueDate);
+
       if (editingProject) {
         store.updateProject(editingProject.id, {
           title: projectFormTitle.trim(),
           description: projectFormDescription.trim() || undefined,
           goalId: projectFormGoalId || undefined,
-          startDate: projectFormStartDate || undefined,
-          dueDate: projectFormDueDate || undefined,
+          startDate: sanitizedStartDate,
+          dueDate: sanitizedDueDate,
           status: projectFormStatus,
         });
         showSuccessToast('Project Updated', `"${projectFormTitle.trim()}" saved.`);
@@ -522,8 +684,8 @@ export function ProjectsGoalsView({
           title: projectFormTitle.trim(),
           description: projectFormDescription.trim() || undefined,
           goalId: projectFormGoalId || undefined,
-          startDate: projectFormStartDate || undefined,
-          dueDate: projectFormDueDate || undefined,
+          startDate: sanitizedStartDate,
+          dueDate: sanitizedDueDate,
           status: projectFormStatus,
         });
         showSuccessToast('Project Created', `"${projectFormTitle.trim()}" added.`);
@@ -533,6 +695,12 @@ export function ProjectsGoalsView({
   };
 
   const handleUpdateProjectManualProgress = (project: Project, val: number) => {
+    const lock = getProjectLockStatus(project.id);
+    if (lock.isLocked) {
+      showErrorToast('Project Locked', `This project is locked until "${lock.blockingProject?.title}" is completed.`);
+      return;
+    }
+
     const clamped = Math.max(0, Math.min(100, Math.round(val / 5) * 5));
     let newStatus = project.status;
     let newCompletedAt = project.completedAt;
@@ -553,6 +721,12 @@ export function ProjectsGoalsView({
   };
 
   const handleMoveProjectStatus = async (projectId: string, newStatus: ProjectStatus) => {
+    const lock = getProjectLockStatus(projectId);
+    if (lock.isLocked && (newStatus === 'completed' || newStatus === 'in_progress')) {
+      showErrorToast('Project Locked', `This project is locked in sequential mode until "${lock.blockingProject?.title}" is completed.`);
+      return;
+    }
+
     await executeWithKey(`move_project_${projectId}`, async () => {
       const linkedTasks = tasks.filter((t) => t.projectId === projectId);
       const isManual = linkedTasks.length === 0;
@@ -633,12 +807,14 @@ export function ProjectsGoalsView({
     if (!taskFormTitle.trim()) return;
 
     await executeWithKey('save_task_modal', async () => {
+      const sanitizedDueDate = sanitizeDateBounds(taskFormDueDate);
+
       if (editingTask) {
         store.updateTask(editingTask.id, {
           title: taskFormTitle.trim(),
           description: taskFormDescription.trim() || undefined,
           projectId: taskFormProjectId || undefined,
-          dueDate: taskFormDueDate || undefined,
+          dueDate: sanitizedDueDate,
           priority: taskFormPriority,
           subtasks: taskFormSubtasks,
         });
@@ -648,7 +824,7 @@ export function ProjectsGoalsView({
           title: taskFormTitle.trim(),
           description: taskFormDescription.trim() || undefined,
           projectId: taskFormProjectId || undefined,
-          dueDate: taskFormDueDate || undefined,
+          dueDate: sanitizedDueDate,
           priority: taskFormPriority,
           completed: false,
           subtasks: taskFormSubtasks,
@@ -657,6 +833,29 @@ export function ProjectsGoalsView({
       }
       setTaskModalOpen(false);
     });
+  };
+
+  const handleToggleTask = (task: Task) => {
+    if (task.projectId) {
+      const lock = getProjectLockStatus(task.projectId);
+      if (lock.isLocked) {
+        showErrorToast('Project Locked', `Cannot mark tasks complete while project is locked. Complete "${lock.blockingProject?.title}" first.`);
+        return;
+      }
+    }
+    store.toggleTaskCompleted(task.id);
+  };
+
+  const handleToggleSubtask = (taskId: string, subtaskId: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (task?.projectId) {
+      const lock = getProjectLockStatus(task.projectId);
+      if (lock.isLocked) {
+        showErrorToast('Project Locked', `Cannot mark subtasks complete while project is locked. Complete "${lock.blockingProject?.title}" first.`);
+        return;
+      }
+    }
+    store.toggleSubtask(taskId, subtaskId);
   };
 
   const handleDeleteTaskConfirm = async () => {
@@ -775,7 +974,7 @@ export function ProjectsGoalsView({
             {activeTab === 'projects' && (
               <button
                 id="btn-new-project"
-                onClick={() => openCreateProjectModal(undefined, projectStatusFilter !== 'all' ? projectStatusFilter : undefined)}
+                onClick={() => openCreateProjectModal(undefined, projectStatusFilter !== 'all' && projectStatusFilter !== 'locked' ? projectStatusFilter : undefined)}
                 className="btn-primary text-xs flex items-center justify-center gap-1.5 px-3.5 py-2 w-full sm:w-auto"
               >
                 <Plus size={15} />
@@ -824,11 +1023,11 @@ export function ProjectsGoalsView({
         </div>
 
         {/* SUB-VIEW TABS (1. Tasks -> 2. Projects -> 3. Goals) */}
-        <div className="flex border-b border-white/5 gap-2 overflow-x-auto pb-1">
+        <div className="flex flex-wrap border-b border-white/5 gap-2 pb-1">
           <button
             id="tab-tasks-view"
             onClick={() => setActiveTab('tasks')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
               activeTab === 'tasks'
                 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                 : 'text-slate-400 hover:bg-white/5'
@@ -841,7 +1040,7 @@ export function ProjectsGoalsView({
           <button
             id="tab-projects-view"
             onClick={() => setActiveTab('projects')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
               activeTab === 'projects'
                 ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
                 : 'text-slate-400 hover:bg-white/5'
@@ -854,7 +1053,7 @@ export function ProjectsGoalsView({
           <button
             id="tab-goals-view"
             onClick={() => setActiveTab('goals')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
               activeTab === 'goals'
                 ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
                 : 'text-slate-400 hover:bg-white/5'
@@ -873,7 +1072,7 @@ export function ProjectsGoalsView({
         <div className="space-y-4">
           {/* Goals Control Bar with Status Filter Tabs & Search */}
           <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 bg-bg-800/50 p-3 rounded-2xl border border-white/5">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 xl:pb-0 scrollbar-none">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <button
                 id="filter-goals-all"
                 onClick={() => setGoalStatusFilter('all')}
@@ -969,6 +1168,12 @@ export function ProjectsGoalsView({
                       <div className="space-y-1.5 flex-1 min-w-0">
                         <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
                           {goalStatusBadge(goal.status)}
+                          {goal.sequentialMode && (
+                            <span className="badge bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1">
+                              <Lock size={10} className="shrink-0" />
+                              <span>Sequential Mode</span>
+                            </span>
+                          )}
                           {goal.category && (
                             <span className="badge bg-white/5 text-slate-300 border border-white/10 text-[10px] flex items-center gap-1">
                               <Tag size={10} className="text-purple-400 shrink-0" />
@@ -1004,13 +1209,7 @@ export function ProjectsGoalsView({
                           className="bg-bg-900 border border-white/10 text-xs rounded-xl px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-purple-500/50"
                         >
                           <option value="active">🟢 Active</option>
-                          <option
-                            value="achieved"
-                            disabled={!prog.isManual && prog.percent < 100}
-                            title={!prog.isManual && prog.percent < 100 ? 'All linked projects must reach 100% first' : undefined}
-                          >
-                            🏆 Achieved {!prog.isManual && prog.percent < 100 ? '(100% req)' : ''}
-                          </option>
+                          <option value="achieved">🏆 Achieved</option>
                           <option value="abandoned">⚪ Abandoned</option>
                         </select>
 
@@ -1170,8 +1369,8 @@ export function ProjectsGoalsView({
 
           {/* Projects Control Bar with Status Filter Tabs & Search/Goal Filters */}
           <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 bg-bg-800/50 p-3 rounded-2xl border border-white/5">
-            {/* Status Filter Tab Bar */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 xl:pb-0 scrollbar-none">
+            {/* Status Filter Tab Bar (Wrapped for responsive display) */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <button
                 id="filter-projects-all"
                 onClick={() => setProjectStatusFilter('all')}
@@ -1227,6 +1426,18 @@ export function ProjectsGoalsView({
               >
                 Completed ({projectStatusCounts.completed})
               </button>
+              <button
+                id="filter-projects-locked"
+                onClick={() => setProjectStatusFilter('locked')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all flex items-center gap-1.5 ${
+                  projectStatusFilter === 'locked'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/35'
+                    : 'text-slate-400 hover:text-amber-300'
+                }`}
+              >
+                <Lock size={12} className="shrink-0" />
+                <span>Locked ({projectStatusCounts.locked})</span>
+              </button>
             </div>
 
             {/* Goal Filter & Search */}
@@ -1274,11 +1485,11 @@ export function ProjectsGoalsView({
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                   {projects.length === 0
                     ? 'Create your first project to break down your high-level goals into actionable work.'
-                    : `No ${projectStatusFilter !== 'all' ? projectStatusFilter.replace('_', ' ') : ''} projects match your current filters.`}
+                    : `No ${projectStatusFilter === 'locked' ? 'locked' : projectStatusFilter !== 'all' ? projectStatusFilter.replace('_', ' ') : ''} projects match your current filters.`}
                 </p>
               </div>
               <button
-                onClick={() => openCreateProjectModal(undefined, projectStatusFilter !== 'all' ? projectStatusFilter : undefined)}
+                onClick={() => openCreateProjectModal(undefined, projectStatusFilter !== 'all' && projectStatusFilter !== 'locked' ? projectStatusFilter : undefined)}
                 className="btn-primary text-xs px-4 py-2 inline-flex items-center gap-1.5"
               >
                 <Plus size={14} />
@@ -1291,17 +1502,33 @@ export function ProjectsGoalsView({
                 const prog = getProjectProgress(project.id);
                 const isOverdue = project.dueDate && project.dueDate < currentToday && project.status !== 'completed';
                 const isDueToday = project.dueDate === currentToday && project.status !== 'completed';
+                const lockStatus = getProjectLockStatus(project.id);
 
                 return (
                   <div
                     key={project.id}
-                    className="card p-4 sm:p-4.5 border border-white/10 bg-bg-800 rounded-2xl space-y-3.5 hover:border-cyan-500/30 transition-all shadow-sm group"
+                    className={`card p-4 sm:p-4.5 border rounded-2xl space-y-3.5 transition-all shadow-sm group ${
+                      lockStatus.isLocked
+                        ? 'border-amber-500/20 bg-bg-800/80 hover:border-amber-500/40'
+                        : 'border-white/10 bg-bg-800 hover:border-cyan-500/30'
+                    }`}
                   >
+                    {/* Locked Banner if Locked */}
+                    {lockStatus.isLocked && (
+                      <div className="p-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-2 text-xs text-amber-300">
+                        <Lock size={13} className="shrink-0 text-amber-400" />
+                        <span className="font-medium">
+                          {lockStatus.reason || 'This project is locked until prior projects in sequence are completed.'}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Top Row: Info & Metadata (Left) + Actions & Controls (Right) */}
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                       {/* Left: Badges, Title, Description */}
                       <div className="space-y-1.5 flex-1 min-w-0">
                         <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
+                          {/* Goal badge */}
                           {project.goalId ? (
                             <button
                               onClick={() => {
@@ -1316,6 +1543,29 @@ export function ProjectsGoalsView({
                             </button>
                           ) : (
                             <span className="badge bg-white/5 text-slate-400 border border-white/10 text-[10px]">Standalone</span>
+                          )}
+
+                          {/* Sequential Step Badge */}
+                          {lockStatus.isSequentialGoal && (
+                            <span
+                              className={`badge text-[10px] font-bold flex items-center gap-1 border ${
+                                lockStatus.isLocked
+                                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                  : project.status === 'completed'
+                                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                  : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
+                              }`}
+                            >
+                              {lockStatus.isLocked ? (
+                                <Lock size={10} className="shrink-0" />
+                              ) : (
+                                <Unlock size={10} className="shrink-0" />
+                              )}
+                              <span>
+                                Step {lockStatus.stepIndex} of {lockStatus.totalSteps}
+                                {lockStatus.isLocked ? ' (Locked)' : project.status === 'completed' ? ' (Done)' : ' (Active)'}
+                              </span>
+                            </span>
                           )}
 
                           {project.dueDate ? (
@@ -1339,7 +1589,12 @@ export function ProjectsGoalsView({
                           )}
                         </div>
 
-                        <h4 className="text-sm sm:text-base font-bold text-slate-100 leading-snug" title={project.title}>
+                        <h4
+                          className={`text-sm sm:text-base font-bold leading-snug ${
+                            lockStatus.isLocked ? 'text-slate-300' : 'text-slate-100'
+                          }`}
+                          title={project.title}
+                        >
                           {project.title}
                         </h4>
 
@@ -1350,22 +1605,48 @@ export function ProjectsGoalsView({
                         )}
                       </div>
 
-                      {/* Right: Status Dropdown, Tasks Button, Edit/Delete */}
+                      {/* Right: Reorder Buttons, Status Dropdown, Tasks Button, Edit/Delete */}
                       <div className="flex items-center gap-2 shrink-0 self-start pt-0.5 flex-wrap sm:flex-nowrap">
+                        {/* Move Up/Down Order Buttons (if linked to a Goal) */}
+                        {project.goalId && (
+                          <div className="flex items-center bg-bg-900 border border-white/10 rounded-xl p-0.5 shrink-0" title="Reorder Project sequence in Goal">
+                            <button
+                              type="button"
+                              onClick={() => store.moveProjectOrder(project.id, 'up')}
+                              className="p-1 text-slate-400 hover:text-slate-200 hover:bg-white/10 rounded-lg transition-colors"
+                              title="Move Up in sequence"
+                            >
+                              <ChevronUp size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => store.moveProjectOrder(project.id, 'down')}
+                              className="p-1 text-slate-400 hover:text-slate-200 hover:bg-white/10 rounded-lg transition-colors"
+                              title="Move Down in sequence"
+                            >
+                              <ChevronDown size={14} />
+                            </button>
+                          </div>
+                        )}
+
                         <select
                           value={project.status}
+                          disabled={lockStatus.isLocked}
                           onChange={(e) => handleMoveProjectStatus(project.id, e.target.value as ProjectStatus)}
-                          className="bg-bg-900 border border-white/10 text-xs rounded-xl px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-cyan-500/50"
+                          className="bg-bg-900 border border-white/10 text-xs rounded-xl px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-cyan-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+                          title={lockStatus.isLocked ? 'Project is locked by sequence order' : undefined}
                         >
                           <option value="not_started">📌 Not Started</option>
-                          <option value="in_progress">🚀 In Progress</option>
+                          <option value="in_progress" disabled={lockStatus.isLocked}>
+                            🚀 In Progress {lockStatus.isLocked ? '(Locked)' : ''}
+                          </option>
                           <option value="on_hold">⏸️ On Hold</option>
                           <option
                             value="completed"
-                            disabled={!prog.isManual && prog.percent < 100}
-                            title={!prog.isManual && prog.percent < 100 ? 'Complete all tasks first' : undefined}
+                            disabled={lockStatus.isLocked}
+                            title={lockStatus.isLocked ? 'Project is locked by sequence order' : undefined}
                           >
-                            ✅ Completed {!prog.isManual && prog.percent < 100 ? '(100% req)' : ''}
+                            ✅ Completed {lockStatus.isLocked ? '(Locked)' : ''}
                           </option>
                         </select>
 
@@ -1434,7 +1715,7 @@ export function ProjectsGoalsView({
                           <button
                             type="button"
                             onClick={() => handleUpdateProjectManualProgress(project, prog.percent - 5)}
-                            disabled={prog.percent <= 0}
+                            disabled={prog.percent <= 0 || lockStatus.isLocked}
                             className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30 disabled:hover:bg-white/5 flex items-center justify-center text-xs transition-colors shrink-0 border border-white/10"
                             title="Decrease 5%"
                           >
@@ -1459,7 +1740,7 @@ export function ProjectsGoalsView({
                           <button
                             type="button"
                             onClick={() => handleUpdateProjectManualProgress(project, prog.percent + 5)}
-                            disabled={prog.percent >= 100}
+                            disabled={prog.percent >= 100 || lockStatus.isLocked}
                             className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30 disabled:hover:bg-white/5 flex items-center justify-center text-xs transition-colors shrink-0 border border-white/10"
                             title="Increase 5%"
                           >
@@ -1481,36 +1762,50 @@ export function ProjectsGoalsView({
       {/* -------------------------------------------------------------------- */}
       {activeTab === 'tasks' && (
         <div className="space-y-4">
-          {/* Breadcrumb if filtered by Project */}
-          {filterProjectId && (
-            <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <FolderKanban size={16} className="text-cyan-400 shrink-0" />
-                <span className="text-xs text-slate-300">
-                  Showing tasks for Project:{' '}
-                  <strong className="text-cyan-300 font-bold">{getProjectName(filterProjectId)}</strong>
-                </span>
+          {/* Breadcrumb & Lock Banner if filtered by Project */}
+          {filterProjectId && (() => {
+            const filterLock = getProjectLockStatus(filterProjectId);
+            return (
+              <div className="space-y-2">
+                <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FolderKanban size={16} className="text-cyan-400 shrink-0" />
+                    <span className="text-xs text-slate-300">
+                      Showing tasks for Project:{' '}
+                      <strong className="text-cyan-300 font-bold">{getProjectName(filterProjectId)}</strong>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => {
+                        setFilterProjectId(null);
+                        setActiveTab('projects');
+                      }}
+                      className="text-xs text-cyan-400 hover:text-cyan-300 underline font-medium"
+                    >
+                      ← Back to all Projects
+                    </button>
+                    <button
+                      onClick={() => setFilterProjectId(null)}
+                      className="p-1 text-slate-400 hover:text-slate-200"
+                      title="Clear Filter"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {filterLock.isLocked && (
+                  <div className="p-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-2 text-xs text-amber-300">
+                    <Lock size={13} className="shrink-0 text-amber-400" />
+                    <span className="font-medium">
+                      {filterLock.reason || 'This project is locked by sequential goal order. Finish prior projects to unlock tasks.'}
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => {
-                    setFilterProjectId(null);
-                    setActiveTab('projects');
-                  }}
-                  className="text-xs text-cyan-400 hover:text-cyan-300 underline font-medium"
-                >
-                  ← Back to all Projects
-                </button>
-                <button
-                  onClick={() => setFilterProjectId(null)}
-                  className="p-1 text-slate-400 hover:text-slate-200"
-                  title="Clear Filter"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* QUICK-ADD TASK BAR */}
           <form
@@ -1569,8 +1864,8 @@ export function ProjectsGoalsView({
 
           {/* FILTERS & SEARCH */}
           <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 bg-bg-800/50 p-3 rounded-2xl border border-white/5">
-            {/* Quick Segment Filter */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 xl:pb-0 scrollbar-none">
+            {/* Quick Segment Filter (Wrapped for responsive display with zero horizontal scrolling) */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               {(
                 [
                   { id: 'all', label: 'All' },
@@ -1579,14 +1874,19 @@ export function ProjectsGoalsView({
                   { id: 'overdue', label: 'Overdue' },
                   { id: 'this_week', label: 'This Week' },
                   { id: 'completed', label: 'Completed' },
+                  { id: 'locked', label: 'Locked' },
                 ] as const
               ).map((f) => (
                 <button
                   key={f.id}
                   onClick={() => setTaskViewFilter(f.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                     taskViewFilter === f.id
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      ? f.id === 'locked'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/35'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : f.id === 'locked'
+                      ? 'text-slate-400 hover:text-amber-300'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -1661,12 +1961,15 @@ export function ProjectsGoalsView({
                 const completedSubtasks = subtasks.filter((st) => st.completed).length;
                 const isExpanded = expandedTaskIds.has(task.id);
                 const hasSubtasks = subtasks.length > 0;
+                const projectLock = task.projectId ? getProjectLockStatus(task.projectId) : { isLocked: false, reason: '' };
 
                 return (
                   <div
                     key={task.id}
                     className={`card p-4 border transition-all rounded-2xl space-y-3 ${
-                      task.completed
+                      projectLock.isLocked
+                        ? 'bg-bg-800/80 border-amber-500/20'
+                        : task.completed
                         ? 'bg-bg-800/50 border-white/5 opacity-75'
                         : 'bg-bg-800 border-white/10 hover:border-emerald-500/30'
                     }`}
@@ -1677,27 +1980,35 @@ export function ProjectsGoalsView({
                         {/* Task Checkbox */}
                         <button
                           onClick={() => {
-                            if (!hasSubtasks) {
+                            if (!hasSubtasks && !projectLock.isLocked) {
                               store.toggleTaskCompleted(task.id);
                             }
                           }}
-                          disabled={hasSubtasks}
+                          disabled={hasSubtasks || projectLock.isLocked}
                           className={`mt-0.5 w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
-                            hasSubtasks ? 'cursor-not-allowed opacity-90' : ''
+                            hasSubtasks || projectLock.isLocked ? 'cursor-not-allowed opacity-90' : ''
                           } ${
                             task.completed
                               ? 'bg-emerald-500 border-emerald-400 text-white'
+                              : projectLock.isLocked
+                              ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
                               : 'border-white/20 hover:border-emerald-400 text-transparent'
                           }`}
                           title={
-                            hasSubtasks
+                            projectLock.isLocked
+                              ? (projectLock.reason || 'Project is locked by sequence order')
+                              : hasSubtasks
                               ? 'Auto-synced: completion is driven by subtasks'
                               : task.completed
                               ? 'Mark incomplete'
                               : 'Mark complete'
                           }
                         >
-                          <Check size={13} strokeWidth={3} className={task.completed ? 'block' : 'hidden'} />
+                          {projectLock.isLocked ? (
+                            <Lock size={11} className="text-amber-400" />
+                          ) : (
+                            <Check size={13} strokeWidth={3} className={task.completed ? 'block' : 'hidden'} />
+                          )}
                         </button>
 
                         <div className="space-y-1 flex-1 min-w-0">
@@ -1720,10 +2031,14 @@ export function ProjectsGoalsView({
                                   setFilterProjectId(task.projectId || null);
                                   setActiveTab('tasks');
                                 }}
-                                className="badge bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 border border-cyan-500/20 text-[10px] flex items-center gap-1 max-w-[180px] truncate"
-                                title={`Project: ${getProjectName(task.projectId)}`}
+                                className={`badge text-[10px] flex items-center gap-1 max-w-[180px] truncate border ${
+                                  projectLock.isLocked
+                                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                                    : 'bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 border-cyan-500/20'
+                                }`}
+                                title={`Project: ${getProjectName(task.projectId)} ${projectLock.isLocked ? '(Locked)' : ''}`}
                               >
-                                <FolderKanban size={10} className="shrink-0" />
+                                {projectLock.isLocked ? <Lock size={10} className="shrink-0 text-amber-400" /> : <FolderKanban size={10} className="shrink-0" />}
                                 <span className="truncate">{getProjectName(task.projectId)}</span>
                               </button>
                             )}
@@ -1816,11 +2131,15 @@ export function ProjectsGoalsView({
                               <div className="flex items-center gap-2 flex-1 min-w-0">
                                 <button
                                   onClick={() => store.toggleSubtask(task.id, st.id)}
+                                  disabled={projectLock.isLocked}
                                   className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0 ${
+                                    projectLock.isLocked ? 'cursor-not-allowed opacity-60' : ''
+                                  } ${
                                     st.completed
                                       ? 'bg-emerald-500 border-emerald-400 text-white'
                                       : 'border-white/20 hover:border-emerald-400 text-transparent'
                                   }`}
+                                  title={projectLock.isLocked ? 'Project is locked by sequence order' : undefined}
                                 >
                                   <Check size={10} strokeWidth={3} className={st.completed ? 'block' : 'hidden'} />
                                 </button>
@@ -1936,11 +2255,35 @@ export function ProjectsGoalsView({
             </div>
           </div>
 
+          {/* Sequential Mode Toggle */}
+          <div className="p-3 bg-bg-900 border border-white/10 rounded-xl flex items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <label className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 cursor-pointer">
+                <Lock size={13} className="text-amber-400" />
+                <span>Sequential Mode</span>
+              </label>
+              <p className="text-[11px] text-slate-400">
+                Enforce step-by-step completion: linked projects must be finished in sequential order.
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={goalFormSequentialMode}
+                onChange={(e) => setGoalFormSequentialMode(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Target Completion Date</label>
               <input
                 type="date"
+                min={minAllowedDate}
+                max={maxAllowedDate}
                 value={goalFormTargetDate}
                 onChange={(e) => setGoalFormTargetDate(e.target.value)}
                 className="w-full px-3 py-2 bg-bg-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-purple-500/50"
@@ -2036,6 +2379,8 @@ export function ProjectsGoalsView({
               <label className="block text-xs font-semibold text-slate-300 mb-1">Start Date</label>
               <input
                 type="date"
+                min={minAllowedDate}
+                max={maxAllowedDate}
                 value={projectFormStartDate}
                 onChange={(e) => setProjectFormStartDate(e.target.value)}
                 className="w-full px-3 py-2 bg-bg-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-cyan-500/50"
@@ -2046,6 +2391,8 @@ export function ProjectsGoalsView({
               <label className="block text-xs font-semibold text-slate-300 mb-1">Due Date</label>
               <input
                 type="date"
+                min={minAllowedDate}
+                max={maxAllowedDate}
                 value={projectFormDueDate}
                 onChange={(e) => setProjectFormDueDate(e.target.value)}
                 className="w-full px-3 py-2 bg-bg-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-cyan-500/50"
@@ -2156,6 +2503,8 @@ export function ProjectsGoalsView({
             <label className="block text-xs font-semibold text-slate-300 mb-1">Due Date</label>
             <input
               type="date"
+              min={minAllowedDate}
+              max={maxAllowedDate}
               value={taskFormDueDate}
               onChange={(e) => setTaskFormDueDate(e.target.value)}
               className="w-full px-3 py-2 bg-bg-900 border border-white/10 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500/50"

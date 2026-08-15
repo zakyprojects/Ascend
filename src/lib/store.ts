@@ -2674,6 +2674,7 @@ export function useAppState() {
       targetDate?: string;
       status?: GoalStatus;
       manualProgress?: number;
+      sequentialMode?: boolean;
     }) => {
       const newGoal: Goal = {
         id: uid(),
@@ -2683,12 +2684,16 @@ export function useAppState() {
         targetDate: data.targetDate || undefined,
         status: data.status || 'active',
         manualProgress: data.manualProgress !== undefined ? data.manualProgress : 0,
+        sequentialMode: Boolean(data.sequentialMode),
         createdAt: new Date().toISOString(),
       };
-      setState((prev) => ({
-        ...prev,
-        goals: [newGoal, ...prev.goals],
-      }));
+      setState(
+        (prev) => ({
+          ...prev,
+          goals: [newGoal, ...prev.goals],
+        }),
+        { immediate: true }
+      );
       return newGoal;
     },
     []
@@ -2696,10 +2701,13 @@ export function useAppState() {
 
   const updateGoal = useCallback(
     (id: string, updates: Partial<Omit<Goal, 'id' | 'createdAt'>>) => {
-      setState((prev) => ({
-        ...prev,
-        goals: prev.goals.map((g) => (g.id === id ? { ...g, ...updates } : g)),
-      }));
+      setState(
+        (prev) => ({
+          ...prev,
+          goals: prev.goals.map((g) => (g.id === id ? { ...g, ...updates } : g)),
+        }),
+        { immediate: true }
+      );
     },
     []
   );
@@ -2742,8 +2750,15 @@ export function useAppState() {
       dueDate?: string;
       status?: ProjectStatus;
       manualProgress?: number;
+      order?: number;
     }) => {
       const isCompleted = data.status === 'completed';
+      let projectOrder = data.order;
+      if (projectOrder === undefined && data.goalId) {
+        const existingCount = state.projects.filter((p) => p.goalId === data.goalId).length;
+        projectOrder = existingCount;
+      }
+
       const newProject: Project = {
         id: uid(),
         title: data.title.trim(),
@@ -2754,40 +2769,103 @@ export function useAppState() {
         status: data.status || 'not_started',
         completedAt: isCompleted ? new Date().toISOString() : undefined,
         manualProgress: data.manualProgress !== undefined ? data.manualProgress : 0,
+        order: projectOrder !== undefined ? projectOrder : 0,
         createdAt: new Date().toISOString(),
       };
-      setState((prev) => ({
-        ...prev,
-        projects: [newProject, ...prev.projects],
-      }));
+      setState(
+        (prev) => ({
+          ...prev,
+          projects: [newProject, ...prev.projects],
+        }),
+        { immediate: true }
+      );
       return newProject;
     },
-    []
+    [state.projects]
   );
 
   const updateProject = useCallback(
     (id: string, updates: Partial<Omit<Project, 'id' | 'createdAt'>>) => {
-      setState((prev) => ({
-        ...prev,
-        projects: prev.projects.map((p) => {
-          if (p.id !== id) return p;
-          const completedAt = resolveProjectCompletedAt(p.status, updates.status, p.completedAt, updates.completedAt);
-          return { ...p, ...updates, completedAt };
+      setState(
+        (prev) => ({
+          ...prev,
+          projects: prev.projects.map((p) => {
+            if (p.id !== id) return p;
+            const completedAt = resolveProjectCompletedAt(p.status, updates.status, p.completedAt, updates.completedAt);
+            return { ...p, ...updates, completedAt };
+          }),
         }),
-      }));
+        { immediate: true }
+      );
     },
     []
   );
 
+  const moveProjectOrder = useCallback((arg1: string, arg2: string | 'up' | 'down', arg3?: 'up' | 'down') => {
+    setState(
+      (prev) => {
+        let targetGoalId: string | undefined;
+        let targetProjectId: string;
+        let direction: 'up' | 'down';
+
+        if (arg3 !== undefined) {
+          targetGoalId = arg1;
+          targetProjectId = arg2 as string;
+          direction = arg3;
+        } else {
+          targetProjectId = arg1;
+          direction = arg2 as 'up' | 'down';
+          const found = prev.projects.find((p) => p.id === targetProjectId);
+          targetGoalId = found?.goalId;
+        }
+
+        if (!targetGoalId) return prev;
+
+        const goalProjects = prev.projects
+          .filter((p) => p.goalId === targetGoalId)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+        const currIdx = goalProjects.findIndex((p) => p.id === targetProjectId);
+        if (currIdx === -1) return prev;
+        const targetIdx = direction === 'up' ? currIdx - 1 : currIdx + 1;
+        if (targetIdx < 0 || targetIdx >= goalProjects.length) return prev;
+
+        const reordered = [...goalProjects];
+        const temp = reordered[currIdx];
+        reordered[currIdx] = reordered[targetIdx];
+        reordered[targetIdx] = temp;
+
+        const orderMap = new Map<string, number>();
+        reordered.forEach((p, idx) => {
+          orderMap.set(p.id, idx);
+        });
+
+        return {
+          ...prev,
+          projects: prev.projects.map((p) => {
+            if (p.goalId === targetGoalId && orderMap.has(p.id)) {
+              return { ...p, order: orderMap.get(p.id)! };
+            }
+            return p;
+          }),
+        };
+      },
+      { immediate: true }
+    );
+  }, []);
+
   const moveProjectStatus = useCallback((id: string, newStatus: ProjectStatus) => {
-    setState((prev) => ({
-      ...prev,
-      projects: prev.projects.map((p) => {
-        if (p.id !== id) return p;
-        const completedAt = resolveProjectCompletedAt(p.status, newStatus, p.completedAt);
-        return { ...p, status: newStatus, completedAt };
+    setState(
+      (prev) => ({
+        ...prev,
+        projects: prev.projects.map((p) => {
+          if (p.id !== id) return p;
+          const completedAt = resolveProjectCompletedAt(p.status, newStatus, p.completedAt);
+          return { ...p, status: newStatus, completedAt };
+        }),
       }),
-    }));
+      { immediate: true }
+    );
   }, []);
 
   const deleteProject = useCallback((id: string) => {
@@ -4600,6 +4678,7 @@ export function useAppState() {
     deleteGoal,
     createProject,
     updateProject,
+    moveProjectOrder,
     moveProjectStatus,
     deleteProject,
     createTask,

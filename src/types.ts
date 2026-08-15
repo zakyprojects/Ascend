@@ -582,6 +582,7 @@ export interface Project {
   status: ProjectStatus;
   completedAt?: string; // ISO string timestamp when status became 'completed'
   manualProgress?: number; // 0-100 when project has 0 tasks
+  order?: number; // Sequence index when linked to a sequential Goal
   createdAt: string;
 }
 
@@ -593,6 +594,7 @@ export interface Goal {
   targetDate?: string; // YYYY-MM-DD
   status: GoalStatus;
   manualProgress?: number; // 0-100 when goal has 0 linked projects
+  sequentialMode?: boolean; // When true, linked projects must be completed in order
   createdAt: string;
 }
 
