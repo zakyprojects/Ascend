@@ -2,7 +2,8 @@ import { User } from '@supabase/supabase-js';
 import { AppState, DEFAULT_STATE, UserProfile, PlanStep } from '@/types';
 import { generateNumericUID } from './dates';
 import {
-  fetchUserDataFromSupabase,
+  fetchUserDataWithStatusFromSupabase,
+  setUserDataWatermark,
   fetchPartnerInvitesSupabase,
   fetchPartnershipSupabase,
   fetchPartnershipsSupabase,
@@ -161,10 +162,34 @@ export async function hydrateUserSession(
   signupDefaults?: SignUpDefaults
 ): Promise<{ user: UserProfile; state: AppState }> {
   // Fetch profile and saved user_data in parallel
-  const [profileData, savedState] = await Promise.all([
+  const [profileData, userDataRes] = await Promise.all([
     fetchProfileForUser(userId),
-    fetchUserDataFromSupabase(userId),
+    fetchUserDataWithStatusFromSupabase(userId),
   ]);
+
+  // If user_data fetch encountered a network/query error, try recovering from local cache
+  let savedState = userDataRes.state;
+  if (userDataRes.error && !savedState) {
+    console.warn('Network error fetching user_data, attempting to restore from local cache:', userDataRes.error);
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(`ascend_user_cache_${userId}`);
+        if (cached) {
+          savedState = JSON.parse(cached);
+          console.log('Successfully recovered user state from local cache');
+        }
+      } catch (e) {
+        console.error('Failed reading user cache from localStorage:', e);
+      }
+    }
+    // If there is still no savedState AND userDataRes had a network error on an existing account with profileData,
+    // THROW hydration error so we do NOT initialize an empty state and mark as hydrated!
+    if (!savedState && profileData) {
+      throw new Error(
+        `Failed to fetch user_data for established user ${userId}: ${userDataRes.error?.message || 'Network error'}`
+      );
+    }
+  }
 
   const user = buildUserProfile(userId, email, profileData, authUser, signupDefaults);
 
@@ -199,6 +224,7 @@ export async function hydrateUserSession(
       currentUser: user,
       username: user.username,
     };
+    setUserDataWatermark(userId, state);
   } else if (signupDefaults?.guestState) {
     state = {
       ...DEFAULT_STATE,
@@ -206,6 +232,7 @@ export async function hydrateUserSession(
       currentUser: user,
       username: user.username,
     };
+    setUserDataWatermark(userId, state);
   } else {
     // Check if there is pre-existing guest state in localStorage to preserve
     let localState: AppState | null = null;
@@ -225,6 +252,7 @@ export async function hydrateUserSession(
         currentUser: user,
         username: user.username,
       };
+      setUserDataWatermark(userId, state);
     } else {
       state = {
         ...DEFAULT_STATE,
@@ -440,7 +468,8 @@ export async function hydrateUserSession(
     } catch (e) {}
   }
 
-  if (!profileData || !savedState) {
+  // Only push an immediate save during hydration if this is explicitly a fresh signup with initial defaults
+  if (signupDefaults) {
     await saveUserDataToSupabase(userId, state);
   }
 

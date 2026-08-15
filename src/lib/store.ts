@@ -98,6 +98,8 @@ import {
   deleteReflectionNoteFromSupabase,
   sendPartnerInviteSupabase,
   fetchUserDataFromSupabase,
+  fetchUserDataWithStatusFromSupabase,
+  setUserDataWatermark,
   saveUserDataToSupabase,
   fetchAllProfilesFromSupabase,
   fetchProfileByUsernameFromSupabase,
@@ -120,6 +122,36 @@ import {
   markAllNotificationsReadSupabase,
   clearNotificationSupabase,
 } from './supabase';
+import { mergeAppState } from './stateMerger';
+
+// Cross-tab real-time state synchronization channel
+export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
+
+export interface StateSyncMessage {
+  type: 'ASCEND_STATE_SYNC';
+  senderTabId: string;
+  userId?: string;
+  state: AppState;
+  timestamp: number;
+}
+
+export function broadcastStateToTabs(state: AppState, senderTabId: string) {
+  if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
+  try {
+    const channel = new BroadcastChannel(STATE_SYNC_CHANNEL_NAME);
+    const msg: StateSyncMessage = {
+      type: 'ASCEND_STATE_SYNC',
+      senderTabId,
+      userId: state.currentUser?.id,
+      state,
+      timestamp: Date.now(),
+    };
+    channel.postMessage(msg);
+    channel.close();
+  } catch (e) {
+    /* ignore BroadcastChannel errors */
+  }
+}
 
 function removeLinkedWeeklyGoals(
   weeklyGoals: WeeklyGoal[],
@@ -280,88 +312,7 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
 }
 
 function mergeHydratedWithCurrent(hydratedState: AppState, current: AppState): AppState {
-  const merged: AppState = { ...hydratedState };
-
-  // 1. Point accounting: preserve points earned locally during cold boot hydration window
-  if (current.pointsHistory && current.pointsHistory.length > 0) {
-    const hydPointIds = new Set((hydratedState.pointsHistory || []).map((p) => p.id));
-    const localNewPoints = current.pointsHistory.filter((p) => !hydPointIds.has(p.id));
-    if (localNewPoints.length > 0) {
-      const addedPoints = localNewPoints.reduce((sum, p) => sum + (p.amount || 0), 0);
-      merged.pointsHistory = [...localNewPoints, ...(merged.pointsHistory || [])];
-      merged.totalPoints = Math.max(0, (merged.totalPoints || 0) + addedPoints);
-    }
-  }
-
-  // 2. Generic array merge across all entity collections
-  const arrayKeys: (keyof AppState)[] = [
-    'habits',
-    'journalEntries',
-    'leagueArchives',
-    'workouts',
-    'books',
-    'readingLogs',
-    'skills',
-    'skillLogs',
-    'badHabits',
-    'badHabitLogs',
-    'cravingLogs',
-    'focusLogs',
-    'decisionLogs',
-    'emotionLogs',
-    'weeklyGoals',
-    'goals',
-    'projects',
-    'tasks',
-    'libraryBooks',
-    'improvementPlans',
-    'followedPlans',
-    'partnerInvites',
-    'sharedChallenges',
-    'partnerNotifications',
-    'notifications',
-  ];
-
-  for (const key of arrayKeys) {
-    const hydArr = (hydratedState[key] as any[]) || [];
-    const currArr = (current[key] as any[]) || [];
-
-    if (!currArr.length) continue;
-
-    const hydMap = new Map<string, any>();
-    hydArr.forEach((item) => {
-      if (item && typeof item === 'object' && item.id) hydMap.set(item.id, item);
-    });
-
-    const mergedArr = [...hydArr];
-
-    currArr.forEach((currItem) => {
-      if (!currItem || typeof currItem !== 'object' || !currItem.id) return;
-
-      const hydItem = hydMap.get(currItem.id);
-      if (!hydItem) {
-        // Item created locally during hydration window
-        mergedArr.unshift(currItem);
-      } else if (JSON.stringify(currItem) !== JSON.stringify(hydItem)) {
-        // Item updated locally during hydration window
-        const idx = mergedArr.findIndex((x) => x.id === currItem.id);
-        if (idx !== -1) {
-          mergedArr[idx] = currItem;
-        }
-      }
-    });
-
-    (merged as any)[key] = mergedArr;
-  }
-
-  // 3. Primitive set merges
-  if (current.readLessonIds?.length) {
-    const existing = new Set(hydratedState.readLessonIds || []);
-    current.readLessonIds.forEach((id) => existing.add(id));
-    merged.readLessonIds = Array.from(existing);
-  }
-
-  return merged;
+  return mergeAppState(hydratedState, current);
 }
 
 function persistState(state: AppState) {
@@ -498,6 +449,10 @@ export function useAppState() {
   const archiveTimer = useRef<number | null>(null);
   const pendingImmediateFlush = useRef(false);
 
+  // Cross-tab synchronization tracking
+  const tabId = useRef<string>(Math.random().toString(36).substring(2) + Date.now().toString(36)).current;
+  const isRemoteBroadcastUpdate = useRef(false);
+
   useEffect(() => {
     currentUserRef.current = state.currentUser;
   }, [state.currentUser]);
@@ -515,8 +470,116 @@ export function useAppState() {
     []
   );
 
+  // FIX 1: Frontend Cross-Tab Sync via BroadcastChannel
   useEffect(() => {
+    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
+
+    const channel = new BroadcastChannel(STATE_SYNC_CHANNEL_NAME);
+
+    channel.onmessage = (event: MessageEvent<StateSyncMessage>) => {
+      const data = event.data;
+      if (!data || data.type !== 'ASCEND_STATE_SYNC') return;
+      if (data.senderTabId === tabId) return; // Ignore own broadcast
+
+      const incomingUserId = data.userId;
+      const currentUserId = currentUserRef.current?.id;
+
+      // Prevent syncing across different user accounts
+      if (incomingUserId && currentUserId && incomingUserId !== currentUserId) {
+        return;
+      }
+
+      if (!data.state) return;
+
+      isRemoteBroadcastUpdate.current = true;
+      setStateRaw((current) => {
+        const merged = mergeAppState(current, data.state);
+        return merged;
+      });
+    };
+
+    return () => {
+      channel.close();
+    };
+  }, [tabId]);
+
+  // FIX 3: Network Reconnection & Tab Focus Sync (with Anti-Spam Throttle)
+  const lastSyncTimeRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let isSyncing = false;
+    const SYNC_THROTTLE_MS = 180000; // 3 minutes
+
+    const handleReconnectAndSync = async (force = false) => {
+      if (isSyncing) return;
+      const now = Date.now();
+      if (!force && now - lastSyncTimeRef.current < SYNC_THROTTLE_MS) {
+        return;
+      }
+
+      const userId = currentUserRef.current?.id;
+      if (!userId || !isHydrated.current || !isSupabaseConfigured) return;
+
+      try {
+        isSyncing = true;
+        console.log('[SYNC] Network reconnected or tab visible, reconciling server state...');
+        const serverRes = await fetchUserDataWithStatusFromSupabase(userId);
+        if (serverRes.exists && serverRes.state) {
+          lastSyncTimeRef.current = Date.now();
+          setStateRaw((current) => {
+            const merged = mergeAppState(serverRes.state!, current);
+            setUserDataWatermark(userId, merged);
+            // If local state had pending offline changes, persist the merged state safely
+            if (JSON.stringify(merged) !== JSON.stringify(serverRes.state)) {
+              setTimeout(() => {
+                persistState(merged);
+              }, 200);
+            }
+            return merged;
+          });
+        }
+      } catch (e) {
+        console.error('[SYNC] Error syncing state on reconnection/visibility:', e);
+      } finally {
+        isSyncing = false;
+      }
+    };
+
+    const onOnline = () => {
+      // Force immediate sync upon network reconnection
+      handleReconnectAndSync(true);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Throttled sync when returning to tab
+        handleReconnectAndSync(false);
+      }
+    };
+
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isRemoteBroadcastUpdate.current) {
+      // This state update was synced from another tab via BroadcastChannel.
+      // Skip duplicate persistence and re-broadcast.
+      isRemoteBroadcastUpdate.current = false;
+      return;
+    }
+
     if (isHydrated.current) {
+      // Broadcast state to all other tabs immediately
+      broadcastStateToTabs(state, tabId);
+
       if (pendingImmediateFlush.current) {
         pendingImmediateFlush.current = false;
         if (debounceTimer.current) {
@@ -531,7 +594,7 @@ export function useAppState() {
         }, 500);
       }
     }
-  }, [state]);
+  }, [state, tabId]);
 
   // Initial Supabase data load & auth listener (single source of truth for session state)
   useEffect(() => {
@@ -576,6 +639,14 @@ export function useAppState() {
         if (!mounted) return;
 
         if (event === 'SIGNED_OUT') {
+          if (debounceTimer.current) {
+            clearTimeout(debounceTimer.current);
+            debounceTimer.current = null;
+          }
+          pendingImmediateFlush.current = false;
+          isHydrated.current = false;
+          currentUserRef.current = null;
+
           if (typeof window !== 'undefined') {
             try {
               localStorage.removeItem('ascend_active_focus_session');
@@ -652,27 +723,46 @@ export function useAppState() {
             }
           } catch (e) {
             console.error('Error hydrating auth session:', e);
-            // Don't leave user stuck — if hydration fails or times out,
-            // build a minimal profile from what we have and let them in
+            // If hydration fails or times out, attempt to restore from local cache first
             if (mounted) {
+              let cachedState: AppState | null = null;
+              if (typeof window !== 'undefined') {
+                try {
+                  const cachedRaw = localStorage.getItem(`ascend_user_cache_${userId}`);
+                  if (cachedRaw) {
+                    cachedState = JSON.parse(cachedRaw);
+                  }
+                } catch {
+                  /* ignore */
+                }
+              }
+
               const fallbackUser: UserProfile = {
                 id: userId,
-                uid: generateNumericUID(),
+                uid: cachedState?.currentUser?.uid || generateNumericUID(),
                 email,
                 username: session.user.user_metadata?.username || email.split('@')[0],
                 avatar: session.user.user_metadata?.avatar || '🧑',
                 createdAt: session.user.created_at || new Date().toISOString(),
                 isProfilePublic: true,
               };
-              isHydrated.current = true;
-              setState((prev) => {
-                if (prev.currentUser?.id === userId) return prev;
-                return {
-                  ...prev,
-                  currentUser: fallbackUser,
-                  username: fallbackUser.username,
-                };
-              });
+
+              // CRITICAL: isHydrated MUST remain false so no empty/fallback state is auto-saved over Supabase
+              isHydrated.current = false;
+
+              if (cachedState) {
+                const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
+                setState((current) => mergeHydratedWithCurrent(sanitizedCached, current));
+              } else {
+                setState((prev) => {
+                  if (prev.currentUser?.id === userId) return prev;
+                  return {
+                    ...prev,
+                    currentUser: fallbackUser,
+                    username: fallbackUser.username,
+                  };
+                });
+              }
             }
           } finally {
             if (mounted) setIsAuthChecking(false);

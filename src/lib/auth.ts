@@ -7,6 +7,7 @@ import {
   supabase,
   isSupabaseConfigured,
   saveUserDataToSupabase,
+  clearUserDataWatermark,
   fetchProfileByUsernameFromSupabase,
   fetchAllProfilesFromSupabase,
   fetchPublicPlansFromSupabase,
@@ -399,6 +400,16 @@ export async function changeUserPassword(newPassword: string): Promise<void> {
  * Fully delete user profile and all associated data from Supabase DB, then sign out.
  */
 export async function deleteUserProfileAndData(userId: string): Promise<void> {
+  // Clear in-memory watermark and local user cache first
+  clearUserDataWatermark(userId);
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(`ascend_user_cache_${userId}`);
+    } catch {
+      /* ignore */
+    }
+  }
+
   if (isSupabaseConfigured) {
     try {
       // 1. Delete user_data state row

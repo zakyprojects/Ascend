@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, PartnerNotification, UserPlanFollow, AppNotification, PlanReflectionNote } from '@/types';
 import { getHighestUserStreak } from './habitPenalties';
 import { calculateUnifiedStreak } from './streakLogic';
+import { mergeAppState } from './stateMerger';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -92,8 +93,85 @@ export const syncBroadcaster = new SyncBroadcaster();
 
 // --- SUPABASE DATABASE SYNC HELPERS ---
 
-export async function fetchUserDataFromSupabase(userId: string): Promise<AppState | null> {
-  if (!isSupabaseConfigured) return null;
+export interface UserDataWeight {
+  totalPoints: number;
+  itemCount: number;
+  arrayBreakdown: Record<string, number>;
+}
+
+export function computeStateDataWeight(state: Partial<AppState> | null | undefined): UserDataWeight {
+  if (!state) return { totalPoints: 0, itemCount: 0, arrayBreakdown: {} };
+
+  const arrayBreakdown: Record<string, number> = {
+    habits: state.habits?.length || 0,
+    journalEntries: state.journalEntries?.length || 0,
+    pointsHistory: state.pointsHistory?.length || 0,
+    leagueArchives: state.leagueArchives?.length || 0,
+    readLessonIds: state.readLessonIds?.length || 0,
+    workouts: state.workouts?.length || 0,
+    books: state.books?.length || 0,
+    readingLogs: state.readingLogs?.length || 0,
+    skills: state.skills?.length || 0,
+    skillLogs: state.skillLogs?.length || 0,
+    badHabits: state.badHabits?.length || 0,
+    badHabitLogs: state.badHabitLogs?.length || 0,
+    cravingLogs: state.cravingLogs?.length || 0,
+    focusLogs: state.focusLogs?.length || 0,
+    decisionLogs: state.decisionLogs?.length || 0,
+    emotionLogs: state.emotionLogs?.length || 0,
+    weeklyGoals: state.weeklyGoals?.length || 0,
+    goals: state.goals?.length || 0,
+    projects: state.projects?.length || 0,
+    tasks: state.tasks?.length || 0,
+    libraryBooks: state.libraryBooks?.length || 0,
+    improvementPlans: state.improvementPlans?.length || 0,
+    followedPlans: state.followedPlans?.length || 0,
+    sharedChallenges: state.sharedChallenges?.length || 0,
+    partnerInvites: state.partnerInvites?.length || 0,
+    partnerships: state.partnerships?.length || 0,
+  };
+
+  const totalPoints = typeof state.totalPoints === 'number' ? Math.max(0, state.totalPoints) : 0;
+  const itemCount =
+    Object.values(arrayBreakdown).reduce((sum, c) => sum + c, 0) +
+    (state.addictionTracker ? 1 : 0) +
+    (state.exerciseGoal ? 1 : 0) +
+    (state.readingGoal ? 1 : 0);
+
+  return { totalPoints, itemCount, arrayBreakdown };
+}
+
+const userWatermarkMap = new Map<string, UserDataWeight>();
+
+export function setUserDataWatermark(userId: string, stateOrWeight: AppState | UserDataWeight) {
+  if (!userId) return;
+  const weight = 'itemCount' in stateOrWeight ? stateOrWeight : computeStateDataWeight(stateOrWeight);
+  const existing = userWatermarkMap.get(userId);
+  if (!existing) {
+    userWatermarkMap.set(userId, weight);
+  } else {
+    userWatermarkMap.set(userId, {
+      totalPoints: Math.max(existing.totalPoints, weight.totalPoints),
+      itemCount: Math.max(existing.itemCount, weight.itemCount),
+      arrayBreakdown: { ...existing.arrayBreakdown, ...weight.arrayBreakdown },
+    });
+  }
+}
+
+export function getUserDataWatermark(userId: string): UserDataWeight | undefined {
+  return userWatermarkMap.get(userId);
+}
+
+export function clearUserDataWatermark(userId: string) {
+  userWatermarkMap.delete(userId);
+}
+
+export async function fetchUserDataWithStatusFromSupabase(userId: string): Promise<{
+  state: AppState | null;
+  exists: boolean;
+  error: any | null;
+}> {
+  if (!isSupabaseConfigured) return { state: null, exists: false, error: null };
   try {
     const { data, error } = await supabase
       .from('user_data')
@@ -101,16 +179,27 @@ export async function fetchUserDataFromSupabase(userId: string): Promise<AppStat
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (error || !data) return null;
-    return data.state as AppState;
+    if (error) {
+      console.error('Error fetching user_data from Supabase:', error);
+      return { state: null, exists: false, error };
+    }
+    if (!data || !data.state) {
+      return { state: null, exists: false, error: null };
+    }
+    return { state: data.state as AppState, exists: true, error: null };
   } catch (e) {
-    console.error('Error fetching user_data from Supabase:', e);
-    return null;
+    console.error('Exception fetching user_data from Supabase:', e);
+    return { state: null, exists: false, error: e };
   }
 }
 
-export async function saveUserDataToSupabase(userId: string, state: AppState) {
-  if (!isSupabaseConfigured) return;
+export async function fetchUserDataFromSupabase(userId: string): Promise<AppState | null> {
+  const res = await fetchUserDataWithStatusFromSupabase(userId);
+  return res.state;
+}
+
+export async function saveUserDataToSupabase(userId: string, state: AppState): Promise<AppState | null> {
+  if (!isSupabaseConfigured) return null;
 
   // SAFETY CHECK 1: Ensure user ID matches the logged-in state user
   if (!userId || !state.currentUser || state.currentUser.id !== userId) {
@@ -118,54 +207,88 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
       userId,
       stateUserId: state.currentUser?.id,
     });
-    return;
+    return null;
   }
 
-  // SAFETY CHECK 2: Middle-ground zero-out wipe protection
-  // Only evaluate if the incoming state is completely empty across ALL modules
-  const isIncomingStateCompletelyEmpty =
-    state.totalPoints === 0 &&
-    (!state.habits || state.habits.length === 0) &&
-    (!state.badHabits || state.badHabits.length === 0) &&
-    (!state.badHabitLogs || state.badHabitLogs.length === 0) &&
-    (!state.improvementPlans || state.improvementPlans.length === 0) &&
-    (!state.followedPlans || state.followedPlans.length === 0) &&
-    (!state.journalEntries || state.journalEntries.length === 0) &&
-    (!state.workouts || state.workouts.length === 0) &&
-    (!state.books || state.books.length === 0) &&
-    (!state.libraryBooks || state.libraryBooks.length === 0) &&
-    (!state.skills || state.skills.length === 0) &&
-    (!state.focusLogs || state.focusLogs.length === 0) &&
-    (!state.decisionLogs || state.decisionLogs.length === 0) &&
-    (!state.emotionLogs || state.emotionLogs.length === 0) &&
-    (!state.weeklyGoals || state.weeklyGoals.length === 0) &&
-    !state.addictionTracker;
+  // Check remote state from Supabase to merge rather than wholesale overwrite
+  let finalState: AppState = state;
+  try {
+    let existingRes = await fetchUserDataWithStatusFromSupabase(userId);
 
-  if (isIncomingStateCompletelyEmpty) {
-    const existing = await fetchUserDataFromSupabase(userId);
-    if (existing) {
-      const MIN_ESTABLISHED_POINTS = 50;
-      const MIN_ESTABLISHED_ITEMS = 5;
+    // If fetch failed due to a transient error, retry once before aborting
+    if (existingRes.error && !existingRes.exists) {
+      console.warn('[SYNC] Transient error during pre-write merge fetch, retrying once...', existingRes.error);
+      existingRes = await fetchUserDataWithStatusFromSupabase(userId);
+    }
 
-      const existingItemCount =
-        (existing.habits?.length || 0) +
-        (existing.badHabits?.length || 0) +
-        (existing.journalEntries?.length || 0) +
-        (existing.workouts?.length || 0) +
-        (existing.books?.length || 0) +
-        (existing.libraryBooks?.length || 0) +
-        (existing.skills?.length || 0) +
-        (existing.improvementPlans?.length || 0) +
-        (existing.followedPlans?.length || 0);
+    if (existingRes.error) {
+      // Abort save to prevent risking an unmerged overwrite during transient DB read errors
+      console.error('[SYNC ABORT] Aborting saveUserDataToSupabase to protect data integrity because remote state fetch failed:', existingRes.error);
+      return null;
+    }
 
-      const existingHasSubstantialData =
-        existing.totalPoints >= MIN_ESTABLISHED_POINTS ||
-        existingItemCount >= MIN_ESTABLISHED_ITEMS;
+    if (existingRes.exists && existingRes.state) {
+      // Non-destructively merge remote server state with incoming state
+      finalState = mergeAppState(existingRes.state, state);
+    }
+  } catch (e) {
+    console.error('[SYNC ABORT] Exception during pre-write merge fetch, aborting save to prevent blind overwrite:', e);
+    return null;
+  }
 
-      if (existingHasSubstantialData) {
-        console.warn('[GUARD] Blocked accidental zero-out wipe to user_data for established account:', userId);
-        return;
+  // SAFETY CHECK 2: Comprehensive Data-Loss Protection Safeguard
+  const incomingWeight = computeStateDataWeight(finalState);
+  const watermark = userWatermarkMap.get(userId);
+
+  // Check 2A: Active in-memory session watermark guard
+  if (watermark && (watermark.itemCount > 0 || watermark.totalPoints > 0)) {
+    // Block total wipe: incoming is empty (0 items and 0 points)
+    if (incomingWeight.itemCount === 0 && incomingWeight.totalPoints === 0) {
+      console.error('[CRITICAL GUARD] Blocked catastrophic zero-out wipe to user_data for established account:', {
+        userId,
+        watermark,
+        incomingWeight,
+      });
+      return null;
+    }
+
+    // Block massive catastrophic entity drop (>70% vanished at once on accounts with >= 3 items)
+    if (watermark.itemCount >= 3 && incomingWeight.itemCount < Math.ceil(watermark.itemCount * 0.3)) {
+      console.error('[CRITICAL GUARD] Blocked abnormal massive data drop to user_data:', {
+        userId,
+        watermarkItemCount: watermark.itemCount,
+        incomingItemCount: incomingWeight.itemCount,
+      });
+      return null;
+    }
+  }
+
+  // Check 2B: Cold baseline check if no session watermark has been registered yet
+  if (!watermark && incomingWeight.itemCount === 0 && incomingWeight.totalPoints === 0) {
+    const existingRes = await fetchUserDataWithStatusFromSupabase(userId);
+    if (existingRes.exists && existingRes.state) {
+      const existingWeight = computeStateDataWeight(existingRes.state);
+      if (existingWeight.itemCount > 0 || existingWeight.totalPoints > 0) {
+        console.error('[CRITICAL GUARD] Blocked cold zero-out wipe over existing rich database state:', {
+          userId,
+          existingWeight,
+          incomingWeight,
+        });
+        setUserDataWatermark(userId, existingWeight);
+        return null;
       }
+    }
+  }
+
+  // Update session watermark with valid save
+  setUserDataWatermark(userId, incomingWeight);
+
+  // Always mirror authenticated user state to local cache for resilient cold boot and offline recovery
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`ascend_user_cache_${userId}`, JSON.stringify(finalState));
+    } catch {
+      /* ignore */
     }
   }
 
@@ -173,22 +296,22 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
     // Execute user_data upsert and profiles upsert in parallel for maximum speed
     const userDataPromise = supabase.from('user_data').upsert({
       user_id: userId,
-      state: state,
+      state: finalState,
       updated_at: new Date().toISOString(),
     });
 
     const profilePromise = (async () => {
-      if (!state.currentUser) return null;
+      if (!finalState.currentUser) return null;
 
-      const habitsCompletedCount = (state.habits || []).reduce((acc, h) => acc + (h.completions?.length || 0), 0);
-      const habitsCompletedTodayCount = (state.habits || []).reduce((acc, h) => {
+      const habitsCompletedCount = (finalState.habits || []).reduce((acc, h) => acc + (h.completions?.length || 0), 0);
+      const habitsCompletedTodayCount = (finalState.habits || []).reduce((acc, h) => {
         const todayStr = new Date().toISOString().split('T')[0];
         return acc + (h.completions?.includes(todayStr) ? 1 : 0);
       }, 0);
-      const unified = calculateUnifiedStreak(state);
-      const exerciseMinutes = (state.workouts || []).reduce((sum, w) => sum + w.durationMinutes, 0);
-      const booksRead = (state.books || []).filter((b) => b.isFinished).length;
-      const skillsPracticedCount = (state.skillLogs || []).length;
+      const unified = calculateUnifiedStreak(finalState);
+      const exerciseMinutes = (finalState.workouts || []).reduce((sum, w) => sum + w.durationMinutes, 0);
+      const booksRead = (finalState.books || []).filter((b) => b.isFinished).length;
+      const skillsPracticedCount = (finalState.skillLogs || []).length;
 
       const userStats = {
         streakDays: unified.currentStreakDays,
@@ -199,13 +322,13 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
         lastActiveDate: unified.lastActiveDate,
         habitsCompletedCount,
         habitsCompletedTodayCount,
-        journalEntriesCount: (state.journalEntries || []).length,
+        journalEntriesCount: (finalState.journalEntries || []).length,
         exerciseMinutes,
         booksRead,
         skillsPracticedCount,
       };
 
-      const activeHabitsList = (state.habits || []).map((h) => ({
+      const activeHabitsList = (finalState.habits || []).map((h) => ({
         name: h.name,
         category: h.category,
         frequency: h.frequency,
@@ -214,26 +337,26 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
 
       const profilePayload: Record<string, any> = {
         id: userId,
-        username: state.currentUser.username,
-        email: state.currentUser.email,
-        avatar: state.currentUser.avatar || '🧑',
-        is_profile_public: state.currentUser.isProfilePublic ?? true,
-        accept_partner_invites: state.currentUser.acceptPartnerInvites ?? true,
-        notif_daily_reminder: state.currentUser.notifDailyReminder ?? true,
-        notif_partner_activity: state.currentUser.notifPartnerActivity ?? true,
-        notif_league_updates: state.currentUser.notifLeagueUpdates ?? true,
-        total_points: state.totalPoints || 0,
-        points_history: state.pointsHistory || [],
+        username: finalState.currentUser.username,
+        email: finalState.currentUser.email,
+        avatar: finalState.currentUser.avatar || '🧑',
+        is_profile_public: finalState.currentUser.isProfilePublic ?? true,
+        accept_partner_invites: finalState.currentUser.acceptPartnerInvites ?? true,
+        notif_daily_reminder: finalState.currentUser.notifDailyReminder ?? true,
+        notif_partner_activity: finalState.currentUser.notifPartnerActivity ?? true,
+        notif_league_updates: finalState.currentUser.notifLeagueUpdates ?? true,
+        total_points: finalState.totalPoints || 0,
+        points_history: finalState.pointsHistory || [],
         stats: userStats,
         active_habits: activeHabitsList,
       };
 
-      if (state.currentUser.uid) {
-        profilePayload.uid = state.currentUser.uid;
+      if (finalState.currentUser.uid) {
+        profilePayload.uid = finalState.currentUser.uid;
       }
 
-      if (state.currentUser.lastUsernameChangeAt) {
-        profilePayload.last_username_change_at = state.currentUser.lastUsernameChangeAt;
+      if (finalState.currentUser.lastUsernameChangeAt) {
+        profilePayload.last_username_change_at = finalState.currentUser.lastUsernameChangeAt;
       }
 
       let { error: profErr } = await supabase.from('profiles').upsert(profilePayload);
@@ -271,7 +394,7 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
         await profilePromise;
         const { error: retryErr } = await supabase.from('user_data').upsert({
           user_id: userId,
-          state: state,
+          state: finalState,
           updated_at: new Date().toISOString(),
         });
         if (retryErr) {
@@ -303,6 +426,7 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
         }
       }
     }
+    return finalState;
   } catch (e) {
     console.error('Error saving user_data to Supabase:', e);
     if (typeof window !== 'undefined') {
@@ -316,6 +440,7 @@ export async function saveUserDataToSupabase(userId: string, state: AppState) {
       );
       window.dispatchEvent(new CustomEvent('app-network-error'));
     }
+    return null;
   }
 }
 
