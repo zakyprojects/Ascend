@@ -425,13 +425,16 @@ export function processExerciseTargetPenalties(state: AppState, now: Date = new 
 
     if (updatedState.currentUser?.id) {
       const dedupKey = `missed_exercise_${lastWeekKey}`;
-      createNotificationSupabase({
-        recipientId: updatedState.currentUser.id,
-        type: 'missed_exercise_target',
-        title: 'Exercise Goal Missed',
-        message: `You logged ${loggedInLastWeek}/${target} workout sessions for week ${lastWeekKey}. ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
-        payload: { weekKey: lastWeekKey, logged: loggedInLastWeek, target, dedupKey },
-      });
+      const recipientId = updatedState.currentUser.id;
+      setTimeout(() => {
+        void createNotificationSupabase({
+          recipientId,
+          type: 'missed_exercise_target',
+          title: 'Exercise Goal Missed',
+          message: `You logged ${loggedInLastWeek}/${target} workout sessions for week ${lastWeekKey}. ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
+          payload: { weekKey: lastWeekKey, logged: loggedInLastWeek, target, dedupKey },
+        });
+      }, 0);
     }
 
     updatedState = {
@@ -489,13 +492,16 @@ export function processReadingTargetPenalties(state: AppState, now: Date = new D
 
       if (updatedState.currentUser?.id) {
         const dedupKey = `missed_reading_daily_${yesterdayStr}`;
-        createNotificationSupabase({
-          recipientId: updatedState.currentUser.id,
-          type: 'missed_reading_target',
-          title: 'Daily Reading Target Missed',
-          message: `No reading logged on ${yesterdayStr}. ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
-          payload: { date: yesterdayStr, dedupKey },
-        });
+        const recipientId = updatedState.currentUser.id;
+        setTimeout(() => {
+          void createNotificationSupabase({
+            recipientId,
+            type: 'missed_reading_target',
+            title: 'Daily Reading Target Missed',
+            message: `No reading logged on ${yesterdayStr}. ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
+            payload: { date: yesterdayStr, dedupKey },
+          });
+        }, 0);
       }
 
       updatedState = {
@@ -552,13 +558,16 @@ export function processReadingTargetPenalties(state: AppState, now: Date = new D
 
       if (updatedState.currentUser?.id) {
         const dedupKey = `missed_reading_weekly_${lastWeekKey}`;
-        createNotificationSupabase({
-          recipientId: updatedState.currentUser.id,
-          type: 'missed_reading_target',
-          title: 'Weekly Reading Goal Missed',
-          message: `Read ${totalPagesLastWeek}/${goal.targetPages} pages in week ${lastWeekKey}. ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
-          payload: { weekKey: lastWeekKey, logged: totalPagesLastWeek, target: goal.targetPages, dedupKey },
-        });
+        const recipientId = updatedState.currentUser.id;
+        setTimeout(() => {
+          void createNotificationSupabase({
+            recipientId,
+            type: 'missed_reading_target',
+            title: 'Weekly Reading Goal Missed',
+            message: `Read ${totalPagesLastWeek}/${goal.targetPages} pages in week ${lastWeekKey}. ${actualDeduction > 0 ? `${actualDeduction} points deducted.` : ''}`,
+            payload: { weekKey: lastWeekKey, logged: totalPagesLastWeek, target: goal.targetPages, dedupKey },
+          });
+        }, 0);
       }
 
       updatedState = {

@@ -129,6 +129,8 @@ export function computeStateDataWeight(state: Partial<AppState> | null | undefin
     sharedChallenges: state.sharedChallenges?.length || 0,
     partnerInvites: state.partnerInvites?.length || 0,
     partnerships: state.partnerships?.length || 0,
+    partnerNotifications: state.partnerNotifications?.length || 0,
+    notifications: state.notifications?.length || 0,
   };
 
   const totalPoints = typeof state.totalPoints === 'number' ? Math.max(0, state.totalPoints) : 0;
@@ -210,31 +212,9 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
     return null;
   }
 
-  // Check remote state from Supabase to merge rather than wholesale overwrite
-  let finalState: AppState = state;
-  try {
-    let existingRes = await fetchUserDataWithStatusFromSupabase(userId);
-
-    // If fetch failed due to a transient error, retry once before aborting
-    if (existingRes.error && !existingRes.exists) {
-      console.warn('[SYNC] Transient error during pre-write merge fetch, retrying once...', existingRes.error);
-      existingRes = await fetchUserDataWithStatusFromSupabase(userId);
-    }
-
-    if (existingRes.error) {
-      // Abort save to prevent risking an unmerged overwrite during transient DB read errors
-      console.error('[SYNC ABORT] Aborting saveUserDataToSupabase to protect data integrity because remote state fetch failed:', existingRes.error);
-      return null;
-    }
-
-    if (existingRes.exists && existingRes.state) {
-      // Non-destructively merge remote server state with incoming state
-      finalState = mergeAppState(existingRes.state, state);
-    }
-  } catch (e) {
-    console.error('[SYNC ABORT] Exception during pre-write merge fetch, aborting save to prevent blind overwrite:', e);
-    return null;
-  }
+  // Client state is the authoritative mutation source for the active session.
+  // Data loss protection is enforced via the watermark circuit-breaker below.
+  const finalState: AppState = state;
 
   // SAFETY CHECK 2: Comprehensive Data-Loss Protection Safeguard
   const incomingWeight = computeStateDataWeight(finalState);

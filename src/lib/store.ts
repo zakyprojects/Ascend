@@ -493,8 +493,13 @@ export function useAppState() {
 
       isRemoteBroadcastUpdate.current = true;
       setStateRaw((current) => {
-        const merged = mergeAppState(current, data.state);
-        return merged;
+        // When receiving a state broadcast from another tab, that tab's state is the authoritative
+        // recent snapshot of user mutations. Set directly to prevent un-deleting items via union merge.
+        const targetState = data.state;
+        if (current.currentUser && !targetState.currentUser) {
+          return { ...targetState, currentUser: current.currentUser };
+        }
+        return targetState;
       });
     };
 
@@ -529,15 +534,14 @@ export function useAppState() {
         if (serverRes.exists && serverRes.state) {
           lastSyncTimeRef.current = Date.now();
           setStateRaw((current) => {
-            const merged = mergeAppState(serverRes.state!, current);
-            setUserDataWatermark(userId, merged);
-            // If local state had pending offline changes, persist the merged state safely
-            if (JSON.stringify(merged) !== JSON.stringify(serverRes.state)) {
-              setTimeout(() => {
-                persistState(merged);
-              }, 200);
+            // One-way pull from server: update local state to authoritative server snapshot.
+            // Do NOT re-persist or union-merge back, preventing resurrection of deleted items.
+            const serverState = serverRes.state!;
+            setUserDataWatermark(userId, serverState);
+            if (current.currentUser && !serverState.currentUser) {
+              return { ...serverState, currentUser: current.currentUser };
             }
-            return merged;
+            return serverState;
           });
         }
       } catch (e) {
@@ -719,7 +723,7 @@ export function useAppState() {
                   lastCompletedDate: p.lastCompletedDate,
                 })),
               });
-              setState((current) => mergeHydratedWithCurrent(sanitizedState, current));
+              setState(() => sanitizedState);
             }
           } catch (e) {
             console.error('Error hydrating auth session:', e);

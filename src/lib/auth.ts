@@ -415,22 +415,39 @@ export async function deleteUserProfileAndData(userId: string): Promise<void> {
       // 1. Delete user_data state row
       await supabase.from('user_data').delete().eq('user_id', userId);
 
-      // 2. Delete improvement plans created by user
+      // 2. Delete user plan follows and notes
+      await supabase.from('user_plan_follows').delete().eq('user_id', userId);
+      await supabase.from('plan_reflection_notes').delete().eq('user_id', userId);
+
+      // 3. Delete improvement plans created by user
       await supabase.from('improvement_plans').delete().eq('creator_id', userId);
 
-      // 3. Delete partner invites to/from user
+      // 4. Delete notifications for user
+      await supabase.from('notifications').delete().or(`recipient_id.eq.${userId},actor_id.eq.${userId}`);
+
+      // 5. Delete partner invites to/from user
       await supabase
         .from('partner_invites')
         .delete()
-        .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`);
+        .or(`from_user_id.eq.${userId},to_user_id.eq.${userId},sender_id.eq.${userId},recipient_id.eq.${userId}`);
 
-      // 4. Delete partnerships involving user
+      // 6. Delete shared challenges for user's partnerships, then delete partnerships
+      const { data: userPartnerships } = await supabase
+        .from('partnerships')
+        .select('id')
+        .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
+
+      if (userPartnerships && userPartnerships.length > 0) {
+        const pIds = userPartnerships.map((p) => p.id);
+        await supabase.from('shared_challenges').delete().in('partnership_id', pIds);
+      }
+
       await supabase
         .from('partnerships')
         .delete()
         .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
 
-      // 5. Delete profile row (foreign key root)
+      // 7. Delete profile row (foreign key root)
       await supabase.from('profiles').delete().eq('id', userId);
     } catch (e) {
       console.error('Error purging user data from Supabase:', e);
