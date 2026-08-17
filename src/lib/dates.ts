@@ -357,4 +357,3 @@ export function formatWeekRange(targetWeekKey: string): string {
   return `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${year}`;
 }
 
-

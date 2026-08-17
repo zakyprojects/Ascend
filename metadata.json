@@ -1,0 +1,8 @@
+{
+  "name": "Ascend - Men's Self-Improvement",
+  "description": "Comprehensive habit tracking, journal, exercise, reading, and self-improvement platform for men.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

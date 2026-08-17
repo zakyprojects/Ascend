@@ -228,4 +228,3 @@ export function mergeSharedChallenge(baseC: SharedChallenge, incC: SharedChallen
 
   return reconcileSharedChallengeLifecycle(merged);
 }
-
