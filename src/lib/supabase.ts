@@ -1385,14 +1385,20 @@ export async function deletePartnershipSupabase(partnershipId: string) {
   if (!isSupabaseConfigured || !partnershipId) return;
   try {
     // Delete associated shared challenges first
-    await supabase.from('shared_challenges').delete().eq('partnership_id', partnershipId);
+    const { error: chalErr } = await supabase.from('shared_challenges').delete().eq('partnership_id', partnershipId);
+    if (chalErr) {
+      console.error('Error deleting associated shared challenges in Supabase:', chalErr);
+      throw new Error(chalErr.message || 'Failed to remove associated joint pacts from database');
+    }
 
     const { error } = await supabase.from('partnerships').delete().eq('id', partnershipId);
     if (error) {
-      console.warn('Supabase partnership delete warning:', error.message);
+      console.error('Supabase partnership delete error:', error);
+      throw new Error(error.message || 'Failed to delete partnership in database');
     }
   } catch (e) {
-    console.warn('deletePartnershipSupabase warning:', e);
+    console.error('deletePartnershipSupabase failed:', e);
+    throw e;
   }
 }
 

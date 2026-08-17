@@ -856,6 +856,7 @@ export function useAppState() {
         }
 
         if (event === 'PARTNER_ACCEPTED') {
+          if (prev.deletedEntityIds?.includes(payload.id)) return prev;
           if (
             payload.user1Username.toLowerCase() === prev.username.toLowerCase() ||
             payload.user2Username.toLowerCase() === prev.username.toLowerCase()
@@ -890,11 +891,27 @@ export function useAppState() {
         }
 
         if (event === 'CHALLENGE_UPDATED') {
+          if (
+            (prev.deletedEntityIds || []).includes(payload.id) ||
+            (prev.deletedEntityIds || []).includes(payload.partnershipId)
+          ) {
+            return prev;
+          }
+
+          const partnershipExists =
+            (prev.partnerships || []).some((p) => p.id === payload.partnershipId) ||
+            prev.partnership?.id === payload.partnershipId;
+          if (!partnershipExists) {
+            return prev;
+          }
+
           const exists = prev.sharedChallenges.some((c) => c.id === payload.id);
           if (exists) {
             return {
               ...prev,
-              sharedChallenges: prev.sharedChallenges.map((c) => (c.id === payload.id ? mergeSharedChallenge(c, payload) : c)),
+              sharedChallenges: prev.sharedChallenges.map((c) =>
+                c.id === payload.id ? mergeSharedChallenge(c, payload) : c
+              ),
             };
           } else {
             return {
@@ -977,26 +994,53 @@ export function useAppState() {
         }
 
         setState((prev) => {
+          const currentTombstones = new Set(prev.deletedEntityIds || []);
+
+          // 1. Reconcile notifications
           const mergedNotifs = fetchedNotifs
-            .filter((fn) => !(prev.deletedEntityIds || []).includes(fn.id))
+            .filter((fn) => !currentTombstones.has(fn.id))
             .map((fn) => {
               const local = prev.notifications?.find((n) => n.id === fn.id);
               return local && local.read ? { ...fn, read: true } : fn;
             });
+
+          // 2. Reconcile partnerships (union existing + fetched, deduplicate, filter tombstones)
+          const allPartnerships = [...filteredPartnerships, ...(prev.partnerships || [])];
+          const mergedPartnershipsMap = new Map<string, Partnership>();
+          for (const p of allPartnerships) {
+            if (!p || currentTombstones.has(p.id)) continue;
+            const u1 = (p.user1Username || '').toLowerCase();
+            const u2 = (p.user2Username || '').toLowerCase();
+            const key = [u1, u2].sort().join(':::');
+            if (!mergedPartnershipsMap.has(key)) {
+              mergedPartnershipsMap.set(key, p);
+            }
+          }
+          const finalPartnerships = Array.from(mergedPartnershipsMap.values());
+          const finalActivePartnershipIds = new Set(finalPartnerships.map((p) => p.id));
+
+          // 3. Reconcile shared challenges (union local optimistic + fetched, merge lifecycle, filter tombstones)
+          const challengeMap = new Map<string, SharedChallenge>();
+          for (const c of prev.sharedChallenges || []) {
+            if (!c || currentTombstones.has(c.id) || currentTombstones.has(c.partnershipId)) continue;
+            if (!finalActivePartnershipIds.has(c.partnershipId)) continue;
+            challengeMap.set(c.id, c);
+          }
+          for (const c of challenges) {
+            if (!c || currentTombstones.has(c.id) || currentTombstones.has(c.partnershipId)) continue;
+            if (!finalActivePartnershipIds.has(c.partnershipId)) continue;
+            const existing = challengeMap.get(c.id);
+            const merged = existing ? mergeSharedChallenge(existing, c) : c;
+            challengeMap.set(c.id, reconcileSharedChallengeLifecycle(merged));
+          }
+          const finalSharedChallenges = Array.from(challengeMap.values());
+
           return {
             ...prev,
             partnerInvites: validInvites,
-            partnerships: filteredPartnerships,
-            partnership: filteredPartnerships[0] || null,
-            sharedChallenges: challenges
-              .filter(
-                (c) => !(prev.deletedEntityIds || []).includes(c.id) && !(prev.deletedEntityIds || []).includes(c.partnershipId)
-              )
-              .map((c) => {
-                const existing = prev.sharedChallenges?.find((prevC) => prevC.id === c.id);
-                const merged = existing ? mergeSharedChallenge(existing, c) : c;
-                return reconcileSharedChallengeLifecycle(merged);
-              }),
+            partnerships: finalPartnerships,
+            partnership: finalPartnerships[0] || null,
+            sharedChallenges: finalSharedChallenges,
             notifications: mergedNotifs,
           };
         });
@@ -4342,15 +4386,20 @@ export function useAppState() {
         { immediate: true }
       );
 
-      sendPartnerInviteSupabase(invite).catch((err) => {
-        console.warn('Background Supabase send partner invite warning:', err);
-      });
-
-      createNotificationSupabase(notifData).catch((err) => {
-        console.warn('Background Supabase create notification warning:', err);
-      });
-
-      return invite;
+      try {
+        await Promise.all([
+          sendPartnerInviteSupabase(invite),
+          createNotificationSupabase(notifData).catch((e) => console.warn('Supabase notif send non-fatal:', e)),
+        ]);
+        return invite;
+      } catch (err: any) {
+        console.error('Failed to send partner invite to Supabase:', err);
+        setState((prev) => ({
+          ...prev,
+          partnerInvites: prev.partnerInvites.filter((i) => i.id !== invite.id),
+        }));
+        throw err;
+      }
     },
     [state.username, state.partnerships, state.partnerInvites, state.currentUser]
   );
@@ -4539,14 +4588,15 @@ export function useAppState() {
     );
   }, [state.partnerInvites, state.notifications, state.username, state.currentUser]);
 
-  const endPartnership = useCallback((partnershipId?: string) => {
+  const endPartnership = useCallback(async (partnershipId?: string) => {
     const targetId = partnershipId || state.partnership?.id || state.partnerships[0]?.id;
-    if (targetId) {
-      deletePartnershipSupabase(targetId).catch((err) => {
-        console.warn('Background Supabase delete partnership warning:', err);
-      });
-    }
-    syncBroadcaster.broadcast('PARTNER_ENDED', { partnershipId: targetId });
+    if (!targetId) return;
+
+    // Snapshot partnership and associated challenges for rollback
+    const partnershipToEnd = (state.partnerships || []).find((p) => p.id === targetId) || state.partnership;
+    const challengesToEnd = (state.sharedChallenges || []).filter((c) => c.partnershipId === targetId);
+
+    // Optimistic UI update
     setState(
       (prev) => {
         const updatedPartnerships = (prev.partnerships || []).filter((p) => p.id !== targetId);
@@ -4555,7 +4605,7 @@ export function useAppState() {
           .map((c) => c.id);
         const updatedDeletedEntityIds = [
           ...(prev.deletedEntityIds || []),
-          ...(targetId ? [targetId] : []),
+          targetId,
           ...removedChallengeIds,
         ].slice(-500);
 
@@ -4569,7 +4619,40 @@ export function useAppState() {
       },
       { immediate: true }
     );
-  }, [state.partnership, state.partnerships]);
+
+    try {
+      await deletePartnershipSupabase(targetId);
+      syncBroadcaster.broadcast('PARTNER_ENDED', { partnershipId: targetId });
+    } catch (err: any) {
+      console.error('Failed to end partnership in database:', err);
+      // Rollback optimistic state immediately
+      setState((prev) => {
+        const currentIds = new Set((prev.partnerships || []).map((p) => p.id));
+        const restoredPartnerships = partnershipToEnd && !currentIds.has(targetId)
+          ? [partnershipToEnd, ...(prev.partnerships || [])]
+          : prev.partnerships || [];
+
+        const challengeIds = new Set((prev.sharedChallenges || []).map((c) => c.id));
+        const restoredChallenges = [
+          ...(prev.sharedChallenges || []),
+          ...challengesToEnd.filter((c) => !challengeIds.has(c.id)),
+        ];
+
+        const rollbackDeletedIds = (prev.deletedEntityIds || []).filter(
+          (id) => id !== targetId && !challengesToEnd.some((c) => c.id === id)
+        );
+
+        return {
+          ...prev,
+          partnerships: restoredPartnerships,
+          partnership: restoredPartnerships[0] || null,
+          sharedChallenges: restoredChallenges,
+          deletedEntityIds: rollbackDeletedIds,
+        };
+      });
+      throw err;
+    }
+  }, [state.partnership, state.partnerships, state.sharedChallenges]);
 
   const getPartnerProfileStats = useCallback(async (partnerUsername: string) => {
     if (!partnerUsername) return null;

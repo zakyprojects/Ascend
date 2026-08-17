@@ -1812,8 +1812,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         onConfirm={async () => {
           if (activePartnership) {
             setEndConfirmOpen(false);
-            store.endPartnership(activePartnership.id);
-            showSuccessToast('Pairing Ended', `Ended accountability partnership with ${activePartnerUsername}.`);
+            try {
+              await store.endPartnership(activePartnership.id);
+              showSuccessToast('Pairing Ended', `Ended accountability partnership with ${activePartnerUsername}.`);
+            } catch (err: any) {
+              showErrorToast('Failed to End Pairing', err.message || 'Database error: Could not end partnership.');
+            }
           }
         }}
         title={`End Pairing with ${activePartnerUsername || 'Partner'}?`}
