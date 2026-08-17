@@ -1,4 +1,4 @@
-import { AppState, Habit, BadHabitLog, PartnerNotification } from '@/types';
+import { AppState, Habit, BadHabitLog } from '@/types';
 import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, uid } from './dates';
 import { createNotificationSupabase } from './supabase';
 
@@ -182,41 +182,23 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
         missedPeriods.push(p);
         habitModified = true;
 
-        let newNotifications = updatedState.partnerNotifications || [];
         if (updatedState.partnership) {
-          const partnerUsername =
-            updatedState.partnership.user1Username === updatedState.username
-              ? updatedState.partnership.user2Username
-              : updatedState.partnership.user1Username;
-
           const partnerUserId =
             updatedState.partnership.user1Id === updatedState.currentUser?.id
               ? updatedState.partnership.user2Id
               : updatedState.partnership.user1Id;
 
-          const notif: PartnerNotification = {
-            id: uid(),
-            userId: updatedState.currentUser?.id || 'user_current',
-            partnerId: 'partner',
-            partnerUsername,
-            message: `Your partner ${updatedState.username} missed their habit "${habit.name}". Reach out to encourage them!`,
-            habitName: habit.name,
-            type: 'missed_habit',
-            read: false,
-            createdAt: new Date().toISOString(),
-          };
-          newNotifications = [notif, ...newNotifications];
-
           if (partnerUserId) {
+            const partnerDedupKey = `partner_missed_habit_${habit.id}_${p}`;
             createNotificationSupabase({
               recipientId: partnerUserId,
               actorId: updatedState.currentUser?.id,
               actorUsername: updatedState.username,
               actorAvatar: updatedState.currentUser?.avatar || '🧑',
-              type: 'missed_habit',
+              type: 'partner_missed_habit',
               title: 'Streak Risk Warning',
               message: `Your partner ${updatedState.username} missed their habit "${habit.name}". Reach out to encourage them!`,
-              payload: { habitName: habit.name },
+              payload: { habitId: habit.id, habitName: habit.name, period: p, dedupKey: partnerDedupKey },
             });
           }
         }
@@ -227,11 +209,11 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
 
         if (updatedState.currentUser?.id) {
           const userId = updatedState.currentUser.id;
+          const dedupKey = `missed_habit_${habit.id}_${p}`;
           const alreadyNotified = (updatedState.notifications || []).some(
-            (n) => n.payload?.habitId === habit.id && n.payload?.period === p
+            (n) => n.payload?.dedupKey === dedupKey || (n.payload?.habitId === habit.id && n.payload?.period === p)
           );
           if (!alreadyNotified) {
-            const dedupKey = `missed_habit_${habit.id}_${p}`;
             createNotificationSupabase({
               recipientId: userId,
               type: 'missed_habit',
@@ -242,9 +224,15 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
           }
         }
 
+        // Apply 30-day TTL + 50-item cap pruning
+        const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const prunedNotifs = (updatedState.notifications || [])
+          .filter((n) => !n.createdAt || n.createdAt >= thirtyDaysAgoIso)
+          .slice(0, 50);
+
         updatedState = {
           ...updatedState,
-          partnerNotifications: newNotifications,
+          notifications: prunedNotifs,
           totalPoints: newTotalPts,
           pointsHistory: [
             {

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, Check, CheckCheck, Trash2, X, Award, Users, AlertTriangle, Zap, Info, Calendar } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, X, Award, Users, AlertTriangle, Zap, Info, Calendar, CheckCircle2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { AppNotification } from '@/types';
 
@@ -113,7 +113,10 @@ export function NotificationCenter({
         return <Users size={16} className="text-sky-400" />;
       case 'partner_nudge':
         return <Zap size={16} className="text-amber-400" />;
+      case 'partner_pledge_done':
+        return <CheckCircle2 size={16} className="text-emerald-400" />;
       case 'missed_habit':
+      case 'partner_missed_habit':
       case 'streak_risk':
         return <AlertTriangle size={16} className="text-rose-400" />;
       case 'challenge_completed':

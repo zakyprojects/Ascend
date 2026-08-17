@@ -209,6 +209,27 @@ export function isYesterdayLocal(dateIso?: string | null): boolean {
 }
 
 /**
+ * Calculates 1-indexed calendar days elapsed from a start date (or ISO string) to a target date.
+ * On the exact creation calendar date, elapsedDays = 1 (Day 1).
+ */
+export function calculateElapsedDays(startDateVal?: string | Date | number | null, targetNow: Date = new Date()): number {
+  const parsedStart = parseDate(startDateVal);
+  if (!parsedStart) return 1;
+
+  const startKeyStr = todayKey(parsedStart);
+  const targetKeyStr = todayKey(targetNow);
+
+  const [sY, sM, sD] = startKeyStr.split('-').map(Number);
+  const startMidnight = new Date(sY, sM - 1, sD).getTime();
+
+  const [tY, tM, tD] = targetKeyStr.split('-').map(Number);
+  const targetMidnight = new Date(tY, tM - 1, tD).getTime();
+
+  const diffMs = targetMidnight - startMidnight;
+  return Math.max(1, Math.floor(diffMs / 86400000) + 1);
+}
+
+/**
  * Calculates active streak for an Improvement Plan / Habit Journey.
  * If last completed date was today or yesterday (or within 7 days for weekly cadence),
  * returns streakCount.

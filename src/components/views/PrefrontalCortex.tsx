@@ -540,11 +540,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
     if (completedSessionData && reflectionText.trim()) {
       const latestLog = focusLogs[0];
       if (latestLog && latestLog.taskName === completedSessionData.taskName) {
-        // Find latest log id and attach reflection
-        const targetLogId = latestLog.id;
-        // Directly update focus log reflection in store state
-        store.deleteFocusLog(targetLogId);
-        store.logFocusSession(completedSessionData.taskName, completedSessionData.durationMinutes, completedSessionData.skillId, reflectionText);
+        store.updateFocusLogReflection(latestLog.id, reflectionText);
       }
     }
     setReflectionModalOpen(false);

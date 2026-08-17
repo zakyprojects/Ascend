@@ -513,25 +513,17 @@ export interface SharedChallenge {
   targetHabitName: string;
   durationDays: number;
   jointStreak: number;
+  totalJointDaysCompleted?: number;
+  lastJointCompletionDate?: string;
   user1Category?: SharedChallengeCategory;
   user1Target?: string;
   user2Category?: SharedChallengeCategory;
   user2Target?: string;
   user1DoneDate?: string;
   user2DoneDate?: string;
-  status: 'active' | 'completed' | 'broken';
-  createdAt: string;
-}
-
-export interface PartnerNotification {
-  id: string;
-  userId: string;
-  partnerId: string;
-  partnerUsername: string;
-  message: string;
-  habitName?: string;
-  type: 'missed_habit' | 'challenge_update' | 'invite';
-  read: boolean;
+  user1DoneDates?: string[];
+  user2DoneDates?: string[];
+  status: 'active' | 'completed' | 'broken' | 'expired';
   createdAt: string;
 }
 
@@ -541,7 +533,7 @@ export interface AppNotification {
   actorId?: string;
   actorUsername?: string;
   actorAvatar?: string;
-  type: 'partner_invite' | 'partner_invite_accepted' | 'partner_invite_declined' | 'partner_nudge' | 'missed_habit' | 'challenge_completed' | string;
+  type: 'partner_invite' | 'partner_invite_accepted' | 'partner_invite_declined' | 'partner_nudge' | 'partner_pledge_done' | 'partner_missed_habit' | 'missed_habit' | 'challenge_completed' | string;
   title?: string;
   message: string;
   payload?: Record<string, unknown>;
@@ -645,8 +637,10 @@ export interface AppState {
   partnership: Partnership | null;
   partnerships: Partnership[];
   sharedChallenges: SharedChallenge[];
-  partnerNotifications: PartnerNotification[];
   notifications: AppNotification[];
+
+  // Tombstones for offline sync & deletion preservation
+  deletedEntityIds?: string[];
 }
 
 export const DEFAULT_STATE: AppState = {
@@ -683,8 +677,8 @@ export const DEFAULT_STATE: AppState = {
   partnership: null,
   partnerships: [],
   sharedChallenges: [],
-  partnerNotifications: [],
   notifications: [],
+  deletedEntityIds: [],
 };
 
 

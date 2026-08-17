@@ -30,7 +30,6 @@ import {
   PartnerInvite,
   Partnership,
   SharedChallenge,
-  PartnerNotification,
   UserBook,
   UserBookStatus,
   CuratedBook,
@@ -49,7 +48,8 @@ import {
   TaskPriority,
 } from '@/types';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, previousPeriodKey, parseDate } from './dates';
+import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { PresetHabit } from './presets';
 import { SEED_ACCOUNTS } from './seedAccounts';
 import {
@@ -284,10 +284,26 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     libraryBooks: st.libraryBooks ?? [],
     improvementPlans: st.improvementPlans ?? [],
     followedPlans: st.followedPlans ?? [],
-    partnerInvites: st.partnerInvites ?? [],
-    partnership: st.partnership ?? null,
-    sharedChallenges: st.sharedChallenges ?? [],
-    partnerNotifications: st.partnerNotifications ?? [],
+    partnerInvites: (st.partnerInvites ?? []).filter(
+      (inv) => !(st.deletedEntityIds || []).includes(inv.id)
+    ),
+    partnership:
+      st.partnership && (st.deletedEntityIds || []).includes(st.partnership.id)
+        ? null
+        : (st.partnership ?? null),
+    partnerships: (st.partnerships ?? []).filter(
+      (p) => !(st.deletedEntityIds || []).includes(p.id)
+    ),
+    sharedChallenges: (st.sharedChallenges ?? [])
+      .filter(
+        (c) => !(st.deletedEntityIds || []).includes(c.id) && !(st.deletedEntityIds || []).includes(c.partnershipId)
+      )
+      .map((c) => reconcileSharedChallengeLifecycle(c)),
+    notifications: (st.notifications ?? [])
+      .filter((n: any) => !n.createdAt || n.createdAt >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      .filter((n: any) => !(st.deletedEntityIds || []).includes(n.id))
+      .slice(0, 50),
+    deletedEntityIds: (st.deletedEntityIds ?? []).slice(-500),
   };
 
   let sweptState = baseState;
@@ -309,10 +325,6 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
   sweptState = { ...sweptState, weeklyGoals: updatedWeeklyGoals };
 
   return processBadHabitNoReports(sweptState);
-}
-
-function mergeHydratedWithCurrent(hydratedState: AppState, current: AppState): AppState {
-  return mergeAppState(hydratedState, current);
 }
 
 function persistState(state: AppState) {
@@ -534,14 +546,12 @@ export function useAppState() {
         if (serverRes.exists && serverRes.state) {
           lastSyncTimeRef.current = Date.now();
           setStateRaw((current) => {
-            // One-way pull from server: update local state to authoritative server snapshot.
-            // Do NOT re-persist or union-merge back, preventing resurrection of deleted items.
+            // Reconcile and union-merge server state with current state using mergeAppState
+            // Tombstones (deletedEntityIds) prevent resurrecting deleted items while preserving offline progress
             const serverState = serverRes.state!;
-            setUserDataWatermark(userId, serverState);
-            if (current.currentUser && !serverState.currentUser) {
-              return { ...serverState, currentUser: current.currentUser };
-            }
-            return serverState;
+            const merged = mergeAppState(serverState, current);
+            setUserDataWatermark(userId, merged);
+            return merged;
           });
         }
       } catch (e) {
@@ -756,7 +766,7 @@ export function useAppState() {
 
               if (cachedState) {
                 const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
-                setState((current) => mergeHydratedWithCurrent(sanitizedCached, current));
+                setState((current) => mergeAppState(sanitizedCached, current));
               } else {
                 setState((prev) => {
                   if (prev.currentUser?.id === userId) return prev;
@@ -881,7 +891,12 @@ export function useAppState() {
           if (exists) {
             return {
               ...prev,
-              sharedChallenges: prev.sharedChallenges.map((c) => (c.id === payload.id ? payload : c)),
+              sharedChallenges: prev.sharedChallenges.map((c) => (c.id === payload.id ? mergeSharedChallenge(c, payload) : c)),
+            };
+          } else {
+            return {
+              ...prev,
+              sharedChallenges: [payload, ...prev.sharedChallenges],
             };
           }
         }
@@ -909,23 +924,37 @@ export function useAppState() {
     const syncPartnerDataLive = async () => {
       try {
         const fetchedInvites = await fetchPartnerInvitesSupabase(userId, username);
-        const activePartnerships = await fetchPartnershipsSupabase(userId);
+        const activePartnerships = await fetchPartnershipsSupabase(userId, username);
         const pIds = activePartnerships.map((p) => p.id);
         const challenges = pIds.length > 0 ? await fetchSharedChallengesSupabase(pIds) : [];
         const fetchedNotifs = await fetchNotificationsSupabase(userId);
 
-        // Sanitize invites: filter out any invites for users who are already active partners
-        let validInvites = fetchedInvites;
-        if (activePartnerships.length > 0) {
+        const tombstoneSet = new Set(state.deletedEntityIds || []);
+        
+        // Deduplicate partnerships by user pair
+        const dedupPartnershipsMap = new Map<string, Partnership>();
+        for (const p of activePartnerships) {
+          if (!p || tombstoneSet.has(p.id)) continue;
+          const u1 = (p.user1Username || '').toLowerCase();
+          const u2 = (p.user2Username || '').toLowerCase();
+          const key = [u1, u2].sort().join(':::');
+          if (!dedupPartnershipsMap.has(key)) {
+            dedupPartnershipsMap.set(key, p);
+          }
+        }
+        const filteredPartnerships = Array.from(dedupPartnershipsMap.values());
+
+        let validInvites = fetchedInvites.filter((inv) => !tombstoneSet.has(inv.id));
+        if (filteredPartnerships.length > 0) {
           const activePartnerUsernames = new Set(
-            activePartnerships.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])
+            filteredPartnerships.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])
           );
           const activePartnerUserIds = new Set(
-            activePartnerships.flatMap((p) => [p.user1Id, p.user2Id])
+            filteredPartnerships.flatMap((p) => [p.user1Id, p.user2Id])
           );
 
           validInvites = fetchedInvites.filter((inv) => {
-            if (inv.status !== 'pending') return false;
+            if (inv.status !== 'pending' || tombstoneSet.has(inv.id)) return false;
             const otherUserId = inv.fromUserId === userId ? inv.toUserId : inv.fromUserId;
             const otherUsername = (
               inv.fromUsername.toLowerCase() === username.toLowerCase() ? inv.toUsername : inv.fromUsername
@@ -939,22 +968,32 @@ export function useAppState() {
           });
 
           // Clean up stale invites in Supabase DB for all active partnerships
-          for (const p of activePartnerships) {
+          for (const p of filteredPartnerships) {
             cleanupPendingInvitesBetweenUsersSupabase(p.user1Id, p.user1Username, p.user2Id, p.user2Username).catch(() => {});
           }
         }
 
         setState((prev) => {
-          const mergedNotifs = fetchedNotifs.map((fn) => {
-            const local = prev.notifications?.find((n) => n.id === fn.id);
-            return local && local.read ? { ...fn, read: true } : fn;
-          });
+          const mergedNotifs = fetchedNotifs
+            .filter((fn) => !(prev.deletedEntityIds || []).includes(fn.id))
+            .map((fn) => {
+              const local = prev.notifications?.find((n) => n.id === fn.id);
+              return local && local.read ? { ...fn, read: true } : fn;
+            });
           return {
             ...prev,
             partnerInvites: validInvites,
-            partnerships: activePartnerships,
-            partnership: activePartnerships[0] || null,
-            sharedChallenges: challenges,
+            partnerships: filteredPartnerships,
+            partnership: filteredPartnerships[0] || null,
+            sharedChallenges: challenges
+              .filter(
+                (c) => !(prev.deletedEntityIds || []).includes(c.id) && !(prev.deletedEntityIds || []).includes(c.partnershipId)
+              )
+              .map((c) => {
+                const existing = prev.sharedChallenges?.find((prevC) => prevC.id === c.id);
+                const merged = existing ? mergeSharedChallenge(existing, c) : c;
+                return reconcileSharedChallengeLifecycle(merged);
+              }),
             notifications: mergedNotifs,
           };
         });
@@ -1014,7 +1053,21 @@ export function useAppState() {
         const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
         const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
         const readingPenalized = processReadingTargetPenalties(exercisePenalized, targetNow);
-        return processBookDeadlinePenalties(readingPenalized, targetNow);
+        const bookPenalized = processBookDeadlinePenalties(readingPenalized, targetNow);
+
+        const reconciledChallenges = (bookPenalized.sharedChallenges || []).map((c) => {
+          const updated = reconcileSharedChallengeLifecycle(c, targetNow);
+          if (updated.status !== c.status || updated.jointStreak !== c.jointStreak) {
+            saveSharedChallengeSupabase(updated);
+            syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+          }
+          return updated;
+        });
+
+        return {
+          ...bookPenalized,
+          sharedChallenges: reconciledChallenges,
+        };
       });
     };
     checkUpdates();
@@ -1026,9 +1079,16 @@ export function useAppState() {
       checkUpdates(simDate);
     };
 
+    (window as any).__advanceDays = (daysToAdvance: number = 1) => {
+      const targetDate = new Date(Date.now() + daysToAdvance * 86400000);
+      console.log(`Advancing simulated time by ${daysToAdvance} day(s) to:`, targetDate.toISOString());
+      checkUpdates(targetDate);
+    };
+
     return () => {
       if (archiveTimer.current) window.clearInterval(archiveTimer.current);
       delete (window as any).__triggerPenaltyCheck;
+      delete (window as any).__advanceDays;
     };
   }, []);
 
@@ -1108,10 +1168,12 @@ export function useAppState() {
             'habit'
           );
         }
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), habitId].slice(-500);
         return {
           ...prev,
           habits: prev.habits.filter((h) => h.id !== habitId),
           weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'habit', [habitId]),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -1190,28 +1252,7 @@ export function useAppState() {
             const myTarget = (isUser1 ? (target.user1Target || target.targetHabitName) : (target.user2Target || target.targetHabitName)).trim().toLowerCase();
 
             if (myCategory === 'habit' && myTarget === habit.name.trim().toLowerCase()) {
-              const updatedUser1Date = isUser1 ? (completed ? today : undefined) : target.user1DoneDate;
-              const updatedUser2Date = !isUser1 ? (completed ? today : undefined) : target.user2DoneDate;
-
-              const wereBothDoneBefore = target.user1DoneDate === today && target.user2DoneDate === today;
-              const areBothDoneNow = updatedUser1Date === today && updatedUser2Date === today;
-
-              let newStreak = target.jointStreak || 0;
-              if (areBothDoneNow && !wereBothDoneBefore) {
-                newStreak += 1;
-              } else if (!areBothDoneNow && wereBothDoneBefore && newStreak > 0) {
-                newStreak = Math.max(0, newStreak - 1);
-              }
-
-              const isCompleted = newStreak >= target.durationDays;
-              const updated: SharedChallenge = {
-                ...target,
-                user1DoneDate: updatedUser1Date,
-                user2DoneDate: updatedUser2Date,
-                jointStreak: newStreak,
-                status: isCompleted ? 'completed' : 'active',
-              };
-
+              const { updated } = applyPledgeToggle(target, isUser1, completed);
               saveSharedChallengeSupabase(updated);
               syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
               return updated;
@@ -1304,9 +1345,12 @@ export function useAppState() {
           pointsUpdate = addPointsInternal(prev, -5, 'Journal entry deleted', 'journal');
         }
 
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), entryId].slice(-500);
+
         return {
           ...prev,
           journalEntries: prev.journalEntries.filter((e) => e.id !== entryId),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -1518,9 +1562,11 @@ export function useAppState() {
         if (target.pointsAwarded > 0) {
           pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Workout deleted: ${target.type}`, 'exercise');
         }
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), workoutId].slice(-500);
         return {
           ...prev,
           workouts: prev.workouts.filter((w) => w.id !== workoutId),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -1656,6 +1702,11 @@ export function useAppState() {
         }
 
         const targetTitleLower = target.title.toLowerCase();
+        const updatedDeletedEntityIds = [
+          ...(prev.deletedEntityIds || []),
+          bookId,
+          ...bookLogs.map((l) => l.id),
+        ].slice(-500);
 
         return {
           ...prev,
@@ -1665,6 +1716,7 @@ export function useAppState() {
             (lb) => lb.linkedBookId !== bookId && lb.title.toLowerCase() !== targetTitleLower
           ),
           weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', [bookId]),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -1900,7 +1952,12 @@ export function useAppState() {
         const matchingBookIds = prev.books
           .filter((b) => (linkedBookId ? b.id === linkedBookId : b.title.toLowerCase() === targetTitleLower))
           .map((b) => b.id);
-        const idsToRemove = [userBookId, linkedBookId, ...matchingBookIds];
+        const idsToRemove = [userBookId, linkedBookId, ...matchingBookIds].filter(Boolean) as string[];
+        const updatedDeletedEntityIds = [
+          ...(prev.deletedEntityIds || []),
+          ...idsToRemove,
+          ...associatedLogs.map((l) => l.id),
+        ].slice(-500);
 
         return {
           ...prev,
@@ -1912,6 +1969,7 @@ export function useAppState() {
             linkedBookId ? l.bookId !== linkedBookId && l.bookId !== userBookId : l.bookId !== userBookId
           ),
           weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsToRemove),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -2001,11 +2059,18 @@ export function useAppState() {
           );
         }
 
+        const updatedDeletedEntityIds = [
+          ...(prev.deletedEntityIds || []),
+          skillId,
+          ...skillLogs.map((l) => l.id),
+        ].slice(-500);
+
         return {
           ...prev,
           skills: prev.skills.filter((s) => s.id !== skillId),
           skillLogs: prev.skillLogs.filter((l) => l.skillId !== skillId),
           weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId]),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -2021,9 +2086,11 @@ export function useAppState() {
         if (target && target.pointsAwarded > 0) {
           pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Skill practice log deleted`, 'skill');
         }
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {
           ...prev,
           skillLogs: prev.skillLogs.filter((s) => s.id !== logId),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -2168,10 +2235,17 @@ export function useAppState() {
           }
         }
 
+        const updatedDeletedEntityIds = [
+          ...(prev.deletedEntityIds || []),
+          badHabitId,
+          ...habitLogs.map((l) => l.id || `${l.badHabitId}_${l.date}`),
+        ].slice(-500);
+
         return {
           ...prev,
           badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
           badHabitLogs: prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -2224,9 +2298,12 @@ export function useAppState() {
             'bad_habit_clear'
           );
         }
+        const targetComposite = target?.id || `${badHabitId}_${date}`;
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), targetComposite].slice(-500);
         return {
           ...prev,
           badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === date)),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -2344,10 +2421,18 @@ export function useAppState() {
         if (milestonePtsDeducted > 0) {
           pointsUpdate = addPointsInternal(prev, -milestonePtsDeducted, 'Sobriety tracker deleted', 'addiction_recovery');
         }
+        const trackerId = prev.addictionTracker?.id;
+        const updatedDeletedEntityIds = [
+          ...(prev.deletedEntityIds || []),
+          ...(trackerId ? [trackerId] : []),
+          ...prev.cravingLogs.map((l) => l.id),
+        ].slice(-500);
+
         return {
           ...prev,
           addictionTracker: null,
           cravingLogs: [],
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -2357,10 +2442,14 @@ export function useAppState() {
 
   const deleteCravingLog = useCallback((logId: string) => {
     setState(
-      (prev) => ({
-        ...prev,
-        cravingLogs: prev.cravingLogs.filter((l) => l.id !== logId),
-      }),
+      (prev) => {
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
+        return {
+          ...prev,
+          cravingLogs: prev.cravingLogs.filter((l) => l.id !== logId),
+          deletedEntityIds: updatedDeletedEntityIds,
+        };
+      },
       { immediate: true }
     );
   }, []);
@@ -2385,6 +2474,26 @@ export function useAppState() {
         ...prev,
         focusLogs: [focusLog, ...prev.focusLogs],
         ...pointsUpdate,
+      };
+    });
+  }, []);
+
+  const updateFocusLogReflection = useCallback((logId: string, reflection: string) => {
+    setState((prev) => {
+      const idx = prev.focusLogs.findIndex((f) => f.id === logId);
+      if (idx === -1) return prev;
+
+      const updated = {
+        ...prev.focusLogs[idx],
+        reflection: reflection.trim() || undefined,
+      };
+
+      const updatedLogs = [...prev.focusLogs];
+      updatedLogs[idx] = updated;
+
+      return {
+        ...prev,
+        focusLogs: updatedLogs,
       };
     });
   }, []);
@@ -2447,9 +2556,11 @@ export function useAppState() {
         if (target && target.pointsAwarded > 0) {
           pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Focus session deleted: ${target.taskName}`, 'focus');
         }
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {
           ...prev,
           focusLogs: prev.focusLogs.filter((f) => f.id !== logId),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -2469,9 +2580,11 @@ export function useAppState() {
         if (ptsToDeduct > 0 && target) {
           pointsUpdate = addPointsInternal(prev, -ptsToDeduct, `Decision log deleted: ${target.title}`, 'decision_journal');
         }
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {
           ...prev,
           decisionLogs: prev.decisionLogs.filter((d) => d.id !== logId),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -2487,9 +2600,11 @@ export function useAppState() {
         if (target) {
           pointsUpdate = addPointsInternal(prev, -5, `Emotion label deleted: ${target.emotion}`, 'emotion_label');
         }
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {
           ...prev,
           emotionLogs: prev.emotionLogs.filter((e) => e.id !== logId),
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       },
@@ -2600,10 +2715,12 @@ export function useAppState() {
       const updatedDoc = { ...doc, reflections: updatedReflections };
       const newWeeklyGoals = [...nextState.weeklyGoals];
       newWeeklyGoals[docIdx] = updatedDoc;
+      const updatedDeletedEntityIds = [...(nextState.deletedEntityIds || []), reflectionId].slice(-500);
 
       return {
         ...nextState,
         weeklyGoals: newWeeklyGoals,
+        deletedEntityIds: updatedDeletedEntityIds,
       };
     });
   }, []);
@@ -2687,8 +2804,9 @@ export function useAppState() {
       const updatedDoc = { ...doc, goals: updatedGoals };
       const newWeeklyGoals = [...prev.weeklyGoals];
       newWeeklyGoals[docIdx] = updatedDoc;
+      const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
 
-      return { ...prev, weeklyGoals: newWeeklyGoals };
+      return { ...prev, weeklyGoals: newWeeklyGoals, deletedEntityIds: updatedDeletedEntityIds };
     });
   }, []);
 
@@ -2808,13 +2926,17 @@ export function useAppState() {
 
   const deleteGoal = useCallback((id: string) => {
     setState(
-      (prev) => ({
-        ...prev,
-        // Unlink linked projects by setting their goalId to undefined
-        projects: prev.projects.map((p) => (p.goalId === id ? { ...p, goalId: undefined } : p)),
-        // Remove goal
-        goals: prev.goals.filter((g) => g.id !== id),
-      }),
+      (prev) => {
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
+        return {
+          ...prev,
+          // Unlink linked projects by setting their goalId to undefined
+          projects: prev.projects.map((p) => (p.goalId === id ? { ...p, goalId: undefined } : p)),
+          // Remove goal
+          goals: prev.goals.filter((g) => g.id !== id),
+          deletedEntityIds: updatedDeletedEntityIds,
+        };
+      },
       { immediate: true }
     );
   }, []);
@@ -2964,13 +3086,17 @@ export function useAppState() {
 
   const deleteProject = useCallback((id: string) => {
     setState(
-      (prev) => ({
-        ...prev,
-        // Unlink linked tasks by setting their projectId to undefined
-        tasks: prev.tasks.map((t) => (t.projectId === id ? { ...t, projectId: undefined } : t)),
-        // Remove project
-        projects: prev.projects.filter((p) => p.id !== id),
-      }),
+      (prev) => {
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
+        return {
+          ...prev,
+          // Unlink linked tasks by setting their projectId to undefined
+          tasks: prev.tasks.map((t) => (t.projectId === id ? { ...t, projectId: undefined } : t)),
+          // Remove project
+          projects: prev.projects.filter((p) => p.id !== id),
+          deletedEntityIds: updatedDeletedEntityIds,
+        };
+      },
       { immediate: true }
     );
   }, []);
@@ -3043,10 +3169,16 @@ export function useAppState() {
 
   const deleteTask = useCallback((id: string) => {
     setState(
-      (prev) => ({
-        ...prev,
-        tasks: prev.tasks.filter((t) => t.id !== id),
-      }),
+      (prev) => {
+        const targetTask = prev.tasks.find((t) => t.id === id);
+        const subtaskIds = (targetTask?.subtasks || []).map((s) => s.id);
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id, ...subtaskIds].slice(-500);
+        return {
+          ...prev,
+          tasks: prev.tasks.filter((t) => t.id !== id),
+          deletedEntityIds: updatedDeletedEntityIds,
+        };
+      },
       { immediate: true }
     );
   }, []);
@@ -3084,19 +3216,23 @@ export function useAppState() {
   }, []);
 
   const deleteSubtask = useCallback((taskId: string, subtaskId: string) => {
-    setState((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => {
-        if (t.id !== taskId) return t;
-        const updatedSubtasks = (t.subtasks || []).filter((st) => st.id !== subtaskId);
-        const allCompleted = updatedSubtasks.length > 0 ? updatedSubtasks.every((st) => st.completed) : t.completed;
-        return {
-          ...t,
-          subtasks: updatedSubtasks,
-          completed: allCompleted,
-        };
-      }),
-    }));
+    setState((prev) => {
+      const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), subtaskId].slice(-500);
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) => {
+          if (t.id !== taskId) return t;
+          const updatedSubtasks = (t.subtasks || []).filter((st) => st.id !== subtaskId);
+          const allCompleted = updatedSubtasks.length > 0 ? updatedSubtasks.every((st) => st.completed) : t.completed;
+          return {
+            ...t,
+            subtasks: updatedSubtasks,
+            completed: allCompleted,
+          };
+        }),
+        deletedEntityIds: updatedDeletedEntityIds,
+      };
+    });
   }, []);
 
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---
@@ -3520,7 +3656,8 @@ export function useAppState() {
 
         const updatedPlans = [...prev.improvementPlans];
         updatedPlans[idx] = updatedPlan;
-        return { ...prev, improvementPlans: updatedPlans };
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), noteId].slice(-500);
+        return { ...prev, improvementPlans: updatedPlans, deletedEntityIds: updatedDeletedEntityIds };
       },
       { immediate: true }
     );
@@ -3807,9 +3944,6 @@ export function useAppState() {
     });
 
     if (updatedFollow) {
-      if (nextState && (nextState as AppState).currentUser?.id) {
-        saveUserDataToSupabase((nextState as AppState).currentUser!.id, nextState as AppState);
-      }
       syncFollowedPlanToSupabase(updatedFollow);
     }
   }, []);
@@ -3937,7 +4071,8 @@ export function useAppState() {
 
         const updatedFollows = [...prev.followedPlans];
         updatedFollows[idx] = updatedFollow;
-        return { ...prev, followedPlans: updatedFollows };
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), noteId].slice(-500);
+        return { ...prev, followedPlans: updatedFollows, deletedEntityIds: updatedDeletedEntityIds };
       },
       { immediate: true }
     );
@@ -3951,9 +4086,11 @@ export function useAppState() {
     deleteFollowedPlanFromSupabase(followedPlanId);
     setState(
       (prev) => {
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), followedPlanId].slice(-500);
         return {
           ...prev,
           followedPlans: prev.followedPlans.filter((f) => f.id !== followedPlanId),
+          deletedEntityIds: updatedDeletedEntityIds,
         };
       },
       { immediate: true }
@@ -3996,9 +4133,6 @@ export function useAppState() {
     if (updatedPlan) {
       updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      if (nextState && (nextState as AppState).currentUser?.id) {
-        saveUserDataToSupabase((nextState as AppState).currentUser!.id, nextState as AppState);
-      }
       syncPlanToSupabase(updatedPlan);
     }
   }, []);
@@ -4034,11 +4168,15 @@ export function useAppState() {
       syncBroadcaster.broadcast('PLAN_DELETED', { planId });
 
       setState(
-        (prev) => ({
-          ...prev,
-          improvementPlans: prev.improvementPlans.filter((p) => p.id !== planId),
-          followedPlans: prev.followedPlans.filter((f) => f.originalPlanId !== planId),
-        }),
+        (prev) => {
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), planId].slice(-500);
+          return {
+            ...prev,
+            improvementPlans: prev.improvementPlans.filter((p) => p.id !== planId),
+            followedPlans: prev.followedPlans.filter((f) => f.originalPlanId !== planId),
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
         { immediate: true }
       );
     } catch (err: any) {
@@ -4083,7 +4221,7 @@ export function useAppState() {
         throw new Error("You can't send an accountability invite to yourself.");
       }
 
-      const targetPartnerships = await fetchPartnershipsSupabase(targetUserId);
+      const targetPartnerships = await fetchPartnershipsSupabase(targetUserId, targetUsername);
       if (targetPartnerships.length >= 5) {
         throw new Error(`The user '${targetUsername}' has reached the maximum limit of 5 accountability partners.`);
       }
@@ -4144,9 +4282,22 @@ export function useAppState() {
         throw new Error(`An invite between you and '${targetUsername}' is already pending.`);
       }
 
+      // Resolve canonical sender UUID
+      let fromUserId = state.currentUser?.id;
+      const isSenderUuid = fromUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fromUserId);
+      if (!isSenderUuid && isSupabaseConfigured) {
+        const { data: selfProf } = await supabase.from('profiles').select('id').ilike('username', state.username).maybeSingle();
+        if (selfProf?.id) {
+          fromUserId = selfProf.id;
+        }
+      }
+      if (!fromUserId) {
+        fromUserId = crypto.randomUUID();
+      }
+
       const invite: PartnerInvite = {
         id: crypto.randomUUID(),
-        fromUserId: state.currentUser?.id || 'user_from',
+        fromUserId,
         fromUsername: state.username,
         fromAvatar: state.currentUser?.avatar || '🧑',
         toUserId: targetUserId,
@@ -4154,8 +4305,6 @@ export function useAppState() {
         status: 'pending',
         createdAt: new Date().toISOString(),
       };
-
-      await sendPartnerInviteSupabase(invite);
 
       const notifData = {
         recipientId: targetUserId,
@@ -4165,16 +4314,26 @@ export function useAppState() {
         type: 'partner_invite' as const,
         title: 'New Partner Invite',
         message: `${state.username} sent you an accountability partner invite!`,
-        payload: { inviteId: invite.id },
+        payload: { inviteId: invite.id, dedupKey: `partner_invite_${invite.id}` },
       };
 
-      const createdNotif = await createNotificationSupabase(notifData);
-      syncBroadcaster.broadcast('PARTNER_INVITE_SENT', { invite, notification: createdNotif || notifData });
+      syncBroadcaster.broadcast('PARTNER_INVITE_SENT', { invite, notification: notifData });
 
-      setState((prev) => ({
-        ...prev,
-        partnerInvites: [invite, ...prev.partnerInvites.filter((i) => i.id !== invite.id)],
-      }));
+      setState(
+        (prev) => ({
+          ...prev,
+          partnerInvites: [invite, ...prev.partnerInvites.filter((i) => i.id !== invite.id)],
+        }),
+        { immediate: true }
+      );
+
+      sendPartnerInviteSupabase(invite).catch((err) => {
+        console.warn('Background Supabase send partner invite warning:', err);
+      });
+
+      createNotificationSupabase(notifData).catch((err) => {
+        console.warn('Background Supabase create notification warning:', err);
+      });
 
       return invite;
     },
@@ -4187,12 +4346,27 @@ export function useAppState() {
         throw new Error("You've reached the maximum limit of 5 accountability partners. Remove one to accept another.");
       }
       const invite = state.partnerInvites.find((i) => i.id === inviteId);
-      const fromId = invite?.fromUserId || crypto.randomUUID();
+      let fromId = invite?.fromUserId;
       const fromUsername = invite?.fromUsername || 'Partner';
-      const toId = state.currentUser?.id || crypto.randomUUID();
+      let toId = state.currentUser?.id;
       const toUsername = state.username;
 
-      const inviterPartnerships = await fetchPartnershipsSupabase(fromId);
+      // Ensure both user IDs are canonical profile UUIDs from Supabase
+      const isFromUuid = fromId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fromId);
+      if (!isFromUuid && isSupabaseConfigured && fromUsername) {
+        const { data: p1 } = await supabase.from('profiles').select('id').ilike('username', fromUsername).maybeSingle();
+        if (p1?.id) fromId = p1.id;
+      }
+      const isToUuid = toId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(toId);
+      if (!isToUuid && isSupabaseConfigured && toUsername) {
+        const { data: p2 } = await supabase.from('profiles').select('id').ilike('username', toUsername).maybeSingle();
+        if (p2?.id) toId = p2.id;
+      }
+
+      if (!fromId) fromId = crypto.randomUUID();
+      if (!toId) toId = crypto.randomUUID();
+
+      const inviterPartnerships = await fetchPartnershipsSupabase(fromId, fromUsername);
       if (inviterPartnerships.length >= 5) {
         throw new Error(`The inviter '${fromUsername}' has reached the maximum limit of 5 accountability partners.`);
       }
@@ -4214,6 +4388,8 @@ export function useAppState() {
         user1Username: fromUsername,
         user2Id: toId,
         user2Username: toUsername,
+        user1AllowStats: true,
+        user2AllowStats: true,
         pairedAt: new Date().toISOString(),
       };
 
@@ -4227,7 +4403,7 @@ export function useAppState() {
         type: 'partner_invite_accepted',
         title: 'Partner Invite Accepted 🎉',
         message: `${toUsername} accepted your partner invite!`,
-        payload: { partnershipId },
+        payload: { partnershipId, dedupKey: `partner_invite_accepted_${partnershipId}` },
       });
 
       // Clear/mark-read the recipient's incoming partner_invite notification so it doesn't linger unread
@@ -4238,29 +4414,55 @@ export function useAppState() {
         markNotificationReadSupabase(staleNotif.id);
       }
 
-      setState((prev) => {
-        const updatedInvites = (prev.partnerInvites || []).filter((i) => {
-          const isFromUser1 = i.fromUserId === fromId || i.fromUsername?.toLowerCase() === fromUsername.toLowerCase();
-          const isToUser1 = i.toUserId === fromId || i.toUsername?.toLowerCase() === fromUsername.toLowerCase();
-          const isFromUser2 = i.fromUserId === toId || i.fromUsername?.toLowerCase() === toUsername.toLowerCase();
-          const isToUser2 = i.toUserId === toId || i.toUsername?.toLowerCase() === toUsername.toLowerCase();
+      setState(
+        (prev) => {
+          const removedInviteIds: string[] = [];
+          const updatedInvites = (prev.partnerInvites || []).filter((i) => {
+            const isFromUser1 = i.fromUserId === fromId || i.fromUsername?.toLowerCase() === fromUsername.toLowerCase();
+            const isToUser1 = i.toUserId === fromId || i.toUsername?.toLowerCase() === fromUsername.toLowerCase();
+            const isFromUser2 = i.fromUserId === toId || i.fromUsername?.toLowerCase() === toUsername.toLowerCase();
+            const isToUser2 = i.toUserId === toId || i.toUsername?.toLowerCase() === toUsername.toLowerCase();
 
-          const isBetweenPair = (isFromUser1 && isToUser2) || (isFromUser2 && isToUser1);
-          return !isBetweenPair;
-        });
-        const updatedPartnerships = [partnership, ...(prev.partnerships || []).filter((p) => p.id !== partnership.id)];
-        return {
-          ...prev,
-          partnerInvites: updatedInvites,
-          partnerships: updatedPartnerships,
-          partnership: updatedPartnerships[0] || null,
-          notifications: (prev.notifications || []).map((n) =>
-            n.type === 'partner_invite' && (n.payload?.inviteId === inviteId || n.actorId === fromId)
-              ? { ...n, read: true }
-              : n
-          ),
-        };
-      });
+            const isBetweenPair = (isFromUser1 && isToUser2) || (isFromUser2 && isToUser1);
+            if (isBetweenPair) {
+              removedInviteIds.push(i.id);
+              return false;
+            }
+            return true;
+          });
+          if (inviteId && !removedInviteIds.includes(inviteId)) {
+            removedInviteIds.push(inviteId);
+          }
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), ...removedInviteIds].slice(-500);
+          const updatedPartnerships = [
+            partnership,
+            ...(prev.partnerships || []).filter((p) => {
+              if (p.id === partnership.id) return false;
+              const u1 = (p.user1Username || '').toLowerCase();
+              const u2 = (p.user2Username || '').toLowerCase();
+              const fromLower = fromUsername.toLowerCase();
+              const toLower = toUsername.toLowerCase();
+              const isBetweenPair =
+                ((u1 === fromLower || p.user1Id === fromId) && (u2 === toLower || p.user2Id === toId)) ||
+                ((u1 === toLower || p.user1Id === toId) && (u2 === fromLower || p.user2Id === fromId));
+              return !isBetweenPair;
+            }),
+          ];
+          return {
+            ...prev,
+            partnerInvites: updatedInvites,
+            partnerships: updatedPartnerships,
+            partnership: updatedPartnerships[0] || null,
+            deletedEntityIds: updatedDeletedEntityIds,
+            notifications: (prev.notifications || []).map((n) =>
+              n.type === 'partner_invite' && (n.payload?.inviteId === inviteId || n.actorId === fromId)
+                ? { ...n, read: true }
+                : n
+            ),
+          };
+        },
+        { immediate: true }
+      );
     },
     [state.partnerInvites, state.partnerships, state.notifications, state.currentUser, state.username]
   );
@@ -4268,10 +4470,17 @@ export function useAppState() {
   const cancelPartnerInvite = useCallback(async (inviteId: string) => {
     await deletePartnerInviteSupabase(inviteId);
     syncBroadcaster.broadcast('PARTNER_INVITE_CANCELLED', { inviteId });
-    setState((prev) => ({
-      ...prev,
-      partnerInvites: prev.partnerInvites.filter((i) => i.id !== inviteId),
-    }));
+    setState(
+      (prev) => {
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), inviteId].slice(-500);
+        return {
+          ...prev,
+          partnerInvites: prev.partnerInvites.filter((i) => i.id !== inviteId),
+          deletedEntityIds: updatedDeletedEntityIds,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const declinePartnerInvite = useCallback(async (inviteId: string) => {
@@ -4285,7 +4494,7 @@ export function useAppState() {
         type: 'partner_invite_declined',
         title: 'Partner Invite Declined',
         message: `${state.username} declined your partner invite.`,
-        payload: { inviteId },
+        payload: { inviteId, dedupKey: `partner_invite_declined_${inviteId}` },
       });
     }
 
@@ -4297,32 +4506,54 @@ export function useAppState() {
     }
 
     await deletePartnerInviteSupabase(inviteId);
-    setState((prev) => ({
-      ...prev,
-      partnerInvites: prev.partnerInvites.filter((i) => i.id !== inviteId),
-      notifications: (prev.notifications || []).map((n) =>
-        n.type === 'partner_invite' && (n.payload?.inviteId === inviteId || (invite && n.actorId === invite.fromUserId))
-          ? { ...n, read: true }
-          : n
-      ),
-    }));
+    setState(
+      (prev) => {
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), inviteId].slice(-500);
+        return {
+          ...prev,
+          partnerInvites: prev.partnerInvites.filter((i) => i.id !== inviteId),
+          deletedEntityIds: updatedDeletedEntityIds,
+          notifications: (prev.notifications || []).map((n) =>
+            n.type === 'partner_invite' && (n.payload?.inviteId === inviteId || (invite && n.actorId === invite.fromUserId))
+              ? { ...n, read: true }
+              : n
+          ),
+        };
+      },
+      { immediate: true }
+    );
   }, [state.partnerInvites, state.notifications, state.username, state.currentUser]);
 
-  const endPartnership = useCallback(async (partnershipId?: string) => {
+  const endPartnership = useCallback((partnershipId?: string) => {
     const targetId = partnershipId || state.partnership?.id || state.partnerships[0]?.id;
     if (targetId) {
-      await deletePartnershipSupabase(targetId);
+      deletePartnershipSupabase(targetId).catch((err) => {
+        console.warn('Background Supabase delete partnership warning:', err);
+      });
     }
     syncBroadcaster.broadcast('PARTNER_ENDED', { partnershipId: targetId });
-    setState((prev) => {
-      const updatedPartnerships = (prev.partnerships || []).filter((p) => p.id !== targetId);
-      return {
-        ...prev,
-        partnerships: updatedPartnerships,
-        partnership: updatedPartnerships[0] || null,
-        sharedChallenges: prev.sharedChallenges.filter((c) => c.partnershipId !== targetId),
-      };
-    });
+    setState(
+      (prev) => {
+        const updatedPartnerships = (prev.partnerships || []).filter((p) => p.id !== targetId);
+        const removedChallengeIds = prev.sharedChallenges
+          .filter((c) => c.partnershipId === targetId)
+          .map((c) => c.id);
+        const updatedDeletedEntityIds = [
+          ...(prev.deletedEntityIds || []),
+          ...(targetId ? [targetId] : []),
+          ...removedChallengeIds,
+        ].slice(-500);
+
+        return {
+          ...prev,
+          partnerships: updatedPartnerships,
+          partnership: updatedPartnerships[0] || null,
+          sharedChallenges: prev.sharedChallenges.filter((c) => c.partnershipId !== targetId),
+          deletedEntityIds: updatedDeletedEntityIds,
+        };
+      },
+      { immediate: true }
+    );
   }, [state.partnership, state.partnerships]);
 
   const getPartnerProfileStats = useCallback(async (partnerUsername: string) => {
@@ -4399,7 +4630,7 @@ export function useAppState() {
   );
 
   const createSharedChallenge = useCallback(
-    (
+    async (
       title: string,
       durationDays: number,
       user1Category: SharedChallengeCategory = 'habit',
@@ -4408,147 +4639,194 @@ export function useAppState() {
       user2Target: string = '',
       targetPartnershipId?: string
     ) => {
-      setState((prev) => {
-        const pId = targetPartnershipId || prev.partnership?.id || prev.partnerships[0]?.id;
-        if (!pId) return prev;
+      const pId = targetPartnershipId || state.partnership?.id || state.partnerships[0]?.id;
+      if (!pId) {
+        throw new Error('No active partnership found.');
+      }
 
-        const challenge: SharedChallenge = {
-          id: crypto.randomUUID(),
-          partnershipId: pId,
-          title: title.trim(),
-          targetHabitName: user1Target || title.trim(),
-          durationDays,
-          jointStreak: 0,
-          user1Category,
-          user1Target: user1Target.trim(),
-          user2Category,
-          user2Target: user2Target.trim(),
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        };
+      const trimmedTitle = title.trim();
+      const normTitle = trimmedTitle.toLowerCase();
 
-        saveSharedChallengeSupabase(challenge);
+      if (!trimmedTitle) {
+        throw new Error('Please enter a pact title.');
+      }
+
+      // Prevent duplicate creation if an active challenge with the same title already exists on this partnership
+      const existingActive = (state.sharedChallenges || []).find(
+        (c) =>
+          c.partnershipId === pId &&
+          c.status === 'active' &&
+          c.title.trim().toLowerCase() === normTitle
+      );
+      if (existingActive) {
+        throw new Error(
+          `You already have an active pact called "${existingActive.title}" with this partner — choose a different name or view your existing pact.`
+        );
+      }
+
+      const challenge: SharedChallenge = {
+        id: crypto.randomUUID(),
+        partnershipId: pId,
+        title: trimmedTitle,
+        targetHabitName: user1Target || trimmedTitle,
+        durationDays,
+        jointStreak: 0,
+        totalJointDaysCompleted: 0,
+        lastJointCompletionDate: undefined,
+        user1Category,
+        user1Target: user1Target.trim(),
+        user2Category,
+        user2Target: user2Target.trim(),
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      };
+
+      const backupChallenges = state.sharedChallenges;
+
+      // Optimistically update local UI state
+      setState((prev) => ({
+        ...prev,
+        sharedChallenges: [challenge, ...prev.sharedChallenges],
+      }));
+
+      try {
+        await saveSharedChallengeSupabase(challenge);
         syncBroadcaster.broadcast('CHALLENGE_UPDATED', challenge);
-
-        return {
+      } catch (err: any) {
+        console.error('Failed to create joint pact in Supabase:', err);
+        // Rollback UI state to backup
+        setState((prev) => ({
           ...prev,
-          sharedChallenges: [challenge, ...prev.sharedChallenges],
-        };
-      });
+          sharedChallenges: backupChallenges,
+        }));
+        throw err;
+      }
     },
-    []
+    [state.partnership, state.partnerships, state.sharedChallenges]
   );
 
   const deleteSharedChallenge = useCallback(async (challengeId: string) => {
-    await deleteSharedChallengeSupabase(challengeId);
-    syncBroadcaster.broadcast('CHALLENGE_DELETED', { challengeId });
+    const backupChallenges = state.sharedChallenges;
+    const backupDeletedEntityIds = state.deletedEntityIds;
+
+    // Optimistically update local UI state
     setState(
-      (prev) => ({
-        ...prev,
-        sharedChallenges: prev.sharedChallenges.filter((c) => c.id !== challengeId),
-      }),
+      (prev) => {
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), challengeId].slice(-500);
+        return {
+          ...prev,
+          sharedChallenges: prev.sharedChallenges.filter((c) => c.id !== challengeId),
+          deletedEntityIds: updatedDeletedEntityIds,
+        };
+      },
       { immediate: true }
     );
-  }, []);
 
-  const logSharedChallengeHabit = useCallback((challengeId: string, forcedState?: boolean) => {
-    const today = todayKey();
-    setState((prev) => {
-      const idx = prev.sharedChallenges.findIndex((c) => c.id === challengeId);
-      if (idx === -1) return prev;
-      const target = prev.sharedChallenges[idx];
+    try {
+      await deleteSharedChallengeSupabase(challengeId);
+      syncBroadcaster.broadcast('CHALLENGE_DELETED', { challengeId });
+    } catch (err: any) {
+      console.error('Failed to delete shared challenge in Supabase:', err);
+      // Rollback UI state to backup
+      setState((prev) => ({
+        ...prev,
+        sharedChallenges: backupChallenges,
+        deletedEntityIds: backupDeletedEntityIds,
+      }));
+      throw err;
+    }
+  }, [state.sharedChallenges, state.deletedEntityIds]);
+
+  const logSharedChallengeHabit = useCallback(
+    async (challengeId: string, forcedState?: boolean) => {
+      const today = todayKey();
+      const backupChallenges = state.sharedChallenges;
+
+      const idx = state.sharedChallenges.findIndex((c) => c.id === challengeId);
+      if (idx === -1) return;
+      const target = state.sharedChallenges[idx];
 
       const challengePartnership =
-        (prev.partnerships || []).find((p) => p.id === target.partnershipId) || prev.partnership;
+        (state.partnerships || []).find((p) => p.id === target.partnershipId) || state.partnership;
 
       const isUser1 = challengePartnership
-        ? (prev.currentUser?.id && challengePartnership.user1Id === prev.currentUser.id) ||
-          challengePartnership.user1Username.toLowerCase() === prev.username.toLowerCase()
+        ? (state.currentUser?.id && challengePartnership.user1Id === state.currentUser.id) ||
+          challengePartnership.user1Username.toLowerCase() === state.username.toLowerCase()
         : true;
 
-      const currentDoneDate = isUser1 ? target.user1DoneDate : target.user2DoneDate;
+      const myDoneDates = isUser1
+        ? (target.user1DoneDates || (target.user1DoneDate ? [target.user1DoneDate] : []))
+        : (target.user2DoneDates || (target.user2DoneDate ? [target.user2DoneDate] : []));
 
       let isDoneToday: boolean;
       if (typeof forcedState === 'boolean') {
         isDoneToday = forcedState;
       } else {
-        isDoneToday = currentDoneDate !== today;
+        isDoneToday = !myDoneDates.includes(today);
       }
 
-      const newCurrentDoneDate = isDoneToday ? today : undefined;
-      const updatedUser1Date = isUser1 ? newCurrentDoneDate : target.user1DoneDate;
-      const updatedUser2Date = !isUser1 ? newCurrentDoneDate : target.user2DoneDate;
+      const wereBothDoneBefore =
+        (target.user1DoneDates || (target.user1DoneDate ? [target.user1DoneDate] : [])).includes(today) &&
+        (target.user2DoneDates || (target.user2DoneDate ? [target.user2DoneDate] : [])).includes(today);
+      const { updated, becameCompleted } = applyPledgeToggle(target, isUser1, isDoneToday);
 
-      const wereBothDoneBefore = target.user1DoneDate === today && target.user2DoneDate === today;
-      const areBothDoneNow = updatedUser1Date === today && updatedUser2Date === today;
-
-      let newStreak = target.jointStreak || 0;
-      if (areBothDoneNow && !wereBothDoneBefore) {
-        newStreak += 1;
-      } else if (!areBothDoneNow && wereBothDoneBefore && newStreak > 0) {
-        newStreak = Math.max(0, newStreak - 1);
-      }
-
-      const isCompleted = newStreak >= target.durationDays;
-
-      const updated: SharedChallenge = {
-        ...target,
-        user1DoneDate: updatedUser1Date,
-        user2DoneDate: updatedUser2Date,
-        jointStreak: newStreak,
-        status: isCompleted ? 'completed' : 'active',
-      };
-
-      const updatedChallenges = [...prev.sharedChallenges];
+      const updatedChallenges = [...state.sharedChallenges];
       updatedChallenges[idx] = updated;
 
-      saveSharedChallengeSupabase(updated);
-      syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
-
-      if (challengePartnership) {
-        const partnerUserId = isUser1 ? challengePartnership.user2Id : challengePartnership.user1Id;
-        const partnerUsername = isUser1 ? challengePartnership.user2Username : challengePartnership.user1Username;
-
-        if (isDoneToday && !wereBothDoneBefore) {
-          createNotificationSupabase({
-            recipientId: partnerUserId,
-            actorId: prev.currentUser?.id,
-            actorUsername: prev.username,
-            actorAvatar: prev.currentUser?.avatar || '🧑',
-            type: 'partner_nudge',
-            title: 'Partner Completed Challenge Today',
-            message: `${prev.username} completed today's target for "${target.title}"! Don't break your joint streak!`,
-            payload: { challengeId: target.id },
-          });
-        }
-
-        if (isCompleted) {
-          createNotificationSupabase({
-            recipientId: partnerUserId,
-            actorId: prev.currentUser?.id,
-            actorUsername: prev.username,
-            actorAvatar: prev.currentUser?.avatar || '🧑',
-            type: 'challenge_completed',
-            title: 'Shared Challenge Completed! 🎉',
-            message: `Congratulations! You and ${prev.username} completed the "${target.title}" challenge!`,
-            payload: { challengeId: target.id },
-          });
-        }
-      }
-
-      return {
+      // Optimistically update local UI state
+      setState((prev) => ({
         ...prev,
         sharedChallenges: updatedChallenges,
-      };
-    });
-  }, []);
+      }));
 
-  const dismissPartnerNotification = useCallback((notifId: string) => {
-    setState((prev) => ({
-      ...prev,
-      partnerNotifications: prev.partnerNotifications.filter((n) => n.id !== notifId),
-    }));
-  }, []);
+      try {
+        await saveSharedChallengeSupabase(updated);
+        syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+
+        if (challengePartnership) {
+          const partnerUserId = isUser1 ? challengePartnership.user2Id : challengePartnership.user1Id;
+          const partnerUsername = isUser1 ? challengePartnership.user2Username : challengePartnership.user1Username;
+
+          if (isDoneToday && !wereBothDoneBefore) {
+            const dedupKey = `partner_pledge_done_${target.id}_${today}`;
+            createNotificationSupabase({
+              recipientId: partnerUserId,
+              actorId: state.currentUser?.id,
+              actorUsername: state.username,
+              actorAvatar: state.currentUser?.avatar || '🧑',
+              type: 'partner_pledge_done',
+              title: 'Partner Completed Challenge Today',
+              message: `${state.username} completed today's target for "${target.title}"! Don't break your joint streak!`,
+              payload: { challengeId: target.id, dateKey: today, dedupKey },
+            }).catch(() => {});
+          }
+
+          if (becameCompleted) {
+            const dedupKey = `challenge_completed_${target.id}`;
+            createNotificationSupabase({
+              recipientId: partnerUserId,
+              actorId: state.currentUser?.id,
+              actorUsername: state.username,
+              actorAvatar: state.currentUser?.avatar || '🧑',
+              type: 'challenge_completed',
+              title: 'Shared Challenge Completed! 🎉',
+              message: `Congratulations! You and ${state.username} completed the "${target.title}" challenge!`,
+              payload: { challengeId: target.id, dedupKey },
+            }).catch(() => {});
+          }
+        }
+      } catch (err: any) {
+        console.error('Failed to log shared challenge day in Supabase:', err);
+        // Rollback UI state to backup
+        setState((prev) => ({
+          ...prev,
+          sharedChallenges: backupChallenges,
+        }));
+        throw err;
+      }
+    },
+    [state.sharedChallenges, state.partnerships, state.partnership, state.currentUser, state.username]
+  );
 
   const markNotificationRead = useCallback((notificationId: string) => {
     markNotificationReadSupabase(notificationId);
@@ -4572,10 +4850,14 @@ export function useAppState() {
 
   const clearNotification = useCallback((notificationId: string) => {
     clearNotificationSupabase(notificationId);
-    setState((prev) => ({
-      ...prev,
-      notifications: (prev.notifications || []).filter((n) => n.id !== notificationId),
-    }));
+    setState((prev) => {
+      const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), notificationId].slice(-500);
+      return {
+        ...prev,
+        notifications: (prev.notifications || []).filter((n) => n.id !== notificationId),
+        deletedEntityIds: updatedDeletedEntityIds,
+      };
+    });
   }, []);
 
   // Multi-user & Seed Competitor League Helper
@@ -4708,6 +4990,7 @@ export function useAppState() {
     logCraving,
     deleteCravingLog,
     logFocusSession,
+    updateFocusLogReflection,
     deleteFocusLog,
     addDecision,
     reflectDecision,
@@ -4762,7 +5045,6 @@ export function useAppState() {
     createSharedChallenge,
     logSharedChallengeHabit,
     deleteSharedChallenge,
-    dismissPartnerNotification,
     markNotificationRead,
     markAllNotificationsRead,
     clearNotification,

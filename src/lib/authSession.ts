@@ -1,6 +1,7 @@
 import { User } from '@supabase/supabase-js';
-import { AppState, DEFAULT_STATE, UserProfile, PlanStep } from '@/types';
+import { AppState, DEFAULT_STATE, UserProfile, PlanStep, Partnership } from '@/types';
 import { generateNumericUID } from './dates';
+import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import {
   fetchUserDataWithStatusFromSupabase,
   setUserDataWatermark,
@@ -272,25 +273,38 @@ export async function hydrateUserSession(
       dbFollowsResult,
     ] = await Promise.all([
       fetchPartnerInvitesSupabase(userId, user.username),
-      fetchPartnershipsSupabase(userId),
+      fetchPartnershipsSupabase(userId, user.username),
       fetchNotificationsSupabase(userId),
       supabase.from('improvement_plans').select('*').eq('creator_id', userId),
       supabase.from('user_plan_follows').select('*').eq('user_id', userId),
     ]);
 
-    state.partnerships = activePartnerships;
-    state.partnership = activePartnerships[0] || null;
+    const tombstoneSet = new Set(state.deletedEntityIds || []);
 
-    if (activePartnerships.length > 0) {
+    const dedupPartnershipsMap = new Map<string, Partnership>();
+    for (const p of activePartnerships) {
+      if (!p || tombstoneSet.has(p.id)) continue;
+      const u1 = (p.user1Username || '').toLowerCase();
+      const u2 = (p.user2Username || '').toLowerCase();
+      const key = [u1, u2].sort().join(':::');
+      if (!dedupPartnershipsMap.has(key)) {
+        dedupPartnershipsMap.set(key, p);
+      }
+    }
+
+    state.partnerships = Array.from(dedupPartnershipsMap.values());
+    state.partnership = state.partnerships[0] || null;
+
+    if (state.partnerships.length > 0) {
       const activePartnerUsernames = new Set(
-        activePartnerships.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])
+        state.partnerships.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])
       );
       const activePartnerUserIds = new Set(
-        activePartnerships.flatMap((p) => [p.user1Id, p.user2Id])
+        state.partnerships.flatMap((p) => [p.user1Id, p.user2Id])
       );
 
       state.partnerInvites = fetchedInvites.filter((inv) => {
-        if (inv.status !== 'pending') return false;
+        if (inv.status !== 'pending' || tombstoneSet.has(inv.id)) return false;
         const otherUserId = inv.fromUserId === userId ? inv.toUserId : inv.fromUserId;
         const otherUsername = (
           inv.fromUsername.toLowerCase() === user.username.toLowerCase() ? inv.toUsername : inv.fromUsername
@@ -303,21 +317,23 @@ export async function hydrateUserSession(
         return !isAlreadyPartner;
       });
 
-      for (const p of activePartnerships) {
+      for (const p of state.partnerships) {
         cleanupPendingInvitesBetweenUsersSupabase(p.user1Id, p.user1Username, p.user2Id, p.user2Username).catch(() => {});
       }
     } else {
-      state.partnerInvites = fetchedInvites;
+      state.partnerInvites = fetchedInvites.filter((inv) => !tombstoneSet.has(inv.id));
     }
 
-    if (activePartnerships.length > 0) {
-      const pIds = activePartnerships.map((p) => p.id);
-      state.sharedChallenges = await fetchSharedChallengesSupabase(pIds);
+    if (state.partnerships.length > 0) {
+      const pIds = state.partnerships.map((p) => p.id);
+      state.sharedChallenges = (await fetchSharedChallengesSupabase(pIds))
+        .filter((c) => !tombstoneSet.has(c.id) && !tombstoneSet.has(c.partnershipId))
+        .map((c) => reconcileSharedChallengeLifecycle(c));
     } else {
       state.sharedChallenges = [];
     }
 
-    state.notifications = fetchedNotifs;
+    state.notifications = fetchedNotifs.filter((n) => !tombstoneSet.has(n.id));
 
     const { data: dbPlans, error: dbPlansErr } = dbPlansResult;
 

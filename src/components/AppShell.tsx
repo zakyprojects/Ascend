@@ -94,7 +94,14 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
     }
   };
 
-  const unreadNotifsCount = (store.state.partnerNotifications || []).filter((n) => !n.read).length;
+  const currentUsername = store.state.username || '';
+  const currentUserId = store.state.currentUser?.id;
+  const pendingIncomingInvitesCount = (store.state.partnerInvites || []).filter(
+    (i) =>
+      i.status === 'pending' &&
+      (i.toUsername.toLowerCase() === currentUsername.toLowerCase() ||
+        (currentUserId && i.toUserId === currentUserId))
+  ).length;
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -110,7 +117,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
     { id: 'recovery', label: 'Recovery', icon: HeartPulse },
     { id: 'prefrontal', label: 'PFC / Focus', icon: BrainCircuit },
     { id: 'plans', label: 'Plans', icon: Compass },
-    { id: 'partner', label: 'Partner', icon: Users, badgeCount: unreadNotifsCount },
+    { id: 'partner', label: 'Partner', icon: Users, badgeCount: pendingIncomingInvitesCount },
     { id: 'neuroplasticity', label: 'Neuro', icon: Brain },
     { id: 'lessons', label: 'Lessons', icon: GraduationCap },
     { id: 'leagues', label: 'Leagues', icon: Trophy },

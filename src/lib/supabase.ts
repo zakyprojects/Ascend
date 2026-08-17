@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, PartnerNotification, UserPlanFollow, AppNotification, PlanReflectionNote } from '@/types';
+import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, UserPlanFollow, AppNotification, PlanReflectionNote } from '@/types';
 import { getHighestUserStreak } from './habitPenalties';
 import { calculateUnifiedStreak } from './streakLogic';
 import { mergeAppState } from './stateMerger';
+import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -129,7 +130,6 @@ export function computeStateDataWeight(state: Partial<AppState> | null | undefin
     sharedChallenges: state.sharedChallenges?.length || 0,
     partnerInvites: state.partnerInvites?.length || 0,
     partnerships: state.partnerships?.length || 0,
-    partnerNotifications: state.partnerNotifications?.length || 0,
     notifications: state.notifications?.length || 0,
   };
 
@@ -212,9 +212,16 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
     return null;
   }
 
-  // Client state is the authoritative mutation source for the active session.
-  // Data loss protection is enforced via the watermark circuit-breaker below.
-  const finalState: AppState = state;
+  // Write-time merge: Reconcile server state with incoming state using tombstone-aware merger
+  let finalState: AppState = state;
+  try {
+    const existingRes = await fetchUserDataWithStatusFromSupabase(userId);
+    if (existingRes.exists && existingRes.state) {
+      finalState = mergeAppState(existingRes.state, state);
+    }
+  } catch (e) {
+    console.warn('[SAVE MERGE] Pre-fetch merge non-fatal exception, persisting local state:', e);
+  }
 
   // SAFETY CHECK 2: Comprehensive Data-Loss Protection Safeguard
   const incomingWeight = computeStateDataWeight(finalState);
@@ -993,9 +1000,40 @@ export async function sendPartnerInviteSupabase(invite: PartnerInvite) {
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const inviteId = uuidPattern.test(invite.id) ? invite.id : crypto.randomUUID();
 
+  // Dynamically resolve sender UUID from active Supabase session or profile
+  const { data: authData } = await supabase.auth.getUser();
+  const authUserId = authData?.user?.id;
+  const fromUserId = authUserId || (uuidPattern.test(invite.fromUserId) ? invite.fromUserId : null);
+
+  if (!fromUserId) {
+    throw new Error('Sender user ID could not be resolved for invite persistence.');
+  }
+
+  // 1. Try atomic SECURITY DEFINER RPC first
+  const { data: rpcData, error: rpcErr } = await supabase.rpc('send_partner_invite_atomic', {
+    p_invite_id: inviteId,
+    p_from_user_id: fromUserId,
+    p_from_username: invite.fromUsername,
+    p_from_avatar: invite.fromAvatar || '🧑',
+    p_to_user_id: invite.toUserId,
+    p_to_username: invite.toUsername,
+  });
+
+  if (!rpcErr && rpcData) {
+    if (rpcData.success === false) {
+      throw new Error(rpcData.error || 'Failed to send invite.');
+    }
+    return;
+  }
+
+  if (rpcErr) {
+    console.warn('send_partner_invite_atomic RPC fallback:', rpcErr.message);
+  }
+
+  // 2. Direct table INSERT fallback
   const payload: Record<string, any> = {
     id: inviteId,
-    from_user_id: invite.fromUserId,
+    from_user_id: fromUserId,
     from_username: invite.fromUsername,
     from_avatar: invite.fromAvatar || '🧑',
     to_user_id: invite.toUserId,
@@ -1093,32 +1131,54 @@ export async function acceptPartnerInviteAtomicSupabase(
       p_user2_username: user2Username,
     });
 
-    if (error) {
-      console.warn('RPC accept_partner_invite_atomic fallback check:', error.message);
-      const { data: invCheck } = await supabase.from('partner_invites').select('id, status').eq('id', inviteId).maybeSingle();
-      if (!invCheck || invCheck.status !== 'pending') {
-        return { success: false, error: 'This invite is no longer available' };
+    if (!error) {
+      if (data && data.success === false) {
+        return { success: false, error: data.error || 'This invite is no longer available' };
       }
-      await savePartnershipSupabase({
-        id: crypto.randomUUID(),
-        user1Id,
-        user1Username,
-        user2Id,
-        user2Username,
-        pairedAt: new Date().toISOString(),
-      });
+
+      // Always ensure all pending invites between these 2 users are deleted
       await cleanupPendingInvitesBetweenUsersSupabase(user1Id, user1Username, user2Id, user2Username);
-      return { success: true };
+
+      // Guarantee user1_allow_stats and user2_allow_stats are set to true in Supabase
+      if (data?.partnership_id) {
+        await supabase
+          .from('partnerships')
+          .update({
+            user1_allow_stats: true,
+            user2_allow_stats: true,
+          })
+          .eq('id', data.partnership_id);
+      }
+
+      return { success: true, partnershipId: data?.partnership_id };
     }
 
-    if (data && data.success === false) {
-      return { success: false, error: data.error || 'This invite is no longer available' };
+    // Fallback: If RPC error occurred, check if invite exists and is pending in database
+    console.warn('RPC accept_partner_invite_atomic fallback check:', error.message);
+    const { data: invCheck } = await supabase
+      .from('partner_invites')
+      .select('id, status')
+      .eq('id', inviteId)
+      .maybeSingle();
+
+    if (!invCheck || invCheck.status !== 'pending') {
+      return { success: false, error: 'This invite is no longer available' };
     }
 
-    // Always ensure all pending invites between these 2 users are deleted
+    const partnershipId = crypto.randomUUID();
+    await savePartnershipSupabase({
+      id: partnershipId,
+      user1Id,
+      user1Username,
+      user2Id,
+      user2Username,
+      user1AllowStats: true,
+      user2AllowStats: true,
+      pairedAt: new Date().toISOString(),
+    });
+    await supabase.from('partner_invites').delete().eq('id', inviteId);
     await cleanupPendingInvitesBetweenUsersSupabase(user1Id, user1Username, user2Id, user2Username);
-
-    return { success: true, partnershipId: data?.partnership_id };
+    return { success: true, partnershipId };
   } catch (e: any) {
     console.error('Error in acceptPartnerInviteAtomicSupabase:', e);
     return { success: false, error: e.message || 'This invite is no longer available' };
@@ -1148,8 +1208,8 @@ export async function savePartnershipSupabase(partnership: Partnership) {
       user1_username: partnership.user1Username,
       user2_id: partnership.user2Id,
       user2_username: partnership.user2Username,
-      user1_allow_stats: partnership.user1AllowStats ?? false,
-      user2_allow_stats: partnership.user2AllowStats ?? false,
+      user1_allow_stats: partnership.user1AllowStats ?? true,
+      user2_allow_stats: partnership.user2AllowStats ?? true,
       paired_at: partnership.pairedAt,
     });
     if (pErr) {
@@ -1216,13 +1276,24 @@ export async function deletePartnerInviteSupabase(inviteId: string) {
   }
 }
 
-export async function fetchPartnershipSupabase(userId: string): Promise<Partnership | null> {
-  if (!isSupabaseConfigured) return null;
+export async function fetchPartnershipSupabase(userId: string, username?: string): Promise<Partnership | null> {
+  if (!isSupabaseConfigured || (!userId && !username)) return null;
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    let filterString = '';
+    if (isUuid) {
+      filterString = `user1_id.eq.${userId},user2_id.eq.${userId}`;
+    }
+    if (username) {
+      const userFilter = `user1_username.ilike.${username},user2_username.ilike.${username}`;
+      filterString = filterString ? `${filterString},${userFilter}` : userFilter;
+    }
+    if (!filterString) return null;
+
     const { data, error } = await supabase
       .from('partnerships')
       .select('*')
-      .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
+      .or(filterString)
       .maybeSingle();
 
     if (error || !data) return null;
@@ -1233,8 +1304,8 @@ export async function fetchPartnershipSupabase(userId: string): Promise<Partners
       user1Username: data.user1_username,
       user2Id: data.user2_id,
       user2Username: data.user2_username,
-      user1AllowStats: data.user1_allow_stats ?? false,
-      user2AllowStats: data.user2_allow_stats ?? false,
+      user1AllowStats: data.user1_allow_stats ?? true,
+      user2AllowStats: data.user2_allow_stats ?? true,
       pairedAt: data.paired_at,
     };
   } catch (e) {
@@ -1243,26 +1314,67 @@ export async function fetchPartnershipSupabase(userId: string): Promise<Partners
   }
 }
 
-export async function fetchPartnershipsSupabase(userId: string): Promise<Partnership[]> {
-  if (!isSupabaseConfigured || !userId) return [];
+export async function fetchPartnershipsSupabase(userId: string, username?: string): Promise<Partnership[]> {
+  if (!isSupabaseConfigured || (!userId && !username)) return [];
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    let filterString = '';
+    if (isUuid) {
+      filterString = `user1_id.eq.${userId},user2_id.eq.${userId}`;
+    }
+    if (username) {
+      const userFilter = `user1_username.ilike.${username},user2_username.ilike.${username}`;
+      filterString = filterString ? `${filterString},${userFilter}` : userFilter;
+    }
+    if (!filterString) return [];
+
     const { data, error } = await supabase
       .from('partnerships')
       .select('*')
-      .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
+      .or(filterString);
 
     if (error || !data) return [];
 
-    return data.map((row) => ({
+    const mapped = data.map((row) => ({
       id: row.id,
       user1Id: row.user1_id,
       user1Username: row.from_username || row.user1_username,
       user2Id: row.user2_id,
       user2Username: row.user2_username,
-      user1AllowStats: row.user1_allow_stats ?? false,
-      user2AllowStats: row.user2_allow_stats ?? false,
+      user1AllowStats: row.user1_allow_stats ?? true,
+      user2AllowStats: row.user2_allow_stats ?? true,
       pairedAt: row.paired_at,
     }));
+
+    // Reconcile user IDs if they were stored with old/placeholder IDs
+    for (const p of mapped) {
+      if (userId && isUuid) {
+        if (username && p.user1Username.toLowerCase() === username.toLowerCase() && p.user1Id !== userId) {
+          console.info(`[Partnership Reconciliation] Reconciling partnership ${p.id}: updating user1_id from '${p.user1Id}' to canonical UUID '${userId}' for user '@${username}'.`);
+          p.user1Id = userId;
+          void supabase.from('partnerships').update({ user1_id: userId }).eq('id', p.id);
+        } else if (username && p.user2Username.toLowerCase() === username.toLowerCase() && p.user2Id !== userId) {
+          console.info(`[Partnership Reconciliation] Reconciling partnership ${p.id}: updating user2_id from '${p.user2Id}' to canonical UUID '${userId}' for user '@${username}'.`);
+          p.user2Id = userId;
+          void supabase.from('partnerships').update({ user2_id: userId }).eq('id', p.id);
+        }
+      }
+    }
+
+    // Sort deterministically by id before deduplication so both partners always select the exact same record
+    mapped.sort((a, b) => a.id.localeCompare(b.id));
+
+    // Deduplicate by partner user pair & username
+    const dedupMap = new Map<string, Partnership>();
+    for (const p of mapped) {
+      const u1 = (p.user1Username || '').toLowerCase();
+      const u2 = (p.user2Username || '').toLowerCase();
+      const key = [u1, u2].sort().join(':::');
+      if (!dedupMap.has(key)) {
+        dedupMap.set(key, p);
+      }
+    }
+    return Array.from(dedupMap.values());
   } catch (e) {
     console.error('Error fetching partnerships from Supabase:', e);
     return [];
@@ -1277,12 +1389,10 @@ export async function deletePartnershipSupabase(partnershipId: string) {
 
     const { error } = await supabase.from('partnerships').delete().eq('id', partnershipId);
     if (error) {
-      console.error('Error deleting partnership in Supabase:', error);
-      throw new Error(error.message || 'Failed to delete partnership in database');
+      console.warn('Supabase partnership delete warning:', error.message);
     }
   } catch (e) {
-    console.error('deletePartnershipSupabase failed:', e);
-    throw e;
+    console.warn('deletePartnershipSupabase warning:', e);
   }
 }
 
@@ -1292,6 +1402,9 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const challengeId = uuidPattern.test(challenge.id) ? challenge.id : crypto.randomUUID();
 
+    const u1Scalar = challenge.user1DoneDate || (challenge.user1DoneDates && challenge.user1DoneDates.length ? challenge.user1DoneDates[challenge.user1DoneDates.length - 1] : null);
+    const u2Scalar = challenge.user2DoneDate || (challenge.user2DoneDates && challenge.user2DoneDates.length ? challenge.user2DoneDates[challenge.user2DoneDates.length - 1] : null);
+
     const payload: Record<string, any> = {
       id: challengeId,
       partnership_id: challenge.partnershipId,
@@ -1299,21 +1412,34 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
       target_habit_name: challenge.targetHabitName,
       duration_days: challenge.durationDays,
       joint_streak: challenge.jointStreak,
+      total_joint_days_completed: challenge.totalJointDaysCompleted ?? 0,
       user1_category: challenge.user1Category || 'habit',
       user1_target: challenge.user1Target || challenge.targetHabitName,
       user2_category: challenge.user2Category || 'habit',
       user2_target: challenge.user2Target || challenge.targetHabitName,
-      user1_done_date: challenge.user1DoneDate || null,
-      user2_done_date: challenge.user2DoneDate || null,
+      user1_done_date: u1Scalar,
+      user2_done_date: u2Scalar,
+      user1_done_dates: challenge.user1DoneDates || [],
+      user2_done_dates: challenge.user2DoneDates || [],
       status: challenge.status,
     };
 
-    const { error } = await supabase.from('shared_challenges').upsert(payload);
+    let { error } = await supabase.from('shared_challenges').upsert(payload);
+    if (error && (error.code === 'PGRST204' || error.message?.includes('user1_done_dates'))) {
+      // Fallback: If PostgREST schema cache does not have user1_done_dates/user2_done_dates columns yet, save without them
+      delete payload.user1_done_dates;
+      delete payload.user2_done_dates;
+      const fallbackRes = await supabase.from('shared_challenges').upsert(payload);
+      error = fallbackRes.error;
+    }
+
     if (error) {
-      console.warn('Supabase shared challenge sync warning:', error.message);
+      console.error('Error saving shared challenge to Supabase:', error);
+      throw new Error(error.message || 'Failed to save joint pact in database.');
     }
   } catch (e) {
-    console.warn('Supabase shared challenge sync skipped:', e);
+    console.error('saveSharedChallengeSupabase failed:', e);
+    throw e;
   }
 }
 
@@ -1330,22 +1456,42 @@ export async function fetchSharedChallengesSupabase(partnershipIds: string | str
 
     if (error || !data) return [];
 
-    return data.map((row) => ({
-      id: row.id,
-      partnershipId: row.partnership_id,
-      title: row.title,
-      targetHabitName: row.target_habit_name,
-      durationDays: row.duration_days,
-      jointStreak: row.joint_streak,
-      user1Category: (row.user1_category as any) || 'habit',
-      user1Target: row.user1_target || row.target_habit_name,
-      user2Category: (row.user2_category as any) || 'habit',
-      user2Target: row.user2_target || row.target_habit_name,
-      user1DoneDate: row.user1_done_date || undefined,
-      user2DoneDate: row.user2_done_date || undefined,
-      status: row.status as 'active' | 'completed',
-      createdAt: row.created_at,
-    }));
+    const mapped = data
+      .map((row) => ({
+        id: row.id,
+        partnershipId: row.partnership_id,
+        title: row.title,
+        targetHabitName: row.target_habit_name,
+        durationDays: row.duration_days,
+        jointStreak: row.joint_streak,
+        totalJointDaysCompleted: row.total_joint_days_completed ?? 0,
+        user1Category: (row.user1_category as any) || 'habit',
+        user1Target: row.user1_target || row.target_habit_name,
+        user2Category: (row.user2_category as any) || 'habit',
+        user2Target: row.user2_target || row.target_habit_name,
+        user1DoneDate: row.user1_done_date || undefined,
+        user2DoneDate: row.user2_done_date || undefined,
+        user1DoneDates: (Array.isArray(row.user1_done_dates) && row.user1_done_dates.length)
+          ? row.user1_done_dates
+          : (row.user1_done_date ? [row.user1_done_date] : []),
+        user2DoneDates: (Array.isArray(row.user2_done_dates) && row.user2_done_dates.length)
+          ? row.user2_done_dates
+          : (row.user2_done_date ? [row.user2_done_date] : []),
+        status: row.status as 'active' | 'completed' | 'expired',
+        createdAt: row.created_at,
+      }))
+      .map((c) => reconcileSharedChallengeLifecycle(c));
+
+    // Deduplicate active challenges by (partnershipId + normalized title)
+    const chalMap = new Map<string, SharedChallenge>();
+    for (const c of mapped) {
+      const normTitle = (c.title || '').trim().toLowerCase();
+      const activeKey = c.status === 'active' ? `ACTIVE:::${c.partnershipId}:::${normTitle}` : c.id;
+      if (!chalMap.has(activeKey)) {
+        chalMap.set(activeKey, c);
+      }
+    }
+    return Array.from(chalMap.values());
   } catch (e) {
     console.error('Error fetching shared challenges from Supabase:', e);
     return [];
@@ -1401,6 +1547,39 @@ export async function fetchNotificationsSupabase(recipientId: string): Promise<A
   }
 }
 
+export async function checkRecentPartnerNudgeSent(
+  recipientId: string,
+  challengeId: string,
+  dateKey: string
+): Promise<boolean> {
+  if (!isSupabaseConfigured || !recipientId || !challengeId) return false;
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('id, created_at, payload')
+      .eq('recipient_id', recipientId)
+      .eq('type', 'partner_nudge')
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (error || !data || data.length === 0) return false;
+
+    return data.some((n: any) => {
+      const p = n.payload || {};
+      const isExplicitNudge = p.dedupKey ? String(p.dedupKey).startsWith('partner_nudge_') : true;
+      if (isExplicitNudge && p.challengeId === challengeId && (p.date === dateKey || p.dedupKey === `partner_nudge_${challengeId}_${dateKey}`)) {
+        // Also check if within 2 hour window
+        const createdMs = new Date(n.created_at).getTime();
+        return (Date.now() - createdMs) < 2 * 60 * 60 * 1000;
+      }
+      return false;
+    });
+  } catch (e) {
+    console.warn('checkRecentPartnerNudgeSent check failed:', e);
+    return false;
+  }
+}
+
 export async function createNotificationSupabase(
   notif: Omit<AppNotification, 'id' | 'createdAt' | 'read'>
 ): Promise<AppNotification | null> {
@@ -1448,7 +1627,7 @@ export async function createNotificationSupabase(
       .maybeSingle();
 
     if (recipientProfile) {
-      if (['partner_nudge', 'challenge_completed'].includes(notif.type) && recipientProfile.notif_partner_activity === false) {
+      if (['partner_nudge', 'partner_pledge_done', 'challenge_completed', 'partner_missed_habit'].includes(notif.type) && recipientProfile.notif_partner_activity === false) {
         console.info(`[createNotificationSupabase] Notification type '${notif.type}' suppressed for user ${notif.recipientId} (notif_partner_activity is false)`);
         return null;
       }
