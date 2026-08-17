@@ -965,13 +965,12 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Target Unit <span className="text-slate-500 font-normal text-[11px]">— Locked to your tracker history</span>
+                  Target Unit <span className="text-rose-400">*</span>
                 </label>
                 <select
-                  disabled
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
-                  className="input w-full bg-bg-800 opacity-60 cursor-not-allowed"
+                  className="input w-full bg-bg-800"
                 >
                   <option value="sessions">Sessions (workouts)</option>
                   <option value="mins">Minutes (mins)</option>

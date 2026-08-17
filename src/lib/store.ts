@@ -1667,7 +1667,10 @@ export function useAppState() {
     const date = todayKey();
     setState((prev) => {
       const normalizedUnit = (unit || 'mins').trim().toLowerCase();
-      const effectiveAmount = typeof amount === 'number' && !isNaN(amount) ? amount : durationMinutes;
+      const safeDurationMinutes = Math.max(0, Number(durationMinutes) || 0);
+      const safeAmount = typeof amount === 'number' && !isNaN(amount) ? Math.max(0, Number(amount)) : undefined;
+
+      const effectiveAmount = safeAmount !== undefined ? safeAmount : safeDurationMinutes;
 
       let multiplier = 1;
       if (normalizedUnit === 'sets' || normalizedUnit === 'km') {
@@ -1689,7 +1692,7 @@ export function useAppState() {
       const maxAllowed = Math.max(0, 60 - pointsEarnedToday);
       const pointsToAward = Math.min(calculatedPoints, maxAllowed);
 
-      const savedDuration = normalizedUnit === 'mins' ? (typeof amount === 'number' && !isNaN(amount) && amount > 0 ? amount : durationMinutes) : 0;
+      const savedDuration = normalizedUnit === 'mins' ? (safeAmount !== undefined && safeAmount > 0 ? safeAmount : safeDurationMinutes) : 0;
 
       const workout: WorkoutLog = {
         id: uid(),
@@ -1697,7 +1700,7 @@ export function useAppState() {
         type: type.trim() || 'General Workout',
         durationMinutes: savedDuration,
         pointsAwarded: pointsToAward,
-        amount: typeof amount === 'number' && !isNaN(amount) ? amount : (normalizedUnit === 'mins' ? durationMinutes : undefined),
+        amount: safeAmount !== undefined ? safeAmount : (normalizedUnit === 'mins' ? safeDurationMinutes : undefined),
         unit: normalizedUnit,
         createdAt: new Date().toISOString(),
       };
@@ -1728,14 +1731,68 @@ export function useAppState() {
       (prev) => {
         const target = prev.workouts.find((w) => w.id === workoutId);
         if (!target) return prev;
-        let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-        if (target.pointsAwarded > 0) {
-          pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Workout deleted: ${target.type}`, 'exercise');
+
+        const targetDate = target.date;
+        const remainingWorkouts = prev.workouts.filter((w) => w.id !== workoutId);
+
+        // Recalculate points awarded for all remaining workouts on the target date in chronological order
+        const dayWorkouts = remainingWorkouts.filter((w) => w.date === targetDate);
+        const chronDayWorkouts = [...dayWorkouts].sort(
+          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+
+        let dailyCapRemaining = 60;
+        const recalculatedMap = new Map<string, number>();
+
+        for (const w of chronDayWorkouts) {
+          const u = (w.unit || 'mins').trim().toLowerCase();
+          let mult = 1;
+          if (u === 'sets' || u === 'km') mult = 10;
+          else if (u === 'sessions') mult = 30;
+          else mult = 1;
+
+          const effAmt = typeof w.amount === 'number' && !isNaN(w.amount)
+            ? Math.max(0, w.amount)
+            : Math.max(0, w.durationMinutes || 0);
+
+          const rawPts = Math.round(effAmt * mult);
+          const awarded = Math.min(rawPts, dailyCapRemaining);
+          recalculatedMap.set(w.id, awarded);
+          dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
         }
+
+        const oldDatePoints = prev.workouts
+          .filter((w) => w.date === targetDate)
+          .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
+
+        const newDatePoints = chronDayWorkouts.reduce(
+          (sum, w) => sum + (recalculatedMap.get(w.id) ?? 0),
+          0
+        );
+
+        const netPointDelta = newDatePoints - oldDatePoints;
+
+        let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        if (netPointDelta !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            netPointDelta,
+            `Workout deleted: ${target.type}`,
+            'exercise'
+          );
+        }
+
+        const updatedWorkouts = remainingWorkouts.map((w) => {
+          if (w.date === targetDate && recalculatedMap.has(w.id)) {
+            return { ...w, pointsAwarded: recalculatedMap.get(w.id)! };
+          }
+          return w;
+        });
+
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), workoutId].slice(-500);
         return {
           ...prev,
-          workouts: prev.workouts.filter((w) => w.id !== workoutId),
+          workouts: updatedWorkouts,
           deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
