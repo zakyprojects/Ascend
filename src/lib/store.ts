@@ -1663,7 +1663,7 @@ export function useAppState() {
   }, [state.currentUser]);
 
   // --- MODULE 1: EXERCISE TRACKER ACTIONS ---
-  const logWorkout = useCallback((type: string, durationMinutes: number) => {
+  const logWorkout = useCallback((type: string, durationMinutes: number, amount?: number, unit?: string) => {
     const date = todayKey();
     setState((prev) => {
       const pointsEarnedToday = prev.workouts
@@ -1679,12 +1679,22 @@ export function useAppState() {
         type: type.trim() || 'General Workout',
         durationMinutes,
         pointsAwarded: pointsToAward,
+        amount: typeof amount === 'number' && !isNaN(amount) ? amount : undefined,
+        unit: unit?.trim() || undefined,
         createdAt: new Date().toISOString(),
       };
 
       let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
       if (pointsToAward > 0) {
-        pointsUpdate = addPointsInternal(prev, pointsToAward, `Workout logged: ${workout.type} (${durationMinutes}m)`, 'exercise');
+        const metricSuffix = workout.amount && workout.unit && workout.unit !== 'mins'
+          ? `, ${workout.amount} ${workout.unit}`
+          : '';
+        pointsUpdate = addPointsInternal(
+          prev,
+          pointsToAward,
+          `Workout logged: ${workout.type} (${durationMinutes}m${metricSuffix})`,
+          'exercise'
+        );
       }
 
       return {

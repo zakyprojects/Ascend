@@ -82,14 +82,48 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       }
 
       if (item.linkedModule === 'exercise') {
-        const weekWorkouts = store.state.workouts.filter((w) => dateStrings.includes(w.date));
-        if (unit.toLowerCase().includes('min')) {
-          const totalMins = weekWorkouts.reduce((acc, w) => acc + (w.durationMinutes || 0), 0);
-          return { current: totalMins, target, unit: 'mins', percent: Math.min(100, Math.round((totalMins / target) * 100)) };
-        } else {
-          const sessionCount = weekWorkouts.length;
-          return { current: sessionCount, target, unit: 'sessions', percent: Math.min(100, Math.round((sessionCount / target) * 100)) };
+        let weekWorkouts = store.state.workouts.filter((w) => dateStrings.includes(w.date));
+
+        // If the Goal specified a 'Target Workout Name', filter the exercise logs by matching workoutType (case-insensitive, trimmed)
+        const targetWorkoutName = (item.linkedItemId || '').trim().toLowerCase();
+        if (targetWorkoutName) {
+          weekWorkouts = weekWorkouts.filter(
+            (w) => (w.type || '').trim().toLowerCase() === targetWorkoutName
+          );
         }
+
+        const targetUnit = (item.unit || 'sessions').trim().toLowerCase();
+
+        let progress = 0;
+        if (targetUnit === 'sessions' || targetUnit === 'workouts' || targetUnit === 'session' || targetUnit === 'times') {
+          progress = weekWorkouts.length;
+        } else if (targetUnit === 'mins' || targetUnit === 'minutes' || targetUnit === 'min') {
+          progress = weekWorkouts.reduce((acc, w) => acc + (w.durationMinutes || 0), 0);
+        } else if (targetUnit === 'reps' || targetUnit === 'sets' || targetUnit === 'km') {
+          progress = weekWorkouts
+            .filter((w) => (w.unit || '').trim().toLowerCase() === targetUnit)
+            .reduce((acc, w) => acc + (typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0), 0);
+        } else {
+          // Fallback matching custom unit if present, or length
+          const matchingUnitLogs = weekWorkouts.filter(
+            (w) => (w.unit || '').trim().toLowerCase() === targetUnit
+          );
+          if (matchingUnitLogs.length > 0) {
+            progress = matchingUnitLogs.reduce(
+              (acc, w) => acc + (typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0),
+              0
+            );
+          } else {
+            progress = weekWorkouts.length;
+          }
+        }
+
+        return {
+          current: progress,
+          target,
+          unit: item.unit || 'sessions',
+          percent: Math.min(100, Math.round((progress / target) * 100)),
+        };
       }
 
       if (item.linkedModule === 'reading') {
@@ -871,6 +905,39 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           </div>
 
           {/* ITEM SELECTOR DEPENDING ON LINKED MODULE */}
+          {linkedModule === 'exercise' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Target Workout Name <span className="text-slate-500 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={linkedItemId}
+                  onChange={(e) => setLinkedItemId(e.target.value)}
+                  placeholder="e.g. Pushups, Running (leave blank for all exercise)"
+                  className="input w-full bg-bg-800"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Target Unit <span className="text-rose-400">*</span>
+                </label>
+                <select
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  className="input w-full bg-bg-800"
+                >
+                  <option value="sessions">Sessions (workouts)</option>
+                  <option value="mins">Minutes (mins)</option>
+                  <option value="reps">Reps</option>
+                  <option value="sets">Sets</option>
+                  <option value="km">Kilometers (km)</option>
+                </select>
+              </div>
+            </div>
+          )}
+
           {linkedModule === 'habit' && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -932,7 +999,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           )}
 
           {/* TARGET VALUE & UNIT INPUTS */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid ${linkedModule === 'exercise' ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
                 Target Goal Amount
@@ -946,18 +1013,20 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Unit Label
-              </label>
-              <input
-                type="text"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                placeholder="e.g. sessions, mins, pages, posts"
-                className="input w-full"
-              />
-            </div>
+            {linkedModule !== 'exercise' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Unit Label
+                </label>
+                <input
+                  type="text"
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  placeholder="e.g. sessions, mins, pages, posts"
+                  className="input w-full"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-3 border-t border-white/10">

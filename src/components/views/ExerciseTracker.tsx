@@ -26,6 +26,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   const [deleteModalWorkout, setDeleteModalWorkout] = useState<WorkoutLog | null>(null);
   const [workoutType, setWorkoutType] = useState('Running');
   const [customType, setCustomType] = useState('');
+  const [metricType, setMetricType] = useState<string>('mins');
+  const [amount, setAmount] = useState<number>(30);
   const [duration, setDuration] = useState(30);
 
   const exerciseGoal = store.state.exerciseGoal;
@@ -74,11 +76,15 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
     const finalType = workoutType === 'Other' ? customType : workoutType;
     if (!finalType.trim() || duration <= 0) return;
 
+    const finalAmount = metricType === 'mins' ? Number(duration) : (Number(amount) > 0 ? Number(amount) : Number(duration));
+
     await executeLog(async () => {
-      await store.logWorkout(finalType, Number(duration));
+      await store.logWorkout(finalType, Number(duration), finalAmount, metricType);
       setLogModalOpen(false);
       setCustomType('');
       setDuration(30);
+      setAmount(30);
+      setMetricType('mins');
     });
   };
 
@@ -216,6 +222,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                     <h3 className="text-sm font-semibold text-slate-200">{w.type}</h3>
                     <p className="text-xs text-slate-500">
                       {formatDateLong(w.date)} • <span className="text-slate-400">{w.durationMinutes} mins</span>
+                      {w.amount !== undefined && w.unit && w.unit !== 'mins' ? (
+                        <> • <span className="text-emerald-400 font-medium">{w.amount} {w.unit}</span></>
+                      ) : null}
                     </p>
                   </div>
                 </div>
@@ -266,15 +275,68 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             )}
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Metric Type</label>
+              <select
+                value={metricType}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setMetricType(val);
+                  if (val === 'mins') setAmount(duration);
+                  else if (val === 'reps') setAmount(50);
+                  else if (val === 'sets') setAmount(5);
+                  else if (val === 'km') setAmount(5);
+                }}
+                className="input w-full"
+              >
+                <option value="mins">Minutes (mins)</option>
+                <option value="reps">Reps (repetitions)</option>
+                <option value="sets">Sets</option>
+                <option value="km">Distance (km)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">
+                Amount ({metricType})
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="100000"
+                value={amount}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setAmount(val);
+                  if (metricType === 'mins') {
+                    setDuration(val);
+                  }
+                }}
+                placeholder={metricType === 'reps' ? 'e.g. 100' : metricType === 'km' ? 'e.g. 5' : 'Amount'}
+                className="input w-full"
+                required
+              />
+            </div>
+          </div>
+
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Duration (Minutes)</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Duration (Minutes) <span className="text-slate-500 font-normal text-[11px]">— Drives points (1 pt/min)</span>
+            </label>
             <input
               type="number"
               min="1"
               max="300"
               value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              className="input"
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setDuration(val);
+                if (metricType === 'mins') {
+                  setAmount(val);
+                }
+              }}
+              className="input w-full"
               required
             />
           </div>
