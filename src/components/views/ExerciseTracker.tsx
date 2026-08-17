@@ -275,7 +275,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {metricType === 'mins' ? (
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">Metric Type</label>
               <select
@@ -296,33 +296,53 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                 <option value="km">Distance (km)</option>
               </select>
             </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Metric Type</label>
+                <select
+                  value={metricType}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setMetricType(val);
+                    if (val === 'mins') setAmount(duration);
+                    else if (val === 'reps') setAmount(50);
+                    else if (val === 'sets') setAmount(5);
+                    else if (val === 'km') setAmount(5);
+                  }}
+                  className="input w-full"
+                >
+                  <option value="mins">Minutes (mins)</option>
+                  <option value="reps">Reps (repetitions)</option>
+                  <option value="sets">Sets</option>
+                  <option value="km">Distance (km)</option>
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">
-                Amount ({metricType})
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="100000"
-                value={amount}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setAmount(val);
-                  if (metricType === 'mins') {
-                    setDuration(val);
-                  }
-                }}
-                placeholder={metricType === 'reps' ? 'e.g. 100' : metricType === 'km' ? 'e.g. 5' : 'Amount'}
-                className="input w-full"
-                required
-              />
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">
+                  Amount ({metricType})
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100000"
+                  value={amount}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setAmount(val);
+                  }}
+                  placeholder={metricType === 'reps' ? 'e.g. 100' : metricType === 'km' ? 'e.g. 5' : 'Amount'}
+                  className="input w-full"
+                  required
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1">
-              Duration (Minutes) <span className="text-slate-500 font-normal text-[11px]">— Drives points (1 pt/min)</span>
+              Duration (Minutes) {metricType !== 'mins' && <span className="text-slate-500 font-normal text-[11px]">— Drives points (1 pt/min)</span>}
             </label>
             <input
               type="number"

@@ -35,6 +35,17 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
   const weeklyGoals = store.state.weeklyGoals;
 
+  // Available unique workout types from history or defaults
+  const availableWorkoutTypes = useMemo(() => {
+    const fromHistory = (store.state.workouts || [])
+      .map((w) => (w.type || '').trim())
+      .filter((t) => Boolean(t));
+    const unique = Array.from(new Set(fromHistory));
+    const fallbacks = ['Running', 'Cycling', 'Pushups', 'Strength Training', 'Walking', 'Swimming'];
+    const merged = Array.from(new Set([...unique, ...fallbacks]));
+    return merged;
+  }, [store.state.workouts]);
+
   // Active Goal Document
   const activeGoalDoc = useMemo(() => {
     return (
@@ -911,13 +922,18 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Target Workout Name <span className="text-slate-500 font-normal">(Optional)</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   value={linkedItemId}
                   onChange={(e) => setLinkedItemId(e.target.value)}
-                  placeholder="e.g. Pushups, Running (leave blank for all exercise)"
                   className="input w-full bg-bg-800"
-                />
+                >
+                  <option value="">All Exercises</option>
+                  {availableWorkoutTypes.map((workoutName) => (
+                    <option key={workoutName} value={workoutName}>
+                      {workoutName}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
