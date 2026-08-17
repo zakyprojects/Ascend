@@ -18,6 +18,7 @@ import {
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { useToast } from '@/components/ui/Toast';
 import {
   weekKey,
   getWeekDates,
@@ -28,6 +29,7 @@ import {
 import { WeeklyGoalItem, WeeklyGoalPriority, WeeklyGoalLinkedModule, WeeklyGoalReflection } from '@/types';
 
 export function WeeklyGoalsView({ store }: { store: AppStore }) {
+  const { showErrorToast } = useToast();
   const currentWeekKey = weekKey();
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(currentWeekKey);
 
@@ -235,6 +237,21 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
   const handleSaveGoal = () => {
     if (!title.trim()) return;
+
+    if (linkedModule === 'skill' && !linkedItemId) {
+      showErrorToast('Skill Required', 'Please select a specific skill to link this goal.');
+      return;
+    }
+
+    if (linkedModule === 'habit' && !linkedItemId) {
+      showErrorToast('Habit Required', 'Please select a specific habit to link this goal.');
+      return;
+    }
+
+    if (linkedModule === 'reading' && !linkedItemId) {
+      showErrorToast('Book Required', 'Please select a specific book to link this goal.');
+      return;
+    }
 
     const payload = {
       title: title.trim(),
@@ -835,6 +852,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 onChange={(e) => {
                   const mod = e.target.value as WeeklyGoalLinkedModule;
                   setLinkedModule(mod);
+                  setLinkedItemId('');
                   if (mod === 'exercise') setUnit('sessions');
                   else if (mod === 'reading') setUnit('pages');
                   else if (mod === 'skill') setUnit('mins');
@@ -856,14 +874,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {linkedModule === 'habit' && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Select Specific Habit
+                Select Habit <span className="text-rose-400">*</span>
               </label>
               <select
                 value={linkedItemId}
                 onChange={(e) => setLinkedItemId(e.target.value)}
                 className="input w-full bg-bg-800"
               >
-                <option value="">Select a Habit...</option>
+                <option value="" disabled>Select a specific habit...</option>
                 {store.state.habits.map((h) => (
                   <option key={h.id} value={h.id}>
                     {h.name}
@@ -876,14 +894,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {linkedModule === 'reading' && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Select Book (Optional)
+                Select Book <span className="text-rose-400">*</span>
               </label>
               <select
                 value={linkedItemId}
                 onChange={(e) => setLinkedItemId(e.target.value)}
                 className="input w-full bg-bg-800"
               >
-                <option value="">All Reading</option>
+                <option value="" disabled>Select a specific book...</option>
                 {store.state.books.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.title}
@@ -896,14 +914,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {linkedModule === 'skill' && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Select Skill (Optional)
+                Select Skill <span className="text-rose-400">*</span>
               </label>
               <select
                 value={linkedItemId}
                 onChange={(e) => setLinkedItemId(e.target.value)}
                 className="input w-full bg-bg-800"
               >
-                <option value="">All Skill Practice</option>
+                <option value="" disabled>Select a specific skill...</option>
                 {store.state.skills.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
