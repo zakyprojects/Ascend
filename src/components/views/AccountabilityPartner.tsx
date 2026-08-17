@@ -589,11 +589,15 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     if (!activePartnership || matrixTimeline.length === 0) return [];
 
     return matrixTimeline.map((day) => {
-      // Filter pacts that were created on or before this day
+      // Filter pacts that were active on this day (between creation date and creation date + durationDays - 1)
       const activePactsOnDay = isolatedChallenges.filter((c) => {
         const pDate = parseDate(c.createdAt);
         const pKey = pDate ? todayKey(pDate) : (c.createdAt ? c.createdAt.slice(0, 10) : '2000-01-01');
-        return pKey <= day.dateKey;
+        const [sY, sM, sD] = pKey.split('-').map(Number);
+        const duration = c.durationDays || 14;
+        const endD = new Date(sY, sM - 1, sD + duration - 1, 12, 0, 0);
+        const endKey = todayKey(endD);
+        return pKey <= day.dateKey && day.dateKey <= endKey;
       });
 
       const hasActivePacts = activePactsOnDay.length > 0;

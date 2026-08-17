@@ -48,7 +48,7 @@ import {
   TaskPriority,
 } from '@/types';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, previousPeriodKey, parseDate } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, previousPeriodKey, parseDate, getNow } from './dates';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { PresetHabit } from './presets';
 import { SEED_ACCOUNTS } from './seedAccounts';
@@ -126,6 +126,9 @@ import { mergeAppState } from './stateMerger';
 
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
+
+// Global in-flight pledge request lock to prevent double-click race conditions
+const pendingPledgeRequests = new Set<string>();
 
 export interface StateSyncMessage {
   type: 'ASCEND_STATE_SYNC';
@@ -1070,25 +1073,37 @@ export function useAppState() {
         };
       });
     };
-    checkUpdates();
-    archiveTimer.current = window.setInterval(() => checkUpdates(), 60000);
+    checkUpdates(getNow());
+    archiveTimer.current = window.setInterval(() => checkUpdates(getNow()), 60000);
 
     (window as any).__triggerPenaltyCheck = (simulatedDateIso?: string) => {
-      const simDate = simulatedDateIso ? new Date(simulatedDateIso) : new Date();
+      const simDate = simulatedDateIso ? new Date(simulatedDateIso) : getNow();
       console.log('Manually triggering penalty check for:', simDate.toISOString());
       checkUpdates(simDate);
     };
 
     (window as any).__advanceDays = (daysToAdvance: number = 1) => {
-      const targetDate = new Date(Date.now() + daysToAdvance * 86400000);
-      console.log(`Advancing simulated time by ${daysToAdvance} day(s) to:`, targetDate.toISOString());
-      checkUpdates(targetDate);
+      const currentOffset = (window as any).__SIMULATED_OFFSET_MS || 0;
+      const newOffset = currentOffset + daysToAdvance * 86400000;
+      (window as any).__SIMULATED_OFFSET_MS = newOffset;
+      const simDate = new Date(Date.now() + newOffset);
+      console.log(`Advancing simulated time by ${daysToAdvance} day(s) to:`, simDate.toISOString(), 'Date Key:', todayKey(simDate));
+      checkUpdates(simDate);
+      setState((prev) => ({ ...prev }));
+    };
+
+    (window as any).__resetTimeOffset = () => {
+      (window as any).__SIMULATED_OFFSET_MS = 0;
+      console.log('Reset simulated time offset to real time.');
+      checkUpdates(new Date());
+      setState((prev) => ({ ...prev }));
     };
 
     return () => {
       if (archiveTimer.current) window.clearInterval(archiveTimer.current);
       delete (window as any).__triggerPenaltyCheck;
       delete (window as any).__advanceDays;
+      delete (window as any).__resetTimeOffset;
     };
   }, []);
 
@@ -4678,10 +4693,8 @@ export function useAppState() {
         user2Category,
         user2Target: user2Target.trim(),
         status: 'active',
-        createdAt: new Date().toISOString(),
+        createdAt: getNow().toISOString(),
       };
-
-      const backupChallenges = state.sharedChallenges;
 
       // Optimistically update local UI state
       setState((prev) => ({
@@ -4694,10 +4707,10 @@ export function useAppState() {
         syncBroadcaster.broadcast('CHALLENGE_UPDATED', challenge);
       } catch (err: any) {
         console.error('Failed to create joint pact in Supabase:', err);
-        // Rollback UI state to backup
+        // Rollback only this specific challenge object by ID
         setState((prev) => ({
           ...prev,
-          sharedChallenges: backupChallenges,
+          sharedChallenges: (prev.sharedChallenges || []).filter((c) => c.id !== challenge.id),
         }));
         throw err;
       }
@@ -4706,8 +4719,7 @@ export function useAppState() {
   );
 
   const deleteSharedChallenge = useCallback(async (challengeId: string) => {
-    const backupChallenges = state.sharedChallenges;
-    const backupDeletedEntityIds = state.deletedEntityIds;
+    const challengeToDelete = (state.sharedChallenges || []).find((c) => c.id === challengeId);
 
     // Optimistically update local UI state
     setState(
@@ -4727,24 +4739,46 @@ export function useAppState() {
       syncBroadcaster.broadcast('CHALLENGE_DELETED', { challengeId });
     } catch (err: any) {
       console.error('Failed to delete shared challenge in Supabase:', err);
-      // Rollback UI state to backup
-      setState((prev) => ({
-        ...prev,
-        sharedChallenges: backupChallenges,
-        deletedEntityIds: backupDeletedEntityIds,
-      }));
+      // Rollback only this specific challenge back into the list if partnership still exists
+      if (challengeToDelete) {
+        setState((prev) => {
+          const partnershipExists = (prev.partnerships || []).some(
+            (p) => p.id === challengeToDelete.partnershipId
+          ) || prev.partnership?.id === challengeToDelete.partnershipId;
+
+          if (!partnershipExists) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            sharedChallenges: prev.sharedChallenges.some((c) => c.id === challengeId)
+              ? prev.sharedChallenges
+              : [challengeToDelete, ...prev.sharedChallenges],
+            deletedEntityIds: (prev.deletedEntityIds || []).filter((id) => id !== challengeId),
+          };
+        });
+      }
       throw err;
     }
-  }, [state.sharedChallenges, state.deletedEntityIds]);
+  }, [state.sharedChallenges]);
 
   const logSharedChallengeHabit = useCallback(
     async (challengeId: string, forcedState?: boolean) => {
+      if (pendingPledgeRequests.has(challengeId)) {
+        return;
+      }
+      pendingPledgeRequests.add(challengeId);
+
       const today = todayKey();
-      const backupChallenges = state.sharedChallenges;
 
       const idx = state.sharedChallenges.findIndex((c) => c.id === challengeId);
-      if (idx === -1) return;
+      if (idx === -1) {
+        pendingPledgeRequests.delete(challengeId);
+        return;
+      }
       const target = state.sharedChallenges[idx];
+      const previousChallenge = target;
 
       const challengePartnership =
         (state.partnerships || []).find((p) => p.id === target.partnershipId) || state.partnership;
@@ -4770,13 +4804,10 @@ export function useAppState() {
         (target.user2DoneDates || (target.user2DoneDate ? [target.user2DoneDate] : [])).includes(today);
       const { updated, becameCompleted } = applyPledgeToggle(target, isUser1, isDoneToday);
 
-      const updatedChallenges = [...state.sharedChallenges];
-      updatedChallenges[idx] = updated;
-
-      // Optimistically update local UI state
+      // Optimistically update local UI state targeting only this challenge
       setState((prev) => ({
         ...prev,
-        sharedChallenges: updatedChallenges,
+        sharedChallenges: prev.sharedChallenges.map((c) => (c.id === challengeId ? updated : c)),
       }));
 
       try {
@@ -4817,12 +4848,14 @@ export function useAppState() {
         }
       } catch (err: any) {
         console.error('Failed to log shared challenge day in Supabase:', err);
-        // Rollback UI state to backup
+        // Rollback only this specific challenge object by ID
         setState((prev) => ({
           ...prev,
-          sharedChallenges: backupChallenges,
+          sharedChallenges: prev.sharedChallenges.map((c) => (c.id === challengeId ? previousChallenge : c)),
         }));
         throw err;
+      } finally {
+        pendingPledgeRequests.delete(challengeId);
       }
     },
     [state.sharedChallenges, state.partnerships, state.partnership, state.currentUser, state.username]
