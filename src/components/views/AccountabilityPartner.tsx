@@ -313,7 +313,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       });
   };
 
-  const handleCreateChallengeSubmit = (e: React.FormEvent) => {
+  const handleCreateChallengeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activePartnership || isSubmittingChallenge) return;
 
@@ -324,7 +324,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       const u2Target = user2Target.trim() || 'Daily Activity';
       const title = challengeTitle.trim() || `${user1Category.toUpperCase()} & ${user2Category.toUpperCase()} Pact`;
 
-      store.createSharedChallenge(
+      await store.createSharedChallenge(
         title,
         Number(challengeDuration),
         isUser1InActive ? user1Category : user2Category,
@@ -341,11 +341,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       setChallengeError(null);
       showSuccessToast('Joint Pact Locked In!', `"${title}" has begun with @${activePartnerUsername}.`);
     } catch (err: any) {
-      setChallengeError(err.message || 'Failed to create pact.');
+      const errorMessage = err?.message || 'Failed to create pact.';
+      setChallengeError(errorMessage);
+      showErrorToast('Could Not Create Pact', errorMessage);
     } finally {
-      setTimeout(() => {
-        setIsSubmittingChallenge(false);
-      }, 500);
+      setIsSubmittingChallenge(false);
     }
   };
 

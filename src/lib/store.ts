@@ -4835,9 +4835,10 @@ export function useAppState() {
       // Prevent duplicate creation if an active challenge with the same title already exists on this partnership
       const existingActive = (state.sharedChallenges || []).find(
         (c) =>
+          c &&
           c.partnershipId === pId &&
           c.status === 'active' &&
-          c.title.trim().toLowerCase() === normTitle
+          (c.title || '').trim().toLowerCase() === normTitle
       );
       if (existingActive) {
         throw new Error(
