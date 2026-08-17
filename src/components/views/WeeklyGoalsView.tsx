@@ -937,7 +937,22 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 </label>
                 <select
                   value={linkedItemId}
-                  onChange={(e) => setLinkedItemId(e.target.value)}
+                  onChange={(e) => {
+                    const selectedVal = e.target.value;
+                    setLinkedItemId(selectedVal);
+                    if (selectedVal) {
+                      const selectedLower = selectedVal.trim().toLowerCase();
+                      const recentLog = (store.state.workouts || [])
+                        .slice()
+                        .reverse()
+                        .find((w) => (w.type || '').trim().toLowerCase() === selectedLower);
+                      if (recentLog && recentLog.unit) {
+                        setUnit(recentLog.unit);
+                      } else {
+                        setUnit('mins');
+                      }
+                    }
+                  }}
                   className="input w-full bg-bg-800"
                 >
                   <option value="" disabled>Select a specific workout...</option>
@@ -950,12 +965,13 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Target Unit <span className="text-rose-400">*</span>
+                  Target Unit <span className="text-slate-500 font-normal text-[11px]">— Locked to your tracker history</span>
                 </label>
                 <select
+                  disabled
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
-                  className="input w-full bg-bg-800"
+                  className="input w-full bg-bg-800 opacity-60 cursor-not-allowed"
                 >
                   <option value="sessions">Sessions (workouts)</option>
                   <option value="mins">Minutes (mins)</option>

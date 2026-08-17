@@ -1666,21 +1666,39 @@ export function useAppState() {
   const logWorkout = useCallback((type: string, durationMinutes: number, amount?: number, unit?: string) => {
     const date = todayKey();
     setState((prev) => {
+      const normalizedUnit = (unit || 'mins').trim().toLowerCase();
+      const effectiveAmount = typeof amount === 'number' && !isNaN(amount) ? amount : durationMinutes;
+
+      let multiplier = 1;
+      if (normalizedUnit === 'sets' || normalizedUnit === 'km') {
+        multiplier = 10;
+      } else if (normalizedUnit === 'sessions') {
+        multiplier = 30;
+      } else if (normalizedUnit === 'reps' || normalizedUnit === 'mins') {
+        multiplier = 1;
+      } else {
+        multiplier = 1;
+      }
+
+      const calculatedPoints = Math.round(effectiveAmount * multiplier);
+
       const pointsEarnedToday = prev.workouts
         .filter((w) => w.date === date)
-        .reduce((sum, w) => sum + w.pointsAwarded, 0);
+        .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
 
       const maxAllowed = Math.max(0, 60 - pointsEarnedToday);
-      const pointsToAward = Math.min(durationMinutes, maxAllowed);
+      const pointsToAward = Math.min(calculatedPoints, maxAllowed);
+
+      const savedDuration = normalizedUnit === 'mins' ? (typeof amount === 'number' && !isNaN(amount) && amount > 0 ? amount : durationMinutes) : 0;
 
       const workout: WorkoutLog = {
         id: uid(),
         date,
         type: type.trim() || 'General Workout',
-        durationMinutes,
+        durationMinutes: savedDuration,
         pointsAwarded: pointsToAward,
-        amount: typeof amount === 'number' && !isNaN(amount) ? amount : undefined,
-        unit: unit?.trim() || undefined,
+        amount: typeof amount === 'number' && !isNaN(amount) ? amount : (normalizedUnit === 'mins' ? durationMinutes : undefined),
+        unit: normalizedUnit,
         createdAt: new Date().toISOString(),
       };
 
@@ -1688,11 +1706,11 @@ export function useAppState() {
       if (pointsToAward > 0) {
         const metricSuffix = workout.amount && workout.unit && workout.unit !== 'mins'
           ? `, ${workout.amount} ${workout.unit}`
-          : '';
+          : (workout.durationMinutes > 0 ? ` (${workout.durationMinutes}m)` : '');
         pointsUpdate = addPointsInternal(
           prev,
           pointsToAward,
-          `Workout logged: ${workout.type} (${durationMinutes}m${metricSuffix})`,
+          `Workout logged: ${workout.type}${metricSuffix}`,
           'exercise'
         );
       }
