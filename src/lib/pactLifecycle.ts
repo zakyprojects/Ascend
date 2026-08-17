@@ -1,5 +1,10 @@
 import { SharedChallenge } from '@/types';
-import { todayKey, previousPeriodKey, parseDate, calculateElapsedDays } from './dates';
+import { todayKey, previousPeriodKey, parseDate, calculateElapsedDays, getNow } from './dates';
+
+const safeNum = (val: any): number => {
+  const n = Number(val);
+  return Number.isFinite(n) ? n : 0;
+};
 
 /**
  * Normalizes all historical completion dates for a shared challenge,
@@ -28,8 +33,10 @@ export function normalizeChallengeDates(c: SharedChallenge): {
   const u2Set = new Set(user2DoneDates);
   const jointDates = user1DoneDates.filter((d) => u2Set.has(d)).sort();
 
-  const hasHistory = u1Raw.length > 0 || u2Raw.length > 0;
-  const totalCompleted = hasHistory ? jointDates.length : Math.max(jointDates.length, c.totalJointDaysCompleted ?? 0);
+  const hasDateArrays = (c.user1DoneDates && c.user1DoneDates.length > 0) || (c.user2DoneDates && c.user2DoneDates.length > 0);
+  const totalCompleted = hasDateArrays
+    ? jointDates.length
+    : Math.max(jointDates.length, safeNum(c.totalJointDaysCompleted));
   const latestU1 = user1DoneDates.length > 0 ? user1DoneDates[user1DoneDates.length - 1] : undefined;
   const latestU2 = user2DoneDates.length > 0 ? user2DoneDates[user2DoneDates.length - 1] : undefined;
   const latestJoint = jointDates.length > 0 ? jointDates[jointDates.length - 1] : c.lastJointCompletionDate;
@@ -51,7 +58,7 @@ export function normalizeChallengeDates(c: SharedChallenge): {
  * - If today is not yet jointly done: checks if yesterday was jointly done (streak is preserved awaiting today).
  * - If yesterday was missed: streak is broken (0).
  */
-export function calculateJointStreak(jointDates: string[], targetNow: Date = new Date()): number {
+export function calculateJointStreak(jointDates: string[], targetNow: Date = getNow()): number {
   const jointSet = new Set(jointDates);
   const todayStr = todayKey(targetNow);
   const yesterdayStr = previousPeriodKey('daily', 1, targetNow);
@@ -91,9 +98,8 @@ export function calculateJointStreak(jointDates: string[], targetNow: Date = new
  */
 export function reconcileSharedChallengeLifecycle(
   challenge: SharedChallenge,
-  targetNow: Date = new Date()
+  targetNow: Date = getNow()
 ): SharedChallenge {
-  const todayStr = todayKey(targetNow);
   const norm = normalizeChallengeDates(challenge);
   const jointDates = norm.jointDates;
   const totalCompleted = norm.totalCompleted;
@@ -101,7 +107,7 @@ export function reconcileSharedChallengeLifecycle(
 
   const elapsedDays = calculateElapsedDays(challenge.createdAt, targetNow);
 
-  let status = challenge.status;
+  let status: SharedChallenge['status'] = challenge.status;
   if (totalCompleted >= challenge.durationDays) {
     status = 'completed';
   } else if (elapsedDays > challenge.durationDays) {
@@ -131,7 +137,7 @@ export function applyPledgeToggle(
   target: SharedChallenge,
   isUser1: boolean,
   isDoneToday: boolean,
-  targetNow: Date = new Date()
+  targetNow: Date = getNow()
 ): { updated: SharedChallenge; becameCompleted: boolean; wasBothCompletedNow: boolean } {
   const today = todayKey(targetNow);
   const norm = normalizeChallengeDates(target);
@@ -165,7 +171,12 @@ export function applyPledgeToggle(
   const newLastJointDate = jointDates.length > 0 ? jointDates[jointDates.length - 1] : undefined;
 
   const isCompleted = totalCompleted >= target.durationDays;
-  const status = isCompleted ? 'completed' : target.status === 'expired' ? 'expired' : 'active';
+  const elapsed = calculateElapsedDays(target.createdAt, targetNow);
+  const status: SharedChallenge['status'] = isCompleted
+    ? 'completed'
+    : elapsed > target.durationDays
+    ? 'expired'
+    : 'active';
 
   const latestU1 = updatedU1Dates.length > 0 ? updatedU1Dates[updatedU1Dates.length - 1] : undefined;
   const latestU2 = updatedU2Dates.length > 0 ? updatedU2Dates[updatedU2Dates.length - 1] : undefined;
@@ -190,21 +201,24 @@ export function applyPledgeToggle(
 }
 
 /**
- * Merges two SharedChallenge objects, combining completion dates without losing history.
+ * Merges two SharedChallenge objects, safely merging incoming authoritative database updates
+ * without resurrecting undone pledge dates.
  */
 export function mergeSharedChallenge(baseC: SharedChallenge, incC: SharedChallenge): SharedChallenge {
   const normBase = normalizeChallengeDates(baseC);
   const normInc = normalizeChallengeDates(incC);
 
-  const u1Dates = Array.from(new Set([...normBase.user1DoneDates, ...normInc.user1DoneDates])).sort();
-  const u2Dates = Array.from(new Set([...normBase.user2DoneDates, ...normInc.user2DoneDates])).sort();
+  // Authoritative date arrays from incoming record (which carries DB / broadcast state)
+  const u1Dates = Array.isArray(incC.user1DoneDates)
+    ? normInc.user1DoneDates
+    : normBase.user1DoneDates;
+  const u2Dates = Array.isArray(incC.user2DoneDates)
+    ? normInc.user2DoneDates
+    : normBase.user2DoneDates;
+
   const u2Set = new Set(u2Dates);
   const jointDates = u1Dates.filter((d) => u2Set.has(d)).sort();
-
-  const hasHistory = u1Dates.length > 0 || u2Dates.length > 0;
-  const totalCompleted = hasHistory
-    ? jointDates.length
-    : Math.max(jointDates.length, normBase.totalCompleted, normInc.totalCompleted);
+  const totalCompleted = jointDates.length;
 
   const baseTime = baseC.createdAt || '';
   const incTime = incC.createdAt || '';
@@ -228,4 +242,3 @@ export function mergeSharedChallenge(baseC: SharedChallenge, incC: SharedChallen
 
   return reconcileSharedChallengeLifecycle(merged);
 }
-

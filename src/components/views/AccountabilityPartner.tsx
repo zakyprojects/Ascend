@@ -313,7 +313,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       });
   };
 
-  const handleCreateChallengeSubmit = (e: React.FormEvent) => {
+  const handleCreateChallengeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activePartnership || isSubmittingChallenge) return;
 
@@ -324,7 +324,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       const u2Target = user2Target.trim() || 'Daily Activity';
       const title = challengeTitle.trim() || `${user1Category.toUpperCase()} & ${user2Category.toUpperCase()} Pact`;
 
-      store.createSharedChallenge(
+      await store.createSharedChallenge(
         title,
         Number(challengeDuration),
         isUser1InActive ? user1Category : user2Category,
@@ -341,11 +341,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       setChallengeError(null);
       showSuccessToast('Joint Pact Locked In!', `"${title}" has begun with @${activePartnerUsername}.`);
     } catch (err: any) {
-      setChallengeError(err.message || 'Failed to create pact.');
+      const errorMessage = err?.message || 'Failed to create pact.';
+      setChallengeError(errorMessage);
+      showErrorToast('Could Not Create Pact', errorMessage);
     } finally {
-      setTimeout(() => {
-        setIsSubmittingChallenge(false);
-      }, 500);
+      setIsSubmittingChallenge(false);
     }
   };
 
@@ -589,11 +589,15 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     if (!activePartnership || matrixTimeline.length === 0) return [];
 
     return matrixTimeline.map((day) => {
-      // Filter pacts that were created on or before this day
+      // Filter pacts that were active on this day (between creation date and creation date + durationDays - 1)
       const activePactsOnDay = isolatedChallenges.filter((c) => {
         const pDate = parseDate(c.createdAt);
         const pKey = pDate ? todayKey(pDate) : (c.createdAt ? c.createdAt.slice(0, 10) : '2000-01-01');
-        return pKey <= day.dateKey;
+        const [sY, sM, sD] = pKey.split('-').map(Number);
+        const duration = c.durationDays || 14;
+        const endD = new Date(sY, sM - 1, sD + duration - 1, 12, 0, 0);
+        const endKey = todayKey(endD);
+        return pKey <= day.dateKey && day.dateKey <= endKey;
       });
 
       const hasActivePacts = activePactsOnDay.length > 0;
@@ -1808,8 +1812,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         onConfirm={async () => {
           if (activePartnership) {
             setEndConfirmOpen(false);
-            store.endPartnership(activePartnership.id);
-            showSuccessToast('Pairing Ended', `Ended accountability partnership with ${activePartnerUsername}.`);
+            try {
+              await store.endPartnership(activePartnership.id);
+              showSuccessToast('Pairing Ended', `Ended accountability partnership with ${activePartnerUsername}.`);
+            } catch (err: any) {
+              showErrorToast('Failed to End Pairing', err.message || 'Database error: Could not end partnership.');
+            }
           }
         }}
         title={`End Pairing with ${activePartnerUsername || 'Partner'}?`}

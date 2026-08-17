@@ -144,14 +144,20 @@ export interface PointsEntry {
 }
 
 // Module 1: Exercise Tracker
+export type ExerciseMetricUnit = 'reps' | 'sets' | 'km' | 'mins' | 'sessions';
+
 export interface WorkoutLog {
   id: string;
   date: string; // YYYY-MM-DD
   type: string; // e.g., 'Running', 'Cycling', 'Weightlifting', etc.
   durationMinutes: number;
   pointsAwarded: number;
+  amount?: number;
+  unit?: ExerciseMetricUnit | string;
   createdAt: string;
 }
+
+export type ExerciseLog = WorkoutLog;
 
 // Module 2: Reading Tracker
 export interface Book {
@@ -680,6 +686,5 @@ export const DEFAULT_STATE: AppState = {
   notifications: [],
   deletedEntityIds: [],
 };
-
 
 

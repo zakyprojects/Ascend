@@ -1,18 +1,33 @@
-/** Returns local date as YYYY-MM-DD (no timezone surprises) */
-export function todayKey(date = new Date()): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+/** Returns simulated time offset in milliseconds if set (for testing time shifts) */
+export function getSimulatedOffsetMs(): number {
+  if (typeof window !== 'undefined' && typeof (window as any).__SIMULATED_OFFSET_MS === 'number') {
+    return (window as any).__SIMULATED_OFFSET_MS;
+  }
+  return 0;
 }
 
-export function dateKey(date: Date): string {
+/** Returns the current Date, adjusted by any active simulated time offset */
+export function getNow(): Date {
+  const offset = getSimulatedOffsetMs();
+  return offset !== 0 ? new Date(Date.now() + offset) : new Date();
+}
+
+/** Returns local date as YYYY-MM-DD (no timezone surprises) */
+export function todayKey(date?: Date): string {
+  const d = date || getNow();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function dateKey(date?: Date): string {
   return todayKey(date);
 }
 
 /** Start of the current week (Monday) as a Date */
-export function startOfWeek(date = new Date()): Date {
-  const d = new Date(date);
+export function startOfWeek(date?: Date): Date {
+  const d = new Date(date || getNow());
   const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day; // Monday as start
   d.setDate(d.getDate() + diff);
@@ -21,7 +36,7 @@ export function startOfWeek(date = new Date()): Date {
 }
 
 /** Week key for weekly habits: YYYY-Www */
-export function weekKey(date = new Date()): string {
+export function weekKey(date?: Date): string {
   const d = startOfWeek(date);
   const y = d.getFullYear();
   const jan1 = new Date(y, 0, 1);
@@ -30,18 +45,18 @@ export function weekKey(date = new Date()): string {
 }
 
 /** Returns the period key for a habit based on its frequency */
-export function periodKey(frequency: 'daily' | 'weekly', date = new Date()): string {
+export function periodKey(frequency: 'daily' | 'weekly', date?: Date): string {
   return frequency === 'daily' ? todayKey(date) : weekKey(date);
 }
 
 /** Returns the period key for N periods ago */
-export function previousPeriodKey(frequency: 'daily' | 'weekly', periodsAgo: number, date = new Date()): string {
+export function previousPeriodKey(frequency: 'daily' | 'weekly', periodsAgo: number, date?: Date): string {
   if (frequency === 'daily') {
-    const d = new Date(date);
+    const d = new Date(date || getNow());
     d.setDate(d.getDate() - periodsAgo);
     return todayKey(d);
   }
-  const d = new Date(date);
+  const d = new Date(date || getNow());
   d.setDate(d.getDate() - periodsAgo * 7);
   return weekKey(d);
 }
@@ -50,20 +65,21 @@ export function previousPeriodKey(frequency: 'daily' | 'weekly', periodsAgo: num
 export function calculateStreak(
   completions: string[],
   frequency: 'daily' | 'weekly',
-  now = new Date()
+  now?: Date
 ): number {
   if (completions.length === 0) return 0;
   const sorted = [...completions].sort();
 
+  const effectiveNow = now || getNow();
   let streak = 0;
-  let cursor = now;
+  let cursor = effectiveNow;
 
   // If the current period isn't completed, start from the previous one
-  const currentPeriod = periodKey(frequency, now);
+  const currentPeriod = periodKey(frequency, effectiveNow);
   if (!sorted.includes(currentPeriod)) {
     cursor = frequency === 'daily'
-      ? new Date(now.getTime() - 86400000)
-      : new Date(now.getTime() - 7 * 86400000);
+      ? new Date(effectiveNow.getTime() - 86400000)
+      : new Date(effectiveNow.getTime() - 7 * 86400000);
   }
 
   // Walk backwards through periods
@@ -187,7 +203,7 @@ export function isTodayLocal(dateIso?: string | null): boolean {
   if (!dateIso) return false;
   const d = parseDate(dateIso);
   if (!d) return false;
-  const now = new Date();
+  const now = getNow();
   return (
     d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth() &&
@@ -199,7 +215,7 @@ export function isYesterdayLocal(dateIso?: string | null): boolean {
   if (!dateIso) return false;
   const d = parseDate(dateIso);
   if (!d) return false;
-  const yesterday = new Date();
+  const yesterday = getNow();
   yesterday.setDate(yesterday.getDate() - 1);
   return (
     d.getFullYear() === yesterday.getFullYear() &&
@@ -212,12 +228,13 @@ export function isYesterdayLocal(dateIso?: string | null): boolean {
  * Calculates 1-indexed calendar days elapsed from a start date (or ISO string) to a target date.
  * On the exact creation calendar date, elapsedDays = 1 (Day 1).
  */
-export function calculateElapsedDays(startDateVal?: string | Date | number | null, targetNow: Date = new Date()): number {
+export function calculateElapsedDays(startDateVal?: string | Date | number | null, targetNow?: Date): number {
   const parsedStart = parseDate(startDateVal);
   if (!parsedStart) return 1;
 
+  const target = targetNow || getNow();
   const startKeyStr = todayKey(parsedStart);
-  const targetKeyStr = todayKey(targetNow);
+  const targetKeyStr = todayKey(target);
 
   const [sY, sM, sD] = startKeyStr.split('-').map(Number);
   const startMidnight = new Date(sY, sM - 1, sD).getTime();
@@ -239,14 +256,15 @@ export function calculateActivePlanStreak(
   streakCount: number = 0,
   lastCompletedDate?: string | null,
   cadence: 'daily' | 'weekly' = 'daily',
-  now = new Date()
+  now?: Date
 ): number {
   if (!lastCompletedDate || streakCount <= 0) return 0;
   const lastD = parseDate(lastCompletedDate);
   if (!lastD) return 0;
 
+  const currentNow = now || getNow();
   // Normalize dates to local midnight for exact calendar day diff
-  const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayLocal = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate());
   const lastLocal = new Date(lastD.getFullYear(), lastD.getMonth(), lastD.getDate());
 
   const diffMs = todayLocal.getTime() - lastLocal.getTime();
@@ -295,7 +313,7 @@ export function getWeekDates(targetWeekKey?: string): {
   end: Date;
   dateStrings: string[];
 } {
-  let baseDate = new Date();
+  let baseDate = getNow();
   if (targetWeekKey) {
     const match = targetWeekKey.match(/^(\d{4})-W(\d{2})$/);
     if (match) {
@@ -356,5 +374,4 @@ export function formatWeekRange(targetWeekKey: string): string {
   }
   return `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${year}`;
 }
-
 

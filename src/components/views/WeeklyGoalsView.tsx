@@ -18,6 +18,7 @@ import {
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { useToast } from '@/components/ui/Toast';
 import {
   weekKey,
   getWeekDates,
@@ -28,10 +29,30 @@ import {
 import { WeeklyGoalItem, WeeklyGoalPriority, WeeklyGoalLinkedModule, WeeklyGoalReflection } from '@/types';
 
 export function WeeklyGoalsView({ store }: { store: AppStore }) {
+  const { showErrorToast } = useToast();
   const currentWeekKey = weekKey();
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(currentWeekKey);
 
   const weeklyGoals = store.state.weeklyGoals;
+
+  // Available unique workout types from history or defaults
+  const availableWorkoutTypes = useMemo(() => {
+    const fromHistory = (store.state.workouts || [])
+      .map((w) => (w.type || '').trim())
+      .filter((t) => Boolean(t) && t !== 'Other');
+    const defaults = [
+      'Running',
+      'Cycling',
+      'Weightlifting',
+      'HIIT',
+      'Yoga',
+      'Swimming',
+      'Walking',
+      'Boxing',
+      'Pilates',
+    ];
+    return Array.from(new Set([...fromHistory, ...defaults]));
+  }, [store.state.workouts]);
 
   // Active Goal Document
   const activeGoalDoc = useMemo(() => {
@@ -80,14 +101,48 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       }
 
       if (item.linkedModule === 'exercise') {
-        const weekWorkouts = store.state.workouts.filter((w) => dateStrings.includes(w.date));
-        if (unit.toLowerCase().includes('min')) {
-          const totalMins = weekWorkouts.reduce((acc, w) => acc + (w.durationMinutes || 0), 0);
-          return { current: totalMins, target, unit: 'mins', percent: Math.min(100, Math.round((totalMins / target) * 100)) };
-        } else {
-          const sessionCount = weekWorkouts.length;
-          return { current: sessionCount, target, unit: 'sessions', percent: Math.min(100, Math.round((sessionCount / target) * 100)) };
+        let weekWorkouts = store.state.workouts.filter((w) => dateStrings.includes(w.date));
+
+        // If the Goal specified a 'Target Workout Name', filter the exercise logs by matching workoutType (case-insensitive, trimmed)
+        const targetWorkoutName = (item.linkedItemId || '').trim().toLowerCase();
+        if (targetWorkoutName) {
+          weekWorkouts = weekWorkouts.filter(
+            (w) => (w.type || '').trim().toLowerCase() === targetWorkoutName
+          );
         }
+
+        const targetUnit = (item.unit || 'sessions').trim().toLowerCase();
+
+        let progress = 0;
+        if (targetUnit === 'sessions' || targetUnit === 'workouts' || targetUnit === 'session' || targetUnit === 'times') {
+          progress = weekWorkouts.length;
+        } else if (targetUnit === 'mins' || targetUnit === 'minutes' || targetUnit === 'min') {
+          progress = weekWorkouts.reduce((acc, w) => acc + (w.durationMinutes || 0), 0);
+        } else if (targetUnit === 'reps' || targetUnit === 'sets' || targetUnit === 'km') {
+          progress = weekWorkouts
+            .filter((w) => (w.unit || '').trim().toLowerCase() === targetUnit)
+            .reduce((acc, w) => acc + (typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0), 0);
+        } else {
+          // Fallback matching custom unit if present, or length
+          const matchingUnitLogs = weekWorkouts.filter(
+            (w) => (w.unit || '').trim().toLowerCase() === targetUnit
+          );
+          if (matchingUnitLogs.length > 0) {
+            progress = matchingUnitLogs.reduce(
+              (acc, w) => acc + (typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0),
+              0
+            );
+          } else {
+            progress = weekWorkouts.length;
+          }
+        }
+
+        return {
+          current: progress,
+          target,
+          unit: item.unit || 'sessions',
+          percent: Math.min(100, Math.round((progress / target) * 100)),
+        };
       }
 
       if (item.linkedModule === 'reading') {
@@ -235,6 +290,26 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
   const handleSaveGoal = () => {
     if (!title.trim()) return;
+
+    if (linkedModule === 'exercise' && !linkedItemId) {
+      showErrorToast('Workout Required', 'Please select a specific workout to link this goal.');
+      return;
+    }
+
+    if (linkedModule === 'skill' && !linkedItemId) {
+      showErrorToast('Skill Required', 'Please select a specific skill to link this goal.');
+      return;
+    }
+
+    if (linkedModule === 'habit' && !linkedItemId) {
+      showErrorToast('Habit Required', 'Please select a specific habit to link this goal.');
+      return;
+    }
+
+    if (linkedModule === 'reading' && !linkedItemId) {
+      showErrorToast('Book Required', 'Please select a specific book to link this goal.');
+      return;
+    }
 
     const payload = {
       title: title.trim(),
@@ -835,6 +910,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 onChange={(e) => {
                   const mod = e.target.value as WeeklyGoalLinkedModule;
                   setLinkedModule(mod);
+                  setLinkedItemId('');
                   if (mod === 'exercise') setUnit('sessions');
                   else if (mod === 'reading') setUnit('pages');
                   else if (mod === 'skill') setUnit('mins');
@@ -853,17 +929,70 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           </div>
 
           {/* ITEM SELECTOR DEPENDING ON LINKED MODULE */}
+          {linkedModule === 'exercise' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Select Workout <span className="text-rose-400">*</span>
+                </label>
+                <select
+                  value={linkedItemId}
+                  onChange={(e) => {
+                    const selectedVal = e.target.value;
+                    setLinkedItemId(selectedVal);
+                    if (selectedVal) {
+                      const selectedLower = selectedVal.trim().toLowerCase();
+                      const recentLog = (store.state.workouts || [])
+                        .slice()
+                        .reverse()
+                        .find((w) => (w.type || '').trim().toLowerCase() === selectedLower);
+                      if (recentLog && recentLog.unit) {
+                        setUnit(recentLog.unit);
+                      } else {
+                        setUnit('mins');
+                      }
+                    }
+                  }}
+                  className="input w-full bg-bg-800"
+                >
+                  <option value="" disabled>Select a specific workout...</option>
+                  {availableWorkoutTypes.map((workoutName) => (
+                    <option key={workoutName} value={workoutName}>
+                      {workoutName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Target Unit <span className="text-rose-400">*</span>
+                </label>
+                <select
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  className="input w-full bg-bg-800"
+                >
+                  <option value="sessions">Sessions (workouts)</option>
+                  <option value="mins">Minutes (mins)</option>
+                  <option value="reps">Reps</option>
+                  <option value="sets">Sets</option>
+                  <option value="km">Kilometers (km)</option>
+                </select>
+              </div>
+            </div>
+          )}
+
           {linkedModule === 'habit' && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Select Specific Habit
+                Select Habit <span className="text-rose-400">*</span>
               </label>
               <select
                 value={linkedItemId}
                 onChange={(e) => setLinkedItemId(e.target.value)}
                 className="input w-full bg-bg-800"
               >
-                <option value="">Select a Habit...</option>
+                <option value="" disabled>Select a specific habit...</option>
                 {store.state.habits.map((h) => (
                   <option key={h.id} value={h.id}>
                     {h.name}
@@ -876,14 +1005,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {linkedModule === 'reading' && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Select Book (Optional)
+                Select Book <span className="text-rose-400">*</span>
               </label>
               <select
                 value={linkedItemId}
                 onChange={(e) => setLinkedItemId(e.target.value)}
                 className="input w-full bg-bg-800"
               >
-                <option value="">All Reading</option>
+                <option value="" disabled>Select a specific book...</option>
                 {store.state.books.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.title}
@@ -896,14 +1025,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {linkedModule === 'skill' && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Select Skill (Optional)
+                Select Skill <span className="text-rose-400">*</span>
               </label>
               <select
                 value={linkedItemId}
                 onChange={(e) => setLinkedItemId(e.target.value)}
                 className="input w-full bg-bg-800"
               >
-                <option value="">All Skill Practice</option>
+                <option value="" disabled>Select a specific skill...</option>
                 {store.state.skills.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -914,7 +1043,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           )}
 
           {/* TARGET VALUE & UNIT INPUTS */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid ${linkedModule === 'exercise' ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
                 Target Goal Amount
@@ -928,18 +1057,20 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Unit Label
-              </label>
-              <input
-                type="text"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                placeholder="e.g. sessions, mins, pages, posts"
-                className="input w-full"
-              />
-            </div>
+            {linkedModule !== 'exercise' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Unit Label
+                </label>
+                <input
+                  type="text"
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  placeholder="e.g. sessions, mins, pages, posts"
+                  className="input w-full"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-3 border-t border-white/10">

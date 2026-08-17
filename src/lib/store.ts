@@ -48,7 +48,7 @@ import {
   TaskPriority,
 } from '@/types';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, previousPeriodKey, parseDate } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, previousPeriodKey, parseDate, getNow } from './dates';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { PresetHabit } from './presets';
 import { SEED_ACCOUNTS } from './seedAccounts';
@@ -126,6 +126,9 @@ import { mergeAppState } from './stateMerger';
 
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
+
+// Global in-flight pledge request lock to prevent double-click race conditions
+const pendingPledgeRequests = new Set<string>();
 
 export interface StateSyncMessage {
   type: 'ASCEND_STATE_SYNC';
@@ -853,6 +856,7 @@ export function useAppState() {
         }
 
         if (event === 'PARTNER_ACCEPTED') {
+          if (prev.deletedEntityIds?.includes(payload.id)) return prev;
           if (
             payload.user1Username.toLowerCase() === prev.username.toLowerCase() ||
             payload.user2Username.toLowerCase() === prev.username.toLowerCase()
@@ -887,11 +891,27 @@ export function useAppState() {
         }
 
         if (event === 'CHALLENGE_UPDATED') {
+          if (
+            (prev.deletedEntityIds || []).includes(payload.id) ||
+            (prev.deletedEntityIds || []).includes(payload.partnershipId)
+          ) {
+            return prev;
+          }
+
+          const partnershipExists =
+            (prev.partnerships || []).some((p) => p.id === payload.partnershipId) ||
+            prev.partnership?.id === payload.partnershipId;
+          if (!partnershipExists) {
+            return prev;
+          }
+
           const exists = prev.sharedChallenges.some((c) => c.id === payload.id);
           if (exists) {
             return {
               ...prev,
-              sharedChallenges: prev.sharedChallenges.map((c) => (c.id === payload.id ? mergeSharedChallenge(c, payload) : c)),
+              sharedChallenges: prev.sharedChallenges.map((c) =>
+                c.id === payload.id ? mergeSharedChallenge(c, payload) : c
+              ),
             };
           } else {
             return {
@@ -974,26 +994,47 @@ export function useAppState() {
         }
 
         setState((prev) => {
+          const currentTombstones = new Set(prev.deletedEntityIds || []);
+
+          // 1. Reconcile notifications
           const mergedNotifs = fetchedNotifs
-            .filter((fn) => !(prev.deletedEntityIds || []).includes(fn.id))
+            .filter((fn) => !currentTombstones.has(fn.id))
             .map((fn) => {
               const local = prev.notifications?.find((n) => n.id === fn.id);
               return local && local.read ? { ...fn, read: true } : fn;
             });
+
+          // 2. Reconcile partnerships (authoritative from DB, filtered by tombstones)
+          const mergedPartnershipsMap = new Map<string, Partnership>();
+          for (const p of filteredPartnerships) {
+            if (!p || currentTombstones.has(p.id)) continue;
+            const u1 = (p.user1Username || '').toLowerCase();
+            const u2 = (p.user2Username || '').toLowerCase();
+            const key = [u1, u2].sort().join(':::');
+            if (!mergedPartnershipsMap.has(key)) {
+              mergedPartnershipsMap.set(key, p);
+            }
+          }
+          const finalPartnerships = Array.from(mergedPartnershipsMap.values());
+          const finalActivePartnershipIds = new Set(finalPartnerships.map((p) => p.id));
+
+          // 3. Reconcile shared challenges (authoritative active challenges from DB, merged lifecycle, filter tombstones)
+          const challengeMap = new Map<string, SharedChallenge>();
+          for (const c of challenges) {
+            if (!c || currentTombstones.has(c.id) || currentTombstones.has(c.partnershipId)) continue;
+            if (!finalActivePartnershipIds.has(c.partnershipId)) continue;
+            const existing = (prev.sharedChallenges || []).find((sc) => sc.id === c.id);
+            const merged = existing ? mergeSharedChallenge(existing, c) : c;
+            challengeMap.set(c.id, reconcileSharedChallengeLifecycle(merged));
+          }
+          const finalSharedChallenges = Array.from(challengeMap.values());
+
           return {
             ...prev,
             partnerInvites: validInvites,
-            partnerships: filteredPartnerships,
-            partnership: filteredPartnerships[0] || null,
-            sharedChallenges: challenges
-              .filter(
-                (c) => !(prev.deletedEntityIds || []).includes(c.id) && !(prev.deletedEntityIds || []).includes(c.partnershipId)
-              )
-              .map((c) => {
-                const existing = prev.sharedChallenges?.find((prevC) => prevC.id === c.id);
-                const merged = existing ? mergeSharedChallenge(existing, c) : c;
-                return reconcileSharedChallengeLifecycle(merged);
-              }),
+            partnerships: finalPartnerships,
+            partnership: finalPartnerships[0] || null,
+            sharedChallenges: finalSharedChallenges,
             notifications: mergedNotifs,
           };
         });
@@ -1021,9 +1062,98 @@ export function useAppState() {
     if (isSupabaseConfigured) {
       channel = supabase
         .channel(`social_realtime_${userId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_invites' }, () => syncPartnerDataLive())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'partnerships' }, () => syncPartnerDataLive())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_challenges' }, () => syncPartnerDataLive())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_invites' }, (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as any)?.id;
+            if (deletedId) {
+              setState((prev) => ({
+                ...prev,
+                partnerInvites: (prev.partnerInvites || []).filter((i) => i.id !== deletedId),
+                deletedEntityIds: [...(prev.deletedEntityIds || []), deletedId].slice(-500),
+              }));
+            }
+          }
+          syncPartnerDataLive();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'partnerships' }, (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as any)?.id;
+            if (deletedId) {
+              setState((prev) => {
+                const remainingPartnerships = (prev.partnerships || []).filter((p) => p.id !== deletedId);
+                const remainingChallenges = (prev.sharedChallenges || []).filter((c) => c.partnershipId !== deletedId);
+                const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), deletedId].slice(-500);
+                return {
+                  ...prev,
+                  partnerships: remainingPartnerships,
+                  partnership: remainingPartnerships[0] || null,
+                  sharedChallenges: remainingChallenges,
+                  deletedEntityIds: updatedDeletedEntityIds,
+                };
+              });
+            }
+          }
+          syncPartnerDataLive();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_challenges' }, (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as any)?.id;
+            if (deletedId) {
+              setState((prev) => ({
+                ...prev,
+                sharedChallenges: (prev.sharedChallenges || []).filter((c) => c.id !== deletedId),
+                deletedEntityIds: [...(prev.deletedEntityIds || []), deletedId].slice(-500),
+              }));
+            }
+          } else if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const row = payload.new as any;
+            if (row && row.id) {
+              const u1DoneDates = Array.isArray(row.user1_done_dates) && row.user1_done_dates.length
+                ? row.user1_done_dates
+                : (row.user1_done_date ? [row.user1_done_date] : []);
+              const u2DoneDates = Array.isArray(row.user2_done_dates) && row.user2_done_dates.length
+                ? row.user2_done_dates
+                : (row.user2_done_date ? [row.user2_done_date] : []);
+
+              const incomingChallenge: SharedChallenge = reconcileSharedChallengeLifecycle({
+                id: row.id,
+                partnershipId: row.partnership_id,
+                title: row.title,
+                targetHabitName: row.target_habit_name,
+                durationDays: row.duration_days,
+                jointStreak: row.joint_streak,
+                totalJointDaysCompleted: row.total_joint_days_completed ?? 0,
+                user1Category: row.user1_category || 'habit',
+                user1Target: row.user1_target || row.target_habit_name,
+                user2Category: row.user2_category || 'habit',
+                user2Target: row.user2_target || row.target_habit_name,
+                user1DoneDate: row.user1_done_date || undefined,
+                user2DoneDate: row.user2_done_date || undefined,
+                user1DoneDates: u1DoneDates,
+                user2DoneDates: u2DoneDates,
+                status: row.status as 'active' | 'completed' | 'expired',
+                createdAt: row.created_at,
+              });
+
+              setState((prev) => {
+                if (
+                  (prev.deletedEntityIds || []).includes(incomingChallenge.id) ||
+                  (prev.deletedEntityIds || []).includes(incomingChallenge.partnershipId)
+                ) {
+                  return prev;
+                }
+                const exists = (prev.sharedChallenges || []).some((c) => c.id === incomingChallenge.id);
+                return {
+                  ...prev,
+                  sharedChallenges: exists
+                    ? prev.sharedChallenges.map((c) => (c.id === incomingChallenge.id ? mergeSharedChallenge(c, incomingChallenge) : c))
+                    : [incomingChallenge, ...(prev.sharedChallenges || [])],
+                };
+              });
+            }
+          }
+          syncPartnerDataLive();
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => syncPartnerDataLive())
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
@@ -1070,25 +1200,37 @@ export function useAppState() {
         };
       });
     };
-    checkUpdates();
-    archiveTimer.current = window.setInterval(() => checkUpdates(), 60000);
+    checkUpdates(getNow());
+    archiveTimer.current = window.setInterval(() => checkUpdates(getNow()), 60000);
 
     (window as any).__triggerPenaltyCheck = (simulatedDateIso?: string) => {
-      const simDate = simulatedDateIso ? new Date(simulatedDateIso) : new Date();
+      const simDate = simulatedDateIso ? new Date(simulatedDateIso) : getNow();
       console.log('Manually triggering penalty check for:', simDate.toISOString());
       checkUpdates(simDate);
     };
 
     (window as any).__advanceDays = (daysToAdvance: number = 1) => {
-      const targetDate = new Date(Date.now() + daysToAdvance * 86400000);
-      console.log(`Advancing simulated time by ${daysToAdvance} day(s) to:`, targetDate.toISOString());
-      checkUpdates(targetDate);
+      const currentOffset = (window as any).__SIMULATED_OFFSET_MS || 0;
+      const newOffset = currentOffset + daysToAdvance * 86400000;
+      (window as any).__SIMULATED_OFFSET_MS = newOffset;
+      const simDate = new Date(Date.now() + newOffset);
+      console.log(`Advancing simulated time by ${daysToAdvance} day(s) to:`, simDate.toISOString(), 'Date Key:', todayKey(simDate));
+      checkUpdates(simDate);
+      setState((prev) => ({ ...prev }));
+    };
+
+    (window as any).__resetTimeOffset = () => {
+      (window as any).__SIMULATED_OFFSET_MS = 0;
+      console.log('Reset simulated time offset to real time.');
+      checkUpdates(new Date());
+      setState((prev) => ({ ...prev }));
     };
 
     return () => {
       if (archiveTimer.current) window.clearInterval(archiveTimer.current);
       delete (window as any).__triggerPenaltyCheck;
       delete (window as any).__advanceDays;
+      delete (window as any).__resetTimeOffset;
     };
   }, []);
 
@@ -1521,28 +1663,59 @@ export function useAppState() {
   }, [state.currentUser]);
 
   // --- MODULE 1: EXERCISE TRACKER ACTIONS ---
-  const logWorkout = useCallback((type: string, durationMinutes: number) => {
+  const logWorkout = useCallback((type: string, durationMinutes: number, amount?: number, unit?: string) => {
     const date = todayKey();
     setState((prev) => {
+      const normalizedUnit = (unit || 'mins').trim().toLowerCase();
+      const safeDurationMinutes = Math.max(0, Number(durationMinutes) || 0);
+      const safeAmount = typeof amount === 'number' && !isNaN(amount) ? Math.max(0, Number(amount)) : undefined;
+
+      const effectiveAmount = safeAmount !== undefined ? safeAmount : safeDurationMinutes;
+
+      let multiplier = 1;
+      if (normalizedUnit === 'sets' || normalizedUnit === 'km') {
+        multiplier = 10;
+      } else if (normalizedUnit === 'sessions') {
+        multiplier = 30;
+      } else if (normalizedUnit === 'reps' || normalizedUnit === 'mins') {
+        multiplier = 1;
+      } else {
+        multiplier = 1;
+      }
+
+      const calculatedPoints = Math.round(effectiveAmount * multiplier);
+
       const pointsEarnedToday = prev.workouts
         .filter((w) => w.date === date)
-        .reduce((sum, w) => sum + w.pointsAwarded, 0);
+        .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
 
       const maxAllowed = Math.max(0, 60 - pointsEarnedToday);
-      const pointsToAward = Math.min(durationMinutes, maxAllowed);
+      const pointsToAward = Math.min(calculatedPoints, maxAllowed);
+
+      const savedDuration = normalizedUnit === 'mins' ? (safeAmount !== undefined && safeAmount > 0 ? safeAmount : safeDurationMinutes) : 0;
 
       const workout: WorkoutLog = {
         id: uid(),
         date,
         type: type.trim() || 'General Workout',
-        durationMinutes,
+        durationMinutes: savedDuration,
         pointsAwarded: pointsToAward,
+        amount: safeAmount !== undefined ? safeAmount : (normalizedUnit === 'mins' ? safeDurationMinutes : undefined),
+        unit: normalizedUnit,
         createdAt: new Date().toISOString(),
       };
 
       let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
       if (pointsToAward > 0) {
-        pointsUpdate = addPointsInternal(prev, pointsToAward, `Workout logged: ${workout.type} (${durationMinutes}m)`, 'exercise');
+        const metricSuffix = workout.amount && workout.unit && workout.unit !== 'mins'
+          ? `, ${workout.amount} ${workout.unit}`
+          : (workout.durationMinutes > 0 ? ` (${workout.durationMinutes}m)` : '');
+        pointsUpdate = addPointsInternal(
+          prev,
+          pointsToAward,
+          `Workout logged: ${workout.type}${metricSuffix}`,
+          'exercise'
+        );
       }
 
       return {
@@ -1558,14 +1731,68 @@ export function useAppState() {
       (prev) => {
         const target = prev.workouts.find((w) => w.id === workoutId);
         if (!target) return prev;
-        let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-        if (target.pointsAwarded > 0) {
-          pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Workout deleted: ${target.type}`, 'exercise');
+
+        const targetDate = target.date;
+        const remainingWorkouts = prev.workouts.filter((w) => w.id !== workoutId);
+
+        // Recalculate points awarded for all remaining workouts on the target date in chronological order
+        const dayWorkouts = remainingWorkouts.filter((w) => w.date === targetDate);
+        const chronDayWorkouts = [...dayWorkouts].sort(
+          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+
+        let dailyCapRemaining = 60;
+        const recalculatedMap = new Map<string, number>();
+
+        for (const w of chronDayWorkouts) {
+          const u = (w.unit || 'mins').trim().toLowerCase();
+          let mult = 1;
+          if (u === 'sets' || u === 'km') mult = 10;
+          else if (u === 'sessions') mult = 30;
+          else mult = 1;
+
+          const effAmt = typeof w.amount === 'number' && !isNaN(w.amount)
+            ? Math.max(0, w.amount)
+            : Math.max(0, w.durationMinutes || 0);
+
+          const rawPts = Math.round(effAmt * mult);
+          const awarded = Math.min(rawPts, dailyCapRemaining);
+          recalculatedMap.set(w.id, awarded);
+          dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
         }
+
+        const oldDatePoints = prev.workouts
+          .filter((w) => w.date === targetDate)
+          .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
+
+        const newDatePoints = chronDayWorkouts.reduce(
+          (sum, w) => sum + (recalculatedMap.get(w.id) ?? 0),
+          0
+        );
+
+        const netPointDelta = newDatePoints - oldDatePoints;
+
+        let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        if (netPointDelta !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            netPointDelta,
+            `Workout deleted: ${target.type}`,
+            'exercise'
+          );
+        }
+
+        const updatedWorkouts = remainingWorkouts.map((w) => {
+          if (w.date === targetDate && recalculatedMap.has(w.id)) {
+            return { ...w, pointsAwarded: recalculatedMap.get(w.id)! };
+          }
+          return w;
+        });
+
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), workoutId].slice(-500);
         return {
           ...prev,
-          workouts: prev.workouts.filter((w) => w.id !== workoutId),
+          workouts: updatedWorkouts,
           deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
@@ -4327,15 +4554,20 @@ export function useAppState() {
         { immediate: true }
       );
 
-      sendPartnerInviteSupabase(invite).catch((err) => {
-        console.warn('Background Supabase send partner invite warning:', err);
-      });
-
-      createNotificationSupabase(notifData).catch((err) => {
-        console.warn('Background Supabase create notification warning:', err);
-      });
-
-      return invite;
+      try {
+        await Promise.all([
+          sendPartnerInviteSupabase(invite),
+          createNotificationSupabase(notifData).catch((e) => console.warn('Supabase notif send non-fatal:', e)),
+        ]);
+        return invite;
+      } catch (err: any) {
+        console.error('Failed to send partner invite to Supabase:', err);
+        setState((prev) => ({
+          ...prev,
+          partnerInvites: prev.partnerInvites.filter((i) => i.id !== invite.id),
+        }));
+        throw err;
+      }
     },
     [state.username, state.partnerships, state.partnerInvites, state.currentUser]
   );
@@ -4524,14 +4756,15 @@ export function useAppState() {
     );
   }, [state.partnerInvites, state.notifications, state.username, state.currentUser]);
 
-  const endPartnership = useCallback((partnershipId?: string) => {
+  const endPartnership = useCallback(async (partnershipId?: string) => {
     const targetId = partnershipId || state.partnership?.id || state.partnerships[0]?.id;
-    if (targetId) {
-      deletePartnershipSupabase(targetId).catch((err) => {
-        console.warn('Background Supabase delete partnership warning:', err);
-      });
-    }
-    syncBroadcaster.broadcast('PARTNER_ENDED', { partnershipId: targetId });
+    if (!targetId) return;
+
+    // Snapshot partnership and associated challenges for rollback
+    const partnershipToEnd = (state.partnerships || []).find((p) => p.id === targetId) || state.partnership;
+    const challengesToEnd = (state.sharedChallenges || []).filter((c) => c.partnershipId === targetId);
+
+    // Optimistic UI update
     setState(
       (prev) => {
         const updatedPartnerships = (prev.partnerships || []).filter((p) => p.id !== targetId);
@@ -4540,7 +4773,7 @@ export function useAppState() {
           .map((c) => c.id);
         const updatedDeletedEntityIds = [
           ...(prev.deletedEntityIds || []),
-          ...(targetId ? [targetId] : []),
+          targetId,
           ...removedChallengeIds,
         ].slice(-500);
 
@@ -4554,7 +4787,40 @@ export function useAppState() {
       },
       { immediate: true }
     );
-  }, [state.partnership, state.partnerships]);
+
+    try {
+      await deletePartnershipSupabase(targetId);
+      syncBroadcaster.broadcast('PARTNER_ENDED', { partnershipId: targetId });
+    } catch (err: any) {
+      console.error('Failed to end partnership in database:', err);
+      // Rollback optimistic state immediately
+      setState((prev) => {
+        const currentIds = new Set((prev.partnerships || []).map((p) => p.id));
+        const restoredPartnerships = partnershipToEnd && !currentIds.has(targetId)
+          ? [partnershipToEnd, ...(prev.partnerships || [])]
+          : prev.partnerships || [];
+
+        const challengeIds = new Set((prev.sharedChallenges || []).map((c) => c.id));
+        const restoredChallenges = [
+          ...(prev.sharedChallenges || []),
+          ...challengesToEnd.filter((c) => !challengeIds.has(c.id)),
+        ];
+
+        const rollbackDeletedIds = (prev.deletedEntityIds || []).filter(
+          (id) => id !== targetId && !challengesToEnd.some((c) => c.id === id)
+        );
+
+        return {
+          ...prev,
+          partnerships: restoredPartnerships,
+          partnership: restoredPartnerships[0] || null,
+          sharedChallenges: restoredChallenges,
+          deletedEntityIds: rollbackDeletedIds,
+        };
+      });
+      throw err;
+    }
+  }, [state.partnership, state.partnerships, state.sharedChallenges]);
 
   const getPartnerProfileStats = useCallback(async (partnerUsername: string) => {
     if (!partnerUsername) return null;
@@ -4654,9 +4920,10 @@ export function useAppState() {
       // Prevent duplicate creation if an active challenge with the same title already exists on this partnership
       const existingActive = (state.sharedChallenges || []).find(
         (c) =>
+          c &&
           c.partnershipId === pId &&
           c.status === 'active' &&
-          c.title.trim().toLowerCase() === normTitle
+          (c.title || '').trim().toLowerCase() === normTitle
       );
       if (existingActive) {
         throw new Error(
@@ -4678,10 +4945,8 @@ export function useAppState() {
         user2Category,
         user2Target: user2Target.trim(),
         status: 'active',
-        createdAt: new Date().toISOString(),
+        createdAt: getNow().toISOString(),
       };
-
-      const backupChallenges = state.sharedChallenges;
 
       // Optimistically update local UI state
       setState((prev) => ({
@@ -4694,10 +4959,10 @@ export function useAppState() {
         syncBroadcaster.broadcast('CHALLENGE_UPDATED', challenge);
       } catch (err: any) {
         console.error('Failed to create joint pact in Supabase:', err);
-        // Rollback UI state to backup
+        // Rollback only this specific challenge object by ID
         setState((prev) => ({
           ...prev,
-          sharedChallenges: backupChallenges,
+          sharedChallenges: (prev.sharedChallenges || []).filter((c) => c.id !== challenge.id),
         }));
         throw err;
       }
@@ -4706,8 +4971,7 @@ export function useAppState() {
   );
 
   const deleteSharedChallenge = useCallback(async (challengeId: string) => {
-    const backupChallenges = state.sharedChallenges;
-    const backupDeletedEntityIds = state.deletedEntityIds;
+    const challengeToDelete = (state.sharedChallenges || []).find((c) => c.id === challengeId);
 
     // Optimistically update local UI state
     setState(
@@ -4727,24 +4991,46 @@ export function useAppState() {
       syncBroadcaster.broadcast('CHALLENGE_DELETED', { challengeId });
     } catch (err: any) {
       console.error('Failed to delete shared challenge in Supabase:', err);
-      // Rollback UI state to backup
-      setState((prev) => ({
-        ...prev,
-        sharedChallenges: backupChallenges,
-        deletedEntityIds: backupDeletedEntityIds,
-      }));
+      // Rollback only this specific challenge back into the list if partnership still exists
+      if (challengeToDelete) {
+        setState((prev) => {
+          const partnershipExists = (prev.partnerships || []).some(
+            (p) => p.id === challengeToDelete.partnershipId
+          ) || prev.partnership?.id === challengeToDelete.partnershipId;
+
+          if (!partnershipExists) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            sharedChallenges: prev.sharedChallenges.some((c) => c.id === challengeId)
+              ? prev.sharedChallenges
+              : [challengeToDelete, ...prev.sharedChallenges],
+            deletedEntityIds: (prev.deletedEntityIds || []).filter((id) => id !== challengeId),
+          };
+        });
+      }
       throw err;
     }
-  }, [state.sharedChallenges, state.deletedEntityIds]);
+  }, [state.sharedChallenges]);
 
   const logSharedChallengeHabit = useCallback(
     async (challengeId: string, forcedState?: boolean) => {
+      if (pendingPledgeRequests.has(challengeId)) {
+        return;
+      }
+      pendingPledgeRequests.add(challengeId);
+
       const today = todayKey();
-      const backupChallenges = state.sharedChallenges;
 
       const idx = state.sharedChallenges.findIndex((c) => c.id === challengeId);
-      if (idx === -1) return;
+      if (idx === -1) {
+        pendingPledgeRequests.delete(challengeId);
+        return;
+      }
       const target = state.sharedChallenges[idx];
+      const previousChallenge = target;
 
       const challengePartnership =
         (state.partnerships || []).find((p) => p.id === target.partnershipId) || state.partnership;
@@ -4770,13 +5056,10 @@ export function useAppState() {
         (target.user2DoneDates || (target.user2DoneDate ? [target.user2DoneDate] : [])).includes(today);
       const { updated, becameCompleted } = applyPledgeToggle(target, isUser1, isDoneToday);
 
-      const updatedChallenges = [...state.sharedChallenges];
-      updatedChallenges[idx] = updated;
-
-      // Optimistically update local UI state
+      // Optimistically update local UI state targeting only this challenge
       setState((prev) => ({
         ...prev,
-        sharedChallenges: updatedChallenges,
+        sharedChallenges: prev.sharedChallenges.map((c) => (c.id === challengeId ? updated : c)),
       }));
 
       try {
@@ -4817,12 +5100,14 @@ export function useAppState() {
         }
       } catch (err: any) {
         console.error('Failed to log shared challenge day in Supabase:', err);
-        // Rollback UI state to backup
+        // Rollback only this specific challenge object by ID
         setState((prev) => ({
           ...prev,
-          sharedChallenges: backupChallenges,
+          sharedChallenges: prev.sharedChallenges.map((c) => (c.id === challengeId ? previousChallenge : c)),
         }));
         throw err;
+      } finally {
+        pendingPledgeRequests.delete(challengeId);
       }
     },
     [state.sharedChallenges, state.partnerships, state.partnership, state.currentUser, state.username]
