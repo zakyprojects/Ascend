@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Activity, Dumbbell, Flame, Plus, Trash2, Calendar, Award } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
@@ -8,7 +8,7 @@ import { todayKey, formatDateLong, parseDate } from '@/lib/dates';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 
-const COMMON_WORKOUT_TYPES = [
+const DEFAULT_WORKOUT_TYPES = [
   'Running',
   'Cycling',
   'Weightlifting',
@@ -29,6 +29,13 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   const [metricType, setMetricType] = useState<string>('mins');
   const [amount, setAmount] = useState<number>(30);
   const [duration, setDuration] = useState(30);
+
+  const availableWorkoutTypes = useMemo(() => {
+    const fromHistory = (store.state.workouts || [])
+      .map((w) => (w.type || '').trim())
+      .filter((t) => Boolean(t) && t !== 'Other');
+    return Array.from(new Set([...fromHistory, ...DEFAULT_WORKOUT_TYPES]));
+  }, [store.state.workouts]);
 
   const exerciseGoal = store.state.exerciseGoal;
   const [targetSessionsInput, setTargetSessionsInput] = useState<number>(exerciseGoal?.targetWeeklySessions || 3);
@@ -257,7 +264,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               onChange={(e) => setWorkoutType(e.target.value)}
               className="input mb-2"
             >
-              {COMMON_WORKOUT_TYPES.map((t) => (
+              {availableWorkoutTypes.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
               <option value="Other">Custom / Other...</option>

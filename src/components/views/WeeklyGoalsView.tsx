@@ -39,11 +39,19 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const availableWorkoutTypes = useMemo(() => {
     const fromHistory = (store.state.workouts || [])
       .map((w) => (w.type || '').trim())
-      .filter((t) => Boolean(t));
-    const unique = Array.from(new Set(fromHistory));
-    const fallbacks = ['Running', 'Cycling', 'Pushups', 'Strength Training', 'Walking', 'Swimming'];
-    const merged = Array.from(new Set([...unique, ...fallbacks]));
-    return merged;
+      .filter((t) => Boolean(t) && t !== 'Other');
+    const defaults = [
+      'Running',
+      'Cycling',
+      'Weightlifting',
+      'HIIT',
+      'Yoga',
+      'Swimming',
+      'Walking',
+      'Boxing',
+      'Pilates',
+    ];
+    return Array.from(new Set([...fromHistory, ...defaults]));
   }, [store.state.workouts]);
 
   // Active Goal Document
@@ -282,6 +290,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
   const handleSaveGoal = () => {
     if (!title.trim()) return;
+
+    if (linkedModule === 'exercise' && !linkedItemId) {
+      showErrorToast('Workout Required', 'Please select a specific workout to link this goal.');
+      return;
+    }
 
     if (linkedModule === 'skill' && !linkedItemId) {
       showErrorToast('Skill Required', 'Please select a specific skill to link this goal.');
@@ -920,14 +933,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Target Workout Name <span className="text-slate-500 font-normal">(Optional)</span>
+                  Select Workout <span className="text-rose-400">*</span>
                 </label>
                 <select
                   value={linkedItemId}
                   onChange={(e) => setLinkedItemId(e.target.value)}
                   className="input w-full bg-bg-800"
                 >
-                  <option value="">All Exercises</option>
+                  <option value="" disabled>Select a specific workout...</option>
                   {availableWorkoutTypes.map((workoutName) => (
                     <option key={workoutName} value={workoutName}>
                       {workoutName}
