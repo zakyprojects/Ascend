@@ -1004,10 +1004,9 @@ export function useAppState() {
               return local && local.read ? { ...fn, read: true } : fn;
             });
 
-          // 2. Reconcile partnerships (union existing + fetched, deduplicate, filter tombstones)
-          const allPartnerships = [...filteredPartnerships, ...(prev.partnerships || [])];
+          // 2. Reconcile partnerships (authoritative from DB, filtered by tombstones)
           const mergedPartnershipsMap = new Map<string, Partnership>();
-          for (const p of allPartnerships) {
+          for (const p of filteredPartnerships) {
             if (!p || currentTombstones.has(p.id)) continue;
             const u1 = (p.user1Username || '').toLowerCase();
             const u2 = (p.user2Username || '').toLowerCase();
@@ -1019,17 +1018,12 @@ export function useAppState() {
           const finalPartnerships = Array.from(mergedPartnershipsMap.values());
           const finalActivePartnershipIds = new Set(finalPartnerships.map((p) => p.id));
 
-          // 3. Reconcile shared challenges (union local optimistic + fetched, merge lifecycle, filter tombstones)
+          // 3. Reconcile shared challenges (authoritative active challenges from DB, merged lifecycle, filter tombstones)
           const challengeMap = new Map<string, SharedChallenge>();
-          for (const c of prev.sharedChallenges || []) {
-            if (!c || currentTombstones.has(c.id) || currentTombstones.has(c.partnershipId)) continue;
-            if (!finalActivePartnershipIds.has(c.partnershipId)) continue;
-            challengeMap.set(c.id, c);
-          }
           for (const c of challenges) {
             if (!c || currentTombstones.has(c.id) || currentTombstones.has(c.partnershipId)) continue;
             if (!finalActivePartnershipIds.has(c.partnershipId)) continue;
-            const existing = challengeMap.get(c.id);
+            const existing = (prev.sharedChallenges || []).find((sc) => sc.id === c.id);
             const merged = existing ? mergeSharedChallenge(existing, c) : c;
             challengeMap.set(c.id, reconcileSharedChallengeLifecycle(merged));
           }
@@ -1068,9 +1062,98 @@ export function useAppState() {
     if (isSupabaseConfigured) {
       channel = supabase
         .channel(`social_realtime_${userId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_invites' }, () => syncPartnerDataLive())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'partnerships' }, () => syncPartnerDataLive())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_challenges' }, () => syncPartnerDataLive())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'partner_invites' }, (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as any)?.id;
+            if (deletedId) {
+              setState((prev) => ({
+                ...prev,
+                partnerInvites: (prev.partnerInvites || []).filter((i) => i.id !== deletedId),
+                deletedEntityIds: [...(prev.deletedEntityIds || []), deletedId].slice(-500),
+              }));
+            }
+          }
+          syncPartnerDataLive();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'partnerships' }, (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as any)?.id;
+            if (deletedId) {
+              setState((prev) => {
+                const remainingPartnerships = (prev.partnerships || []).filter((p) => p.id !== deletedId);
+                const remainingChallenges = (prev.sharedChallenges || []).filter((c) => c.partnershipId !== deletedId);
+                const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), deletedId].slice(-500);
+                return {
+                  ...prev,
+                  partnerships: remainingPartnerships,
+                  partnership: remainingPartnerships[0] || null,
+                  sharedChallenges: remainingChallenges,
+                  deletedEntityIds: updatedDeletedEntityIds,
+                };
+              });
+            }
+          }
+          syncPartnerDataLive();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_challenges' }, (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as any)?.id;
+            if (deletedId) {
+              setState((prev) => ({
+                ...prev,
+                sharedChallenges: (prev.sharedChallenges || []).filter((c) => c.id !== deletedId),
+                deletedEntityIds: [...(prev.deletedEntityIds || []), deletedId].slice(-500),
+              }));
+            }
+          } else if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const row = payload.new as any;
+            if (row && row.id) {
+              const u1DoneDates = Array.isArray(row.user1_done_dates) && row.user1_done_dates.length
+                ? row.user1_done_dates
+                : (row.user1_done_date ? [row.user1_done_date] : []);
+              const u2DoneDates = Array.isArray(row.user2_done_dates) && row.user2_done_dates.length
+                ? row.user2_done_dates
+                : (row.user2_done_date ? [row.user2_done_date] : []);
+
+              const incomingChallenge: SharedChallenge = reconcileSharedChallengeLifecycle({
+                id: row.id,
+                partnershipId: row.partnership_id,
+                title: row.title,
+                targetHabitName: row.target_habit_name,
+                durationDays: row.duration_days,
+                jointStreak: row.joint_streak,
+                totalJointDaysCompleted: row.total_joint_days_completed ?? 0,
+                user1Category: row.user1_category || 'habit',
+                user1Target: row.user1_target || row.target_habit_name,
+                user2Category: row.user2_category || 'habit',
+                user2Target: row.user2_target || row.target_habit_name,
+                user1DoneDate: row.user1_done_date || undefined,
+                user2DoneDate: row.user2_done_date || undefined,
+                user1DoneDates: u1DoneDates,
+                user2DoneDates: u2DoneDates,
+                status: row.status as 'active' | 'completed' | 'expired',
+                createdAt: row.created_at,
+              });
+
+              setState((prev) => {
+                if (
+                  (prev.deletedEntityIds || []).includes(incomingChallenge.id) ||
+                  (prev.deletedEntityIds || []).includes(incomingChallenge.partnershipId)
+                ) {
+                  return prev;
+                }
+                const exists = (prev.sharedChallenges || []).some((c) => c.id === incomingChallenge.id);
+                return {
+                  ...prev,
+                  sharedChallenges: exists
+                    ? prev.sharedChallenges.map((c) => (c.id === incomingChallenge.id ? mergeSharedChallenge(c, incomingChallenge) : c))
+                    : [incomingChallenge, ...(prev.sharedChallenges || [])],
+                };
+              });
+            }
+          }
+          syncPartnerDataLive();
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => syncPartnerDataLive())
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
