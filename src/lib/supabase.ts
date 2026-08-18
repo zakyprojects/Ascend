@@ -1411,6 +1411,39 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
     const u1Scalar = challenge.user1DoneDate || (challenge.user1DoneDates && challenge.user1DoneDates.length ? challenge.user1DoneDates[challenge.user1DoneDates.length - 1] : null);
     const u2Scalar = challenge.user2DoneDate || (challenge.user2DoneDates && challenge.user2DoneDates.length ? challenge.user2DoneDates[challenge.user2DoneDates.length - 1] : null);
 
+    const rpcParams = {
+      p_id: challengeId,
+      p_partnership_id: challenge.partnershipId,
+      p_title: challenge.title,
+      p_target_habit_name: challenge.targetHabitName,
+      p_duration_days: challenge.durationDays,
+      p_joint_streak: challenge.jointStreak || 0,
+      p_total_joint_days_completed: challenge.totalJointDaysCompleted ?? 0,
+      p_user1_category: challenge.user1Category || 'habit',
+      p_user1_target: challenge.user1Target || challenge.targetHabitName || '',
+      p_user2_category: challenge.user2Category || 'habit',
+      p_user2_target: challenge.user2Target || challenge.targetHabitName || '',
+      p_user1_done_date: u1Scalar,
+      p_user2_done_date: u2Scalar,
+      p_user1_done_dates: challenge.user1DoneDates || [],
+      p_user2_done_dates: challenge.user2DoneDates || [],
+      p_status: challenge.status || 'active',
+    };
+
+    // 1. Try atomic SECURITY DEFINER RPC first to bypass client RLS discrepancies
+    const { data: rpcData, error: rpcError } = await supabase.rpc('save_shared_challenge_atomic', rpcParams);
+    if (!rpcError && rpcData?.success) {
+      return;
+    }
+
+    if (rpcError) {
+      console.warn('RPC save_shared_challenge_atomic reported error, falling back to direct upsert:', rpcError);
+    } else if (rpcData && !rpcData.success) {
+      console.error('RPC save_shared_challenge_atomic business error:', rpcData.error);
+      throw new Error(rpcData.error || 'Failed to save joint pact in database.');
+    }
+
+    // 2. Direct upsert fallback
     const payload: Record<string, any> = {
       id: challengeId,
       partnership_id: challenge.partnershipId,
@@ -1443,7 +1476,7 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
       console.error('Error saving shared challenge to Supabase:', error);
       throw new Error(error.message || 'Failed to save joint pact in database.');
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error('saveSharedChallengeSupabase failed:', e);
     throw e;
   }
@@ -1507,12 +1540,23 @@ export async function fetchSharedChallengesSupabase(partnershipIds: string | str
 export async function deleteSharedChallengeSupabase(challengeId: string) {
   if (!isSupabaseConfigured || !challengeId) return;
   try {
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('delete_shared_challenge_atomic', { p_challenge_id: challengeId });
+    if (!rpcErr && rpcData?.success) {
+      return;
+    }
+    if (rpcErr) {
+      console.warn('RPC delete_shared_challenge_atomic reported error, falling back to direct delete:', rpcErr);
+    } else if (rpcData && !rpcData.success) {
+      console.error('RPC delete_shared_challenge_atomic business error:', rpcData.error);
+      throw new Error(rpcData.error || 'Failed to delete shared challenge in database');
+    }
+
     const { error } = await supabase.from('shared_challenges').delete().eq('id', challengeId);
     if (error) {
       console.error('Error deleting shared challenge in Supabase:', error);
       throw new Error(error.message || 'Failed to delete shared challenge in database');
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error('deleteSharedChallengeSupabase failed:', e);
     throw e;
   }
