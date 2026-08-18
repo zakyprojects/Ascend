@@ -36,7 +36,7 @@ CREATE POLICY "Users can access shared challenges for their partnerships"
     )
   );
 
--- 3. Atomic RPC function to securely save/upsert shared challenges with strict authenticated caller ownership verification
+-- 3. Atomic RPC function to securely save/upsert shared challenges with explicit type conversions
 CREATE OR REPLACE FUNCTION public.save_shared_challenge_atomic(
   p_id UUID,
   p_partnership_id UUID,
@@ -64,6 +64,8 @@ DECLARE
   v_caller_id UUID;
   v_partner_exists BOOLEAN;
   v_challenge public.shared_challenges;
+  v_user1_date DATE;
+  v_user2_date DATE;
 BEGIN
   -- 1. Require authenticated session
   v_caller_id := auth.uid();
@@ -88,7 +90,20 @@ BEGIN
     );
   END IF;
 
-  -- 3. Upsert challenge
+  -- 3. Safely cast date strings to DATE (null if empty or not provided)
+  IF p_user1_done_date IS NOT NULL AND TRIM(p_user1_done_date) <> '' THEN
+    v_user1_date := p_user1_done_date::DATE;
+  ELSE
+    v_user1_date := NULL;
+  END IF;
+
+  IF p_user2_done_date IS NOT NULL AND TRIM(p_user2_done_date) <> '' THEN
+    v_user2_date := p_user2_done_date::DATE;
+  ELSE
+    v_user2_date := NULL;
+  END IF;
+
+  -- 4. Upsert challenge
   INSERT INTO public.shared_challenges (
     id,
     partnership_id,
@@ -119,8 +134,8 @@ BEGIN
     COALESCE(p_user1_target, ''),
     COALESCE(p_user2_category, 'habit'),
     COALESCE(p_user2_target, ''),
-    p_user1_done_date,
-    p_user2_done_date,
+    v_user1_date,
+    v_user2_date,
     COALESCE(p_user1_done_dates, '[]'::jsonb),
     COALESCE(p_user2_done_dates, '[]'::jsonb),
     COALESCE(p_status, 'active')
@@ -209,7 +224,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- 5. Grant execution permissions
+-- 5. Grant execution permissions only to authenticated users
 GRANT EXECUTE ON FUNCTION public.save_shared_challenge_atomic TO authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_shared_challenge_atomic TO authenticated;
 
