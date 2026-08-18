@@ -1,4 +1,13 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  CartesianGrid,
+} from 'recharts';
 import {
   Smile,
   Meh,
@@ -122,49 +131,6 @@ export function Journal({ store }: { store: AppStore }) {
 
   const [promptOffset, setPromptOffset] = useState<number>(0);
   const [chartRange, setChartRange] = useState<ChartRange>('7d');
-  const chartContainerRef = useRef<HTMLDivElement | null>(null);
-  const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number }>({
-    width: 600,
-    height: 144,
-  });
-
-  // Track real container pixel dimensions using ResizeObserver
-  useEffect(() => {
-    const el = chartContainerRef.current;
-    if (!el) return;
-
-    const updateDimensions = () => {
-      const rect = el.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        setContainerDimensions({ width: rect.width, height: rect.height });
-      }
-    };
-
-    updateDimensions();
-
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-          setContainerDimensions({
-            width: entry.contentRect.width,
-            height: entry.contentRect.height,
-          });
-        }
-      }
-    });
-
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  const [hoveredChartPoint, setHoveredChartPoint] = useState<{
-    date: string;
-    label: string;
-    entry?: JournalEntry;
-    moodMeta?: MoodMeta;
-    x: number;
-    y: number;
-  } | null>(null);
 
   // Update prompt preference
   const toggleGuidedPrompt = (enabled: boolean) => {
@@ -663,181 +629,148 @@ export function Journal({ store }: { store: AppStore }) {
           </div>
         ) : (
           <div className="space-y-4 animate-fade-in">
-            {/* Interactive SVG Trend Chart */}
-            <div className="relative pt-2 pb-2">
-              {/* Y-Axis scale indicators & subtle horizontal gridlines */}
-              <div className="relative h-44 bg-bg-900/80 rounded-2xl p-4 border border-white/5 flex flex-col justify-between overflow-hidden">
-                {/* 4 horizontal gridlines */}
-                {[
-                  { level: 4, label: 'Motivated', color: MOOD_MAP.motivated.color, icon: Zap },
-                  { level: 3, label: 'Happy', color: MOOD_MAP.happy.color, icon: Smile },
-                  { level: 2, label: 'Neutral', color: MOOD_MAP.neutral.color, icon: Meh },
-                  { level: 1, label: 'Sad', color: MOOD_MAP.sad.color, icon: Frown },
-                ].map((row) => (
-                  <div key={row.level} className="flex items-center gap-2 w-full">
-                    <div className="flex items-center gap-1 w-20 shrink-0">
-                      <row.icon size={13} style={{ color: row.color }} />
-                      <span className="text-[10px] font-semibold text-slate-400 truncate">
-                        {row.label}
-                      </span>
-                    </div>
-                    <div className="flex-1 border-b border-white/5 border-dashed" />
-                  </div>
-                ))}
+            {/* Recharts Responsive Mood Trend Chart */}
+            <div className="bg-bg-900/80 rounded-2xl p-4 border border-white/5">
+              <div className="h-48 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={chartData}
+                    margin={{ top: 12, right: 16, left: 0, bottom: 4 }}
+                  >
+                    <CartesianGrid
+                      stroke="rgba(255, 255, 255, 0.05)"
+                      strokeDasharray="3 3"
+                      vertical={false}
+                    />
 
-                {/* SVG Trend Line & HTML Node Layer (Measured True-Pixel Dimensions & Coordinates) */}
-                {(() => {
-                  const totalCount = chartData.length;
-                  const w = Math.max(10, containerDimensions.width);
-                  const h = Math.max(10, containerDimensions.height);
+                    {/* Y-Axis: Mood levels with custom label mapping */}
+                    <YAxis
+                      type="number"
+                      domain={[1, 4]}
+                      ticks={[1, 2, 3, 4]}
+                      tickFormatter={(val: number) => {
+                        const m = MOODS.find((item) => item.score === val);
+                        return m ? m.label : '';
+                      }}
+                      tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={70}
+                    />
 
-                  const mappedPoints = chartData.map((d, index) => {
-                    const pixelX = totalCount > 1 ? (index / (totalCount - 1)) * w : w / 2;
-                    const pixelY = d.score !== null ? (1 - (d.score - 1) / 3) * h : null;
-                    const pctX = totalCount > 1 ? (index / (totalCount - 1)) * 100 : 50;
-                    const pctY = d.score !== null ? (1 - (d.score - 1) / 3) * 100 : 96;
+                    {/* X-Axis: Days with custom formatting */}
+                    <XAxis
+                      dataKey="shortLabel"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
+                      dy={6}
+                    />
 
-                    return { ...d, pixelX, pixelY, pctX, pctY, index };
-                  });
-
-                  const recordedPoints = mappedPoints.filter(
-                    (pt): pt is typeof pt & { pixelY: number } => pt.pixelY !== null && pt.score !== null
-                  );
-
-                  const pathD =
-                    recordedPoints.length >= 2
-                      ? recordedPoints.reduce((acc, pt, idx) => {
-                          return `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.pixelX.toFixed(1)} ${pt.pixelY.toFixed(1)}`;
-                        }, '')
-                      : '';
-
-                  return (
-                    <div ref={chartContainerRef} className="absolute inset-0 left-24 right-4 top-4 bottom-4">
-                      {/* 1. Real-pixel 1:1 SVG Trend Line (No non-uniform scaling artifacts) */}
-                      <svg
-                        className="w-full h-full overflow-visible pointer-events-none"
-                        viewBox={`0 0 ${w} ${h}`}
-                        width={w}
-                        height={h}
-                      >
-                        {pathD && (
-                          <path
-                            d={pathD}
-                            fill="none"
-                            stroke="#10b981"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="drop-shadow-md"
-                          />
-                        )}
-                      </svg>
-
-                      {/* 2. Perfectly Circular HTML Dots (Synchronized to (pctX, pctY) and increased in size for clarity) */}
-                      <div className="absolute inset-0 pointer-events-none">
-                        {mappedPoints.map((pt) => {
-                          const hasEntry = pt.pixelY !== null && pt.score !== null && !!pt.moodMeta;
-                          const leftPos = `${pt.pctX}%`;
-                          const topPos = hasEntry ? `${pt.pctY}%` : '96%';
+                    {/* Tooltip: Custom interactive card showing date, mood and journal reflection preview */}
+                    <RechartsTooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          if (!data.moodMeta) return null;
 
                           return (
                             <div
-                              key={pt.dateKey}
-                              className="absolute pointer-events-auto cursor-pointer flex items-center justify-center -translate-x-1/2 -translate-y-1/2"
-                              style={{
-                                left: leftPos,
-                                top: topPos,
-                              }}
+                              className="p-3 bg-bg-800/95 backdrop-blur-md border rounded-xl shadow-2xl space-y-1.5 min-w-[200px] max-w-xs"
+                              style={{ borderColor: `${data.moodMeta.color}50` }}
                             >
-                              <button
-                                type="button"
-                                className="w-7 h-7 flex items-center justify-center group focus:outline-none"
-                                onMouseEnter={() => {
-                                  if (hasEntry) {
-                                    setHoveredChartPoint({
-                                      date: pt.dateKey,
-                                      label: pt.label,
-                                      entry: pt.entry,
-                                      moodMeta: pt.moodMeta,
-                                      x: pt.index,
-                                      y: pt.score || 1,
-                                    });
-                                  }
-                                }}
-                                onMouseLeave={() => setHoveredChartPoint(null)}
-                                onClick={() => {
-                                  if (pt.entry) setSelectedEntry(pt.entry);
-                                }}
-                                aria-label={`Mood entry for ${pt.label}`}
-                              >
-                                {hasEntry ? (
-                                  <div
-                                    className={`${
-                                      chartRange === '7d' ? 'w-4 h-4' : 'w-3.5 h-3.5'
-                                    } rounded-full border-2 border-bg-900 shadow-md transition-transform duration-150 group-hover:scale-150 shrink-0`}
-                                    style={{
-                                      backgroundColor: pt.moodMeta?.color,
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="w-1.5 h-1.5 rounded-full bg-white/15 group-hover:bg-white/40 transition-colors shrink-0" />
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-bold text-slate-200">
+                                  {data.label}
+                                </span>
+                                <span
+                                  className="text-xs font-bold px-2 py-0.5 rounded-md"
+                                  style={{
+                                    backgroundColor: `${data.moodMeta.color}20`,
+                                    color: data.moodMeta.color,
+                                  }}
+                                >
+                                  {data.moodMeta.label}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed">
+                                {data.entry?.content || (
+                                  <span className="italic text-slate-500">
+                                    Mood recorded, no notes added
+                                  </span>
                                 )}
-                              </button>
+                              </p>
+                              {data.entry && (
+                                <p className="text-[10px] text-primary-400 font-semibold pt-1 border-t border-white/5">
+                                  Click to view full entry
+                                </p>
+                              )}
                             </div>
                           );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Hover Tooltip Card */}
-              {hoveredChartPoint && hoveredChartPoint.moodMeta && (
-                <div
-                  className="p-2.5 bg-bg-800 border border-white/10 rounded-xl shadow-2xl space-y-1 mt-2 animate-fade-in"
-                  style={{ borderColor: `${hoveredChartPoint.moodMeta.color}40` }}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-slate-200">
-                      {formatDateLong(hoveredChartPoint.date)}
-                    </span>
-                    <span
-                      className="text-xs font-bold px-2 py-0.5 rounded-md"
-                      style={{
-                        backgroundColor: `${hoveredChartPoint.moodMeta.color}20`,
-                        color: hoveredChartPoint.moodMeta.color,
+                        }
+                        return null;
                       }}
-                    >
-                      {hoveredChartPoint.moodMeta.label}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 line-clamp-2">
-                    {hoveredChartPoint.entry?.content || (
-                      <span className="italic text-slate-500">Mood recorded, no notes added</span>
-                    )}
-                  </p>
-                </div>
-              )}
+                    />
 
-              {/* X-Axis Day Labels */}
-              <div className="flex justify-between items-center px-4 pl-24 text-[10px] text-slate-400 mt-2 font-medium">
-                {chartRange === '7d' ? (
-                  chartData.map((d) => (
-                    <span
-                      key={d.dateKey}
-                      className={d.isToday ? 'text-primary-400 font-bold' : 'text-slate-400'}
-                    >
-                      {d.shortLabel}
-                    </span>
-                  ))
-                ) : (
-                  <>
-                    <span>{chartData[0]?.label}</span>
-                    <span>{chartData[Math.floor(chartData.length / 2)]?.label}</span>
-                    <span className="text-primary-400 font-bold">Today</span>
-                  </>
-                )}
+                    {/* Trend Line with Custom Colored Dots */}
+                    <Line
+                      type="monotone"
+                      dataKey="score"
+                      stroke="#10b981"
+                      strokeWidth={2.5}
+                      connectNulls={false}
+                      isAnimationActive={false}
+                      dot={(props: any) => {
+                        const { cx, cy, payload } = props;
+                        if (!payload || payload.score === null || !payload.moodMeta) {
+                          return null;
+                        }
+
+                        const radius = chartRange === '7d' ? 6 : 5;
+                        const fillColor = payload.moodMeta.color;
+
+                        return (
+                          <g
+                            key={`dot-${payload.dateKey}`}
+                            className="cursor-pointer group"
+                            onClick={() => {
+                              if (payload.entry) {
+                                setSelectedEntry(payload.entry);
+                              }
+                            }}
+                          >
+                            {/* Hit-area circle for responsive hover & tapping */}
+                            <circle cx={cx} cy={cy} r={12} fill="transparent" />
+
+                            {/* Crisp colored mood circle */}
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={radius}
+                              fill={fillColor}
+                              stroke="#0f172a"
+                              strokeWidth={2}
+                              className="transition-transform duration-150 group-hover:scale-125 origin-center drop-shadow-md"
+                            />
+                          </g>
+                        );
+                      }}
+                      activeDot={{
+                        r: chartRange === '7d' ? 8 : 7,
+                        stroke: '#0f172a',
+                        strokeWidth: 2,
+                        fill: '#10b981',
+                        className: 'cursor-pointer drop-shadow-lg',
+                        onClick: (_: any, event: any) => {
+                          const payload = event?.payload;
+                          if (payload?.entry) {
+                            setSelectedEntry(payload.entry);
+                          }
+                        },
+                      }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
