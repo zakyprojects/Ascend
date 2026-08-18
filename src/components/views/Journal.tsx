@@ -650,7 +650,7 @@ export function Journal({ store }: { store: AppStore }) {
                   </div>
                 ))}
 
-                {/* SVG Trend Line & Native SVG Circle Nodes (Unified 0-100 ViewBox Coordinate System) */}
+                {/* SVG Trend Line & HTML Node Layer (Unified mappedPoints Single-Source Coordinates) */}
                 {(() => {
                   const totalCount = chartData.length;
                   const mappedPoints = chartData.map((d, index) => {
@@ -672,76 +672,75 @@ export function Journal({ store }: { store: AppStore }) {
 
                   return (
                     <div className="absolute inset-0 left-24 right-4 top-4 bottom-4">
-                      <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        {/* 1. Trend Line Path */}
+                      {/* 1. Scalable SVG Trend Line (d attribute generated directly from mappedPoints) */}
+                      <svg className="w-full h-full overflow-visible pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                         {pathD && (
                           <path
                             d={pathD}
                             fill="none"
                             stroke="#10b981"
-                            strokeWidth="2.5"
-                            vectorEffect="non-scaling-stroke"
+                            strokeWidth="1.2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className="drop-shadow-md pointer-events-none"
+                            className="drop-shadow-md"
                           />
                         )}
+                      </svg>
 
-                        {/* 2. Unified SVG Circle Data Points & Invisible Touch Hit-targets */}
+                      {/* 2. HTML Dots Layer (Rendered from the SAME mappedPoints without non-uniform ellipse distortion) */}
+                      <div className="absolute inset-0 pointer-events-none">
                         {mappedPoints.map((pt) => {
                           const hasEntry = pt.y !== null && pt.score !== null && !!pt.moodMeta;
-                          const cx = pt.x;
-                          const cy = hasEntry && pt.y !== null ? pt.y : 96;
+                          const leftPos = `${pt.x}%`;
+                          const topPos = hasEntry && pt.y !== null ? `${pt.y}%` : '96%';
 
                           return (
-                            <g
+                            <div
                               key={pt.dateKey}
-                              className="cursor-pointer group"
-                              onMouseEnter={() => {
-                                if (hasEntry) {
-                                  setHoveredChartPoint({
-                                    date: pt.dateKey,
-                                    label: pt.label,
-                                    entry: pt.entry,
-                                    moodMeta: pt.moodMeta,
-                                    x: pt.index,
-                                    y: pt.score || 1,
-                                  });
-                                }
-                              }}
-                              onMouseLeave={() => setHoveredChartPoint(null)}
-                              onClick={() => {
-                                if (pt.entry) setSelectedEntry(pt.entry);
+                              className="absolute pointer-events-auto cursor-pointer flex items-center justify-center -translate-x-1/2 -translate-y-1/2"
+                              style={{
+                                left: leftPos,
+                                top: topPos,
                               }}
                             >
-                              {/* Transparent larger hit-target for hovering/tapping */}
-                              <circle cx={cx} cy={cy} r="6" fill="transparent" />
-
-                              {/* Visible Mood Circle Node or Unrecorded Marker */}
-                              {hasEntry ? (
-                                <circle
-                                  cx={cx}
-                                  cy={cy}
-                                  r={chartRange === '7d' ? '2.5' : '1.8'}
-                                  fill={pt.moodMeta?.color || '#10b981'}
-                                  stroke="#0f172a"
-                                  strokeWidth="1"
-                                  vectorEffect="non-scaling-stroke"
-                                  className="transition-transform duration-150 group-hover:scale-125 origin-center drop-shadow-md"
-                                />
-                              ) : (
-                                <circle
-                                  cx={cx}
-                                  cy={cy}
-                                  r="0.8"
-                                  fill="rgba(255,255,255,0.15)"
-                                  className="group-hover:fill-white/30 transition-colors"
-                                />
-                              )}
-                            </g>
+                              <button
+                                type="button"
+                                className="w-6 h-6 flex items-center justify-center group focus:outline-none"
+                                onMouseEnter={() => {
+                                  if (hasEntry) {
+                                    setHoveredChartPoint({
+                                      date: pt.dateKey,
+                                      label: pt.label,
+                                      entry: pt.entry,
+                                      moodMeta: pt.moodMeta,
+                                      x: pt.index,
+                                      y: pt.score || 1,
+                                    });
+                                  }
+                                }}
+                                onMouseLeave={() => setHoveredChartPoint(null)}
+                                onClick={() => {
+                                  if (pt.entry) setSelectedEntry(pt.entry);
+                                }}
+                                aria-label={`Mood entry for ${pt.label}`}
+                              >
+                                {hasEntry ? (
+                                  <div
+                                    className={`${
+                                      chartRange === '7d' ? 'w-3 h-3' : 'w-2.5 h-2.5'
+                                    } rounded-full border-2 border-bg-900 shadow-md transition-transform duration-150 group-hover:scale-150 shrink-0`}
+                                    style={{
+                                      backgroundColor: pt.moodMeta?.color,
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-1.5 h-1.5 rounded-full bg-white/10 group-hover:bg-white/30 transition-colors shrink-0" />
+                                )}
+                              </button>
+                            </div>
                           );
                         })}
-                      </svg>
+                      </div>
                     </div>
                   );
                 })()}
