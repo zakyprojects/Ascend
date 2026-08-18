@@ -652,7 +652,7 @@ export function Journal({ store }: { store: AppStore }) {
 
                 {/* SVG Trend Line & Points Layer Overlay */}
                 <div className="absolute inset-0 left-24 right-4 top-4 bottom-4">
-                  <svg className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                  <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <defs>
                       <linearGradient id="journalMoodGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
@@ -666,17 +666,17 @@ export function Journal({ store }: { store: AppStore }) {
                       const recordedPoints = chartData
                         .map((d, index) => {
                           if (d.score === null) return null;
-                          const xPercent = totalCount > 1 ? (index / (totalCount - 1)) * 100 : 50;
-                          // Score 4 is top (0%), Score 1 is bottom (100%)
-                          const yPercent = (1 - (d.score - 1) / 3) * 100;
-                          return { ...d, xPercent, yPercent };
+                          const x = totalCount > 1 ? (index / (totalCount - 1)) * 100 : 50;
+                          // Score 4 is top (0), Score 1 is bottom (100)
+                          const y = (1 - (d.score - 1) / 3) * 100;
+                          return { ...d, x, y };
                         })
-                        .filter(Boolean) as Array<typeof chartData[0] & { xPercent: number; yPercent: number }>;
+                        .filter(Boolean) as Array<typeof chartData[0] & { x: number; y: number }>;
 
                       if (recordedPoints.length < 2) return null;
 
                       const pathD = recordedPoints.reduce((acc, pt, idx) => {
-                        return `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.xPercent}% ${pt.yPercent}%`;
+                        return `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`;
                       }, '');
 
                       return (
@@ -685,6 +685,7 @@ export function Journal({ store }: { store: AppStore }) {
                           fill="none"
                           stroke="#10b981"
                           strokeWidth="2.5"
+                          vectorEffect="non-scaling-stroke"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           className="drop-shadow-md"
