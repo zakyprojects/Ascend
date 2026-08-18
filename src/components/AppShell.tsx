@@ -137,10 +137,13 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
               className="w-9 h-9 rounded-xl object-cover shrink-0"
             />
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <div className="font-display font-bold text-slate-100 text-lg leading-none">Ascend</div>
-                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-bold">
+                <span className="whitespace-nowrap shrink-0 text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-bold">
                   {getSeasonLabel()}
+                </span>
+                <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-bold uppercase tracking-wider">
+                  Beta
                 </span>
               </div>
               <div className="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">Self Growth</div>
@@ -273,13 +276,16 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
       <div className="flex-1 flex flex-col min-w-0 md:h-full md:overflow-hidden">
         {/* Mobile header */}
         <header className="md:hidden glass border-b border-white/5 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <img
               src="/favicon.svg"
               alt="Ascend Logo"
               className="w-8 h-8 rounded-lg object-cover shrink-0"
             />
             <span className="font-display font-bold text-slate-100">Ascend</span>
+            <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-bold uppercase tracking-wider">
+              Beta
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
