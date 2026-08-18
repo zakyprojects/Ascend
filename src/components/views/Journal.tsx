@@ -650,97 +650,101 @@ export function Journal({ store }: { store: AppStore }) {
                   </div>
                 ))}
 
-                {/* SVG Trend Line & Points Layer Overlay */}
-                <div className="absolute inset-0 left-24 right-4 top-4 bottom-4">
-                  <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="journalMoodGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
+                {/* SVG Trend Line & Native SVG Circle Nodes (Unified 0-100 ViewBox Coordinate System) */}
+                {(() => {
+                  const totalCount = chartData.length;
+                  const mappedPoints = chartData.map((d, index) => {
+                    const x = totalCount > 1 ? (index / (totalCount - 1)) * 100 : 50;
+                    const y = d.score !== null ? (1 - (d.score - 1) / 3) * 100 : null;
+                    return { ...d, x, y, index };
+                  });
 
-                    {/* Generate SVG Path for recorded points */}
-                    {(() => {
-                      const totalCount = chartData.length;
-                      const recordedPoints = chartData
-                        .map((d, index) => {
-                          if (d.score === null) return null;
-                          const x = totalCount > 1 ? (index / (totalCount - 1)) * 100 : 50;
-                          // Score 4 is top (0), Score 1 is bottom (100)
-                          const y = (1 - (d.score - 1) / 3) * 100;
-                          return { ...d, x, y };
-                        })
-                        .filter(Boolean) as Array<typeof chartData[0] & { x: number; y: number }>;
+                  const recordedPoints = mappedPoints.filter(
+                    (pt): pt is typeof pt & { y: number } => pt.y !== null && pt.score !== null
+                  );
 
-                      if (recordedPoints.length < 2) return null;
+                  const pathD =
+                    recordedPoints.length >= 2
+                      ? recordedPoints.reduce((acc, pt, idx) => {
+                          return `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`;
+                        }, '')
+                      : '';
 
-                      const pathD = recordedPoints.reduce((acc, pt, idx) => {
-                        return `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`;
-                      }, '');
+                  return (
+                    <div className="absolute inset-0 left-24 right-4 top-4 bottom-4">
+                      <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        {/* 1. Trend Line Path */}
+                        {pathD && (
+                          <path
+                            d={pathD}
+                            fill="none"
+                            stroke="#10b981"
+                            strokeWidth="2.5"
+                            vectorEffect="non-scaling-stroke"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="drop-shadow-md pointer-events-none"
+                          />
+                        )}
 
-                      return (
-                        <path
-                          d={pathD}
-                          fill="none"
-                          stroke="#10b981"
-                          strokeWidth="2.5"
-                          vectorEffect="non-scaling-stroke"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="drop-shadow-md"
-                        />
-                      );
-                    })()}
-                  </svg>
+                        {/* 2. Unified SVG Circle Data Points & Invisible Touch Hit-targets */}
+                        {mappedPoints.map((pt) => {
+                          const hasEntry = pt.y !== null && pt.score !== null && !!pt.moodMeta;
+                          const cx = pt.x;
+                          const cy = hasEntry && pt.y !== null ? pt.y : 96;
 
-                  {/* Interactive Nodes & Tooltip triggers */}
-                  <div className="absolute inset-0 flex justify-between">
-                    {chartData.map((d, idx) => {
-                      const hasEntry = d.score !== null && d.moodMeta;
-                      const yPercent = d.score !== null ? (1 - (d.score - 1) / 3) * 100 : null;
-
-                      return (
-                        <div
-                          key={d.dateKey}
-                          className="relative flex-1 flex flex-col items-center justify-end group h-full cursor-pointer"
-                          onMouseEnter={() => {
-                            if (hasEntry) {
-                              setHoveredChartPoint({
-                                date: d.dateKey,
-                                label: d.label,
-                                entry: d.entry,
-                                moodMeta: d.moodMeta,
-                                x: idx,
-                                y: d.score || 1,
-                              });
-                            }
-                          }}
-                          onMouseLeave={() => setHoveredChartPoint(null)}
-                          onClick={() => {
-                            if (d.entry) setSelectedEntry(d.entry);
-                          }}
-                        >
-                          {/* Point indicator on the chart */}
-                          {hasEntry && yPercent !== null && (
-                            <div
-                              className="absolute w-3.5 h-3.5 rounded-full border-2 border-bg-900 shadow-md transition-all duration-200 hover:scale-150 z-10"
-                              style={{
-                                top: `calc(${yPercent}% - 7px)`,
-                                backgroundColor: d.moodMeta?.color,
+                          return (
+                            <g
+                              key={pt.dateKey}
+                              className="cursor-pointer group"
+                              onMouseEnter={() => {
+                                if (hasEntry) {
+                                  setHoveredChartPoint({
+                                    date: pt.dateKey,
+                                    label: pt.label,
+                                    entry: pt.entry,
+                                    moodMeta: pt.moodMeta,
+                                    x: pt.index,
+                                    y: pt.score || 1,
+                                  });
+                                }
                               }}
-                            />
-                          )}
+                              onMouseLeave={() => setHoveredChartPoint(null)}
+                              onClick={() => {
+                                if (pt.entry) setSelectedEntry(pt.entry);
+                              }}
+                            >
+                              {/* Transparent larger hit-target for hovering/tapping */}
+                              <circle cx={cx} cy={cy} r="6" fill="transparent" />
 
-                          {/* Unrecorded Day Subtle Marker */}
-                          {!hasEntry && (
-                            <div className="w-1 h-1 rounded-full bg-white/10 mb-1" />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                              {/* Visible Mood Circle Node or Unrecorded Marker */}
+                              {hasEntry ? (
+                                <circle
+                                  cx={cx}
+                                  cy={cy}
+                                  r={chartRange === '7d' ? '2.5' : '1.8'}
+                                  fill={pt.moodMeta?.color || '#10b981'}
+                                  stroke="#0f172a"
+                                  strokeWidth="1"
+                                  vectorEffect="non-scaling-stroke"
+                                  className="transition-transform duration-150 group-hover:scale-125 origin-center drop-shadow-md"
+                                />
+                              ) : (
+                                <circle
+                                  cx={cx}
+                                  cy={cy}
+                                  r="0.8"
+                                  fill="rgba(255,255,255,0.15)"
+                                  className="group-hover:fill-white/30 transition-colors"
+                                />
+                              )}
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Hover Tooltip Card */}
