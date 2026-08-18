@@ -2956,6 +2956,35 @@ export function ProjectsGoalsView({
                 <span className="text-slate-400 font-normal">Examples:</span> Do 50 Pushups today, List 5 new products, Read 10 pages out loud, Transfer $50 to savings.
               </div>
             </div>
+
+            {/* Sequential Mode Feature */}
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-1.5 mt-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xs font-bold">
+                    <Lock size={12} />
+                  </span>
+                  <h4 className="text-xs sm:text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                    Sequential Mode (Goal Setting)
+                  </h4>
+                </div>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  Advanced
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed pl-8">
+                Available when creating a Goal. It forces absolute focus by locking projects so you can only execute them one by one. Project B remains locked until Project A is completed.
+              </p>
+              <div className="pl-8 pt-1 text-[11px] sm:text-xs text-amber-200/90 font-medium space-y-1">
+                <p><span className="text-slate-400 font-normal">How it helps:</span> Kills overwhelm and multi-tasking. Builds momentum.</p>
+                <p className="pt-0.5"><span className="text-slate-400 font-normal">Example (Goal: Start a Business):</span></p>
+                <ul className="list-disc pl-4 space-y-0.5 text-amber-300/80">
+                  <li>Project 1: Market Research <span className="text-emerald-400 no-underline not-italic">(Active)</span></li>
+                  <li>Project 2: Build MVP <span className="text-slate-400 no-underline not-italic">(🔒 Locked)</span></li>
+                  <li>Project 3: Launch <span className="text-slate-400 no-underline not-italic">(🔒 Locked)</span></li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           <div className="p-3 bg-bg-900 border border-white/10 rounded-xl text-center">
