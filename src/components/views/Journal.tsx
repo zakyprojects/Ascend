@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Smile,
   Meh,
@@ -122,6 +122,41 @@ export function Journal({ store }: { store: AppStore }) {
 
   const [promptOffset, setPromptOffset] = useState<number>(0);
   const [chartRange, setChartRange] = useState<ChartRange>('7d');
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number }>({
+    width: 600,
+    height: 144,
+  });
+
+  // Track real container pixel dimensions using ResizeObserver
+  useEffect(() => {
+    const el = chartContainerRef.current;
+    if (!el) return;
+
+    const updateDimensions = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        setContainerDimensions({ width: rect.width, height: rect.height });
+      }
+    };
+
+    updateDimensions();
+
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+          setContainerDimensions({
+            width: entry.contentRect.width,
+            height: entry.contentRect.height,
+          });
+        }
+      }
+    });
+
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const [hoveredChartPoint, setHoveredChartPoint] = useState<{
     date: string;
     label: string;
@@ -650,36 +685,47 @@ export function Journal({ store }: { store: AppStore }) {
                   </div>
                 ))}
 
-                {/* SVG Trend Line & HTML Node Layer (Unified mappedPoints Single-Source Coordinates) */}
+                {/* SVG Trend Line & HTML Node Layer (Measured True-Pixel Dimensions & Coordinates) */}
                 {(() => {
                   const totalCount = chartData.length;
+                  const w = Math.max(10, containerDimensions.width);
+                  const h = Math.max(10, containerDimensions.height);
+
                   const mappedPoints = chartData.map((d, index) => {
-                    const x = totalCount > 1 ? (index / (totalCount - 1)) * 100 : 50;
-                    const y = d.score !== null ? (1 - (d.score - 1) / 3) * 100 : null;
-                    return { ...d, x, y, index };
+                    const pixelX = totalCount > 1 ? (index / (totalCount - 1)) * w : w / 2;
+                    const pixelY = d.score !== null ? (1 - (d.score - 1) / 3) * h : null;
+                    const pctX = totalCount > 1 ? (index / (totalCount - 1)) * 100 : 50;
+                    const pctY = d.score !== null ? (1 - (d.score - 1) / 3) * 100 : 96;
+
+                    return { ...d, pixelX, pixelY, pctX, pctY, index };
                   });
 
                   const recordedPoints = mappedPoints.filter(
-                    (pt): pt is typeof pt & { y: number } => pt.y !== null && pt.score !== null
+                    (pt): pt is typeof pt & { pixelY: number } => pt.pixelY !== null && pt.score !== null
                   );
 
                   const pathD =
                     recordedPoints.length >= 2
                       ? recordedPoints.reduce((acc, pt, idx) => {
-                          return `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`;
+                          return `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.pixelX.toFixed(1)} ${pt.pixelY.toFixed(1)}`;
                         }, '')
                       : '';
 
                   return (
-                    <div className="absolute inset-0 left-24 right-4 top-4 bottom-4">
-                      {/* 1. Scalable SVG Trend Line (d attribute generated directly from mappedPoints) */}
-                      <svg className="w-full h-full overflow-visible pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <div ref={chartContainerRef} className="absolute inset-0 left-24 right-4 top-4 bottom-4">
+                      {/* 1. Real-pixel 1:1 SVG Trend Line (No non-uniform scaling artifacts) */}
+                      <svg
+                        className="w-full h-full overflow-visible pointer-events-none"
+                        viewBox={`0 0 ${w} ${h}`}
+                        width={w}
+                        height={h}
+                      >
                         {pathD && (
                           <path
                             d={pathD}
                             fill="none"
                             stroke="#10b981"
-                            strokeWidth="1.2"
+                            strokeWidth="2.5"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             className="drop-shadow-md"
@@ -687,12 +733,12 @@ export function Journal({ store }: { store: AppStore }) {
                         )}
                       </svg>
 
-                      {/* 2. HTML Dots Layer (Rendered from the SAME mappedPoints without non-uniform ellipse distortion) */}
+                      {/* 2. Perfectly Circular HTML Dots (Synchronized to (pctX, pctY) and increased in size for clarity) */}
                       <div className="absolute inset-0 pointer-events-none">
                         {mappedPoints.map((pt) => {
-                          const hasEntry = pt.y !== null && pt.score !== null && !!pt.moodMeta;
-                          const leftPos = `${pt.x}%`;
-                          const topPos = hasEntry && pt.y !== null ? `${pt.y}%` : '96%';
+                          const hasEntry = pt.pixelY !== null && pt.score !== null && !!pt.moodMeta;
+                          const leftPos = `${pt.pctX}%`;
+                          const topPos = hasEntry ? `${pt.pctY}%` : '96%';
 
                           return (
                             <div
@@ -705,7 +751,7 @@ export function Journal({ store }: { store: AppStore }) {
                             >
                               <button
                                 type="button"
-                                className="w-6 h-6 flex items-center justify-center group focus:outline-none"
+                                className="w-7 h-7 flex items-center justify-center group focus:outline-none"
                                 onMouseEnter={() => {
                                   if (hasEntry) {
                                     setHoveredChartPoint({
@@ -727,14 +773,14 @@ export function Journal({ store }: { store: AppStore }) {
                                 {hasEntry ? (
                                   <div
                                     className={`${
-                                      chartRange === '7d' ? 'w-3 h-3' : 'w-2.5 h-2.5'
+                                      chartRange === '7d' ? 'w-4 h-4' : 'w-3.5 h-3.5'
                                     } rounded-full border-2 border-bg-900 shadow-md transition-transform duration-150 group-hover:scale-150 shrink-0`}
                                     style={{
                                       backgroundColor: pt.moodMeta?.color,
                                     }}
                                   />
                                 ) : (
-                                  <div className="w-1.5 h-1.5 rounded-full bg-white/10 group-hover:bg-white/30 transition-colors shrink-0" />
+                                  <div className="w-1.5 h-1.5 rounded-full bg-white/15 group-hover:bg-white/40 transition-colors shrink-0" />
                                 )}
                               </button>
                             </div>
