@@ -370,6 +370,16 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     setSteps(steps.filter((_, idx) => idx !== index));
   };
 
+  // Plan Type change handler with Review Cadence enforcement
+  const handleSelectPlanType = (type: PlanType) => {
+    setPlanType(type);
+    if (type === 'vision') {
+      if (!reviewCadence) {
+        setReviewCadence('weekly');
+      }
+    }
+  };
+
   // Starter Template application helper
   const applyTemplate = (tpl: typeof STARTER_TEMPLATES[number]) => {
     setPlanType(tpl.planType);
@@ -377,7 +387,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     setDescription(tpl.description);
     setCategory(tpl.category);
     setIsPublic(false); // Default visibility: Private
-    setReviewCadence(null); // Default review cadence: None
+    setReviewCadence(tpl.planType === 'vision' ? 'weekly' : null); // Vision plans require an active cadence
     if (tpl.planType === 'habit_journey') {
       if (tpl.cadence) setCadence(tpl.cadence);
       if (tpl.duration) setDuration(tpl.duration);
@@ -393,6 +403,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) return;
+
+    const enforcedReviewCadence = planType === 'vision' ? (reviewCadence || 'weekly') : reviewCadence;
 
     store.createImprovementPlan(
       title,
@@ -411,7 +423,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         startDate,
         targetReviewDate,
         initialReflectionNote,
-        reviewCadence,
+        reviewCadence: enforcedReviewCadence,
       }
     );
 
@@ -425,6 +437,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
   // Edit Structural Fields Modal handlers (Does NOT touch progress/streaks/reflections)
   const handleOpenEdit = (plan: ImprovementPlan) => {
+    const isVision = plan.planType === 'vision';
     setEditingPlanId(plan.id);
     setEditTitle(plan.title);
     setEditDescription(plan.description);
@@ -437,7 +450,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     setEditCadence(plan.cadence || 'daily');
     setEditDuration(plan.duration || 30);
     setEditTargetReviewDate(plan.targetReviewDate || '');
-    setEditReviewCadence(plan.reviewCadence || null);
+    setEditReviewCadence(isVision ? (plan.reviewCadence || 'weekly') : (plan.reviewCadence || null));
     setEditingPlanType(plan.planType || 'milestone');
     setEditModalOpen(true);
   };
@@ -445,6 +458,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPlanId || !editTitle.trim() || !editDescription.trim()) return;
+    const enforcedEditReviewCadence = editingPlanType === 'vision' ? (editReviewCadence || 'weekly') : editReviewCadence;
     store.updateImprovementPlan(
       editingPlanId,
       editTitle,
@@ -459,7 +473,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         cadence: editCadence,
         duration: editDuration,
         targetReviewDate: editTargetReviewDate,
-        reviewCadence: editReviewCadence,
+        reviewCadence: enforcedEditReviewCadence,
       }
     );
     setEditModalOpen(false);
@@ -511,9 +525,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     const notes = (plan.reflectionNotes || []) as any[];
     const isExpanded = expandedReflections[planId] ?? false;
 
+    const isVision = resolvedType === 'vision' || (plan as any).type === 'VISION_REFLECTION' || (plan as any).type === 'vision';
+    const effectiveCadence = plan.reviewCadence || (isVision ? 'weekly' : null);
+
     const isReviewDue =
       mode !== 'read_only' &&
-      !!plan.reviewCadence &&
+      !!effectiveCadence &&
       !!plan.nextReviewDueAt &&
       new Date(plan.nextReviewDueAt).getTime() <= Date.now();
 
@@ -522,14 +539,16 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       return (
         <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-md mb-2 animate-pulse">
           <Sparkles size={13} className="text-amber-400 shrink-0" />
-          <span>Review Due ({plan.reviewCadence === 'weekly' ? 'Weekly' : 'Monthly'} Check-in)</span>
+          <span>Review Due ({effectiveCadence === 'monthly' ? 'Monthly' : 'Weekly'} Check-in)</span>
         </div>
       );
     };
 
     const renderReflectionSection = () => {
-      // PHASE 1 FIX: Hide Reflection UI if reviewCadence is null, 'none', or not weekly/monthly
-      if (!plan.reviewCadence || (plan.reviewCadence !== 'weekly' && plan.reviewCadence !== 'monthly')) {
+      // Defensive rendering: For non-vision plans, hide reflection UI if reviewCadence is null, 'none', or not weekly/monthly.
+      // For Vision & Reflection plans, ALWAYS render the reflection UI as a fallback even if reviewCadence is 'none'/null on legacy records.
+      const hasActiveCadence = plan.reviewCadence === 'weekly' || plan.reviewCadence === 'monthly';
+      if (!isVision && !hasActiveCadence) {
         return null;
       }
 
@@ -542,9 +561,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div className="space-y-1">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="font-semibold text-slate-400">Add Reflection Note</span>
-                {plan.reviewCadence && (
+                {effectiveCadence && (
                   <span className="text-[10px] text-purple-400 font-mono">
-                    Cadence: {plan.reviewCadence === 'weekly' ? 'Weekly' : 'Monthly'}
+                    Cadence: {effectiveCadence === 'weekly' ? 'Weekly' : 'Monthly'}
                   </span>
                 )}
               </div>
@@ -1351,7 +1370,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setPlanType('milestone')}
+                onClick={() => handleSelectPlanType('milestone')}
                 className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
                   planType === 'milestone'
                     ? 'border-blue-500 bg-blue-500/10 text-slate-100'
@@ -1366,7 +1385,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
               <button
                 type="button"
-                onClick={() => setPlanType('target_goal')}
+                onClick={() => handleSelectPlanType('target_goal')}
                 className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
                   planType === 'target_goal'
                     ? 'border-amber-500 bg-amber-500/10 text-slate-100'
@@ -1381,7 +1400,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
               <button
                 type="button"
-                onClick={() => setPlanType('habit_journey')}
+                onClick={() => handleSelectPlanType('habit_journey')}
                 className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
                   planType === 'habit_journey'
                     ? 'border-rose-500 bg-rose-500/10 text-slate-100'
@@ -1396,7 +1415,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
               <button
                 type="button"
-                onClick={() => setPlanType('vision')}
+                onClick={() => handleSelectPlanType('vision')}
                 className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
                   planType === 'vision'
                     ? 'border-purple-500 bg-purple-500/10 text-slate-100'
@@ -1467,19 +1486,21 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             </div>
           </div>
 
-          {/* Phase C Review Cadence Selector */}
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Review Cadence (Check-in Loop)</label>
-            <select
-              value={reviewCadence || ''}
-              onChange={(e) => setReviewCadence(e.target.value ? (e.target.value as 'weekly' | 'monthly') : null)}
-              className="input text-xs"
-            >
-              <option value="">None (No scheduled check-in review)</option>
-              <option value="weekly">Weekly Check-in Loop</option>
-              <option value="monthly">Monthly Check-in Loop</option>
-            </select>
-          </div>
+          {/* Phase C Review Cadence Selector - Hidden for Vision & Reflection plans */}
+          {planType !== 'vision' && (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Review Cadence (Check-in Loop)</label>
+              <select
+                value={reviewCadence || ''}
+                onChange={(e) => setReviewCadence(e.target.value ? (e.target.value as 'weekly' | 'monthly') : null)}
+                className="input text-xs"
+              >
+                <option value="">None (No scheduled check-in review)</option>
+                <option value="weekly">Weekly Check-in Loop</option>
+                <option value="monthly">Monthly Check-in Loop</option>
+              </select>
+            </div>
+          )}
 
           {/* TYPE-SPECIFIC FIELDS */}
           {planType === 'milestone' && (
@@ -1686,19 +1707,21 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             </div>
           </div>
 
-          {/* Phase C Review Cadence Selector */}
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Review Cadence (Check-in Loop)</label>
-            <select
-              value={editReviewCadence || ''}
-              onChange={(e) => setEditReviewCadence(e.target.value ? (e.target.value as 'weekly' | 'monthly') : null)}
-              className="input text-xs"
-            >
-              <option value="">None (No scheduled check-in review)</option>
-              <option value="weekly">Weekly Check-in Loop</option>
-              <option value="monthly">Monthly Check-in Loop</option>
-            </select>
-          </div>
+          {/* Phase C Review Cadence Selector - Hidden for Vision & Reflection plans */}
+          {editingPlanType !== 'vision' && (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Review Cadence (Check-in Loop)</label>
+              <select
+                value={editReviewCadence || ''}
+                onChange={(e) => setEditReviewCadence(e.target.value ? (e.target.value as 'weekly' | 'monthly') : null)}
+                className="input text-xs"
+              >
+                <option value="">None (No scheduled check-in review)</option>
+                <option value="weekly">Weekly Check-in Loop</option>
+                <option value="monthly">Monthly Check-in Loop</option>
+              </select>
+            </div>
+          )}
 
           {/* TYPE-SPECIFIC STRUCTURAL EDIT FIELDS */}
           {editingPlanType === 'milestone' && (
