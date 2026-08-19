@@ -466,8 +466,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           {/* Search & Category Filter */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-60">
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full">
+            <div className="relative w-full sm:flex-1">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
@@ -477,27 +477,29 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 className="input pl-8 py-1.5 text-xs w-full"
               />
             </div>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as BookCategory | 'all')}
-              className="input py-1.5 text-xs bg-bg-800 sm:w-44"
-            >
-              <option value="all">All Categories</option>
-              {BOOK_CATEGORIES.map((cat) => (
-                <option key={cat.name} value={cat.name}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'trending' | 'bestsellers' | 'az')}
-              className="input py-1.5 text-xs bg-bg-800 sm:w-36"
-            >
-              <option value="trending">Trending</option>
-              <option value="bestsellers">Best Sellers</option>
-              <option value="az">Alphabetical (A-Z)</option>
-            </select>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value as BookCategory | 'all')}
+                className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-44"
+              >
+                <option value="all">All Categories</option>
+                {BOOK_CATEGORIES.map((cat) => (
+                  <option key={cat.name} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'trending' | 'bestsellers' | 'az')}
+                className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-36"
+              >
+                <option value="trending">Trending</option>
+                <option value="bestsellers">Best Sellers</option>
+                <option value="az">Alphabetical (A-Z)</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
