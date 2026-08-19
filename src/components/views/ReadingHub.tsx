@@ -410,50 +410,58 @@ export function ReadingHub({ store }: { store: AppStore }) {
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-3">
           {/* Main Navigation Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-bg-800/80 rounded-xl border border-white/5">
+          <div className="flex items-stretch justify-between w-full bg-slate-800/40 p-1 rounded-xl gap-1">
             <button
               onClick={() => setActiveTab('reading')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
+              className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
                 activeTab === 'reading'
                   ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
-              <PlayCircle size={14} />
-              <span>Currently Reading ({inProgressBooks.length})</span>
+              <PlayCircle size={14} className="shrink-0" />
+              <span className="text-[9px] sm:text-xs font-semibold leading-tight sm:whitespace-nowrap">
+                Currently Reading ({inProgressBooks.length})
+              </span>
             </button>
             <button
               onClick={() => setActiveTab('to-read')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
+              className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
                 activeTab === 'to-read'
                   ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
-              <ListTodo size={14} />
-              <span>My Library ({toReadBooks.length})</span>
+              <ListTodo size={14} className="shrink-0" />
+              <span className="text-[9px] sm:text-xs font-semibold leading-tight sm:whitespace-nowrap">
+                My Library ({toReadBooks.length})
+              </span>
             </button>
             <button
               onClick={() => setActiveTab('discover')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
+              className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
                 activeTab === 'discover'
                   ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
-              <Library size={14} />
-              <span>Discover Books</span>
+              <Library size={14} className="shrink-0" />
+              <span className="text-[9px] sm:text-xs font-semibold leading-tight sm:whitespace-nowrap">
+                Discover Books
+              </span>
             </button>
             <button
               onClick={() => setActiveTab('completed')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
+              className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
                 activeTab === 'completed'
                   ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
-              <CheckCircle2 size={14} />
-              <span>Completed ({completedBooks.length})</span>
+              <CheckCircle2 size={14} className="shrink-0" />
+              <span className="text-[9px] sm:text-xs font-semibold leading-tight sm:whitespace-nowrap">
+                Completed ({completedBooks.length})
+              </span>
             </button>
           </div>
 
