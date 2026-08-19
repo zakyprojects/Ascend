@@ -219,6 +219,107 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
   );
 
+  // Backward compatibility migration: Merge legacy books into libraryBooks
+  const legacyBooks: Book[] = st.books ?? [];
+  const rawLibraryBooks: UserBook[] = st.libraryBooks ?? [];
+  const tombstoneSet = new Set(st.deletedEntityIds || []);
+
+  const libraryMap = new Map<string, UserBook>();
+  rawLibraryBooks.forEach((lb) => {
+    if (lb && lb.id && !tombstoneSet.has(lb.id)) {
+      const normalizedStatus: UserBookStatus = (lb.status === 'to_read' || lb.status === 'to-read')
+        ? 'to-read'
+        : lb.status === 'completed'
+        ? 'completed'
+        : 'reading';
+
+      const totalAmt = lb.totalAmount ?? lb.totalPages ?? 250;
+      const currentAmt = lb.currentAmount ?? lb.currentPage ?? (normalizedStatus === 'completed' ? totalAmt : 0);
+      const isFin = normalizedStatus === 'completed';
+
+      libraryMap.set(lb.id, {
+        ...lb,
+        status: normalizedStatus,
+        totalAmount: totalAmt,
+        currentAmount: currentAmt,
+        unit: lb.unit ?? 'pages',
+        totalPages: totalAmt,
+        currentPage: currentAmt,
+        isFinished: isFin,
+        isCurated: lb.isCurated ?? !lb.isCustom,
+        isCustom: lb.isCustom ?? !lb.isCurated,
+        pointsReward: lb.pointsReward ?? (lb.curatedBookId ? findCuratedBook(lb.curatedBookId)?.pointsOnCompletion : 0) ?? 0,
+      });
+    }
+  });
+
+  // Migrate legacy books into libraryMap if not already represented
+  legacyBooks.forEach((b) => {
+    if (!b || !b.id || tombstoneSet.has(b.id)) return;
+    const existingById = libraryMap.get(b.id);
+    const existingByLinked = Array.from(libraryMap.values()).find(
+      (lb) => lb.linkedBookId === b.id || lb.title.toLowerCase() === b.title.toLowerCase()
+    );
+
+    if (existingById) {
+      existingById.totalAmount = existingById.totalAmount ?? b.totalPages;
+      existingById.currentAmount = b.currentPage ?? existingById.currentAmount;
+      existingById.unit = existingById.unit ?? b.unit;
+      existingById.targetFinishDate = existingById.targetFinishDate ?? b.targetFinishDate;
+      existingById.reflection = existingById.reflection ?? b.reflection;
+      existingById.status = b.isFinished ? 'completed' : (existingById.status || 'reading');
+      existingById.totalPages = b.totalPages;
+      existingById.currentPage = b.currentPage;
+      existingById.isFinished = b.isFinished;
+      existingById.consecutiveMisses = b.consecutiveMisses ?? existingById.consecutiveMisses;
+      existingById.lastPenalizedDate = b.lastPenalizedDate ?? existingById.lastPenalizedDate;
+    } else if (existingByLinked) {
+      existingByLinked.totalAmount = existingByLinked.totalAmount ?? b.totalPages;
+      existingByLinked.currentAmount = b.currentPage ?? existingByLinked.currentAmount;
+      existingByLinked.unit = existingByLinked.unit ?? b.unit;
+      existingByLinked.targetFinishDate = existingByLinked.targetFinishDate ?? b.targetFinishDate;
+      existingByLinked.reflection = existingByLinked.reflection ?? b.reflection;
+      existingByLinked.status = b.isFinished ? 'completed' : existingByLinked.status;
+      existingByLinked.totalPages = b.totalPages;
+      existingByLinked.currentPage = b.currentPage;
+      existingByLinked.isFinished = b.isFinished;
+      existingByLinked.linkedBookId = b.id;
+      existingByLinked.consecutiveMisses = b.consecutiveMisses ?? existingByLinked.consecutiveMisses;
+      existingByLinked.lastPenalizedDate = b.lastPenalizedDate ?? existingByLinked.lastPenalizedDate;
+    } else {
+      const isFin = Boolean(b.isFinished);
+      const userBook: UserBook = {
+        id: b.id,
+        title: b.title,
+        author: b.author || 'Unknown Author',
+        isCurated: false,
+        isCustom: true,
+        pointsReward: 0,
+        pointsAwarded: 0,
+        status: isFin ? 'completed' : 'reading',
+        totalAmount: b.totalPages || 200,
+        currentAmount: isFin ? (b.totalPages || 200) : (b.currentPage || 0),
+        unit: b.unit || 'pages',
+        targetFinishDate: b.targetFinishDate,
+        dateStarted: b.createdAt,
+        dateCompleted: b.finishedAt,
+        reflection: b.reflection,
+        totalPages: b.totalPages || 200,
+        currentPage: isFin ? (b.totalPages || 200) : (b.currentPage || 0),
+        isFinished: isFin,
+        addedAt: b.createdAt || new Date().toISOString(),
+        startedAt: b.createdAt || new Date().toISOString(),
+        completedAt: b.finishedAt,
+        linkedBookId: b.id,
+        consecutiveMisses: b.consecutiveMisses,
+        lastPenalizedDate: b.lastPenalizedDate,
+      };
+      libraryMap.set(b.id, userBook);
+    }
+  });
+
+  const sanitizedLibraryBooks = Array.from(libraryMap.values());
+
   const baseState: AppState = {
     ...DEFAULT_STATE,
     ...st,
@@ -231,7 +332,8 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     leagueArchives: st.leagueArchives ?? [],
     readLessonIds: st.readLessonIds ?? [],
     workouts: st.workouts ?? [],
-    books: st.books ?? [],
+    books: [], // Wiped out to eliminate JSON payload bloat on sync
+    libraryBooks: sanitizedLibraryBooks,
     readingLogs: st.readingLogs ?? [],
     skills: st.skills ?? [],
     skillLogs: st.skillLogs ?? [],
@@ -284,7 +386,6 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
       ...t,
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
     })),
-    libraryBooks: st.libraryBooks ?? [],
     improvementPlans: st.improvementPlans ?? [],
     followedPlans: st.followedPlans ?? [],
     partnerInvites: (st.partnerInvites ?? []).filter(
@@ -1323,10 +1424,82 @@ export function useAppState() {
     );
   }, []);
 
+  const toggleReadingHabit = useCallback(() => {
+    setState(
+      (prev) => {
+        const existing = prev.habits.find((h) => h.linkedModule === 'reading');
+        if (existing) {
+          let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+          if (existing.isPreset && existing.points > 0 && existing.completions && existing.completions.length > 0) {
+            const ptsToDeduct = existing.completions.length * existing.points;
+            pointsUpdate = addPointsInternal(
+              prev,
+              -ptsToDeduct,
+              `Habit deleted: ${existing.name} (${existing.completions.length} completion(s) removed)`,
+              'habit'
+            );
+          }
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), existing.id].slice(-500);
+          return {
+            ...prev,
+            habits: prev.habits.filter((h) => h.id !== existing.id),
+            weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'habit', [existing.id]),
+            deletedEntityIds: updatedDeletedEntityIds,
+            ...pointsUpdate,
+          };
+        } else {
+          const today = todayKey();
+          const todayReadingLogs = (prev.readingLogs || []).filter((l) => l.date === today);
+          const totalPagesToday = todayReadingLogs.reduce((sum, l) => sum + (l.progressAmount || 0), 0);
+          const hasReadToday = totalPagesToday > 0;
+
+          const habit: Habit = {
+            id: uid(),
+            name: 'Reading (Books)',
+            frequency: 'daily',
+            points: 12,
+            isPreset: true,
+            category: 'Learning & Growth',
+            createdAt: new Date().toISOString(),
+            completions: hasReadToday ? [periodKey('daily')] : [],
+            createdAtPeriod: periodKey('daily'),
+            missedPeriods: [],
+            consecutiveMisses: 0,
+            isSystemLinked: true,
+            linkedModule: 'reading',
+          };
+
+          let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+          if (hasReadToday) {
+            pointsUpdate = addPointsInternal(
+              prev,
+              habit.points,
+              `Habit completed: ${habit.name}`,
+              'habit_completed',
+              { category: habit.category, habitId: habit.id, habitName: habit.name }
+            );
+          }
+
+          return {
+            ...prev,
+            habits: [...prev.habits.filter((h) => h.name.toLowerCase() !== 'reading (books)'), habit],
+            ...pointsUpdate,
+          };
+        }
+      },
+      { immediate: true }
+    );
+  }, []);
+
   const toggleHabit = useCallback(
     (habitId: string) => {
       let completed = false;
       setState((prev) => {
+        const habit = prev.habits.find((h) => h.id === habitId);
+        if (habit?.linkedModule === 'reading') {
+          return prev;
+        }
+
         const habits = prev.habits.map((h) => {
           if (h.id !== habitId) return h;
           const key = periodKey(h.frequency);
@@ -1344,7 +1517,6 @@ export function useAppState() {
           }
         });
 
-        const habit = prev.habits.find((h) => h.id === habitId);
         let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
           totalPoints: prev.totalPoints,
           pointsHistory: prev.pointsHistory,
@@ -1808,22 +1980,63 @@ export function useAppState() {
     }));
   }, []);
 
-  // --- MODULE 2: READING TRACKER ACTIONS ---
+  // --- MODULE 2: UNIFIED READING HUB & LIBRARY ACTIONS ---
   const addBook = useCallback(
-    (title: string, author: string, totalPages: number, unit: 'pages' | 'chapters', targetFinishDate?: string) => {
-      const book: Book = {
-        id: uid(),
+    (
+      title: string,
+      author: string,
+      totalPages: number,
+      unit: 'pages' | 'chapters' = 'pages',
+      targetFinishDate?: string,
+      category?: BookCategory | string,
+      description?: string
+    ) => {
+      const now = new Date().toISOString();
+      const id = `custom-book-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const numPages = Math.max(1, totalPages || 200);
+
+      const userBook: UserBook = {
+        id,
         title: title.trim(),
         author: author.trim() || 'Unknown Author',
-        totalPages: Math.max(1, totalPages),
+        description: description?.trim(),
+        category,
+        isCurated: false,
+        isCustom: true,
+        pointsReward: 0,
+        pointsAwarded: 0,
+        status: 'reading',
+        totalAmount: numPages,
+        totalPages: numPages,
+        currentAmount: 0,
+        currentPage: 0,
+        unit,
+        targetFinishDate: targetFinishDate?.trim() || undefined,
+        addedAt: now,
+        dateStarted: now,
+        startedAt: now,
+        isFinished: false,
+      };
+
+      const trackerBook: Book = {
+        id,
+        title: title.trim(),
+        author: author.trim() || 'Unknown Author',
+        totalPages: numPages,
         unit,
         currentPage: 0,
         isFinished: false,
         targetFinishDate: targetFinishDate?.trim() || undefined,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
       };
-      setState((prev) => ({ ...prev, books: [book, ...prev.books] }));
-      return book;
+
+      setState((prev) => ({
+        ...prev,
+        libraryBooks: [userBook, ...prev.libraryBooks.filter((lb) => lb.id !== id)],
+        books: [],
+      }));
+
+      return trackerBook;
     },
     []
   );
@@ -1836,113 +2049,233 @@ export function useAppState() {
   }, []);
 
   const updateBookTargetDate = useCallback((bookId: string, targetFinishDate?: string) => {
+    const formatted = targetFinishDate?.trim() || undefined;
     setState((prev) => ({
       ...prev,
-      books: prev.books.map((b) => (b.id === bookId ? { ...b, targetFinishDate: targetFinishDate?.trim() || undefined } : b)),
+      libraryBooks: prev.libraryBooks.map((lb) =>
+        lb.id === bookId || lb.linkedBookId === bookId
+          ? { ...lb, targetFinishDate: formatted }
+          : lb
+      ),
+      books: [],
     }));
   }, []);
 
   const updateReadingProgress = useCallback((bookId: string, progressAmount: number, newCurrentPage: number) => {
     const date = todayKey();
     setState((prev) => {
-      const bookIdx = prev.books.findIndex((b) => b.id === bookId);
-      if (bookIdx === -1) return prev;
-      const target = prev.books[bookIdx];
+      const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
+      if (!targetUserBook) return prev;
 
-      const alreadyLoggedToday = prev.readingLogs.some((l) => l.date === date && l.bookId === bookId);
-      const pointsToAward = alreadyLoggedToday ? 0 : 5;
+      const title = targetUserBook.title || 'Book';
+      const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
+      const clampedPage = Math.min(maxPages, Math.max(0, newCurrentPage));
 
-      const updatedBook: Book = {
-        ...target,
-        currentPage: Math.min(target.totalPages, Math.max(0, newCurrentPage)),
-      };
+      const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
+
+      const alreadyLoggedToday = prev.readingLogs.some(
+        (l) => l.date === date && (l.bookId === bookId || l.bookId === targetUserBook.id)
+      );
+
+      // Points balancing: If reading habit is linked, do NOT award +5 reading hub points (habit completion awards points)
+      let pointsToAward = 0;
+      if (!readingHabit && !alreadyLoggedToday && progressAmount > 0) {
+        pointsToAward = 5;
+      }
 
       const readingLog: ReadingProgressLog = {
-        id: uid(),
-        bookId,
+        id: `reading-log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        bookId: targetUserBook.id,
         date,
         progressAmount,
         pointsAwarded: pointsToAward,
         createdAt: new Date().toISOString(),
       };
 
-      const updatedBooks = [...prev.books];
-      updatedBooks[bookIdx] = updatedBook;
+      const updatedReadingLogs = [readingLog, ...(prev.readingLogs || [])];
 
-      let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+      // Calculate total pages read today across ALL books
+      const totalPagesToday = updatedReadingLogs
+        .filter((l) => l.date === date)
+        .reduce((sum, l) => sum + (l.progressAmount || 0), 0);
+
+      const updatedLibraryBooks = prev.libraryBooks.map((lb) => {
+        if (lb.id === bookId || lb.linkedBookId === bookId || lb.id === targetUserBook.id) {
+          return {
+            ...lb,
+            currentAmount: clampedPage,
+            currentPage: clampedPage,
+            status: (clampedPage >= maxPages && lb.status !== 'completed' ? 'reading' : lb.status) as UserBookStatus,
+          };
+        }
+        return lb;
+      });
+
+      let pointsUpdate = {};
       if (pointsToAward > 0) {
-        pointsUpdate = addPointsInternal(prev, pointsToAward, `Reading progress: ${target.title}`, 'reading');
+        pointsUpdate = addPointsInternal(prev, pointsToAward, `Read ${progressAmount} ${targetUserBook.unit || 'pages'} of ${title}`, 'reading');
+      }
+
+      let updatedHabits = prev.habits;
+
+      // Auto-Check / Un-Check linked reading habit
+      if (readingHabit) {
+        const key = periodKey(readingHabit.frequency);
+        const isCheckedToday = readingHabit.completions.includes(key);
+        const habitPts = (readingHabit.isPreset && readingHabit.points > 0) ? readingHabit.points : 12;
+        const habitMeta = {
+          category: readingHabit.category,
+          habitId: readingHabit.id,
+          habitName: readingHabit.name,
+        };
+
+        if (totalPagesToday > 0 && !isCheckedToday) {
+          // Auto-check habit
+          updatedHabits = prev.habits.map((h) =>
+            h.id === readingHabit.id
+              ? {
+                  ...h,
+                  completions: [...h.completions, key],
+                  consecutiveMisses: 0,
+                }
+              : h
+          );
+          pointsUpdate = {
+            ...pointsUpdate,
+            ...addPointsInternal(
+              { ...prev, ...pointsUpdate },
+              habitPts,
+              `Habit completed: ${readingHabit.name}`,
+              'habit_completed',
+              habitMeta
+            ),
+          };
+        } else if (totalPagesToday <= 0 && isCheckedToday) {
+          // Auto-uncheck habit (negative corrections)
+          updatedHabits = prev.habits.map((h) =>
+            h.id === readingHabit.id
+              ? {
+                  ...h,
+                  completions: h.completions.filter((c) => c !== key),
+                }
+              : h
+          );
+          pointsUpdate = {
+            ...pointsUpdate,
+            ...addPointsInternal(
+              { ...prev, ...pointsUpdate },
+              -habitPts,
+              `Habit unchecked: ${readingHabit.name}`,
+              'habit_unchecked',
+              habitMeta
+            ),
+          };
+        }
       }
 
       return {
         ...prev,
-        books: updatedBooks,
-        readingLogs: [readingLog, ...prev.readingLogs],
+        libraryBooks: updatedLibraryBooks,
+        books: [],
+        readingLogs: updatedReadingLogs,
+        habits: updatedHabits,
         ...pointsUpdate,
       };
     });
   }, []);
 
   const finishBook = useCallback((bookId: string, reflection: string) => {
-    setState((prev) => {
-      const bookIdx = prev.books.findIndex((b) => b.id === bookId);
-      if (bookIdx === -1) return prev;
-      const target = prev.books[bookIdx];
-      if (target.isFinished) return prev;
+    setState(
+      (prev) => {
+        const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
+        if (!targetUserBook) return prev;
 
-      const bonusPoints = 30;
-      const updatedBook: Book = {
-        ...target,
-        currentPage: target.totalPages,
-        isFinished: true,
-        reflection: reflection.trim(),
-        finishedAt: new Date().toISOString(),
-      };
+        const title = targetUserBook.title || 'Book';
+        const now = new Date().toISOString();
+        const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
 
-      const updatedBooks = [...prev.books];
-      updatedBooks[bookIdx] = updatedBook;
+        // Determine points: if curated, award curated points; if custom, award 30 pts completion bonus
+        let bonusPoints = 30;
+        if (targetUserBook && !targetUserBook.isCustom && targetUserBook.curatedBookId) {
+          const curated = findCuratedBook(targetUserBook.curatedBookId);
+          if (curated) {
+            bonusPoints = curated.pointsOnCompletion;
+          }
+        }
 
-      const pointsUpdate = addPointsInternal(prev, bonusPoints, `Book finished: ${target.title}`, 'reading_bonus');
+        // Check if bonus already awarded
+        const alreadyAwarded = (targetUserBook?.pointsAwarded ?? 0) > 0;
+        const pointsToAward = alreadyAwarded ? 0 : bonusPoints;
 
-      return {
-        ...prev,
-        books: updatedBooks,
-        ...pointsUpdate,
-      };
-    });
+        const updatedLibraryBooks = prev.libraryBooks.map((lb) => {
+          if (lb.id === bookId || lb.linkedBookId === bookId || lb.id === targetUserBook.id) {
+            return {
+              ...lb,
+              status: 'completed' as UserBookStatus,
+              currentAmount: maxPages,
+              currentPage: maxPages,
+              isFinished: true,
+              reflection: reflection.trim() || lb.reflection,
+              dateCompleted: now,
+              completedAt: now,
+              pointsAwarded: (lb.pointsAwarded || 0) + pointsToAward,
+            };
+          }
+          return lb;
+        });
+
+        let pointsUpdate = {};
+        if (pointsToAward > 0) {
+          pointsUpdate = addPointsInternal(prev, pointsToAward, `Book finished: ${title}`, 'reading_bonus');
+        }
+
+        return {
+          ...prev,
+          libraryBooks: updatedLibraryBooks,
+          books: [],
+          ...pointsUpdate,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const deleteBook = useCallback((bookId: string) => {
     setState(
       (prev) => {
-        const target = prev.books.find((b) => b.id === bookId);
-        if (!target) return prev;
+        const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
+        if (!targetUserBook) return prev;
 
-        const bookLogs = prev.readingLogs.filter((l) => l.bookId === bookId);
+        const allMatchingIds = new Set<string>([bookId]);
+        if (targetUserBook.id) allMatchingIds.add(targetUserBook.id);
+        if (targetUserBook.linkedBookId) allMatchingIds.add(targetUserBook.linkedBookId);
+
+        const targetTitleLower = (targetUserBook.title || '').toLowerCase();
+        const bookLogs = prev.readingLogs.filter((l) => allMatchingIds.has(l.bookId));
         const logPointsTotal = bookLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-        const finishPoints = target.isFinished ? 30 : 0;
-        const totalBookPoints = logPointsTotal + finishPoints;
+        const completionPoints = targetUserBook.pointsAwarded || (targetUserBook.status === 'completed' ? 30 : 0);
+        const totalBookPoints = logPointsTotal + completionPoints;
 
         let pointsUpdate = {};
         if (totalBookPoints > 0) {
-          pointsUpdate = addPointsInternal(prev, -totalBookPoints, `Book deleted: ${target.title}`, 'reading');
+          pointsUpdate = addPointsInternal(prev, -totalBookPoints, `Book deleted: ${targetUserBook.title}`, 'reading');
         }
 
-        const targetTitleLower = target.title.toLowerCase();
+        const idsArray = Array.from(allMatchingIds);
         const updatedDeletedEntityIds = [
           ...(prev.deletedEntityIds || []),
-          bookId,
+          ...idsArray,
           ...bookLogs.map((l) => l.id),
         ].slice(-500);
 
         return {
           ...prev,
-          books: prev.books.filter((b) => b.id !== bookId),
-          readingLogs: prev.readingLogs.filter((l) => l.bookId !== bookId),
+          books: [],
           libraryBooks: prev.libraryBooks.filter(
-            (lb) => lb.linkedBookId !== bookId && lb.title.toLowerCase() !== targetTitleLower
+            (lb) => !allMatchingIds.has(lb.id) && lb.title.toLowerCase() !== targetTitleLower
           ),
-          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', [bookId]),
+          readingLogs: prev.readingLogs.filter((l) => !allMatchingIds.has(l.bookId)),
+          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsArray),
           deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
@@ -1951,258 +2284,186 @@ export function useAppState() {
     );
   }, []);
 
-  // --- SELF IMPROVEMENT BOOKS LIBRARY ACTIONS ---
-  const addCuratedBookToLibrary = useCallback(
-    (curatedBook: CuratedBook, initialStatus: UserBookStatus = 'to-read') => {
-      setState((prev) => {
-        const alreadyExists = prev.libraryBooks.some((lb) => lb.curatedBookId === curatedBook.id);
-        if (alreadyExists) return prev;
-
-        const now = new Date().toISOString();
-        const userBook: UserBook = {
-          id: uid(),
-          curatedBookId: curatedBook.id,
-          title: curatedBook.title,
-          author: curatedBook.author,
-          description: curatedBook.description,
-          category: curatedBook.category,
-          coverImageUrl: curatedBook.coverImageUrl,
-          isCustom: false,
-          status: initialStatus,
-          addedAt: now,
-          startedAt: initialStatus === 'reading' || initialStatus === 'completed' ? now : undefined,
-          completedAt: initialStatus === 'completed' ? now : undefined,
-          pointsAwarded: 0,
-        };
-
-        let newState: AppState = { ...prev, libraryBooks: [userBook, ...prev.libraryBooks] };
-
-        if (initialStatus === 'reading' || initialStatus === 'completed') {
-          const existingInTracker = prev.books.some((b) => b.title === curatedBook.title);
-          if (!existingInTracker) {
-            const trackerBook: Book = {
-              id: uid(),
-              title: curatedBook.title,
-              author: curatedBook.author,
-              totalPages: 250,
-              unit: 'pages',
-              currentPage: 0,
-              isFinished: initialStatus === 'completed',
-              finishedAt: initialStatus === 'completed' ? now : undefined,
-              createdAt: now,
-            };
-            newState = { ...newState, books: [trackerBook, ...newState.books] };
-            userBook.linkedBookId = trackerBook.id;
-
-            if (initialStatus === 'completed') {
-              const pointsUpdate = addPointsInternal(
-                newState,
-                curatedBook.pointsOnCompletion,
-                `Curated book completed: ${curatedBook.title}`,
-                'library_book_bonus'
-              );
-              newState = { ...newState, ...pointsUpdate };
-              userBook.pointsAwarded = curatedBook.pointsOnCompletion;
-            }
-          }
-        }
-
-        return newState;
-      });
-    },
-    []
-  );
-
-  const addCustomBookToLibrary = useCallback(
-    (title: string, author: string, description?: string, category?: BookCategory) => {
-      setState((prev) => {
-        const now = new Date().toISOString();
-        const userBook: UserBook = {
-          id: uid(),
-          title: title.trim(),
-          author: author.trim() || 'Unknown Author',
-          description: description?.trim(),
-          category,
-          isCustom: true,
-          status: 'to-read',
-          addedAt: now,
-          pointsAwarded: 0,
-        };
-        return { ...prev, libraryBooks: [userBook, ...prev.libraryBooks] };
-      });
-    },
-    []
-  );
-
-  const updateUserBookStatus = useCallback((userBookId: string, newStatus: UserBookStatus) => {
+  // --- SELF IMPROVEMENT BOOKS / CURATED ACTIONS ---
+  const addCuratedBookToLibrary = useCallback((
+    curatedBook: CuratedBook,
+    initialStatus: UserBookStatus = 'to-read',
+    customTotalAmount?: number,
+    customUnit?: 'pages' | 'chapters',
+    customTargetDate?: string
+  ) => {
     setState((prev) => {
-      const idx = prev.libraryBooks.findIndex((lb) => lb.id === userBookId);
-      if (idx === -1) return prev;
-      const target = prev.libraryBooks[idx];
-      if (target.status === newStatus) return prev;
+      // Prevent duplicates
+      if (prev.libraryBooks.some((b) => b.curatedBookId === curatedBook.id)) return prev;
 
+      const numPages = customTotalAmount || curatedBook.totalPages || curatedBook.totalAmount || 250;
       const now = new Date().toISOString();
-      let updated: UserBook = {
-        ...target,
-        status: newStatus,
-        startedAt: newStatus === 'reading' || newStatus === 'completed' ? target.startedAt ?? now : target.startedAt,
-        completedAt: newStatus === 'completed' ? now : undefined,
+      const unit = customUnit || 'pages';
+      const newBook: UserBook = {
+        id: `library-book-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        curatedBookId: curatedBook.id,
+        title: curatedBook.title,
+        author: curatedBook.author,
+        description: curatedBook.description,
+        category: curatedBook.category,
+        coverImageUrl: curatedBook.coverImageUrl,
+        isCurated: true,
+        isCustom: false,
+        pointsReward: curatedBook.pointsOnCompletion || curatedBook.pointsReward || 40,
+        pointsAwarded: 0,
+        status: initialStatus,
+        totalAmount: numPages,
+        totalPages: numPages,
+        currentAmount: initialStatus === 'completed' ? numPages : 0,
+        currentPage: initialStatus === 'completed' ? numPages : 0,
+        unit,
+        targetFinishDate: customTargetDate?.trim() || undefined,
+        addedAt: now,
+        dateStarted: initialStatus === 'reading' || initialStatus === 'completed' ? now : undefined,
+        startedAt: initialStatus === 'reading' || initialStatus === 'completed' ? now : undefined,
+        completedAt: initialStatus === 'completed' ? now : undefined,
+        dateCompleted: initialStatus === 'completed' ? now : undefined,
       };
 
-      let newState: AppState = { ...prev };
+      let newState: AppState = {
+        ...prev,
+        libraryBooks: [newBook, ...prev.libraryBooks],
+        books: [],
+      };
 
-      if (newStatus === 'reading' && !target.linkedBookId) {
-        const existingInTracker = prev.books.some((b) => b.title === target.title);
-        if (!existingInTracker) {
-          const trackerBook: Book = {
-            id: uid(),
-            title: target.title,
-            author: target.author,
-            totalPages: 250,
-            unit: 'pages',
-            currentPage: 0,
-            isFinished: false,
-            createdAt: now,
-          };
-          newState = { ...newState, books: [trackerBook, ...newState.books] };
-          updated = { ...updated, linkedBookId: trackerBook.id };
-        }
-      }
-
-      if (newStatus === 'completed' && target.status !== 'completed') {
-        if (target.linkedBookId) {
-          const trackerIdx = newState.books.findIndex((b) => b.id === target.linkedBookId);
-          if (trackerIdx !== -1) {
-            const trackerBooks = [...newState.books];
-            trackerBooks[trackerIdx] = {
-              ...trackerBooks[trackerIdx],
-              currentPage: trackerBooks[trackerIdx].totalPages,
-              isFinished: true,
-              finishedAt: now,
-            };
-            newState = { ...newState, books: trackerBooks };
-          }
-        } else {
-          const existingInTracker = prev.books.some((b) => b.title === target.title);
-          if (!existingInTracker) {
-            const trackerBook: Book = {
-              id: uid(),
-              title: target.title,
-              author: target.author,
-              totalPages: 250,
-              unit: 'pages',
-              currentPage: 250,
-              isFinished: true,
-              finishedAt: now,
-              createdAt: now,
-            };
-            newState = { ...newState, books: [trackerBook, ...newState.books] };
-            updated = { ...updated, linkedBookId: trackerBook.id };
-          }
-        }
-
-        if (!target.isCustom && target.curatedBookId) {
-          const curated = findCuratedBook(target.curatedBookId);
-          if (curated && target.pointsAwarded === 0) {
-            const pointsUpdate = addPointsInternal(
-              newState,
-              curated.pointsOnCompletion,
-              `Curated book completed: ${curated.title}`,
-              'library_book_bonus'
-            );
-            newState = { ...newState, ...pointsUpdate };
-            updated = { ...updated, pointsAwarded: curated.pointsOnCompletion };
-          }
-        }
-      }
-
-      if (newStatus !== 'completed' && target.status === 'completed' && target.pointsAwarded > 0) {
+      if (initialStatus === 'completed') {
+        const reward = curatedBook.pointsOnCompletion || curatedBook.pointsReward || 40;
         const pointsUpdate = addPointsInternal(
           newState,
-          -target.pointsAwarded,
-          `Book completion reverted: ${target.title}`,
+          reward,
+          `Curated book completed: ${curatedBook.title}`,
           'library_book_bonus'
         );
+        newBook.pointsAwarded = reward;
         newState = { ...newState, ...pointsUpdate };
-        updated = { ...updated, pointsAwarded: 0, completedAt: undefined };
-
-        if (updated.linkedBookId) {
-          const trackerIdx = newState.books.findIndex((b) => b.id === updated.linkedBookId);
-          if (trackerIdx !== -1) {
-            const trackerBooks = [...newState.books];
-            trackerBooks[trackerIdx] = {
-              ...trackerBooks[trackerIdx],
-              isFinished: false,
-              finishedAt: undefined,
-              currentPage: Math.min(trackerBooks[trackerIdx].currentPage, Math.floor(trackerBooks[trackerIdx].totalPages * 0.8)),
-            };
-            newState = { ...newState, books: trackerBooks };
-          }
-        }
       }
 
-      const updatedLibrary = [...newState.libraryBooks];
-      updatedLibrary[idx] = updated;
-      return { ...newState, libraryBooks: updatedLibrary };
+      return newState;
     });
   }, []);
 
-  const removeBookFromLibrary = useCallback((userBookId: string) => {
+  const addCustomBookToLibrary = useCallback((
+    title: string,
+    author: string,
+    description?: string,
+    category?: BookCategory | string,
+    totalAmount: number = 250,
+    unit: 'pages' | 'chapters' = 'pages',
+    status: UserBookStatus = 'reading',
+    targetFinishDate?: string
+  ) => {
+    setState((prev) => {
+      const now = new Date().toISOString();
+      const newBook: UserBook = {
+        id: `custom-book-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        title: title.trim(),
+        author: author.trim() || 'Unknown Author',
+        description: description?.trim(),
+        category,
+        isCurated: false,
+        isCustom: true,
+        pointsReward: 0,
+        pointsAwarded: 0,
+        status,
+        totalAmount,
+        totalPages: totalAmount,
+        currentAmount: 0,
+        currentPage: 0,
+        unit,
+        targetFinishDate: targetFinishDate?.trim() || undefined,
+        addedAt: now,
+        dateStarted: status === 'reading' ? now : undefined,
+        startedAt: status === 'reading' ? now : undefined,
+      };
+
+      return {
+        ...prev,
+        libraryBooks: [newBook, ...prev.libraryBooks],
+        books: [],
+      };
+    });
+  }, []);
+
+  const updateUserBookStatus = useCallback(
+    (
+      bookId: string,
+      status: UserBookStatus,
+      options?: { totalAmount?: number; unit?: 'pages' | 'chapters'; targetFinishDate?: string }
+    ) => {
+      setState((prev) => {
+        const now = new Date().toISOString();
+        return {
+          ...prev,
+          libraryBooks: prev.libraryBooks.map((b) => {
+            if (b.id === bookId || b.linkedBookId === bookId) {
+              const maxPages = options?.totalAmount ?? b.totalAmount ?? b.totalPages ?? 250;
+              const unit = options?.unit ?? b.unit ?? 'pages';
+              const targetFinishDate = options?.targetFinishDate !== undefined ? options.targetFinishDate : b.targetFinishDate;
+              return {
+                ...b,
+                status,
+                totalAmount: maxPages,
+                totalPages: maxPages,
+                unit,
+                targetFinishDate,
+                currentAmount: status === 'completed' ? maxPages : b.currentAmount,
+                currentPage: status === 'completed' ? maxPages : b.currentPage,
+                isFinished: status === 'completed',
+                dateStarted: status === 'reading' && !b.dateStarted ? now : b.dateStarted,
+                startedAt: status === 'reading' && !b.startedAt ? now : b.startedAt,
+                completedAt: status === 'completed' ? (b.completedAt || now) : undefined,
+                dateCompleted: status === 'completed' ? (b.dateCompleted || now) : undefined,
+              };
+            }
+            return b;
+          }),
+          books: [],
+        };
+      });
+    },
+    []
+  );
+
+  const restartBook = useCallback((bookId: string) => {
     setState(
       (prev) => {
-        const target = prev.libraryBooks.find((lb) => lb.id === userBookId);
-        if (!target) return prev;
-
-        const linkedBookId = target.linkedBookId;
-        const targetTitleLower = target.title.toLowerCase();
-
-        // Calculate points awarded across associated reading logs being removed
-        const associatedLogs = prev.readingLogs.filter((l) =>
-          linkedBookId ? l.bookId === linkedBookId || l.bookId === userBookId : l.bookId === userBookId
-        );
-        const logPointsToDeduct = associatedLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-
-        let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
-          totalPoints: prev.totalPoints,
-          pointsHistory: prev.pointsHistory,
-        };
-        const totalDeduction = (target.pointsAwarded || 0) + logPointsToDeduct;
-        if (totalDeduction > 0) {
-          pointsUpdate = addPointsInternal(
-            prev,
-            -totalDeduction,
-            `Book removed from library: ${target.title}`,
-            'library_book_bonus'
-          );
-        }
-
-        const matchingBookIds = prev.books
-          .filter((b) => (linkedBookId ? b.id === linkedBookId : b.title.toLowerCase() === targetTitleLower))
-          .map((b) => b.id);
-        const idsToRemove = [userBookId, linkedBookId, ...matchingBookIds].filter(Boolean) as string[];
-        const updatedDeletedEntityIds = [
-          ...(prev.deletedEntityIds || []),
-          ...idsToRemove,
-          ...associatedLogs.map((l) => l.id),
-        ].slice(-500);
+        const now = new Date().toISOString();
+        const updatedLibraryBooks = prev.libraryBooks.map((lb) => {
+          if (lb.id === bookId || lb.linkedBookId === bookId) {
+            return {
+              ...lb,
+              currentAmount: 0,
+              currentPage: 0,
+              status: 'reading' as UserBookStatus,
+              isFinished: false,
+              dateStarted: now,
+              startedAt: now,
+              dateCompleted: undefined,
+              completedAt: undefined,
+              reflection: undefined,
+            };
+          }
+          return lb;
+        });
 
         return {
           ...prev,
-          libraryBooks: prev.libraryBooks.filter((lb) => lb.id !== userBookId),
-          books: prev.books.filter(
-            (b) => (linkedBookId ? b.id !== linkedBookId : b.title.toLowerCase() !== targetTitleLower)
-          ),
-          readingLogs: prev.readingLogs.filter((l) =>
-            linkedBookId ? l.bookId !== linkedBookId && l.bookId !== userBookId : l.bookId !== userBookId
-          ),
-          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsToRemove),
-          deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
+          libraryBooks: updatedLibraryBooks,
+          books: [],
         };
       },
       { immediate: true }
     );
   }, []);
+
+  const removeBookFromLibrary = useCallback((userBookId: string) => {
+    deleteBook(userBookId);
+  }, [deleteBook]);
 
   const getUserBookStatus = useCallback(
     (curatedBookId: string): UserBookStatus | null => {
@@ -5169,7 +5430,7 @@ export function useAppState() {
 
       const habitsCompletedCount = state.habits.reduce((acc, h) => acc + (h.completions?.length || 0), 0);
       const exerciseMinutes = state.workouts.reduce((sum, w) => sum + w.durationMinutes, 0);
-      const booksRead = state.books.filter((b) => b.isFinished).length;
+      const booksRead = (state.libraryBooks || []).filter((b) => b.status === 'completed' || b.isFinished).length;
       const skillsPracticedCount = state.skillLogs.length;
 
       const userStats = {
@@ -5210,7 +5471,7 @@ export function useAppState() {
       state.pointsHistory,
       state.habits,
       state.workouts,
-      state.books,
+      state.libraryBooks,
       state.readingLogs,
       state.badHabits,
       state.badHabitLogs,
@@ -5245,6 +5506,7 @@ export function useAppState() {
     addCustomHabit,
     deleteHabit,
     toggleHabit,
+    toggleReadingHabit,
     isHabitDone,
     saveJournalEntry,
     deleteJournalEntry,
@@ -5308,6 +5570,7 @@ export function useAppState() {
     addCuratedBookToLibrary,
     addCustomBookToLibrary,
     updateUserBookStatus,
+    restartBook,
     removeBookFromLibrary,
     getUserBookStatus,
     // Social Features Actions

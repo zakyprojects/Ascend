@@ -110,7 +110,7 @@ export function computeStateDataWeight(state: Partial<AppState> | null | undefin
     leagueArchives: state.leagueArchives?.length || 0,
     readLessonIds: state.readLessonIds?.length || 0,
     workouts: state.workouts?.length || 0,
-    books: state.books?.length || 0,
+    books: 0,
     readingLogs: state.readingLogs?.length || 0,
     skills: state.skills?.length || 0,
     skillLogs: state.skillLogs?.length || 0,
@@ -297,7 +297,7 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
       }, 0);
       const unified = calculateUnifiedStreak(finalState);
       const exerciseMinutes = (finalState.workouts || []).reduce((sum, w) => sum + w.durationMinutes, 0);
-      const booksRead = (finalState.books || []).filter((b) => b.isFinished).length;
+      const booksRead = (finalState.libraryBooks || []).filter((b) => b.status === 'completed' || b.isFinished).length;
       const skillsPracticedCount = (finalState.skillLogs || []).length;
 
       const userStats = {

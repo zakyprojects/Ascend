@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Flame, Trash2, Check, Calendar, Repeat, BookMarked, Pencil, Info, AlertTriangle } from 'lucide-react';
+import { Plus, Flame, Trash2, Check, Calendar, Repeat, BookMarked, Pencil, Info, AlertTriangle, BookOpen, Lock } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Habit, HabitFrequency } from '@/types';
 import { calculateStreak, calculateBestStreak, periodKey } from '@/lib/dates';
@@ -296,8 +296,10 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
   const bestStreak = calculateBestStreak(habit.completions, habit.frequency);
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const isToggling = isKeyLoading(habit.id);
+  const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
 
   const handleToggle = async () => {
+    if (isLinked) return;
     await executeWithKey(habit.id, async () => {
       await store.toggleHabit(habit.id);
     });
@@ -308,15 +310,22 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
       <div className="flex items-center gap-3">
         <button
           onClick={handleToggle}
-          disabled={isToggling}
-          className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90 ${
+          disabled={isToggling || isLinked}
+          title={isLinked ? 'Automatically tracked by logging pages in Reading Hub' : undefined}
+          className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
+            isLinked ? 'cursor-default' : 'active:scale-90'
+          } ${
             done
               ? 'bg-primary-500 text-white'
+              : isLinked
+              ? 'bg-bg-600/60 text-slate-600 border border-white/5'
               : 'bg-bg-600 text-slate-500 hover:bg-bg-500 hover:text-slate-300 border border-white/5'
           }`}
         >
           {isToggling ? (
             <AscendLoadingIndicator size="sm" />
+          ) : isLinked && !done ? (
+            <Lock size={18} className="text-slate-500" />
           ) : (
             <Check size={22} className={done ? 'animate-scale-in' : ''} />
           )}
@@ -324,13 +333,22 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
+            {isLinked && (
+              <BookOpen size={14} className="text-amber-400 shrink-0" />
+            )}
             <h3 className={`font-medium truncate ${done ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
               {habit.name}
             </h3>
-            <span className="badge bg-bg-600 text-slate-400 shrink-0">
-              {habit.frequency === 'daily' ? 'Daily' : 'Weekly'}
-            </span>
-            {!habit.isPreset && (
+            {isLinked ? (
+              <span className="badge bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                Reading Hub
+              </span>
+            ) : (
+              <span className="badge bg-bg-600 text-slate-400 shrink-0">
+                {habit.frequency === 'daily' ? 'Daily' : 'Weekly'}
+              </span>
+            )}
+            {!habit.isPreset && !isLinked && (
               <span className="badge bg-slate-700/50 text-slate-500 shrink-0">
                 Custom
               </span>
@@ -348,7 +366,12 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
                 <span>Best: {bestStreak}</span>
               </div>
             )}
-            {habit.isPreset ? (
+            {isLinked ? (
+              <div className="text-xs text-amber-400/90 font-medium flex items-center gap-1">
+                <span>Auto-synced</span>
+                <span className="text-primary-400">+{habit.points} pts</span>
+              </div>
+            ) : habit.isPreset ? (
               <div className="text-xs text-primary-400">+{habit.points} pts</div>
             ) : (
               <div className="text-xs text-slate-600">No points</div>

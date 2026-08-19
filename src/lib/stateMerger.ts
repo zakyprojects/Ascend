@@ -23,6 +23,7 @@ import {
   Task,
   TaskSubtask,
   UserBook,
+  UserBookStatus,
   ImprovementPlan,
   UserPlanFollow,
   PartnerInvite,
@@ -270,12 +271,6 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
   );
 
   // 6. Books & Reading Logs
-  const books = mergeEntityArrays(
-    baseState.books || [],
-    incomingState.books || [],
-    tombstoneSet
-  );
-
   const readingLogs = mergeEntityArrays(
     baseState.readingLogs || [],
     incomingState.readingLogs || [],
@@ -376,10 +371,66 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
   );
 
   // 12. Library Books
+  const baseLib = [...(baseState.libraryBooks || [])];
+  const incomingLib = [...(incomingState.libraryBooks || [])];
+
+  // Convert any legacy books from base/incoming if not already in libraryBooks
+  const absorbLegacyBook = (targetArray: UserBook[], legacyBook: any) => {
+    if (!legacyBook || !legacyBook.id) return;
+    const exists = targetArray.some((lb) => lb.id === legacyBook.id || lb.linkedBookId === legacyBook.id || lb.title?.toLowerCase() === legacyBook.title?.toLowerCase());
+    if (!exists) {
+      targetArray.push({
+        id: legacyBook.id,
+        title: legacyBook.title || 'Untitled Book',
+        author: legacyBook.author || 'Unknown Author',
+        isCurated: false,
+        isCustom: true,
+        pointsReward: 0,
+        pointsAwarded: 0,
+        status: (legacyBook.isFinished ? 'completed' : 'reading') as UserBookStatus,
+        totalAmount: legacyBook.totalPages || 200,
+        totalPages: legacyBook.totalPages || 200,
+        currentAmount: legacyBook.currentPage || 0,
+        currentPage: legacyBook.currentPage || 0,
+        unit: legacyBook.unit || 'pages',
+        targetFinishDate: legacyBook.targetFinishDate,
+        addedAt: legacyBook.createdAt || new Date().toISOString(),
+        dateCompleted: legacyBook.finishedAt,
+        completedAt: legacyBook.finishedAt,
+        reflection: legacyBook.reflection,
+      });
+    }
+  };
+
+  (baseState.books || []).forEach((b) => absorbLegacyBook(baseLib, b));
+  (incomingState.books || []).forEach((b) => absorbLegacyBook(incomingLib, b));
+
   const libraryBooks = mergeEntityArrays(
-    baseState.libraryBooks || [],
-    incomingState.libraryBooks || [],
-    tombstoneSet
+    baseLib,
+    incomingLib,
+    tombstoneSet,
+    (baseB: UserBook, incB: UserBook) => {
+      const baseTime = baseB.addedAt || '';
+      const incTime = incB.addedAt || '';
+      const primary = incTime >= baseTime ? incB : baseB;
+      const secondary = incTime >= baseTime ? baseB : incB;
+      const effectiveStatus: UserBookStatus = (primary.status === 'completed' || secondary.status === 'completed')
+        ? 'completed'
+        : (primary.status === 'reading' || secondary.status === 'reading')
+        ? 'reading'
+        : (primary.status as UserBookStatus);
+      return {
+        ...secondary,
+        ...primary,
+        status: effectiveStatus,
+        currentAmount: Math.max(baseB.currentAmount ?? baseB.currentPage ?? 0, incB.currentAmount ?? incB.currentPage ?? 0),
+        totalAmount: incB.totalAmount ?? baseB.totalAmount ?? incB.totalPages ?? baseB.totalPages,
+        targetFinishDate: incB.targetFinishDate ?? baseB.targetFinishDate,
+        dateStarted: incB.dateStarted ?? baseB.dateStarted ?? incB.startedAt ?? baseB.startedAt,
+        dateCompleted: incB.dateCompleted ?? baseB.dateCompleted ?? incB.completedAt ?? baseB.completedAt,
+        reflection: incB.reflection ?? baseB.reflection,
+      };
+    }
   );
 
   // 13. Social Plans & Follows
@@ -551,7 +602,7 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     journalEntries,
     workouts,
     exerciseGoal: incomingState.exerciseGoal !== undefined ? incomingState.exerciseGoal : baseState.exerciseGoal,
-    books,
+    books: [],
     readingLogs,
     readingGoal: incomingState.readingGoal !== undefined ? incomingState.readingGoal : baseState.readingGoal,
     skills,
