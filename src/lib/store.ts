@@ -3499,7 +3499,11 @@ export function useAppState() {
           ? [{ id: uid(), createdAt: new Date().toISOString(), note: typeParams.initialReflectionNote.trim() }]
           : [];
 
-        const reviewCadence = typeParams?.reviewCadence || null;
+        const isVision = planType === 'vision';
+        const reviewCadence = isVision
+          ? (typeParams?.reviewCadence || 'weekly')
+          : (typeParams?.reviewCadence || null);
+
         let nextReviewDueAt: string | null = null;
         if (reviewCadence === 'weekly') {
           nextReviewDueAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -3830,9 +3834,10 @@ export function useAppState() {
         note: note.trim(),
       };
 
-      if (target.reviewCadence === 'weekly') {
+      const effectiveCadence = target.reviewCadence || (target.planType === 'vision' ? 'weekly' : null);
+      if (effectiveCadence === 'weekly') {
         nextDue = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-      } else if (target.reviewCadence === 'monthly') {
+      } else if (effectiveCadence === 'monthly') {
         nextDue = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
       } else {
         nextDue = target.nextReviewDueAt || null;
@@ -3928,7 +3933,11 @@ export function useAppState() {
           completed: target.steps[i]?.completed || false,
         }));
 
-      const newReviewCadence = typeParams?.reviewCadence !== undefined ? typeParams.reviewCadence : target.reviewCadence;
+      const isVision = target.planType === 'vision';
+      const newReviewCadence = isVision
+        ? (typeParams?.reviewCadence || target.reviewCadence || 'weekly')
+        : (typeParams?.reviewCadence !== undefined ? typeParams.reviewCadence : target.reviewCadence);
+
       let newNextReviewDueAt = target.nextReviewDueAt;
       if (newReviewCadence !== target.reviewCadence || (newReviewCadence && !newNextReviewDueAt)) {
         if (newReviewCadence === 'weekly') {
@@ -4126,6 +4135,10 @@ export function useAppState() {
         lastCompletedDate: undefined,
         targetReviewDate: originalPlan.targetReviewDate,
         reflectionNotes: [], // Reset reflections to empty for copier
+
+        // Review loop cadence
+        reviewCadence: originalPlan.reviewCadence || (originalPlan.planType === 'vision' ? 'weekly' : null),
+        nextReviewDueAt: originalPlan.nextReviewDueAt || (originalPlan.planType === 'vision' ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null),
       };
 
       setState((prev) => ({
@@ -4218,9 +4231,10 @@ export function useAppState() {
         note: note.trim(),
       };
 
-      if (target.reviewCadence === 'weekly') {
+      const effectiveCadence = target.reviewCadence || (target.planType === 'vision' ? 'weekly' : null);
+      if (effectiveCadence === 'weekly') {
         nextDue = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-      } else if (target.reviewCadence === 'monthly') {
+      } else if (effectiveCadence === 'monthly') {
         nextDue = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
       } else {
         nextDue = target.nextReviewDueAt || null;
