@@ -43,15 +43,8 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
     if (!bookToRemove) return 0;
     const target = store.state.libraryBooks.find((lb) => lb.id === bookToRemove.id);
     if (!target) return 0;
-    const linkedBookId = target.linkedBookId;
-    const targetTitleLower = target.title.toLowerCase();
-    const matchingBookIds = new Set(
-      store.state.books
-        .filter((b) => (linkedBookId ? b.id === linkedBookId : b.title.toLowerCase() === targetTitleLower))
-        .map((b) => b.id)
-    );
-    if (target.id) matchingBookIds.add(target.id);
-    if (linkedBookId) matchingBookIds.add(linkedBookId);
+    const matchingBookIds = new Set<string>([target.id]);
+    if (target.linkedBookId) matchingBookIds.add(target.linkedBookId);
 
     let count = 0;
     store.state.weeklyGoals.forEach((doc) => {
@@ -62,7 +55,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
       });
     });
     return count;
-  }, [bookToRemove, store.state.libraryBooks, store.state.books, store.state.weeklyGoals]);
+  }, [bookToRemove, store.state.libraryBooks, store.state.weeklyGoals]);
 
   const filteredCurated = useMemo(() => {
     let list = [...CURATED_BOOKS];
@@ -148,8 +141,8 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
     );
   };
 
-  const renderCategoryBadge = (category: BookCategory, compact = false) => {
-    const meta = getCategoryMeta(category);
+  const renderCategoryBadge = (category: BookCategory | string, compact = false) => {
+    const meta = getCategoryMeta(category as BookCategory);
     return (
       <span className={`badge ${meta.bgClass} ${meta.color} border ${compact ? 'text-[10px] px-2 py-0.5' : ''}`}>
         {category}
@@ -573,8 +566,8 @@ function LibraryCard({
   onRemove: () => void;
   onStatusChange: (s: UserBookStatus) => void;
 }) {
-  const renderCategoryBadge = (category: BookCategory) => {
-    const meta = getCategoryMeta(category);
+  const renderCategoryBadge = (category: BookCategory | string) => {
+    const meta = getCategoryMeta(category as BookCategory);
     return (
       <span className={`badge ${meta.bgClass} ${meta.color} border text-[10px] px-2 py-0.5`}>
         {category}

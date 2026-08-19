@@ -7,8 +7,7 @@ import { WeeklyGoalsView } from '@/components/views/WeeklyGoalsView';
 import { ProjectsGoalsView } from '@/components/views/ProjectsGoalsView';
 import { Journal } from '@/components/views/Journal';
 import { ExerciseTracker } from '@/components/views/ExerciseTracker';
-import { ReadingTracker } from '@/components/views/ReadingTracker';
-import { SelfImprovementBooks } from '@/components/views/SelfImprovementBooks';
+import { ReadingHub } from '@/components/views/ReadingHub';
 import { SkillTracker } from '@/components/views/SkillTracker';
 import { BadHabitTracker } from '@/components/views/BadHabitTracker';
 import { AddictionRecovery } from '@/components/views/AddictionRecovery';
@@ -68,8 +67,7 @@ function App() {
           )}
           {view === 'journal' && <Journal store={store} />}
           {view === 'exercise' && <ExerciseTracker store={store} />}
-          {view === 'reading' && <ReadingTracker store={store} />}
-          {view === 'books' && <SelfImprovementBooks store={store} />}
+          {(view === 'reading' || view === 'books') && <ReadingHub store={store} />}
           {view === 'skills' && <SkillTracker store={store} />}
           {view === 'bad-habits' && <BadHabitTracker store={store} />}
           {view === 'recovery' && <AddictionRecovery store={store} />}

@@ -55,8 +55,8 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   const weeklyWorkouts = store.state.workouts.filter((w) => (parseDate(w.date) || new Date(0)) >= startOfWeek);
   const weeklyExerciseMins = weeklyWorkouts.reduce((sum, w) => sum + w.durationMinutes, 0);
 
-  const activeBooks = store.state.books.filter((b) => !b.isFinished).length;
-  const finishedBooks = store.state.books.filter((b) => b.isFinished).length;
+  const activeBooks = (store.state.libraryBooks || []).filter((b) => b.status === 'reading').length;
+  const finishedBooks = (store.state.libraryBooks || []).filter((b) => b.status === 'completed').length;
 
   const totalSkillHours = (store.state.skillLogs.reduce((sum, l) => sum + l.durationMinutes, 0) / 60).toFixed(1);
 
@@ -191,7 +191,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-amber-500"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium">Reading Tracker</span>
+              <span className="text-xs text-slate-400 font-medium">Reading Hub</span>
               <BookMarked size={18} className="text-amber-400" />
             </div>
             <div>
@@ -285,16 +285,25 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             {pendingToday.length > 0 ? (
               pendingToday.slice(0, 4).map((habit) => {
                 const isToggling = isKeyLoading(habit.id);
+                const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
                 return (
                   <div key={habit.id} className="card p-3 flex items-center gap-3 card-hover">
                     <button
-                      disabled={isToggling}
-                      onClick={() => executeWithKey(habit.id, async () => { store.toggleHabit(habit.id); })}
-                      className="shrink-0 w-9 h-9 rounded-lg bg-bg-600 text-slate-500 hover:bg-bg-500 hover:text-slate-300 border border-white/5 flex items-center justify-center transition-all active:scale-90"
+                      disabled={isToggling || isLinked}
+                      title={isLinked ? 'Log reading progress in Reading Hub' : undefined}
+                      onClick={() => !isLinked && executeWithKey(habit.id, async () => { store.toggleHabit(habit.id); })}
+                      className={`shrink-0 w-9 h-9 rounded-lg border border-white/5 flex items-center justify-center transition-all ${
+                        isLinked
+                          ? 'bg-bg-600/60 text-slate-600 cursor-default'
+                          : 'bg-bg-600 text-slate-500 hover:bg-bg-500 hover:text-slate-300 active:scale-90'
+                      }`}
                     >
                       {isToggling ? <AscendLoadingIndicator size="sm" /> : <Check size={18} />}
                     </button>
-                    <span className="text-sm text-slate-300 flex-1 truncate">{habit.name}</span>
+                    <span className="text-sm text-slate-300 flex-1 truncate flex items-center gap-1.5">
+                      {isLinked && <BookOpen size={13} className="text-amber-400 shrink-0" />}
+                      <span>{habit.name}</span>
+                    </span>
                     {habit.isPreset ? (
                       <span className="text-xs text-primary-400">+{habit.points} pts</span>
                     ) : (

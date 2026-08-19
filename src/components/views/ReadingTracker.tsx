@@ -29,7 +29,22 @@ export function ReadingTracker({ store }: { store: AppStore }) {
   const [progressInput, setProgressInput] = useState(0);
   const [reflectionInput, setReflectionInput] = useState('');
 
-  const books = store.state.books;
+  const libraryBooks = store.state.libraryBooks || [];
+  const books: Book[] = useMemo(() => {
+    return libraryBooks.map((lb) => ({
+      id: lb.id,
+      title: lb.title,
+      author: lb.author || 'Unknown Author',
+      totalPages: lb.totalAmount ?? lb.totalPages ?? 200,
+      currentPage: lb.currentAmount ?? lb.currentPage ?? 0,
+      unit: (lb.unit === 'chapters' ? 'chapters' : 'pages') as 'pages' | 'chapters',
+      isFinished: lb.status === 'completed' || !!lb.isFinished,
+      targetFinishDate: lb.targetFinishDate,
+      reflection: lb.reflection,
+      createdAt: lb.addedAt || new Date().toISOString(),
+      finishedAt: lb.dateCompleted || lb.completedAt,
+    }));
+  }, [libraryBooks]);
   const readingLogs = store.state.readingLogs;
 
   const linkedBookGoalsCount = useMemo(() => {

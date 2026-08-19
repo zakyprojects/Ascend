@@ -147,7 +147,13 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
       if (item.linkedModule === 'reading') {
         const logs = store.state.readingLogs.filter((l) => dateStrings.includes(l.date));
-        const filtered = item.linkedItemId ? logs.filter((l) => l.bookId === item.linkedItemId) : logs;
+        const matchingBook = store.state.libraryBooks.find((lb) => lb.id === item.linkedItemId || lb.linkedBookId === item.linkedItemId);
+        const matchingIds = new Set<string>();
+        if (item.linkedItemId) matchingIds.add(item.linkedItemId);
+        if (matchingBook?.id) matchingIds.add(matchingBook.id);
+        if (matchingBook?.linkedBookId) matchingIds.add(matchingBook.linkedBookId);
+
+        const filtered = matchingIds.size > 0 ? logs.filter((l) => matchingIds.has(l.bookId)) : logs;
         const totalPages = filtered.reduce((acc, l) => acc + (l.progressAmount || 0), 0);
         return { current: totalPages, target, unit: 'pages', percent: Math.min(100, Math.round((totalPages / target) * 100)) };
       }
@@ -1013,9 +1019,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 className="input w-full bg-bg-800"
               >
                 <option value="" disabled>Select a specific book...</option>
-                {store.state.books.map((b) => (
+                {store.state.libraryBooks.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.title}
+                    {b.title} {b.status === 'completed' ? '✓ (Completed)' : b.status === 'reading' ? '📖 (Reading)' : '⏳ (To Read)'}
                   </option>
                 ))}
               </select>

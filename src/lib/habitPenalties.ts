@@ -590,13 +590,13 @@ export function processReadingTargetPenalties(state: AppState, now: Date = new D
 }
 
 export function processBookDeadlinePenalties(state: AppState, now: Date = new Date()): AppState {
-  const books = state.books || [];
+  const libraryBooks = state.libraryBooks || [];
   const todayStr = todayKey(now);
   let updatedState = state;
   let booksChanged = false;
 
-  const updatedBooks = books.map((book) => {
-    if (book.isFinished || !book.targetFinishDate) return book;
+  const updatedLibraryBooks = libraryBooks.map((book) => {
+    if (book.status === 'completed' || book.isFinished || !book.targetFinishDate) return book;
 
     if (book.targetFinishDate < todayStr && book.lastPenalizedDate !== todayStr) {
       const consecutiveMisses = (book.consecutiveMisses || 0) + 1;
@@ -645,10 +645,11 @@ export function processBookDeadlinePenalties(state: AppState, now: Date = new Da
     return book;
   });
 
-  if (!booksChanged) return updatedState;
+  if (!booksChanged) return { ...updatedState, books: [] };
 
   return {
     ...updatedState,
-    books: updatedBooks,
+    libraryBooks: updatedLibraryBooks,
+    books: [],
   };
 }

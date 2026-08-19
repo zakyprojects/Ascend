@@ -42,7 +42,6 @@ export const PRESET_CATEGORIES: PresetCategory[] = [
     name: 'Learning & Growth',
     icon: 'GraduationCap',
     habits: [
-      { name: 'Reading (books)', frequency: 'daily', points: 12, category: 'Learning & Growth', icon: 'BookOpen' },
       { name: 'Practice a skill', frequency: 'daily', points: 15, category: 'Learning & Growth', icon: 'Wrench' },
       { name: 'Learn something new', frequency: 'daily', points: 15, category: 'Learning & Growth', icon: 'Lightbulb' },
       { name: 'Listen to educational podcast', frequency: 'daily', points: 8, category: 'Learning & Growth', icon: 'Headphones' },

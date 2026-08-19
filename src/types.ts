@@ -70,6 +70,10 @@ export interface Habit {
   missedPeriods?: string[];
   /** Consecutive missed periods count (resets to 0 upon completion) */
   consecutiveMisses?: number;
+  /** Whether this habit is automatically linked to a system module */
+  isSystemLinked?: boolean;
+  /** System module linked to this habit */
+  linkedModule?: 'reading';
 }
 
 export interface JournalEntry {
@@ -206,9 +210,11 @@ export type BookCategory =
   | 'Discipline'
   | 'Finance'
   | 'Relationships'
-  | 'Spirituality';
+  | 'Spirituality'
+  | 'Business'
+  | 'Influence';
 
-export type UserBookStatus = 'to-read' | 'reading' | 'completed';
+export type UserBookStatus = 'to-read' | 'reading' | 'completed' | 'to_read';
 
 export interface CuratedBook {
   id: string;
@@ -219,6 +225,11 @@ export interface CuratedBook {
   coverImageUrl?: string;
   isCurated: true;
   pointsOnCompletion: number;
+  pointsReward?: number;
+  totalPages?: number;
+  totalAmount?: number;
+  trendingRank?: number;
+  bestSellerRank?: number;
 }
 
 export interface UserBook {
@@ -227,15 +238,33 @@ export interface UserBook {
   title: string;
   author: string;
   description?: string;
-  category?: BookCategory;
+  category?: BookCategory | string;
   coverImageUrl?: string;
-  isCustom: boolean;
+  isCurated?: boolean;
+  isCustom?: boolean;
+  pointsReward?: number;
+  pointsAwarded: number;
   status: UserBookStatus;
+  
+  // Tracking fields
+  totalAmount?: number;
+  currentAmount?: number;
+  unit?: 'pages' | 'chapters' | 'mins' | 'Pages' | 'Mins' | 'Chapters' | string;
+  targetFinishDate?: string;
+  dateStarted?: string;
+  dateCompleted?: string;
+  reflection?: string;
+
+  // Backward compatibility fields
+  totalPages?: number;
+  currentPage?: number;
   addedAt: string;
   startedAt?: string;
   completedAt?: string;
-  pointsAwarded: number;
+  isFinished?: boolean;
   linkedBookId?: string;
+  consecutiveMisses?: number;
+  lastPenalizedDate?: string;
 }
 
 // Module 3: Skill Learning Tracker
@@ -614,9 +643,12 @@ export interface AppState {
   // New modules state
   workouts: WorkoutLog[];
   exerciseGoal?: ExerciseGoal | null;
-  books: Book[];
+  // Unified Reading Hub & Literature Module
+  libraryBooks: UserBook[];
   readingLogs: ReadingProgressLog[];
   readingGoal?: ReadingGoal | null;
+  /** @deprecated Legacy books array. All reading data is migrated to libraryBooks and cleared on next sync */
+  books: Book[];
   skills: Skill[];
   skillLogs: SkillSessionLog[];
   badHabits: BadHabit[];
@@ -632,9 +664,6 @@ export interface AppState {
   goals: Goal[];
   projects: Project[];
   tasks: Task[];
-
-  // Self Improvement Books Library
-  libraryBooks: UserBook[];
 
   // Social features state
   improvementPlans: ImprovementPlan[];
