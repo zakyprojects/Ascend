@@ -59,6 +59,7 @@ import {
   checkTimeCollision,
   normalizeOrSplitMidnightBlock,
   timeStringToMinutes,
+  minutesToTimeString,
   calculateBlockDurationMinutes,
 } from './timeTracker';
 import { findCuratedBook } from './books';
@@ -596,6 +597,9 @@ export function useAppState() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const isHydrated = useRef(false);
   const currentUserRef = useRef<UserProfile | null>(state.currentUser);
+  const stateRef = useRef<AppState>(state);
+  stateRef.current = state;
+  const get = useCallback(() => stateRef.current, []);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveTimer = useRef<number | null>(null);
   const pendingImmediateFlush = useRef(false);
@@ -6191,40 +6195,71 @@ export function useAppState() {
 
   const pullForwardDailyTimeBlock = useCallback(
     (dateKey: string, blockId: string, newStartTime: string, mode: 'shift' | 'stretch' = 'stretch') => {
+      const currentTT = get().timeTracker || DEFAULT_TIME_TRACKER_STATE;
+      const currentDailyBlocks = currentTT.dailyLogs?.[dateKey] || [];
+      const target = currentDailyBlocks.find((b) => b.id === blockId);
+      if (!target) return;
+
+      const originalStartTime = target.originalStartTime || target.startTime;
+      let newEndTime = target.endTime;
+      const originalEndTime = target.originalEndTime || target.endTime;
+      const newStartMins = timeStringToMinutes(newStartTime);
+
+      if (mode === 'shift') {
+        const startMins = timeStringToMinutes(target.startTime);
+        const endMins = timeStringToMinutes(target.endTime);
+        const duration = Math.max(1, endMins - startMins);
+        const newEndMins = Math.min(1439, newStartMins + duration);
+        newEndTime = minutesToTimeString(newEndMins);
+      } else {
+        newEndTime = target.originalEndTime || target.endTime;
+        if (newStartMins >= timeStringToMinutes(newEndTime)) {
+          const newEndMins = Math.min(1439, newStartMins + 15);
+          newEndTime = minutesToTimeString(newEndMins);
+        }
+      }
+
+      if (timeStringToMinutes(newStartTime) >= timeStringToMinutes(newEndTime)) {
+        throw new Error('Invalid time range: start time must be before end time.');
+      }
+
+      const targetNewBlock: TimeTrackerBlock = {
+        ...target,
+        startTime: newStartTime,
+        endTime: newEndTime,
+        originalStartTime,
+        originalEndTime,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Adjust preceding blocks that overlap with newStartTime (e.g. earlier block ending after newStartTime)
+      const adjustedBlocks = currentDailyBlocks.map((b) => {
+        if (b.id === blockId) return targetNewBlock;
+        const bStart = timeStringToMinutes(b.startTime);
+        const bEnd = timeStringToMinutes(b.endTime);
+        if (bStart < newStartMins && bEnd > newStartMins) {
+          return {
+            ...b,
+            endTime: newStartTime,
+            trimmedOriginalEndTime: b.trimmedOriginalEndTime || b.endTime,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return b;
+      });
+
+      // Check collision for targetNewBlock against adjustedBlocks (ignoring target block)
+      const collision = checkTimeCollision(targetNewBlock, adjustedBlocks, blockId);
+      if (collision.hasCollision) {
+        throw new Error(collision.message || 'Cannot pull block forward due to overlapping schedule block.');
+      }
+
       setState(
         (prev) => {
           const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
           const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
-          const target = prevDailyBlocks.find((b) => b.id === blockId);
-          if (!target) return prev;
 
-          const originalStartTime = target.originalStartTime || target.startTime;
-          let newEndTime = target.endTime;
-          const originalEndTime = target.originalEndTime || target.endTime;
-
-          const newStartMins = timeStringToMinutes(newStartTime);
-
-          if (mode === 'shift') {
-            const startMins = timeStringToMinutes(target.startTime);
-            const endMins = timeStringToMinutes(target.endTime);
-            const duration = endMins - startMins;
-            const newEndMins = Math.min(1439, newStartMins + duration);
-            const h = Math.floor(newEndMins / 60).toString().padStart(2, '0');
-            const m = (newEndMins % 60).toString().padStart(2, '0');
-            newEndTime = `${h}:${m}`;
-          }
-
-          const targetNewBlock: TimeTrackerBlock = {
-            ...target,
-            startTime: newStartTime,
-            endTime: newEndTime,
-            originalStartTime,
-            originalEndTime,
-            updatedAt: new Date().toISOString(),
-          };
-
-          // Adjust preceding blocks that overlap with newStartTime (e.g. earlier block ending after newStartTime)
-          const adjustedBlocks = prevDailyBlocks.map((b) => {
+          const updatedBlocks = prevDailyBlocks.map((b) => {
             if (b.id === blockId) return targetNewBlock;
             const bStart = timeStringToMinutes(b.startTime);
             const bEnd = timeStringToMinutes(b.endTime);
@@ -6239,13 +6274,7 @@ export function useAppState() {
             return b;
           });
 
-          // Check collision for targetNewBlock against adjustedBlocks (ignoring target block)
-          const collision = checkTimeCollision(targetNewBlock, adjustedBlocks, blockId);
-          if (collision.hasCollision) {
-            throw new Error(collision.message || 'Cannot pull block forward due to overlapping schedule block.');
-          }
-
-          const sortedBlocks = adjustedBlocks.sort(
+          const sortedBlocks = updatedBlocks.sort(
             (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
           );
 
