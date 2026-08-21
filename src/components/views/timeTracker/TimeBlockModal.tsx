@@ -15,6 +15,7 @@ import {
 import { ActivityIcon } from './ActivityIcon';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Clock, AlertTriangle, Sparkles, Tag, FileText } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
 
 interface TimeBlockModalProps {
   open: boolean;
@@ -44,6 +45,7 @@ export function TimeBlockModal({
   defaultStartTime = '09:00',
   defaultDurationMinutes = 60,
 }: TimeBlockModalProps) {
+  const { showErrorToast } = useToast();
   const [activityId, setActivityId] = useState<string>('');
   const [secondaryActivityIds, setSecondaryActivityIds] = useState<string[]>([]);
   const [startTime, setStartTime] = useState<string>('09:00');
@@ -64,8 +66,7 @@ export function TimeBlockModal({
       setCustomTitle(editingBlock.customTitle || '');
       setNotes(editingBlock.notes || '');
     } else {
-      const initialActId = activities[0]?.id || '';
-      setActivityId(initialActId);
+      setActivityId('');
       setSecondaryActivityIds([]);
 
       let computedStartTime = '00:00';
@@ -130,7 +131,8 @@ export function TimeBlockModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activityId) {
-      setValidationError('Please select an activity category.');
+      setValidationError('Please select a primary activity category.');
+      showErrorToast('Activity Required', 'Please select a primary activity category.');
       return;
     }
     if (isZeroDuration) {
@@ -370,7 +372,7 @@ export function TimeBlockModal({
           </button>
           <button
             type="submit"
-            disabled={isSaving || isZeroDuration}
+            disabled={isSaving || isZeroDuration || !activityId}
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
           >
             {isSaving ? (

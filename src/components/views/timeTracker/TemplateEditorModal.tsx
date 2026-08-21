@@ -19,6 +19,7 @@ import { ActivityIcon } from './ActivityIcon';
 import { TimeBlockModal } from './TimeBlockModal';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Plus, Trash2, Edit2, Clock, Calendar, AlertTriangle, Layers, Check } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
 import { uid } from '@/lib/dates';
 
 interface TemplateEditorModalProps {
@@ -42,6 +43,7 @@ export function TemplateEditorModal({
   templates = [],
   editingTemplate,
 }: TemplateEditorModalProps) {
+  const { showErrorToast } = useToast();
   const [title, setTitle] = useState<string>('');
   const [activeDays, setActiveDays] = useState<string[]>([]);
   const [blocks, setBlocks] = useState<TimeTrackerBlock[]>([]);
@@ -187,6 +189,13 @@ export function TemplateEditorModal({
     e.preventDefault();
     if (!title.trim()) {
       setValidationError('Please enter a template title.');
+      showErrorToast('Title Required', 'Please enter a template title.');
+      return;
+    }
+
+    if (blocks.length === 0) {
+      setValidationError('A template must have at least 1 time block.');
+      showErrorToast('Blocks Required', 'A template must have at least 1 time block.');
       return;
     }
 
