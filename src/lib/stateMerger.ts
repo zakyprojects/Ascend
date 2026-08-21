@@ -41,7 +41,7 @@ import {
 import { mergeSharedChallenge } from './pactLifecycle';
 import { ensureDefaultActivities } from './timeTracker';
 
-function mergeEntityArrays<T extends { id?: string; createdAt?: string | number }>(
+function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string }>(
   baseArr: T[] = [],
   incomingArr: T[] = [],
   tombstoneSet: Set<string>,
@@ -65,8 +65,8 @@ function mergeEntityArrays<T extends { id?: string; createdAt?: string | number 
       if (customMerge) {
         map.set(item.id, customMerge(existing, item));
       } else {
-        const existingTime = existing.createdAt !== undefined ? String(existing.createdAt) : '';
-        const incomingTime = item.createdAt !== undefined ? String(item.createdAt) : '';
+        const existingTime = existing.updatedAt || (existing.createdAt !== undefined ? String(existing.createdAt) : '');
+        const incomingTime = item.updatedAt || (item.createdAt !== undefined ? String(item.createdAt) : '');
         if (incomingTime >= existingTime) {
           map.set(item.id, { ...existing, ...item });
         } else {

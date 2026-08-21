@@ -5933,6 +5933,7 @@ export function useAppState() {
           ...merged,
           startTime: splitBlocks[0].startTime,
           endTime: splitBlocks[0].endTime,
+          updatedAt: new Date().toISOString(),
         };
 
         setState((prev) => {
@@ -5975,6 +5976,7 @@ export function useAppState() {
         startTime: splitBlocks[0].startTime,
         endTime: splitBlocks[0].endTime,
         id: blockId,
+        updatedAt: new Date().toISOString(),
       };
 
       const createdPart2: TimeTrackerBlock = {
@@ -6082,6 +6084,7 @@ export function useAppState() {
               completed: true,
               completedAt: new Date().toISOString(),
               skipped: false,
+              updatedAt: new Date().toISOString(),
             };
           } else {
             // UN-COMPLETING: Restore endTime ONLY from trimmedOriginalEndTime (Dimension 2 isolation)
@@ -6092,6 +6095,7 @@ export function useAppState() {
               completed: false,
               completedAt: undefined,
               skipped: false,
+              updatedAt: new Date().toISOString(),
             };
           }
         });
@@ -6126,6 +6130,7 @@ export function useAppState() {
                 completed: false,
                 completedAt: undefined,
                 skipped: true,
+                updatedAt: new Date().toISOString(),
               }
             : b
         );
@@ -6163,6 +6168,7 @@ export function useAppState() {
                   completed: false,
                   completedAt: undefined,
                   skipped: false,
+                  updatedAt: new Date().toISOString(),
                 }
               : b
           )
@@ -6214,6 +6220,7 @@ export function useAppState() {
             endTime: newEndTime,
             originalStartTime,
             originalEndTime,
+            updatedAt: new Date().toISOString(),
           };
 
           // Adjust preceding blocks that overlap with newStartTime (e.g. earlier block ending after newStartTime)
@@ -6226,6 +6233,7 @@ export function useAppState() {
                 ...b,
                 endTime: newStartTime,
                 trimmedOriginalEndTime: b.trimmedOriginalEndTime || b.endTime,
+                updatedAt: new Date().toISOString(),
               };
             }
             return b;
@@ -6282,6 +6290,7 @@ export function useAppState() {
                 completed: false,
                 completedAt: undefined,
                 skipped: false,
+                updatedAt: new Date().toISOString(),
               };
             }
             // If preceding block was trimmed to make room for the early start, restore its trimmed end time
@@ -6290,6 +6299,7 @@ export function useAppState() {
                 ...b,
                 endTime: b.trimmedOriginalEndTime,
                 trimmedOriginalEndTime: undefined,
+                updatedAt: new Date().toISOString(),
               };
             }
             return b;
