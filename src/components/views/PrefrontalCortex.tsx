@@ -1146,7 +1146,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                   type="button"
                   onClick={(e) => handleStopSync(e)}
                   title="Stop Schedule Sync"
-                  className="relative z-50 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-300/80 hover:text-rose-200 hover:bg-rose-500/20 border border-rose-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-300/80 hover:text-rose-200 hover:bg-rose-500/20 border border-rose-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <PowerOff size={13} />
                   <span className="hidden sm:inline">Stop Sync</span>
@@ -1223,7 +1223,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
           /* State B: Ignited & Active Block */
           <div className="card p-6 sm:p-8 text-center space-y-6 bg-gradient-to-b from-slate-900/95 to-slate-950 border border-emerald-500/40 relative overflow-hidden rounded-2xl shadow-2xl">
             {/* Live HUD Indicator Banner */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 border-b border-white/5 pb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-400 border-b border-white/5 pb-4">
               <div className="flex items-center gap-2">
                 <span className="badge bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1">
                   <Radio size={12} className="text-emerald-400 animate-pulse" />
@@ -1234,13 +1234,13 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                 {activeBlock.originalStartTime && (
                   <button
                     type="button"
                     onClick={() => store.undoEarlyStartTimeBlock(todayDateKey, activeBlock.id)}
                     title={`Revert start time back to ${formatTime12h(activeBlock.originalStartTime)}`}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                    className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                   >
                     <RotateCcw size={13} />
                     <span>Undo Early Start</span>
@@ -1250,7 +1250,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                 <button
                   type="button"
                   onClick={() => store.markDailyTimeBlockSkipped(todayDateKey, activeBlock.id)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 text-slate-400 hover:text-slate-200 hover:bg-white/10 border border-white/10 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 text-slate-400 hover:text-slate-200 hover:bg-white/10 border border-white/10 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <SkipForward size={13} className="text-slate-400" />
                   <span>Skip Block</span>
@@ -1262,7 +1262,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                     const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
                     store.toggleDailyTimeBlockCompleted(todayDateKey, activeBlock.id, nowStr);
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                     activeBlock.completed
                       ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                       : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
@@ -1276,7 +1276,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                   type="button"
                   onClick={(e) => handleStopSync(e)}
                   title="Stop Schedule Sync"
-                  className="relative z-50 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <PowerOff size={13} />
                   <span className="hidden sm:inline">Stop Sync</span>
@@ -1363,37 +1363,41 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
           </div>
         ) : (
           /* State C: Ignited & Gap/Empty */
-          <div className="card p-8 text-center space-y-6 bg-gradient-to-b from-slate-900/90 to-slate-950 border border-slate-700/50 rounded-2xl relative overflow-hidden shadow-2xl">
-            <div className="absolute top-4 right-4 z-50">
+          <div className="card p-6 sm:p-8 text-center space-y-6 bg-gradient-to-b from-slate-900/90 to-slate-950 border border-slate-700/50 rounded-2xl relative overflow-hidden shadow-2xl">
+            {/* Top Bar with Status Badge & Stop Sync in normal flow */}
+            <div className="flex items-center justify-between gap-3 border-b border-white/5 pb-4 text-xs text-slate-400">
+              <div className="flex items-center gap-2">
+                {currentResolvedBlock?.skipped ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-500/10 border border-slate-500/30 text-slate-300 text-xs font-semibold shadow-sm">
+                    <SkipForward className="text-slate-400" size={12} />
+                    <span>Block Skipped</span>
+                  </div>
+                ) : currentResolvedBlock?.completed ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-semibold shadow-sm">
+                    <CheckCircle2 className="text-cyan-400" size={12} />
+                    <span>Completed Early</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold shadow-sm">
+                    <Clock className="text-amber-400 animate-pulse" size={12} />
+                    <span>Unscheduled Time</span>
+                  </div>
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={(e) => handleStopSync(e)}
                 title="Stop Schedule Sync"
-                className="relative z-50 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
+                className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <PowerOff size={13} />
                 <span className="hidden sm:inline">Stop Sync</span>
               </button>
             </div>
+
             {nextBlock ? (
               <div className="max-w-lg mx-auto space-y-5">
-                {currentResolvedBlock?.skipped ? (
-                  <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-500/10 border border-slate-500/30 text-slate-300 text-xs font-semibold shadow-sm">
-                    <SkipForward className="text-slate-400" size={13} />
-                    <span>Block Skipped</span>
-                  </div>
-                ) : currentResolvedBlock?.completed ? (
-                  <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-semibold shadow-sm">
-                    <CheckCircle2 className="text-cyan-400" size={13} />
-                    <span>Completed Early</span>
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold shadow-sm">
-                    <Clock className="text-amber-400 animate-pulse" size={13} />
-                    <span>Unscheduled Time</span>
-                  </div>
-                )}
-
                 <div className="space-y-1">
                   <h2 className="text-xl sm:text-2xl font-display font-bold text-slate-100">
                     {currentResolvedBlock?.skipped
@@ -1414,8 +1418,8 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
                 {/* Undo Block Banner if user is still inside resolved block time window */}
                 {currentResolvedBlock && (
-                  <div className="p-3 px-4 rounded-xl bg-white/[0.03] border border-cyan-500/30 flex flex-wrap items-center justify-between gap-3 text-left shadow-sm">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-3 px-4 rounded-xl bg-white/[0.03] border border-cyan-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left shadow-sm">
+                    <div className="flex items-center gap-3 w-full min-w-0">
                       <div
                         className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                         style={{
@@ -1425,7 +1429,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                       >
                         <ActivityIcon iconName={currentResolvedBlockActivity?.icon || 'Clock'} size={14} />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="text-xs font-bold text-slate-200 truncate">
                           {currentResolvedBlock.customTitle || currentResolvedBlockActivity?.name || 'Scheduled Block'}
                         </div>
@@ -1438,7 +1442,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                     <button
                       type="button"
                       onClick={() => store.undoDailyTimeBlockResolution(todayDateKey, currentResolvedBlock.id)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
+                      className="w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
                     >
                       <RotateCcw size={12} />
                       <span>Undo {currentResolvedBlock.skipped ? 'Skip' : 'Completion'}</span>
@@ -1447,8 +1451,8 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                 )}
 
                 {/* Next Block Preview Card */}
-                <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 text-left flex items-center justify-between gap-3 shadow-md hover:border-emerald-500/30 transition-all">
-                  <div className="flex items-center gap-3 min-w-0">
+                <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 text-left flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md hover:border-emerald-500/30 transition-all">
+                  <div className="flex items-start sm:items-center gap-3 w-full min-w-0">
                     <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
                       style={{
@@ -1458,7 +1462,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                     >
                       <ActivityIcon iconName={nextBlockActivity?.icon || 'Clock'} size={18} />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="text-xs font-bold text-slate-100 truncate">
                         {nextBlock.customTitle || nextBlockActivity?.name || 'Upcoming Block'}
                       </div>
@@ -1468,18 +1472,18 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <span className="text-[10px] text-slate-400 font-mono">
+                  <div className="flex flex-col sm:items-end w-full sm:w-auto gap-2 shrink-0">
+                    <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
                       Scheduled: {formatTime12h(nextBlock.startTime)} – {formatTime12h(nextBlock.endTime)}
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col min-[400px]:flex-row sm:flex-row w-full sm:w-auto gap-2">
                       <button
                         type="button"
                         onClick={() => {
                           const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
                           store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'shift');
                         }}
-                        className="px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                        className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-[11px] font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
                         title="Starts early, ends early (Maintains exact duration)"
                       >
                         <ArrowRight size={12} />
@@ -1492,7 +1496,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                           const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
                           store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'stretch');
                         }}
-                        className="px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                        className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
                         title="Starts early, keeps original end time (Extends duration)"
                       >
                         <Play className="fill-current" size={12} />
@@ -1515,8 +1519,8 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                 </div>
 
                 {currentResolvedBlock && (
-                  <div className="p-3 px-4 rounded-xl bg-white/[0.03] border border-cyan-500/30 flex flex-wrap items-center justify-between gap-3 text-left shadow-sm mt-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-3 px-4 rounded-xl bg-white/[0.03] border border-cyan-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left shadow-sm mt-2">
+                    <div className="flex items-center gap-3 w-full min-w-0">
                       <div
                         className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                         style={{
@@ -1526,7 +1530,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                       >
                         <ActivityIcon iconName={currentResolvedBlockActivity?.icon || 'Clock'} size={14} />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="text-xs font-bold text-slate-200 truncate">
                           {currentResolvedBlock.customTitle || currentResolvedBlockActivity?.name || 'Scheduled Block'}
                         </div>
@@ -1539,7 +1543,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                     <button
                       type="button"
                       onClick={() => store.undoDailyTimeBlockResolution(todayDateKey, currentResolvedBlock.id)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
+                      className="w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
                     >
                       <RotateCcw size={12} />
                       <span>Undo {currentResolvedBlock.skipped ? 'Skip' : 'Completion'}</span>
