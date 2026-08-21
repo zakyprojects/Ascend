@@ -201,20 +201,20 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center p-1 rounded-2xl bg-slate-900/80 border border-white/10 shrink-0 self-start md:self-auto">
+        <div className="flex items-center p-1 rounded-2xl bg-slate-900/80 border border-white/10 shrink-0 self-start md:self-auto max-w-full overflow-x-auto">
           <button
             onClick={() => setActiveTab('schedule')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'schedule'
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
             }`}
           >
-            <Clock size={14} />
-            <span>Daily Schedule</span>
+            <Clock size={14} className="shrink-0" />
+            <span className="whitespace-nowrap">Daily Schedule</span>
             {currentDailyBlocks.length > 0 && (
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
                   activeTab === 'schedule'
                     ? 'bg-white/20 text-white'
                     : 'bg-emerald-500/20 text-emerald-300'
@@ -227,17 +227,17 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
 
           <button
             onClick={() => setActiveTab('templates')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'templates'
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
             }`}
           >
-            <Layers size={14} />
-            <span>Templates</span>
+            <Layers size={14} className="shrink-0" />
+            <span className="whitespace-nowrap">Templates</span>
             {templates.length > 0 && (
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
                   activeTab === 'templates'
                     ? 'bg-white/20 text-white'
                     : 'bg-emerald-500/20 text-emerald-300'
@@ -250,16 +250,16 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
 
           <button
             onClick={() => setActiveTab('activities')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'activities'
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
             }`}
           >
-            <Tag size={14} />
-            <span>Categories</span>
+            <Tag size={14} className="shrink-0" />
+            <span className="whitespace-nowrap">Categories</span>
             <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
                 activeTab === 'activities'
                   ? 'bg-white/20 text-white'
                   : 'bg-emerald-500/20 text-emerald-300'

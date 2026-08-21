@@ -41,7 +41,7 @@ import {
 import { mergeSharedChallenge } from './pactLifecycle';
 import { ensureDefaultActivities } from './timeTracker';
 
-function mergeEntityArrays<T extends { id?: string; createdAt?: string }>(
+function mergeEntityArrays<T extends { id?: string; createdAt?: string | number }>(
   baseArr: T[] = [],
   incomingArr: T[] = [],
   tombstoneSet: Set<string>,
@@ -65,8 +65,8 @@ function mergeEntityArrays<T extends { id?: string; createdAt?: string }>(
       if (customMerge) {
         map.set(item.id, customMerge(existing, item));
       } else {
-        const existingTime = existing.createdAt || '';
-        const incomingTime = item.createdAt || '';
+        const existingTime = existing.createdAt !== undefined ? String(existing.createdAt) : '';
+        const incomingTime = item.createdAt !== undefined ? String(item.createdAt) : '';
         if (incomingTime >= existingTime) {
           map.set(item.id, { ...existing, ...item });
         } else {
@@ -614,9 +614,7 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     const baseBlocks = baseTT.dailyLogs?.[dateKey] || [];
     const incBlocks = incTT.dailyLogs?.[dateKey] || [];
     const mergedBlocks = mergeEntityArrays(baseBlocks, incBlocks, tombstoneSet);
-    if (mergedBlocks.length > 0) {
-      dailyLogsMap[dateKey] = mergedBlocks;
-    }
+    dailyLogsMap[dateKey] = mergedBlocks;
   }
 
   const mergedClearedDates = Array.from(

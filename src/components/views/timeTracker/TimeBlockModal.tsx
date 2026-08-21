@@ -256,16 +256,17 @@ export function TimeBlockModal({
 
         {/* Start and End Times */}
         <div className="grid grid-cols-2 gap-3 pt-1">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-slate-300">Start Time (24h)</label>
-              <span className="text-[11px] text-slate-400 font-mono bg-white/5 px-1.5 py-0.5 rounded">
+          <div className="flex flex-col h-full space-y-1.5">
+            <div className="flex items-center justify-between gap-1">
+              <label className="text-xs font-medium text-slate-300 truncate">Start Time (24h)</label>
+              <span className="text-[11px] text-slate-400 font-mono bg-white/5 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(startTime)}
               </span>
             </div>
-            <div className="relative">
+            <div className="relative mt-auto">
               <input
                 type="time"
+                step="60"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
@@ -274,16 +275,17 @@ export function TimeBlockModal({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-slate-300">End Time (24h)</label>
-              <span className="text-[11px] text-slate-400 font-mono bg-white/5 px-1.5 py-0.5 rounded">
+          <div className="flex flex-col h-full space-y-1.5">
+            <div className="flex items-center justify-between gap-1">
+              <label className="text-xs font-medium text-slate-300 truncate">End Time (24h)</label>
+              <span className="text-[11px] text-slate-400 font-mono bg-white/5 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(endTime)}
               </span>
             </div>
-            <div className="relative">
+            <div className="relative mt-auto">
               <input
                 type="time"
+                step="60"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"

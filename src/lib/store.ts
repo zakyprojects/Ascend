@@ -5580,12 +5580,37 @@ export function useAppState() {
       setState(
         (prev) => {
           const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+          const remainingActivities = (currentTT.activities || []).filter((a) => a.id !== id);
+          const fallbackActivityId = remainingActivities[0]?.id || 'deep_work';
+
+          // Cascade clean dailyLogs
+          const updatedDailyLogs: Record<string, TimeTrackerBlock[]> = {};
+          Object.entries(currentTT.dailyLogs || {}).forEach(([dateKey, blocks]) => {
+            updatedDailyLogs[dateKey] = (blocks || []).map((b) => ({
+              ...b,
+              activityId: b.activityId === id ? fallbackActivityId : b.activityId,
+              secondaryActivityIds: (b.secondaryActivityIds || []).filter((secId) => secId !== id),
+            }));
+          });
+
+          // Cascade clean templates
+          const updatedTemplates = (currentTT.templates || []).map((t) => ({
+            ...t,
+            blocks: (t.blocks || []).map((b) => ({
+              ...b,
+              activityId: b.activityId === id ? fallbackActivityId : b.activityId,
+              secondaryActivityIds: (b.secondaryActivityIds || []).filter((secId) => secId !== id),
+            })),
+          }));
+
           const updatedDeleted = [...(prev.deletedEntityIds || []), id].slice(-500);
           return {
             ...prev,
             timeTracker: {
               ...currentTT,
-              activities: (currentTT.activities || []).filter((a) => a.id !== id),
+              activities: remainingActivities,
+              templates: updatedTemplates,
+              dailyLogs: updatedDailyLogs,
             },
             deletedEntityIds: updatedDeleted,
           };
@@ -5803,6 +5828,7 @@ export function useAppState() {
         const createdBlock: TimeTrackerBlock = {
           ...splitBlocks[0],
           id: uid(),
+          createdAt: Date.now(),
           completed: false,
         };
 
@@ -5844,12 +5870,14 @@ export function useAppState() {
       const createdPart1: TimeTrackerBlock = {
         ...splitBlocks[0],
         id: uid(),
+        createdAt: Date.now(),
         completed: false,
       };
 
       const createdPart2: TimeTrackerBlock = {
         ...splitBlocks[1],
         id: uid(),
+        createdAt: Date.now(),
         completed: false,
       };
 
@@ -5893,19 +5921,83 @@ export function useAppState() {
       }
 
       const merged = { ...targetBlock, ...updates };
+      const splitBlocks = normalizeOrSplitMidnightBlock(merged);
 
-      // Collision check
-      const collision = checkTimeCollision(merged, existingBlocks, blockId);
-      if (collision.hasCollision) {
-        throw new Error(collision.message || 'Updated block collides with another scheduled block.');
+      if (splitBlocks.length === 1) {
+        const collision = checkTimeCollision(splitBlocks[0], existingBlocks, blockId);
+        if (collision.hasCollision) {
+          throw new Error(collision.message || 'Updated block collides with another scheduled block.');
+        }
+
+        const updatedSingleBlock: TimeTrackerBlock = {
+          ...merged,
+          startTime: splitBlocks[0].startTime,
+          endTime: splitBlocks[0].endTime,
+        };
+
+        setState((prev) => {
+          const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+          const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+          const nextBlocks = prevDailyBlocks
+            .map((b) => (b.id === blockId ? updatedSingleBlock : b))
+            .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
+
+          return {
+            ...prev,
+            timeTracker: {
+              ...prevTT,
+              dailyLogs: {
+                ...(prevTT.dailyLogs || {}),
+                [dateKey]: nextBlocks,
+              },
+            },
+          };
+        });
+        return;
       }
+
+      // Crossed midnight: split into Part 1 (today) and Part 2 (tomorrow)
+      const nextDayKey = getNextDateKey(dateKey);
+      const existingNextDayBlocks = currentTT.dailyLogs?.[nextDayKey] || [];
+
+      const part1Collision = checkTimeCollision(splitBlocks[0], existingBlocks, blockId);
+      if (part1Collision.hasCollision) {
+        throw new Error(part1Collision.message || `Part 1 (Today) collides with an existing block on ${dateKey}.`);
+      }
+
+      const part2Collision = checkTimeCollision(splitBlocks[1], existingNextDayBlocks);
+      if (part2Collision.hasCollision) {
+        throw new Error(part2Collision.message || `Part 2 (Tomorrow) collides with an existing block on ${nextDayKey}.`);
+      }
+
+      const updatedPart1: TimeTrackerBlock = {
+        ...merged,
+        startTime: splitBlocks[0].startTime,
+        endTime: splitBlocks[0].endTime,
+        id: blockId,
+      };
+
+      const createdPart2: TimeTrackerBlock = {
+        ...merged,
+        startTime: splitBlocks[1].startTime,
+        endTime: splitBlocks[1].endTime,
+        id: uid(),
+        createdAt: Date.now(),
+        completed: false,
+      };
 
       setState((prev) => {
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-        const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
-        const nextBlocks = prevDailyBlocks
-          .map((b) => (b.id === blockId ? merged : b))
+        const prevDateBlocks = prevTT.dailyLogs?.[dateKey] || [];
+        const prevNextDayBlocks = prevTT.dailyLogs?.[nextDayKey] || [];
+
+        const nextDateBlocks = prevDateBlocks
+          .map((b) => (b.id === blockId ? updatedPart1 : b))
           .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
+
+        const nextDaySortedBlocks = [...prevNextDayBlocks, createdPart2].sort(
+          (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
+        );
 
         return {
           ...prev,
@@ -5913,7 +6005,8 @@ export function useAppState() {
             ...prevTT,
             dailyLogs: {
               ...(prevTT.dailyLogs || {}),
-              [dateKey]: nextBlocks,
+              [dateKey]: nextDateBlocks,
+              [nextDayKey]: nextDaySortedBlocks,
             },
           },
         };
@@ -5957,27 +6050,63 @@ export function useAppState() {
         if (!target) return prev;
 
         const isCurrentlyCompleted = target.completed;
+        let pointsUpdate = {};
+        const extraFocusLogs: FocusSessionLog[] = [];
 
         const updatedBlocks = prevDailyBlocks.map((b) => {
           if (b.id !== blockId) return b;
 
           if (!isCurrentlyCompleted) {
-            // COMPLETING: Execute trim logic (Dimension 2)
-            let timeStr = passedTimeStr;
-            if (!timeStr) {
-              const now = new Date();
-              timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-            }
+            // COMPLETING: Execute trim logic (Dimension 2) ONLY for todayKey
             let finalEndTime = b.endTime;
             let trimmedOriginalEndTime = b.trimmedOriginalEndTime;
-            const currentMins = timeStringToMinutes(timeStr);
-            const originalEndMins = timeStringToMinutes(b.endTime);
-            const startMins = timeStringToMinutes(b.startTime);
 
-            if (currentMins < originalEndMins && currentMins > startMins) {
-              trimmedOriginalEndTime = b.endTime;
-              finalEndTime = timeStr;
+            if (dateKey === todayKey()) {
+              let timeStr = passedTimeStr;
+              if (!timeStr) {
+                const now = new Date();
+                timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+              }
+              const currentMins = timeStringToMinutes(timeStr);
+              const originalEndMins = timeStringToMinutes(b.endTime);
+              const startMins = timeStringToMinutes(b.startTime);
+
+              if (currentMins < originalEndMins && currentMins > startMins) {
+                trimmedOriginalEndTime = b.endTime;
+                finalEndTime = timeStr;
+              }
             }
+
+            // Award Focus / Deep Work points & session log (Bug 6)
+            const act = (prevTT.activities || []).find((a) => a.id === b.activityId);
+            const actName = (act?.name || b.customTitle || '').toLowerCase();
+            const isDeepWorkOrFocus =
+              actName.includes('deep work') ||
+              actName.includes('focus') ||
+              act?.ascendModule === 'Deep Focus';
+
+            if (isDeepWorkOrFocus) {
+              const startMins = timeStringToMinutes(b.startTime);
+              const endMins = timeStringToMinutes(finalEndTime);
+              const durationMinutes = Math.max(1, endMins - startMins);
+              const pointsToAward = Math.max(5, Math.round(durationMinutes * 0.6));
+              const focusLog: FocusSessionLog = {
+                id: uid(),
+                date: dateKey,
+                taskName: b.customTitle || act?.name || 'Deep Focus',
+                durationMinutes,
+                pointsAwarded: pointsToAward,
+                createdAt: new Date().toISOString(),
+              };
+              extraFocusLogs.push(focusLog);
+              pointsUpdate = addPointsInternal(
+                prev,
+                pointsToAward,
+                `Focus block completed: ${b.customTitle || act?.name || 'Deep Focus'} (${durationMinutes}m)`,
+                'focus'
+              );
+            }
+
             return {
               ...b,
               endTime: finalEndTime,
@@ -5988,7 +6117,6 @@ export function useAppState() {
             };
           } else {
             // UN-COMPLETING: Restore endTime ONLY from trimmedOriginalEndTime (Dimension 2 isolation)
-            // DO NOT TOUCH originalStartTime or originalEndTime (Dimension 1)
             return {
               ...b,
               endTime: b.trimmedOriginalEndTime || b.endTime,
@@ -6002,6 +6130,8 @@ export function useAppState() {
 
         return {
           ...prev,
+          focusLogs: [...extraFocusLogs, ...prev.focusLogs],
+          ...pointsUpdate,
           timeTracker: {
             ...prevTT,
             dailyLogs: {
@@ -6057,18 +6187,20 @@ export function useAppState() {
         const target = prevDailyBlocks.find((b) => b.id === blockId);
         if (!target) return prev;
 
-        const updatedBlocks = prevDailyBlocks.map((b) =>
-          b.id === blockId
-            ? {
-                ...b,
-                endTime: b.trimmedOriginalEndTime || b.endTime,
-                trimmedOriginalEndTime: undefined,
-                completed: false,
-                completedAt: undefined,
-                skipped: false,
-              }
-            : b
-        );
+        const updatedBlocks = prevDailyBlocks
+          .map((b) =>
+            b.id === blockId
+              ? {
+                  ...b,
+                  endTime: b.trimmedOriginalEndTime || b.endTime,
+                  trimmedOriginalEndTime: undefined,
+                  completed: false,
+                  completedAt: undefined,
+                  skipped: false,
+                }
+              : b
+          )
+          .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
 
         return {
           ...prev,
@@ -6087,48 +6219,75 @@ export function useAppState() {
 
   const pullForwardDailyTimeBlock = useCallback(
     (dateKey: string, blockId: string, newStartTime: string, mode: 'shift' | 'stretch' = 'stretch') => {
-      setState((prev) => {
-        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-        const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+      setState(
+        (prev) => {
+          const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+          const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+          const target = prevDailyBlocks.find((b) => b.id === blockId);
+          if (!target) return prev;
 
-        const updatedBlocks = prevDailyBlocks.map((b) => {
-          if (b.id !== blockId) return b;
+          const originalStartTime = target.originalStartTime || target.startTime;
+          let newEndTime = target.endTime;
+          const originalEndTime = target.originalEndTime || target.endTime;
 
-          const originalStartTime = b.originalStartTime || b.startTime;
-          let newEndTime = b.endTime;
-          let originalEndTime = b.originalEndTime || b.endTime;
+          const newStartMins = timeStringToMinutes(newStartTime);
 
           if (mode === 'shift') {
-            const startMins = timeStringToMinutes(b.startTime);
-            const endMins = timeStringToMinutes(b.endTime);
+            const startMins = timeStringToMinutes(target.startTime);
+            const endMins = timeStringToMinutes(target.endTime);
             const duration = endMins - startMins;
-            const newStartMins = timeStringToMinutes(newStartTime);
             const newEndMins = Math.min(1439, newStartMins + duration);
             const h = Math.floor(newEndMins / 60).toString().padStart(2, '0');
             const m = (newEndMins % 60).toString().padStart(2, '0');
             newEndTime = `${h}:${m}`;
           }
 
-          return {
-            ...b,
+          const targetNewBlock: TimeTrackerBlock = {
+            ...target,
             startTime: newStartTime,
             endTime: newEndTime,
             originalStartTime,
             originalEndTime,
           };
-        });
 
-        return {
-          ...prev,
-          timeTracker: {
-            ...prevTT,
-            dailyLogs: {
-              ...(prevTT.dailyLogs || {}),
-              [dateKey]: updatedBlocks,
+          // Adjust preceding blocks that overlap with newStartTime (e.g. earlier block ending after newStartTime)
+          const adjustedBlocks = prevDailyBlocks.map((b) => {
+            if (b.id === blockId) return targetNewBlock;
+            const bStart = timeStringToMinutes(b.startTime);
+            const bEnd = timeStringToMinutes(b.endTime);
+            if (bStart < newStartMins && bEnd > newStartMins) {
+              return {
+                ...b,
+                endTime: newStartTime,
+                trimmedOriginalEndTime: b.trimmedOriginalEndTime || b.endTime,
+              };
+            }
+            return b;
+          });
+
+          // Check collision for targetNewBlock against adjustedBlocks (ignoring target block)
+          const collision = checkTimeCollision(targetNewBlock, adjustedBlocks, blockId);
+          if (collision.hasCollision) {
+            throw new Error(collision.message || 'Cannot pull block forward due to overlapping schedule block.');
+          }
+
+          const sortedBlocks = adjustedBlocks.sort(
+            (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
+          );
+
+          return {
+            ...prev,
+            timeTracker: {
+              ...prevTT,
+              dailyLogs: {
+                ...(prevTT.dailyLogs || {}),
+                [dateKey]: sortedBlocks,
+              },
             },
-          },
-        };
-      });
+          };
+        },
+        { immediate: true }
+      );
     },
     []
   );
@@ -6141,21 +6300,35 @@ export function useAppState() {
         const target = prevDailyBlocks.find((b) => b.id === blockId);
         if (!target) return prev;
 
-        const updatedBlocks = prevDailyBlocks.map((b) =>
-          b.id === blockId
-            ? {
+        const originalStart = target.originalStartTime || target.startTime;
+        const originalEnd = target.originalEndTime || target.endTime;
+
+        const updatedBlocks = prevDailyBlocks
+          .map((b) => {
+            if (b.id === blockId) {
+              return {
                 ...b,
-                startTime: b.originalStartTime || b.startTime,
-                endTime: b.originalEndTime || b.endTime,
+                startTime: originalStart,
+                endTime: originalEnd,
                 originalStartTime: undefined,
                 originalEndTime: undefined,
                 trimmedOriginalEndTime: undefined,
                 completed: false,
                 completedAt: undefined,
                 skipped: false,
-              }
-            : b
-        );
+              };
+            }
+            // If preceding block was trimmed to make room for the early start, restore its trimmed end time
+            if (b.trimmedOriginalEndTime && timeStringToMinutes(b.endTime) <= timeStringToMinutes(target.startTime)) {
+              return {
+                ...b,
+                endTime: b.trimmedOriginalEndTime,
+                trimmedOriginalEndTime: undefined,
+              };
+            }
+            return b;
+          })
+          .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
 
         return {
           ...prev,
@@ -6195,6 +6368,7 @@ export function useAppState() {
           const createFreshBlock = (b: any) => ({
             ...b,
             id: crypto.randomUUID(),
+            createdAt: Date.now(),
             completed: false,
             skipped: false,
             completedAt: undefined,

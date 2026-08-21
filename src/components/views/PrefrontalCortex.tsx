@@ -50,6 +50,7 @@ import {
   ensureDefaultActivities,
 } from '@/lib/timeTracker';
 import { ActivityIcon } from './timeTracker/ActivityIcon';
+import { useToast } from '@/components/ui/Toast';
 
 type PFCTab = 'focus' | 'decision' | 'emotion';
 
@@ -217,11 +218,26 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
   const [customError, setCustomError] = useState<string | null>(null);
 
   // Task & Tagging
+  const { showSuccessToast, showErrorToast } = useToast();
   const [taskName, setTaskName] = useState('Deep Work');
   const [selectedSkillId, setSelectedSkillId] = useState<string>('');
 
   // Dual Mode Timer & Live Schedule Sync State
-  const [timerMode, setTimerMode] = useState<'manual' | 'sync'>('manual');
+  const [timerMode, setTimerMode] = useState<'manual' | 'sync'>(() => {
+    try {
+      const pendingMode = sessionStorage.getItem('ascend_pending_pfc_timer_mode');
+      if (pendingMode === 'sync') {
+        return 'sync';
+      }
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('tab') === 'live' || urlParams.get('mode') === 'sync') {
+          return 'sync';
+        }
+      }
+    } catch {}
+    return 'manual';
+  });
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
 
   // Clock ticker for live second-by-second countdown
@@ -233,10 +249,14 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
   }, []);
 
   const todayDateKey = todayKey(currentTime);
+  const IGNITION_ACTIVE_KEY = 'ascend_pfc_ignition_active';
   const IGNITION_KEY = `ascend_pfc_schedule_ignited_${todayDateKey}`;
   const [isScheduleIgnited, setIsScheduleIgnited] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(`ascend_pfc_schedule_ignited_${todayKey(new Date())}`) === 'true';
+      return (
+        localStorage.getItem(IGNITION_ACTIVE_KEY) === 'true' ||
+        localStorage.getItem(`ascend_pfc_schedule_ignited_${todayKey(new Date())}`) === 'true'
+      );
     } catch {
       return false;
     }
@@ -244,11 +264,17 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
   const [showStopConfirm, setShowStopConfirm] = useState(false);
 
-  // Keep ignition state reactive when date flips across midnight
+  // Keep ignition state reactive when date flips across midnight without dropping active sync
   useEffect(() => {
     try {
-      const ignited = localStorage.getItem(IGNITION_KEY) === 'true';
-      setIsScheduleIgnited(ignited);
+      const isActive =
+        localStorage.getItem(IGNITION_ACTIVE_KEY) === 'true' ||
+        localStorage.getItem(IGNITION_KEY) === 'true';
+      if (isActive) {
+        setIsScheduleIgnited(true);
+        localStorage.setItem(IGNITION_KEY, 'true');
+        localStorage.setItem(IGNITION_ACTIVE_KEY, 'true');
+      }
     } catch {}
   }, [todayDateKey, IGNITION_KEY]);
 
@@ -256,6 +282,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
     setIsScheduleIgnited(true);
     try {
       localStorage.setItem(IGNITION_KEY, 'true');
+      localStorage.setItem(IGNITION_ACTIVE_KEY, 'true');
     } catch {}
   };
 
@@ -266,6 +293,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
     setShowStopConfirm(false);
     try {
       localStorage.removeItem(IGNITION_KEY);
+      localStorage.removeItem(IGNITION_ACTIVE_KEY);
     } catch {}
   };
 
@@ -397,22 +425,33 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
     }
 
     try {
-      const pendingTask = sessionStorage.getItem('ascend_pending_focus_task');
-      if (pendingTask) {
-        setTaskName(pendingTask);
-        sessionStorage.removeItem('ascend_pending_focus_task');
-      }
+      const pendingTimerMode = sessionStorage.getItem('ascend_pending_pfc_timer_mode');
+      const isSyncRequested = pendingTimerMode === 'sync' || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('tab') === 'live' || new URLSearchParams(window.location.search).get('mode') === 'sync'));
 
-      const pendingDurationStr = sessionStorage.getItem('ascend_pending_focus_duration');
-      if (pendingDurationStr) {
-        const parsedMins = parseInt(pendingDurationStr, 10);
-        if (!isNaN(parsedMins) && parsedMins > 0) {
-          setFocusMinutes(parsedMins);
-          setCustomFocusMins(parsedMins);
-          setIsCustom(true);
-          setTimeLeft(parsedMins * 60);
-        }
+      if (isSyncRequested) {
+        setTimerMode('sync');
+        sessionStorage.removeItem('ascend_pending_pfc_timer_mode');
+        sessionStorage.removeItem('ascend_pending_focus_task');
         sessionStorage.removeItem('ascend_pending_focus_duration');
+        sessionStorage.removeItem('ascend_pending_focus_timestamp');
+      } else {
+        const pendingTask = sessionStorage.getItem('ascend_pending_focus_task');
+        if (pendingTask) {
+          setTaskName(pendingTask);
+          sessionStorage.removeItem('ascend_pending_focus_task');
+        }
+
+        const pendingDurationStr = sessionStorage.getItem('ascend_pending_focus_duration');
+        if (pendingDurationStr) {
+          const parsedMins = parseInt(pendingDurationStr, 10);
+          if (!isNaN(parsedMins) && parsedMins > 0) {
+            setFocusMinutes(parsedMins);
+            setCustomFocusMins(parsedMins);
+            setIsCustom(true);
+            setTimeLeft(parsedMins * 60);
+          }
+          sessionStorage.removeItem('ascend_pending_focus_duration');
+        }
       }
 
       const saved = localStorage.getItem(FOCUS_STORAGE_KEY);
@@ -826,31 +865,31 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
       {/* Timer Mode Switcher (Manual Focus Timer vs Live Schedule Sync) */}
       <div className="flex justify-center pt-1">
-        <div className="inline-flex p-1 rounded-2xl bg-slate-900/90 border border-white/10 shadow-lg gap-1">
+        <div className="inline-flex w-full max-w-sm sm:w-auto p-1 rounded-2xl bg-slate-900/90 border border-white/10 shadow-lg gap-1">
           <button
             type="button"
             onClick={() => setTimerMode('manual')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               timerMode === 'manual'
                 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent'
             }`}
           >
             <Timer size={14} className={timerMode === 'manual' ? 'text-cyan-400' : 'text-slate-400'} />
-            <span>Manual Timer</span>
+            <span className="whitespace-nowrap">Manual Timer</span>
           </button>
 
           <button
             type="button"
             onClick={() => setTimerMode('sync')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               timerMode === 'sync'
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent'
             }`}
           >
             <Radio size={14} className={timerMode === 'sync' ? 'text-emerald-400 animate-pulse' : 'text-slate-400'} />
-            <span>Live Schedule Sync</span>
+            <span className="whitespace-nowrap">Live Schedule Sync</span>
             {isScheduleIgnited && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
             )}
@@ -862,8 +901,8 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
         /* Main Focus Timer Card (Manual Mode) */
         <div className="card p-6 text-center space-y-6 bg-bg-800 border border-cyan-500/30 relative overflow-hidden">
           {/* Header Preset Selectors */}
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 border-b border-white/5 pb-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-slate-400 border-b border-white/5 pb-4">
+            <div className="flex items-center justify-between w-full sm:w-auto gap-2">
               <span className="font-bold text-slate-200 uppercase tracking-widest text-[11px] flex items-center gap-1.5">
                 {mode === 'focus' ? '🎯 Focus Session' : '☕ Rest Break'}
                 {activeSession && (
@@ -874,11 +913,11 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="grid grid-cols-2 min-[440px]:grid-cols-4 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
               <button
                 disabled={!!activeSession}
                 onClick={() => handlePresetSelect(25, 5, false)}
-                className={`badge px-3 py-1.5 text-xs transition-all ${
+                className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all justify-center cursor-pointer ${
                   !isCustom && focusMinutes === 25
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
                     : 'bg-bg-700 text-slate-400 hover:bg-bg-600'
@@ -889,7 +928,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
               <button
                 disabled={!!activeSession}
                 onClick={() => handlePresetSelect(50, 10, false)}
-                className={`badge px-3 py-1.5 text-xs transition-all ${
+                className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all justify-center cursor-pointer ${
                   !isCustom && focusMinutes === 50
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
                     : 'bg-bg-700 text-slate-400 hover:bg-bg-600'
@@ -900,7 +939,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
               <button
                 disabled={!!activeSession}
                 onClick={() => handlePresetSelect(90, 15, false)}
-                className={`badge px-3 py-1.5 text-xs transition-all ${
+                className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all justify-center cursor-pointer ${
                   !isCustom && focusMinutes === 90
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
                     : 'bg-bg-700 text-slate-400 hover:bg-bg-600'
@@ -911,13 +950,13 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
               <button
                 disabled={!!activeSession}
                 onClick={() => handlePresetSelect(customFocusMins, customBreakMins, true)}
-                className={`badge px-3 py-1.5 text-xs transition-all flex items-center gap-1 ${
+                className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all flex items-center justify-center gap-1 cursor-pointer ${
                   isCustom
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
                     : 'bg-bg-700 text-slate-400 hover:bg-bg-600'
                 } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <Sliders size={12} />
+                <Sliders size={12} className="shrink-0" />
                 <span>Custom</span>
               </button>
             </div>
@@ -1013,12 +1052,12 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
           </div>
 
           {/* Controls */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <div className="flex flex-col min-[420px]:flex-row items-center justify-center gap-2.5 sm:gap-3 pt-2 w-full">
             {!activeSession ? (
               <button
                 onClick={handleStartSession}
                 disabled={isCustom && customFocusMins < 1}
-                className={`px-6 py-3 rounded-xl font-bold text-sm shadow-lg flex items-center gap-2 transition-all ${
+                className={`w-full min-[420px]:w-auto px-6 py-3 rounded-xl font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   isCustom && customFocusMins < 1
                     ? 'bg-slate-700 text-slate-500 cursor-not-allowed shadow-none'
                     : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-cyan-500/20 hover:from-cyan-600 hover:to-blue-700'
@@ -1030,7 +1069,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
             ) : isRunning ? (
               <button
                 onClick={handlePauseSession}
-                className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 flex items-center gap-2"
+                className="w-full min-[420px]:w-auto px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Pause size={18} />
                 <span>Pause Timer</span>
@@ -1038,7 +1077,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
             ) : (
               <button
                 onClick={handleResumeSession}
-                className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center gap-2 hover:from-cyan-600 hover:to-blue-700"
+                className="w-full min-[420px]:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 hover:from-cyan-600 hover:to-blue-700 cursor-pointer"
               >
                 <Play size={18} />
                 <span>Resume Session</span>
@@ -1047,7 +1086,7 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
             <button
               onClick={handleRequestReset}
-              className="btn-ghost text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1.5 py-3"
+              className="w-full min-[420px]:w-auto btn-ghost text-xs text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 py-2.5 sm:py-3 cursor-pointer"
             >
               <RotateCcw size={16} />
               <span>{activeSession ? 'Discard Session' : 'Reset'}</span>
@@ -1202,7 +1241,14 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-lg mx-auto">
               <button
                 type="button"
-                onClick={() => store.toggleDailyTimeBlockCompleted(todayDateKey, overdueBlock.id)}
+                onClick={() => {
+                  try {
+                    store.toggleDailyTimeBlockCompleted(todayDateKey, overdueBlock.id);
+                    showSuccessToast('Block Completed', 'Marked overdue block as completed.');
+                  } catch (err: any) {
+                    showErrorToast('Failed to Complete Block', err?.message);
+                  }
+                }}
                 className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-gradient-to-r from-rose-600 via-rose-500 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-sm shadow-xl shadow-rose-950/80 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer border border-rose-400/40"
               >
                 <CheckCircle2 size={18} className="text-white shrink-0" />
@@ -1211,7 +1257,14 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
               <button
                 type="button"
-                onClick={() => store.markDailyTimeBlockSkipped(todayDateKey, overdueBlock.id)}
+                onClick={() => {
+                  try {
+                    store.markDailyTimeBlockSkipped(todayDateKey, overdueBlock.id);
+                    showSuccessToast('Block Skipped', 'Marked overdue block as skipped.');
+                  } catch (err: any) {
+                    showErrorToast('Failed to Skip Block', err?.message);
+                  }
+                }}
                 className="w-full sm:w-auto py-3.5 px-5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-200 border border-white/10 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
                 <SkipForward size={16} className="text-slate-400" />
@@ -1238,7 +1291,14 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                 {activeBlock.originalStartTime && (
                   <button
                     type="button"
-                    onClick={() => store.undoEarlyStartTimeBlock(todayDateKey, activeBlock.id)}
+                    onClick={() => {
+                      try {
+                        store.undoEarlyStartTimeBlock(todayDateKey, activeBlock.id);
+                        showSuccessToast('Reverted Start Time', `Start time reverted back to ${formatTime12h(activeBlock.originalStartTime!)}`);
+                      } catch (err: any) {
+                        showErrorToast('Failed to Revert', err?.message);
+                      }
+                    }}
                     title={`Revert start time back to ${formatTime12h(activeBlock.originalStartTime)}`}
                     className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                   >
@@ -1249,7 +1309,14 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
                 <button
                   type="button"
-                  onClick={() => store.markDailyTimeBlockSkipped(todayDateKey, activeBlock.id)}
+                  onClick={() => {
+                    try {
+                      store.markDailyTimeBlockSkipped(todayDateKey, activeBlock.id);
+                      showSuccessToast('Block Skipped', 'Live block marked as skipped.');
+                    } catch (err: any) {
+                      showErrorToast('Failed to Skip Block', err?.message);
+                    }
+                  }}
                   className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 text-slate-400 hover:text-slate-200 hover:bg-white/10 border border-white/10 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <SkipForward size={13} className="text-slate-400" />
@@ -1259,8 +1326,15 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                 <button
                   type="button"
                   onClick={() => {
-                    const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
-                    store.toggleDailyTimeBlockCompleted(todayDateKey, activeBlock.id, nowStr);
+                    try {
+                      const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
+                      store.toggleDailyTimeBlockCompleted(todayDateKey, activeBlock.id, nowStr);
+                      if (!activeBlock.completed) {
+                        showSuccessToast('Block Completed', `Ended at ${formatTime12h(nowStr)}`);
+                      }
+                    } catch (err: any) {
+                      showErrorToast('Failed to Complete Block', err?.message);
+                    }
                   }}
                   className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                     activeBlock.completed
@@ -1315,17 +1389,17 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
               {/* Secondary Activities Badges in Emerald */}
               {activeBlock.secondaryActivityIds && activeBlock.secondaryActivityIds.length > 0 && (
-                <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+                <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 max-w-full">
                   {activeBlock.secondaryActivityIds.map((secId) => {
                     const secAct = activityMap.get(secId);
                     if (!secAct) return null;
                     return (
                       <span
                         key={secId}
-                        className="text-xs font-medium text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1 shadow-sm"
+                        className="text-xs font-medium text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1 shadow-sm truncate max-w-full"
                       >
-                        <Zap size={11} className="text-emerald-400" />
-                        +{secAct.name}
+                        <Zap size={11} className="text-emerald-400 shrink-0" />
+                        <span className="truncate">+{secAct.name}</span>
                       </span>
                     );
                   })}
@@ -1441,7 +1515,14 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
                     <button
                       type="button"
-                      onClick={() => store.undoDailyTimeBlockResolution(todayDateKey, currentResolvedBlock.id)}
+                      onClick={() => {
+                        try {
+                          store.undoDailyTimeBlockResolution(todayDateKey, currentResolvedBlock.id);
+                          showSuccessToast('Status Reverted', `Reverted ${currentResolvedBlock.skipped ? 'skipped' : 'completed'} status.`);
+                        } catch (err: any) {
+                          showErrorToast('Failed to Undo', err?.message);
+                        }
+                      }}
                       className="w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
                     >
                       <RotateCcw size={12} />
@@ -1481,7 +1562,12 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                         type="button"
                         onClick={() => {
                           const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
-                          store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'shift');
+                          try {
+                            store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'shift');
+                            showSuccessToast('Block moved to now', `Started early at ${formatTime12h(nowStr)}`);
+                          } catch (err: any) {
+                            showErrorToast('Could Not Move Block', err?.message || 'Cannot move block due to a schedule collision.');
+                          }
                         }}
                         className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-[11px] font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
                         title="Starts early, ends early (Maintains exact duration)"
@@ -1494,7 +1580,12 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                         type="button"
                         onClick={() => {
                           const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
-                          store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'stretch');
+                          try {
+                            store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'stretch');
+                            showSuccessToast('Block extended to now', `Started early at ${formatTime12h(nowStr)}`);
+                          } catch (err: any) {
+                            showErrorToast('Could Not Extend Block', err?.message || 'Cannot extend block due to a schedule collision.');
+                          }
                         }}
                         className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
                         title="Starts early, keeps original end time (Extends duration)"
@@ -1542,7 +1633,14 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
                     <button
                       type="button"
-                      onClick={() => store.undoDailyTimeBlockResolution(todayDateKey, currentResolvedBlock.id)}
+                      onClick={() => {
+                        try {
+                          store.undoDailyTimeBlockResolution(todayDateKey, currentResolvedBlock.id);
+                          showSuccessToast('Status Reverted', `Reverted ${currentResolvedBlock.skipped ? 'skipped' : 'completed'} status.`);
+                        } catch (err: any) {
+                          showErrorToast('Failed to Undo', err?.message);
+                        }
+                      }}
                       className="w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
                     >
                       <RotateCcw size={12} />

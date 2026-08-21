@@ -149,34 +149,25 @@ export function TemplateEditorModal({
     customTitle?: string;
     notes?: string;
   }) => {
+    const splitBlocks = normalizeOrSplitMidnightBlock({
+      ...blockData,
+      secondaryActivityIds:
+        blockData.secondaryActivityIds && blockData.secondaryActivityIds.length > 0
+          ? blockData.secondaryActivityIds
+          : undefined,
+    });
+
     if (targetBlockForModal) {
       // Editing existing block in template
-      setBlocks((prev) =>
-        prev
-          .map((b) =>
-            b.id === targetBlockForModal.id
-              ? {
-                  ...b,
-                  ...blockData,
-                  secondaryActivityIds:
-                    blockData.secondaryActivityIds && blockData.secondaryActivityIds.length > 0
-                      ? blockData.secondaryActivityIds
-                      : undefined,
-                }
-              : b
-          )
-          .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime))
-      );
+      setBlocks((prev) => {
+        const withoutTarget = prev.filter((b) => b.id !== targetBlockForModal.id);
+        const mappedSplit = splitBlocks.map((sb, idx) => (idx === 0 ? { ...sb, id: targetBlockForModal.id } : sb));
+        return [...withoutTarget, ...mappedSplit].sort(
+          (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
+        );
+      });
     } else {
       // Adding new block to template
-      const splitBlocks = normalizeOrSplitMidnightBlock({
-        ...blockData,
-        secondaryActivityIds:
-          blockData.secondaryActivityIds && blockData.secondaryActivityIds.length > 0
-            ? blockData.secondaryActivityIds
-            : undefined,
-      });
-
       setBlocks((prev) =>
         [...prev, ...splitBlocks].sort(
           (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)

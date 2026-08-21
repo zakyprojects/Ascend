@@ -100,6 +100,7 @@ export function normalizeOrSplitMidnightBlock(
       {
         ...block,
         id: (block as TimeTrackerBlock).id || baseId || uid(),
+        createdAt: (block as TimeTrackerBlock).createdAt || Date.now(),
         startTime: minutesToTimeString(startMins),
         endTime: minutesToTimeString(endMins),
       },
@@ -116,6 +117,7 @@ export function normalizeOrSplitMidnightBlock(
   const block1: TimeTrackerBlock = {
     ...block,
     id: (block as TimeTrackerBlock).id || baseId || uid(),
+    createdAt: (block as TimeTrackerBlock).createdAt || Date.now(),
     startTime: minutesToTimeString(startMins),
     endTime: '23:59',
     customTitle: block.customTitle ? `${block.customTitle} (Part 1)` : undefined,
@@ -124,6 +126,7 @@ export function normalizeOrSplitMidnightBlock(
   const block2: TimeTrackerBlock = {
     ...block,
     id: uid(),
+    createdAt: Date.now(),
     startTime: '00:00',
     endTime: minutesToTimeString(endMins),
     customTitle: block.customTitle ? `${block.customTitle} (Part 2)` : undefined,
@@ -240,6 +243,7 @@ export function autoHydrateDailyLog(
   const clonedBlocks: TimeTrackerBlock[] = matchingTemplate.blocks.map((b) => ({
     ...b,
     id: uid(),
+    createdAt: Date.now(),
     completed: false,
     completedAt: undefined,
   }));

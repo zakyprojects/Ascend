@@ -40,6 +40,7 @@ import {
   Activity,
   BookOpen,
   Check,
+  SkipForward,
 } from 'lucide-react';
 import { View } from '@/components/AppShell';
 
@@ -184,9 +185,10 @@ export function ScheduleTab({
       (!targetModule && (act?.name.toLowerCase().includes('deep work') || act?.name.toLowerCase().includes('focus')))
     ) {
       try {
-        sessionStorage.setItem('ascend_pending_focus_task', title);
-        sessionStorage.setItem('ascend_pending_focus_duration', String(targetDuration));
-        sessionStorage.setItem('ascend_pending_focus_timestamp', String(Date.now()));
+        sessionStorage.removeItem('ascend_pending_focus_task');
+        sessionStorage.removeItem('ascend_pending_focus_duration');
+        sessionStorage.removeItem('ascend_pending_focus_timestamp');
+        sessionStorage.setItem('ascend_pending_pfc_timer_mode', 'sync');
       } catch {
         /* storage quota fallback */
       }
@@ -219,20 +221,20 @@ export function ScheduleTab({
   return (
     <div className="space-y-6">
       {/* 1. Date Navigation & Actions Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-white/5 backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full p-4 rounded-2xl bg-slate-900/60 border border-white/5 backdrop-blur-md">
         {/* Date Selector Navigation */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={handlePrevDay}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5 transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5 transition-colors cursor-pointer shrink-0"
             title="Previous Day"
           >
             <ChevronLeft size={18} />
           </button>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/60 border border-white/10">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/60 border border-white/10 flex-1 sm:flex-none justify-center">
             <Calendar size={16} className="text-emerald-400 shrink-0" />
-            <span className="text-sm font-bold text-slate-100 min-w-[120px] text-center">
+            <span className="text-sm font-bold text-slate-100 min-w-[100px] sm:min-w-[120px] text-center">
               {formattedDayTitle}
             </span>
             <span className="text-xs font-mono text-slate-500 hidden sm:inline">
@@ -242,7 +244,7 @@ export function ScheduleTab({
 
           <button
             onClick={handleNextDay}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5 transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5 transition-colors cursor-pointer shrink-0"
             title="Next Day"
           >
             <ChevronRight size={18} />
@@ -251,7 +253,7 @@ export function ScheduleTab({
           {!isSelectedDateToday && (
             <button
               onClick={handleJumpToToday}
-              className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all cursor-pointer"
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all cursor-pointer shrink-0"
             >
               Today
             </button>
@@ -259,22 +261,22 @@ export function ScheduleTab({
         </div>
 
         {/* Schedule Action Buttons */}
-        <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {templates.length > 0 && (
             <button
               onClick={onOpenApplyTemplateModal}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all shadow-sm cursor-pointer"
+              className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all shadow-sm cursor-pointer"
               title="Apply Blueprint Template"
             >
-              <Layers size={14} className="text-emerald-400" />
-              <span>Apply Template</span>
+              <Layers size={14} className="text-emerald-400 shrink-0" />
+              <span className="whitespace-nowrap">Apply Template</span>
             </button>
           )}
 
           {dailyBlocks.length > 0 && (
             <button
               onClick={() => setShowClearDayModal(true)}
-              className="p-2 text-xs text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer"
+              className="p-2 text-xs text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer shrink-0"
               title="Clear Schedule for this Day"
             >
               <RotateCcw size={15} />
@@ -283,10 +285,10 @@ export function ScheduleTab({
 
           <button
             onClick={() => onOpenAddBlockModal()}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all ml-auto sm:ml-0 cursor-pointer"
+            className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
           >
-            <Plus size={15} />
-            <span>Schedule Block</span>
+            <Plus size={15} className="shrink-0" />
+            <span className="whitespace-nowrap">Schedule Block</span>
           </button>
         </div>
       </div>
@@ -715,7 +717,9 @@ export function ScheduleTab({
                 <div
                   key={block.id}
                   className={`group relative p-4 rounded-2xl border transition-all ${
-                    isBlockActive
+                    block.skipped
+                      ? 'bg-slate-950/20 border-white/5 opacity-60'
+                      : isBlockActive
                       ? 'bg-emerald-950/20 border-emerald-500/40 shadow-xl shadow-emerald-950/30 ring-2 ring-emerald-500/30'
                       : isBlockPast
                       ? 'bg-slate-950/40 border-white/5 opacity-60 grayscale-[0.35] hover:opacity-90 hover:grayscale-0'
@@ -726,17 +730,25 @@ export function ScheduleTab({
                 >
                   <div className="flex items-start justify-between gap-3">
                     {/* Left: Checkbox + Icon + Title */}
-                    <div className="flex items-start gap-3 min-w-0">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
                       <button
                         onClick={() => handleToggleComplete(block)}
                         className={`mt-1 p-1 rounded-lg transition-colors shrink-0 cursor-pointer ${
                           block.completed
                             ? 'text-emerald-400 hover:text-emerald-300'
+                            : block.skipped
+                            ? 'text-slate-600 hover:text-slate-400'
                             : 'text-slate-500 hover:text-slate-300'
                         }`}
-                        title={block.completed ? 'Mark uncompleted' : 'Mark completed'}
+                        title={block.completed ? 'Mark uncompleted' : block.skipped ? 'Undo skipped' : 'Mark completed'}
                       >
-                        {block.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                        {block.completed ? (
+                          <CheckCircle2 size={20} />
+                        ) : block.skipped ? (
+                          <SkipForward size={20} />
+                        ) : (
+                          <Circle size={20} />
+                        )}
                       </button>
 
                       <div
@@ -750,10 +762,10 @@ export function ScheduleTab({
                         <ActivityIcon iconName={act?.icon || 'Activity'} size={20} />
                       </div>
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap min-w-0">
                           <span
-                            className="px-2 py-0.5 rounded-md text-[10px] font-bold"
+                            className="px-2 py-0.5 rounded-md text-[10px] font-bold truncate max-w-full"
                             style={{
                               backgroundColor: `${color}20`,
                               color,
@@ -770,29 +782,36 @@ export function ScheduleTab({
                               return (
                                 <span
                                   key={secId}
-                                  className="text-[10px] text-emerald-300 font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded"
+                                  className="text-[10px] text-emerald-300 font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded truncate max-w-full"
                                 >
                                   +{secAct.name}
                                 </span>
                               );
                             })}
 
-                          <span className="text-xs font-mono font-semibold text-slate-300">
+                          <span className="text-xs font-mono font-semibold text-slate-300 whitespace-nowrap">
                             {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)}
                           </span>
 
-                          <span className="text-[11px] text-slate-500 font-mono">
+                          <span className="text-[11px] text-slate-500 font-mono whitespace-nowrap">
                             ({formatDurationHuman(durationMins)})
                           </span>
 
-                          {isBlockActive && (
+                          {isBlockActive && !block.skipped && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                               Active Now
                             </span>
                           )}
 
-                          {isBlockPast && !block.completed && (
+                          {block.skipped && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center gap-1">
+                              <SkipForward size={10} />
+                              Skipped
+                            </span>
+                          )}
+
+                          {isBlockPast && !block.completed && !block.skipped && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-400 border border-white/5">
                               Passed
                             </span>
@@ -800,9 +819,11 @@ export function ScheduleTab({
                         </div>
 
                         <h4
-                          className={`text-sm font-bold mt-1 ${
+                          className={`text-sm font-bold mt-1 break-words ${
                             block.completed
                               ? 'text-slate-400 line-through'
+                              : block.skipped
+                              ? 'text-slate-500 line-through italic'
                               : 'text-slate-100'
                           }`}
                         >
