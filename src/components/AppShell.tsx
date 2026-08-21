@@ -22,6 +22,7 @@ import {
   Settings,
   Target,
   FolderKanban,
+  Clock,
 } from 'lucide-react';
 import { TierBadge } from './ui/TierBadge';
 import { AppStore } from '@/lib/store';
@@ -32,6 +33,7 @@ import { NotificationCenter } from './ui/NotificationCenter';
 export type View =
   | 'dashboard'
   | 'habits'
+  | 'time-tracker'
   | 'weekly-goals'
   | 'projects-goals'
   | 'journal'
@@ -115,6 +117,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
     { id: 'bad-habits', label: 'Bad Habits', icon: ShieldAlert },
     { id: 'recovery', label: 'Recovery', icon: HeartPulse },
     { id: 'prefrontal', label: 'PFC / Focus', icon: BrainCircuit },
+    { id: 'time-tracker', label: 'Time Tracker', icon: Clock },
     { id: 'plans', label: 'Plans', icon: Compass },
     { id: 'partner', label: 'Partner', icon: Users, badgeCount: pendingIncomingInvitesCount },
     { id: 'neuroplasticity', label: 'Neuro', icon: Brain },

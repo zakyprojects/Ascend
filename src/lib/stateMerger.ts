@@ -30,9 +30,16 @@ import {
   Partnership,
   SharedChallenge,
   AppNotification,
+  TimeTrackerState,
+  TimeTrackerActivity,
+  TimeTrackerTemplate,
+  TimeTrackerBlock,
+  DEFAULT_TIME_TRACKER_ACTIVITIES,
+  DEFAULT_TIME_TRACKER_STATE,
   DEFAULT_STATE,
 } from '@/types';
 import { mergeSharedChallenge } from './pactLifecycle';
+import { ensureDefaultActivities } from './timeTracker';
 
 function mergeEntityArrays<T extends { id?: string; createdAt?: string }>(
   baseArr: T[] = [],
@@ -583,6 +590,49 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     new Set([...(baseState.readLessonIds || []), ...(incomingState.readLessonIds || [])])
   );
 
+  // 16. Time Tracker
+  const baseTT = baseState.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+  const incTT = incomingState.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+
+  const mergedActivities = ensureDefaultActivities(
+    mergeEntityArrays(baseTT.activities || [], incTT.activities || [], tombstoneSet)
+  );
+
+  const mergedTemplates = mergeEntityArrays(
+    baseTT.templates || [],
+    incTT.templates || [],
+    tombstoneSet
+  );
+
+  const dailyLogsMap: Record<string, TimeTrackerBlock[]> = {};
+  const allDateKeys = new Set([
+    ...Object.keys(baseTT.dailyLogs || {}),
+    ...Object.keys(incTT.dailyLogs || {}),
+  ]);
+
+  for (const dateKey of allDateKeys) {
+    const baseBlocks = baseTT.dailyLogs?.[dateKey] || [];
+    const incBlocks = incTT.dailyLogs?.[dateKey] || [];
+    const mergedBlocks = mergeEntityArrays(baseBlocks, incBlocks, tombstoneSet);
+    if (mergedBlocks.length > 0) {
+      dailyLogsMap[dateKey] = mergedBlocks;
+    }
+  }
+
+  const mergedClearedDates = Array.from(
+    new Set([
+      ...(baseTT.clearedDates || []),
+      ...(incTT.clearedDates || []),
+    ])
+  );
+
+  const mergedTimeTracker: TimeTrackerState = {
+    activities: mergedActivities,
+    templates: mergedTemplates,
+    dailyLogs: dailyLogsMap,
+    clearedDates: mergedClearedDates,
+  };
+
   const currentUser = incomingState.currentUser || baseState.currentUser || null;
   const username = (currentUser && currentUser.username) || incomingState.username || baseState.username || 'Guest User';
 
@@ -629,5 +679,6 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     leagueArchives,
     readLessonIds,
     deletedEntityIds: mergedDeletedEntityIds,
+    timeTracker: mergedTimeTracker,
   };
 }

@@ -46,9 +46,23 @@ import {
   GoalStatus,
   ProjectStatus,
   TaskPriority,
+  TimeTrackerState,
+  TimeTrackerActivity,
+  TimeTrackerTemplate,
+  TimeTrackerBlock,
+  DEFAULT_TIME_TRACKER_ACTIVITIES,
+  DEFAULT_TIME_TRACKER_STATE,
 } from '@/types';
+import {
+  ensureDefaultActivities,
+  autoHydrateDailyLog,
+  checkTimeCollision,
+  normalizeOrSplitMidnightBlock,
+  timeStringToMinutes,
+  calculateBlockDurationMinutes,
+} from './timeTracker';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, previousPeriodKey, parseDate, getNow } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, previousPeriodKey, parseDate, getNow, getNextDateKey } from './dates';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { PresetHabit } from './presets';
 import { SEED_ACCOUNTS } from './seedAccounts';
@@ -408,10 +422,31 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
       .filter((n: any) => !(st.deletedEntityIds || []).includes(n.id))
       .slice(0, 50),
     deletedEntityIds: (st.deletedEntityIds ?? []).slice(-500),
+    timeTracker: {
+      activities: ensureDefaultActivities(st.timeTracker?.activities ?? DEFAULT_TIME_TRACKER_ACTIVITIES),
+      templates: (st.timeTracker?.templates ?? DEFAULT_TIME_TRACKER_STATE.templates).filter(
+        (t) => !(st.deletedEntityIds || []).includes(t.id)
+      ),
+      dailyLogs: st.timeTracker?.dailyLogs ?? {},
+      clearedDates: st.timeTracker?.clearedDates ?? [],
+    },
   };
 
   let sweptState = baseState;
   const now = new Date();
+
+  // Auto-hydrate today's schedule from active template if dailyLog is currently empty
+  if (sweptState.timeTracker) {
+    const todayStr = todayKey(now);
+    const { updatedState, hydrated } = autoHydrateDailyLog(sweptState.timeTracker, todayStr);
+    if (hydrated) {
+      sweptState = {
+        ...sweptState,
+        timeTracker: updatedState,
+      };
+    }
+  }
+
   const updatedWeeklyGoals = sweptState.weeklyGoals.map((wg) => {
     const cutoff = getWeekReflectionCutoff(wg.weekKey);
     if (now >= cutoff) {
@@ -5496,6 +5531,777 @@ export function useAppState() {
     );
   }, [state.improvementPlans]);
 
+  // ==========================================
+  // TIME TRACKER MODULE ACTIONS
+  // ==========================================
+  const addTimeTrackerActivity = useCallback(
+    (activity: Omit<TimeTrackerActivity, 'id'>): TimeTrackerActivity => {
+      const newActivity: TimeTrackerActivity = {
+        ...activity,
+        id: uid(),
+        isSystemDefault: false,
+        createdAt: new Date().toISOString(),
+      };
+      setState((prev) => {
+        const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        return {
+          ...prev,
+          timeTracker: {
+            ...currentTT,
+            activities: [...(currentTT.activities || []), newActivity],
+          },
+        };
+      });
+      return newActivity;
+    },
+    []
+  );
+
+  const updateTimeTrackerActivity = useCallback(
+    (id: string, updates: Partial<TimeTrackerActivity>) => {
+      setState((prev) => {
+        const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        return {
+          ...prev,
+          timeTracker: {
+            ...currentTT,
+            activities: (currentTT.activities || []).map((a) =>
+              a.id === id ? { ...a, ...updates, id: a.id } : a
+            ),
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const deleteTimeTrackerActivity = useCallback(
+    (id: string) => {
+      setState(
+        (prev) => {
+          const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+          const updatedDeleted = [...(prev.deletedEntityIds || []), id].slice(-500);
+          return {
+            ...prev,
+            timeTracker: {
+              ...currentTT,
+              activities: (currentTT.activities || []).filter((a) => a.id !== id),
+            },
+            deletedEntityIds: updatedDeleted,
+          };
+        },
+        { immediate: true }
+      );
+    },
+    []
+  );
+
+  const createTimeTrackerTemplate = useCallback(
+    (template: Omit<TimeTrackerTemplate, 'id'>): TimeTrackerTemplate => {
+      const targetDays =
+        Array.isArray(template.activeDays) && template.activeDays.length > 0
+          ? template.activeDays
+          : Array.isArray(template.autoApplyDays) && template.autoApplyDays.length > 0
+          ? template.autoApplyDays
+          : [];
+
+      const newTemplate: TimeTrackerTemplate = {
+        ...template,
+        activeDays: targetDays,
+        autoApplyDays: targetDays,
+        id: uid(),
+        createdAt: new Date().toISOString(),
+      };
+
+      setState((prev) => {
+        const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const otherTemplates = (currentTT.templates || []).map((t) => {
+          if (targetDays.length > 0) {
+            const currentDays =
+              Array.isArray(t.activeDays) && t.activeDays.length > 0
+                ? t.activeDays
+                : Array.isArray(t.autoApplyDays) && t.autoApplyDays.length > 0
+                ? t.autoApplyDays
+                : [];
+            const filteredDays = currentDays.filter(
+              (d) => !targetDays.some((nd) => nd.toLowerCase() === d.toLowerCase())
+            );
+            return {
+              ...t,
+              activeDays: filteredDays,
+              autoApplyDays: filteredDays,
+            };
+          }
+          return t;
+        });
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...currentTT,
+            templates: [...otherTemplates, newTemplate],
+          },
+        };
+      });
+      return newTemplate;
+    },
+    []
+  );
+
+  const updateTimeTrackerTemplate = useCallback(
+    (id: string, updates: Partial<TimeTrackerTemplate>) => {
+      setState((prev) => {
+        const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const updatedDays =
+          Array.isArray(updates.activeDays) && updates.activeDays.length > 0
+            ? updates.activeDays
+            : Array.isArray(updates.autoApplyDays) && updates.autoApplyDays.length > 0
+            ? updates.autoApplyDays
+            : updates.activeDays !== undefined
+            ? updates.activeDays
+            : updates.autoApplyDays;
+
+        const updatedTemplates = (currentTT.templates || []).map((t) => {
+          if (t.id === id) {
+            const nextDays =
+              updatedDays !== undefined
+                ? updatedDays
+                : Array.isArray(t.activeDays) && t.activeDays.length > 0
+                ? t.activeDays
+                : Array.isArray(t.autoApplyDays) && t.autoApplyDays.length > 0
+                ? t.autoApplyDays
+                : [];
+            return {
+              ...t,
+              ...updates,
+              activeDays: nextDays,
+              autoApplyDays: nextDays,
+              id: t.id,
+            };
+          } else if (updatedDays && updatedDays.length > 0) {
+            // STRICT EXCLUSIVITY: Filter out any day that is now active in target template
+            const currentDays =
+              Array.isArray(t.activeDays) && t.activeDays.length > 0
+                ? t.activeDays
+                : Array.isArray(t.autoApplyDays) && t.autoApplyDays.length > 0
+                ? t.autoApplyDays
+                : [];
+            const filteredDays = currentDays.filter(
+              (d) => !updatedDays.some((nd) => nd.toLowerCase() === d.toLowerCase())
+            );
+            return {
+              ...t,
+              activeDays: filteredDays,
+              autoApplyDays: filteredDays,
+            };
+          }
+          return t;
+        });
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...currentTT,
+            templates: updatedTemplates,
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const toggleTemplateAutoApplyDay = useCallback(
+    (templateId: string, day: string) => {
+      setState((prev) => {
+        const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const targetTemplate = (currentTT.templates || []).find((t) => t.id === templateId);
+        if (!targetTemplate) return prev;
+
+        const getDays = (t: TimeTrackerTemplate): string[] => {
+          if (Array.isArray(t.activeDays) && t.activeDays.length > 0) return t.activeDays;
+          if (Array.isArray(t.autoApplyDays) && t.autoApplyDays.length > 0) return t.autoApplyDays;
+          return [];
+        };
+
+        const targetDays = getDays(targetTemplate);
+        const isRemoving = targetDays.some((d) => d.toLowerCase() === day.toLowerCase());
+
+        const updatedTemplates = (currentTT.templates || []).map((t) => {
+          if (t.id === templateId) {
+            const currentDays = getDays(t);
+            const nextDays = isRemoving
+              ? currentDays.filter((d) => d.toLowerCase() !== day.toLowerCase())
+              : [...currentDays.filter((d) => d.toLowerCase() !== day.toLowerCase()), day];
+            return {
+              ...t,
+              activeDays: nextDays,
+              autoApplyDays: nextDays,
+            };
+          } else {
+            // STRICT EXCLUSIVITY: If adding the day to target template, REMOVE it from all other templates
+            if (!isRemoving) {
+              const otherDays = getDays(t);
+              const nextDays = otherDays.filter((d) => d.toLowerCase() !== day.toLowerCase());
+              return {
+                ...t,
+                activeDays: nextDays,
+                autoApplyDays: nextDays,
+              };
+            }
+            return t;
+          }
+        });
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...currentTT,
+            templates: updatedTemplates,
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const deleteTimeTrackerTemplate = useCallback(
+    (id: string) => {
+      setState(
+        (prev) => {
+          const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+          const updatedDeleted = [...(prev.deletedEntityIds || []), id].slice(-500);
+          return {
+            ...prev,
+            timeTracker: {
+              ...currentTT,
+              templates: (currentTT.templates || []).filter((t) => t.id !== id),
+            },
+            deletedEntityIds: updatedDeleted,
+          };
+        },
+        { immediate: true }
+      );
+    },
+    []
+  );
+
+  const addDailyTimeBlock = useCallback(
+    (dateKey: string, block: Omit<TimeTrackerBlock, 'id'>) => {
+      const currentTT = state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+      const existingDateBlocks = currentTT.dailyLogs?.[dateKey] || [];
+
+      // 1. Midnight boundary split check
+      const splitBlocks = normalizeOrSplitMidnightBlock(block);
+
+      if (splitBlocks.length === 1) {
+        // Single block on dateKey
+        const collision = checkTimeCollision(splitBlocks[0], existingDateBlocks);
+        if (collision.hasCollision) {
+          throw new Error(collision.message || 'Time block collides with an existing scheduled block.');
+        }
+
+        const createdBlock: TimeTrackerBlock = {
+          ...splitBlocks[0],
+          id: uid(),
+          completed: false,
+        };
+
+        setState((prev) => {
+          const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+          const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+          const nextBlocks = [...prevDailyBlocks, createdBlock].sort(
+            (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
+          );
+          return {
+            ...prev,
+            timeTracker: {
+              ...prevTT,
+              dailyLogs: {
+                ...(prevTT.dailyLogs || {}),
+                [dateKey]: nextBlocks,
+              },
+            },
+          };
+        });
+
+        return [createdBlock];
+      }
+
+      // Crossed midnight: Part 1 is on dateKey, Part 2 is on nextDayKey
+      const nextDayKey = getNextDateKey(dateKey);
+      const existingNextDayBlocks = currentTT.dailyLogs?.[nextDayKey] || [];
+
+      const part1Collision = checkTimeCollision(splitBlocks[0], existingDateBlocks);
+      if (part1Collision.hasCollision) {
+        throw new Error(part1Collision.message || `Part 1 (Today) collides with an existing block on ${dateKey}.`);
+      }
+
+      const part2Collision = checkTimeCollision(splitBlocks[1], existingNextDayBlocks);
+      if (part2Collision.hasCollision) {
+        throw new Error(part2Collision.message || `Part 2 (Tomorrow) collides with an existing block on ${nextDayKey}.`);
+      }
+
+      const createdPart1: TimeTrackerBlock = {
+        ...splitBlocks[0],
+        id: uid(),
+        completed: false,
+      };
+
+      const createdPart2: TimeTrackerBlock = {
+        ...splitBlocks[1],
+        id: uid(),
+        completed: false,
+      };
+
+      setState((prev) => {
+        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const prevDateBlocks = prevTT.dailyLogs?.[dateKey] || [];
+        const prevNextDayBlocks = prevTT.dailyLogs?.[nextDayKey] || [];
+
+        const nextDateBlocks = [...prevDateBlocks, createdPart1].sort(
+          (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
+        );
+        const nextDaySortedBlocks = [...prevNextDayBlocks, createdPart2].sort(
+          (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
+        );
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...prevTT,
+            dailyLogs: {
+              ...(prevTT.dailyLogs || {}),
+              [dateKey]: nextDateBlocks,
+              [nextDayKey]: nextDaySortedBlocks,
+            },
+          },
+        };
+      });
+
+      return [createdPart1, createdPart2];
+    },
+    [state.timeTracker]
+  );
+
+  const updateDailyTimeBlock = useCallback(
+    (dateKey: string, blockId: string, updates: Partial<TimeTrackerBlock>) => {
+      const currentTT = state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+      const existingBlocks = currentTT.dailyLogs?.[dateKey] || [];
+      const targetBlock = existingBlocks.find((b) => b.id === blockId);
+      if (!targetBlock) {
+        throw new Error('Block not found.');
+      }
+
+      const merged = { ...targetBlock, ...updates };
+
+      // Collision check
+      const collision = checkTimeCollision(merged, existingBlocks, blockId);
+      if (collision.hasCollision) {
+        throw new Error(collision.message || 'Updated block collides with another scheduled block.');
+      }
+
+      setState((prev) => {
+        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+        const nextBlocks = prevDailyBlocks
+          .map((b) => (b.id === blockId ? merged : b))
+          .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...prevTT,
+            dailyLogs: {
+              ...(prevTT.dailyLogs || {}),
+              [dateKey]: nextBlocks,
+            },
+          },
+        };
+      });
+    },
+    [state.timeTracker]
+  );
+
+  const deleteDailyTimeBlock = useCallback(
+    (dateKey: string, blockId: string) => {
+      setState(
+        (prev) => {
+          const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+          const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+          const updatedDeleted = [...(prev.deletedEntityIds || []), blockId].slice(-500);
+
+          return {
+            ...prev,
+            timeTracker: {
+              ...prevTT,
+              dailyLogs: {
+                ...(prevTT.dailyLogs || {}),
+                [dateKey]: prevDailyBlocks.filter((b) => b.id !== blockId),
+              },
+            },
+            deletedEntityIds: updatedDeleted,
+          };
+        },
+        { immediate: true }
+      );
+    },
+    []
+  );
+
+  const toggleDailyTimeBlockCompleted = useCallback(
+    (dateKey: string, blockId: string, passedTimeStr?: string) => {
+      setState((prev) => {
+        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+        const target = prevDailyBlocks.find((b) => b.id === blockId);
+        if (!target) return prev;
+
+        const isCurrentlyCompleted = target.completed;
+
+        const updatedBlocks = prevDailyBlocks.map((b) => {
+          if (b.id !== blockId) return b;
+
+          if (!isCurrentlyCompleted) {
+            // COMPLETING: Execute trim logic (Dimension 2)
+            let timeStr = passedTimeStr;
+            if (!timeStr) {
+              const now = new Date();
+              timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            }
+            let finalEndTime = b.endTime;
+            let trimmedOriginalEndTime = b.trimmedOriginalEndTime;
+            const currentMins = timeStringToMinutes(timeStr);
+            const originalEndMins = timeStringToMinutes(b.endTime);
+            const startMins = timeStringToMinutes(b.startTime);
+
+            if (currentMins < originalEndMins && currentMins > startMins) {
+              trimmedOriginalEndTime = b.endTime;
+              finalEndTime = timeStr;
+            }
+            return {
+              ...b,
+              endTime: finalEndTime,
+              trimmedOriginalEndTime,
+              completed: true,
+              completedAt: new Date().toISOString(),
+              skipped: false,
+            };
+          } else {
+            // UN-COMPLETING: Restore endTime ONLY from trimmedOriginalEndTime (Dimension 2 isolation)
+            // DO NOT TOUCH originalStartTime or originalEndTime (Dimension 1)
+            return {
+              ...b,
+              endTime: b.trimmedOriginalEndTime || b.endTime,
+              trimmedOriginalEndTime: undefined,
+              completed: false,
+              completedAt: undefined,
+              skipped: false,
+            };
+          }
+        });
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...prevTT,
+            dailyLogs: {
+              ...(prevTT.dailyLogs || {}),
+              [dateKey]: updatedBlocks,
+            },
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const markDailyTimeBlockSkipped = useCallback(
+    (dateKey: string, blockId: string) => {
+      setState((prev) => {
+        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+        const target = prevDailyBlocks.find((b) => b.id === blockId);
+        if (!target) return prev;
+
+        const updatedBlocks = prevDailyBlocks.map((b) =>
+          b.id === blockId
+            ? {
+                ...b,
+                completed: false,
+                completedAt: undefined,
+                skipped: true,
+              }
+            : b
+        );
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...prevTT,
+            dailyLogs: {
+              ...(prevTT.dailyLogs || {}),
+              [dateKey]: updatedBlocks,
+            },
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const undoDailyTimeBlockResolution = useCallback(
+    (dateKey: string, blockId: string) => {
+      setState((prev) => {
+        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+        const target = prevDailyBlocks.find((b) => b.id === blockId);
+        if (!target) return prev;
+
+        const updatedBlocks = prevDailyBlocks.map((b) =>
+          b.id === blockId
+            ? {
+                ...b,
+                endTime: b.trimmedOriginalEndTime || b.endTime,
+                trimmedOriginalEndTime: undefined,
+                completed: false,
+                completedAt: undefined,
+                skipped: false,
+              }
+            : b
+        );
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...prevTT,
+            dailyLogs: {
+              ...(prevTT.dailyLogs || {}),
+              [dateKey]: updatedBlocks,
+            },
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const pullForwardDailyTimeBlock = useCallback(
+    (dateKey: string, blockId: string, newStartTime: string, mode: 'shift' | 'stretch' = 'stretch') => {
+      setState((prev) => {
+        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+
+        const updatedBlocks = prevDailyBlocks.map((b) => {
+          if (b.id !== blockId) return b;
+
+          const originalStartTime = b.originalStartTime || b.startTime;
+          let newEndTime = b.endTime;
+          let originalEndTime = b.originalEndTime || b.endTime;
+
+          if (mode === 'shift') {
+            const startMins = timeStringToMinutes(b.startTime);
+            const endMins = timeStringToMinutes(b.endTime);
+            const duration = endMins - startMins;
+            const newStartMins = timeStringToMinutes(newStartTime);
+            const newEndMins = Math.min(1439, newStartMins + duration);
+            const h = Math.floor(newEndMins / 60).toString().padStart(2, '0');
+            const m = (newEndMins % 60).toString().padStart(2, '0');
+            newEndTime = `${h}:${m}`;
+          }
+
+          return {
+            ...b,
+            startTime: newStartTime,
+            endTime: newEndTime,
+            originalStartTime,
+            originalEndTime,
+          };
+        });
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...prevTT,
+            dailyLogs: {
+              ...(prevTT.dailyLogs || {}),
+              [dateKey]: updatedBlocks,
+            },
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const undoEarlyStartTimeBlock = useCallback(
+    (dateKey: string, blockId: string) => {
+      setState((prev) => {
+        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+        const target = prevDailyBlocks.find((b) => b.id === blockId);
+        if (!target) return prev;
+
+        const updatedBlocks = prevDailyBlocks.map((b) =>
+          b.id === blockId
+            ? {
+                ...b,
+                startTime: b.originalStartTime || b.startTime,
+                endTime: b.originalEndTime || b.endTime,
+                originalStartTime: undefined,
+                originalEndTime: undefined,
+                trimmedOriginalEndTime: undefined,
+                completed: false,
+                completedAt: undefined,
+                skipped: false,
+              }
+            : b
+        );
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...prevTT,
+            dailyLogs: {
+              ...(prevTT.dailyLogs || {}),
+              [dateKey]: updatedBlocks,
+            },
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const applyTemplateToDate = useCallback(
+    (dateKey: string, templateId: string, mode: 'merge' | 'replace' = 'merge') => {
+      let addedCount = 0;
+      let rejectedCount = 0;
+
+      setState(
+        (prev) => {
+          const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+          const template = prevTT.templates?.find((t) => t.id === templateId);
+          if (!template) return prev;
+
+          const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+
+          // Internal helper for precise minute calculation
+          const getMins = (time: string) => {
+            const [h, m] = time.split(':').map(Number);
+            return h * 60 + m;
+          };
+
+          // Factory to ensure clean, untracked blocks with fresh IDs
+          const createFreshBlock = (b: any) => ({
+            ...b,
+            id: crypto.randomUUID(),
+            completed: false,
+            skipped: false,
+            completedAt: undefined,
+            originalStartTime: undefined,
+            originalEndTime: undefined,
+            trimmedOriginalEndTime: undefined,
+          });
+
+          let updatedBlocks: TimeTrackerBlock[] = [];
+
+          if (mode === 'replace') {
+            // REPLACE: Wipe slate clean, map fresh template blocks
+            updatedBlocks = template.blocks.map(createFreshBlock);
+            addedCount = updatedBlocks.length;
+          } else {
+            // MERGE: Keep existing, carefully inject non-overlapping template blocks
+            updatedBlocks = [...prevDailyBlocks];
+
+            for (const tBlock of template.blocks) {
+              const tStart = getMins(tBlock.startTime);
+              const tEnd = getMins(tBlock.endTime);
+
+              const hasOverlap = updatedBlocks.some((existing) => {
+                const eStart = getMins(existing.startTime);
+                const eEnd = getMins(existing.endTime);
+                // Strict overlap formula
+                return tStart < eEnd && eStart < tEnd;
+              });
+
+              if (!hasOverlap) {
+                updatedBlocks.push(createFreshBlock(tBlock));
+                addedCount++;
+              } else {
+                rejectedCount++;
+              }
+            }
+          }
+
+          // Always keep the timeline chronologically sorted
+          updatedBlocks.sort((a, b) => getMins(a.startTime) - getMins(b.startTime));
+
+          const updatedClearedDates = (prevTT.clearedDates || []).filter((d) => d !== dateKey);
+
+          return {
+            ...prev,
+            timeTracker: {
+              ...prevTT,
+              dailyLogs: {
+                ...(prevTT.dailyLogs || {}),
+                [dateKey]: updatedBlocks,
+              },
+              clearedDates: updatedClearedDates,
+            },
+          };
+        },
+        { immediate: true }
+      );
+
+      return { added: addedCount, rejected: rejectedCount };
+    },
+    []
+  );
+
+  const clearDailyTimeBlocks = useCallback((dateKey: string) => {
+    setState(
+      (prev) => {
+        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const existingBlocks = prevTT.dailyLogs?.[dateKey] || [];
+        const deletedIds = existingBlocks.map((b) => b.id);
+        const updatedDeleted = [...(prev.deletedEntityIds || []), ...deletedIds].slice(-500);
+
+        const nextLogs = {
+          ...(prevTT.dailyLogs || {}),
+          [dateKey]: [], // Intentionally empty array, prevents auto-hydration loop
+        };
+
+        const existingCleared = prevTT.clearedDates || [];
+        const nextCleared = existingCleared.includes(dateKey)
+          ? existingCleared
+          : [...existingCleared, dateKey];
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...prevTT,
+            dailyLogs: nextLogs,
+            clearedDates: nextCleared,
+          },
+          deletedEntityIds: updatedDeleted,
+        };
+      },
+      { immediate: true }
+    );
+  }, []);
+
+  const hydrateTimeTrackerForDate = useCallback((dateKey: string) => {
+    setState((prev) => {
+      const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+      const { updatedState, hydrated } = autoHydrateDailyLog(currentTT, dateKey);
+      if (!hydrated) return prev;
+      return {
+        ...prev,
+        timeTracker: updatedState,
+      };
+    });
+  }, []);
+
   return {
     state,
     isAuthChecking,
@@ -5626,6 +6432,25 @@ export function useAppState() {
     toggleSubtask,
     addSubtask,
     deleteSubtask,
+    // Time Tracker Module Actions
+    addTimeTrackerActivity,
+    updateTimeTrackerActivity,
+    deleteTimeTrackerActivity,
+    createTimeTrackerTemplate,
+    updateTimeTrackerTemplate,
+    deleteTimeTrackerTemplate,
+    toggleTemplateAutoApplyDay,
+    addDailyTimeBlock,
+    updateDailyTimeBlock,
+    deleteDailyTimeBlock,
+    toggleDailyTimeBlockCompleted,
+    markDailyTimeBlockSkipped,
+    undoDailyTimeBlockResolution,
+    undoEarlyStartTimeBlock,
+    pullForwardDailyTimeBlock,
+    applyTemplateToDate,
+    clearDailyTimeBlocks,
+    hydrateTimeTrackerForDate,
   };
 }
 

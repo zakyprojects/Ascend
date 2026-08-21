@@ -70,6 +70,26 @@
     @apply bg-primary-500;
     box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
   }
+
+  /* Native Time and Date Input Clock/Calendar Icon Emerald Override */
+  input[type='time'],
+  input[type='date'] {
+    color-scheme: dark;
+  }
+
+  input[type='time']::-webkit-calendar-picker-indicator,
+  input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(58%) sepia(61%) saturate(543%) hue-rotate(118deg) brightness(97%) contrast(90%);
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  input[type='time']::-webkit-calendar-picker-indicator:hover,
+  input[type='date']::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    transform: scale(1.1);
+  }
 }
 
 @layer components {
