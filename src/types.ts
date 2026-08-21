@@ -704,6 +704,7 @@ export interface TimeTrackerBlock {
   completed?: boolean;
   completedAt?: string;
   skipped?: boolean;
+  skippedAt?: string;
   notes?: string;
   createdAt?: string | number;
   updatedAt?: string;

@@ -6088,6 +6088,7 @@ export function useAppState() {
               completed: true,
               completedAt: new Date().toISOString(),
               skipped: false,
+              skippedAt: undefined,
               updatedAt: new Date().toISOString(),
             };
           } else {
@@ -6099,6 +6100,7 @@ export function useAppState() {
               completed: false,
               completedAt: undefined,
               skipped: false,
+              skippedAt: undefined,
               updatedAt: new Date().toISOString(),
             };
           }
@@ -6160,6 +6162,7 @@ export function useAppState() {
               completed: false,
               completedAt: undefined,
               skipped: true,
+              skippedAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };
           } else {
@@ -6171,6 +6174,7 @@ export function useAppState() {
               completed: false,
               completedAt: undefined,
               skipped: false,
+              skippedAt: undefined,
               updatedAt: new Date().toISOString(),
             };
           }
@@ -6209,6 +6213,7 @@ export function useAppState() {
                   completed: false,
                   completedAt: undefined,
                   skipped: false,
+                  skippedAt: undefined,
                   updatedAt: new Date().toISOString(),
                 }
               : b
@@ -6356,6 +6361,7 @@ export function useAppState() {
                 completed: false,
                 completedAt: undefined,
                 skipped: false,
+                skippedAt: undefined,
                 updatedAt: new Date().toISOString(),
               };
             }
@@ -6414,6 +6420,7 @@ export function useAppState() {
             completed: false,
             skipped: false,
             completedAt: undefined,
+            skippedAt: undefined,
             originalStartTime: undefined,
             originalEndTime: undefined,
             trimmedOriginalEndTime: undefined,

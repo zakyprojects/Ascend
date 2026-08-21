@@ -345,10 +345,12 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
 
     if (validBlocks.length === 0) return undefined;
 
-    // Sort by most recently completed to prioritize the block the user JUST interacted with
+    // Sort by most recently resolved (completed or skipped) to prioritize the block the user JUST interacted with
     return validBlocks.sort((a, b) => {
-      const timeA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
-      const timeB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+      const timestampA = a.completedAt || a.skippedAt;
+      const timestampB = b.completedAt || b.skippedAt;
+      const timeA = timestampA ? new Date(timestampA).getTime() : 0;
+      const timeB = timestampB ? new Date(timestampB).getTime() : 0;
       return timeB - timeA; // Descending order (Newest first)
     })[0];
   }, [todayBlocks, nowMinutes]);
@@ -1311,7 +1313,8 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                   type="button"
                   onClick={() => {
                     try {
-                      store.markDailyTimeBlockSkipped(todayDateKey, activeBlock.id);
+                      const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
+                      store.markDailyTimeBlockSkipped(todayDateKey, activeBlock.id, nowStr);
                       showSuccessToast('Block Skipped', 'Live block marked as skipped.');
                     } catch (err: any) {
                       showErrorToast('Failed to Skip Block', err?.message);

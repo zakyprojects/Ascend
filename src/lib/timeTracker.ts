@@ -251,6 +251,8 @@ export function autoHydrateDailyLog(
     createdAt: new Date().toISOString(),
     completed: false,
     completedAt: undefined,
+    skipped: false,
+    skippedAt: undefined,
   }));
 
   const nextDailyLogs = {
