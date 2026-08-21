@@ -15,6 +15,7 @@ import {
 import { todayKey, formatDateKeyHuman } from '@/lib/dates';
 import { ActivityIcon } from './ActivityIcon';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import {
   Layers,
@@ -31,6 +32,7 @@ import {
   Brain,
   Heart,
   Moon,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface TemplatesTabProps {
@@ -54,6 +56,12 @@ export function TemplatesTab({
 }: TemplatesTabProps) {
   const { showSuccessToast, showErrorToast } = useToast();
   const [deleteTargetTemplate, setDeleteTargetTemplate] = useState<TimeTrackerTemplate | null>(null);
+  const [conflictState, setConflictState] = useState<{
+    isOpen: boolean;
+    day: string;
+    template: TimeTrackerTemplate;
+    conflictingTitle: string;
+  } | null>(null);
 
   const activityMap = useMemo(() => {
     const map = new Map<string, TimeTrackerActivity>();
@@ -115,20 +123,26 @@ export function TemplatesTab({
       console.log(`[TRACER] conflictingTemplate found:`, conflictingTemplate?.title);
 
       if (conflictingTemplate) {
-        const confirmed = window.confirm(
-          `The day '${day}' is already set to auto-apply for the template '${conflictingTemplate.title}'. Do you want to replace it?`
-        );
-        console.log(`[TRACER] user confirmed replacement:`, confirmed);
-        if (!confirmed) {
-          console.log(`[TRACER] Action aborted by user.`);
-          return;
-        }
+        setConflictState({
+          isOpen: true,
+          day,
+          template,
+          conflictingTitle: conflictingTemplate.title,
+        });
+        return;
       }
     }
 
     console.log(`[TRACER] Firing store.toggleTemplateAutoApplyDay...`);
     store.toggleTemplateAutoApplyDay(template.id, day);
     console.log(`[TRACER] Store function fired successfully.`);
+  };
+
+  const confirmTransfer = () => {
+    if (conflictState) {
+      store.toggleTemplateAutoApplyDay(conflictState.template.id, conflictState.day);
+      setConflictState(null);
+    }
   };
 
   return (
@@ -421,6 +435,39 @@ export function TemplatesTab({
           title="Delete Blueprint Template?"
           description={`Are you sure you want to permanently delete "${deleteTargetTemplate.title}"? Existing scheduled days will not be affected.`}
         />
+      )}
+
+      {/* Transfer Auto-Apply Day Modal */}
+      {conflictState && (
+        <Modal
+          open={conflictState.isOpen}
+          onClose={() => setConflictState(null)}
+          title="Transfer Auto-Apply Day?"
+          maxWidth="max-w-md"
+        >
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3 mb-6">
+            <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
+            <p className="text-sm text-amber-200/90 leading-relaxed">
+              Are you sure you want to replace it? The day <strong className="text-amber-100">{conflictState.day}</strong> is currently assigned to <strong className="text-amber-100">{conflictState.conflictingTitle}</strong>.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setConflictState(null)}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmTransfer}
+              className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-amber-600 hover:bg-amber-500 transition-colors cursor-pointer"
+            >
+              Transfer Day
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

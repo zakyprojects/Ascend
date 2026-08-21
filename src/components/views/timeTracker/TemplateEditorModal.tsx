@@ -52,6 +52,13 @@ export function TemplateEditorModal({
   const [targetBlockForModal, setTargetBlockForModal] = useState<TimeTrackerBlock | null>(null);
   const [showBlockModal, setShowBlockModal] = useState<boolean>(false);
 
+  // Transfer Day Confirmation Modal State
+  const [conflictState, setConflictState] = useState<{
+    isOpen: boolean;
+    day: string;
+    conflictingTitle: string;
+  } | null>(null);
+
   useEffect(() => {
     if (!open) return;
 
@@ -73,6 +80,7 @@ export function TemplateEditorModal({
     setShowBlockModal(false);
     setTargetBlockForModal(null);
     setValidationError(null);
+    setConflictState(null);
   }, [open, editingTemplate, activities]);
 
   const toggleDay = (day: string) => {
@@ -94,14 +102,12 @@ export function TemplateEditorModal({
       console.log(`[TRACER MODAL] conflictingTemplate:`, conflictingTemplate?.title);
 
       if (conflictingTemplate) {
-        const confirmed = window.confirm(
-          `The day '${day}' is already set to auto-apply for the template '${conflictingTemplate.title}'. Do you want to replace it?`
-        );
-        console.log(`[TRACER MODAL] user confirmed:`, confirmed);
-        if (!confirmed) {
-          console.log(`[TRACER MODAL] Aborted.`);
-          return;
-        }
+        setConflictState({
+          isOpen: true,
+          day,
+          conflictingTitle: conflictingTemplate.title,
+        });
+        return;
       }
     }
 
@@ -111,6 +117,18 @@ export function TemplateEditorModal({
         ? prev.filter((d) => d.toLowerCase() !== day.toLowerCase())
         : [...prev, day]
     );
+  };
+
+  const confirmTransfer = () => {
+    if (conflictState) {
+      const day = conflictState.day;
+      setActiveDays((prev) =>
+        prev.some((d) => d.toLowerCase() === day.toLowerCase())
+          ? prev.filter((d) => d.toLowerCase() !== day.toLowerCase())
+          : [...prev, day]
+      );
+      setConflictState(null);
+    }
   };
 
   const handleOpenAddBlock = () => {
@@ -398,6 +416,39 @@ export function TemplateEditorModal({
           editingBlock={targetBlockForModal}
           existingBlocks={blocks.filter((b) => b.id !== targetBlockForModal?.id)}
         />
+      )}
+
+      {/* Transfer Auto-Apply Day Modal */}
+      {conflictState && (
+        <Modal
+          open={conflictState.isOpen}
+          onClose={() => setConflictState(null)}
+          title="Transfer Auto-Apply Day?"
+          maxWidth="max-w-md"
+        >
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3 mb-6">
+            <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
+            <p className="text-sm text-amber-200/90 leading-relaxed">
+              Are you sure you want to replace it? The day <strong className="text-amber-100">{conflictState.day}</strong> is currently assigned to <strong className="text-amber-100">{conflictState.conflictingTitle}</strong>.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setConflictState(null)}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmTransfer}
+              className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-amber-600 hover:bg-amber-500 transition-colors cursor-pointer"
+            >
+              Transfer Day
+            </button>
+          </div>
+        </Modal>
       )}
     </>
   );
