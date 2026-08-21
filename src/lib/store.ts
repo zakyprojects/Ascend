@@ -6237,7 +6237,7 @@ export function useAppState() {
         if (b.id === blockId) return targetNewBlock;
         const bStart = timeStringToMinutes(b.startTime);
         const bEnd = timeStringToMinutes(b.endTime);
-        if (bStart < newStartMins && bEnd > newStartMins) {
+        if (bStart <= newStartMins && bEnd > newStartMins) {
           return {
             ...b,
             endTime: newStartTime,
@@ -6263,7 +6263,7 @@ export function useAppState() {
             if (b.id === blockId) return targetNewBlock;
             const bStart = timeStringToMinutes(b.startTime);
             const bEnd = timeStringToMinutes(b.endTime);
-            if (bStart < newStartMins && bEnd > newStartMins) {
+            if (bStart <= newStartMins && bEnd > newStartMins) {
               return {
                 ...b,
                 endTime: newStartTime,

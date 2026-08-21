@@ -169,6 +169,11 @@ export function checkTimeCollision(
     const existStart = timeStringToMinutes(block.startTime);
     const existEnd = timeStringToMinutes(block.endTime);
 
+    // Back-to-back blocks or non-overlapping intervals safely continue
+    if (existStart >= newEnd || existEnd <= newStart) {
+      continue;
+    }
+
     // Overlap condition: max(start1, start2) < min(end1, end2)
     if (Math.max(newStart, existStart) < Math.min(newEnd, existEnd)) {
       return {
