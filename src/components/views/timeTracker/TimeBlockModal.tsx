@@ -372,7 +372,7 @@ export function TimeBlockModal({
           </button>
           <button
             type="submit"
-            disabled={isSaving || isZeroDuration || !activityId}
+            disabled={isSaving || isZeroDuration}
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
           >
             {isSaving ? (
