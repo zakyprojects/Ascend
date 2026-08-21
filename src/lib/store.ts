@@ -6050,8 +6050,6 @@ export function useAppState() {
         if (!target) return prev;
 
         const isCurrentlyCompleted = target.completed;
-        let pointsUpdate = {};
-        const extraFocusLogs: FocusSessionLog[] = [];
 
         const updatedBlocks = prevDailyBlocks.map((b) => {
           if (b.id !== blockId) return b;
@@ -6077,36 +6075,6 @@ export function useAppState() {
               }
             }
 
-            // Award Focus / Deep Work points & session log (Bug 6)
-            const act = (prevTT.activities || []).find((a) => a.id === b.activityId);
-            const actName = (act?.name || b.customTitle || '').toLowerCase();
-            const isDeepWorkOrFocus =
-              actName.includes('deep work') ||
-              actName.includes('focus') ||
-              act?.ascendModule === 'Deep Focus';
-
-            if (isDeepWorkOrFocus) {
-              const startMins = timeStringToMinutes(b.startTime);
-              const endMins = timeStringToMinutes(finalEndTime);
-              const durationMinutes = Math.max(1, endMins - startMins);
-              const pointsToAward = Math.max(5, Math.round(durationMinutes * 0.6));
-              const focusLog: FocusSessionLog = {
-                id: uid(),
-                date: dateKey,
-                taskName: b.customTitle || act?.name || 'Deep Focus',
-                durationMinutes,
-                pointsAwarded: pointsToAward,
-                createdAt: new Date().toISOString(),
-              };
-              extraFocusLogs.push(focusLog);
-              pointsUpdate = addPointsInternal(
-                prev,
-                pointsToAward,
-                `Focus block completed: ${b.customTitle || act?.name || 'Deep Focus'} (${durationMinutes}m)`,
-                'focus'
-              );
-            }
-
             return {
               ...b,
               endTime: finalEndTime,
@@ -6130,8 +6098,6 @@ export function useAppState() {
 
         return {
           ...prev,
-          focusLogs: [...extraFocusLogs, ...prev.focusLogs],
-          ...pointsUpdate,
           timeTracker: {
             ...prevTT,
             dailyLogs: {
