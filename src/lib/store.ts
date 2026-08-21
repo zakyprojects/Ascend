@@ -5828,7 +5828,7 @@ export function useAppState() {
         const createdBlock: TimeTrackerBlock = {
           ...splitBlocks[0],
           id: uid(),
-          createdAt: Date.now(),
+          createdAt: new Date().toISOString(),
           completed: false,
         };
 
@@ -5870,14 +5870,14 @@ export function useAppState() {
       const createdPart1: TimeTrackerBlock = {
         ...splitBlocks[0],
         id: uid(),
-        createdAt: Date.now(),
+        createdAt: new Date().toISOString(),
         completed: false,
       };
 
       const createdPart2: TimeTrackerBlock = {
         ...splitBlocks[1],
         id: uid(),
-        createdAt: Date.now(),
+        createdAt: new Date().toISOString(),
         completed: false,
       };
 
@@ -5982,7 +5982,7 @@ export function useAppState() {
         startTime: splitBlocks[1].startTime,
         endTime: splitBlocks[1].endTime,
         id: uid(),
-        createdAt: Date.now(),
+        createdAt: new Date().toISOString(),
         completed: false,
       };
 
@@ -6334,7 +6334,7 @@ export function useAppState() {
           const createFreshBlock = (b: any) => ({
             ...b,
             id: crypto.randomUUID(),
-            createdAt: Date.now(),
+            createdAt: new Date().toISOString(),
             completed: false,
             skipped: false,
             completedAt: undefined,
