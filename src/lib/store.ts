@@ -6120,24 +6120,61 @@ export function useAppState() {
   );
 
   const markDailyTimeBlockSkipped = useCallback(
-    (dateKey: string, blockId: string) => {
+    (dateKey: string, blockId: string, passedTimeStr?: string) => {
       setState((prev) => {
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
         const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
         const target = prevDailyBlocks.find((b) => b.id === blockId);
         if (!target) return prev;
 
-        const updatedBlocks = prevDailyBlocks.map((b) =>
-          b.id === blockId
-            ? {
-                ...b,
-                completed: false,
-                completedAt: undefined,
-                skipped: true,
-                updatedAt: new Date().toISOString(),
+        const isCurrentlySkipped = target.skipped;
+
+        const updatedBlocks = prevDailyBlocks.map((b) => {
+          if (b.id !== blockId) return b;
+
+          if (!isCurrentlySkipped) {
+            // SKIPPING: Execute trim logic (Dimension 2) ONLY for todayKey
+            let finalEndTime = b.endTime;
+            let trimmedOriginalEndTime = b.trimmedOriginalEndTime;
+
+            if (dateKey === todayKey()) {
+              let timeStr = passedTimeStr;
+              if (!timeStr) {
+                const now = new Date();
+                timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
               }
-            : b
-        );
+              const currentMins = timeStringToMinutes(timeStr);
+              const originalEndMins = timeStringToMinutes(b.endTime);
+              const startMins = timeStringToMinutes(b.startTime);
+
+              if (currentMins < originalEndMins && currentMins > startMins) {
+                trimmedOriginalEndTime = b.endTime;
+                finalEndTime = timeStr;
+              }
+            }
+
+            return {
+              ...b,
+              endTime: finalEndTime,
+              trimmedOriginalEndTime,
+              completed: false,
+              completedAt: undefined,
+              skipped: true,
+              updatedAt: new Date().toISOString(),
+            };
+          } else {
+            // UN-SKIPPING: Restore endTime ONLY from trimmedOriginalEndTime (Dimension 2 isolation)
+            return {
+              ...b,
+              endTime: b.trimmedOriginalEndTime || b.endTime,
+              trimmedOriginalEndTime: undefined,
+              completed: false,
+              completedAt: undefined,
+              skipped: false,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+        });
 
         return {
           ...prev,
