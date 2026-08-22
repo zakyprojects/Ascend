@@ -48,13 +48,20 @@ import {
   formatDurationHuman,
   computeLiveSchedule,
   ensureDefaultActivities,
+  getAscendViewForModule,
 } from '@/lib/timeTracker';
 import { ActivityIcon } from './timeTracker/ActivityIcon';
 import { useToast } from '@/components/ui/Toast';
 
 type PFCTab = 'focus' | 'decision' | 'emotion';
 
-export function PrefrontalCortex({ store }: { store: AppStore }) {
+export function PrefrontalCortex({
+  store,
+  onNavigate,
+}: {
+  store: AppStore;
+  onNavigate?: (view: any) => void;
+}) {
   const [activeTab, setActiveTab] = useState<PFCTab>('focus');
 
   return (
@@ -111,7 +118,7 @@ export function PrefrontalCortex({ store }: { store: AppStore }) {
 
       {/* Tab Contents */}
       <div className={activeTab === 'focus' ? 'block' : 'hidden'}>
-        <FocusTimerSubmodule store={store} />
+        <FocusTimerSubmodule store={store} onNavigate={onNavigate} />
       </div>
       <div className={activeTab === 'decision' ? 'block' : 'hidden'}>
         <DecisionJournalSubmodule store={store} />
@@ -198,7 +205,13 @@ async function sendCompletionNotification(mode: 'focus' | 'break', taskName: str
   }
 }
 
-function FocusTimerSubmodule({ store }: { store: AppStore }) {
+function FocusTimerSubmodule({
+  store,
+  onNavigate,
+}: {
+  store: AppStore;
+  onNavigate?: (view: any) => void;
+}) {
   const [deleteModalLog, setDeleteModalLog] = useState<any | null>(null);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
@@ -1375,7 +1388,21 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                 </div>
                 <span className="font-semibold text-slate-200">{activeBlockActivity?.name || 'Active Task'}</span>
                 {activeBlockActivity?.ascendModule && (
-                  <span className="text-[10px] text-emerald-400 font-mono">[{activeBlockActivity.ascendModule}]</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!onNavigate) return;
+                      const targetView = getAscendViewForModule(activeBlockActivity.ascendModule, activeBlockActivity.name);
+                      if (targetView) onNavigate(targetView);
+                    }}
+                    className={`text-[10px] text-emerald-400 font-mono flex items-center gap-0.5 ${
+                      onNavigate ? 'hover:text-emerald-300 hover:underline cursor-pointer' : ''
+                    }`}
+                    title={onNavigate ? `Open ${activeBlockActivity.ascendModule} module` : undefined}
+                  >
+                    <span>[{activeBlockActivity.ascendModule}]</span>
+                  </button>
                 )}
               </div>
 
@@ -1396,14 +1423,29 @@ function FocusTimerSubmodule({ store }: { store: AppStore }) {
                   {activeBlock.secondaryActivityIds.map((secId) => {
                     const secAct = activityMap.get(secId);
                     if (!secAct) return null;
+                    const hasMod = Boolean(secAct.ascendModule && onNavigate);
                     return (
-                      <span
+                      <button
+                        type="button"
                         key={secId}
-                        className="text-xs font-medium text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1 shadow-sm truncate max-w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (secAct.ascendModule && onNavigate) {
+                            const targetView = getAscendViewForModule(secAct.ascendModule, secAct.name);
+                            if (targetView) onNavigate(targetView);
+                          }
+                        }}
+                        className={`text-xs font-medium text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1 shadow-sm truncate max-w-full ${
+                          hasMod ? 'hover:bg-emerald-500/25 cursor-pointer hover:underline' : ''
+                        }`}
+                        title={secAct.ascendModule && onNavigate ? `Open ${secAct.ascendModule} module` : secAct.name}
                       >
                         <Zap size={11} className="text-emerald-400 shrink-0" />
                         <span className="truncate">+{secAct.name}</span>
-                      </span>
+                        {secAct.ascendModule && (
+                          <span className="text-[10px] text-emerald-400/80 font-mono">[{secAct.ascendModule}]</span>
+                        )}
+                      </button>
                     );
                   })}
                 </div>

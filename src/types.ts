@@ -771,6 +771,15 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
     createdAt: '2026-01-01T00:00:00.000Z',
   },
   {
+    id: 'act-skills',
+    name: 'Skills',
+    color: '#8b5cf6', // Violet
+    icon: 'Sparkles',
+    isSystemDefault: true,
+    ascendModule: 'Skills',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
     id: 'act-break',
     name: 'Break',
     color: '#10b981', // Emerald

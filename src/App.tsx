@@ -73,7 +73,7 @@ function App() {
           {view === 'skills' && <SkillTracker store={store} />}
           {view === 'bad-habits' && <BadHabitTracker store={store} />}
           {view === 'recovery' && <AddictionRecovery store={store} />}
-          {view === 'prefrontal' && <PrefrontalCortex store={store} />}
+          {view === 'prefrontal' && <PrefrontalCortex store={store} onNavigate={setView} />}
           {view === 'plans' && <ImprovementPlans store={store} />}
           {view === 'partner' && <AccountabilityPartner store={store} />}
           {view === 'tiers' && <TierView store={store} />}

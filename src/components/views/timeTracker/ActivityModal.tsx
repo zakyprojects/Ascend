@@ -38,8 +38,8 @@ export function ActivityModal({
   editingActivity,
 }: ActivityModalProps) {
   const [name, setName] = useState<string>('');
-  const [color, setColor] = useState<string>('#10b981');
-  const [icon, setIcon] = useState<string>('Activity');
+  const [color, setColor] = useState<string>('');
+  const [icon, setIcon] = useState<string>('');
   const [ascendModule, setAscendModule] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,8 +54,8 @@ export function ActivityModal({
       setAscendModule(editingActivity.ascendModule || '');
     } else {
       setName('');
-      setColor('#10b981');
-      setIcon('Activity');
+      setColor('');
+      setIcon('');
       setAscendModule('');
     }
     setError(null);
@@ -65,6 +65,14 @@ export function ActivityModal({
     e.preventDefault();
     if (!name.trim()) {
       setError('Activity name is required.');
+      return;
+    }
+    if (!color) {
+      setError('Please select a color accent for this category.');
+      return;
+    }
+    if (!icon) {
+      setError('Please select an icon for this category.');
       return;
     }
 
@@ -105,9 +113,17 @@ export function ActivityModal({
         <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/10">
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors shadow-inner"
-            style={{ backgroundColor: `${color}25`, color }}
+            style={{
+              backgroundColor: color ? `${color}25` : 'rgba(255, 255, 255, 0.05)',
+              color: color || '#94a3b8',
+              border: color ? `1px solid ${color}40` : '1px solid rgba(255, 255, 255, 0.1)',
+            }}
           >
-            <ActivityIcon iconName={icon} size={24} />
+            {icon ? (
+              <ActivityIcon iconName={icon} size={24} />
+            ) : (
+              <Sparkles size={22} className="text-slate-500" />
+            )}
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-100">
@@ -122,7 +138,7 @@ export function ActivityModal({
         {/* Category Name */}
         <div>
           <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-            Category Name
+            Category Name <span className="text-rose-400">*</span>
           </label>
           <input
             type="text"
@@ -137,7 +153,7 @@ export function ActivityModal({
         {/* Color Picker */}
         <div>
           <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            Color Accent
+            Color Accent <span className="text-rose-400">*</span>
           </label>
           <div className="flex flex-wrap gap-2">
             {AVAILABLE_ACTIVITY_COLORS.map((col) => {
@@ -148,7 +164,7 @@ export function ActivityModal({
                   key={col.value}
                   onClick={() => setColor(col.value)}
                   className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer ${
-                    isSelected ? 'scale-110 border-white shadow-lg' : 'border-transparent hover:scale-105'
+                    isSelected ? 'scale-110 border-white shadow-lg' : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100'
                   }`}
                   style={{ backgroundColor: col.value }}
                   title={col.name}
@@ -161,7 +177,7 @@ export function ActivityModal({
         {/* Icon Picker */}
         <div>
           <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            Category Icon
+            Category Icon <span className="text-rose-400">*</span>
           </label>
           <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-36 overflow-y-auto p-1 bg-slate-950/50 rounded-xl border border-white/5">
             {AVAILABLE_ACTIVITY_ICONS.map((ic) => {

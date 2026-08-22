@@ -33,6 +33,7 @@ import {
   Heart,
   Moon,
   AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 
 interface TemplatesTabProps {
@@ -159,13 +160,28 @@ export function TemplatesTab({
           </p>
         </div>
 
-        <button
-          onClick={onOpenCreateTemplateModal}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all shrink-0 cursor-pointer"
-        >
-          <Plus size={15} />
-          <span>Create Template</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {store.state.deletedEntityIds?.includes('template-default-weekday') && (
+            <button
+              onClick={() => {
+                store.restoreTimeTrackerTemplate('template-default-weekday');
+                showSuccessToast('Template Restored', 'Standard Productive Day blueprint has been restored.');
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl transition-all cursor-pointer"
+            >
+              <RotateCcw size={13} />
+              <span>Restore Default Blueprint</span>
+            </button>
+          )}
+
+          <button
+            onClick={onOpenCreateTemplateModal}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all shrink-0 cursor-pointer"
+          >
+            <Plus size={15} />
+            <span>Create Template</span>
+          </button>
+        </div>
       </div>
 
       {/* Blueprint Philosophy / 8-8-8 Guide */}
@@ -226,13 +242,28 @@ export function TemplatesTab({
               Save time every day by building recurring 24-hour routine blueprints. Days assigned to these blueprints will automatically apply each morning.
             </p>
           </div>
-          <button
-            onClick={onOpenCreateTemplateModal}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
-          >
-            <Plus size={14} />
-            <span>Create Your First Blueprint</span>
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={onOpenCreateTemplateModal}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>Create Your First Blueprint</span>
+            </button>
+
+            {store.state.deletedEntityIds?.includes('template-default-weekday') && (
+              <button
+                onClick={() => {
+                  store.restoreTimeTrackerTemplate('template-default-weekday');
+                  showSuccessToast('Template Restored', 'Standard Productive Day blueprint has been restored.');
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-semibold transition-all cursor-pointer"
+              >
+                <RotateCcw size={14} className="text-emerald-400" />
+                <span>Restore Default Blueprint</span>
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">

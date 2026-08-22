@@ -13,6 +13,7 @@ import {
   getDayOfWeekName,
   timeStringToMinutes,
   minutesToTimeString,
+  getAscendViewForModule,
 } from '@/lib/timeTracker';
 import { todayKey, formatDateKeyHuman } from '@/lib/dates';
 import { ActivityIcon } from './ActivityIcon';
@@ -180,10 +181,9 @@ export function ScheduleTab({
 
     const title = block.customTitle || act?.name || 'Focus Block';
 
-    if (
-      mod === 'Deep Focus' ||
-      (!targetModule && (act?.name.toLowerCase().includes('deep work') || act?.name.toLowerCase().includes('focus')))
-    ) {
+    const targetView = getAscendViewForModule(targetModule || act?.ascendModule, act?.name);
+
+    if (targetView === 'prefrontal') {
       try {
         sessionStorage.removeItem('ascend_pending_focus_task');
         sessionStorage.removeItem('ascend_pending_focus_duration');
@@ -195,22 +195,8 @@ export function ScheduleTab({
       if (onNavigate) {
         onNavigate('prefrontal');
       }
-    } else if (mod === 'Exercise' || (!targetModule && act?.name.toLowerCase().includes('exercise'))) {
-      if (onNavigate) {
-        onNavigate('exercise');
-      }
-    } else if (mod === 'Reading' || (!targetModule && act?.name.toLowerCase().includes('reading'))) {
-      if (onNavigate) {
-        onNavigate('reading');
-      }
-    } else if (mod === 'Skills' || (!targetModule && act?.name.toLowerCase().includes('skill'))) {
-      if (onNavigate) {
-        onNavigate('skills');
-      }
-    } else if (mod === 'Habits') {
-      if (onNavigate) {
-        onNavigate('habits');
-      }
+    } else if (targetView && onNavigate) {
+      onNavigate(targetView);
     }
   };
 
@@ -849,7 +835,7 @@ export function ScheduleTab({
                                   onClick={() => handleLaunchModuleHandoff(block, item.moduleId)}
                                   className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1 cursor-pointer"
                                 >
-                                  <span>Open Session</span>
+                                  <span>Open {item.moduleId}</span>
                                   <Play size={10} className="fill-current" />
                                 </button>
                               </div>

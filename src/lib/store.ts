@@ -5814,6 +5814,35 @@ export function useAppState() {
     []
   );
 
+  const restoreTimeTrackerTemplate = useCallback(
+    (id: string) => {
+      setState(
+        (prev) => {
+          const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+          const updatedDeleted = (prev.deletedEntityIds || []).filter((dId) => dId !== id);
+          const exists = (currentTT.templates || []).some((t) => t.id === id);
+          let newTemplates = currentTT.templates || [];
+          if (!exists) {
+            const defaultTpl = DEFAULT_TIME_TRACKER_STATE.templates.find((t) => t.id === id);
+            if (defaultTpl) {
+              newTemplates = [...newTemplates, defaultTpl];
+            }
+          }
+          return {
+            ...prev,
+            timeTracker: {
+              ...currentTT,
+              templates: newTemplates,
+            },
+            deletedEntityIds: updatedDeleted,
+          };
+        },
+        { immediate: true }
+      );
+    },
+    []
+  );
+
   const addDailyTimeBlock = useCallback(
     (dateKey: string, block: Omit<TimeTrackerBlock, 'id'>) => {
       const currentTT = state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
@@ -6662,6 +6691,7 @@ export function useAppState() {
     createTimeTrackerTemplate,
     updateTimeTrackerTemplate,
     deleteTimeTrackerTemplate,
+    restoreTimeTrackerTemplate,
     toggleTemplateAutoApplyDay,
     addDailyTimeBlock,
     updateDailyTimeBlock,

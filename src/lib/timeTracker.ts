@@ -392,6 +392,59 @@ export function computeLiveSchedule(
 }
 
 /**
+ * Maps an Ascend module name or activity metadata to its corresponding application view route.
+ */
+export function getAscendViewForModule(
+  ascendModule?: string,
+  activityName?: string
+): 'prefrontal' | 'exercise' | 'reading' | 'skills' | 'habits' | 'recovery' | null {
+  const mod = ascendModule?.trim();
+  const actNameLower = activityName?.toLowerCase() || '';
+
+  if (
+    mod === 'Deep Focus' ||
+    mod === 'Prefrontal Cortex' ||
+    (!mod && (actNameLower.includes('deep work') || actNameLower.includes('focus')))
+  ) {
+    return 'prefrontal';
+  }
+  if (
+    mod === 'Exercise' ||
+    (!mod && actNameLower.includes('exercise'))
+  ) {
+    return 'exercise';
+  }
+  if (
+    mod === 'Reading' ||
+    (!mod && actNameLower.includes('reading'))
+  ) {
+    return 'reading';
+  }
+  if (
+    mod === 'Skills' ||
+    mod === 'Skill Mastery' ||
+    (!mod && actNameLower.includes('skill'))
+  ) {
+    return 'skills';
+  }
+  if (
+    mod === 'Habits' ||
+    (!mod && actNameLower.includes('habit'))
+  ) {
+    return 'habits';
+  }
+  if (
+    mod === 'Recovery' ||
+    mod === 'Addiction Recovery' ||
+    (!mod && (actNameLower.includes('recovery') || actNameLower.includes('dopamine') || actNameLower.includes('addiction')))
+  ) {
+    return 'recovery';
+  }
+
+  return null;
+}
+
+/**
  * Ensures system default activities are present and merged in state.
  */
 export function ensureDefaultActivities(
