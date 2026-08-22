@@ -262,14 +262,12 @@ function FocusTimerSubmodule({
   }, []);
 
   const todayDateKey = todayKey(currentTime);
-  const IGNITION_ACTIVE_KEY = 'ascend_pfc_ignition_active';
   const IGNITION_KEY = `ascend_pfc_schedule_ignited_${todayDateKey}`;
   const [isScheduleIgnited, setIsScheduleIgnited] = useState<boolean>(() => {
     try {
-      return (
-        localStorage.getItem(IGNITION_ACTIVE_KEY) === 'true' ||
-        localStorage.getItem(`ascend_pfc_schedule_ignited_${todayKey(new Date())}`) === 'true'
-      );
+      // Proactively clear legacy unscoped key if left over from previous version
+      localStorage.removeItem('ascend_pfc_ignition_active');
+      return localStorage.getItem(`ascend_pfc_schedule_ignited_${todayKey(new Date())}`) === 'true';
     } catch {
       return false;
     }
@@ -277,25 +275,23 @@ function FocusTimerSubmodule({
 
   const [showStopConfirm, setShowStopConfirm] = useState(false);
 
-  // Keep ignition state reactive when date flips across midnight without dropping active sync
+  // Sync ignition state strictly to the active date key (resets to false on midnight rollover)
   useEffect(() => {
     try {
-      const isActive =
-        localStorage.getItem(IGNITION_ACTIVE_KEY) === 'true' ||
-        localStorage.getItem(IGNITION_KEY) === 'true';
-      if (isActive) {
-        setIsScheduleIgnited(true);
-        localStorage.setItem(IGNITION_KEY, 'true');
-        localStorage.setItem(IGNITION_ACTIVE_KEY, 'true');
-      }
+      const isIgnitedForDate = localStorage.getItem(IGNITION_KEY) === 'true';
+      setIsScheduleIgnited(isIgnitedForDate);
     } catch {}
   }, [todayDateKey, IGNITION_KEY]);
 
   const handleIgniteSchedule = () => {
+    try {
+      store.hydrateTimeTrackerForDate(todayDateKey);
+    } catch {
+      /* best-effort hydration */
+    }
     setIsScheduleIgnited(true);
     try {
       localStorage.setItem(IGNITION_KEY, 'true');
-      localStorage.setItem(IGNITION_ACTIVE_KEY, 'true');
     } catch {}
   };
 
@@ -306,7 +302,7 @@ function FocusTimerSubmodule({
     setShowStopConfirm(false);
     try {
       localStorage.removeItem(IGNITION_KEY);
-      localStorage.removeItem(IGNITION_ACTIVE_KEY);
+      localStorage.removeItem('ascend_pfc_ignition_active');
     } catch {}
   };
 
