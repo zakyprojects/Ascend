@@ -30,11 +30,18 @@ import {
   Partnership,
   SharedChallenge,
   AppNotification,
+  TimeTrackerState,
+  TimeTrackerActivity,
+  TimeTrackerTemplate,
+  TimeTrackerBlock,
+  DEFAULT_TIME_TRACKER_ACTIVITIES,
+  DEFAULT_TIME_TRACKER_STATE,
   DEFAULT_STATE,
 } from '@/types';
 import { mergeSharedChallenge } from './pactLifecycle';
+import { ensureDefaultActivities } from './timeTracker';
 
-function mergeEntityArrays<T extends { id?: string; createdAt?: string }>(
+function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string }>(
   baseArr: T[] = [],
   incomingArr: T[] = [],
   tombstoneSet: Set<string>,
@@ -58,8 +65,8 @@ function mergeEntityArrays<T extends { id?: string; createdAt?: string }>(
       if (customMerge) {
         map.set(item.id, customMerge(existing, item));
       } else {
-        const existingTime = existing.createdAt || '';
-        const incomingTime = item.createdAt || '';
+        const existingTime = existing.updatedAt || (existing.createdAt !== undefined ? String(existing.createdAt) : '');
+        const incomingTime = item.updatedAt || (item.createdAt !== undefined ? String(item.createdAt) : '');
         if (incomingTime >= existingTime) {
           map.set(item.id, { ...existing, ...item });
         } else {
@@ -221,7 +228,21 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     ...(baseState.deletedEntityIds || []),
     ...(incomingState.deletedEntityIds || []),
   ]);
+
+  // Un-tombstone IDs that were explicitly restored in incomingState
+  for (const restoredId of incomingState.restoredEntityIds || []) {
+    tombstoneSet.delete(restoredId);
+  }
+
   const mergedDeletedEntityIds = Array.from(tombstoneSet).slice(-500);
+
+  // Union restoredEntityIds so restoration signals persist across syncs
+  const mergedRestoredEntityIds = Array.from(
+    new Set([
+      ...(baseState.restoredEntityIds || []),
+      ...(incomingState.restoredEntityIds || []),
+    ])
+  ).slice(-500);
 
   // 2. Habits (merge completions, filter tombstones)
   const habits = mergeEntityArrays(
@@ -583,6 +604,47 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     new Set([...(baseState.readLessonIds || []), ...(incomingState.readLessonIds || [])])
   );
 
+  // 16. Time Tracker
+  const baseTT = baseState.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+  const incTT = incomingState.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+
+  const mergedActivities = ensureDefaultActivities(
+    mergeEntityArrays(baseTT.activities || [], incTT.activities || [], tombstoneSet)
+  );
+
+  const mergedTemplates = mergeEntityArrays(
+    baseTT.templates || [],
+    incTT.templates || [],
+    tombstoneSet
+  );
+
+  const dailyLogsMap: Record<string, TimeTrackerBlock[]> = {};
+  const allDateKeys = new Set([
+    ...Object.keys(baseTT.dailyLogs || {}),
+    ...Object.keys(incTT.dailyLogs || {}),
+  ]);
+
+  for (const dateKey of allDateKeys) {
+    const baseBlocks = baseTT.dailyLogs?.[dateKey] || [];
+    const incBlocks = incTT.dailyLogs?.[dateKey] || [];
+    const mergedBlocks = mergeEntityArrays(baseBlocks, incBlocks, tombstoneSet);
+    dailyLogsMap[dateKey] = mergedBlocks;
+  }
+
+  const mergedClearedDates = Array.from(
+    new Set([
+      ...(baseTT.clearedDates || []),
+      ...(incTT.clearedDates || []),
+    ])
+  );
+
+  const mergedTimeTracker: TimeTrackerState = {
+    activities: mergedActivities,
+    templates: mergedTemplates,
+    dailyLogs: dailyLogsMap,
+    clearedDates: mergedClearedDates,
+  };
+
   const currentUser = incomingState.currentUser || baseState.currentUser || null;
   const username = (currentUser && currentUser.username) || incomingState.username || baseState.username || 'Guest User';
 
@@ -629,5 +691,7 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     leagueArchives,
     readLessonIds,
     deletedEntityIds: mergedDeletedEntityIds,
+    restoredEntityIds: mergedRestoredEntityIds,
+    timeTracker: mergedTimeTracker,
   };
 }

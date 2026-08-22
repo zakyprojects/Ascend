@@ -1,4 +1,4 @@
-import { Flame, TrendingUp, Star, BookOpen, Check, ArrowRight, Sparkles, Trophy, Brain, Calendar, CalendarDays, Activity, BookMarked, Zap, ShieldAlert, HeartPulse, Timer } from 'lucide-react';
+import { Flame, TrendingUp, Star, BookOpen, Check, ArrowRight, Sparkles, Trophy, Brain, Calendar, CalendarDays, Activity, BookMarked, Zap, ShieldAlert, HeartPulse, Timer, Clock } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
 import { calculateStreak, todayKey, formatDateLong, parseDate } from '@/lib/dates';
@@ -9,6 +9,7 @@ import { LEAGUE_CONFIG, formatCountdown, getTimeUntilReset, getSeasonLabel } fro
 import { LeagueType } from '@/types';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
+import { calculateBlockDurationMinutes, formatDurationHuman } from '@/lib/timeTracker';
 
 const LEAGUE_ICONS: Record<string, typeof Trophy> = {
   Calendar, CalendarDays, Brain,
@@ -66,6 +67,13 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
   const badHabitCount = store.state.badHabits.length;
   const activeAddiction = store.state.addictionTracker;
+
+  const todayBlocks = store.state.timeTracker?.dailyLogs?.[todayKey()] || [];
+  const todayScheduledMins = todayBlocks.reduce(
+    (sum, b) => sum + calculateBlockDurationMinutes(b.startTime, b.endTime),
+    0
+  );
+  const todayCompletedBlocksCount = todayBlocks.filter((b) => b.completed).length;
 
   return (
     <div className="space-y-6">
@@ -259,6 +267,28 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             <div>
               <div className="text-xl font-bold text-slate-100">{weeklyFocusMins} <span className="text-xs font-normal text-slate-400">focus mins this week</span></div>
               <div className="text-[11px] text-slate-500">Pomodoro, decisions & emotions</div>
+            </div>
+          </button>
+
+          {/* Time Tracker Blueprint Widget */}
+          <button
+            onClick={() => onViewChange('time-tracker')}
+            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-indigo-500"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-medium">Time Tracker</span>
+              <Clock size={18} className="text-indigo-400" />
+            </div>
+            <div>
+              <div className="text-xl font-bold text-slate-100">
+                {todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'}{' '}
+                <span className="text-xs font-normal text-slate-400">planned today</span>
+              </div>
+              <div className="text-[11px] text-slate-500">
+                {todayBlocks.length > 0
+                  ? `${todayCompletedBlocksCount}/${todayBlocks.length} blocks completed`
+                  : 'No scheduled blocks yet'}
+              </div>
             </div>
           </button>
         </div>

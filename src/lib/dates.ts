@@ -375,3 +375,28 @@ export function formatWeekRange(targetWeekKey: string): string {
   return `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${year}`;
 }
 
+/** Returns next date key safely in YYYY-MM-DD avoiding timezone shifts */
+export function getNextDateKey(dateKey: string): string {
+  const parts = dateKey.split('-');
+  if (parts.length !== 3) return dateKey;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  const d = new Date(year, month, day + 1);
+  return todayKey(d);
+}
+
+export function formatDateKeyHuman(dateKey: string): string {
+  const parts = dateKey.split('-');
+  if (parts.length !== 3) return dateKey;
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  const today = todayKey();
+  if (dateKey === today) return 'Today';
+  const yesterday = todayKey(new Date(Date.now() - 86400000));
+  if (dateKey === yesterday) return 'Yesterday';
+  const tomorrow = todayKey(new Date(Date.now() + 86400000));
+  if (dateKey === tomorrow) return 'Tomorrow';
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+

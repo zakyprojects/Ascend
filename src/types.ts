@@ -676,7 +676,230 @@ export interface AppState {
 
   // Tombstones for offline sync & deletion preservation
   deletedEntityIds?: string[];
+  restoredEntityIds?: string[];
+
+  // Time Tracker Module
+  timeTracker?: TimeTrackerState;
 }
+
+export interface TimeTrackerActivity {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  isSystemDefault: boolean;
+  ascendModule?: string; // 'Exercise' | 'Reading' | 'Deep Focus' | 'Habits' | 'Skills' | 'Journal' | 'Recovery'
+  createdAt?: string;
+}
+
+export interface TimeTrackerBlock {
+  id: string;
+  startTime: string; // "HH:mm" in 24h format (e.g. "09:30")
+  endTime: string;   // "HH:mm" in 24h format (e.g. "11:00")
+  originalStartTime?: string; // Saved when pulled forward / started early
+  originalEndTime?: string;   // Saved when shifted (early start)
+  trimmedOriginalEndTime?: string; // Saved specifically when completed early and trimmed
+  activityId: string;
+  secondaryActivityIds?: string[];
+  customTitle?: string;
+  completed?: boolean;
+  completedAt?: string;
+  skipped?: boolean;
+  skippedAt?: string;
+  notes?: string;
+  createdAt?: string | number;
+  updatedAt?: string;
+}
+
+export interface TimeTrackerTemplate {
+  id: string;
+  title: string;
+  blocks: TimeTrackerBlock[];
+  activeDays: string[]; // ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  autoApplyDays?: string[];
+  createdAt?: string;
+}
+
+export interface TimeTrackerState {
+  activities: TimeTrackerActivity[];
+  templates: TimeTrackerTemplate[];
+  dailyLogs: Record<string, TimeTrackerBlock[]>;
+  clearedDates?: string[];
+}
+
+export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
+  {
+    id: 'act-sleep',
+    name: 'Sleep',
+    color: '#6366f1', // Indigo
+    icon: 'Moon',
+    isSystemDefault: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'act-deep-work',
+    name: 'Deep Work',
+    color: '#06b6d4', // Cyan
+    icon: 'BrainCircuit',
+    isSystemDefault: true,
+    ascendModule: 'Deep Focus',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'act-praying',
+    name: 'Praying',
+    color: '#eab308', // Amber
+    icon: 'HeartHandshake',
+    isSystemDefault: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'act-exercise',
+    name: 'Exercise',
+    color: '#ef4444', // Red
+    icon: 'Activity',
+    isSystemDefault: true,
+    ascendModule: 'Exercise',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'act-reading',
+    name: 'Reading',
+    color: '#3b82f6', // Blue
+    icon: 'BookOpen',
+    isSystemDefault: true,
+    ascendModule: 'Reading',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'act-skills',
+    name: 'Skills',
+    color: '#8b5cf6', // Violet
+    icon: 'Sparkles',
+    isSystemDefault: true,
+    ascendModule: 'Skills',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'act-break',
+    name: 'Break',
+    color: '#10b981', // Emerald
+    icon: 'Coffee',
+    isSystemDefault: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'act-meals',
+    name: 'Meals',
+    color: '#f97316', // Orange
+    icon: 'Utensils',
+    isSystemDefault: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'act-entertainment',
+    name: 'Entertainment',
+    color: '#a855f7', // Purple
+    icon: 'Gamepad2',
+    isSystemDefault: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'act-walking',
+    name: 'Walking',
+    color: '#14b8a6', // Teal
+    icon: 'Footprints',
+    isSystemDefault: true,
+    ascendModule: 'Exercise',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+];
+
+export const DEFAULT_TIME_TRACKER_STATE: TimeTrackerState = {
+  activities: DEFAULT_TIME_TRACKER_ACTIVITIES,
+  templates: [
+    {
+      id: 'template-default-weekday',
+      title: 'Standard Productive Day',
+      activeDays: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      blocks: [
+        {
+          id: 'tpl-block-sleep',
+          startTime: '00:00',
+          endTime: '06:00',
+          activityId: 'act-sleep',
+          customTitle: 'Rest & Recovery',
+        },
+        {
+          id: 'tpl-block-pray-morning',
+          startTime: '06:00',
+          endTime: '06:30',
+          activityId: 'act-praying',
+          customTitle: 'Morning Prayer & Mindfulness',
+        },
+        {
+          id: 'tpl-block-exercise',
+          startTime: '06:30',
+          endTime: '07:30',
+          activityId: 'act-exercise',
+          customTitle: 'Morning Workout',
+        },
+        {
+          id: 'tpl-block-breakfast',
+          startTime: '07:30',
+          endTime: '08:30',
+          activityId: 'act-meals',
+          customTitle: 'Breakfast & Prep',
+        },
+        {
+          id: 'tpl-block-deep-work-1',
+          startTime: '09:00',
+          endTime: '12:00',
+          activityId: 'act-deep-work',
+          customTitle: 'Core Deep Work Session',
+        },
+        {
+          id: 'tpl-block-lunch',
+          startTime: '12:30',
+          endTime: '13:30',
+          activityId: 'act-meals',
+          customTitle: 'Lunch & Recharge',
+        },
+        {
+          id: 'tpl-block-reading',
+          startTime: '13:30',
+          endTime: '14:30',
+          activityId: 'act-reading',
+          customTitle: 'Growth Reading',
+        },
+        {
+          id: 'tpl-block-deep-work-2',
+          startTime: '15:00',
+          endTime: '18:00',
+          activityId: 'act-deep-work',
+          customTitle: 'Afternoon Focus Block',
+        },
+        {
+          id: 'tpl-block-dinner',
+          startTime: '19:00',
+          endTime: '20:00',
+          activityId: 'act-meals',
+          customTitle: 'Dinner & Family Time',
+        },
+        {
+          id: 'tpl-block-wind-down',
+          startTime: '22:00',
+          endTime: '23:59',
+          activityId: 'act-sleep',
+          customTitle: 'Night Wind Down & Sleep',
+        },
+      ],
+    },
+  ],
+  dailyLogs: {},
+  clearedDates: [],
+};
 
 export const DEFAULT_STATE: AppState = {
   currentUser: null,
@@ -714,6 +937,8 @@ export const DEFAULT_STATE: AppState = {
   sharedChallenges: [],
   notifications: [],
   deletedEntityIds: [],
+  restoredEntityIds: [],
+  timeTracker: DEFAULT_TIME_TRACKER_STATE,
 };
 
 
