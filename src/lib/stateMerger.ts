@@ -228,7 +228,21 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     ...(baseState.deletedEntityIds || []),
     ...(incomingState.deletedEntityIds || []),
   ]);
+
+  // Un-tombstone IDs that were explicitly restored in incomingState
+  for (const restoredId of incomingState.restoredEntityIds || []) {
+    tombstoneSet.delete(restoredId);
+  }
+
   const mergedDeletedEntityIds = Array.from(tombstoneSet).slice(-500);
+
+  // Union restoredEntityIds so restoration signals persist across syncs
+  const mergedRestoredEntityIds = Array.from(
+    new Set([
+      ...(baseState.restoredEntityIds || []),
+      ...(incomingState.restoredEntityIds || []),
+    ])
+  ).slice(-500);
 
   // 2. Habits (merge completions, filter tombstones)
   const habits = mergeEntityArrays(
@@ -677,6 +691,7 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     leagueArchives,
     readLessonIds,
     deletedEntityIds: mergedDeletedEntityIds,
+    restoredEntityIds: mergedRestoredEntityIds,
     timeTracker: mergedTimeTracker,
   };
 }

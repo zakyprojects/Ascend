@@ -335,6 +335,9 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
 
   const sanitizedLibraryBooks = Array.from(libraryMap.values());
 
+  const activeDeletedEntityIds = (st.deletedEntityIds ?? [])
+    .filter((id) => !(st.restoredEntityIds || []).includes(id));
+
   const baseState: AppState = {
     ...DEFAULT_STATE,
     ...st,
@@ -404,29 +407,30 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     improvementPlans: st.improvementPlans ?? [],
     followedPlans: st.followedPlans ?? [],
     partnerInvites: (st.partnerInvites ?? []).filter(
-      (inv) => !(st.deletedEntityIds || []).includes(inv.id)
+      (inv) => !activeDeletedEntityIds.includes(inv.id)
     ),
     partnership:
-      st.partnership && (st.deletedEntityIds || []).includes(st.partnership.id)
+      st.partnership && activeDeletedEntityIds.includes(st.partnership.id)
         ? null
         : (st.partnership ?? null),
     partnerships: (st.partnerships ?? []).filter(
-      (p) => !(st.deletedEntityIds || []).includes(p.id)
+      (p) => !activeDeletedEntityIds.includes(p.id)
     ),
     sharedChallenges: (st.sharedChallenges ?? [])
       .filter(
-        (c) => !(st.deletedEntityIds || []).includes(c.id) && !(st.deletedEntityIds || []).includes(c.partnershipId)
+        (c) => !activeDeletedEntityIds.includes(c.id) && !activeDeletedEntityIds.includes(c.partnershipId)
       )
       .map((c) => reconcileSharedChallengeLifecycle(c)),
     notifications: (st.notifications ?? [])
       .filter((n: any) => !n.createdAt || n.createdAt >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-      .filter((n: any) => !(st.deletedEntityIds || []).includes(n.id))
+      .filter((n: any) => !activeDeletedEntityIds.includes(n.id))
       .slice(0, 50),
-    deletedEntityIds: (st.deletedEntityIds ?? []).slice(-500),
+    deletedEntityIds: activeDeletedEntityIds.slice(-500),
+    restoredEntityIds: (st.restoredEntityIds ?? []).slice(-500),
     timeTracker: {
       activities: ensureDefaultActivities(st.timeTracker?.activities ?? DEFAULT_TIME_TRACKER_ACTIVITIES),
       templates: (st.timeTracker?.templates ?? DEFAULT_TIME_TRACKER_STATE.templates).filter(
-        (t) => !(st.deletedEntityIds || []).includes(t.id)
+        (t) => !activeDeletedEntityIds.includes(t.id)
       ),
       dailyLogs: st.timeTracker?.dailyLogs ?? {},
       clearedDates: st.timeTracker?.clearedDates ?? [],
@@ -5799,6 +5803,7 @@ export function useAppState() {
         (prev) => {
           const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
           const updatedDeleted = [...(prev.deletedEntityIds || []), id].slice(-500);
+          const updatedRestored = (prev.restoredEntityIds || []).filter((rId) => rId !== id);
           return {
             ...prev,
             timeTracker: {
@@ -5806,6 +5811,7 @@ export function useAppState() {
               templates: (currentTT.templates || []).filter((t) => t.id !== id),
             },
             deletedEntityIds: updatedDeleted,
+            restoredEntityIds: updatedRestored,
           };
         },
         { immediate: true }
@@ -5820,6 +5826,7 @@ export function useAppState() {
         (prev) => {
           const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
           const updatedDeleted = (prev.deletedEntityIds || []).filter((dId) => dId !== id);
+          const updatedRestored = [...(prev.restoredEntityIds || []), id].slice(-500);
           const exists = (currentTT.templates || []).some((t) => t.id === id);
           let newTemplates = currentTT.templates || [];
           if (!exists) {
@@ -5835,6 +5842,7 @@ export function useAppState() {
               templates: newTemplates,
             },
             deletedEntityIds: updatedDeleted,
+            restoredEntityIds: updatedRestored,
           };
         },
         { immediate: true }

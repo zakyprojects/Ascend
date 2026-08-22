@@ -161,7 +161,7 @@ export function TemplatesTab({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {store.state.deletedEntityIds?.includes('template-default-weekday') && (
+          {!store.state.timeTracker?.templates?.some((t) => t.id === 'template-default-weekday') && (
             <button
               onClick={() => {
                 store.restoreTimeTrackerTemplate('template-default-weekday');
@@ -251,7 +251,7 @@ export function TemplatesTab({
               <span>Create Your First Blueprint</span>
             </button>
 
-            {store.state.deletedEntityIds?.includes('template-default-weekday') && (
+            {!store.state.timeTracker?.templates?.some((t) => t.id === 'template-default-weekday') && (
               <button
                 onClick={() => {
                   store.restoreTimeTrackerTemplate('template-default-weekday');
