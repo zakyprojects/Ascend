@@ -338,11 +338,12 @@ function FocusTimerSubmodule({
 
   // Overdue Block Interceptor (The Accountability Lock)
   const nowMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const nowSeconds = currentTime.getHours() * 3600 + currentTime.getMinutes() * 60 + currentTime.getSeconds();
   const overdueBlock = useMemo(() => {
     return todayBlocks.find(
-      (b) => !b.completed && !b.skipped && nowMinutes > timeStringToMinutes(b.endTime)
+      (b) => !b.completed && !b.skipped && nowSeconds >= timeStringToMinutes(b.endTime) * 60
     );
-  }, [todayBlocks, nowMinutes]);
+  }, [todayBlocks, nowSeconds]);
   const overdueBlockActivity = overdueBlock ? activityMap.get(overdueBlock.activityId) : null;
 
   const currentResolvedBlock = useMemo(() => {
