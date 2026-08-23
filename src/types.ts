@@ -699,6 +699,8 @@ export interface TimeTrackerBlock {
   originalStartTime?: string; // Saved when pulled forward / started early
   originalEndTime?: string;   // Saved when shifted (early start)
   trimmedOriginalEndTime?: string; // Saved specifically when completed early and trimmed
+  pulledForwardTriggerId?: string; // ID of the early-resolved block that caused the gap
+  trimmedDueToPullId?: string;     // ID of the pulled-forward block that caused this block to be trimmed
   activityId: string;
   secondaryActivityIds?: string[];
   customTitle?: string;
