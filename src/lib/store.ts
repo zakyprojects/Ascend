@@ -6491,6 +6491,115 @@ export function useAppState() {
     []
   );
 
+  const startDailyBlockBreak = useCallback(
+    (dateKey: string, blockId: string, durationMinutes: number) => {
+      setState((prev) => {
+        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+        const target = prevDailyBlocks.find((b) => b.id === blockId);
+        if (!target) return prev;
+
+        const updatedBlocks = prevDailyBlocks.map((b) => {
+          if (b.id !== blockId) return b;
+          return {
+            ...b,
+            breakDurationMinutes: durationMinutes,
+            breakStartedAt: new Date().toISOString(),
+            breakEndedAt: undefined,
+            updatedAt: new Date().toISOString(),
+          };
+        });
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...prevTT,
+            dailyLogs: {
+              ...(prevTT.dailyLogs || {}),
+              [dateKey]: updatedBlocks,
+            },
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const endDailyBlockBreakEarly = useCallback(
+    (dateKey: string, blockId: string) => {
+      setState((prev) => {
+        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+        const target = prevDailyBlocks.find((b) => b.id === blockId);
+        if (!target) return prev;
+
+        const now = new Date();
+        const startMs = target.breakStartedAt ? new Date(target.breakStartedAt).getTime() : now.getTime();
+        const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - startMs) / 1000));
+        const plannedMinutes = target.breakDurationMinutes || 1;
+        const actualMinutes = Math.max(1, Math.min(plannedMinutes, Math.ceil(elapsedSeconds / 60)));
+
+        const updatedBlocks = prevDailyBlocks.map((b) => {
+          if (b.id !== blockId) return b;
+          return {
+            ...b,
+            breakDurationMinutes: actualMinutes,
+            breakEndedAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          };
+        });
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...prevTT,
+            dailyLogs: {
+              ...(prevTT.dailyLogs || {}),
+              [dateKey]: updatedBlocks,
+            },
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const finalizeDailyBlockBreakNatural = useCallback(
+    (dateKey: string, blockId: string) => {
+      setState((prev) => {
+        const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
+        const target = prevDailyBlocks.find((b) => b.id === blockId);
+        if (!target || !target.breakStartedAt || target.breakEndedAt) return prev;
+
+        const startMs = new Date(target.breakStartedAt).getTime();
+        const plannedMinutes = target.breakDurationMinutes || 1;
+        const exactEndIso = new Date(startMs + plannedMinutes * 60 * 1000).toISOString();
+
+        const updatedBlocks = prevDailyBlocks.map((b) => {
+          if (b.id !== blockId) return b;
+          return {
+            ...b,
+            breakEndedAt: exactEndIso,
+            updatedAt: new Date().toISOString(),
+          };
+        });
+
+        return {
+          ...prev,
+          timeTracker: {
+            ...prevTT,
+            dailyLogs: {
+              ...(prevTT.dailyLogs || {}),
+              [dateKey]: updatedBlocks,
+            },
+          },
+        };
+      });
+    },
+    []
+  );
+
   const applyTemplateToDate = useCallback(
     (dateKey: string, templateId: string, mode: 'merge' | 'replace' = 'merge') => {
       let addedCount = 0;
@@ -6770,6 +6879,9 @@ export function useAppState() {
     undoDailyTimeBlockResolution,
     undoEarlyStartTimeBlock,
     pullForwardDailyTimeBlock,
+    startDailyBlockBreak,
+    endDailyBlockBreakEarly,
+    finalizeDailyBlockBreakNatural,
     applyTemplateToDate,
     clearDailyTimeBlocks,
     hydrateTimeTrackerForDate,

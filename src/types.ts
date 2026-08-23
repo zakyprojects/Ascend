@@ -708,6 +708,9 @@ export interface TimeTrackerBlock {
   completedAt?: string;
   skipped?: boolean;
   skippedAt?: string;
+  breakDurationMinutes?: number; // Chosen break length (up to 15 min cap)
+  breakStartedAt?: string;       // ISO timestamp when break started
+  breakEndedAt?: string;         // ISO timestamp if ended early
   notes?: string;
   createdAt?: string | number;
   updatedAt?: string;
