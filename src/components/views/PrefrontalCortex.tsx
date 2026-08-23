@@ -338,11 +338,12 @@ function FocusTimerSubmodule({
 
   // Overdue Block Interceptor (The Accountability Lock)
   const nowMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const nowSeconds = currentTime.getHours() * 3600 + currentTime.getMinutes() * 60 + currentTime.getSeconds();
   const overdueBlock = useMemo(() => {
     return todayBlocks.find(
-      (b) => !b.completed && !b.skipped && nowMinutes > timeStringToMinutes(b.endTime)
+      (b) => !b.completed && !b.skipped && nowSeconds >= timeStringToMinutes(b.endTime) * 60
     );
-  }, [todayBlocks, nowMinutes]);
+  }, [todayBlocks, nowSeconds]);
   const overdueBlockActivity = overdueBlock ? activityMap.get(overdueBlock.activityId) : null;
 
   const currentResolvedBlock = useMemo(() => {
@@ -366,6 +367,33 @@ function FocusTimerSubmodule({
   const currentResolvedBlockActivity = currentResolvedBlock
     ? activityMap.get(currentResolvedBlock.activityId)
     : null;
+
+  // Strict Gap Trigger Resolution: Identifies the block whose early completion/skip opened the gap
+  const gapTriggerBlock = useMemo(() => {
+    // 1. If currently within the ghost window of an early-resolved block
+    if (currentResolvedBlock && currentResolvedBlock.trimmedOriginalEndTime) {
+      return currentResolvedBlock;
+    }
+
+    // 2. Fallback: Find the most recent early-resolved block earlier today
+    const pastEarlyResolved = todayBlocks
+      .filter(
+        (b) =>
+          Boolean(b.trimmedOriginalEndTime) &&
+          (b.completed || b.skipped) &&
+          timeStringToMinutes(b.endTime) <= nowMinutes
+      )
+      .sort((a, b) => {
+        const endA = timeStringToMinutes(a.endTime);
+        const endB = timeStringToMinutes(b.endTime);
+        if (endB !== endA) return endB - endA; // Latest end time first
+        const timeA = a.completedAt || a.skippedAt ? new Date(a.completedAt || a.skippedAt!).getTime() : 0;
+        const timeB = b.completedAt || b.skippedAt ? new Date(b.completedAt || b.skippedAt!).getTime() : 0;
+        return timeB - timeA;
+      });
+
+    return pastEarlyResolved[0] || undefined;
+  }, [currentResolvedBlock, todayBlocks, nowMinutes]);
 
   // Active Block calculations
   const activeBlock = liveSchedule.activeBlock;
@@ -1604,7 +1632,7 @@ function FocusTimerSubmodule({
                         onClick={() => {
                           const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
                           try {
-                            store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'shift');
+                            store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'shift', gapTriggerBlock?.id);
                             showSuccessToast('Block moved to now', `Started early at ${formatTime12h(nowStr)}`);
                           } catch (err: any) {
                             showErrorToast('Could Not Move Block', err?.message || 'Cannot move block due to a schedule collision.');
@@ -1622,7 +1650,7 @@ function FocusTimerSubmodule({
                         onClick={() => {
                           const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
                           try {
-                            store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'stretch');
+                            store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'stretch', gapTriggerBlock?.id);
                             showSuccessToast('Block extended to now', `Started early at ${formatTime12h(nowStr)}`);
                           } catch (err: any) {
                             showErrorToast('Could Not Extend Block', err?.message || 'Cannot extend block due to a schedule collision.');

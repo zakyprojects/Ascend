@@ -6084,6 +6084,64 @@ export function useAppState() {
     []
   );
 
+  // Helper function to revert an un-completed or un-skipped block and cascade-revert any dependent pulled-forward blocks
+  const revertBlockAndCascadingPulls = (
+    blocks: TimeTrackerBlock[],
+    targetBlockId: string
+  ): TimeTrackerBlock[] => {
+    // Collect IDs of any blocks that were pulled forward because of targetBlockId (if still pending)
+    const revertedPulledBlockIds = new Set(
+      blocks
+        .filter((b) => b.pulledForwardTriggerId === targetBlockId && !b.completed && !b.skipped)
+        .map((b) => b.id)
+    );
+
+    return blocks
+      .map((b) => {
+        // 1. Target block being uncompleted/unskipped: restore its own endTime and clear resolution/pull-link state
+        if (b.id === targetBlockId) {
+          return {
+            ...b,
+            endTime: b.trimmedOriginalEndTime || b.endTime,
+            trimmedOriginalEndTime: undefined,
+            trimmedDueToPullId: undefined,
+            completed: false,
+            completedAt: undefined,
+            skipped: false,
+            skippedAt: undefined,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+
+        // 2. Any block pulled forward because of targetBlockId (if still pending)
+        if (revertedPulledBlockIds.has(b.id)) {
+          return {
+            ...b,
+            startTime: b.originalStartTime || b.startTime,
+            endTime: b.originalEndTime || b.endTime,
+            originalStartTime: undefined,
+            originalEndTime: undefined,
+            pulledForwardTriggerId: undefined,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+
+        // 3. Any preceding block trimmed due to a pulled-forward block that is now reverted
+        if (b.trimmedDueToPullId && revertedPulledBlockIds.has(b.trimmedDueToPullId)) {
+          return {
+            ...b,
+            endTime: b.trimmedOriginalEndTime || b.endTime,
+            trimmedOriginalEndTime: undefined,
+            trimmedDueToPullId: undefined,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+
+        return b;
+      })
+      .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
+  };
+
   const toggleDailyTimeBlockCompleted = useCallback(
     (dateKey: string, blockId: string, passedTimeStr?: string) => {
       setState((prev) => {
@@ -6094,53 +6152,55 @@ export function useAppState() {
 
         const isCurrentlyCompleted = target.completed;
 
+        if (isCurrentlyCompleted) {
+          // UN-COMPLETING: Use cascade reversion to restore this block and any blocks pulled forward because of it
+          const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
+
+          return {
+            ...prev,
+            timeTracker: {
+              ...prevTT,
+              dailyLogs: {
+                ...(prevTT.dailyLogs || {}),
+                [dateKey]: updatedBlocks,
+              },
+            },
+          };
+        }
+
+        // COMPLETING: Execute trim logic (Dimension 2) ONLY for todayKey
         const updatedBlocks = prevDailyBlocks.map((b) => {
           if (b.id !== blockId) return b;
 
-          if (!isCurrentlyCompleted) {
-            // COMPLETING: Execute trim logic (Dimension 2) ONLY for todayKey
-            let finalEndTime = b.endTime;
-            let trimmedOriginalEndTime = b.trimmedOriginalEndTime;
+          let finalEndTime = b.endTime;
+          let trimmedOriginalEndTime = b.trimmedOriginalEndTime;
 
-            if (dateKey === todayKey()) {
-              let timeStr = passedTimeStr;
-              if (!timeStr) {
-                const now = new Date();
-                timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-              }
-              const currentMins = timeStringToMinutes(timeStr);
-              const originalEndMins = timeStringToMinutes(b.endTime);
-              const startMins = timeStringToMinutes(b.startTime);
-
-              if (currentMins < originalEndMins && currentMins > startMins) {
-                trimmedOriginalEndTime = b.endTime;
-                finalEndTime = timeStr;
-              }
+          if (dateKey === todayKey()) {
+            let timeStr = passedTimeStr;
+            if (!timeStr) {
+              const now = new Date();
+              timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
             }
+            const currentMins = timeStringToMinutes(timeStr);
+            const originalEndMins = timeStringToMinutes(b.endTime);
+            const startMins = timeStringToMinutes(b.startTime);
 
-            return {
-              ...b,
-              endTime: finalEndTime,
-              trimmedOriginalEndTime,
-              completed: true,
-              completedAt: new Date().toISOString(),
-              skipped: false,
-              skippedAt: undefined,
-              updatedAt: new Date().toISOString(),
-            };
-          } else {
-            // UN-COMPLETING: Restore endTime ONLY from trimmedOriginalEndTime (Dimension 2 isolation)
-            return {
-              ...b,
-              endTime: b.trimmedOriginalEndTime || b.endTime,
-              trimmedOriginalEndTime: undefined,
-              completed: false,
-              completedAt: undefined,
-              skipped: false,
-              skippedAt: undefined,
-              updatedAt: new Date().toISOString(),
-            };
+            if (currentMins < originalEndMins && currentMins > startMins) {
+              trimmedOriginalEndTime = b.endTime;
+              finalEndTime = timeStr;
+            }
           }
+
+          return {
+            ...b,
+            endTime: finalEndTime,
+            trimmedOriginalEndTime,
+            completed: true,
+            completedAt: new Date().toISOString(),
+            skipped: false,
+            skippedAt: undefined,
+            updatedAt: new Date().toISOString(),
+          };
         });
 
         return {
@@ -6168,53 +6228,55 @@ export function useAppState() {
 
         const isCurrentlySkipped = target.skipped;
 
+        if (isCurrentlySkipped) {
+          // UN-SKIPPING: Use cascade reversion to restore this block and any blocks pulled forward because of it
+          const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
+
+          return {
+            ...prev,
+            timeTracker: {
+              ...prevTT,
+              dailyLogs: {
+                ...(prevTT.dailyLogs || {}),
+                [dateKey]: updatedBlocks,
+              },
+            },
+          };
+        }
+
+        // SKIPPING: Execute trim logic (Dimension 2) ONLY for todayKey
         const updatedBlocks = prevDailyBlocks.map((b) => {
           if (b.id !== blockId) return b;
 
-          if (!isCurrentlySkipped) {
-            // SKIPPING: Execute trim logic (Dimension 2) ONLY for todayKey
-            let finalEndTime = b.endTime;
-            let trimmedOriginalEndTime = b.trimmedOriginalEndTime;
+          let finalEndTime = b.endTime;
+          let trimmedOriginalEndTime = b.trimmedOriginalEndTime;
 
-            if (dateKey === todayKey()) {
-              let timeStr = passedTimeStr;
-              if (!timeStr) {
-                const now = new Date();
-                timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-              }
-              const currentMins = timeStringToMinutes(timeStr);
-              const originalEndMins = timeStringToMinutes(b.endTime);
-              const startMins = timeStringToMinutes(b.startTime);
-
-              if (currentMins < originalEndMins && currentMins > startMins) {
-                trimmedOriginalEndTime = b.endTime;
-                finalEndTime = timeStr;
-              }
+          if (dateKey === todayKey()) {
+            let timeStr = passedTimeStr;
+            if (!timeStr) {
+              const now = new Date();
+              timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
             }
+            const currentMins = timeStringToMinutes(timeStr);
+            const originalEndMins = timeStringToMinutes(b.endTime);
+            const startMins = timeStringToMinutes(b.startTime);
 
-            return {
-              ...b,
-              endTime: finalEndTime,
-              trimmedOriginalEndTime,
-              completed: false,
-              completedAt: undefined,
-              skipped: true,
-              skippedAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-          } else {
-            // UN-SKIPPING: Restore endTime ONLY from trimmedOriginalEndTime (Dimension 2 isolation)
-            return {
-              ...b,
-              endTime: b.trimmedOriginalEndTime || b.endTime,
-              trimmedOriginalEndTime: undefined,
-              completed: false,
-              completedAt: undefined,
-              skipped: false,
-              skippedAt: undefined,
-              updatedAt: new Date().toISOString(),
-            };
+            if (currentMins < originalEndMins && currentMins > startMins) {
+              trimmedOriginalEndTime = b.endTime;
+              finalEndTime = timeStr;
+            }
           }
+
+          return {
+            ...b,
+            endTime: finalEndTime,
+            trimmedOriginalEndTime,
+            completed: false,
+            completedAt: undefined,
+            skipped: true,
+            skippedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
         });
 
         return {
@@ -6240,22 +6302,7 @@ export function useAppState() {
         const target = prevDailyBlocks.find((b) => b.id === blockId);
         if (!target) return prev;
 
-        const updatedBlocks = prevDailyBlocks
-          .map((b) =>
-            b.id === blockId
-              ? {
-                  ...b,
-                  endTime: b.trimmedOriginalEndTime || b.endTime,
-                  trimmedOriginalEndTime: undefined,
-                  completed: false,
-                  completedAt: undefined,
-                  skipped: false,
-                  skippedAt: undefined,
-                  updatedAt: new Date().toISOString(),
-                }
-              : b
-          )
-          .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
+        const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
 
         return {
           ...prev,
@@ -6273,7 +6320,13 @@ export function useAppState() {
   );
 
   const pullForwardDailyTimeBlock = useCallback(
-    (dateKey: string, blockId: string, newStartTime: string, mode: 'shift' | 'stretch' = 'stretch') => {
+    (
+      dateKey: string,
+      blockId: string,
+      newStartTime: string,
+      mode: 'shift' | 'stretch' = 'stretch',
+      triggerBlockId?: string
+    ) => {
       const currentTT = get().timeTracker || DEFAULT_TIME_TRACKER_STATE;
       const currentDailyBlocks = currentTT.dailyLogs?.[dateKey] || [];
       const target = currentDailyBlocks.find((b) => b.id === blockId);
@@ -6308,6 +6361,7 @@ export function useAppState() {
         endTime: newEndTime,
         originalStartTime,
         originalEndTime,
+        pulledForwardTriggerId: triggerBlockId,
         updatedAt: new Date().toISOString(),
       };
 
@@ -6321,6 +6375,7 @@ export function useAppState() {
             ...b,
             endTime: newStartTime,
             trimmedOriginalEndTime: b.trimmedOriginalEndTime || b.endTime,
+            trimmedDueToPullId: blockId,
             updatedAt: new Date().toISOString(),
           };
         }
@@ -6347,6 +6402,7 @@ export function useAppState() {
                 ...b,
                 endTime: newStartTime,
                 trimmedOriginalEndTime: b.trimmedOriginalEndTime || b.endTime,
+                trimmedDueToPullId: blockId,
                 updatedAt: new Date().toISOString(),
               };
             }
@@ -6395,6 +6451,7 @@ export function useAppState() {
                 originalStartTime: undefined,
                 originalEndTime: undefined,
                 trimmedOriginalEndTime: undefined,
+                pulledForwardTriggerId: undefined,
                 completed: false,
                 completedAt: undefined,
                 skipped: false,
@@ -6403,11 +6460,15 @@ export function useAppState() {
               };
             }
             // If preceding block was trimmed to make room for the early start, restore its trimmed end time
-            if (b.trimmedOriginalEndTime && timeStringToMinutes(b.endTime) <= timeStringToMinutes(target.startTime)) {
+            if (
+              b.trimmedDueToPullId === blockId ||
+              (b.trimmedOriginalEndTime && timeStringToMinutes(b.endTime) <= timeStringToMinutes(target.startTime))
+            ) {
               return {
                 ...b,
-                endTime: b.trimmedOriginalEndTime,
+                endTime: b.trimmedOriginalEndTime || b.endTime,
                 trimmedOriginalEndTime: undefined,
+                trimmedDueToPullId: undefined,
                 updatedAt: new Date().toISOString(),
               };
             }
