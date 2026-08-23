@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Timer,
   BrainCircuit,
@@ -32,8 +32,10 @@ import {
   ArrowRight,
   PowerOff,
   SkipForward,
+  Coffee,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
+import { DEFAULT_TIME_TRACKER_ACTIVITIES } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import {
@@ -54,6 +56,163 @@ import { ActivityIcon } from './timeTracker/ActivityIcon';
 import { useToast } from '@/components/ui/Toast';
 
 type PFCTab = 'focus' | 'decision' | 'emotion';
+
+// Tier 1: Exact System-Default Category ID / Name Match
+export const CATEGORY_EXACT_MESSAGES: Record<string, string> = {
+  'act-sleep': 'Rest deeply and recharge for tomorrow.',
+  'act-deep-work': 'Zero distractions. Immerse yourself in the zone.',
+  'act-praying': 'Find presence, peace, and spiritual grounding.',
+  'act-exercise': 'Push your physical limits and build endurance.',
+  'act-reading': 'Expand your knowledge and immerse in the pages.',
+  'act-skills': 'Sharpen your craft and deliberate practice.',
+  'act-break': 'Step away from screens, breathe, and unwind.',
+  'act-meals': 'Eat mindfully and nourish your body.',
+  'act-entertainment': 'Enjoy your downtime and guilt-free leisure.',
+  'act-walking': 'Clear your mind with gentle steps and fresh air.',
+};
+
+// Tier 2: Generic Ascend Module Match (For any custom category linked to an Ascend module)
+export const MODULE_CONTEXTUAL_MESSAGES: Record<string, string> = {
+  'Deep Focus': 'Protect your attention and stay in deep flow.',
+  'Exercise': 'Channel your energy and stay disciplined.',
+  'Reading': 'Absorb insights and cultivate deep reflection.',
+  'Skills': 'Focus on deliberate repetition and mastery.',
+  'Habits': 'Consistent action builds lasting momentum.',
+  'Recovery': 'Relax, restore, and replenish your cognitive energy.',
+};
+
+export function getBlockContextualMessage(activity?: { id?: string; name: string; ascendModule?: string } | null): string {
+  if (!activity) return 'Stay focused and intentional with your time.';
+
+  // 1. Exact default ID match
+  if (activity.id && CATEGORY_EXACT_MESSAGES[activity.id]) {
+    return CATEGORY_EXACT_MESSAGES[activity.id];
+  }
+
+  // 1b. Exact default Name match
+  const nameLower = (activity.name || '').toLowerCase().trim();
+  for (const [id, msg] of Object.entries(CATEGORY_EXACT_MESSAGES)) {
+    const def = DEFAULT_TIME_TRACKER_ACTIVITIES.find((a) => a.id === id);
+    if (def && def.name.toLowerCase() === nameLower) {
+      return msg;
+    }
+  }
+
+  // 2. Ascend Module match
+  if (activity.ascendModule && MODULE_CONTEXTUAL_MESSAGES[activity.ascendModule]) {
+    return MODULE_CONTEXTUAL_MESSAGES[activity.ascendModule];
+  }
+
+  // 3. Fallback for custom / unlinked categories
+  return `Focus on ${activity.name}.`;
+}
+
+// Early Completion Messages - Tier 1: Exact Default Category ID Match
+export const EARLY_COMPLETION_EXACT_MESSAGES: Record<string, string> = {
+  'act-deep-work': "Great focus session! Take a breath or dive into what's next.",
+  'act-exercise': 'Workout completed ahead of schedule! Hydrate and recover.',
+  'act-reading': 'Insights captured early. Let the ideas settle.',
+  'act-skills': 'Craft honed. Savor the early finish.',
+  'act-praying': 'Centered and grounded ahead of schedule.',
+  'act-sleep': 'Rest completed! Enjoy the bonus space in your day.',
+  'act-meals': 'Nourished early! Enjoy the extra breathing room.',
+  'act-entertainment': 'Recharged early! Ready for what comes next.',
+  'act-walking': 'Steps logged early. Enjoy the fresh momentum.',
+  'act-break': 'Refreshed ahead of time. Ready to dive back in.',
+};
+
+// Early Completion Messages - Tier 2: Module Match
+export const EARLY_COMPLETION_MODULE_MESSAGES: Record<string, string> = {
+  'Deep Focus': 'Finished in the zone! Enjoy this well-earned buffer.',
+  'Exercise': 'Physical training locked in early. Rest up.',
+  'Reading': 'Reflection time earned. Absorb what you learned.',
+  'Skills': 'Repetitions completed early. Great momentum.',
+  'Habits': 'Habit locked in ahead of time!',
+  'Recovery': 'Recharged early and ready for what is ahead.',
+};
+
+export function getEarlyCompletionContextualMessage(activity?: { id?: string; name: string; ascendModule?: string } | null): string {
+  if (!activity) return 'Finished early! Enjoy the bonus buffer in your schedule.';
+
+  if (activity.id && EARLY_COMPLETION_EXACT_MESSAGES[activity.id]) {
+    return EARLY_COMPLETION_EXACT_MESSAGES[activity.id];
+  }
+
+  const nameLower = (activity.name || '').toLowerCase().trim();
+  for (const [id, msg] of Object.entries(EARLY_COMPLETION_EXACT_MESSAGES)) {
+    const def = DEFAULT_TIME_TRACKER_ACTIVITIES.find((a) => a.id === id);
+    if (def && def.name.toLowerCase() === nameLower) {
+      return msg;
+    }
+  }
+
+  if (activity.ascendModule && EARLY_COMPLETION_MODULE_MESSAGES[activity.ascendModule]) {
+    return EARLY_COMPLETION_MODULE_MESSAGES[activity.ascendModule];
+  }
+
+  return `Finished ${activity.name} early! Take a breather or pull your next task forward.`;
+}
+
+// Tone-Aware Skip Toast Helper
+export function getSkipToastMessage(activity?: { ascendModule?: string; name?: string } | null): { title: string; subtitle: string } {
+  const isHighValue = Boolean(activity?.ascendModule);
+  if (isHighValue) {
+    return {
+      title: 'Block Skipped',
+      subtitle: 'Logged as skipped. Rest up and bring your focus to the next session.',
+    };
+  }
+  return {
+    title: 'Block Skipped',
+    subtitle: 'No worries! Schedule adjusted.',
+  };
+}
+
+// Gap State Skip Messages - Tier 1: Exact Default Category ID Match
+export const SKIP_EXACT_MESSAGES: Record<string, string> = {
+  'act-deep-work': 'Session skipped. Whenever you are ready, the work will be there.',
+  'act-exercise': 'Workout skipped this time — your next session is still ahead of you.',
+  'act-reading': 'Reading paused. The pages will be waiting when you return.',
+  'act-skills': 'Practice postponed. Pick the craft back up on your next block.',
+  'act-praying': 'Session skipped. Find a quiet moment whenever you can.',
+  'act-sleep': 'Rest period skipped. Listen to your body and adjust as needed.',
+  'act-meals': 'Meal break skipped. Make sure to nourish yourself when ready.',
+  'act-entertainment': 'Downtime skipped. No pressure — your time is yours.',
+  'act-walking': 'Walk skipped. Get some fresh air whenever you have space.',
+  'act-break': 'Break skipped. Keep going or step away whenever you need.',
+};
+
+// Gap State Skip Messages - Tier 2: Module Match
+export const SKIP_MODULE_MESSAGES: Record<string, string> = {
+  'Deep Focus': 'Focus session skipped. Regroup and dive back in next round.',
+  'Exercise': 'Physical training skipped. Rest up and stay hydrated.',
+  'Reading': 'Reading block skipped. Pick up insights on the next pass.',
+  'Skills': 'Skill practice skipped. Consistent practice will come with the next session.',
+  'Habits': 'Habit skipped this cycle. Consistency is built over time.',
+  'Recovery': 'Recovery skipped. Take care of your energy as you move forward.',
+};
+
+export function getSkipContextualMessage(activity?: { id?: string; name: string; ascendModule?: string } | null): string {
+  if (!activity) return 'Block skipped. Regroup and prepare for what is ahead.';
+
+  if (activity.id && SKIP_EXACT_MESSAGES[activity.id]) {
+    return SKIP_EXACT_MESSAGES[activity.id];
+  }
+
+  const nameLower = (activity.name || '').toLowerCase().trim();
+  for (const [id, msg] of Object.entries(SKIP_EXACT_MESSAGES)) {
+    const def = DEFAULT_TIME_TRACKER_ACTIVITIES.find((a) => a.id === id);
+    if (def && def.name.toLowerCase() === nameLower) {
+      return msg;
+    }
+  }
+
+  if (activity.ascendModule && SKIP_MODULE_MESSAGES[activity.ascendModule]) {
+    return SKIP_MODULE_MESSAGES[activity.ascendModule];
+  }
+
+  return `${activity.name} skipped. Regroup and prepare for what is ahead.`;
+}
 
 export function PrefrontalCortex({
   store,
@@ -368,7 +527,7 @@ function FocusTimerSubmodule({
     ? activityMap.get(currentResolvedBlock.activityId)
     : null;
 
-  // Strict Gap Trigger Resolution: Identifies the block whose early completion/skip opened the gap
+  // Strict Gap Trigger Resolution: Identifies the block whose early completion/skip opened the gap (Strictly requires trimmedOriginalEndTime for linkage)
   const gapTriggerBlock = useMemo(() => {
     // 1. If currently within the ghost window of an early-resolved block
     if (currentResolvedBlock && currentResolvedBlock.trimmedOriginalEndTime) {
@@ -384,16 +543,45 @@ function FocusTimerSubmodule({
           timeStringToMinutes(b.endTime) <= nowMinutes
       )
       .sort((a, b) => {
-        const endA = timeStringToMinutes(a.endTime);
-        const endB = timeStringToMinutes(b.endTime);
-        if (endB !== endA) return endB - endA; // Latest end time first
         const timeA = a.completedAt || a.skippedAt ? new Date(a.completedAt || a.skippedAt!).getTime() : 0;
         const timeB = b.completedAt || b.skippedAt ? new Date(b.completedAt || b.skippedAt!).getTime() : 0;
-        return timeB - timeA;
+        if (timeB !== timeA) return timeB - timeA; // Most recently resolved first
+        const endA = timeStringToMinutes(a.endTime);
+        const endB = timeStringToMinutes(b.endTime);
+        return endB - endA;
       });
 
     return pastEarlyResolved[0] || undefined;
   }, [currentResolvedBlock, todayBlocks, nowMinutes]);
+
+  // Display-only resolved block for the Gap State contextual quote (shows currentResolvedBlock directly, matching header/card)
+  const resolvedBlockForDisplay = useMemo(() => {
+    if (currentResolvedBlock) {
+      return currentResolvedBlock;
+    }
+
+    const pastEarlyResolved = todayBlocks
+      .filter(
+        (b) =>
+          Boolean(b.trimmedOriginalEndTime) &&
+          (b.completed || b.skipped) &&
+          timeStringToMinutes(b.endTime) <= nowMinutes
+      )
+      .sort((a, b) => {
+        const timeA = a.completedAt || a.skippedAt ? new Date(a.completedAt || a.skippedAt!).getTime() : 0;
+        const timeB = b.completedAt || b.skippedAt ? new Date(b.completedAt || b.skippedAt!).getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;
+        const endA = timeStringToMinutes(a.endTime);
+        const endB = timeStringToMinutes(b.endTime);
+        return endB - endA;
+      });
+
+    return pastEarlyResolved[0] || undefined;
+  }, [currentResolvedBlock, todayBlocks, nowMinutes]);
+
+  const resolvedBlockForDisplayActivity = resolvedBlockForDisplay
+    ? activityMap.get(resolvedBlockForDisplay.activityId)
+    : null;
 
   // Active Block calculations
   const activeBlock = liveSchedule.activeBlock;
@@ -416,6 +604,65 @@ function FocusTimerSubmodule({
     activeBlockTotalSeconds = Math.max(1, endSecs - startSecs);
     activeBlockProgress = Math.min(100, Math.max(0, (activeBlockElapsedSeconds / activeBlockTotalSeconds) * 100));
   }
+
+  // Active Block Mid-Break State (purely derived from timestamps + currentTime tick)
+  const activeBreakState = useMemo(() => {
+    if (!activeBlock || !activeBlock.breakStartedAt || !activeBlock.breakDurationMinutes) {
+      return { isOnBreak: false, remainingBreakSeconds: 0, breakEnded: false, actualBreakMinutes: 0 };
+    }
+
+    const startMs = new Date(activeBlock.breakStartedAt).getTime();
+    const plannedDurationSeconds = activeBlock.breakDurationMinutes * 60;
+
+    if (activeBlock.breakEndedAt) {
+      const endMs = new Date(activeBlock.breakEndedAt).getTime();
+      const elapsedSeconds = Math.max(0, Math.floor((endMs - startMs) / 1000));
+      const actualMinutes = Math.min(activeBlock.breakDurationMinutes, Math.ceil(elapsedSeconds / 60));
+      return { isOnBreak: false, remainingBreakSeconds: 0, breakEnded: true, actualBreakMinutes: actualMinutes };
+    }
+
+    const nowMs = currentTime.getTime();
+    const elapsedSeconds = Math.max(0, Math.floor((nowMs - startMs) / 1000));
+    // Hard boundary safeguard: remaining break time can never exceed remaining block seconds
+    const remainingBreakSeconds = Math.min(
+      Math.max(0, plannedDurationSeconds - elapsedSeconds),
+      activeBlockRemainingSeconds
+    );
+    const isStillOnBreak = remainingBreakSeconds > 0;
+
+    return {
+      isOnBreak: isStillOnBreak,
+      remainingBreakSeconds,
+      breakEnded: !isStillOnBreak,
+      actualBreakMinutes: activeBlock.breakDurationMinutes,
+    };
+  }, [activeBlock, currentTime, activeBlockRemainingSeconds]);
+
+  // Break duration ceiling (safe 10s margin before block endTime, min 5 minutes)
+  const maxAllowedBreakMinutes = useMemo(() => {
+    if (!activeBlock) return 0;
+    const safeRemainingSeconds = Math.max(0, activeBlockRemainingSeconds - 10);
+    const safeRemainingMinutes = Math.floor(safeRemainingSeconds / 60);
+    return Math.min(15, safeRemainingMinutes);
+  }, [activeBlock, activeBlockRemainingSeconds]);
+
+  const [showTakeBreakModal, setShowTakeBreakModal] = useState(false);
+  const [selectedBreakMinutes, setSelectedBreakMinutes] = useState(5);
+
+  // Natural Break Expiry Auto-Finalize Effect (guarded to run once per break instance)
+  const finalizedBreakBlockIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      activeBlock &&
+      activeBlock.breakStartedAt &&
+      !activeBlock.breakEndedAt &&
+      activeBreakState.breakEnded &&
+      finalizedBreakBlockIdRef.current !== activeBlock.id
+    ) {
+      finalizedBreakBlockIdRef.current = activeBlock.id;
+      store.finalizeDailyBlockBreakNatural(todayDateKey, activeBlock.id);
+    }
+  }, [activeBlock, activeBreakState.breakEnded, store, todayDateKey]);
 
   // Next Block calculation for gap states
   const nextBlock = liveSchedule.nextBlock;
@@ -1299,7 +1546,8 @@ function FocusTimerSubmodule({
                 onClick={() => {
                   try {
                     store.markDailyTimeBlockSkipped(todayDateKey, overdueBlock.id);
-                    showSuccessToast('Block Skipped', 'Marked overdue block as skipped.');
+                    const toastInfo = getSkipToastMessage(overdueBlockActivity);
+                    showSuccessToast(toastInfo.title, toastInfo.subtitle);
                   } catch (err: any) {
                     showErrorToast('Failed to Skip Block', err?.message);
                   }
@@ -1346,45 +1594,85 @@ function FocusTimerSubmodule({
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    try {
-                      const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
-                      store.markDailyTimeBlockSkipped(todayDateKey, activeBlock.id, nowStr);
-                      showSuccessToast('Block Skipped', 'Live block marked as skipped.');
-                    } catch (err: any) {
-                      showErrorToast('Failed to Skip Block', err?.message);
-                    }
-                  }}
-                  className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 text-slate-400 hover:text-slate-200 hover:bg-white/10 border border-white/10 flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <SkipForward size={13} className="text-slate-400" />
-                  <span>Skip Block</span>
-                </button>
+                {/* Mid-block Break Button (Always visible when eligible & no break taken yet; disabled pre-50% or <5m left) */}
+                {!activeBreakState.isOnBreak &&
+                  !activeBlock.breakDurationMinutes &&
+                  Boolean(activeBlockActivity?.ascendModule) && (
+                    (() => {
+                      const isBreakDisabled = activeBlockProgress < 50 || maxAllowedBreakMinutes < 5;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isBreakDisabled) {
+                              if (activeBlockProgress < 50) {
+                                showErrorToast('Break Unavailable', 'Complete at least half of this block before taking a break.');
+                              } else {
+                                showErrorToast('Break Unavailable', 'Not enough time left in this block for a break.');
+                              }
+                              return;
+                            }
+                            setSelectedBreakMinutes(Math.min(5, maxAllowedBreakMinutes));
+                            setShowTakeBreakModal(true);
+                          }}
+                          className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm ${
+                            isBreakDisabled
+                              ? 'bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed opacity-60'
+                              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-pointer'
+                          }`}
+                        >
+                          <Coffee size={13} className={isBreakDisabled ? 'text-slate-500' : 'text-emerald-400'} />
+                          <span>Take Break</span>
+                        </button>
+                      );
+                    })()
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    try {
-                      const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
-                      store.toggleDailyTimeBlockCompleted(todayDateKey, activeBlock.id, nowStr);
-                      if (!activeBlock.completed) {
-                        showSuccessToast('Block Completed', `Ended at ${formatTime12h(nowStr)}`);
-                      }
-                    } catch (err: any) {
-                      showErrorToast('Failed to Complete Block', err?.message);
-                    }
-                  }}
-                  className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    activeBlock.completed
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
-                  }`}
-                >
-                  <CheckCircle2 size={13} className={activeBlock.completed ? 'text-emerald-400' : 'text-slate-400'} />
-                  <span>{activeBlock.completed ? 'Completed' : 'Mark Completed'}</span>
-                </button>
+                {/* Hide Skip & Complete buttons while on break to avoid accidental disruption */}
+                {!activeBreakState.isOnBreak && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
+                          store.markDailyTimeBlockSkipped(todayDateKey, activeBlock.id, nowStr);
+                          const toastInfo = getSkipToastMessage(activeBlockActivity);
+                          showSuccessToast(toastInfo.title, toastInfo.subtitle);
+                        } catch (err: any) {
+                          showErrorToast('Failed to Skip Block', err?.message);
+                        }
+                      }}
+                      className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 text-slate-400 hover:text-slate-200 hover:bg-white/10 border border-white/10 flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <SkipForward size={13} className="text-slate-400" />
+                      <span>Skip Block</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
+                          store.toggleDailyTimeBlockCompleted(todayDateKey, activeBlock.id, nowStr);
+                          if (!activeBlock.completed) {
+                            showSuccessToast('Block Completed', `Ended at ${formatTime12h(nowStr)}`);
+                          }
+                        } catch (err: any) {
+                          showErrorToast('Failed to Complete Block', err?.message);
+                        }
+                      }}
+                      className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        activeBlock.completed
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
+                      }`}
+                    >
+                      <CheckCircle2 size={13} className={activeBlock.completed ? 'text-emerald-400' : 'text-slate-400'} />
+                      <span>{activeBlock.completed ? 'Completed' : 'Mark Completed'}</span>
+                    </button>
+                  </>
+                )}
 
                 <button
                   type="button"
@@ -1398,111 +1686,179 @@ function FocusTimerSubmodule({
               </div>
             </div>
 
-            {/* Active Block Title & Secondary Activity Badges */}
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/10 text-xs">
-                <div
-                  className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-                  style={{
-                    backgroundColor: `${activeBlockActivity?.color || '#10b981'}25`,
-                    color: activeBlockActivity?.color || '#10b981',
-                  }}
-                >
-                  <ActivityIcon iconName={activeBlockActivity?.icon || 'Clock'} size={12} />
+            {/* Sub-State: LIVE ON BREAK OVERLAY */}
+            {activeBreakState.isOnBreak ? (
+              <div className="space-y-6 py-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-xs font-medium text-emerald-300 mx-auto">
+                  <Coffee size={13} className="text-emerald-400 animate-pulse" />
+                  <span>CURRENTLY ON MID-BLOCK BREAK</span>
                 </div>
-                <span className="font-semibold text-slate-200">{activeBlockActivity?.name || 'Active Task'}</span>
-                {activeBlockActivity?.ascendModule && (
+
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-100 tracking-tight">
+                    Step away, stretch & recharge
+                  </h2>
+                  <p className="text-xs sm:text-sm text-emerald-400/90 mt-1 font-medium">
+                    Back to focus on <span className="text-slate-100 font-semibold">{activeBlock.customTitle || activeBlockActivity?.name}</span> shortly.
+                  </p>
+                </div>
+
+                {/* Break Countdown */}
+                <div className="py-2 space-y-2">
+                  <div className="text-6xl sm:text-8xl font-display font-black text-emerald-300 tracking-tight drop-shadow-sm font-mono">
+                    {formatSeconds(activeBreakState.remainingBreakSeconds)}
+                  </div>
+                  <p className="text-xs text-slate-400 flex items-center justify-center gap-1.5 font-mono">
+                    <Clock size={13} className="text-emerald-400" />
+                    <span>
+                      {Math.ceil(activeBreakState.remainingBreakSeconds / 60)}m left in break • Block finishes at {formatTime12h(activeBlock.endTime)}
+                    </span>
+                  </p>
+                </div>
+
+                {/* End Break Early Action */}
+                <div className="flex justify-center pt-2">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!onNavigate) return;
-                      const targetView = getAscendViewForModule(activeBlockActivity.ascendModule, activeBlockActivity.name);
-                      if (targetView) onNavigate(targetView);
+                    onClick={() => {
+                      try {
+                        store.endDailyBlockBreakEarly(todayDateKey, activeBlock.id);
+                        showSuccessToast('Break Ended', 'Returned to active focus.');
+                      } catch (err: any) {
+                        showErrorToast('Failed to End Break', err?.message);
+                      }
                     }}
-                    className={`text-[10px] text-emerald-400 font-mono flex items-center gap-0.5 ${
-                      onNavigate ? 'hover:text-emerald-300 hover:underline cursor-pointer' : ''
-                    }`}
-                    title={onNavigate ? `Open ${activeBlockActivity.ascendModule} module` : undefined}
+                    className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-xs border border-white/10 flex items-center gap-2 transition-all cursor-pointer shadow-md"
                   >
-                    <span>[{activeBlockActivity.ascendModule}]</span>
+                    <RotateCcw size={14} className="text-emerald-400" />
+                    <span>End Break Now & Resume Focus</span>
                   </button>
-                )}
-              </div>
-
-              <h2 className="text-2xl sm:text-4xl font-display font-bold text-slate-100 tracking-tight max-w-2xl mx-auto">
-                {activeBlock.customTitle || activeBlockActivity?.name || 'Scheduled Block'}
-              </h2>
-
-              {activeBlock.originalStartTime && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium mx-auto">
-                  <Clock size={12} className="text-amber-400" />
-                  <span>Started early (originally scheduled for {formatTime12h(activeBlock.originalStartTime)})</span>
                 </div>
-              )}
-
-              {/* Secondary Activities Badges in Emerald */}
-              {activeBlock.secondaryActivityIds && activeBlock.secondaryActivityIds.length > 0 && (
-                <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 max-w-full">
-                  {activeBlock.secondaryActivityIds.map((secId) => {
-                    const secAct = activityMap.get(secId);
-                    if (!secAct) return null;
-                    const hasMod = Boolean(secAct.ascendModule && onNavigate);
-                    return (
+              </div>
+            ) : (
+              /* Standard Active Focus View */
+              <>
+                {/* Active Block Title & Secondary Activity Badges */}
+                <div className="space-y-3">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/10 text-xs">
+                    <div
+                      className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                      style={{
+                        backgroundColor: `${activeBlockActivity?.color || '#10b981'}25`,
+                        color: activeBlockActivity?.color || '#10b981',
+                      }}
+                    >
+                      <ActivityIcon iconName={activeBlockActivity?.icon || 'Clock'} size={12} />
+                    </div>
+                    <span className="font-semibold text-slate-200">{activeBlockActivity?.name || 'Active Task'}</span>
+                    {activeBlockActivity?.ascendModule && (
                       <button
                         type="button"
-                        key={secId}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (secAct.ascendModule && onNavigate) {
-                            const targetView = getAscendViewForModule(secAct.ascendModule, secAct.name);
-                            if (targetView) onNavigate(targetView);
-                          }
+                          if (!onNavigate) return;
+                          const targetView = getAscendViewForModule(activeBlockActivity.ascendModule, activeBlockActivity.name);
+                          if (targetView) onNavigate(targetView);
                         }}
-                        className={`text-xs font-medium text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1 shadow-sm truncate max-w-full ${
-                          hasMod ? 'hover:bg-emerald-500/25 cursor-pointer hover:underline' : ''
+                        className={`text-[10px] text-emerald-400 font-mono flex items-center gap-0.5 ${
+                          onNavigate ? 'hover:text-emerald-300 hover:underline cursor-pointer' : ''
                         }`}
-                        title={secAct.ascendModule && onNavigate ? `Open ${secAct.ascendModule} module` : secAct.name}
+                        title={onNavigate ? `Open ${activeBlockActivity.ascendModule} module` : undefined}
                       >
-                        <Zap size={11} className="text-emerald-400 shrink-0" />
-                        <span className="truncate">+{secAct.name}</span>
-                        {secAct.ascendModule && (
-                          <span className="text-[10px] text-emerald-400/80 font-mono">[{secAct.ascendModule}]</span>
-                        )}
+                        <span>[{activeBlockActivity.ascendModule}]</span>
                       </button>
-                    );
-                  })}
+                    )}
+                  </div>
+
+                  <h2 className="text-2xl sm:text-4xl font-display font-bold text-slate-100 tracking-tight max-w-2xl mx-auto">
+                    {activeBlock.customTitle || activeBlockActivity?.name || 'Scheduled Block'}
+                  </h2>
+
+                  {/* Contextual Subtitle (Feature 1) */}
+                  <p className="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto italic">
+                    "{getBlockContextualMessage(activeBlockActivity)}"
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
+                    {activeBlock.originalStartTime && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium">
+                        <Clock size={12} className="text-amber-400" />
+                        <span>Started early (originally scheduled for {formatTime12h(activeBlock.originalStartTime)})</span>
+                      </div>
+                    )}
+
+                    {activeBlock.breakDurationMinutes && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs font-medium">
+                        <Coffee size={12} className="text-emerald-400" />
+                        <span>{activeBlock.breakDurationMinutes}m break taken</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Secondary Activities Badges in Emerald */}
+                  {activeBlock.secondaryActivityIds && activeBlock.secondaryActivityIds.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 max-w-full">
+                      {activeBlock.secondaryActivityIds.map((secId) => {
+                        const secAct = activityMap.get(secId);
+                        if (!secAct) return null;
+                        const hasMod = Boolean(secAct.ascendModule && onNavigate);
+                        return (
+                          <button
+                            type="button"
+                            key={secId}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (secAct.ascendModule && onNavigate) {
+                                const targetView = getAscendViewForModule(secAct.ascendModule, secAct.name);
+                                if (targetView) onNavigate(targetView);
+                              }
+                            }}
+                            className={`text-xs font-medium text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1 shadow-sm truncate max-w-full ${
+                              hasMod ? 'hover:bg-emerald-500/25 cursor-pointer hover:underline' : ''
+                            }`}
+                            title={secAct.ascendModule && onNavigate ? `Open ${secAct.ascendModule} module` : secAct.name}
+                          >
+                            <Zap size={11} className="text-emerald-400 shrink-0" />
+                            <span className="truncate">+{secAct.name}</span>
+                            {secAct.ascendModule && (
+                              <span className="text-[10px] text-emerald-400/80 font-mono">[{secAct.ascendModule}]</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Massive Live Countdown */}
-            <div className="py-2 space-y-2">
-              <div className="text-6xl sm:text-8xl font-display font-black text-emerald-300 tracking-tight drop-shadow-sm font-mono">
-                {formatSeconds(activeBlockRemainingSeconds)}
-              </div>
-              <p className="text-xs text-slate-400 flex items-center justify-center gap-1.5 font-mono">
-                <Clock size={13} className="text-emerald-400" />
-                <span>
-                  Time remaining until {formatTime12h(activeBlock.endTime)} ({Math.ceil(activeBlockRemainingSeconds / 60)} mins left)
-                </span>
-              </p>
-            </div>
+                {/* Massive Live Countdown */}
+                <div className="py-2 space-y-2">
+                  <div className="text-6xl sm:text-8xl font-display font-black text-emerald-300 tracking-tight drop-shadow-sm font-mono">
+                    {formatSeconds(activeBlockRemainingSeconds)}
+                  </div>
+                  <p className="text-xs text-slate-400 flex items-center justify-center gap-1.5 font-mono">
+                    <Clock size={13} className="text-emerald-400" />
+                    <span>
+                      Time remaining until {formatTime12h(activeBlock.endTime)} ({Math.ceil(activeBlockRemainingSeconds / 60)} mins left)
+                    </span>
+                  </p>
+                </div>
 
-            {/* Live Progress Bar */}
-            <div className="max-w-md mx-auto space-y-1.5">
-              <div className="flex justify-between text-[11px] text-slate-400 font-mono">
-                <span>{formatTime12h(activeBlock.startTime)}</span>
-                <span>{Math.round(activeBlockProgress)}% elapsed</span>
-                <span>{formatTime12h(activeBlock.endTime)}</span>
-              </div>
-              <div className="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden border border-white/5">
-                <div
-                  className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-1000"
-                  style={{ width: `${activeBlockProgress}%` }}
-                />
-              </div>
-            </div>
+                {/* Live Progress Bar */}
+                <div className="max-w-md mx-auto space-y-1.5">
+                  <div className="flex justify-between text-[11px] text-slate-400 font-mono">
+                    <span>{formatTime12h(activeBlock.startTime)}</span>
+                    <span>{Math.round(activeBlockProgress)}% elapsed</span>
+                    <span>{formatTime12h(activeBlock.endTime)}</span>
+                  </div>
+                  <div className="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden border border-white/5">
+                    <div
+                      className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-1000"
+                      style={{ width: `${activeBlockProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           /* State C: Ignited & Gap/Empty */
@@ -1552,6 +1908,28 @@ function FocusTimerSubmodule({
                   <p className="text-xs text-slate-400">
                     Next block starts in <strong className="text-emerald-300 font-semibold">{gapMinsUntilNext} minutes</strong>
                   </p>
+
+                  {/* Contextual Encouragement for Gap States */}
+                  {resolvedBlockForDisplay ? (
+                    resolvedBlockForDisplay.skipped ? (
+                      <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto italic pt-1">
+                        "{getSkipContextualMessage(resolvedBlockForDisplayActivity)}"
+                      </p>
+                    ) : (
+                      <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto italic pt-1">
+                        "{getEarlyCompletionContextualMessage(resolvedBlockForDisplayActivity)}"
+                      </p>
+                    )
+                  ) : (
+                    <div className="pt-1 max-w-md mx-auto space-y-0.5">
+                      <p className="text-xs sm:text-sm text-slate-300 font-medium italic">
+                        "Own every second — unscheduled time is your canvas for deliberate design."
+                      </p>
+                      <p className="text-[11px] text-slate-400 font-mono">
+                        Protect your focus, recharge with intent, or step ahead into what matters.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Countdown to Next Block */}
@@ -1827,6 +2205,113 @@ function FocusTimerSubmodule({
           <div className="pt-2 flex justify-end">
             <button onClick={() => setAboutModalOpen(false)} className="btn-primary text-xs px-6 py-2">
               Got It
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Take Break Modal in Live Schedule Sync */}
+      <Modal open={showTakeBreakModal} onClose={() => setShowTakeBreakModal(false)} title="Take a Mid-Block Break">
+        <div className="space-y-5">
+          <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300">
+            <Coffee size={20} className="shrink-0 text-emerald-400" />
+            <div>
+              <p className="font-semibold text-slate-200">Recharge during {activeBlock?.customTitle || activeBlockActivity?.name}</p>
+              <p className="text-slate-400 mt-0.5">
+                Block ends at {activeBlock ? formatTime12h(activeBlock.endTime) : ''}. (Max {maxAllowedBreakMinutes} mins available)
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-slate-300">
+              Select Break Duration:
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[5, 10, 15].map((mins) => {
+                const isAllowed = maxAllowedBreakMinutes >= mins;
+                const isSelected = selectedBreakMinutes === mins;
+                return (
+                  <button
+                    key={mins}
+                    type="button"
+                    disabled={!isAllowed}
+                    onClick={() => setSelectedBreakMinutes(mins)}
+                    className={`py-3 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 border ${
+                      !isAllowed
+                        ? 'opacity-40 cursor-not-allowed bg-slate-900 border-white/5 text-slate-500'
+                        : isSelected
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-md ring-1 ring-emerald-500/30'
+                        : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white cursor-pointer'
+                    }`}
+                  >
+                    <span className="text-base font-black">{mins}m</span>
+                    <span className="text-[10px] opacity-80 font-normal">
+                      {mins === 5 ? 'Micro' : mins === 10 ? 'Standard' : 'Extended'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom Duration Input / Stepper */}
+            <div className="pt-2">
+              <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                <span className="font-medium">Custom duration (1–{maxAllowedBreakMinutes}m):</span>
+                <span className="text-emerald-400 font-mono font-semibold">{selectedBreakMinutes} minutes</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={1}
+                  max={maxAllowedBreakMinutes}
+                  step={1}
+                  value={selectedBreakMinutes}
+                  onChange={(e) => setSelectedBreakMinutes(Number(e.target.value))}
+                  className="flex-1 accent-emerald-400 cursor-pointer h-2 bg-slate-800 rounded-lg"
+                />
+                <input
+                  type="number"
+                  min={1}
+                  max={maxAllowedBreakMinutes}
+                  value={selectedBreakMinutes}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    if (val >= 1 && val <= maxAllowedBreakMinutes) {
+                      setSelectedBreakMinutes(val);
+                    }
+                  }}
+                  className="w-16 px-2 py-1.5 text-center font-mono text-xs rounded-lg bg-slate-800 border border-white/10 text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                />
+                <span className="text-xs text-slate-400 font-mono">min</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowTakeBreakModal(false)}
+              className="btn-secondary flex-1 text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!activeBlock) return;
+                try {
+                  store.startDailyBlockBreak(todayDateKey, activeBlock.id, selectedBreakMinutes);
+                  setShowTakeBreakModal(false);
+                  showSuccessToast('Break Started', `Enjoy your ${selectedBreakMinutes}-minute recharge!`);
+                } catch (err: any) {
+                  showErrorToast('Failed to Start Break', err?.message);
+                }
+              }}
+              className="btn-primary flex-1 text-xs flex items-center justify-center gap-1.5"
+            >
+              <Coffee size={14} />
+              <span>Start {selectedBreakMinutes}m Break</span>
             </button>
           </div>
         </div>

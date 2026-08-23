@@ -42,6 +42,7 @@ import {
   BookOpen,
   Check,
   SkipForward,
+  Coffee,
 } from 'lucide-react';
 import { View } from '@/components/AppShell';
 
@@ -782,6 +783,13 @@ export function ScheduleTab({
                           <span className="text-[11px] text-slate-500 font-mono whitespace-nowrap">
                             ({formatDurationHuman(durationMins)})
                           </span>
+
+                          {block.breakDurationMinutes && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 flex items-center gap-1 shrink-0">
+                              <Coffee size={10} className="text-emerald-400" />
+                              <span>{block.breakDurationMinutes}m break</span>
+                            </span>
+                          )}
 
                           {isBlockActive && !block.skipped && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
