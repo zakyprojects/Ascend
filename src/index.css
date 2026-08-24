@@ -5,12 +5,38 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Semantic Text Content Tokens (Dark mode defaults) */
+    --color-content-primary: #f1f5f9;    /* slate-100 */
+    --color-content-secondary: #e2e8f0;  /* slate-200 */
+    --color-content-tertiary: #cbd5e1;   /* slate-300 */
+    --color-content-muted: #94a3b8;      /* slate-400 */
+    --color-content-disabled: #64748b;   /* slate-500 */
+    --color-content-subtle: #475569;     /* slate-600 */
+
+    /* Semantic Neutral Border Overlay Tokens (Dark mode defaults) */
+    --border-overlay-subtle: rgba(255, 255, 255, 0.05);   /* border-white/5 */
+    --border-overlay-default: rgba(255, 255, 255, 0.10);  /* border-white/10 */
+    --border-overlay-medium: rgba(255, 255, 255, 0.15);   /* border-white/15 */
+    --border-overlay-strong: rgba(255, 255, 255, 0.20);   /* border-white/20 */
+    --border-overlay-heavy: rgba(255, 255, 255, 0.40);    /* border-white/40 */
+
+    /* Semantic Neutral Background Overlay Tokens (Dark mode defaults) */
+    --bg-overlay-subtle: rgba(255, 255, 255, 0.05);       /* bg-white/5 */
+    --bg-overlay-default: rgba(255, 255, 255, 0.10);      /* bg-white/10 */
+    --bg-overlay-strong: rgba(255, 255, 255, 0.20);       /* bg-white/20 */
+  }
+
+  [data-theme='light'] {
+    /* Reserved for Phase 1: Light Mode Semantic Token Definitions */
+  }
+
   * {
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    @apply bg-bg-900 text-slate-200 font-sans antialiased;
+    @apply bg-bg-900 text-content-secondary font-sans antialiased;
     overscroll-behavior-y: none;
   }
 

@@ -135,11 +135,11 @@ export function ReadingTracker({ store }: { store: AppStore }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-slate-100 flex items-center gap-2">
+          <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
             <BookOpen className="text-amber-400" size={26} />
             Reading Tracker
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-content-disabled mt-1">
             Track your reading progress, maintain daily reading streaks, and reflect on finished books
           </p>
         </div>
@@ -174,9 +174,9 @@ export function ReadingTracker({ store }: { store: AppStore }) {
             <Flame size={22} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">Reading Streak</div>
-            <div className="text-xl font-display font-bold text-slate-100">
-              {streak} <span className="text-xs font-normal text-slate-400">days</span>
+            <div className="text-xs text-content-disabled">Reading Streak</div>
+            <div className="text-xl font-display font-bold text-content-primary">
+              {streak} <span className="text-xs font-normal text-content-muted">days</span>
             </div>
           </div>
         </div>
@@ -186,9 +186,9 @@ export function ReadingTracker({ store }: { store: AppStore }) {
             <BookMarked size={22} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">In Progress</div>
-            <div className="text-xl font-display font-bold text-slate-100">
-              {inProgressBooks.length} <span className="text-xs font-normal text-slate-400">books</span>
+            <div className="text-xs text-content-disabled">In Progress</div>
+            <div className="text-xl font-display font-bold text-content-primary">
+              {inProgressBooks.length} <span className="text-xs font-normal text-content-muted">books</span>
             </div>
           </div>
         </div>
@@ -198,9 +198,9 @@ export function ReadingTracker({ store }: { store: AppStore }) {
             <Award size={22} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">Finished Books</div>
+            <div className="text-xs text-content-disabled">Finished Books</div>
             <div className="text-xl font-display font-bold text-emerald-400">
-              {finishedBooks.length} <span className="text-xs font-normal text-slate-400">completed</span>
+              {finishedBooks.length} <span className="text-xs font-normal text-content-muted">completed</span>
             </div>
           </div>
         </div>
@@ -212,9 +212,9 @@ export function ReadingTracker({ store }: { store: AppStore }) {
 
         {inProgressBooks.length === 0 ? (
           <div className="card p-8 text-center">
-            <BookOpen size={32} className="mx-auto text-slate-600 mb-2" />
-            <p className="text-sm font-medium text-slate-400">No active books currently being read</p>
-            <p className="text-xs text-slate-500 mt-1 mb-4">Add a book to start tracking daily reading progress and earn +5 pts per progress update.</p>
+            <BookOpen size={32} className="mx-auto text-content-subtle mb-2" />
+            <p className="text-sm font-medium text-content-muted">No active books currently being read</p>
+            <p className="text-xs text-content-disabled mt-1 mb-4">Add a book to start tracking daily reading progress and earn +5 pts per progress update.</p>
             <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
               Add a Book
             </button>
@@ -228,12 +228,12 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                   <div>
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-semibold text-slate-200 text-base">{book.title}</h3>
-                        <p className="text-xs text-slate-400">by {book.author}</p>
+                        <h3 className="font-semibold text-content-secondary text-base">{book.title}</h3>
+                        <p className="text-xs text-content-muted">by {book.author}</p>
                       </div>
                       <button
                         onClick={() => setDeleteModalBook(book)}
-                        className="text-slate-600 hover:text-rose-400 p-1"
+                        className="text-content-subtle hover:text-rose-400 p-1"
                         title="Delete Book"
                       >
                         <Trash2 size={16} />
@@ -241,7 +241,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                     </div>
 
                     <div className="mt-3">
-                      <div className="flex justify-between text-xs text-slate-400 mb-1 font-medium">
+                      <div className="flex justify-between text-xs text-content-muted mb-1 font-medium">
                         <span>
                           {book.currentPage} / {book.totalPages} {book.unit}
                         </span>
@@ -254,9 +254,9 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                         />
                       </div>
                       {book.targetFinishDate && (
-                        <div className="text-[11px] text-slate-400 mt-2 flex items-center justify-between">
+                        <div className="text-[11px] text-content-muted mt-2 flex items-center justify-between">
                           <span>Target Deadline:</span>
-                          <span className={`font-mono font-medium ${book.targetFinishDate < today ? 'text-rose-400' : 'text-slate-300'}`}>
+                          <span className={`font-mono font-medium ${book.targetFinishDate < today ? 'text-rose-400' : 'text-content-tertiary'}`}>
                             {book.targetFinishDate} {book.targetFinishDate < today ? '(Overdue)' : ''}
                           </span>
                         </div>
@@ -301,19 +301,19 @@ export function ReadingTracker({ store }: { store: AppStore }) {
               <div key={book.id} className="card p-4 border-l-4 border-emerald-500/80 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-slate-200 text-sm flex items-center gap-2">
+                    <h3 className="font-bold text-content-secondary text-sm flex items-center gap-2">
                       {book.title}
                       <span className="badge bg-emerald-500/15 text-emerald-400 text-[10px]">Finished (+30 pts)</span>
                     </h3>
-                    <p className="text-xs text-slate-400">by {book.author} • {book.totalPages} {book.unit}</p>
+                    <p className="text-xs text-content-muted">by {book.author} • {book.totalPages} {book.unit}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-content-disabled">
                       {book.finishedAt ? formatDateLong(book.finishedAt) : ''}
                     </span>
                     <button
                       onClick={() => setDeleteModalBook(book)}
-                      className="text-slate-600 hover:text-rose-400 p-1 transition-colors"
+                      className="text-content-subtle hover:text-rose-400 p-1 transition-colors"
                       title="Delete Finished Book"
                     >
                       <Trash2 size={16} />
@@ -322,7 +322,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                 </div>
 
                 {book.reflection && (
-                  <div className="p-3 bg-bg-800/80 rounded-xl text-xs text-slate-300 italic border border-white/5">
+                  <div className="p-3 bg-bg-800/80 rounded-xl text-xs text-content-tertiary italic border border-overlay-subtle">
                     "{book.reflection}"
                   </div>
                 )}
@@ -336,7 +336,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
       <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Book">
         <form onSubmit={handleAddBookSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Book Title</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Book Title</label>
             <input
               type="text"
               value={title}
@@ -348,7 +348,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Author</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Author</label>
             <input
               type="text"
               value={author}
@@ -360,7 +360,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Total Amount</label>
+              <label className="block text-xs font-medium text-content-muted mb-1">Total Amount</label>
               <input
                 type="number"
                 min="1"
@@ -371,7 +371,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Unit</label>
+              <label className="block text-xs font-medium text-content-muted mb-1">Unit</label>
               <select
                 value={unit}
                 onChange={(e) => setUnit(e.target.value as 'pages' | 'chapters')}
@@ -384,14 +384,14 @@ export function ReadingTracker({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Optional Target Finish Date</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Optional Target Finish Date</label>
             <input
               type="date"
               value={targetFinishDate}
               onChange={(e) => setTargetFinishDate(e.target.value)}
               className="input font-mono text-xs"
             />
-            <span className="text-[11px] text-slate-500 mt-1 block">Set a target completion deadline to get notified if missed.</span>
+            <span className="text-[11px] text-content-disabled mt-1 block">Set a target completion deadline to get notified if missed.</span>
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -408,12 +408,12 @@ export function ReadingTracker({ store }: { store: AppStore }) {
       {/* Update Progress Modal */}
       <Modal open={!!progressModalBook} onClose={() => setProgressModalBook(null)} title={`Update Progress: ${progressModalBook?.title}`}>
         <form onSubmit={handleProgressSubmit} className="space-y-4">
-          <p className="text-xs text-slate-400">
-            Currently on {progressModalBook?.unit} <span className="font-bold text-slate-200">{progressModalBook?.currentPage}</span> of {progressModalBook?.totalPages}.
+          <p className="text-xs text-content-muted">
+            Currently on {progressModalBook?.unit} <span className="font-bold text-content-secondary">{progressModalBook?.currentPage}</span> of {progressModalBook?.totalPages}.
           </p>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">
+            <label className="block text-xs font-medium text-content-muted mb-1">
               How many {progressModalBook?.unit} did you read today?
             </label>
             <input
@@ -427,7 +427,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
             />
           </div>
 
-          <div className="card p-3 bg-bg-800 text-xs text-slate-400 flex items-center justify-between border border-white/5">
+          <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
             <span>Points for today's progress update:</span>
             <span className="font-bold text-amber-400">+5 pts</span>
           </div>
@@ -455,7 +455,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">
+            <label className="block text-xs font-medium text-content-muted mb-1">
               Short Reflection / Takeaway Note
             </label>
             <textarea
@@ -514,12 +514,12 @@ export function ReadingTracker({ store }: { store: AppStore }) {
           }}
           className="space-y-4"
         >
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-content-muted">
             Opt into a daily or weekly target reading expectation. Misses will incur an escalating penalty and trigger a notification.
           </p>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Cadence Type</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Cadence Type</label>
             <select
               value={goalCadenceInput}
               onChange={(e) => setGoalCadenceInput(e.target.value as 'daily' | 'weekly')}
@@ -532,7 +532,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
 
           {goalCadenceInput === 'weekly' && (
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Target Pages / Chapters Per Week</label>
+              <label className="block text-xs font-medium text-content-muted mb-1">Target Pages / Chapters Per Week</label>
               <input
                 type="number"
                 min="1"

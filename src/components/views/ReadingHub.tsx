@@ -325,11 +325,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold text-slate-100 flex items-center gap-2.5">
+          <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2.5">
             <BookOpen className="text-amber-400" size={26} />
             Reading Hub
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-content-muted mt-1">
             Track daily reading progress, build continuous streaks, queue future reads, and discover foundational self-improvement books.
           </p>
         </div>
@@ -368,10 +368,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
             <Flame size={22} />
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-100">
-              {streak} <span className="text-xs font-normal text-slate-400">days</span>
+            <div className="text-2xl font-bold text-content-primary">
+              {streak} <span className="text-xs font-normal text-content-muted">days</span>
             </div>
-            <div className="text-xs text-slate-500">Reading Streak</div>
+            <div className="text-xs text-content-disabled">Reading Streak</div>
           </div>
         </div>
 
@@ -380,8 +380,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
             <PlayCircle size={22} />
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-100">{inProgressBooks.length}</div>
-            <div className="text-xs text-slate-500">Currently Reading</div>
+            <div className="text-2xl font-bold text-content-primary">{inProgressBooks.length}</div>
+            <div className="text-xs text-content-disabled">Currently Reading</div>
           </div>
         </div>
 
@@ -390,8 +390,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
             <CheckCircle2 size={22} />
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-100">{completedBooks.length}</div>
-            <div className="text-xs text-slate-500">Books Completed</div>
+            <div className="text-2xl font-bold text-content-primary">{completedBooks.length}</div>
+            <div className="text-xs text-content-disabled">Books Completed</div>
           </div>
         </div>
 
@@ -400,15 +400,15 @@ export function ReadingHub({ store }: { store: AppStore }) {
             <Award size={22} />
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-100">+{totalCompletedPoints}</div>
-            <div className="text-xs text-slate-500">Completion Points</div>
+            <div className="text-2xl font-bold text-content-primary">+{totalCompletedPoints}</div>
+            <div className="text-xs text-content-disabled">Completion Points</div>
           </div>
         </div>
       </div>
 
       {/* Tabs & Filters */}
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
           {/* Main Navigation Tabs */}
           <div className="flex items-stretch justify-between w-full bg-slate-800/40 p-1 rounded-xl gap-1">
             <button
@@ -416,7 +416,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
                 activeTab === 'reading'
                   ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                  : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
               }`}
             >
               <PlayCircle size={14} className="shrink-0" />
@@ -429,7 +429,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
                 activeTab === 'to-read'
                   ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                  : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
               }`}
             >
               <ListTodo size={14} className="shrink-0" />
@@ -442,7 +442,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
                 activeTab === 'discover'
                   ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                  : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
               }`}
             >
               <Library size={14} className="shrink-0" />
@@ -455,7 +455,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
                 activeTab === 'completed'
                   ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                  : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
               }`}
             >
               <CheckCircle2 size={14} className="shrink-0" />
@@ -468,7 +468,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           {/* Search & Category Filter */}
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full">
             <div className="relative w-full sm:flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" />
               <input
                 type="text"
                 value={searchQuery}
@@ -512,8 +512,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
               <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center mx-auto">
                 <BookOpen size={24} />
               </div>
-              <h3 className="text-base font-bold text-slate-200">No books currently in progress</h3>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
+              <h3 className="text-base font-bold text-content-secondary">No books currently in progress</h3>
+              <p className="text-xs text-content-muted max-w-md mx-auto">
                 Start reading a book from your To Read list, discover foundational titles, or add a custom book.
               </p>
               <div className="flex items-center justify-center gap-3 pt-2">
@@ -560,12 +560,12 @@ export function ReadingHub({ store }: { store: AppStore }) {
                               </span>
                             )}
                           </div>
-                          <h3 className="text-base font-bold text-slate-100 truncate">{book.title}</h3>
-                          <p className="text-xs text-slate-400 mt-0.5">by {book.author}</p>
+                          <h3 className="text-base font-bold text-content-primary truncate">{book.title}</h3>
+                          <p className="text-xs text-content-muted mt-0.5">by {book.author}</p>
                         </div>
                         <button
                           onClick={() => setDeleteModalBook(book)}
-                          className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-all shrink-0"
+                          className="p-1.5 text-content-disabled hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-all shrink-0"
                           title="Remove Book"
                         >
                           <Trash2 size={16} />
@@ -573,7 +573,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       </div>
 
                       {book.description && (
-                        <p className="text-xs text-slate-400 mt-2.5 line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-content-muted mt-2.5 line-clamp-2 leading-relaxed">
                           {book.description}
                         </p>
                       )}
@@ -581,12 +581,12 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       {/* Progress bar */}
                       <div className="mt-4 space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-400">
+                          <span className="text-content-muted">
                             {current} / {total} {unit}
                           </span>
                           <span className="font-bold text-amber-400">{percent}%</span>
                         </div>
-                        <div className="h-2 w-full bg-bg-950/60 rounded-full overflow-hidden border border-white/5">
+                        <div className="h-2 w-full bg-bg-950/60 rounded-full overflow-hidden border border-overlay-subtle">
                           <div
                             className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-300"
                             style={{ width: `${percent}%` }}
@@ -596,7 +596,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
                       {/* Target Date */}
                       {book.targetFinishDate && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-2.5">
+                        <div className="flex items-center gap-1.5 text-[11px] text-content-muted mt-2.5">
                           <Calendar size={12} className="text-amber-400" />
                           <span>Target Finish: {formatDateLong(book.targetFinishDate)}</span>
                         </div>
@@ -604,7 +604,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     </div>
 
                     {/* Action Controls */}
-                    <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-2 pt-3 border-t border-white/5">
+                    <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-2 pt-3 border-t border-overlay-subtle">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <button
                           onClick={() => {
@@ -631,7 +631,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       <select
                         value={book.status}
                         onChange={(e) => store.updateUserBookStatus(book.id, e.target.value as UserBookStatus)}
-                        className="input text-xs py-1 px-2 bg-bg-900 border-white/10 text-slate-300 w-fit shrink-0 cursor-pointer"
+                        className="input text-xs py-1 px-2 bg-bg-900 border-overlay-default text-content-tertiary w-fit shrink-0 cursor-pointer"
                       >
                         <option value="to-read">Move to Library</option>
                         <option value="reading">Currently Reading</option>
@@ -651,11 +651,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
         <div className="space-y-4">
           {filteredToRead.length === 0 ? (
             <div className="card p-8 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-500/15 text-slate-400 flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-slate-500/15 text-content-muted flex items-center justify-center mx-auto">
                 <ListTodo size={24} />
               </div>
-              <h3 className="text-base font-bold text-slate-200">No books in your library</h3>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
+              <h3 className="text-base font-bold text-content-secondary">No books in your library</h3>
+              <p className="text-xs text-content-muted max-w-md mx-auto">
                 Browse our curated self-improvement recommendations or add your own books to your reading library.
               </p>
               <div className="flex items-center justify-center gap-3 pt-2">
@@ -683,18 +683,18 @@ export function ReadingHub({ store }: { store: AppStore }) {
               {filteredToRead.map((book) => (
                 <div
                   key={book.id}
-                  className="card p-4 flex flex-col justify-between space-y-3 border border-white/5 hover:border-white/10 transition-all"
+                  className="card p-4 flex flex-col justify-between space-y-3 border border-overlay-subtle hover:border-overlay-default transition-all"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         {renderCategoryBadge(book.category, true)}
-                        <h3 className="text-sm font-bold text-slate-100 mt-1 truncate">{book.title}</h3>
-                        <p className="text-xs text-slate-400">by {book.author}</p>
+                        <h3 className="text-sm font-bold text-content-primary mt-1 truncate">{book.title}</h3>
+                        <p className="text-xs text-content-muted">by {book.author}</p>
                       </div>
                       <button
                         onClick={() => setDeleteModalBook(book)}
-                        className="p-1 text-slate-500 hover:text-rose-400 rounded transition-all"
+                        className="p-1 text-content-disabled hover:text-rose-400 rounded transition-all"
                         title="Remove Book"
                       >
                         <Trash2 size={14} />
@@ -702,14 +702,14 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     </div>
 
                     {book.description && (
-                      <p className="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-content-muted mt-2 line-clamp-2 leading-relaxed">
                         {book.description}
                       </p>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5 gap-2">
-                    <span className="text-[11px] text-slate-500">
+                  <div className="flex items-center justify-between pt-2 border-t border-overlay-subtle gap-2">
+                    <span className="text-[11px] text-content-disabled">
                       {book.totalAmount || book.totalPages || 250} {book.unit || 'pages'}
                     </span>
                     <button
@@ -737,7 +737,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               return (
                 <div
                   key={curated.id}
-                  className="card p-5 flex flex-col justify-between space-y-4 border border-white/5 hover:border-amber-500/30 transition-all"
+                  className="card p-5 flex flex-col justify-between space-y-4 border border-overlay-subtle hover:border-amber-500/30 transition-all"
                 >
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
@@ -748,17 +748,17 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     </div>
 
                     <div>
-                      <h3 className="text-base font-bold text-slate-100">{curated.title}</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">by {curated.author}</p>
+                      <h3 className="text-base font-bold text-content-primary">{curated.title}</h3>
+                      <p className="text-xs text-content-muted mt-0.5">by {curated.author}</p>
                     </div>
 
-                    <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-content-muted line-clamp-3 leading-relaxed">
                       {curated.description}
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
-                    <span className="text-[11px] text-slate-500">
+                  <div className="pt-3 border-t border-overlay-subtle flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
+                    <span className="text-[11px] text-content-disabled">
                       {curated.totalPages || 250} pages
                     </span>
 
@@ -769,7 +769,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                             : userBook.status === 'reading'
                             ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                            : 'bg-slate-500/15 text-slate-400 border border-slate-500/30'
+                            : 'bg-slate-500/15 text-content-muted border border-slate-500/30'
                         }`}
                       >
                         {userBook.status === 'completed'
@@ -805,8 +805,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mx-auto">
                 <CheckCircle2 size={24} />
               </div>
-              <h3 className="text-base font-bold text-slate-200">No completed books yet</h3>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
+              <h3 className="text-base font-bold text-content-secondary">No completed books yet</h3>
+              <p className="text-xs text-content-muted max-w-md mx-auto">
                 Finish reading your first book to log your key insights, takeaways, and earn points rewards.
               </p>
             </div>
@@ -830,20 +830,20 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           </span>
                         ) : null}
                       </div>
-                      <h3 className="text-base font-bold text-slate-100 mt-1">{book.title}</h3>
-                      <p className="text-xs text-slate-400">by {book.author}</p>
+                      <h3 className="text-base font-bold text-content-primary mt-1">{book.title}</h3>
+                      <p className="text-xs text-content-muted">by {book.author}</p>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       {book.dateCompleted && (
-                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                        <span className="text-xs text-content-muted flex items-center gap-1">
                           <Calendar size={12} className="text-emerald-400" />
                           {formatDateLong(book.dateCompleted)}
                         </span>
                       )}
                       <button
                         onClick={() => setDeleteModalBook(book)}
-                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-all"
+                        className="p-1.5 text-content-disabled hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-all"
                         title="Remove Book"
                       >
                         <Trash2 size={16} />
@@ -852,7 +852,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   </div>
 
                   {book.reflection && (
-                    <div className="p-3.5 bg-bg-900/80 rounded-xl border border-emerald-500/15 text-xs text-slate-300 leading-relaxed space-y-1">
+                    <div className="p-3.5 bg-bg-900/80 rounded-xl border border-emerald-500/15 text-xs text-content-tertiary leading-relaxed space-y-1">
                       <span className="font-semibold text-emerald-400 block text-[11px]">
                         Key Takeaway / Reflection:
                       </span>
@@ -860,7 +860,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between pt-2 text-xs text-slate-500 border-t border-white/5">
+                  <div className="flex items-center justify-between pt-2 text-xs text-content-disabled border-t border-overlay-subtle">
                     <span>
                       {book.totalAmount || book.totalPages || 250} {book.unit || 'pages'} read
                     </span>
@@ -886,7 +886,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleAddCustomSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-content-tertiary mb-1">
               Book Title <span className="text-rose-400">*</span>
             </label>
             <input
@@ -901,7 +901,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-content-tertiary mb-1">
               Author
             </label>
             <input
@@ -915,7 +915,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-content-tertiary mb-1">
                 Category
               </label>
               <select
@@ -933,7 +933,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-content-tertiary mb-1">
                 Initial Status
               </label>
               <select
@@ -950,7 +950,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-content-tertiary mb-1">
                 Total Length
               </label>
               <input
@@ -963,7 +963,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-content-tertiary mb-1">
                 Unit
               </label>
               <select
@@ -978,7 +978,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-content-tertiary mb-1">
               Target Finish Date (Optional)
             </label>
             <input
@@ -990,7 +990,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-content-tertiary mb-1">
               Description / Notes (Optional)
             </label>
             <textarea
@@ -1028,13 +1028,13 @@ export function ReadingHub({ store }: { store: AppStore }) {
         title={startReadingModalBook ? `Start Reading: ${startReadingModalBook.title}` : 'Start Reading'}
       >
         <form onSubmit={handleStartReadingSubmit} className="space-y-4">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-content-muted">
             Confirm book length and set an optional target finish date before starting.
           </p>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-content-tertiary mb-1">
                 Total Length <span className="text-rose-400">*</span>
               </label>
               <input
@@ -1048,7 +1048,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-content-tertiary mb-1">
                 Unit
               </label>
               <select
@@ -1063,7 +1063,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-content-tertiary mb-1">
               Target Finish Date (Optional)
             </label>
             <input
@@ -1100,13 +1100,13 @@ export function ReadingHub({ store }: { store: AppStore }) {
         title={progressModalBook ? `Log Progress: ${progressModalBook.title}` : 'Log Progress'}
       >
         <form onSubmit={handleProgressSubmit} className="space-y-4">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-content-muted">
             Total Book Size: {progressModalBook?.totalAmount ?? progressModalBook?.totalPages ?? 250}{' '}
             {progressModalBook?.unit || 'pages'}
           </p>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-content-tertiary mb-1">
               What {progressModalBook?.unit === 'chapters' ? 'chapter' : 'page'} are you on currently?
             </label>
             <input
@@ -1123,7 +1123,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-slate-400 mb-1.5">
+            <label className="block text-[11px] font-medium text-content-muted mb-1.5">
               Quick Add
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -1132,7 +1132,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   key={amount}
                   type="button"
                   onClick={() => setProgressInput((prev) => prev + amount)}
-                  className="btn-secondary text-xs py-1.5 px-2 font-medium text-slate-200 hover:text-white border-white/10"
+                  className="btn-secondary text-xs py-1.5 px-2 font-medium text-content-secondary hover:text-content-primary border-overlay-default"
                 >
                   +{amount}
                 </button>
@@ -1180,7 +1180,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-content-tertiary mb-1">
               Key Insights & Reflections <span className="text-rose-400">*</span>
             </label>
             <textarea
@@ -1220,7 +1220,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         title="Unlink Reading Habit?"
       >
         <div className="space-y-4">
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <p className="text-xs text-content-muted leading-relaxed">
             Are you sure you want to unlink and remove the automatic Reading habit from your Habit Tracker?
           </p>
           <div className="flex items-center justify-end gap-2.5 pt-2">

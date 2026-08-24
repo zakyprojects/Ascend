@@ -50,10 +50,10 @@ export function ConfirmDeleteModal({
       <div className="space-y-4">
         <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-3">
           <AlertTriangle size={20} className="text-rose-400 shrink-0 mt-0.5" />
-          <p className="text-xs text-slate-300 leading-relaxed">
+          <p className="text-xs text-content-tertiary leading-relaxed">
             {description || (
               <>
-                Are you sure you want to delete {itemName ? <strong className="text-slate-100 font-bold">"{itemName}"</strong> : 'this item'}? This action cannot be undone.
+                Are you sure you want to delete {itemName ? <strong className="text-content-primary font-bold">"{itemName}"</strong> : 'this item'}? This action cannot be undone.
               </>
             )}
           </p>

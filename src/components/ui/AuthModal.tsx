@@ -235,10 +235,10 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                 alt="Ascend Logo"
                 className="w-12 h-12 rounded-2xl mx-auto shadow-lg shadow-emerald-500/20 mb-3 object-cover"
               />
-              <h2 className="text-xl font-display font-bold text-slate-100">
+              <h2 className="text-xl font-display font-bold text-content-primary">
                 Ascend Self-Growth
               </h2>
-              <p className="text-xs text-slate-400 max-w-xs mx-auto">
+              <p className="text-xs text-content-muted max-w-xs mx-auto">
                 Track habits, build neuroplasticity, and compete in live leagues. Choose how you'd like to get started:
               </p>
             </div>
@@ -265,17 +265,17 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               <button
                 type="button"
                 onClick={() => { setMode('login'); resetForm(); }}
-                className="w-full p-4 bg-bg-800 hover:bg-bg-700 text-slate-100 rounded-2xl border border-white/10 transition-all flex items-center justify-between group hover:border-white/20"
+                className="w-full p-4 bg-bg-800 hover:bg-bg-700 text-content-primary rounded-2xl border border-overlay-default transition-all flex items-center justify-between group hover:border-overlay-strong"
               >
                 <div className="text-left">
                   <div className="font-bold text-sm flex items-center gap-2">
                     <span>Sign In</span>
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
+                  <div className="text-[11px] text-content-muted mt-0.5">
                     Log in to your existing account
                   </div>
                 </div>
-                <LogIn size={20} className="text-slate-400 group-hover:text-slate-200 group-hover:scale-110 transition-all shrink-0" />
+                <LogIn size={20} className="text-content-muted group-hover:text-content-secondary group-hover:scale-110 transition-all shrink-0" />
               </button>
 
               {/* Option 3: Continue as Guest */}
@@ -308,7 +308,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               <button
                 type="button"
                 onClick={() => setMode('choice')}
-                className="text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-colors py-1"
+                className="text-xs font-semibold text-content-muted hover:text-content-secondary flex items-center gap-1.5 transition-colors py-1"
               >
                 <ArrowLeft size={14} />
                 <span>Back to entry options</span>
@@ -316,14 +316,14 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
             )}
 
             <div>
-              <h2 className="text-xl font-display font-bold text-slate-100 text-center">
+              <h2 className="text-xl font-display font-bold text-content-primary text-center">
                 {mode === 'upgrade'
                   ? 'Save Your Progress'
                   : mode === 'signup'
                   ? 'Join Ascend Leagues'
                   : 'Welcome Back'}
               </h2>
-              <p className="text-xs text-slate-400 text-center mt-1">
+              <p className="text-xs text-content-muted text-center mt-1">
                 {mode === 'upgrade'
                   ? 'Convert your guest session to a permanent account while keeping all habits, points, and league rank'
                   : mode === 'signup'
@@ -336,10 +336,10 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               {(mode === 'signup' || mode === 'upgrade') && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                    <label className="block text-xs font-medium text-content-tertiary mb-1.5">
                       Choose Leaderboard Avatar
                     </label>
-                    <div className="grid grid-cols-8 gap-1.5 p-2 bg-bg-800 rounded-xl border border-white/5">
+                    <div className="grid grid-cols-8 gap-1.5 p-2 bg-bg-800 rounded-xl border border-overlay-subtle">
                       {EMOJI_AVATARS.map((emoji) => (
                         <button
                           key={emoji}
@@ -348,7 +348,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                           className={`w-8 h-8 rounded-lg text-lg flex items-center justify-center transition-all ${
                             avatar === emoji
                               ? 'bg-primary-500/25 border-2 border-primary-400 scale-110'
-                              : 'hover:bg-white/5'
+                              : 'hover:bg-overlay-subtle'
                           }`}
                         >
                           {emoji}
@@ -358,11 +358,11 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                    <label className="block text-xs font-medium text-content-tertiary mb-1">
                       Leaderboard Username {mode === 'signup' && <span className="text-rose-400">*</span>}
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
                         <User size={16} />
                       </div>
                       <input
@@ -371,7 +371,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                         placeholder="e.g. Alex_Mastery"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        className="w-full input-has-icon pr-24 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
+                        className="w-full input-has-icon pr-24 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all"
                       />
                       {username.trim() && (
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -395,11 +395,11 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               )}
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
+                <label className="block text-xs font-medium text-content-tertiary mb-1">
                   Email Address <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
                     <Mail size={16} />
                   </div>
                   <input
@@ -408,17 +408,17 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
+                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
+                <label className="block text-xs font-medium text-content-tertiary mb-1">
                   Password <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
                     <Lock size={16} />
                   </div>
                   <input
@@ -427,18 +427,18 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
+                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all"
                   />
                 </div>
               </div>
 
               {(mode === 'signup' || mode === 'upgrade') && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-content-tertiary mb-1">
                     Confirm Password <span className="text-rose-400">*</span>
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
                       <Lock size={16} />
                     </div>
                     <input
@@ -447,7 +447,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                       placeholder="••••••••"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all"
+                      className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all"
                     />
                   </div>
                   {confirmPassword && password !== confirmPassword && (
@@ -464,7 +464,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                     <Sparkles size={14} />
                     <span>Guest Progress Detected</span>
                   </div>
-                  <p className="text-xs text-slate-300">
+                  <p className="text-xs text-content-tertiary">
                     You have <strong>{guestPoints} points</strong> and <strong>{guestHabitsCount} habits</strong> created before signing up.
                   </p>
                   <label className="flex items-center gap-2 cursor-pointer pt-1">
@@ -472,9 +472,9 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                       type="checkbox"
                       checked={keepGuestProgress}
                       onChange={(e) => setKeepGuestProgress(e.target.checked)}
-                      className="rounded border-white/20 bg-bg-800 text-primary-500 focus:ring-primary-500"
+                      className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500"
                     />
-                    <span className="text-xs text-slate-200">Keep and attach this progress to my new account</span>
+                    <span className="text-xs text-content-secondary">Keep and attach this progress to my new account</span>
                   </label>
                 </div>
               )}

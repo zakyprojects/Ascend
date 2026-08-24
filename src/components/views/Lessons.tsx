@@ -24,8 +24,8 @@ export function Lessons({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold text-slate-100">Lessons</h1>
-        <p className="text-sm text-slate-500 mt-1">Short, practical self-improvement articles</p>
+        <h1 className="text-2xl font-display font-bold text-content-primary">Lessons</h1>
+        <p className="text-sm text-content-disabled mt-1">Short, practical self-improvement articles</p>
       </div>
 
       {/* Stats */}
@@ -34,21 +34,21 @@ export function Lessons({ store }: { store: AppStore }) {
           <div className="stat-label">Lessons Read</div>
           <div className="stat-value mt-1">
             {readCount}
-            <span className="text-base text-slate-500">/{LESSONS.length}</span>
+            <span className="text-base text-content-disabled">/{LESSONS.length}</span>
           </div>
         </div>
         <div className="card p-4">
           <div className="stat-label">Points Earned</div>
           <div className="stat-value mt-1 text-primary-400">
             {earnedPoints}
-            <span className="text-base text-slate-500">/{totalPoints}</span>
+            <span className="text-base text-content-disabled">/{totalPoints}</span>
           </div>
         </div>
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" />
         <input
           type="text"
           value={search}
@@ -65,7 +65,7 @@ export function Lessons({ store }: { store: AppStore }) {
           className={`badge px-3 py-1.5 transition-all ${
             selectedCategory === null
               ? 'bg-primary-500/15 text-primary-400'
-              : 'bg-bg-700 text-slate-400 hover:bg-bg-600'
+              : 'bg-bg-700 text-content-muted hover:bg-bg-600'
           }`}
         >
           All
@@ -77,7 +77,7 @@ export function Lessons({ store }: { store: AppStore }) {
             className={`badge px-3 py-1.5 transition-all ${
               selectedCategory === cat
                 ? 'bg-primary-500/15 text-primary-400'
-                : 'bg-bg-700 text-slate-400 hover:bg-bg-600'
+                : 'bg-bg-700 text-content-muted hover:bg-bg-600'
             }`}
           >
             {cat}
@@ -103,14 +103,14 @@ export function Lessons({ store }: { store: AppStore }) {
                 {isRead ? (
                   <Check size={18} className="text-primary-400" />
                 ) : (
-                  <BookOpen size={18} className="text-slate-500" />
+                  <BookOpen size={18} className="text-content-disabled" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-medium text-slate-200 truncate">{lesson.title}</h3>
+                <h3 className="text-sm font-medium text-content-secondary truncate">{lesson.title}</h3>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-slate-500">{lesson.category}</span>
-                  <span className="text-xs text-slate-600 flex items-center gap-0.5">
+                  <span className="text-xs text-content-disabled">{lesson.category}</span>
+                  <span className="text-xs text-content-subtle flex items-center gap-0.5">
                     <Clock size={11} /> {lesson.readTime} min
                   </span>
                   <span className="text-xs text-primary-400">+{lesson.points} pts</span>
@@ -123,7 +123,7 @@ export function Lessons({ store }: { store: AppStore }) {
 
       {filtered.length === 0 && (
         <div className="card p-8 text-center">
-          <p className="text-sm text-slate-500">No lessons found. Try a different search or category.</p>
+          <p className="text-sm text-content-disabled">No lessons found. Try a different search or category.</p>
         </div>
       )}
 
@@ -136,8 +136,8 @@ export function Lessons({ store }: { store: AppStore }) {
       >
         {openLesson && (
           <div>
-            <div className="flex items-center gap-3 mb-4 text-xs text-slate-500">
-              <span className="badge bg-bg-600 text-slate-400">{openLesson.category}</span>
+            <div className="flex items-center gap-3 mb-4 text-xs text-content-disabled">
+              <span className="badge bg-bg-600 text-content-muted">{openLesson.category}</span>
               <span className="flex items-center gap-0.5">
                 <Clock size={11} /> {openLesson.readTime} min read
               </span>
@@ -146,7 +146,7 @@ export function Lessons({ store }: { store: AppStore }) {
             <div className="prose prose-invert prose-sm max-w-none">
               {renderLessonContent(openLesson.content)}
             </div>
-            <div className="mt-6 pt-4 border-t border-white/5">
+            <div className="mt-6 pt-4 border-t border-overlay-subtle">
               {readIds.includes(openLesson.id) ? (
                 <div className="flex items-center gap-2 text-sm text-primary-400">
                   <Check size={16} />
@@ -180,7 +180,7 @@ function renderLessonContent(content: string) {
       return (
         <div
           key={idx}
-          className="my-3 p-3 rounded-xl bg-bg-700 border-l-2 border-primary-500/50 text-sm text-slate-300 italic"
+          className="my-3 p-3 rounded-xl bg-bg-700 border-l-2 border-primary-500/50 text-sm text-content-tertiary italic"
         >
           {part.trim()}
         </div>
@@ -190,7 +190,7 @@ function renderLessonContent(content: string) {
     return (
       <div key={idx}>
         {part.trim().split('\n\n').map((para, pIdx) => (
-          <p key={pIdx} className="text-sm text-slate-300 leading-relaxed mb-3">
+          <p key={pIdx} className="text-sm text-content-tertiary leading-relaxed mb-3">
             {para.trim()}
           </p>
         ))}

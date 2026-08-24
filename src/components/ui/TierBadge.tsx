@@ -45,9 +45,9 @@ export function TierBadge({ totalPoints, size = 'md', showName = false }: TierBa
       </div>
       {showName && (
         <div>
-          <div className={`font-display font-bold text-slate-100 ${s.text}`}>{tier.name}</div>
+          <div className={`font-display font-bold text-content-primary ${s.text}`}>{tier.name}</div>
           {size === 'lg' || size === 'xl' ? (
-            <div className="text-xs text-slate-500">{totalPoints.toLocaleString()} pts</div>
+            <div className="text-xs text-content-disabled">{totalPoints.toLocaleString()} pts</div>
           ) : null}
         </div>
       )}
@@ -67,13 +67,13 @@ export function TierProgress({ totalPoints }: TierProgressProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-slate-300">{tier.name}</span>
+        <span className="text-sm font-medium text-content-tertiary">{tier.name}</span>
         {next ? (
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-content-disabled">
             {next.name} at {next.minPoints.toLocaleString()}
           </span>
         ) : (
-          <span className="text-xs text-slate-500">Max tier reached</span>
+          <span className="text-xs text-content-disabled">Max tier reached</span>
         )}
       </div>
       <div className="h-2.5 bg-bg-600 rounded-full overflow-hidden">
@@ -86,9 +86,9 @@ export function TierProgress({ totalPoints }: TierProgressProps) {
         />
       </div>
       <div className="flex items-center justify-between mt-1.5">
-        <span className="text-xs text-slate-500">{totalPoints.toLocaleString()} total</span>
+        <span className="text-xs text-content-disabled">{totalPoints.toLocaleString()} total</span>
         {next && (
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-content-disabled">
             {(next.minPoints - totalPoints).toLocaleString()} to go
           </span>
         )}

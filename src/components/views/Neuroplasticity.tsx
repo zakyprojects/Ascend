@@ -9,8 +9,8 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold text-slate-100">Neuroplasticity</h1>
-        <p className="text-sm text-slate-500 mt-1">How your brain rewires itself — and how to use it</p>
+        <h1 className="text-2xl font-display font-bold text-content-primary">Neuroplasticity</h1>
+        <p className="text-sm text-content-disabled mt-1">How your brain rewires itself — and how to use it</p>
       </div>
 
       {/* Hero */}
@@ -20,15 +20,15 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
           <div className="w-16 h-16 rounded-2xl bg-purple-500/15 flex items-center justify-center mb-4">
             <Brain size={32} className="text-purple-400" />
           </div>
-          <h2 className="text-xl font-display font-bold text-slate-100 mb-2">
+          <h2 className="text-xl font-display font-bold text-content-primary mb-2">
             Your brain is not fixed.
           </h2>
-          <p className="text-sm text-slate-400 leading-relaxed">
+          <p className="text-sm text-content-muted leading-relaxed">
             For decades, scientists believed the adult brain stopped changing after childhood. We now know
             this is completely wrong. Your brain is constantly rewiring itself — every habit you repeat,
             every skill you practice, every experience you have physically changes its structure.
           </p>
-          <p className="text-sm text-slate-400 leading-relaxed mt-3">
+          <p className="text-sm text-content-muted leading-relaxed mt-3">
             This is called <span className="text-purple-400 font-medium">neuroplasticity</span>, and it means
             you are never stuck with who you are. Change is always possible — it just requires the right approach.
           </p>
@@ -37,10 +37,10 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
 
       {/* Core principle */}
       <div className="card p-5 border-l-2 border-purple-500/50">
-        <p className="text-lg font-display font-bold text-slate-100 mb-2">
+        <p className="text-lg font-display font-bold text-content-primary mb-2">
           "Neurons that fire together, wire together."
         </p>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-content-muted">
           This is the foundational law of neuroplasticity (Hebb's Law). Every time you repeat a behavior,
           the neural pathway involved gets stronger and faster. Over time, it becomes automatic —
           you don't have to think about it anymore. This is how habits are literally built into your brain.
@@ -97,8 +97,8 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             <Target size={20} className="text-purple-400" />
           </div>
           <div className="flex-1">
-            <h3 className="font-display font-bold text-slate-100 mb-1">The 90-Day League</h3>
-            <p className="text-sm text-slate-400 leading-relaxed mb-3">
+            <h3 className="font-display font-bold text-content-primary mb-1">The 90-Day League</h3>
+            <p className="text-sm text-content-muted leading-relaxed mb-3">
               This league is designed around the neuroscience of habit formation. 90 days of sustained
               effort is enough time for new behaviors to physically rewire your brain. It's not just a
               competition — it's a window for real, measurable change.
@@ -118,7 +118,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
       {/* Deep dive lessons */}
       <div>
         <h2 className="section-title mb-3">Deep Dive</h2>
-        <p className="text-sm text-slate-500 mb-3">
+        <p className="text-sm text-content-disabled mb-3">
           Read these lessons in the Lessons section for a deeper understanding of neuroplasticity:
         </p>
         <div className="space-y-2">
@@ -128,7 +128,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             'Sleep: Where Memory Consolidation Happens',
             "Novelty: The Brain's Growth Trigger",
           ].map((title) => (
-            <div key={title} className="card p-3 flex items-center gap-2 text-sm text-slate-400">
+            <div key={title} className="card p-3 flex items-center gap-2 text-sm text-content-muted">
               <Brain size={14} className="text-purple-400 shrink-0" />
               {title}
             </div>
@@ -155,8 +155,8 @@ function PillarCard({ icon, color, title, description }: { icon: React.ReactNode
           {icon}
         </div>
         <div>
-          <h3 className="font-display font-bold text-slate-100 text-sm mb-1">{title}</h3>
-          <p className="text-xs text-slate-400 leading-relaxed">{description}</p>
+          <h3 className="font-display font-bold text-content-primary text-sm mb-1">{title}</h3>
+          <p className="text-xs text-content-muted leading-relaxed">{description}</p>
         </div>
       </div>
     </div>
@@ -169,7 +169,7 @@ function Tip({ num, text }: { num: string; text: string }) {
       <div className="w-6 h-6 rounded-lg bg-purple-500/15 flex items-center justify-center shrink-0 mt-0.5">
         <span className="text-xs font-bold text-purple-400">{num}</span>
       </div>
-      <p className="text-sm text-slate-400 leading-relaxed">{text}</p>
+      <p className="text-sm text-content-muted leading-relaxed">{text}</p>
     </div>
   );
 }

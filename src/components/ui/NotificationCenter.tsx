@@ -152,13 +152,13 @@ export function NotificationCenter({
                 ? { left: 16, right: 16, maxWidth: 384, margin: '0 auto' }
                 : { width: 384 }),
             }}
-            className="glass bg-bg-900/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col"
+            className="glass bg-bg-900/95 border border-overlay-default rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col"
           >
             {/* Header */}
-            <div className="p-3.5 border-b border-white/5 flex items-center justify-between bg-bg-800/50">
+            <div className="p-3.5 border-b border-overlay-subtle flex items-center justify-between bg-bg-800/50">
               <div className="flex items-center gap-2">
                 <Bell size={16} className="text-primary-400" />
-                <span className="font-display font-bold text-sm text-slate-100">Notifications</span>
+                <span className="font-display font-bold text-sm text-content-primary">Notifications</span>
                 {unreadCount > 0 && (
                   <span className="bg-rose-500/20 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-500/30">
                     {unreadCount} new
@@ -170,7 +170,7 @@ export function NotificationCenter({
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="text-[11px] text-slate-400 hover:text-primary-300 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-white/5 transition-all"
+                    className="text-[11px] text-content-muted hover:text-primary-300 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-overlay-subtle transition-all"
                     title="Mark all as read"
                   >
                     <CheckCheck size={14} />
@@ -179,7 +179,7 @@ export function NotificationCenter({
                 )}
                 <button
                   onClick={() => setOpen(false)}
-                  className="p-1 text-slate-500 hover:text-slate-300 rounded-lg hover:bg-white/5"
+                  className="p-1 text-content-disabled hover:text-content-tertiary rounded-lg hover:bg-overlay-subtle"
                 >
                   <X size={16} />
                 </button>
@@ -190,11 +190,11 @@ export function NotificationCenter({
             <div className="max-h-80 overflow-y-auto divide-y divide-white/5" style={{ maxHeight: window.innerWidth < 768 ? '70vh' : 480 }}>
               {notifications.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto text-slate-500">
+                  <div className="w-10 h-10 rounded-full bg-overlay-subtle flex items-center justify-center mx-auto text-content-disabled">
                     <Bell size={20} />
                   </div>
-                  <p className="text-xs text-slate-400 font-medium">No notifications yet</p>
-                  <p className="text-[10px] text-slate-500">Partner invites, nudges, and alerts will appear here live.</p>
+                  <p className="text-xs text-content-muted font-medium">No notifications yet</p>
+                  <p className="text-[10px] text-content-disabled">Partner invites, nudges, and alerts will appear here live.</p>
                 </div>
               ) : (
                 notifications.map((notif: AppNotification) => (
@@ -207,14 +207,14 @@ export function NotificationCenter({
                   >
                     <div className="shrink-0 mt-0.5">
                       {notif.actorAvatar ? (
-                        <div className="w-8 h-8 rounded-lg bg-bg-800 border border-white/10 flex items-center justify-center text-sm relative">
+                        <div className="w-8 h-8 rounded-lg bg-bg-800 border border-overlay-default flex items-center justify-center text-sm relative">
                           <span>{notif.actorAvatar}</span>
                           <div className="absolute -bottom-1 -right-1 bg-bg-900 rounded-full p-0.5">
                             {renderIcon(notif.type)}
                           </div>
                         </div>
                       ) : (
-                        <div className="w-8 h-8 rounded-lg bg-bg-800 border border-white/10 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-bg-800 border border-overlay-default flex items-center justify-center">
                           {renderIcon(notif.type)}
                         </div>
                       )}
@@ -222,14 +222,14 @@ export function NotificationCenter({
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1 mb-0.5">
-                        <span className={`text-xs font-bold truncate ${notif.read ? 'text-slate-300' : 'text-slate-100'}`}>
+                        <span className={`text-xs font-bold truncate ${notif.read ? 'text-content-tertiary' : 'text-content-primary'}`}>
                           {notif.title || 'Notification'}
                         </span>
-                        <span className="text-[10px] text-slate-500 shrink-0">
+                        <span className="text-[10px] text-content-disabled shrink-0">
                           {formatRelativeTime(notif.createdAt)}
                         </span>
                       </div>
-                      <p className={`text-xs leading-snug line-clamp-2 ${notif.read ? 'text-slate-400' : 'text-slate-200'}`}>
+                      <p className={`text-xs leading-snug line-clamp-2 ${notif.read ? 'text-content-muted' : 'text-content-secondary'}`}>
                         {notif.message}
                       </p>
                     </div>
@@ -239,7 +239,7 @@ export function NotificationCenter({
                         <button
                           onClick={(e) => handleMarkRead(notif.id, e)}
                           title="Mark as read"
-                          className="p-1 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"
+                          className="p-1 text-content-disabled hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"
                         >
                           <Check size={14} />
                         </button>
@@ -247,7 +247,7 @@ export function NotificationCenter({
                       <button
                         onClick={(e) => handleClear(notif.id, e)}
                         title="Clear notification"
-                        className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                        className="p-1 text-content-disabled hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -272,7 +272,7 @@ export function NotificationCenter({
         className={`relative p-2 rounded-xl transition-all ${
           open
             ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
-            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
         }`}
       >
         <Bell size={compact ? 16 : 18} />

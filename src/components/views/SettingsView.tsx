@@ -109,8 +109,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
     }
   }, []);
 
-  // Theme state
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  // Theme state synced with store
+  const isDarkMode = store.state.themePreference !== 'light';
 
   // Account action modals
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -301,8 +301,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           <Settings size={22} className="text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-display font-bold text-slate-100">Settings & Preferences</h1>
-          <p className="text-xs text-slate-400">Manage your profile, identity, privacy, and account options</p>
+          <h1 className="text-2xl font-display font-bold text-content-primary">Settings & Preferences</h1>
+          <p className="text-xs text-content-muted">Manage your profile, identity, privacy, and account options</p>
         </div>
       </div>
 
@@ -314,10 +314,10 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               <Sparkles size={18} />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-200">
+              <p className="text-xs font-bold text-content-secondary">
                 Temporary Guest Account ({currentUser?.username})
               </p>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-content-muted">
                 Save your progress to convert to a permanent account so you never lose habits or points.
               </p>
             </div>
@@ -336,9 +336,9 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       {/* Sectioned Main Layout (Sidebar Navigation + Independent Content Area) */}
       <div className="flex gap-5 min-h-[520px] items-start">
         {/* Persistent Narrow Sidebar */}
-        <aside className="w-16 sm:w-56 shrink-0 bg-bg-800/80 border border-white/10 rounded-2xl p-2 sm:p-3 space-y-1 self-stretch flex flex-col justify-between">
+        <aside className="w-16 sm:w-56 shrink-0 bg-bg-800/80 border border-overlay-default rounded-2xl p-2 sm:p-3 space-y-1 self-stretch flex flex-col justify-between">
           <div className="space-y-1">
-            <p className="hidden sm:block text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 py-1.5">
+            <p className="hidden sm:block text-[10px] font-bold uppercase tracking-wider text-content-disabled px-3 py-1.5">
               Sections
             </p>
             {sectionsList.map((sec) => {
@@ -354,7 +354,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                         : 'bg-primary-500/20 text-primary-300 border border-primary-500/30 shadow-md'
                       : sec.danger
                       ? 'text-rose-400/80 hover:bg-rose-500/10 hover:text-rose-300 border border-transparent'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent'
+                      : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle border border-transparent'
                   }`}
                   title={sec.label}
                 >
@@ -367,8 +367,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
             })}
           </div>
 
-          <div className="hidden sm:block pt-4 border-t border-white/5 px-3">
-            <p className="text-[10px] text-slate-500 font-mono">Ascend v1.2.0</p>
+          <div className="hidden sm:block pt-4 border-t border-overlay-subtle px-3">
+            <p className="text-[10px] text-content-disabled font-mono">Ascend v{__APP_VERSION__}</p>
           </div>
         </aside>
 
@@ -381,18 +381,18 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 1: PROFILE */}
           {activeSection === 'profile' && (
             <div className="card p-5 space-y-5">
-              <h2 className="text-base font-display font-bold text-slate-100 flex items-center gap-2 border-b border-white/5 pb-3">
+              <h2 className="text-base font-display font-bold text-content-primary flex items-center gap-2 border-b border-overlay-subtle pb-3">
                 <User size={18} className="text-primary-400" />
                 Profile Identity
               </h2>
 
               {/* Permanent 6-Digit User UID */}
-              <div className="p-3 bg-bg-800/80 rounded-xl border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="p-3 bg-bg-800/80 rounded-xl border border-overlay-default flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300">
+                  <label className="block text-xs font-semibold text-content-tertiary">
                     Your Unique User ID (UID)
                   </label>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-content-muted">
                     Share this permanent 6-digit ID with friends to connect as Accountability Partners.
                   </p>
                 </div>
@@ -409,7 +409,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                         setTimeout(() => setCopiedUid(false), 2000);
                       }
                     }}
-                    className="px-2.5 py-1 bg-bg-700 hover:bg-bg-600 border border-white/10 text-slate-200 text-xs font-semibold rounded-lg transition-all flex items-center gap-1"
+                    className="px-2.5 py-1 bg-bg-700 hover:bg-bg-600 border border-overlay-default text-content-secondary text-xs font-semibold rounded-lg transition-all flex items-center gap-1"
                   >
                     {copiedUid ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                     <span>{copiedUid ? 'Copied' : 'Copy'}</span>
@@ -420,7 +420,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               {/* Username Change Form */}
               <form onSubmit={handleSaveUsername} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-slate-300">
+                  <label className="block text-xs font-semibold text-content-tertiary">
                     Leaderboard Username
                   </label>
                   {isCooldownActive && (
@@ -432,7 +432,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 </div>
 
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
                     <User size={16} />
                   </div>
                   <input
@@ -441,7 +441,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     disabled={isCooldownActive || usernameSaving}
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
-                    className="w-full input-has-icon pr-28 py-2.5 bg-bg-800 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-primary-400 transition-all disabled:opacity-60"
+                    className="w-full input-has-icon pr-28 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all disabled:opacity-60"
                   />
                   {usernameInput.trim() && usernameInput.trim() !== currentUser?.username && (
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -472,7 +472,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 )}
 
                 <div className="flex items-center justify-between pt-1">
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-content-disabled">
                     Username changes are limited to 1 per rolling 24-hour period.
                   </p>
                   <button
@@ -491,9 +491,9 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               </form>
 
               {/* Avatar Picker (32 Emojis) */}
-              <div className="space-y-2 pt-2 border-t border-white/5">
+              <div className="space-y-2 pt-2 border-t border-overlay-subtle">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-slate-300">
+                  <label className="block text-xs font-semibold text-content-tertiary">
                     Leaderboard Avatar Emoji (32 Choices)
                   </label>
                   {avatarMsg && (
@@ -503,7 +503,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   )}
                 </div>
 
-                <div className="grid grid-cols-8 gap-2 p-3 bg-bg-800 rounded-2xl border border-white/5">
+                <div className="grid grid-cols-8 gap-2 p-3 bg-bg-800 rounded-2xl border border-overlay-subtle">
                   {EMOJI_AVATARS.map((emoji) => {
                     const selected = selectedAvatar === emoji;
                     return (
@@ -515,7 +515,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                         className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
                           selected
                             ? 'bg-primary-500/25 border-2 border-emerald-400 shadow-lg scale-110'
-                            : 'hover:bg-white/5 border border-transparent'
+                            : 'hover:bg-overlay-subtle border border-transparent'
                         }`}
                       >
                         {emoji}
@@ -523,7 +523,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     );
                   })}
                 </div>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-content-disabled">
                   Click any avatar to update immediately. Changes propagate instantly to leaderboards and cards.
                 </p>
               </div>
@@ -533,68 +533,68 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 2: ACCOUNT & SECURITY */}
           {activeSection === 'account' && (
             <div className="card p-5 space-y-4">
-              <h2 className="text-base font-display font-bold text-slate-100 flex items-center gap-2 border-b border-white/5 pb-3">
+              <h2 className="text-base font-display font-bold text-content-primary flex items-center gap-2 border-b border-overlay-subtle pb-3">
                 <Lock size={18} className="text-primary-400" />
                 Account & Security
               </h2>
 
               {/* Read-only Email display */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-content-tertiary mb-1">
                   Registered Email Address
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
                     <Mail size={16} />
                   </div>
                   <input
                     type="email"
                     disabled
                     value={currentUser?.email || (isGuest ? 'Guest User (No Email)' : '')}
-                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800/60 border border-white/5 rounded-xl text-sm text-slate-400 font-mono disabled:opacity-80"
+                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800/60 border border-overlay-subtle rounded-xl text-sm text-content-muted font-mono disabled:opacity-80"
                   />
                 </div>
               </div>
 
               {/* Password Change Expandable Form */}
               {!isGuest && (
-                <div className="pt-2 border-t border-white/5 space-y-3">
+                <div className="pt-2 border-t border-overlay-subtle space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-semibold text-slate-200">Account Password</p>
-                      <p className="text-[11px] text-slate-500">Update your login password securely</p>
+                      <p className="text-xs font-semibold text-content-secondary">Account Password</p>
+                      <p className="text-[11px] text-content-disabled">Update your login password securely</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowPasswordForm(!showPasswordForm)}
-                      className="px-3 py-1.5 bg-bg-800 hover:bg-bg-700 border border-white/10 text-slate-200 font-semibold text-xs rounded-xl transition-all"
+                      className="px-3 py-1.5 bg-bg-800 hover:bg-bg-700 border border-overlay-default text-content-secondary font-semibold text-xs rounded-xl transition-all"
                     >
                       {showPasswordForm ? 'Cancel' : 'Change Password'}
                     </button>
                   </div>
 
                   {showPasswordForm && (
-                    <form onSubmit={handleChangePassword} className="space-y-3 p-3 bg-bg-800/50 rounded-xl border border-white/5">
+                    <form onSubmit={handleChangePassword} className="space-y-3 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-300 mb-1">New Password</label>
+                        <label className="block text-[11px] font-semibold text-content-tertiary mb-1">New Password</label>
                         <input
                           type="password"
                           required
                           placeholder="••••••••"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full px-3 py-2 bg-bg-800 border border-white/10 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-primary-400"
+                          className="w-full px-3 py-2 bg-bg-800 border border-overlay-default rounded-lg text-xs text-content-primary focus:outline-none focus:border-primary-400"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-300 mb-1">Confirm New Password</label>
+                        <label className="block text-[11px] font-semibold text-content-tertiary mb-1">Confirm New Password</label>
                         <input
                           type="password"
                           required
                           placeholder="••••••••"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="w-full px-3 py-2 bg-bg-800 border border-white/10 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-primary-400"
+                          className="w-full px-3 py-2 bg-bg-800 border border-overlay-default rounded-lg text-xs text-content-primary focus:outline-none focus:border-primary-400"
                         />
                       </div>
 
@@ -626,20 +626,20 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 3: NOTIFICATIONS (Preferences only) */}
           {activeSection === 'notifications' && (
             <div className="card p-5 space-y-4">
-              <h2 className="text-base font-display font-bold text-slate-100 flex items-center gap-2 border-b border-white/5 pb-3">
+              <h2 className="text-base font-display font-bold text-content-primary flex items-center gap-2 border-b border-overlay-subtle pb-3">
                 <Bell size={18} className="text-primary-400" />
                 Notification Preferences
               </h2>
 
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-content-muted">
                 Choose which notifications and alerts you wish to receive across Ascend features.
               </p>
 
               <div className="space-y-2.5 pt-1">
-                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-white/5 cursor-pointer hover:border-white/10 transition-all">
+                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle cursor-pointer hover:border-overlay-default transition-all">
                   <div>
-                    <span className="text-xs font-semibold text-slate-200 block">Daily Habit Reminders</span>
-                    <span className="text-[11px] text-slate-400">Receive daily reminders to check off active habits</span>
+                    <span className="text-xs font-semibold text-content-secondary block">Daily Habit Reminders</span>
+                    <span className="text-[11px] text-content-muted">Receive daily reminders to check off active habits</span>
                   </div>
                   <input
                     type="checkbox"
@@ -648,14 +648,14 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       setNotifDailyReminder(!notifDailyReminder);
                       store.toggleNotifDailyReminder();
                     }}
-                    className="rounded border-white/20 bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                    className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-white/5 cursor-pointer hover:border-white/10 transition-all">
+                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle cursor-pointer hover:border-overlay-default transition-all">
                   <div>
-                    <span className="text-xs font-semibold text-slate-200 block">Accountability Partner Activity Alerts</span>
-                    <span className="text-[11px] text-slate-400">Get notified when partners complete habits or challenges</span>
+                    <span className="text-xs font-semibold text-content-secondary block">Accountability Partner Activity Alerts</span>
+                    <span className="text-[11px] text-content-muted">Get notified when partners complete habits or challenges</span>
                   </div>
                   <input
                     type="checkbox"
@@ -664,14 +664,14 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       setNotifPartnerActivity(!notifPartnerActivity);
                       store.toggleNotifPartnerActivity();
                     }}
-                    className="rounded border-white/20 bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                    className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-white/5 cursor-pointer hover:border-white/10 transition-all">
+                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle cursor-pointer hover:border-overlay-default transition-all">
                   <div>
-                    <span className="text-xs font-semibold text-slate-200 block">Weekly League Reset & Rank Updates</span>
-                    <span className="text-[11px] text-slate-400">Receive weekly summaries of league placement and division promotions</span>
+                    <span className="text-xs font-semibold text-content-secondary block">Weekly League Reset & Rank Updates</span>
+                    <span className="text-[11px] text-content-muted">Receive weekly summaries of league placement and division promotions</span>
                   </div>
                   <input
                     type="checkbox"
@@ -680,14 +680,14 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       setNotifLeagueUpdates(!notifLeagueUpdates);
                       store.toggleNotifLeagueUpdates();
                     }}
-                    className="rounded border-white/20 bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                    className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-white/5 cursor-pointer hover:border-white/10 transition-all">
+                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle cursor-pointer hover:border-overlay-default transition-all">
                   <div>
-                    <span className="text-xs font-semibold text-slate-200 block">Sunday Evening Goal Planning Reminders</span>
-                    <span className="text-[11px] text-slate-400">Receive a Sunday 7 PM notification to review past weekly goals and plan high-leverage priorities</span>
+                    <span className="text-xs font-semibold text-content-secondary block">Sunday Evening Goal Planning Reminders</span>
+                    <span className="text-[11px] text-content-muted">Receive a Sunday 7 PM notification to review past weekly goals and plan high-leverage priorities</span>
                   </div>
                   <input
                     type="checkbox"
@@ -696,14 +696,14 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       setNotifSundayPlanning(!notifSundayPlanning);
                       store.toggleNotifSundayPlanning();
                     }}
-                    className="rounded border-white/20 bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                    className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-white/5 cursor-pointer hover:border-white/10 transition-all">
+                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle cursor-pointer hover:border-overlay-default transition-all">
                   <div>
-                    <span className="text-xs font-semibold text-slate-200 block">Focus Session Completion Alerts</span>
-                    <span className="text-[11px] text-slate-400">App-level preference to attempt system alerts when focus sessions finish</span>
+                    <span className="text-xs font-semibold text-content-secondary block">Focus Session Completion Alerts</span>
+                    <span className="text-[11px] text-content-muted">App-level preference to attempt system alerts when focus sessions finish</span>
                   </div>
                   <input
                     type="checkbox"
@@ -722,7 +722,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                         }
                       }
                     }}
-                    className="rounded border-white/20 bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                    className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                   />
                 </label>
 
@@ -744,16 +744,16 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 4: PRIVACY */}
           {activeSection === 'privacy' && (
             <div className="card p-5 space-y-4">
-              <h2 className="text-base font-display font-bold text-slate-100 flex items-center gap-2 border-b border-white/5 pb-3">
+              <h2 className="text-base font-display font-bold text-content-primary flex items-center gap-2 border-b border-overlay-subtle pb-3">
                 <Eye size={18} className="text-primary-400" />
                 Privacy & Visibility
               </h2>
 
               {/* Public Stats & Habits Privacy Toggle */}
-              <div className="flex items-start justify-between gap-4 p-3.5 bg-bg-800/50 rounded-xl border border-white/5">
+              <div className="flex items-start justify-between gap-4 p-3.5 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-200">Public Leaderboard Profile & Stats</span>
+                    <span className="text-xs font-bold text-content-secondary">Public Leaderboard Profile & Stats</span>
                     {(currentUser?.isProfilePublic ?? true) ? (
                       <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md font-bold">
                         Public
@@ -764,10 +764,10 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[11px] text-content-muted leading-relaxed">
                     Show your habit streak and detailed statistics to competitors on public leaderboards.
                     <br />
-                    <em className="text-slate-500">
+                    <em className="text-content-disabled">
                       (Reciprocal Rule: Hiding your statistics also hides other members' detailed stats from your view).
                     </em>
                   </p>
@@ -777,7 +777,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   type="button"
                   onClick={store.toggleProfilePrivacy}
                   className={`w-10 h-5 rounded-full transition-colors relative p-0.5 border shrink-0 mt-1 ${
-                    (currentUser?.isProfilePublic ?? true) ? 'bg-primary-500 border-primary-400' : 'bg-bg-600 border-white/10'
+                    (currentUser?.isProfilePublic ?? true) ? 'bg-primary-500 border-primary-400' : 'bg-bg-600 border-overlay-default'
                   }`}
                 >
                   <div
@@ -789,10 +789,10 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               </div>
 
               {/* Accept Partnership Invites Toggle (TASK 2) */}
-              <div className="flex items-start justify-between gap-4 p-3.5 bg-bg-800/50 rounded-xl border border-white/5">
+              <div className="flex items-start justify-between gap-4 p-3.5 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-200">Accept Partnership Invites</span>
+                    <span className="text-xs font-bold text-content-secondary">Accept Partnership Invites</span>
                     {acceptsInvites ? (
                       <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
                         <UserCheck size={11} /> Accepting Invites
@@ -803,10 +803,10 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[11px] text-content-muted leading-relaxed">
                     Allow other users to search your User ID (UID) and send you accountability partner invites.
                     <br />
-                    <em className="text-slate-500">
+                    <em className="text-content-disabled">
                       When turned off, incoming invites are blocked. Existing active partnerships remain unaffected.
                     </em>
                   </p>
@@ -816,7 +816,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   type="button"
                   onClick={store.toggleAcceptPartnerInvites}
                   className={`w-10 h-5 rounded-full transition-colors relative p-0.5 border shrink-0 mt-1 ${
-                    acceptsInvites ? 'bg-primary-500 border-primary-400' : 'bg-bg-600 border-white/10'
+                    acceptsInvites ? 'bg-primary-500 border-primary-400' : 'bg-bg-600 border-overlay-default'
                   }`}
                 >
                   <div
@@ -832,17 +832,17 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 5: APPEARANCE */}
           {activeSection === 'appearance' && (
             <div className="card p-5 space-y-4">
-              <h2 className="text-base font-display font-bold text-slate-100 flex items-center gap-2 border-b border-white/5 pb-3">
+              <h2 className="text-base font-display font-bold text-content-primary flex items-center gap-2 border-b border-overlay-subtle pb-3">
                 <Sun size={18} className="text-primary-400" />
                 Appearance Theme
               </h2>
 
-              <div className="flex items-center justify-between p-3.5 bg-bg-800/50 rounded-xl border border-white/5">
+              <div className="flex items-center justify-between p-3.5 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="flex items-center gap-3">
                   {isDarkMode ? <Moon size={20} className="text-primary-400" /> : <Sun size={20} className="text-amber-400" />}
                   <div>
-                    <p className="text-xs font-bold text-slate-200">Visual Theme Mode</p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-xs font-bold text-content-secondary">Visual Theme Mode</p>
+                    <p className="text-[11px] text-content-muted">
                       {isDarkMode ? 'Dark Glassmorphism Theme (Default)' : 'Light Clean Mode'}
                     </p>
                   </div>
@@ -850,8 +850,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
                 <button
                   type="button"
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  className="px-3.5 py-1.5 bg-bg-800 hover:bg-bg-700 border border-white/10 text-slate-200 font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5"
+                  onClick={() => store.toggleThemePreference()}
+                  className="px-3.5 py-1.5 bg-bg-800 hover:bg-bg-700 border border-overlay-default text-content-secondary font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5"
                 >
                   {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
                   <span>Switch to {isDarkMode ? 'Light' : 'Dark'}</span>
@@ -863,12 +863,12 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 6: ACCOUNT MANAGEMENT */}
           {activeSection === 'danger' && (
             <div className="card p-5 space-y-4 border border-rose-500/20">
-              <h2 className="text-base font-display font-bold text-slate-100 flex items-center gap-2 border-b border-white/5 pb-3">
+              <h2 className="text-base font-display font-bold text-content-primary flex items-center gap-2 border-b border-overlay-subtle pb-3">
                 <Shield size={18} className="text-rose-400" />
                 Account Management
               </h2>
 
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-content-muted">
                 Manage your session or permanently delete your account data.
               </p>
 
@@ -876,9 +876,9 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="px-4 py-2.5 bg-bg-800 hover:bg-bg-700 text-slate-200 font-semibold text-xs rounded-xl border border-white/10 transition-all flex items-center justify-center gap-2"
+                  className="px-4 py-2.5 bg-bg-800 hover:bg-bg-700 text-content-secondary font-semibold text-xs rounded-xl border border-overlay-default transition-all flex items-center justify-center gap-2"
                 >
-                  <LogOut size={16} className="text-slate-400" />
+                  <LogOut size={16} className="text-content-muted" />
                   <span>Log Out of Account</span>
                 </button>
 
@@ -897,25 +897,25 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 7: ABOUT */}
           {activeSection === 'about' && (
             <div className="card p-5 space-y-4">
-              <h2 className="text-base font-display font-bold text-slate-100 flex items-center gap-2 border-b border-white/5 pb-3">
+              <h2 className="text-base font-display font-bold text-content-primary flex items-center gap-2 border-b border-overlay-subtle pb-3">
                 <Info size={18} className="text-primary-400" />
                 About Ascend
               </h2>
 
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm font-bold text-slate-200">Ascend Self-Growth Platform</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Version 1.2.0 • Build 2026.08</p>
-                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  <p className="text-sm font-bold text-content-secondary">Ascend Self-Growth Platform</p>
+                  <p className="text-xs text-content-muted mt-0.5">Version {__APP_VERSION__} • Build {__APP_BUILD__}</p>
+                  <p className="text-xs text-content-disabled mt-2 leading-relaxed">
                     Ascend empowers habit tracking, accountability partnerships, leagues, and self-improvement goals across exercise, reading, and skill mastery.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+                <div className="flex items-center gap-2 pt-2 border-t border-overlay-subtle">
                   <button
                     type="button"
                     onClick={() => alert('Ascend Feedback & Support: Contact support@ascendgrowth.app')}
-                    className="px-3.5 py-2 bg-bg-800 hover:bg-bg-700 text-slate-300 text-xs font-medium rounded-xl border border-white/5 flex items-center gap-1.5 transition-all"
+                    className="px-3.5 py-2 bg-bg-800 hover:bg-bg-700 text-content-tertiary text-xs font-medium rounded-xl border border-overlay-subtle flex items-center gap-1.5 transition-all"
                   >
                     <MessageSquare size={14} />
                     <span>Feedback & Support</span>
@@ -923,7 +923,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   <button
                     type="button"
                     onClick={() => alert('Ascend Documentation & Guide: See Help section in sidebar.')}
-                    className="px-3.5 py-2 bg-bg-800 hover:bg-bg-700 text-slate-300 text-xs font-medium rounded-xl border border-white/5 flex items-center gap-1.5 transition-all"
+                    className="px-3.5 py-2 bg-bg-800 hover:bg-bg-700 text-content-tertiary text-xs font-medium rounded-xl border border-overlay-subtle flex items-center gap-1.5 transition-all"
                   >
                     <HelpCircle size={14} />
                     <span>User Documentation</span>
@@ -961,8 +961,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               <Trash2 size={20} />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-100">Permanent Action</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <h3 className="text-sm font-bold text-content-primary">Permanent Action</h3>
+              <p className="text-xs text-content-tertiary leading-relaxed">
                 This will permanently remove your profile, habits, journal entries, points, league rank, and partner links from Supabase. This action cannot be undone.
               </p>
             </div>
@@ -972,7 +972,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
             <button
               type="button"
               onClick={() => setShowDeleteConfirm(false)}
-              className="flex-1 py-2.5 bg-bg-800 hover:bg-bg-700 text-slate-300 font-semibold text-xs rounded-xl border border-white/10 transition-all"
+              className="flex-1 py-2.5 bg-bg-800 hover:bg-bg-700 text-content-tertiary font-semibold text-xs rounded-xl border border-overlay-default transition-all"
             >
               Cancel
             </button>

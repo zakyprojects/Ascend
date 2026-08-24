@@ -16,8 +16,8 @@ export function TierView({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold text-slate-100">Ranks</h1>
-        <p className="text-sm text-slate-500 mt-1">Climb the ladder from Bronze to Legend</p>
+        <h1 className="text-2xl font-display font-bold text-content-primary">Ranks</h1>
+        <p className="text-sm text-content-disabled mt-1">Climb the ladder from Bronze to Legend</p>
       </div>
 
       {/* Current tier showcase */}
@@ -42,7 +42,7 @@ export function TierView({ store }: { store: AppStore }) {
           <h2 className="text-2xl font-display font-bold" style={{ color: currentTier.color }}>
             {currentTier.name}
           </h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-content-disabled mt-1">
             {totalPoints.toLocaleString()} total points
           </p>
 
@@ -50,8 +50,8 @@ export function TierView({ store }: { store: AppStore }) {
           {nextTier && (
             <div className="mt-5 max-w-sm mx-auto">
               <div className="flex items-center justify-between mb-2 text-sm">
-                <span className="text-slate-400">Progress to {nextTier.name}</span>
-                <span className="text-slate-500">{Math.round(progress.percent)}%</span>
+                <span className="text-content-muted">Progress to {nextTier.name}</span>
+                <span className="text-content-disabled">{Math.round(progress.percent)}%</span>
               </div>
               <div className="h-3 bg-bg-600 rounded-full overflow-hidden">
                 <div
@@ -62,7 +62,7 @@ export function TierView({ store }: { store: AppStore }) {
                   }}
                 />
               </div>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-content-disabled mt-2">
                 {(nextTier.minPoints - totalPoints).toLocaleString()} points to reach {nextTier.name}
               </p>
             </div>
@@ -83,12 +83,12 @@ export function TierView({ store }: { store: AppStore }) {
               <div
                 key={tier.name}
                 className={`card p-4 flex items-center gap-4 transition-all ${
-                  isCurrent ? 'border-white/10 bg-bg-700' : ''
+                  isCurrent ? 'border-overlay-default bg-bg-700' : ''
                 } ${isUnlocked ? '' : 'opacity-50'}`}
                 style={isCurrent ? { boxShadow: `0 0 20px ${tier.color}20` } : {}}
               >
                 {/* Rank number */}
-                <div className="text-xs font-display font-bold text-slate-600 w-6 text-center">
+                <div className="text-xs font-display font-bold text-content-subtle w-6 text-center">
                   {idx + 1}
                 </div>
 
@@ -103,7 +103,7 @@ export function TierView({ store }: { store: AppStore }) {
                   {isUnlocked ? (
                     <Icon size={22} style={{ color: tier.color }} />
                   ) : (
-                    <Lock size={18} className="text-slate-600" />
+                    <Lock size={18} className="text-content-subtle" />
                   )}
                 </div>
 
@@ -119,7 +119,7 @@ export function TierView({ store }: { store: AppStore }) {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-content-disabled mt-0.5">
                     {tier.minPoints.toLocaleString()} points
                   </p>
                 </div>
@@ -154,8 +154,8 @@ export function TierView({ store }: { store: AppStore }) {
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-300 truncate">{entry.reason}</p>
-                  <p className="text-xs text-slate-600">
+                  <p className="text-sm text-content-tertiary truncate">{entry.reason}</p>
+                  <p className="text-xs text-content-subtle">
                     {new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     {' at '}
                     {new Date(entry.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}

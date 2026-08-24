@@ -36,14 +36,14 @@ export function CompetitorProfileModal({
     >
       <div className="space-y-5">
         {/* Profile Header */}
-        <div className="p-4 bg-bg-800 rounded-2xl border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 bg-bg-800 rounded-2xl border border-overlay-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500/20 to-primary-600/30 border border-primary-500/30 flex items-center justify-center text-3xl shrink-0 shadow-lg">
               {competitor.avatar}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-lg font-display font-bold text-slate-100 truncate">{competitor.name}</h3>
+                <h3 className="text-lg font-display font-bold text-content-primary truncate">{competitor.name}</h3>
                 {competitor.isUser && (
                   <span className="text-[10px] bg-primary-500/20 text-primary-300 border border-primary-500/30 px-2 py-0.5 rounded-full font-bold shrink-0">
                     You
@@ -58,13 +58,13 @@ export function CompetitorProfileModal({
 
               {/* UID Display directly under username */}
               {(competitor.uid || competitor.id) && (
-                <div className="text-[11px] font-mono text-slate-400 mt-0.5 tracking-tight truncate">
+                <div className="text-[11px] font-mono text-content-muted mt-0.5 tracking-tight truncate">
                   ID: #{competitor.uid || competitor.id?.slice(0, 8)}
                 </div>
               )}
 
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-slate-400">League Points:</span>
+                <span className="text-xs text-content-muted">League Points:</span>
                 <span className="text-xs font-display font-bold text-primary-400">
                   {competitor.points.toLocaleString()} pts
                 </span>
@@ -73,22 +73,22 @@ export function CompetitorProfileModal({
           </div>
 
           {/* Tier Badge */}
-          <div className="shrink-0 bg-bg-700/80 p-2.5 rounded-xl border border-white/5 self-start sm:self-center">
+          <div className="shrink-0 bg-bg-700/80 p-2.5 rounded-xl border border-overlay-subtle self-start sm:self-center">
             <TierBadge totalPoints={competitor.totalPoints || competitor.points} size="md" showName />
           </div>
         </div>
 
         {/* Reciprocal Privacy Guard Notice */}
         {!canViewDetailed ? (
-          <div className="p-6 bg-bg-800/60 border border-white/10 rounded-2xl text-center space-y-2.5 animate-fade-in">
-            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
+          <div className="p-6 bg-bg-800/60 border border-overlay-default rounded-2xl text-center space-y-2.5 animate-fade-in">
+            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center mx-auto text-content-muted">
               {!viewerIsPublic ? <EyeOff size={20} className="text-amber-400" /> : <Lock size={20} />}
             </div>
 
             {!viewerIsPublic ? (
               <>
-                <h4 className="text-sm font-bold text-slate-200">Reciprocal Privacy Active</h4>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                <h4 className="text-sm font-bold text-content-secondary">Reciprocal Privacy Active</h4>
+                <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
                   Because you have set your own profile to private, other members' detailed statistics and active habits are hidden from you.
                 </p>
                 <p className="text-[11px] text-amber-400/90 font-medium">
@@ -97,8 +97,8 @@ export function CompetitorProfileModal({
               </>
             ) : (
               <>
-                <h4 className="text-sm font-bold text-slate-200">Private Profile</h4>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                <h4 className="text-sm font-bold text-content-secondary">Private Profile</h4>
+                <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
                   This user has set their detailed statistics and active habits list to private.
                   Their username, tier rank, and league points remain visible.
                 </p>
@@ -110,7 +110,7 @@ export function CompetitorProfileModal({
             {/* Statistics Section */}
             {stats && (
               <div>
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <h4 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                   <ShieldCheck size={14} className="text-primary-400" />
                   Activity Statistics
                 </h4>
@@ -167,7 +167,7 @@ export function CompetitorProfileModal({
 
             {/* Currently Active Habits */}
             <div>
-              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">
+              <h4 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-2.5">
                 Active Habits ({competitor.activeHabits?.length || 0})
               </h4>
               {competitor.activeHabits && competitor.activeHabits.length > 0 ? (
@@ -175,17 +175,17 @@ export function CompetitorProfileModal({
                   {competitor.activeHabits.map((habit, idx) => (
                     <div
                       key={idx}
-                      className="p-2.5 bg-bg-800 rounded-xl border border-white/5 flex items-center justify-between gap-2"
+                      className="p-2.5 bg-bg-800 rounded-xl border border-overlay-subtle flex items-center justify-between gap-2"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-2 h-2 rounded-full bg-primary-400 shrink-0" />
-                        <span className="text-xs font-medium text-slate-200 truncate">
+                        <span className="text-xs font-medium text-content-secondary truncate">
                           {habit.name}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {habit.category && (
-                          <span className="text-[10px] bg-bg-700 text-slate-400 px-2 py-0.5 rounded-md border border-white/5">
+                          <span className="text-[10px] bg-bg-700 text-content-muted px-2 py-0.5 rounded-md border border-overlay-subtle">
                             {habit.category}
                           </span>
                         )}
@@ -197,7 +197,7 @@ export function CompetitorProfileModal({
                   ))}
                 </div>
               ) : (
-                <div className="p-4 bg-bg-800 rounded-xl text-center text-xs text-slate-500">
+                <div className="p-4 bg-bg-800 rounded-xl text-center text-xs text-content-disabled">
                   No active habits shared yet.
                 </div>
               )}
@@ -206,7 +206,7 @@ export function CompetitorProfileModal({
             {/* Past Seasons & Trophies */}
             {seasonHistory && seasonHistory.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <h4 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                   <Trophy size={14} className="text-amber-400" />
                   Past Seasons & Trophies ({seasonHistory.length})
                 </h4>
@@ -216,14 +216,14 @@ export function CompetitorProfileModal({
                     return (
                       <div
                         key={idx}
-                        className="p-3 bg-bg-800 rounded-xl border border-white/5 flex items-center justify-between gap-2.5"
+                        className="p-3 bg-bg-800 rounded-xl border border-overlay-subtle flex items-center justify-between gap-2.5"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="shrink-0">
                             <TierBadge totalPoints={historyRecord.points} size="sm" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-slate-200 truncate">
+                            <p className="text-xs font-bold text-content-secondary truncate">
                               {historyRecord.seasonName}
                             </p>
                             <p className="text-[10px] font-medium truncate" style={{ color: tier.color }}>
@@ -236,7 +236,7 @@ export function CompetitorProfileModal({
                             {historyRecord.points.toLocaleString()} pts
                           </p>
                           {historyRecord.date && (
-                            <p className="text-[10px] text-slate-500">
+                            <p className="text-[10px] text-content-disabled">
                               {historyRecord.date}
                             </p>
                           )}
@@ -268,7 +268,7 @@ function StatCard({
   subtitle?: string;
 }) {
   return (
-    <div className="p-3 bg-bg-800 rounded-xl border border-white/5 flex items-center gap-2.5 min-w-0">
+    <div className="p-3 bg-bg-800 rounded-xl border border-overlay-subtle flex items-center gap-2.5 min-w-0">
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
         style={{ backgroundColor: `${color}15` }}
@@ -276,8 +276,8 @@ function StatCard({
         <Icon size={16} style={{ color }} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] text-slate-400 truncate">{label}</p>
-        <p className="text-xs font-bold text-slate-200 truncate">{value}</p>
+        <p className="text-[10px] text-content-muted truncate">{label}</p>
+        <p className="text-xs font-bold text-content-secondary truncate">{value}</p>
         {subtitle && (
           <p className="text-[10px] text-orange-400/90 font-medium truncate mt-0.5" title={`Source: ${subtitle}`}>
             {subtitle}

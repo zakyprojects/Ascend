@@ -124,7 +124,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
   const renderStatusBadge = (status: UserBookStatus) => {
     if (status === 'to-read')
       return (
-        <span className="badge bg-slate-500/15 text-slate-400 border border-slate-500/30 text-[10px]">
+        <span className="badge bg-slate-500/15 text-content-muted border border-slate-500/30 text-[10px]">
           <ListTodo size={11} /> To Read
         </span>
       );
@@ -205,11 +205,11 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-display font-bold text-slate-100 flex items-center gap-2">
+          <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
             <BookMarked className="text-violet-400" size={26} />
             Self Improvement Books
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-content-disabled mt-1">
             A curated library of life-changing books. Complete curated books to earn bonus points.
           </p>
         </div>
@@ -221,12 +221,12 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-500/15 flex items-center justify-center text-slate-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-slate-500/15 flex items-center justify-center text-content-muted shrink-0">
             <Library size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">In Library</div>
-            <div className="text-xl font-display font-bold text-slate-100">{libraryBooks.length}</div>
+            <div className="text-xs text-content-disabled">In Library</div>
+            <div className="text-xl font-display font-bold text-content-primary">{libraryBooks.length}</div>
           </div>
         </div>
         <div className="card p-4 flex items-center gap-3">
@@ -234,8 +234,8 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
             <ListTodo size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">To Read</div>
-            <div className="text-xl font-display font-bold text-slate-100">{stats.toRead}</div>
+            <div className="text-xs text-content-disabled">To Read</div>
+            <div className="text-xl font-display font-bold text-content-primary">{stats.toRead}</div>
           </div>
         </div>
         <div className="card p-4 flex items-center gap-3">
@@ -243,8 +243,8 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
             <PlayCircle size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">Reading</div>
-            <div className="text-xl font-display font-bold text-slate-100">{stats.reading}</div>
+            <div className="text-xs text-content-disabled">Reading</div>
+            <div className="text-xl font-display font-bold text-content-primary">{stats.reading}</div>
           </div>
         </div>
         <div className="card p-4 flex items-center gap-3">
@@ -252,10 +252,10 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
             <Award size={20} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">Completed</div>
+            <div className="text-xs text-content-disabled">Completed</div>
             <div className="text-xl font-display font-bold text-emerald-400">
               {stats.completed}
-              <span className="text-xs ml-1 font-sans text-slate-400 font-normal">· {stats.curatedCompletedPoints} pts</span>
+              <span className="text-xs ml-1 font-sans text-content-muted font-normal">· {stats.curatedCompletedPoints} pts</span>
             </div>
           </div>
         </div>
@@ -268,7 +268,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               tab === 'discover'
                 ? 'bg-primary-500/20 text-primary-400'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-content-muted hover:text-content-secondary'
             }`}
           >
             <span className="flex items-center gap-1.5">
@@ -281,7 +281,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               tab === 'library'
                 ? 'bg-primary-500/20 text-primary-400'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-content-muted hover:text-content-secondary'
             }`}
           >
             <span className="flex items-center gap-1.5">
@@ -293,7 +293,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
 
         <div className="flex gap-2 items-center w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" />
             <input
               type="text"
               value={searchQuery}
@@ -302,7 +302,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
               className="input input-has-icon py-2 text-sm"
             />
           </div>
-          <div className="flex items-center gap-1 text-slate-400 shrink-0">
+          <div className="flex items-center gap-1 text-content-muted shrink-0">
             <Filter size={16} />
             <select
               value={tab === 'discover' ? categoryFilter : libraryStatusFilter}
@@ -313,7 +313,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
                   setLibraryStatusFilter(e.target.value as UserBookStatus | 'all');
                 }
               }}
-              className="bg-bg-700 border border-white/5 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary-500/50"
+              className="bg-bg-700 border border-overlay-subtle rounded-xl px-3 py-2 text-sm text-content-secondary focus:outline-none focus:border-primary-500/50"
             >
               <option value="all">All {tab === 'discover' ? 'Categories' : 'Status'}</option>
               {tab === 'discover'
@@ -344,15 +344,15 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-slate-200 text-base leading-snug">
+                      <h3 className="font-semibold text-content-secondary text-base leading-snug">
                         {book.title}
                       </h3>
-                      <p className="text-xs text-slate-400 mt-0.5">by {book.author}</p>
+                      <p className="text-xs text-content-muted mt-0.5">by {book.author}</p>
                     </div>
                     {renderCategoryBadge(book.category)}
                   </div>
 
-                  <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">
+                  <p className="text-xs text-content-muted leading-relaxed line-clamp-3">
                     {book.description}
                   </p>
                 </div>
@@ -365,7 +365,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
                     </span>
                     <span className="text-amber-400 font-bold">
                       +{book.pointsOnCompletion} pts
-                      <span className="text-slate-500 font-normal ml-1">on finish</span>
+                      <span className="text-content-disabled font-normal ml-1">on finish</span>
                     </span>
                   </div>
 
@@ -388,9 +388,9 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
 
           {filteredCurated.length === 0 && (
             <div className="col-span-full card p-8 text-center">
-              <Search size={32} className="mx-auto text-slate-600 mb-2" />
-              <p className="text-sm font-medium text-slate-400">No books match your search</p>
-              <p className="text-xs text-slate-500 mt-1">Try adjusting the category filter or search terms.</p>
+              <Search size={32} className="mx-auto text-content-subtle mb-2" />
+              <p className="text-sm font-medium text-content-muted">No books match your search</p>
+              <p className="text-xs text-content-disabled mt-1">Try adjusting the category filter or search terms.</p>
             </div>
           )}
         </div>
@@ -406,11 +406,11 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
                 return (
                   <div key={groupStatus}>
                     <h2 className="section-title mb-3 flex items-center gap-2">
-                      {groupStatus === 'to-read' && <ListTodo size={18} className="text-slate-400" />}
+                      {groupStatus === 'to-read' && <ListTodo size={18} className="text-content-muted" />}
                       {groupStatus === 'reading' && <PlayCircle size={18} className="text-amber-400" />}
                       {groupStatus === 'completed' && <CheckCircle2 size={18} className="text-emerald-400" />}
                       {groupStatus === 'to-read' ? 'To Read' : groupStatus === 'reading' ? 'Currently Reading' : 'Completed'}
-                      <span className="text-sm font-sans font-normal text-slate-500">({groupBooks.length})</span>
+                      <span className="text-sm font-sans font-normal text-content-disabled">({groupBooks.length})</span>
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {groupBooks.map((lb) => (
@@ -441,11 +441,11 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
 
           {filteredLibrary.length === 0 && (
             <div className="card p-8 text-center">
-              <Library size={32} className="mx-auto text-slate-600 mb-2" />
-              <p className="text-sm font-medium text-slate-400">
+              <Library size={32} className="mx-auto text-content-subtle mb-2" />
+              <p className="text-sm font-medium text-content-muted">
                 {libraryBooks.length === 0 ? 'Your library is empty' : 'No books match your filters'}
               </p>
-              <p className="text-xs text-slate-500 mt-1 mb-4">
+              <p className="text-xs text-content-disabled mt-1 mb-4">
                 {libraryBooks.length === 0
                   ? 'Browse the curated library and add books to start building your reading list.'
                   : 'Try a different status filter or search term.'}
@@ -471,7 +471,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Book Title *</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Book Title *</label>
             <input
               type="text"
               value={customTitle}
@@ -483,7 +483,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Author</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Author</label>
             <input
               type="text"
               value={customAuthor}
@@ -494,7 +494,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Category (optional)</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Category (optional)</label>
             <select
               value={customCategory}
               onChange={(e) => setCustomCategory(e.target.value as BookCategory | '')}
@@ -510,7 +510,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Short Description (optional)</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Short Description (optional)</label>
             <textarea
               value={customDescription}
               onChange={(e) => setCustomDescription(e.target.value)}
@@ -581,20 +581,20 @@ function LibraryCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="font-semibold text-slate-200 text-base leading-snug">{userBook.title}</h3>
+              <h3 className="font-semibold text-content-secondary text-base leading-snug">{userBook.title}</h3>
               {userBook.isCustom && (
-                <span className="badge bg-slate-500/10 text-slate-400 text-[9px] border border-slate-500/20">
+                <span className="badge bg-slate-500/10 text-content-muted text-[9px] border border-slate-500/20">
                   Custom
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">by {userBook.author}</p>
+            <p className="text-xs text-content-muted mt-0.5">by {userBook.author}</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {userBook.category && renderCategoryBadge(userBook.category)}
             <button
               onClick={onRemove}
-              className="text-slate-600 hover:text-rose-400 p-1"
+              className="text-content-subtle hover:text-rose-400 p-1"
               title="Remove from library"
             >
               <Trash2 size={15} />
@@ -603,12 +603,12 @@ function LibraryCard({
         </div>
 
         {userBook.description && (
-          <p className="text-xs text-slate-400 leading-relaxed mt-2 line-clamp-2">
+          <p className="text-xs text-content-muted leading-relaxed mt-2 line-clamp-2">
             {userBook.description}
           </p>
         )}
 
-        <div className="flex items-center justify-between mt-3 text-[11px] text-slate-500">
+        <div className="flex items-center justify-between mt-3 text-[11px] text-content-disabled">
           <span>Added {formatDateLong(userBook.addedAt)}</span>
           <div className="flex items-center gap-2">
             {userBook.status === 'completed' && userBook.completedAt && (

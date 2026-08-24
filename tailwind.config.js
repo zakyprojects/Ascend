@@ -4,6 +4,19 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Semantic content text tokens (themeable via CSS variables)
+        content: {
+          primary: 'var(--color-content-primary)',
+          secondary: 'var(--color-content-secondary)',
+          tertiary: 'var(--color-content-tertiary)',
+          muted: 'var(--color-content-muted)',
+          disabled: 'var(--color-content-disabled)',
+          subtle: 'var(--color-content-subtle)',
+        },
+        // Semantic overlay background tokens
+        'overlay-subtle': 'var(--bg-overlay-subtle)',
+        'overlay-default': 'var(--bg-overlay-default)',
+        'overlay-strong': 'var(--bg-overlay-strong)',
         // Base dark surfaces
         bg: {
           900: '#0a0b0f',
@@ -61,6 +74,13 @@ export default {
         warning: '#f59e0b',
         error: '#ef4444',
         info: '#0ea5e9',
+      },
+      borderColor: {
+        'overlay-subtle': 'var(--border-overlay-subtle)',
+        'overlay-default': 'var(--border-overlay-default)',
+        'overlay-medium': 'var(--border-overlay-medium)',
+        'overlay-strong': 'var(--border-overlay-strong)',
+        'overlay-heavy': 'var(--border-overlay-heavy)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

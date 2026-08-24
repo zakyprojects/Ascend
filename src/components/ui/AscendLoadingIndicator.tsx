@@ -93,20 +93,20 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
 
         {/* Brand Name */}
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="font-display font-bold text-slate-100 text-xl tracking-wide">Ascend</span>
+          <span className="font-display font-bold text-content-primary text-xl tracking-wide">Ascend</span>
           <span className="text-[10px] bg-primary-500/20 text-primary-300 border border-primary-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
             Self Growth
           </span>
         </div>
 
         {/* Primary Message */}
-        <p className="text-sm font-semibold text-slate-200 mt-1 animate-pulse">
+        <p className="text-sm font-semibold text-content-secondary mt-1 animate-pulse">
           {message}
         </p>
 
         {/* Optional Submessage */}
         {submessage && (
-          <p className="text-xs text-slate-400 mt-1 max-w-xs leading-relaxed">
+          <p className="text-xs text-content-muted mt-1 max-w-xs leading-relaxed">
             {submessage}
           </p>
         )}

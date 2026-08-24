@@ -28,12 +28,12 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="card p-6 border border-rose-500/30 bg-rose-500/10 text-slate-200 rounded-xl my-4 space-y-4">
+        <div className="card p-6 border border-rose-500/30 bg-rose-500/10 text-content-secondary rounded-xl my-4 space-y-4">
           <div className="flex items-center gap-3 text-rose-400">
             <AlertTriangle size={24} />
             <h3 className="font-bold text-lg">{this.props.fallbackTitle || 'Something went wrong rendering this section'}</h3>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-content-muted">
             {this.state.error?.message || 'An unexpected rendering error occurred.'}
           </p>
           <button
