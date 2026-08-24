@@ -757,6 +757,14 @@ export function useAppState() {
     }
   }, [state, tabId]);
 
+  // Reactively apply data-theme attribute on document.documentElement based on themePreference
+  useEffect(() => {
+    const theme = state.themePreference || 'dark';
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+  }, [state.themePreference]);
+
   // Initial Supabase data load & auth listener (single source of truth for session state)
   useEffect(() => {
     let mounted = true;
@@ -1772,6 +1780,20 @@ export function useAppState() {
       };
     });
   }, []);
+
+  const setThemePreference = useCallback((theme: 'dark' | 'light') => {
+    setState((prev) => ({
+      ...prev,
+      themePreference: theme,
+    }));
+  }, [setState]);
+
+  const toggleThemePreference = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      themePreference: prev.themePreference === 'light' ? 'dark' : 'light',
+    }));
+  }, [setState]);
 
   const toggleProfilePrivacy = useCallback(async () => {
     const current = state.currentUser;
@@ -6751,6 +6773,8 @@ export function useAppState() {
     setUsername,
     updateProfileUsername,
     updateProfileAvatar,
+    setThemePreference,
+    toggleThemePreference,
     toggleProfilePrivacy,
     toggleAcceptPartnerInvites,
     toggleNotifDailyReminder,

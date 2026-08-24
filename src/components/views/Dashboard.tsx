@@ -79,8 +79,8 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <p className="text-sm text-slate-500">{formatDateLong(todayKey())}</p>
-        <h1 className="text-2xl font-display font-bold text-slate-100 mt-0.5">
+        <p className="text-sm text-content-disabled">{formatDateLong(todayKey())}</p>
+        <h1 className="text-2xl font-display font-bold text-content-primary mt-0.5">
           {greeting()}, let's ascend
         </h1>
       </div>
@@ -93,10 +93,10 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               <Sparkles size={18} />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-200">
+              <p className="text-xs font-bold text-content-secondary">
                 You are using a Guest Session ({store.state.currentUser.username})
               </p>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-content-muted">
                 Save your progress — convert to a permanent account so you never lose your habits, points, and league rank.
               </p>
             </div>
@@ -124,16 +124,16 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                 {tier.name}
               </h2>
               {nextTier && (
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-content-disabled">
                   → {nextTier.name}
                 </span>
               )}
             </div>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-3xl font-display font-bold text-slate-100">
+              <span className="text-3xl font-display font-bold text-content-primary">
                 {totalPoints.toLocaleString()}
               </span>
-              <span className="text-sm text-slate-500">total points</span>
+              <span className="text-sm text-content-disabled">total points</span>
             </div>
           </div>
         </div>
@@ -184,12 +184,12 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-emerald-500"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium">Exercise Tracker</span>
+              <span className="text-xs text-content-muted font-medium">Exercise Tracker</span>
               <Activity size={18} className="text-emerald-400" />
             </div>
             <div>
-              <div className="text-xl font-bold text-slate-100">{weeklyExerciseMins} <span className="text-xs font-normal text-slate-400">mins this week</span></div>
-              <div className="text-[11px] text-slate-500">{weeklyWorkouts.length} sessions completed</div>
+              <div className="text-xl font-bold text-content-primary">{weeklyExerciseMins} <span className="text-xs font-normal text-content-muted">mins this week</span></div>
+              <div className="text-[11px] text-content-disabled">{weeklyWorkouts.length} sessions completed</div>
             </div>
           </button>
 
@@ -199,12 +199,12 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-amber-500"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium">Reading Hub</span>
+              <span className="text-xs text-content-muted font-medium">Reading Hub</span>
               <BookMarked size={18} className="text-amber-400" />
             </div>
             <div>
-              <div className="text-xl font-bold text-slate-100">{activeBooks} <span className="text-xs font-normal text-slate-400">books in progress</span></div>
-              <div className="text-[11px] text-slate-500">{finishedBooks} finished total</div>
+              <div className="text-xl font-bold text-content-primary">{activeBooks} <span className="text-xs font-normal text-content-muted">books in progress</span></div>
+              <div className="text-[11px] text-content-disabled">{finishedBooks} finished total</div>
             </div>
           </button>
 
@@ -214,12 +214,12 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-purple-500"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium">Skill Learning</span>
+              <span className="text-xs text-content-muted font-medium">Skill Learning</span>
               <Zap size={18} className="text-purple-400" />
             </div>
             <div>
-              <div className="text-xl font-bold text-slate-100">{totalSkillHours} <span className="text-xs font-normal text-slate-400">hrs practice</span></div>
-              <div className="text-[11px] text-slate-500">{store.state.skills.length} skills tracked</div>
+              <div className="text-xl font-bold text-content-primary">{totalSkillHours} <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
+              <div className="text-[11px] text-content-disabled">{store.state.skills.length} skills tracked</div>
             </div>
           </button>
 
@@ -229,12 +229,12 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-rose-500"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium">Bad Habits Reduction</span>
+              <span className="text-xs text-content-muted font-medium">Bad Habits Reduction</span>
               <ShieldAlert size={18} className="text-rose-400" />
             </div>
             <div>
-              <div className="text-xl font-bold text-slate-100">{badHabitCount} <span className="text-xs font-normal text-slate-400">habits reduced</span></div>
-              <div className="text-[11px] text-slate-500">Escalating penalties enabled</div>
+              <div className="text-xl font-bold text-content-primary">{badHabitCount} <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
+              <div className="text-[11px] text-content-disabled">Escalating penalties enabled</div>
             </div>
           </button>
 
@@ -244,14 +244,14 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-red-500"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium">Addiction Recovery</span>
+              <span className="text-xs text-content-muted font-medium">Addiction Recovery</span>
               <HeartPulse size={18} className="text-red-400" />
             </div>
             <div>
-              <div className="text-xl font-bold text-slate-100">
+              <div className="text-xl font-bold text-content-primary">
                 {activeAddiction ? activeAddiction.title : 'Sobriety Tracker'}
               </div>
-              <div className="text-[11px] text-slate-500">Includes emergency support & breathing</div>
+              <div className="text-[11px] text-content-disabled">Includes emergency support & breathing</div>
             </div>
           </button>
 
@@ -261,12 +261,12 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-cyan-500"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium">Prefrontal / Focus</span>
+              <span className="text-xs text-content-muted font-medium">Prefrontal / Focus</span>
               <Timer size={18} className="text-cyan-400" />
             </div>
             <div>
-              <div className="text-xl font-bold text-slate-100">{weeklyFocusMins} <span className="text-xs font-normal text-slate-400">focus mins this week</span></div>
-              <div className="text-[11px] text-slate-500">Pomodoro, decisions & emotions</div>
+              <div className="text-xl font-bold text-content-primary">{weeklyFocusMins} <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
+              <div className="text-[11px] text-content-disabled">Pomodoro, decisions & emotions</div>
             </div>
           </button>
 
@@ -276,15 +276,15 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-indigo-500"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium">Time Tracker</span>
+              <span className="text-xs text-content-muted font-medium">Time Tracker</span>
               <Clock size={18} className="text-indigo-400" />
             </div>
             <div>
-              <div className="text-xl font-bold text-slate-100">
+              <div className="text-xl font-bold text-content-primary">
                 {todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'}{' '}
-                <span className="text-xs font-normal text-slate-400">planned today</span>
+                <span className="text-xs font-normal text-content-muted">planned today</span>
               </div>
-              <div className="text-[11px] text-slate-500">
+              <div className="text-[11px] text-content-disabled">
                 {todayBlocks.length > 0
                   ? `${todayCompletedBlocksCount}/${todayBlocks.length} blocks completed`
                   : 'No scheduled blocks yet'}
@@ -305,7 +305,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
         {habits.length === 0 ? (
           <div className="card p-6 text-center">
-            <p className="text-sm text-slate-500 mb-3">No habits yet. Start building your routine!</p>
+            <p className="text-sm text-content-disabled mb-3">No habits yet. Start building your routine!</p>
             <button onClick={() => onViewChange('habits')} className="btn-primary mx-auto">
               Add Your First Habit
             </button>
@@ -322,22 +322,22 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                       disabled={isToggling || isLinked}
                       title={isLinked ? 'Log reading progress in Reading Hub' : undefined}
                       onClick={() => !isLinked && executeWithKey(habit.id, async () => { store.toggleHabit(habit.id); })}
-                      className={`shrink-0 w-9 h-9 rounded-lg border border-white/5 flex items-center justify-center transition-all ${
+                      className={`shrink-0 w-9 h-9 rounded-lg border border-overlay-subtle flex items-center justify-center transition-all ${
                         isLinked
-                          ? 'bg-bg-600/60 text-slate-600 cursor-default'
-                          : 'bg-bg-600 text-slate-500 hover:bg-bg-500 hover:text-slate-300 active:scale-90'
+                          ? 'bg-bg-600/60 text-content-subtle cursor-default'
+                          : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary active:scale-90'
                       }`}
                     >
                       {isToggling ? <AscendLoadingIndicator size="sm" /> : <Check size={18} />}
                     </button>
-                    <span className="text-sm text-slate-300 flex-1 truncate flex items-center gap-1.5">
+                    <span className="text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
                       {isLinked && <BookOpen size={13} className="text-amber-400 shrink-0" />}
                       <span>{habit.name}</span>
                     </span>
                     {habit.isPreset ? (
                       <span className="text-xs text-primary-400">+{habit.points} pts</span>
                     ) : (
-                      <span className="text-xs text-slate-600">No pts</span>
+                      <span className="text-xs text-content-subtle">No pts</span>
                     )}
                   </div>
                 );
@@ -348,11 +348,11 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                   <Sparkles size={22} className="text-primary-400" />
                 </div>
                 <p className="text-sm font-medium text-primary-400">All habits done today!</p>
-                <p className="text-xs text-slate-500 mt-0.5">Great work. See you tomorrow.</p>
+                <p className="text-xs text-content-disabled mt-0.5">Great work. See you tomorrow.</p>
               </div>
             )}
             {completedToday.length > 0 && pendingToday.length > 0 && (
-              <p className="text-xs text-slate-600 px-1">
+              <p className="text-xs text-content-subtle px-1">
                 {completedToday.length} already completed
               </p>
             )}
@@ -376,20 +376,20 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: moodColor(todayEntry.mood) }} />
-                <span className="text-xs text-slate-400 capitalize">{todayEntry.mood}</span>
+                <span className="text-xs text-content-muted capitalize">{todayEntry.mood}</span>
               </div>
-              <p className="text-sm text-slate-300 line-clamp-2">
+              <p className="text-sm text-content-tertiary line-clamp-2">
                 {todayEntry.content || 'No content written'}
               </p>
             </div>
           ) : (
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-bg-600 flex items-center justify-center">
-                <BookOpen size={18} className="text-slate-500" />
+                <BookOpen size={18} className="text-content-disabled" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-300">Write today's entry</p>
-                <p className="text-xs text-slate-500">How was your day? (+5 pts)</p>
+                <p className="text-sm font-medium text-content-tertiary">Write today's entry</p>
+                <p className="text-xs text-content-disabled">How was your day? (+5 pts)</p>
               </div>
             </div>
           )}
@@ -434,11 +434,11 @@ function LeagueRankCard({ type, rank, points, countdown }: { type: LeagueType; r
       >
         <Icon size={14} style={{ color: config.color }} />
       </div>
-      <div className="text-xs text-slate-400 font-medium mb-0.5">{label}</div>
+      <div className="text-xs text-content-muted font-medium mb-0.5">{label}</div>
       <div className="text-lg font-display font-bold" style={{ color: config.color }}>
         #{rank}
       </div>
-      <div className="text-[10px] text-slate-400">{points.toLocaleString()} pts</div>
+      <div className="text-[10px] text-content-muted">{points.toLocaleString()} pts</div>
       <div className="text-[10px] text-primary-400 mt-0.5 truncate font-mono font-medium">{countdown}</div>
     </div>
   );

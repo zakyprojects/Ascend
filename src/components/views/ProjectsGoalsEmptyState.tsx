@@ -52,13 +52,13 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
 
   if (isFiltered) {
     return (
-      <div className="card p-10 text-center border border-dashed border-white/10 bg-bg-800/40 rounded-2xl space-y-3">
+      <div className="card p-10 text-center border border-dashed border-overlay-default bg-bg-800/40 rounded-2xl space-y-3">
         <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center mx-auto ${config.iconBg}`}>
           <Icon size={24} />
         </div>
         <div className="max-w-sm mx-auto space-y-1">
-          <h3 className="text-sm font-bold text-slate-200">No {tier.charAt(0).toUpperCase() + tier.slice(1)} Found</h3>
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <h3 className="text-sm font-bold text-content-secondary">No {tier.charAt(0).toUpperCase() + tier.slice(1)} Found</h3>
+          <p className="text-xs text-content-muted leading-relaxed">
             No items match your active search or filter criteria.
           </p>
         </div>
@@ -76,7 +76,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
 
   return (
     <div
-      className={`card p-10 sm:p-12 text-center border border-white/10 bg-gradient-to-b ${
+      className={`card p-10 sm:p-12 text-center border border-overlay-default bg-gradient-to-b ${
         tier === 'goals'
           ? 'from-purple-950/20'
           : tier === 'projects'
@@ -111,7 +111,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
 
       {/* Bold H3 Title & Explanatory Copy */}
       <div className="max-w-md mx-auto space-y-2 relative z-10">
-        <h3 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">
+        <h3 className="text-base sm:text-lg font-bold text-content-primary tracking-tight">
           {config.title}
         </h3>
         <p className="text-xs sm:text-sm text-slate-300/90 leading-relaxed">
@@ -125,32 +125,32 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
       </div>
 
       {/* Educational Micro Hierarchy Map (Task -> Project -> Goal) */}
-      <div className="flex items-center justify-center gap-1 sm:gap-2 max-w-sm mx-auto py-2 px-3 rounded-xl bg-bg-900/70 border border-white/5 text-[10px] sm:text-xs relative z-10">
+      <div className="flex items-center justify-center gap-1 sm:gap-2 max-w-sm mx-auto py-2 px-3 rounded-xl bg-bg-900/70 border border-overlay-subtle text-[10px] sm:text-xs relative z-10">
         <button
           type="button"
           onClick={() => onTabSwitch?.('tasks')}
-          className={`font-semibold transition-colors cursor-pointer hover:text-slate-200 ${
-            tier === 'tasks' ? 'text-emerald-400 underline underline-offset-4' : 'text-slate-500'
+          className={`font-semibold transition-colors cursor-pointer hover:text-content-secondary ${
+            tier === 'tasks' ? 'text-emerald-400 underline underline-offset-4' : 'text-content-disabled'
           }`}
         >
           Task
         </button>
-        <ArrowRight size={12} className="text-slate-600 shrink-0" />
+        <ArrowRight size={12} className="text-content-subtle shrink-0" />
         <button
           type="button"
           onClick={() => onTabSwitch?.('projects')}
-          className={`font-semibold transition-colors cursor-pointer hover:text-slate-200 ${
-            tier === 'projects' ? 'text-cyan-400 underline underline-offset-4' : 'text-slate-500'
+          className={`font-semibold transition-colors cursor-pointer hover:text-content-secondary ${
+            tier === 'projects' ? 'text-cyan-400 underline underline-offset-4' : 'text-content-disabled'
           }`}
         >
           Project
         </button>
-        <ArrowRight size={12} className="text-slate-600 shrink-0" />
+        <ArrowRight size={12} className="text-content-subtle shrink-0" />
         <button
           type="button"
           onClick={() => onTabSwitch?.('goals')}
-          className={`font-semibold transition-colors cursor-pointer hover:text-slate-200 ${
-            tier === 'goals' ? 'text-purple-400 underline underline-offset-4' : 'text-slate-500'
+          className={`font-semibold transition-colors cursor-pointer hover:text-content-secondary ${
+            tier === 'goals' ? 'text-purple-400 underline underline-offset-4' : 'text-content-disabled'
           }`}
         >
           Goal

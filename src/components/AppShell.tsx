@@ -130,7 +130,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
   return (
     <div className="min-h-screen md:h-screen bg-bg-900 flex md:overflow-hidden">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-64 h-full glass border-r border-white/5 shrink-0 overflow-y-auto">
+      <aside className="hidden md:flex flex-col w-64 h-full glass border-r border-overlay-subtle shrink-0 overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center gap-2.5">
             <img
@@ -140,7 +140,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
             />
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <div className="font-display font-bold text-slate-100 text-lg leading-none">Ascend</div>
+                <div className="font-display font-bold text-content-primary text-lg leading-none">Ascend</div>
                 <span className="whitespace-nowrap shrink-0 text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-bold">
                   {getSeasonLabel()}
                 </span>
@@ -148,7 +148,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                   Beta
                 </span>
               </div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">Self Growth</div>
+              <div className="text-[10px] text-content-disabled uppercase tracking-widest mt-0.5">Self Growth</div>
             </div>
           </div>
         </div>
@@ -156,13 +156,13 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
         {/* User Account / Login Card in Sidebar */}
         <div className="px-3 mb-4">
           {currentUser ? (
-            <div className="card p-3 bg-bg-800/80 border border-white/10 space-y-2">
+            <div className="card p-3 bg-bg-800/80 border border-overlay-default space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-lg bg-primary-500/20 border border-primary-500/30 flex items-center justify-center text-lg shrink-0">
                   {userAvatar}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-200 truncate">{username}</p>
+                  <p className="text-xs font-bold text-content-secondary truncate">{username}</p>
                   <p className={`text-[10px] font-medium truncate ${currentUser.isAnonymous ? 'text-amber-400' : 'text-emerald-400'}`}>
                     {currentUser.isAnonymous ? 'Guest Account' : 'Account Active'}
                   </p>
@@ -174,7 +174,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                   className={`p-1.5 rounded-lg transition-all ${
                     currentView === 'settings'
                       ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                      : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
                   }`}
                 >
                   <Settings size={15} />
@@ -182,7 +182,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                 <button
                   onClick={handleLogoutClick}
                   title="Log Out"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                  className="p-1.5 rounded-lg text-content-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all"
                 >
                   <LogOut size={15} />
                 </button>
@@ -198,9 +198,9 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
               )}
 
               {/* Privacy Toggle */}
-              <div className="pt-2 border-t border-white/5 space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1 font-medium text-slate-300">
+              <div className="pt-2 border-t border-overlay-subtle space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-content-muted">
+                  <span className="flex items-center gap-1 font-medium text-content-tertiary">
                     Public Stats & Habits
                   </span>
                   <button
@@ -209,7 +209,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                     className={`w-8 h-4 rounded-full transition-colors relative p-0.5 border ${
                       (currentUser.isProfilePublic ?? true)
                         ? 'bg-primary-500 border-primary-400'
-                        : 'bg-bg-600 border-white/10'
+                        : 'bg-bg-600 border-overlay-default'
                     }`}
                   >
                     <div
@@ -219,7 +219,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                     />
                   </button>
                 </div>
-                <p className="text-[10px] text-slate-500 leading-tight">
+                <p className="text-[10px] text-content-disabled leading-tight">
                   Hiding your stats also hides others' stats from you.
                 </p>
               </div>
@@ -246,7 +246,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   active
                     ? 'bg-primary-500/15 text-primary-400'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -263,11 +263,11 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-overlay-subtle">
           <div className="card p-4">
             <div className="stat-label mb-2">Your Rank</div>
             <TierBadge totalPoints={totalPoints} size="md" showName />
-            <div className="mt-2 text-xs text-slate-500">
+            <div className="mt-2 text-xs text-content-disabled">
               {totalPoints.toLocaleString()} total points
             </div>
           </div>
@@ -277,14 +277,14 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
       {/* Mobile view wrapper */}
       <div className="flex-1 flex flex-col min-w-0 md:h-full md:overflow-hidden">
         {/* Mobile header */}
-        <header className="md:hidden glass border-b border-white/5 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+        <header className="md:hidden glass border-b border-overlay-subtle px-4 py-3 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <img
               src="/favicon.svg"
               alt="Ascend Logo"
               className="w-8 h-8 rounded-lg object-cover shrink-0"
             />
-            <span className="font-display font-bold text-slate-100">Ascend</span>
+            <span className="font-display font-bold text-content-primary">Ascend</span>
             <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-bold uppercase tracking-wider">
               Beta
             </span>
@@ -292,18 +292,18 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
 
           <div className="flex items-center gap-2">
             {currentUser ? (
-              <div className="flex items-center gap-1.5 bg-bg-800 px-2.5 py-1 rounded-lg border border-white/10 text-xs">
+              <div className="flex items-center gap-1.5 bg-bg-800 px-2.5 py-1 rounded-lg border border-overlay-default text-xs">
                 <span>{userAvatar}</span>
-                <span className="font-bold text-slate-200 truncate max-w-[80px]">{username}</span>
+                <span className="font-bold text-content-secondary truncate max-w-[80px]">{username}</span>
                 <NotificationCenter store={store} compact />
                 <button
                   onClick={() => onViewChange('settings')}
                   title="Settings"
-                  className="text-slate-400 hover:text-slate-200 ml-0.5"
+                  className="text-content-muted hover:text-content-secondary ml-0.5"
                 >
                   <Settings size={13} />
                 </button>
-                <button onClick={handleLogoutClick} title="Log Out" className="text-slate-400 hover:text-rose-400 ml-0.5">
+                <button onClick={handleLogoutClick} title="Log Out" className="text-content-muted hover:text-rose-400 ml-0.5">
                   <LogOut size={13} />
                 </button>
               </div>
@@ -318,7 +318,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
             )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5"
+              className="p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle"
             >
               {mobileMenuOpen ? <X size={20} /> : <LayoutDashboard size={20} />}
             </button>
@@ -332,7 +332,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
               <div className="card p-3">
                 <div className="stat-label mb-1">Your Rank</div>
                 <TierBadge totalPoints={totalPoints} size="md" showName />
-                <div className="mt-1 text-xs text-slate-500">
+                <div className="mt-1 text-xs text-content-disabled">
                   {totalPoints.toLocaleString()} total points
                 </div>
               </div>
@@ -344,8 +344,8 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                     <div className="flex items-center gap-2">
                       <span className="text-xl">{userAvatar}</span>
                       <div>
-                        <div className="text-xs font-bold text-slate-200">{username}</div>
-                        <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
+                        <div className="text-xs font-bold text-content-secondary">{username}</div>
+                        <div className="text-[10px] text-content-muted truncate max-w-[140px]">
                           {currentUser.email}
                         </div>
                       </div>
@@ -377,7 +377,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                       key={item.id}
                       onClick={() => { onViewChange(item.id); setMobileMenuOpen(false); }}
                       className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                        active ? 'bg-primary-500/15 text-primary-400' : 'text-slate-400 hover:bg-white/5'
+                        active ? 'bg-primary-500/15 text-primary-400' : 'text-content-muted hover:bg-overlay-subtle'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -405,7 +405,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
         </main>
 
         {/* Mobile bottom nav */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-white/5 px-1 py-1.5 z-30 overflow-x-auto">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-overlay-subtle px-1 py-1.5 z-30 overflow-x-auto">
           <div className="flex items-center justify-around min-w-max">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -415,7 +415,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                   key={item.id}
                   onClick={() => onViewChange(item.id)}
                   className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg transition-all relative ${
-                    active ? 'text-primary-400' : 'text-slate-500'
+                    active ? 'text-primary-400' : 'text-content-disabled'
                   }`}
                 >
                   <Icon size={20} />

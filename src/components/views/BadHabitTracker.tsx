@@ -114,11 +114,11 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-slate-100 flex items-center gap-2">
+          <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
             <ShieldAlert className="text-rose-400" size={26} />
             Bad Habit Reduction Tracker
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-content-disabled mt-1">
             Build resistance streaks (+10 pts per day), enforce rank-tiered escalating penalties, and complete 75%+ commitments.
           </p>
         </div>
@@ -135,9 +135,9 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
             <Flame size={22} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">Overall Resisted Streak</div>
-            <div className="text-xl font-display font-bold text-slate-100">
-              {overallStreak} <span className="text-xs font-normal text-slate-400">consecutive days</span>
+            <div className="text-xs text-content-disabled">Overall Resisted Streak</div>
+            <div className="text-xl font-display font-bold text-content-primary">
+              {overallStreak} <span className="text-xs font-normal text-content-muted">consecutive days</span>
             </div>
           </div>
         </div>
@@ -147,9 +147,9 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
             <TrendingUp size={22} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">Resist Success Rate</div>
-            <div className="text-xl font-display font-bold text-slate-100">
-              {resistRate}% <span className="text-xs font-normal text-slate-400">({totalResisted} vs {totalOccurred})</span>
+            <div className="text-xs text-content-disabled">Resist Success Rate</div>
+            <div className="text-xl font-display font-bold text-content-primary">
+              {resistRate}% <span className="text-xs font-normal text-content-muted">({totalResisted} vs {totalOccurred})</span>
             </div>
           </div>
         </div>
@@ -159,9 +159,9 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
             <Award size={22} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">Active Bad Habits</div>
-            <div className="text-xl font-display font-bold text-slate-100">
-              {activeHabits.length} <span className="text-xs font-normal text-slate-400">({Math.min(activeHabits.length, 2)} point-eligible)</span>
+            <div className="text-xs text-content-disabled">Active Bad Habits</div>
+            <div className="text-xl font-display font-bold text-content-primary">
+              {activeHabits.length} <span className="text-xs font-normal text-content-muted">({Math.min(activeHabits.length, 2)} point-eligible)</span>
             </div>
           </div>
         </div>
@@ -170,22 +170,22 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       {/* Rules & System Banner Callout */}
       <div className="card p-4 border-l-4 border-amber-500/80 bg-amber-500/5 flex items-start gap-3">
         <AlertTriangle size={20} className="text-amber-400 shrink-0 mt-0.5" />
-        <div className="text-xs text-slate-300 leading-relaxed space-y-1">
+        <div className="text-xs text-content-tertiary leading-relaxed space-y-1">
           <div>
             <span className="font-bold text-amber-300">Escalating Penalty & Point Cap System Active:</span>
           </div>
-          <ul className="list-disc pl-4 space-y-0.5 text-slate-400">
+          <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
             <li>
-              <span className="text-slate-200">Point Eligibility:</span> Only the <span className="text-emerald-400 font-semibold">first 2 habits</span> (by creation order) earn/lose points. Slot reassigns automatically upon deletion or completion.
+              <span className="text-content-secondary">Point Eligibility:</span> Only the <span className="text-emerald-400 font-semibold">first 2 habits</span> (by creation order) earn/lose points. Slot reassigns automatically upon deletion or completion.
             </li>
             <li>
-              <span className="text-slate-200">Daily Actions:</span> Resisted awards <span className="text-emerald-400">+10 pts</span>. Logging Occurred deducts points using rank-tiered escalation (capped at <span className="text-amber-300">1.5x</span> for Bronze–Platinum, <span className="text-rose-400">2.5x</span> for Diamond+). Once logged, action locks for today. Undo is available for today's action.
+              <span className="text-content-secondary">Daily Actions:</span> Resisted awards <span className="text-emerald-400">+10 pts</span>. Logging Occurred deducts points using rank-tiered escalation (capped at <span className="text-amber-300">1.5x</span> for Bronze–Platinum, <span className="text-rose-400">2.5x</span> for Diamond+). Once logged, action locks for today. Undo is available for today's action.
             </li>
             <li>
-              <span className="text-slate-200">No-Report Auto-Penalty:</span> Missing a day applies an automatic <span className="text-rose-400">-5 pts base</span> penalty at local midnight/hydration (scaled by your tier multiplier), breaks streak, and escalates future penalties. Cannot be undone.
+              <span className="text-content-secondary">No-Report Auto-Penalty:</span> Missing a day applies an automatic <span className="text-rose-400">-5 pts base</span> penalty at local midnight/hydration (scaled by your tier multiplier), breaks streak, and escalates future penalties. Cannot be undone.
             </li>
             <li>
-              <span className="text-slate-200">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="text-primary-300 font-semibold">75%</span> of commitment duration. Completing preserves points earned!
+              <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="text-primary-300 font-semibold">75%</span> of commitment duration. Completing preserves points earned!
             </li>
           </ul>
         </div>
@@ -197,9 +197,9 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
         {activeHabits.length === 0 ? (
           <div className="card p-8 text-center">
-            <ShieldAlert size={32} className="mx-auto text-slate-600 mb-2" />
-            <p className="text-sm font-medium text-slate-400">No active bad habits being tracked</p>
-            <p className="text-xs text-slate-500 mt-1 mb-4">Add a bad habit you want to reduce (e.g. Doomscrolling, Junk Food, Late Night Gaming) to log daily resistance.</p>
+            <ShieldAlert size={32} className="mx-auto text-content-subtle mb-2" />
+            <p className="text-sm font-medium text-content-muted">No active bad habits being tracked</p>
+            <p className="text-xs text-content-disabled mt-1 mb-4">Add a bad habit you want to reduce (e.g. Doomscrolling, Junk Food, Late Night Gaming) to log daily resistance.</p>
             <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
               Add a Bad Habit
             </button>
@@ -243,22 +243,22 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               return (
                 <div key={bh.id} className="card p-4 space-y-4">
                   {/* Top Bar */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-overlay-subtle pb-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-slate-100 text-base">{bh.name}</h3>
+                        <h3 className="font-bold text-content-primary text-base">{bh.name}</h3>
                         {isPointEligible ? (
                           <span className="badge bg-emerald-500/15 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
                             Point-Eligible (Slot {idx + 1}/2)
                           </span>
                         ) : (
-                          <span className="badge bg-slate-700/60 text-slate-400 text-[10px] font-medium border border-white/10" title="Only first 2 habits earn/lose points">
+                          <span className="badge bg-slate-700/60 text-content-muted text-[10px] font-medium border border-overlay-default" title="Only first 2 habits earn/lose points">
                             Tracking Only (Point Cap Reached)
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Commitment: <span className="text-slate-300 font-semibold">{commitmentDays} days</span> • Created: {new Date(bh.createdAt).toLocaleDateString()}
+                      <p className="text-xs text-content-disabled mt-0.5">
+                        Commitment: <span className="text-content-tertiary font-semibold">{commitmentDays} days</span> • Created: {new Date(bh.createdAt).toLocaleDateString()}
                       </p>
                     </div>
 
@@ -270,7 +270,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         className={`btn text-xs py-1.5 px-3 flex items-center gap-1.5 transition-all ${
                           isCompleteUnlocked
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
-                            : 'bg-bg-700/50 text-slate-500 border border-white/5 cursor-not-allowed opacity-60'
+                            : 'bg-bg-700/50 text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
                         }`}
                         title={
                           isCompleteUnlocked
@@ -285,7 +285,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                       {/* Delete Button */}
                       <button
                         onClick={() => setDeleteModalHabit(bh)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                        className="p-1.5 rounded-lg text-content-disabled hover:text-rose-400 hover:bg-rose-500/10 transition-all"
                         title="Delete Bad Habit (Reverses net points)"
                       >
                         <Trash2 size={16} />
@@ -296,11 +296,11 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                   {/* Streak & Commitment Progress Bar */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400 flex items-center gap-1">
+                      <span className="text-content-muted flex items-center gap-1">
                         <Flame size={14} className="text-emerald-400" />
-                        <span className="font-bold text-slate-200">{habitStreak}d</span> resisted streak
+                        <span className="font-bold text-content-secondary">{habitStreak}d</span> resisted streak
                       </span>
-                      <span className="text-slate-500">
+                      <span className="text-content-disabled">
                         {isCompleteUnlocked ? (
                           <span className="text-emerald-400 font-semibold">✓ 75%+ Complete Unlocked ({habitStreak}/{commitmentDays}d)</span>
                         ) : (
@@ -309,7 +309,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                       </span>
                     </div>
 
-                    <div className="w-full h-2.5 bg-bg-700 rounded-full overflow-hidden relative border border-white/5">
+                    <div className="w-full h-2.5 bg-bg-700 rounded-full overflow-hidden relative border border-overlay-subtle">
                       {/* 75% Threshold Marker Line */}
                       <div
                         className="absolute top-0 bottom-0 w-0.5 bg-amber-400/70 z-10"
@@ -338,11 +338,11 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           status === 'resisted'
                             ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold shadow-lg shadow-emerald-500/10'
                             : todayLog
-                            ? 'bg-bg-800 border-white/5 text-slate-600 cursor-not-allowed opacity-60'
-                            : 'bg-bg-700/80 border-white/10 text-slate-300 hover:bg-emerald-500/10 hover:border-emerald-500/40'
+                            ? 'bg-bg-800 border-overlay-subtle text-content-subtle cursor-not-allowed opacity-60'
+                            : 'bg-bg-700/80 border-overlay-default text-content-tertiary hover:bg-emerald-500/10 hover:border-emerald-500/40'
                         }`}
                       >
-                        <CheckCircle2 size={16} className={status === 'resisted' ? 'text-emerald-400' : 'text-slate-400'} />
+                        <CheckCircle2 size={16} className={status === 'resisted' ? 'text-emerald-400' : 'text-content-muted'} />
                         <span>Resisted Today {isPointEligible ? '(+10 pts)' : '(0 pts)'}</span>
                       </button>
 
@@ -353,20 +353,20 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           status === 'occurred'
                             ? 'bg-rose-500/20 border-rose-500 text-rose-300 font-bold shadow-lg shadow-rose-500/10'
                             : todayLog
-                            ? 'bg-bg-800 border-white/5 text-slate-600 cursor-not-allowed opacity-60'
-                            : 'bg-bg-700/80 border-white/10 text-slate-300 hover:bg-rose-500/10 hover:border-rose-500/40'
+                            ? 'bg-bg-800 border-overlay-subtle text-content-subtle cursor-not-allowed opacity-60'
+                            : 'bg-bg-700/80 border-overlay-default text-content-tertiary hover:bg-rose-500/10 hover:border-rose-500/40'
                         }`}
                       >
-                        <XCircle size={16} className={status === 'occurred' ? 'text-rose-400' : 'text-slate-400'} />
+                        <XCircle size={16} className={status === 'occurred' ? 'text-rose-400' : 'text-content-muted'} />
                         <span>Occurred Today {isPointEligible ? '(Deduct Pts)' : '(0 pts)'}</span>
                       </button>
                     </div>
 
                     {/* Today's Log Status & Undo Bar */}
                     {todayLog && (
-                      <div className="flex items-center justify-between bg-bg-800/80 p-2 px-3 rounded-lg border border-white/5 text-xs">
-                        <span className="text-slate-400 flex items-center gap-1.5">
-                          <Lock size={12} className="text-slate-500" />
+                      <div className="flex items-center justify-between bg-bg-800/80 p-2 px-3 rounded-lg border border-overlay-subtle text-xs">
+                        <span className="text-content-muted flex items-center gap-1.5">
+                          <Lock size={12} className="text-content-disabled" />
                           Today's action locked ({todayLog.status === 'resisted' ? 'Resisted' : todayLog.status === 'occurred' ? 'Occurred' : 'No Report Penalty'})
                           {todayLog.pointsAwardedOrDeducted !== 0 && (
                             <span className={todayLog.pointsAwardedOrDeducted > 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
@@ -384,17 +384,17 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                             <span>Undo Today's Action</span>
                           </button>
                         ) : (
-                          <span className="text-[10px] text-slate-500 italic">No-report penalties cannot be undone</span>
+                          <span className="text-[10px] text-content-disabled italic">No-report penalties cannot be undone</span>
                         )}
                       </div>
                     )}
                   </div>
 
                   {/* 14-day Trend Matrix */}
-                  <div className="pt-2 border-t border-white/5">
-                    <div className="text-[10px] text-slate-500 mb-1 font-medium flex items-center justify-between">
+                  <div className="pt-2 border-t border-overlay-subtle">
+                    <div className="text-[10px] text-content-disabled mb-1 font-medium flex items-center justify-between">
                       <span>14-Day Trend History</span>
-                      <span className="text-slate-600">✓ Resisted • ✕ Occurred • ! Missed</span>
+                      <span className="text-content-subtle">✓ Resisted • ✕ Occurred • ! Missed</span>
                     </div>
                     <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                       {last14Days.map((d) => {
@@ -413,7 +413,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                                 ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
                                 : isNoReport
                                 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                                : 'bg-bg-700/50 text-slate-600 border border-white/5'
+                                : 'bg-bg-700/50 text-content-subtle border border-overlay-subtle'
                             }`}
                             title={`${d}: ${
                               isResisted
@@ -440,7 +440,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
       {/* Completed Bad Habits Section */}
       {completedHabits.length > 0 && (
-        <div className="pt-4 space-y-3 border-t border-white/10">
+        <div className="pt-4 space-y-3 border-t border-overlay-default">
           <h2 className="section-title text-emerald-400 flex items-center gap-2">
             <CheckCheck size={20} />
             Completed Bad Habits ({completedHabits.length})
@@ -455,16 +455,16 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 <div key={bh.id} className="card p-4 bg-bg-800/60 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-slate-200 text-base">{bh.name}</h3>
+                      <h3 className="font-bold text-content-secondary text-base">{bh.name}</h3>
                       <span className="badge bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
                         Completed
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-content-muted mt-1">
                       Commitment: {bh.commitmentDays} days • Total days resisted: <strong className="text-emerald-400">{totalResistedCount} days</strong>
                     </p>
                     {bh.completedAt && (
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-content-disabled mt-0.5">
                         Completed on {new Date(bh.completedAt).toLocaleDateString()} (Points earned preserved)
                       </p>
                     )}
@@ -488,7 +488,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Bad Habit to Reduce">
         <form onSubmit={handleAddSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Bad Habit Name</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Bad Habit Name</label>
             <input
               type="text"
               value={habitName}
@@ -500,13 +500,13 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Commitment Duration</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Commitment Duration</label>
             <div className="grid grid-cols-4 gap-2 mb-2">
               <button
                 type="button"
                 onClick={() => setDurationMode('30')}
                 className={`py-2 text-xs rounded-xl border font-semibold transition-all ${
-                  durationMode === '30' ? 'bg-primary-500/20 border-primary-500 text-primary-300' : 'bg-bg-700/60 border-white/10 text-slate-400'
+                  durationMode === '30' ? 'bg-primary-500/20 border-primary-500 text-primary-300' : 'bg-bg-700/60 border-overlay-default text-content-muted'
                 }`}
               >
                 30 Days
@@ -515,7 +515,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 type="button"
                 onClick={() => setDurationMode('60')}
                 className={`py-2 text-xs rounded-xl border font-semibold transition-all ${
-                  durationMode === '60' ? 'bg-primary-500/20 border-primary-500 text-primary-300' : 'bg-bg-700/60 border-white/10 text-slate-400'
+                  durationMode === '60' ? 'bg-primary-500/20 border-primary-500 text-primary-300' : 'bg-bg-700/60 border-overlay-default text-content-muted'
                 }`}
               >
                 60 Days
@@ -524,7 +524,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 type="button"
                 onClick={() => setDurationMode('90')}
                 className={`py-2 text-xs rounded-xl border font-semibold transition-all ${
-                  durationMode === '90' ? 'bg-primary-500/20 border-primary-500 text-primary-300' : 'bg-bg-700/60 border-white/10 text-slate-400'
+                  durationMode === '90' ? 'bg-primary-500/20 border-primary-500 text-primary-300' : 'bg-bg-700/60 border-overlay-default text-content-muted'
                 }`}
               >
                 90 Days
@@ -533,7 +533,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 type="button"
                 onClick={() => setDurationMode('custom')}
                 className={`py-2 text-xs rounded-xl border font-semibold transition-all ${
-                  durationMode === 'custom' ? 'bg-primary-500/20 border-primary-500 text-primary-300' : 'bg-bg-700/60 border-white/10 text-slate-400'
+                  durationMode === 'custom' ? 'bg-primary-500/20 border-primary-500 text-primary-300' : 'bg-bg-700/60 border-overlay-default text-content-muted'
                 }`}
               >
                 Custom
@@ -542,7 +542,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
             {durationMode === 'custom' && (
               <div className="mt-2">
-                <label className="block text-[11px] text-slate-500 mb-1">Custom Duration (Minimum 30 days)</label>
+                <label className="block text-[11px] text-content-disabled mb-1">Custom Duration (Minimum 30 days)</label>
                 <input
                   type="number"
                   min="30"
@@ -587,7 +587,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           return (
             <div className="space-y-4">
               {deleteModalHabit.isCompleted ? (
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-slate-200 space-y-2">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-content-secondary space-y-2">
                   <p className="font-bold text-emerald-400 flex items-center gap-1.5">
                     <CheckCheck size={16} />
                     Mastered Bad Habit
@@ -597,18 +597,18 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                   </p>
                 </div>
               ) : (
-                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-slate-200 space-y-2">
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-content-secondary space-y-2">
                   <p className="font-bold text-rose-400 flex items-center gap-1.5">
                     <AlertTriangle size={16} />
                     Warning: Strict Point Reversal Rule
                   </p>
                   <p>
-                    Deleting <strong className="text-slate-100">"{deleteModalHabit.name}"</strong> will permanently remove all logs and streak history.
+                    Deleting <strong className="text-content-primary">"{deleteModalHabit.name}"</strong> will permanently remove all logs and streak history.
                   </p>
                   <p>
                     Current net point contribution: <strong className={netPoints >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{netPoints >= 0 ? `+${netPoints}` : netPoints} pts</strong>.
                   </p>
-                  <p className="text-slate-400 italic">
+                  <p className="text-content-muted italic">
                     Deleting will reverse all {netPoints} pts from your total score so your balance is adjusted as if this habit was never created.
                   </p>
                 </div>

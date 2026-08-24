@@ -36,11 +36,11 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', p
         className={`relative w-full ${maxWidth} glass-strong rounded-t-3xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto`}
       >
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-display font-bold text-slate-100">{title}</h2>
+          <h2 className="text-lg font-display font-bold text-content-primary">{title}</h2>
           {!preventClose && (
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors"
+              className="p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors"
             >
               <X size={20} />
             </button>

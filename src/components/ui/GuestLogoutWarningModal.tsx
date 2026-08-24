@@ -24,8 +24,8 @@ export function GuestLogoutWarningModal({
             <AlertTriangle size={20} />
           </div>
           <div className="space-y-1">
-            <h3 className="text-sm font-bold text-slate-100">Guest Progress Will Be Lost</h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <h3 className="text-sm font-bold text-content-primary">Guest Progress Will Be Lost</h3>
+            <p className="text-xs text-content-tertiary leading-relaxed">
               You are currently using a guest account. Logging out will permanently end your guest session and erase your habits, points, and league rank unless you save your progress first.
             </p>
           </div>

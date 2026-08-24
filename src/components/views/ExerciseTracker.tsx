@@ -154,11 +154,11 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-slate-100 flex items-center gap-2">
+          <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
             <Activity className="text-emerald-400" size={26} />
             Exercise Tracker
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-content-disabled mt-1">
             Log workouts, track weekly activity, and earn points (up to 60 pts/day)
           </p>
         </div>
@@ -189,9 +189,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             <Flame size={22} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">{dominantUnitInfo.label}</div>
-            <div className="text-xl font-display font-bold text-slate-100">
-              {dominantUnitInfo.value} <span className="text-xs font-normal text-slate-400">{dominantUnitInfo.unit}</span>
+            <div className="text-xs text-content-disabled">{dominantUnitInfo.label}</div>
+            <div className="text-xl font-display font-bold text-content-primary">
+              {dominantUnitInfo.value} <span className="text-xs font-normal text-content-muted">{dominantUnitInfo.unit}</span>
             </div>
           </div>
         </div>
@@ -201,9 +201,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             <Dumbbell size={22} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">Weekly Sessions</div>
-            <div className="text-xl font-display font-bold text-slate-100">
-              {totalWeeklySessions} <span className="text-xs font-normal text-slate-400">sessions</span>
+            <div className="text-xs text-content-disabled">Weekly Sessions</div>
+            <div className="text-xl font-display font-bold text-content-primary">
+              {totalWeeklySessions} <span className="text-xs font-normal text-content-muted">sessions</span>
             </div>
           </div>
         </div>
@@ -213,9 +213,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             <Award size={22} />
           </div>
           <div>
-            <div className="text-xs text-slate-500">Points Today</div>
+            <div className="text-xs text-content-disabled">Points Today</div>
             <div className="text-xl font-display font-bold text-primary-400">
-              {pointsEarnedToday} <span className="text-xs font-normal text-slate-500">/ 60 pts cap</span>
+              {pointsEarnedToday} <span className="text-xs font-normal text-content-disabled">/ 60 pts cap</span>
             </div>
           </div>
         </div>
@@ -228,16 +228,16 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             <Calendar size={18} className="text-primary-400" />
             Weekly Activity Summary
           </h2>
-          <span className="text-xs text-slate-500">Mon - Sun (Points)</span>
+          <span className="text-xs text-content-disabled">Mon - Sun (Points)</span>
         </div>
 
-        <div className="grid grid-cols-7 gap-2 items-end h-40 pt-6 pb-2 border-b border-white/5">
+        <div className="grid grid-cols-7 gap-2 items-end h-40 pt-6 pb-2 border-b border-overlay-subtle">
           {dailyPoints.map((d) => {
             const heightPercent = Math.round((d.points / maxPointsInChart) * 100);
             return (
               <div key={d.dayLabel} className="flex flex-col items-center h-full justify-end group relative">
                 {/* Tooltip */}
-                <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-bg-700 text-slate-200 text-[10px] px-1.5 py-0.5 rounded border border-white/10 pointer-events-none whitespace-nowrap z-10">
+                <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-bg-700 text-content-secondary text-[10px] px-1.5 py-0.5 rounded border border-overlay-default pointer-events-none whitespace-nowrap z-10">
                   {d.points} pts
                 </div>
                 {/* Bar */}
@@ -249,7 +249,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                     style={{ height: `${Math.max(d.points > 0 ? 10 : 0, heightPercent)}%` }}
                   />
                 </div>
-                <span className={`text-[11px] mt-2 font-medium ${d.isToday ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>
+                <span className={`text-[11px] mt-2 font-medium ${d.isToday ? 'text-emerald-400 font-bold' : 'text-content-disabled'}`}>
                   {d.dayLabel}
                 </span>
               </div>
@@ -264,9 +264,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
 
         {workouts.length === 0 ? (
           <div className="card p-8 text-center">
-            <Dumbbell size={32} className="mx-auto text-slate-600 mb-2" />
-            <p className="text-sm font-medium text-slate-400">No workouts logged yet</p>
-            <p className="text-xs text-slate-500 mt-1 mb-4">Start logging your physical activity to earn points and stay fit.</p>
+            <Dumbbell size={32} className="mx-auto text-content-subtle mb-2" />
+            <p className="text-sm font-medium text-content-muted">No workouts logged yet</p>
+            <p className="text-xs text-content-disabled mt-1 mb-4">Start logging your physical activity to earn points and stay fit.</p>
             <button onClick={() => setLogModalOpen(true)} className="btn-primary mx-auto">
               Log Your First Workout
             </button>
@@ -280,12 +280,12 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                     <Activity size={20} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-200">{w.type}</h3>
-                    <p className="text-xs text-slate-500">
+                    <h3 className="text-sm font-semibold text-content-secondary">{w.type}</h3>
+                    <p className="text-xs text-content-disabled">
                       {formatDateLong(w.date)} • {w.amount !== undefined && w.unit && w.unit !== 'mins' ? (
                         <span className="text-emerald-400 font-medium">{w.amount} {w.unit}</span>
                       ) : (
-                        <span className="text-slate-400">{w.amount ?? w.durationMinutes} mins</span>
+                        <span className="text-content-muted">{w.amount ?? w.durationMinutes} mins</span>
                       )}
                     </p>
                   </div>
@@ -297,7 +297,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                   </span>
                   <button
                     onClick={() => setDeleteModalWorkout(w)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                    className="p-1.5 rounded-lg text-content-disabled hover:text-rose-400 hover:bg-rose-500/10 transition-all"
                     title="Delete Workout"
                   >
                     <Trash2 size={16} />
@@ -313,7 +313,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       <Modal open={logModalOpen} onClose={() => setLogModalOpen(false)} title="Log Workout Session">
         <form onSubmit={handleLogSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Workout Type</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Workout Type</label>
             <select
               value={workoutType}
               onChange={(e) => setWorkoutType(e.target.value)}
@@ -340,7 +340,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           {metricType === 'mins' ? (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Metric Type</label>
+                <label className="block text-xs font-medium text-content-muted mb-1">Metric Type</label>
                 <select
                   value={metricType}
                   onChange={(e) => {
@@ -361,7 +361,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
+                <label className="block text-xs font-medium text-content-muted mb-1">
                   Duration (Minutes)
                 </label>
                 <input
@@ -382,7 +382,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Metric Type</label>
+                <label className="block text-xs font-medium text-content-muted mb-1">Metric Type</label>
                 <select
                   value={metricType}
                   onChange={(e) => {
@@ -403,7 +403,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
+                <label className="block text-xs font-medium text-content-muted mb-1">
                   Amount ({metricType})
                 </label>
                 <input
@@ -424,7 +424,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             </div>
           )}
 
-          <div className="card p-3 bg-bg-800 text-xs text-slate-400 flex items-center justify-between border border-white/5">
+          <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
             <span>Points to earn:</span>
             <span className="font-bold text-emerald-400">+{previewPointsToEarn} pts</span>
           </div>
@@ -471,11 +471,11 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           }}
           className="space-y-4"
         >
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-content-muted">
             Set a target number of workout sessions per week. If you complete fewer sessions than your target by the end of the week, a miss penalty will be applied.
           </p>
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Target Workout Sessions / Week</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Target Workout Sessions / Week</label>
             <input
               type="number"
               min="0"
@@ -485,7 +485,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               className="input"
               required
             />
-            <span className="text-[11px] text-slate-500 mt-1 block">Set to 0 to disable weekly target penalty checks.</span>
+            <span className="text-[11px] text-content-disabled mt-1 block">Set to 0 to disable weekly target penalty checks.</span>
           </div>
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setGoalModalOpen(false)} className="btn-secondary flex-1">

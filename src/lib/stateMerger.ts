@@ -693,5 +693,6 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     deletedEntityIds: mergedDeletedEntityIds,
     restoredEntityIds: mergedRestoredEntityIds,
     timeTracker: mergedTimeTracker,
+    themePreference: incomingState.themePreference || baseState.themePreference || 'dark',
   };
 }

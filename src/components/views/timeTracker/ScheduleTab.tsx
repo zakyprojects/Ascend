@@ -208,30 +208,30 @@ export function ScheduleTab({
   return (
     <div className="space-y-6">
       {/* 1. Date Navigation & Actions Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full p-4 rounded-2xl bg-slate-900/60 border border-white/5 backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full p-4 rounded-2xl bg-slate-900/60 border border-overlay-subtle backdrop-blur-md">
         {/* Date Selector Navigation */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={handlePrevDay}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5 transition-colors cursor-pointer shrink-0"
+            className="p-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-subtle transition-colors cursor-pointer shrink-0"
             title="Previous Day"
           >
             <ChevronLeft size={18} />
           </button>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/60 border border-white/10 flex-1 sm:flex-none justify-center">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/60 border border-overlay-default flex-1 sm:flex-none justify-center">
             <Calendar size={16} className="text-emerald-400 shrink-0" />
-            <span className="text-sm font-bold text-slate-100 min-w-[100px] sm:min-w-[120px] text-center">
+            <span className="text-sm font-bold text-content-primary min-w-[100px] sm:min-w-[120px] text-center">
               {formattedDayTitle}
             </span>
-            <span className="text-xs font-mono text-slate-500 hidden sm:inline">
+            <span className="text-xs font-mono text-content-disabled hidden sm:inline">
               ({dayOfWeek})
             </span>
           </div>
 
           <button
             onClick={handleNextDay}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5 transition-colors cursor-pointer shrink-0"
+            className="p-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-subtle transition-colors cursor-pointer shrink-0"
             title="Next Day"
           >
             <ChevronRight size={18} />
@@ -252,7 +252,7 @@ export function ScheduleTab({
           {templates.length > 0 && (
             <button
               onClick={onOpenApplyTemplateModal}
-              className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all shadow-sm cursor-pointer"
+              className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-content-secondary bg-overlay-subtle hover:bg-overlay-default border border-overlay-default rounded-xl transition-all shadow-sm cursor-pointer"
               title="Apply Blueprint Template"
             >
               <Layers size={14} className="text-emerald-400 shrink-0" />
@@ -263,7 +263,7 @@ export function ScheduleTab({
           {dailyBlocks.length > 0 && (
             <button
               onClick={() => setShowClearDayModal(true)}
-              className="p-2 text-xs text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer shrink-0"
+              className="p-2 text-xs text-content-muted hover:text-rose-300 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer shrink-0"
               title="Clear Schedule for this Day"
             >
               <RotateCcw size={15} />
@@ -300,7 +300,7 @@ export function ScheduleTab({
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900" />
                 </div>
               ) : (
-                <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-overlay-subtle border border-overlay-default flex items-center justify-center text-content-muted shrink-0">
                   <Clock size={22} />
                 </div>
               )}
@@ -311,7 +311,7 @@ export function ScheduleTab({
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     {liveStats.activeBlock ? 'Active Live Block' : 'Live Status'}
                   </span>
-                  <span className="text-xs text-slate-500 font-mono">
+                  <span className="text-xs text-content-disabled font-mono">
                     {liveStats.currentTimeString}
                   </span>
                 </div>
@@ -319,7 +319,7 @@ export function ScheduleTab({
                 {liveStats.activeBlock && liveStats.activeBlockActivity ? (
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-base font-bold text-slate-100 truncate">
+                      <h3 className="text-base font-bold text-content-primary truncate">
                         {liveStats.activeBlock.customTitle || liveStats.activeBlockActivity.name}
                       </h3>
                       {liveStats.activeBlock.secondaryActivityIds &&
@@ -336,7 +336,7 @@ export function ScheduleTab({
                           );
                         })}
                     </div>
-                    <p className="text-xs text-slate-300">
+                    <p className="text-xs text-content-tertiary">
                       {formatTime12h(liveStats.activeBlock.startTime)} –{' '}
                       {formatTime12h(liveStats.activeBlock.endTime)} ·{' '}
                       <span className="text-emerald-300 font-semibold">
@@ -346,18 +346,18 @@ export function ScheduleTab({
                   </div>
                 ) : (
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-300">
+                    <h3 className="text-sm font-semibold text-content-tertiary">
                       Free / Unscheduled Window
                     </h3>
                     {liveStats.nextBlock ? (
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-content-muted">
                         Next: {liveStats.nextBlock.customTitle || 'Upcoming Block'} at{' '}
-                        <strong className="text-slate-200">
+                        <strong className="text-content-secondary">
                           {formatTime12h(liveStats.nextBlock.startTime)}
                         </strong>
                       </p>
                     ) : (
-                      <p className="text-xs text-slate-400">No further blocks scheduled for today.</p>
+                      <p className="text-xs text-content-muted">No further blocks scheduled for today.</p>
                     )}
                   </div>
                 )}
@@ -372,7 +372,7 @@ export function ScheduleTab({
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     liveStats.activeBlock.completed
                       ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
+                      : 'bg-overlay-default hover:bg-overlay-strong text-content-primary border border-overlay-default'
                   }`}
                 >
                   {liveStats.activeBlock.completed ? (
@@ -432,75 +432,75 @@ export function ScheduleTab({
 
       {/* 3. Daily Metrics Summary Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-white/5 space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-overlay-subtle space-y-1">
+          <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Total Planned</span>
             <Clock size={14} className="text-emerald-400" />
           </div>
-          <p className="text-lg font-bold text-slate-100">
+          <p className="text-lg font-bold text-content-primary">
             {formatDurationHuman(liveStats.totalScheduledMinutesToday)}
           </p>
-          <p className="text-[11px] text-slate-500">{dailyBlocks.length} scheduled block(s)</p>
+          <p className="text-[11px] text-content-disabled">{dailyBlocks.length} scheduled block(s)</p>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-white/5 space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-overlay-subtle space-y-1">
+          <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Execution Rate</span>
             <CheckCircle2 size={14} className="text-emerald-400" />
           </div>
           <p className="text-lg font-bold text-emerald-400">
             {liveStats.dayScheduledProgressPercent}%
           </p>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-content-disabled">
             {formatDurationHuman(liveStats.completedScheduledMinutesToday)} completed
           </p>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-white/5 space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-overlay-subtle space-y-1">
+          <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Deep Work</span>
             <BrainCircuit size={14} className="text-indigo-400" />
           </div>
           <p className="text-lg font-bold text-indigo-300">
             {formatDurationHuman(liveStats.deepWorkMinutesToday)}
           </p>
-          <p className="text-[11px] text-slate-500">Focus & High-leverage</p>
+          <p className="text-[11px] text-content-disabled">Focus & High-leverage</p>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-white/5 space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-overlay-subtle space-y-1">
+          <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Training & Mind</span>
             <Activity size={14} className="text-amber-400" />
           </div>
           <p className="text-lg font-bold text-amber-300">
             {formatDurationHuman(liveStats.exerciseMinutesToday + liveStats.readingMinutesToday)}
           </p>
-          <p className="text-[11px] text-slate-500">Exercise & Reading</p>
+          <p className="text-[11px] text-content-disabled">Exercise & Reading</p>
         </div>
       </div>
 
       {/* 4. Professional Gantt-Style 24-Hour Distribution Bar */}
       {dailyBlocks.length > 0 && (
-        <div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 space-y-3">
-          <div className="flex items-center justify-between text-xs text-slate-400">
+        <div className="p-4 rounded-2xl bg-slate-900/50 border border-overlay-subtle space-y-3">
+          <div className="flex items-center justify-between text-xs text-content-muted">
             <div className="flex items-center gap-2">
-              <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-300">
+              <span className="font-semibold uppercase tracking-wider text-[11px] text-content-tertiary">
                 24-Hour Timeline Distribution
               </span>
-              <span className="text-[10px] text-slate-500 font-mono">
+              <span className="text-[10px] text-content-disabled font-mono">
                 ({dailyBlocks.length} blocks · {formatDurationHuman(liveStats.totalScheduledMinutesToday)})
               </span>
             </div>
-            <span className="text-[11px] font-mono text-slate-500">00:00 – 24:00</span>
+            <span className="text-[11px] font-mono text-content-disabled">00:00 – 24:00</span>
           </div>
 
           {/* Timeline Track with Major Hour Grid Guides */}
-          <div className="relative w-full h-11 bg-slate-950/90 rounded-xl overflow-visible border border-white/10 shadow-inner">
+          <div className="relative w-full h-11 bg-slate-950/90 rounded-xl overflow-visible border border-overlay-default shadow-inner">
             {/* Subtle Vertical Hour Grid Lines */}
             {[0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => (
               <div
                 key={hour}
-                className="absolute top-0 bottom-0 border-l border-white/5 pointer-events-none z-0"
+                className="absolute top-0 bottom-0 border-l border-overlay-subtle pointer-events-none z-0"
                 style={{ left: `${(hour / 24) * 100}%` }}
               />
             ))}
@@ -551,7 +551,7 @@ export function ScheduleTab({
 
                   {/* High-End Floating Tooltip on Hover */}
                   <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-30 whitespace-nowrap">
-                    <div className="px-2.5 py-1.5 rounded-lg bg-slate-900/95 border border-white/15 text-slate-100 text-xs shadow-2xl backdrop-blur-md space-y-0.5 text-center">
+                    <div className="px-2.5 py-1.5 rounded-lg bg-slate-900/95 border border-overlay-medium text-content-primary text-xs shadow-2xl backdrop-blur-md space-y-0.5 text-center">
                       <div className="flex items-center justify-center gap-1.5 flex-wrap">
                         <p className="font-bold text-white">
                           {block.customTitle || act?.name || 'Block'}
@@ -570,9 +570,9 @@ export function ScheduleTab({
                             );
                           })}
                       </div>
-                      <p className="text-[11px] text-slate-300 font-mono">
+                      <p className="text-[11px] text-content-tertiary font-mono">
                         {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)}{' '}
-                        <span className="text-slate-400">({formatDurationHuman(duration)})</span>
+                        <span className="text-content-muted">({formatDurationHuman(duration)})</span>
                       </p>
                       {block.completed && (
                         <p className="text-[10px] text-emerald-400 font-semibold flex items-center justify-center gap-1">
@@ -580,7 +580,7 @@ export function ScheduleTab({
                         </p>
                       )}
                     </div>
-                    <div className="w-2 h-2 bg-slate-900 rotate-45 -mt-1 border-r border-b border-white/15" />
+                    <div className="w-2 h-2 bg-slate-900 rotate-45 -mt-1 border-r border-b border-overlay-medium" />
                   </div>
                 </div>
               );
@@ -595,13 +595,13 @@ export function ScheduleTab({
                 }}
               >
                 {/* Top Glowing Diamond */}
-                <div className="w-3 h-3 bg-rose-500 rotate-45 -ml-[5px] -mt-1.5 rounded-xs shadow-md border border-white/40" />
+                <div className="w-3 h-3 bg-rose-500 rotate-45 -ml-[5px] -mt-1.5 rounded-xs shadow-md border border-overlay-heavy" />
               </div>
             )}
           </div>
 
           {/* Major Hour Markers (0h, 3h, 6h, 9h, 12h, 15h, 18h, 21h, 24h) */}
-          <div className="flex justify-between text-[10px] font-mono text-slate-400 px-0.5 pt-0.5">
+          <div className="flex justify-between text-[10px] font-mono text-content-muted px-0.5 pt-0.5">
             <span>12 AM</span>
             <span>3 AM</span>
             <span>6 AM</span>
@@ -618,7 +618,7 @@ export function ScheduleTab({
       {/* 5. Scheduled Blocks List with Live Status Sync */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
+          <h3 className="text-sm font-bold text-content-secondary uppercase tracking-wider">
             Scheduled Timeline ({dailyBlocks.length})
           </h3>
           {dailyBlocks.length > 0 && (
@@ -633,13 +633,13 @@ export function ScheduleTab({
         </div>
 
         {dailyBlocks.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-slate-900/30 border border-white/5 text-center space-y-4">
+          <div className="p-8 rounded-2xl bg-slate-900/30 border border-overlay-subtle text-center space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
               <Clock size={28} />
             </div>
             <div>
-              <h4 className="text-base font-bold text-slate-200">No Blocks Scheduled</h4>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
+              <h4 className="text-base font-bold text-content-secondary">No Blocks Scheduled</h4>
+              <p className="text-xs text-content-muted max-w-sm mx-auto mt-1">
                 Construct your daily blueprint by adding time blocks or applying one of your saved templates.
               </p>
             </div>
@@ -647,7 +647,7 @@ export function ScheduleTab({
               {templates.length > 0 && (
                 <button
                   onClick={onOpenApplyTemplateModal}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-200 transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default border border-overlay-default text-xs font-semibold text-content-secondary transition-all cursor-pointer"
                 >
                   <Layers size={14} className="text-emerald-400" />
                   <span>Apply Template</span>
@@ -705,14 +705,14 @@ export function ScheduleTab({
                   key={block.id}
                   className={`group relative p-4 rounded-2xl border transition-all ${
                     block.skipped
-                      ? 'bg-slate-950/20 border-white/5 opacity-60'
+                      ? 'bg-slate-950/20 border-overlay-subtle opacity-60'
                       : isBlockActive
                       ? 'bg-emerald-950/20 border-emerald-500/40 shadow-xl shadow-emerald-950/30 ring-2 ring-emerald-500/30'
                       : isBlockPast
-                      ? 'bg-slate-950/40 border-white/5 opacity-60 grayscale-[0.35] hover:opacity-90 hover:grayscale-0'
+                      ? 'bg-slate-950/40 border-overlay-subtle opacity-60 grayscale-[0.35] hover:opacity-90 hover:grayscale-0'
                       : block.completed
-                      ? 'bg-slate-950/30 border-white/5 opacity-80'
-                      : 'bg-slate-900/60 border-white/5 hover:border-white/10'
+                      ? 'bg-slate-950/30 border-overlay-subtle opacity-80'
+                      : 'bg-slate-900/60 border-overlay-subtle hover:border-overlay-default'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -724,8 +724,8 @@ export function ScheduleTab({
                           block.completed
                             ? 'text-emerald-400 hover:text-emerald-300'
                             : block.skipped
-                            ? 'text-slate-600 hover:text-slate-400'
-                            : 'text-slate-500 hover:text-slate-300'
+                            ? 'text-content-subtle hover:text-content-muted'
+                            : 'text-content-disabled hover:text-content-tertiary'
                         }`}
                         title={block.completed ? 'Mark uncompleted' : block.skipped ? 'Undo skipped' : 'Mark completed'}
                       >
@@ -776,11 +776,11 @@ export function ScheduleTab({
                               );
                             })}
 
-                          <span className="text-xs font-mono font-semibold text-slate-300 whitespace-nowrap">
+                          <span className="text-xs font-mono font-semibold text-content-tertiary whitespace-nowrap">
                             {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)}
                           </span>
 
-                          <span className="text-[11px] text-slate-500 font-mono whitespace-nowrap">
+                          <span className="text-[11px] text-content-disabled font-mono whitespace-nowrap">
                             ({formatDurationHuman(durationMins)})
                           </span>
 
@@ -806,7 +806,7 @@ export function ScheduleTab({
                           )}
 
                           {isBlockPast && !block.completed && !block.skipped && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-400 border border-white/5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-content-muted border border-overlay-subtle">
                               Passed
                             </span>
                           )}
@@ -815,17 +815,17 @@ export function ScheduleTab({
                         <h4
                           className={`text-sm font-bold mt-1 break-words ${
                             block.completed
-                              ? 'text-slate-400 line-through'
+                              ? 'text-content-muted line-through'
                               : block.skipped
-                              ? 'text-slate-500 line-through italic'
-                              : 'text-slate-100'
+                              ? 'text-content-disabled line-through italic'
+                              : 'text-content-primary'
                           }`}
                         >
                           {block.customTitle || act?.name || 'Scheduled Block'}
                         </h4>
 
                         {block.notes && (
-                          <p className="text-xs text-slate-400 mt-1 leading-relaxed line-clamp-2">
+                          <p className="text-xs text-content-muted mt-1 leading-relaxed line-clamp-2">
                             {block.notes}
                           </p>
                         )}
@@ -857,14 +857,14 @@ export function ScheduleTab({
                     <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => onOpenEditBlockModal(block)}
-                        className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer"
                         title="Edit Block"
                       >
                         <Edit2 size={15} />
                       </button>
                       <button
                         onClick={() => setDeleteTargetBlock(block)}
-                        className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-content-muted hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                         title="Delete Block"
                       >
                         <Trash2 size={15} />

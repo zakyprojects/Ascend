@@ -47,13 +47,13 @@ export function ActivitiesTab({
   return (
     <div className="space-y-6">
       {/* 1. Header & Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-white/5 backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-overlay-subtle backdrop-blur-md">
         <div>
-          <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+          <h2 className="text-base font-bold text-content-primary flex items-center gap-2">
             <Tag className="text-emerald-400" size={18} />
             <span>Master Activity Categories</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-content-muted mt-0.5">
             Configure custom activities and map them to Ascend ecosystem modules for automated cross-module handoffs and discipline XP.
           </p>
         </div>
@@ -74,7 +74,7 @@ export function ActivitiesTab({
           return (
             <div
               key={act.id}
-              className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 hover:border-white/10 transition-all flex items-start justify-between gap-3"
+              className="p-4 rounded-2xl bg-slate-900/60 border border-overlay-subtle hover:border-overlay-default transition-all flex items-start justify-between gap-3"
             >
               <div className="flex items-start gap-3 min-w-0">
                 <div
@@ -90,10 +90,10 @@ export function ActivitiesTab({
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <h4 className="text-sm font-bold text-slate-100 truncate">{act.name}</h4>
+                    <h4 className="text-sm font-bold text-content-primary truncate">{act.name}</h4>
                     {act.isSystemDefault && (
                       <span
-                        className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-white/5 text-slate-400 border border-white/10 flex items-center gap-0.5"
+                        className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-overlay-subtle text-content-muted border border-overlay-default flex items-center gap-0.5"
                         title="System Default"
                       >
                         <ShieldCheck size={10} />
@@ -108,7 +108,7 @@ export function ActivitiesTab({
                       <span className="truncate">Linked: {act.ascendModule}</span>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-slate-500 mt-1">General Activity</p>
+                    <p className="text-[11px] text-content-disabled mt-1">General Activity</p>
                   )}
                 </div>
               </div>
@@ -117,7 +117,7 @@ export function ActivitiesTab({
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => onOpenEditActivityModal(act)}
-                  className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer"
                   title="Edit Category"
                 >
                   <Edit2 size={14} />
@@ -126,7 +126,7 @@ export function ActivitiesTab({
                 {!act.isSystemDefault && (
                   <button
                     onClick={() => setDeleteTargetActivity(act)}
-                    className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                    className="p-1.5 text-content-muted hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                     title="Delete Category"
                   >
                     <Trash2 size={14} />

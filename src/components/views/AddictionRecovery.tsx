@@ -92,11 +92,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       {/* Top Header + Emergency Button */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-display font-bold text-slate-100 flex items-center gap-2">
+          <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
             <HeartPulse className="text-rose-400" size={26} />
             Addiction Recovery Module
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-content-disabled mt-1">
             Sobriety streak counter, craving logs, and immediate emergency support
           </p>
         </div>
@@ -113,7 +113,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       {/* Persistent Disclaimer Banner */}
       <div className="card p-4 border-l-4 border-amber-500 bg-amber-500/10 flex items-start gap-3">
         <AlertCircle size={22} className="text-amber-400 shrink-0 mt-0.5" />
-        <div className="text-xs text-slate-300 leading-relaxed">
+        <div className="text-xs text-content-tertiary leading-relaxed">
           <span className="font-bold text-amber-300">Important Medical Disclaimer:</span> This module is a self-management support tool designed to complement — but <span className="underline">not replace</span> — professional medical treatment or therapy. If you are experiencing severe addiction, physical withdrawal, or crisis, please seek immediate assistance from a licensed healthcare professional or hotline (e.g. SAMHSA Helpline: 1-800-662-4357).
         </div>
       </div>
@@ -122,8 +122,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       {!tracker ? (
         <div className="card p-8 text-center space-y-3">
           <ShieldCheck size={36} className="mx-auto text-rose-400" />
-          <h2 className="text-lg font-bold text-slate-100">Set Up Your Sobriety Tracker</h2>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
+          <h2 className="text-lg font-bold text-content-primary">Set Up Your Sobriety Tracker</h2>
+          <p className="text-xs text-content-muted max-w-md mx-auto">
             Choose what you are recovering from (e.g., Alcohol, Smoking, Sugar, Social Media) and start tracking your milestone achievements today.
           </p>
           <button onClick={() => setSetupTrackerModalOpen(true)} className="btn-primary mx-auto">
@@ -132,22 +132,22 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         </div>
       ) : (
         <div className="card p-6 relative overflow-hidden space-y-6">
-          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-white/5 pb-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-overlay-subtle pb-4">
             <div>
-              <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Sobriety Counter</span>
-              <h2 className="text-xl font-bold text-slate-100">{tracker.title}</h2>
+              <span className="text-xs text-content-disabled uppercase tracking-wider font-bold">Sobriety Counter</span>
+              <h2 className="text-xl font-bold text-content-primary">{tracker.title}</h2>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setResetConfirmOpen(true)}
-                className="btn-ghost text-xs text-slate-400 hover:text-amber-400 flex items-center gap-1.5"
+                className="btn-ghost text-xs text-content-muted hover:text-amber-400 flex items-center gap-1.5"
               >
                 <RefreshCw size={14} />
                 <span>Reset Timer</span>
               </button>
               <button
                 onClick={() => setDeleteTrackerConfirmOpen(true)}
-                className="btn-ghost text-xs text-slate-400 hover:text-rose-400 flex items-center gap-1.5"
+                className="btn-ghost text-xs text-content-muted hover:text-rose-400 flex items-center gap-1.5"
                 title="Delete Sobriety Tracker Entirely"
               >
                 <Trash2 size={14} />
@@ -158,27 +158,27 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
 
           {/* Live Counter Display */}
           <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="bg-bg-800/80 p-3 rounded-2xl border border-white/5">
+            <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
               <div className="text-3xl sm:text-4xl font-display font-bold text-rose-400">{timeElapsed.days}</div>
-              <div className="text-[10px] text-slate-500 uppercase font-semibold mt-1">Days</div>
+              <div className="text-[10px] text-content-disabled uppercase font-semibold mt-1">Days</div>
             </div>
-            <div className="bg-bg-800/80 p-3 rounded-2xl border border-white/5">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-slate-100">{timeElapsed.hours}</div>
-              <div className="text-[10px] text-slate-500 uppercase font-semibold mt-1">Hours</div>
+            <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
+              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary">{timeElapsed.hours}</div>
+              <div className="text-[10px] text-content-disabled uppercase font-semibold mt-1">Hours</div>
             </div>
-            <div className="bg-bg-800/80 p-3 rounded-2xl border border-white/5">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-slate-100">{timeElapsed.minutes}</div>
-              <div className="text-[10px] text-slate-500 uppercase font-semibold mt-1">Mins</div>
+            <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
+              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary">{timeElapsed.minutes}</div>
+              <div className="text-[10px] text-content-disabled uppercase font-semibold mt-1">Mins</div>
             </div>
-            <div className="bg-bg-800/80 p-3 rounded-2xl border border-white/5">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-slate-100">{timeElapsed.seconds}</div>
-              <div className="text-[10px] text-slate-500 uppercase font-semibold mt-1">Secs</div>
+            <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
+              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary">{timeElapsed.seconds}</div>
+              <div className="text-[10px] text-content-disabled uppercase font-semibold mt-1">Secs</div>
             </div>
           </div>
 
           {/* Milestones Celebrations */}
           <div>
-            <div className="text-xs font-bold text-slate-300 mb-3 flex items-center gap-2">
+            <div className="text-xs font-bold text-content-tertiary mb-3 flex items-center gap-2">
               <Award size={16} className="text-amber-400" />
               Milestone Celebrations & Badges
             </div>
@@ -193,14 +193,14 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                     }}
                     className={`card p-3 flex items-center gap-3 text-left transition-all ${
                       isUnlocked
-                        ? 'bg-amber-500/10 border-amber-500/40 text-slate-200 cursor-pointer hover:bg-amber-500/20'
-                        : 'bg-bg-800/40 border-white/5 text-slate-500 opacity-60'
+                        ? 'bg-amber-500/10 border-amber-500/40 text-content-secondary cursor-pointer hover:bg-amber-500/20'
+                        : 'bg-bg-800/40 border-overlay-subtle text-content-disabled opacity-60'
                     }`}
                   >
                     <span className="text-2xl">{m.icon}</span>
                     <div>
                       <div className="text-xs font-bold">{m.label}</div>
-                      <div className="text-[10px] text-slate-400">
+                      <div className="text-[10px] text-content-muted">
                         {isUnlocked ? `Unlocked! (+${m.points} pts)` : `Requires ${m.requiredHours}h`}
                       </div>
                     </div>
@@ -217,7 +217,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="section-title">Craving Log & Trigger Analysis</h2>
-            <p className="text-xs text-slate-500">Record craving intensity (1-10), triggers, and successful coping strategies</p>
+            <p className="text-xs text-content-disabled">Record craving intensity (1-10), triggers, and successful coping strategies</p>
           </div>
           <button onClick={() => setCravingModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5">
             <Activity size={14} />
@@ -226,7 +226,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         </div>
 
         {cravingLogs.length === 0 ? (
-          <div className="p-6 text-center text-xs text-slate-500 bg-bg-800/40 rounded-xl border border-white/5">
+          <div className="p-6 text-center text-xs text-content-disabled bg-bg-800/40 rounded-xl border border-overlay-subtle">
             No cravings logged yet. Logging cravings helps identify environmental triggers and effective coping mechanisms.
           </div>
         ) : (
@@ -234,24 +234,24 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             {/* Craving History */}
             <div className="space-y-2">
               {cravingLogs.slice(0, 10).map((log) => (
-                <div key={log.id} className="card p-3 bg-bg-800/60 border border-white/5 space-y-1 text-xs">
+                <div key={log.id} className="card p-3 bg-bg-800/60 border border-overlay-subtle space-y-1 text-xs">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-200 flex items-center gap-2">
+                    <span className="font-bold text-content-secondary flex items-center gap-2">
                       Intensity: <span className={`px-2 py-0.5 rounded font-mono ${log.intensity >= 7 ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-300'}`}>{log.intensity}/10</span>
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-500 text-[10px]">{formatDateLong(log.date)}</span>
+                      <span className="text-content-disabled text-[10px]">{formatDateLong(log.date)}</span>
                       <button
                         onClick={() => setDeleteCravingModalLog(log)}
-                        className="text-slate-600 hover:text-rose-400 p-0.5 transition-colors"
+                        className="text-content-subtle hover:text-rose-400 p-0.5 transition-colors"
                         title="Delete Craving Log"
                       >
                         <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
-                  {log.trigger && <p className="text-slate-400"><span className="text-slate-500 font-medium">Trigger:</span> {log.trigger}</p>}
-                  {log.copingStrategy && <p className="text-emerald-400"><span className="text-slate-500 font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
+                  {log.trigger && <p className="text-content-muted"><span className="text-content-disabled font-medium">Trigger:</span> {log.trigger}</p>}
+                  {log.copingStrategy && <p className="text-emerald-400"><span className="text-content-disabled font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
                 </div>
               ))}
             </div>
@@ -271,9 +271,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           </div>
 
           {/* Quick Distraction Activity Suggestion */}
-          <div className="card p-4 space-y-3 bg-bg-800 border border-white/10">
+          <div className="card p-4 space-y-3 bg-bg-800 border border-overlay-default">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-slate-200">Quick Distraction Activity</h4>
+              <h4 className="text-xs font-bold text-content-secondary">Quick Distraction Activity</h4>
               <button
                 onClick={() => setDistractionIdx((prev) => (prev + 1) % DISTRACTION_ACTIVITIES.length)}
                 className="btn-ghost text-[11px] text-primary-400 flex items-center gap-1"
@@ -298,7 +298,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <Modal open={cravingModalOpen} onClose={() => setCravingModalOpen(false)} title="Log Craving Instance">
         <form onSubmit={handleLogCravingSubmit} className="space-y-4">
           <div>
-            <div className="flex justify-between text-xs text-slate-400 mb-1">
+            <div className="flex justify-between text-xs text-content-muted mb-1">
               <span>Craving Intensity</span>
               <span className="font-bold text-amber-400">{intensity} / 10</span>
             </div>
@@ -313,7 +313,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">What triggered this craving?</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">What triggered this craving?</label>
             <input
               type="text"
               value={triggerText}
@@ -325,7 +325,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Coping strategy used / planned</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Coping strategy used / planned</label>
             <input
               type="text"
               value={copingText}
@@ -351,7 +351,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <Modal open={setupTrackerModalOpen} onClose={() => setSetupTrackerModalOpen(false)} title="Set Up Sobriety Tracker">
         <form onSubmit={handleStartTracker} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">What are you abstaining from?</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">What are you abstaining from?</label>
             <input
               type="text"
               value={trackerTitle}
@@ -375,7 +375,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
 
       {/* Reset Confirmation Modal */}
       <Modal open={resetConfirmOpen} onClose={() => setResetConfirmOpen(false)} title="Reset Sobriety Streak?">
-        <div className="space-y-4 text-xs text-slate-300">
+        <div className="space-y-4 text-xs text-content-tertiary">
           <p>
             Resetting your timer will restart your sobriety clock from 00:00:00. Remember: slipping up is a bump in the road, not the end of your journey.
           </p>
@@ -403,8 +403,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-3xl mx-auto animate-bounce">
             🏆
           </div>
-          <h3 className="text-lg font-bold text-slate-100">{celebrationMilestone}</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+          <h3 className="text-lg font-bold text-content-primary">{celebrationMilestone}</h3>
+          <p className="text-xs text-content-muted max-w-sm mx-auto">
             Incredible determination and discipline! Keep holding fast and rewiring your neural circuits day by day.
           </p>
           <button onClick={() => setCelebrationMilestone(null)} className="btn-primary mx-auto">
@@ -512,7 +512,7 @@ function BreathingCircle() {
             setPhase('Inhale');
             setSeconds(4);
           }}
-          className="btn-ghost text-xs text-slate-400 flex items-center gap-1"
+          className="btn-ghost text-xs text-content-muted flex items-center gap-1"
         >
           <RotateCcw size={14} /> Reset
         </button>
