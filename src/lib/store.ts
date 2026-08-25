@@ -1451,6 +1451,7 @@ export function useAppState() {
   }, []);
 
   const logout = useCallback(() => {
+    const localTheme = getLocalThemePreference() || 'dark';
     logoutUser();
     // Revert to guest state
     const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
@@ -1460,7 +1461,11 @@ export function useAppState() {
         guestState = JSON.parse(guestRaw);
       } catch {}
     }
-    setState(sanitizeLoadedState(guestState, null));
+    const sanitized = sanitizeLoadedState(guestState, null);
+    setState({
+      ...sanitized,
+      themePreference: localTheme,
+    });
   }, []);
 
   const addPoints = useCallback(
