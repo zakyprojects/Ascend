@@ -47,7 +47,7 @@ export function ActivitiesTab({
   return (
     <div className="space-y-6">
       {/* 1. Header & Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-overlay-subtle backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle backdrop-blur-md">
         <div>
           <h2 className="text-base font-bold text-content-primary flex items-center gap-2">
             <Tag className="text-emerald-400" size={18} />
@@ -74,7 +74,7 @@ export function ActivitiesTab({
           return (
             <div
               key={act.id}
-              className="p-4 rounded-2xl bg-slate-900/60 border border-overlay-subtle hover:border-overlay-default transition-all flex items-start justify-between gap-3"
+              className="p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default transition-all flex items-start justify-between gap-3"
             >
               <div className="flex items-start gap-3 min-w-0">
                 <div

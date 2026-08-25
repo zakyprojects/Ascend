@@ -208,7 +208,7 @@ export function ScheduleTab({
   return (
     <div className="space-y-6">
       {/* 1. Date Navigation & Actions Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full p-4 rounded-2xl bg-slate-900/60 border border-overlay-subtle backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle backdrop-blur-md">
         {/* Date Selector Navigation */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
@@ -219,7 +219,7 @@ export function ScheduleTab({
             <ChevronLeft size={18} />
           </button>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/60 border border-overlay-default flex-1 sm:flex-none justify-center">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-bg-900/60 border border-overlay-default flex-1 sm:flex-none justify-center">
             <Calendar size={16} className="text-emerald-400 shrink-0" />
             <span className="text-sm font-bold text-content-primary min-w-[100px] sm:min-w-[120px] text-center">
               {formattedDayTitle}
@@ -296,8 +296,8 @@ export function ScheduleTab({
                   }}
                 >
                   <ActivityIcon iconName={liveStats.activeBlockActivity.icon} size={24} />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900 animate-ping" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-overlay-subtle animate-ping" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-overlay-subtle" />
                 </div>
               ) : (
                 <div className="w-12 h-12 rounded-2xl bg-overlay-subtle border border-overlay-default flex items-center justify-center text-content-muted shrink-0">
@@ -419,7 +419,7 @@ export function ScheduleTab({
           {/* Active Block Progress Bar */}
           {liveStats.activeBlock && (
             <div className="mt-3">
-              <div className="w-full h-1.5 bg-slate-950/80 rounded-full overflow-hidden">
+              <div className="w-full h-1.5 bg-bg-900/80 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 rounded-full"
                   style={{ width: `${liveStats.activeBlockProgressPercent}%` }}
@@ -432,7 +432,7 @@ export function ScheduleTab({
 
       {/* 3. Daily Metrics Summary Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-overlay-subtle space-y-1">
+        <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
           <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Total Planned</span>
             <Clock size={14} className="text-emerald-400" />
@@ -443,7 +443,7 @@ export function ScheduleTab({
           <p className="text-[11px] text-content-disabled">{dailyBlocks.length} scheduled block(s)</p>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-overlay-subtle space-y-1">
+        <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
           <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Execution Rate</span>
             <CheckCircle2 size={14} className="text-emerald-400" />
@@ -456,7 +456,7 @@ export function ScheduleTab({
           </p>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-overlay-subtle space-y-1">
+        <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
           <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Deep Work</span>
             <BrainCircuit size={14} className="text-indigo-400" />
@@ -467,7 +467,7 @@ export function ScheduleTab({
           <p className="text-[11px] text-content-disabled">Focus & High-leverage</p>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-overlay-subtle space-y-1">
+        <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
           <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Training & Mind</span>
             <Activity size={14} className="text-amber-400" />
@@ -481,7 +481,7 @@ export function ScheduleTab({
 
       {/* 4. Professional Gantt-Style 24-Hour Distribution Bar */}
       {dailyBlocks.length > 0 && (
-        <div className="p-4 rounded-2xl bg-slate-900/50 border border-overlay-subtle space-y-3">
+        <div className="p-4 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-3">
           <div className="flex items-center justify-between text-xs text-content-muted">
             <div className="flex items-center gap-2">
               <span className="font-semibold uppercase tracking-wider text-[11px] text-content-tertiary">
@@ -495,7 +495,7 @@ export function ScheduleTab({
           </div>
 
           {/* Timeline Track with Major Hour Grid Guides */}
-          <div className="relative w-full h-11 bg-slate-950/90 rounded-xl overflow-visible border border-overlay-default shadow-inner">
+          <div className="relative w-full h-11 bg-bg-900/90 rounded-xl overflow-visible border border-overlay-default shadow-inner">
             {/* Subtle Vertical Hour Grid Lines */}
             {[0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => (
               <div
@@ -551,7 +551,7 @@ export function ScheduleTab({
 
                   {/* High-End Floating Tooltip on Hover */}
                   <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-30 whitespace-nowrap">
-                    <div className="px-2.5 py-1.5 rounded-lg bg-slate-900/95 border border-overlay-medium text-content-primary text-xs shadow-2xl backdrop-blur-md space-y-0.5 text-center">
+                    <div className="px-2.5 py-1.5 rounded-lg bg-bg-800/95 border border-overlay-medium text-content-primary text-xs shadow-2xl backdrop-blur-md space-y-0.5 text-center">
                       <div className="flex items-center justify-center gap-1.5 flex-wrap">
                         <p className="font-bold text-white">
                           {block.customTitle || act?.name || 'Block'}
@@ -580,7 +580,7 @@ export function ScheduleTab({
                         </p>
                       )}
                     </div>
-                    <div className="w-2 h-2 bg-slate-900 rotate-45 -mt-1 border-r border-b border-overlay-medium" />
+                    <div className="w-2 h-2 bg-bg-800 rotate-45 -mt-1 border-r border-b border-overlay-medium" />
                   </div>
                 </div>
               );
@@ -633,7 +633,7 @@ export function ScheduleTab({
         </div>
 
         {dailyBlocks.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-slate-900/30 border border-overlay-subtle text-center space-y-4">
+          <div className="p-8 rounded-2xl bg-bg-800/30 border border-overlay-subtle text-center space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
               <Clock size={28} />
             </div>
@@ -705,14 +705,14 @@ export function ScheduleTab({
                   key={block.id}
                   className={`group relative p-4 rounded-2xl border transition-all ${
                     block.skipped
-                      ? 'bg-slate-950/20 border-overlay-subtle opacity-60'
+                      ? 'bg-bg-900/20 border-overlay-subtle opacity-60'
                       : isBlockActive
                       ? 'bg-emerald-950/20 border-emerald-500/40 shadow-xl shadow-emerald-950/30 ring-2 ring-emerald-500/30'
                       : isBlockPast
-                      ? 'bg-slate-950/40 border-overlay-subtle opacity-60 grayscale-[0.35] hover:opacity-90 hover:grayscale-0'
+                      ? 'bg-bg-900/40 border-overlay-subtle opacity-60 grayscale-[0.35] hover:opacity-90 hover:grayscale-0'
                       : block.completed
-                      ? 'bg-slate-950/30 border-overlay-subtle opacity-80'
-                      : 'bg-slate-900/60 border-overlay-subtle hover:border-overlay-default'
+                      ? 'bg-bg-900/30 border-overlay-subtle opacity-80'
+                      : 'bg-bg-800/60 border-overlay-subtle hover:border-overlay-default'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -806,7 +806,7 @@ export function ScheduleTab({
                           )}
 
                           {isBlockPast && !block.completed && !block.skipped && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-content-muted border border-overlay-subtle">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-bg-700 text-content-muted border border-overlay-subtle">
                               Passed
                             </span>
                           )}

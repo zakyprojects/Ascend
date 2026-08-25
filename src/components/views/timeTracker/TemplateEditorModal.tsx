@@ -242,7 +242,7 @@ export function TemplateEditorModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Standard Weekday Template, Focus Day, Weekend Recovery..."
-              className="w-full bg-slate-900/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
+              className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
               required
             />
           </div>
@@ -436,7 +436,7 @@ export function TemplateEditorModal({
             <button
               type="button"
               onClick={() => setConflictState(null)}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-content-tertiary hover:text-content-primary hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-content-tertiary hover:text-content-primary hover:bg-bg-700 transition-colors cursor-pointer"
             >
               Cancel
             </button>

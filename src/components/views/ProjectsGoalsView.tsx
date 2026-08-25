@@ -900,7 +900,7 @@ export function ProjectsGoalsView({
       case 'medium':
         return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
       case 'low':
-        return 'bg-slate-500/15 text-content-tertiary border-slate-500/30';
+        return 'bg-overlay-subtle text-content-tertiary border-overlay-default';
     }
   };
 
@@ -911,14 +911,14 @@ export function ProjectsGoalsView({
       case 'achieved':
         return <span className="badge bg-purple-500/15 text-purple-300 border border-purple-500/30 text-[10px] font-bold">ACHIEVED</span>;
       case 'abandoned':
-        return <span className="badge bg-slate-500/15 text-content-muted border border-slate-500/30 text-[10px] font-bold">ABANDONED</span>;
+        return <span className="badge bg-overlay-subtle text-content-muted border border-overlay-default text-[10px] font-bold">ABANDONED</span>;
     }
   };
 
   const projectStatusBadge = (status: ProjectStatus) => {
     switch (status) {
       case 'not_started':
-        return <span className="badge bg-slate-500/15 text-content-tertiary border border-slate-500/30 text-[10px]">Not Started</span>;
+        return <span className="badge bg-overlay-subtle text-content-tertiary border border-overlay-default text-[10px]">Not Started</span>;
       case 'in_progress':
         return <span className="badge bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[10px]">In Progress</span>;
       case 'on_hold':
@@ -1277,7 +1277,7 @@ export function ProjectsGoalsView({
                 onClick={() => setGoalStatusFilter('abandoned')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                   goalStatusFilter === 'abandoned'
-                    ? 'bg-slate-500/20 text-content-tertiary border border-slate-500/30'
+                    ? 'bg-overlay-default text-content-tertiary border border-overlay-default'
                     : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
@@ -1459,7 +1459,7 @@ export function ProjectsGoalsView({
                                 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-sm shadow-emerald-500/30'
                                 : prog.percent > 0
                                 ? 'bg-gradient-to-r from-purple-600 to-purple-400 shadow-sm shadow-purple-500/20'
-                                : 'bg-slate-700'
+                                : 'bg-bg-600'
                             }`}
                             style={{ width: `${Math.min(100, Math.max(prog.percent, 0))}%` }}
                           />
@@ -1586,7 +1586,7 @@ export function ProjectsGoalsView({
                 onClick={() => setProjectStatusFilter('not_started')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                   projectStatusFilter === 'not_started'
-                    ? 'bg-slate-500/20 text-content-secondary border border-slate-500/30'
+                    ? 'bg-overlay-default text-content-secondary border border-overlay-default'
                     : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
@@ -1899,7 +1899,7 @@ export function ProjectsGoalsView({
                                 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-sm shadow-emerald-500/30'
                                 : prog.percent > 0
                                 ? 'bg-gradient-to-r from-cyan-500 to-cyan-400 shadow-sm shadow-cyan-500/20'
-                                : 'bg-slate-700'
+                                : 'bg-bg-600'
                             }`}
                             style={{ width: `${Math.min(100, Math.max(prog.percent, 0))}%` }}
                           />
@@ -2513,7 +2513,7 @@ export function ProjectsGoalsView({
                 onChange={(e) => setGoalFormSequentialMode(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+              <div className="w-9 h-5 bg-bg-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-overlay-medium after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
             </label>
           </div>
 

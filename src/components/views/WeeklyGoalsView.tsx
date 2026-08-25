@@ -371,7 +371,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       case 'medium':
         return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
       case 'low':
-        return 'bg-slate-500/15 text-content-tertiary border-slate-500/30';
+        return 'bg-overlay-subtle text-content-tertiary border-overlay-default';
     }
   };
 
@@ -720,7 +720,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
         {/* ADD REFLECTION FORM */}
         {showAddReflection && (
-          <div className="p-3.5 bg-slate-900/80 border border-slate-700/60 rounded-xl space-y-3">
+          <div className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
             <label className="block text-xs font-semibold text-content-secondary">
               New Reflection Entry
             </label>
@@ -765,7 +765,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             return (
               <>
                 {reflections.length === 0 && !showAddReflection && (
-                  <div className="text-center py-6 border border-dashed border-slate-800 rounded-xl text-content-disabled text-xs">
+                  <div className="text-center py-6 border border-dashed border-overlay-subtle rounded-xl text-content-disabled text-xs">
                     No reflections added for {selectedWeekKey} yet. Click "+ Add Reflection" above to add your insights.
                   </div>
                 )}
@@ -775,7 +775,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
                   if (isEditingThis) {
                     return (
-                      <div key={ref.id} className="p-3.5 bg-slate-900/80 border border-slate-700/60 rounded-xl space-y-3">
+                      <div key={ref.id} className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
                         <label className="block text-xs font-semibold text-content-secondary">
                           Edit Reflection
                         </label>
@@ -806,7 +806,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                   return (
                     <div
                       key={ref.id}
-                      className="p-3.5 bg-slate-900/60 border border-slate-800 hover:border-slate-700/80 rounded-xl space-y-2 transition-all"
+                      className="p-3.5 bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default rounded-xl space-y-2 transition-all"
                     >
                       <div className="flex items-center justify-between text-[11px] text-content-muted">
                         <div className="flex items-center gap-2">
@@ -1140,7 +1140,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           <p className="text-xs text-content-tertiary leading-relaxed">
             How would you like to carry over <strong className="text-content-primary">"{carryOverPromptModal?.goal.title}"</strong> into {currentWeekKey}?
           </p>
-          <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-xl space-y-1">
+          <div className="p-3 bg-bg-800/80 border border-overlay-subtle rounded-xl space-y-1">
             <span className="text-[11px] text-content-muted font-medium block">Current Progress in {carryOverPromptModal?.pastWeek}:</span>
             <span className="text-xs font-bold text-amber-300 block">
               {carryOverPromptModal?.goal.manualProgress || 0} / {carryOverPromptModal?.goal.targetValue} {carryOverPromptModal?.goal.unit || 'times'}

@@ -252,7 +252,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                             Point-Eligible (Slot {idx + 1}/2)
                           </span>
                         ) : (
-                          <span className="badge bg-slate-700/60 text-content-muted text-[10px] font-medium border border-overlay-default" title="Only first 2 habits earn/lose points">
+                          <span className="badge bg-bg-600/60 text-content-muted text-[10px] font-medium border border-overlay-default" title="Only first 2 habits earn/lose points">
                             Tracking Only (Point Cap Reached)
                           </span>
                         )}

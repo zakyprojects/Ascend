@@ -124,7 +124,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
   const renderStatusBadge = (status: UserBookStatus) => {
     if (status === 'to-read')
       return (
-        <span className="badge bg-slate-500/15 text-content-muted border border-slate-500/30 text-[10px]">
+        <span className="badge bg-overlay-subtle text-content-muted border border-overlay-default text-[10px]">
           <ListTodo size={11} /> To Read
         </span>
       );
@@ -221,7 +221,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-500/15 flex items-center justify-center text-content-muted shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-overlay-subtle flex items-center justify-center text-content-muted shrink-0">
             <Library size={20} />
           </div>
           <div>
@@ -583,7 +583,7 @@ function LibraryCard({
             <div className="flex items-center gap-1.5 flex-wrap">
               <h3 className="font-semibold text-content-secondary text-base leading-snug">{userBook.title}</h3>
               {userBook.isCustom && (
-                <span className="badge bg-slate-500/10 text-content-muted text-[9px] border border-slate-500/20">
+                <span className="badge bg-overlay-subtle text-content-muted text-[9px] border border-overlay-subtle">
                   Custom
                 </span>
               )}

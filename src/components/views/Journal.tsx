@@ -64,9 +64,9 @@ export const MOODS: MoodMeta[] = [
     score: 2,
     icon: Meh,
     color: '#94a3b8', // Slate grey
-    bgClass: 'bg-slate-500/15',
+    bgClass: 'bg-overlay-subtle',
     textClass: 'text-content-muted',
-    borderClass: 'border-slate-500/30',
+    borderClass: 'border-overlay-default',
     borderLeftClass: 'border-l-slate-400',
   },
   {

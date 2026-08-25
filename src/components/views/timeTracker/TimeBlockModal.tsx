@@ -271,7 +271,7 @@ export function TimeBlockModal({
                 step="60"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full bg-slate-900/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 required
               />
             </div>
@@ -290,7 +290,7 @@ export function TimeBlockModal({
                 step="60"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full bg-slate-900/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 required
               />
             </div>
@@ -298,7 +298,7 @@ export function TimeBlockModal({
         </div>
 
         {/* Read-Only Computed Duration Indicator */}
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-overlay-subtle">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-bg-800/60 border border-overlay-subtle">
           <div className="flex items-center gap-2 text-xs text-content-muted">
             <Clock size={13} className="text-emerald-400" />
             <span>Calculated Duration:</span>
@@ -341,7 +341,7 @@ export function TimeBlockModal({
             value={customTitle}
             onChange={(e) => setCustomTitle(e.target.value)}
             placeholder={`e.g. ${selectedActivity?.name || 'Deep Work Session'}`}
-            className="w-full bg-slate-900/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
+            className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
           />
         </div>
 
@@ -356,7 +356,7 @@ export function TimeBlockModal({
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Key objectives, location, or constraints..."
             rows={2}
-            className="w-full bg-slate-900/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500 resize-none"
+            className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500 resize-none"
           />
         </div>
 

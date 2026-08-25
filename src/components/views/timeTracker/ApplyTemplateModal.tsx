@@ -62,7 +62,7 @@ export function ApplyTemplateModal({
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900/90 border border-overlay-default rounded-xl text-content-primary text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+              className="w-full px-3 py-2 bg-bg-800/90 border border-overlay-default rounded-xl text-content-primary text-xs focus:outline-none focus:border-emerald-500 transition-colors"
               required
             />
           </div>

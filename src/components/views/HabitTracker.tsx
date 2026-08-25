@@ -254,7 +254,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
               </div>
             </div>
             {/* No-points notice */}
-            <div className="card bg-bg-700 p-3 flex items-start gap-2 border-l-2 border-slate-600">
+            <div className="card bg-bg-700 p-3 flex items-start gap-2 border-l-2 border-overlay-medium">
               <Info size={14} className="text-content-disabled mt-0.5 shrink-0" />
               <p className="text-xs text-content-muted leading-relaxed">
                 Custom habits help you track personal goals but <span className="text-content-tertiary font-medium">don't earn points</span>.
@@ -349,7 +349,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
               </span>
             )}
             {!habit.isPreset && !isLinked && (
-              <span className="badge bg-slate-700/50 text-content-disabled shrink-0">
+              <span className="badge bg-bg-600/50 text-content-disabled shrink-0">
                 Custom
               </span>
             )}

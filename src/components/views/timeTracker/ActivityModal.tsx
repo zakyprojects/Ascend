@@ -145,7 +145,7 @@ export function ActivityModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Client Consulting, Meditation, Piano"
-            className="w-full bg-slate-900/80 border border-overlay-default rounded-xl px-3.5 py-2.5 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
+            className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3.5 py-2.5 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
             required
           />
         </div>
@@ -179,7 +179,7 @@ export function ActivityModal({
           <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
             Category Icon <span className="text-rose-400">*</span>
           </label>
-          <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-36 overflow-y-auto p-1 bg-slate-950/50 rounded-xl border border-overlay-subtle">
+          <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-36 overflow-y-auto p-1 bg-bg-900/50 rounded-xl border border-overlay-subtle">
             {AVAILABLE_ACTIVITY_ICONS.map((ic) => {
               const isSelected = icon === ic;
               return (
@@ -209,10 +209,10 @@ export function ActivityModal({
           <select
             value={ascendModule}
             onChange={(e) => setAscendModule(e.target.value)}
-            className="w-full bg-slate-900/80 border border-overlay-default rounded-xl px-3 py-2.5 text-sm text-content-primary focus:outline-none focus:border-emerald-500"
+            className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2.5 text-sm text-content-primary focus:outline-none focus:border-emerald-500"
           >
             {MODULE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-slate-900 text-content-primary">
+              <option key={opt.value} value={opt.value} className="bg-bg-800 text-content-primary">
                 {opt.label}
               </option>
             ))}

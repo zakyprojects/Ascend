@@ -81,7 +81,7 @@ export function CompetitorProfileModal({
         {/* Reciprocal Privacy Guard Notice */}
         {!canViewDetailed ? (
           <div className="p-6 bg-bg-800/60 border border-overlay-default rounded-2xl text-center space-y-2.5 animate-fade-in">
-            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center mx-auto text-content-muted">
+            <div className="w-10 h-10 rounded-xl bg-bg-700 flex items-center justify-center mx-auto text-content-muted">
               {!viewerIsPublic ? <EyeOff size={20} className="text-amber-400" /> : <Lock size={20} />}
             </div>
 

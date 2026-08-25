@@ -201,7 +201,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center p-1 rounded-2xl bg-slate-900/80 border border-overlay-default shrink-0 self-start md:self-auto max-w-full overflow-x-auto">
+        <div className="flex items-center p-1 rounded-2xl bg-bg-800/80 border border-overlay-default shrink-0 self-start md:self-auto max-w-full overflow-x-auto">
           <button
             onClick={() => setActiveTab('schedule')}
             className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${

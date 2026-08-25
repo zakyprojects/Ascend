@@ -1151,7 +1151,7 @@ function FocusTimerSubmodule({
 
       {/* Timer Mode Switcher (Manual Focus Timer vs Live Schedule Sync) */}
       <div className="flex justify-center pt-1">
-        <div className="inline-flex w-full max-w-sm sm:w-auto p-1 rounded-2xl bg-slate-900/90 border border-overlay-default shadow-lg gap-1">
+        <div className="inline-flex w-full max-w-sm sm:w-auto p-1 rounded-2xl bg-bg-800/90 border border-overlay-default shadow-lg gap-1">
           <button
             type="button"
             onClick={() => setTimerMode('manual')}
@@ -1345,7 +1345,7 @@ function FocusTimerSubmodule({
                 disabled={isCustom && customFocusMins < 1}
                 className={`w-full min-[420px]:w-auto px-6 py-3 rounded-xl font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   isCustom && customFocusMins < 1
-                    ? 'bg-slate-700 text-content-disabled cursor-not-allowed shadow-none'
+                    ? 'bg-bg-600 text-content-disabled cursor-not-allowed shadow-none'
                     : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-cyan-500/20 hover:from-cyan-600 hover:to-blue-700'
                 }`}
               >
@@ -1437,7 +1437,7 @@ function FocusTimerSubmodule({
                 <button
                   type="button"
                   onClick={() => setShowStopConfirm(false)}
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-content-tertiary font-semibold border border-overlay-default transition-all cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-bg-700 hover:bg-bg-600 text-content-tertiary font-semibold border border-overlay-default transition-all cursor-pointer"
                 >
                   Cancel, Keep Tracking
                 </button>
@@ -1728,7 +1728,7 @@ function FocusTimerSubmodule({
                         showErrorToast('Failed to End Break', err?.message);
                       }
                     }}
-                    className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-content-secondary hover:text-content-primary font-semibold text-xs border border-overlay-default flex items-center gap-2 transition-all cursor-pointer shadow-md"
+                    className="px-5 py-2.5 rounded-xl bg-bg-700 hover:bg-bg-600 text-content-secondary hover:text-content-primary font-semibold text-xs border border-overlay-default flex items-center gap-2 transition-all cursor-pointer shadow-md"
                   >
                     <RotateCcw size={14} className="text-emerald-400" />
                     <span>End Break Now & Resume Focus</span>
@@ -1850,7 +1850,7 @@ function FocusTimerSubmodule({
                     <span>{Math.round(activeBlockProgress)}% elapsed</span>
                     <span>{formatTime12h(activeBlock.endTime)}</span>
                   </div>
-                  <div className="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden border border-overlay-subtle">
+                  <div className="w-full bg-bg-700/80 rounded-full h-2 overflow-hidden border border-overlay-subtle">
                     <div
                       className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-1000"
                       style={{ width: `${activeBlockProgress}%` }}
@@ -1862,12 +1862,12 @@ function FocusTimerSubmodule({
           </div>
         ) : (
           /* State C: Ignited & Gap/Empty */
-          <div className="card p-6 sm:p-8 text-center space-y-6 bg-gradient-to-b from-slate-900/90 to-slate-950 border border-slate-700/50 rounded-2xl relative overflow-hidden shadow-2xl">
+          <div className="card p-6 sm:p-8 text-center space-y-6 bg-gradient-to-b from-slate-900/90 to-slate-950 border border-overlay-subtle rounded-2xl relative overflow-hidden shadow-2xl">
             {/* Top Bar with Status Badge & Stop Sync in normal flow */}
             <div className="flex items-center justify-between gap-3 border-b border-overlay-subtle pb-4 text-xs text-content-muted">
               <div className="flex items-center gap-2">
                 {currentResolvedBlock?.skipped ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-500/10 border border-slate-500/30 text-content-tertiary text-xs font-semibold shadow-sm">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-overlay-subtle border border-overlay-default text-content-tertiary text-xs font-semibold shadow-sm">
                     <SkipForward className="text-content-muted" size={12} />
                     <span>Block Skipped</span>
                   </div>
@@ -2098,7 +2098,7 @@ function FocusTimerSubmodule({
               </div>
             ) : (
               <div className="max-w-md mx-auto space-y-3 py-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-800 border border-overlay-default text-content-muted flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-xl bg-bg-700 border border-overlay-default text-content-muted flex items-center justify-center mx-auto">
                   <CalendarDays size={24} />
                 </div>
                 <h2 className="text-lg font-bold text-content-primary">No Blocks Scheduled Today</h2>
@@ -2239,7 +2239,7 @@ function FocusTimerSubmodule({
                     onClick={() => setSelectedBreakMinutes(mins)}
                     className={`py-3 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 border ${
                       !isAllowed
-                        ? 'opacity-40 cursor-not-allowed bg-slate-900 border-overlay-subtle text-content-disabled'
+                        ? 'opacity-40 cursor-not-allowed bg-bg-800 border-overlay-subtle text-content-disabled'
                         : isSelected
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-md ring-1 ring-emerald-500/30'
                         : 'bg-overlay-subtle text-content-tertiary border-overlay-default hover:bg-overlay-default hover:text-content-primary cursor-pointer'
@@ -2268,7 +2268,7 @@ function FocusTimerSubmodule({
                   step={1}
                   value={selectedBreakMinutes}
                   onChange={(e) => setSelectedBreakMinutes(Number(e.target.value))}
-                  className="flex-1 accent-emerald-400 cursor-pointer h-2 bg-slate-800 rounded-lg"
+                  className="flex-1 accent-emerald-400 cursor-pointer h-2 bg-bg-700 rounded-lg"
                 />
                 <input
                   type="number"
@@ -2281,7 +2281,7 @@ function FocusTimerSubmodule({
                       setSelectedBreakMinutes(val);
                     }
                   }}
-                  className="w-16 px-2 py-1.5 text-center font-mono text-xs rounded-lg bg-slate-800 border border-overlay-default text-content-secondary focus:outline-none focus:border-emerald-500/50"
+                  className="w-16 px-2 py-1.5 text-center font-mono text-xs rounded-lg bg-bg-700 border border-overlay-default text-content-secondary focus:outline-none focus:border-emerald-500/50"
                 />
                 <span className="text-xs text-content-muted font-mono">min</span>
               </div>

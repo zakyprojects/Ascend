@@ -410,7 +410,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
           {/* Main Navigation Tabs */}
-          <div className="flex items-stretch justify-between w-full bg-slate-800/40 p-1 rounded-xl gap-1">
+          <div className="flex items-stretch justify-between w-full bg-bg-700/40 p-1 rounded-xl gap-1">
             <button
               onClick={() => setActiveTab('reading')}
               className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
@@ -651,7 +651,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         <div className="space-y-4">
           {filteredToRead.length === 0 ? (
             <div className="card p-8 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-500/15 text-content-muted flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-overlay-subtle text-content-muted flex items-center justify-center mx-auto">
                 <ListTodo size={24} />
               </div>
               <h3 className="text-base font-bold text-content-secondary">No books in your library</h3>
@@ -769,7 +769,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                             : userBook.status === 'reading'
                             ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                            : 'bg-slate-500/15 text-content-muted border border-slate-500/30'
+                            : 'bg-overlay-subtle text-content-muted border border-overlay-default'
                         }`}
                       >
                         {userBook.status === 'completed'

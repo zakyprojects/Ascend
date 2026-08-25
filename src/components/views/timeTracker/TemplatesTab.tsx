@@ -149,7 +149,7 @@ export function TemplatesTab({
   return (
     <div className="space-y-6">
       {/* 1. Header and Action */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-overlay-subtle backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle backdrop-blur-md">
         <div>
           <h2 className="text-base font-bold text-content-primary flex items-center gap-2">
             <Layers className="text-emerald-400" size={18} />
@@ -232,7 +232,7 @@ export function TemplatesTab({
 
       {/* 2. Template Cards List */}
       {templates.length === 0 ? (
-        <div className="p-8 rounded-2xl bg-slate-900/30 border border-overlay-subtle text-center space-y-4">
+        <div className="p-8 rounded-2xl bg-bg-800/30 border border-overlay-subtle text-center space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
             <Layers size={28} />
           </div>
@@ -280,7 +280,7 @@ export function TemplatesTab({
             return (
               <div
                 key={tpl.id}
-                className="p-5 rounded-2xl bg-slate-900/60 border border-overlay-subtle hover:border-overlay-default transition-all space-y-4 flex flex-col justify-between"
+                className="p-5 rounded-2xl bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default transition-all space-y-4 flex flex-col justify-between"
               >
                 <div className="space-y-3">
                   {/* Title & Actions */}
@@ -345,7 +345,7 @@ export function TemplatesTab({
                             className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                               isDayActive
                                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
-                                : 'bg-slate-950/40 text-content-subtle border border-overlay-subtle hover:text-content-muted hover:border-overlay-default'
+                                : 'bg-bg-900/40 text-content-subtle border border-overlay-subtle hover:text-content-muted hover:border-overlay-default'
                             }`}
                           >
                             {day.slice(0, 3)}
@@ -358,7 +358,7 @@ export function TemplatesTab({
                   {/* Visual Mini 24h Bar */}
                   {sortedBlocks.length > 0 && (
                     <div className="space-y-1">
-                      <div className="relative w-full h-4 bg-slate-950 rounded-lg overflow-hidden border border-overlay-default flex">
+                      <div className="relative w-full h-4 bg-bg-900 rounded-lg overflow-hidden border border-overlay-default flex">
                         {sortedBlocks.map((block) => {
                           const startMins = timeStringToMinutes(block.startTime);
                           const endMins = timeStringToMinutes(block.endTime);
@@ -371,7 +371,7 @@ export function TemplatesTab({
                           return (
                             <div
                               key={block.id}
-                              className="absolute h-full top-0 border-r border-slate-950/30"
+                              className="absolute h-full top-0 border-r border-overlay-subtle"
                               style={{
                                 left: `${leftPercent}%`,
                                 width: `${widthPercent}%`,
@@ -395,7 +395,7 @@ export function TemplatesTab({
                       return (
                         <div
                           key={block.id}
-                          className="flex items-center justify-between p-2 rounded-xl bg-slate-950/40 border border-overlay-subtle text-xs"
+                          className="flex items-center justify-between p-2 rounded-xl bg-bg-900/40 border border-overlay-subtle text-xs"
                         >
                           <div className="flex flex-wrap items-center gap-2 min-w-0">
                             <div
@@ -486,7 +486,7 @@ export function TemplatesTab({
             <button
               type="button"
               onClick={() => setConflictState(null)}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-content-tertiary hover:text-content-primary hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-content-tertiary hover:text-content-primary hover:bg-bg-700 transition-colors cursor-pointer"
             >
               Cancel
             </button>
