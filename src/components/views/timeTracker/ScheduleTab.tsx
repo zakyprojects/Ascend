@@ -272,7 +272,7 @@ export function ScheduleTab({
 
           <button
             onClick={() => onOpenAddBlockModal()}
-            className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+            className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
           >
             <Plus size={15} className="shrink-0" />
             <span className="whitespace-nowrap">Schedule Block</span>
@@ -655,7 +655,7 @@ export function ScheduleTab({
               )}
               <button
                 onClick={() => onOpenAddBlockModal()}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
               >
                 <Plus size={14} />
                 <span>Add Time Block</span>

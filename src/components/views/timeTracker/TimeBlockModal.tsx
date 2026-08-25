@@ -202,10 +202,10 @@ export function TimeBlockModal({
         {/* Activity Category Selection */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <label className="text-xs font-semibold text-content-muted uppercase tracking-wider">
               Activity Categories
             </label>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-content-muted">
               Primary + Optional Secondary
             </span>
           </div>
@@ -222,8 +222,8 @@ export function TimeBlockModal({
                     isPrimary
                       ? 'bg-emerald-500/15 border-emerald-500/60 shadow-md text-white ring-1 ring-emerald-500/40'
                       : isSecondary
-                      ? 'bg-white/[0.08] border-emerald-500/40 text-slate-100 shadow-xs'
-                      : 'bg-white/[0.02] border-white/5 text-slate-400 hover:bg-white/[0.05] hover:border-white/10 hover:text-slate-200'
+                      ? 'bg-white/[0.08] border-emerald-500/40 text-content-primary shadow-xs'
+                      : 'bg-white/[0.02] border-overlay-subtle text-content-muted hover:bg-white/[0.05] hover:border-overlay-default hover:text-content-secondary'
                   }`}
                 >
                   <div
@@ -240,7 +240,7 @@ export function TimeBlockModal({
                           Primary
                         </span>
                       ) : isSecondary ? (
-                        <span className="text-[9px] font-medium uppercase tracking-wider text-emerald-300/90 bg-white/10 px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] font-medium uppercase tracking-wider text-emerald-300/90 bg-overlay-default px-1.5 py-0.5 rounded">
                           Secondary
                         </span>
                       ) : act.ascendModule ? (
@@ -260,8 +260,8 @@ export function TimeBlockModal({
         <div className="grid grid-cols-2 gap-3 pt-1">
           <div className="flex flex-col h-full space-y-1.5">
             <div className="flex items-center justify-between gap-1">
-              <label className="text-xs font-medium text-slate-300 truncate">Start Time (24h)</label>
-              <span className="text-[11px] text-slate-400 font-mono bg-white/5 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
+              <label className="text-xs font-medium text-content-tertiary truncate">Start Time (24h)</label>
+              <span className="text-[11px] text-content-muted font-mono bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(startTime)}
               </span>
             </div>
@@ -271,7 +271,7 @@ export function TimeBlockModal({
                 step="60"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                className="w-full bg-slate-900/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 required
               />
             </div>
@@ -279,8 +279,8 @@ export function TimeBlockModal({
 
           <div className="flex flex-col h-full space-y-1.5">
             <div className="flex items-center justify-between gap-1">
-              <label className="text-xs font-medium text-slate-300 truncate">End Time (24h)</label>
-              <span className="text-[11px] text-slate-400 font-mono bg-white/5 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
+              <label className="text-xs font-medium text-content-tertiary truncate">End Time (24h)</label>
+              <span className="text-[11px] text-content-muted font-mono bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(endTime)}
               </span>
             </div>
@@ -290,7 +290,7 @@ export function TimeBlockModal({
                 step="60"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                className="w-full bg-slate-900/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 required
               />
             </div>
@@ -298,8 +298,8 @@ export function TimeBlockModal({
         </div>
 
         {/* Read-Only Computed Duration Indicator */}
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-white/5">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-overlay-subtle">
+          <div className="flex items-center gap-2 text-xs text-content-muted">
             <Clock size={13} className="text-emerald-400" />
             <span>Calculated Duration:</span>
           </div>
@@ -314,7 +314,7 @@ export function TimeBlockModal({
             <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-semibold text-amber-300">Midnight Boundary Split</p>
-              <p className="text-slate-300 text-[11px] leading-relaxed">
+              <p className="text-content-tertiary text-[11px] leading-relaxed">
                 This block crosses midnight ({formatTime12h(startTime)} to {formatTime12h(endTime)}). It will automatically be split into 2 safe daily blocks:
               </p>
               <div className="flex items-center gap-2 pt-1 font-mono text-[10px] text-amber-300">
@@ -332,8 +332,8 @@ export function TimeBlockModal({
 
         {/* Custom Title (Optional) */}
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
-            <Tag size={13} className="text-slate-400" />
+          <label className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
+            <Tag size={13} className="text-content-muted" />
             Custom Label / Task (Optional)
           </label>
           <input
@@ -341,14 +341,14 @@ export function TimeBlockModal({
             value={customTitle}
             onChange={(e) => setCustomTitle(e.target.value)}
             placeholder={`e.g. ${selectedActivity?.name || 'Deep Work Session'}`}
-            className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-slate-900/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
           />
         </div>
 
         {/* Notes (Optional) */}
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
-            <FileText size={13} className="text-slate-400" />
+          <label className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
+            <FileText size={13} className="text-content-muted" />
             Notes & Intentions (Optional)
           </label>
           <textarea
@@ -356,24 +356,24 @@ export function TimeBlockModal({
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Key objectives, location, or constraints..."
             rows={2}
-            className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 resize-none"
+            className="w-full bg-slate-900/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500 resize-none"
           />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/5">
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-overlay-subtle">
           <button
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+            className="px-4 py-2 text-xs font-medium text-content-muted hover:text-content-secondary transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSaving || isZeroDuration}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
           >
             {isSaving ? (
               <>

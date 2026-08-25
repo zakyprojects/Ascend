@@ -479,7 +479,7 @@ export function Journal({ store }: { store: AppStore }) {
                     onClick={() => toggleGuidedPrompt(true)}
                     className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
                       showGuidedPrompt
-                        ? 'bg-primary-500 text-white shadow-sm'
+                        ? 'bg-primary-500 text-on-brand shadow-sm'
                         : 'text-content-muted hover:text-content-secondary'
                     }`}
                   >
@@ -580,7 +580,7 @@ export function Journal({ store }: { store: AppStore }) {
                 {isSaving ? (
                   <AscendLoadingIndicator size="sm" />
                 ) : (
-                  <Save size={16} className={hasEnoughContent ? 'text-white' : 'text-content-disabled'} />
+                  <Save size={16} className={hasEnoughContent ? 'text-on-brand' : 'text-content-disabled'} />
                 )}
                 <span>
                   {isSaving
@@ -626,7 +626,7 @@ export function Journal({ store }: { store: AppStore }) {
               onClick={() => setChartRange('7d')}
               className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                 chartRange === '7d'
-                  ? 'bg-primary-500 text-white shadow-sm'
+                  ? 'bg-primary-500 text-on-brand shadow-sm'
                   : 'text-content-muted hover:text-content-secondary'
               }`}
             >
@@ -637,7 +637,7 @@ export function Journal({ store }: { store: AppStore }) {
               onClick={() => setChartRange('30d')}
               className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                 chartRange === '30d'
-                  ? 'bg-primary-500 text-white shadow-sm'
+                  ? 'bg-primary-500 text-on-brand shadow-sm'
                   : 'text-content-muted hover:text-content-secondary'
               }`}
             >

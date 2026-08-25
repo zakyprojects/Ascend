@@ -60,7 +60,7 @@ export function ActivitiesTab({
 
         <button
           onClick={onOpenCreateActivityModal}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all shrink-0 cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all shrink-0 cursor-pointer"
         >
           <Plus size={15} />
           <span>New Category</span>

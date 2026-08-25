@@ -2229,7 +2229,7 @@ export function ProjectsGoalsView({
                             hasSubtasks || projectLock.isLocked ? 'cursor-not-allowed opacity-90' : ''
                           } ${
                             task.completed
-                              ? 'bg-emerald-500 border-emerald-400 text-white'
+                              ? 'bg-emerald-500 border-emerald-400 text-on-brand'
                               : projectLock.isLocked
                               ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
                               : 'border-overlay-strong hover:border-emerald-400 text-transparent'
@@ -2376,7 +2376,7 @@ export function ProjectsGoalsView({
                                     projectLock.isLocked ? 'cursor-not-allowed opacity-60' : ''
                                   } ${
                                     st.completed
-                                      ? 'bg-emerald-500 border-emerald-400 text-white'
+                                      ? 'bg-emerald-500 border-emerald-400 text-on-brand'
                                       : 'border-overlay-strong hover:border-emerald-400 text-transparent'
                                   }`}
                                   title={projectLock.isLocked ? 'Project is locked by sequence order' : undefined}

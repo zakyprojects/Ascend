@@ -483,7 +483,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       usernameInput.trim() === currentUser?.username ||
                       (usernameStatus !== null && !usernameStatus.available)
                     }
-                    className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-semibold text-xs rounded-xl shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-on-brand font-semibold text-xs rounded-xl shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     {usernameSaving ? 'Saving...' : 'Update Username'}
                   </button>
@@ -612,7 +612,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       <button
                         type="submit"
                         disabled={passwordSaving}
-                        className="w-full py-2 bg-primary-500 hover:bg-primary-600 text-white font-semibold text-xs rounded-lg shadow-md transition-all disabled:opacity-50"
+                        className="w-full py-2 bg-primary-500 hover:bg-primary-600 text-on-brand font-semibold text-xs rounded-lg shadow-md transition-all disabled:opacity-50"
                       >
                         {passwordSaving ? 'Updating Password...' : 'Save New Password'}
                       </button>

@@ -713,7 +713,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleAcceptInvite(invite.id)}
-                      className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg transition-all"
+                      className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-on-brand font-bold rounded-lg transition-all"
                     >
                       Accept
                     </button>
@@ -1370,7 +1370,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 hover:scale-[1.02] cursor-pointer select-none flex items-center gap-1.5 ${
                             myDone
                               ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
-                              : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md hover:shadow-emerald-500/20'
+                              : 'bg-emerald-500 hover:bg-emerald-600 text-on-brand shadow-md hover:shadow-emerald-500/20'
                           }`}
                         >
                           <CheckCircle2 size={14} />

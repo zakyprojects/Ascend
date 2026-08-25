@@ -73,7 +73,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
           {onOpenAuthModal && (
             <button
               onClick={onOpenAuthModal}
-              className="px-3.5 py-1.5 bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all shrink-0 w-full sm:w-auto"
+              className="px-3.5 py-1.5 bg-primary-500 hover:bg-primary-600 text-on-brand text-xs font-semibold rounded-lg shadow-md transition-all shrink-0 w-full sm:w-auto"
             >
               Save Progress / Create Account
             </button>

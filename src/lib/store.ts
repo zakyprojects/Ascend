@@ -194,15 +194,52 @@ function removeLinkedWeeklyGoals(
 }
 
 const GUEST_STORAGE_KEY = 'ascend_guest_state_v2';
+export const LOCAL_THEME_STORAGE_KEY = 'ascend_theme_preference';
+
+export function getLocalThemePreference(): 'dark' | 'light' | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const rawVal = localStorage.getItem(LOCAL_THEME_STORAGE_KEY);
+    console.log('[THEME DIAGNOSTIC] getLocalThemePreference raw value:', rawVal);
+    if (rawVal === 'light' || rawVal === 'dark') return rawVal;
+  } catch (err) {
+    console.error('[THEME DIAGNOSTIC] getLocalThemePreference error accessing localStorage:', err);
+  }
+  return null;
+}
+
+export function setLocalThemePreference(theme: 'dark' | 'light'): void {
+  if (typeof window === 'undefined') return;
+  try {
+    console.log('[THEME DIAGNOSTIC] setLocalThemePreference attempting to write:', theme);
+    localStorage.setItem(LOCAL_THEME_STORAGE_KEY, theme);
+    console.log('[THEME DIAGNOSTIC] setLocalThemePreference write SUCCESS. Current localStorage value:', localStorage.getItem(LOCAL_THEME_STORAGE_KEY));
+  } catch (err) {
+    console.error('[THEME DIAGNOSTIC] setLocalThemePreference error writing to localStorage:', err);
+  }
+}
 
 function loadInitialState(): AppState {
+  const localTheme = getLocalThemePreference() || 'dark';
   try {
     const raw = localStorage.getItem(GUEST_STORAGE_KEY);
-    if (!raw) return DEFAULT_STATE;
+    if (!raw) {
+      return {
+        ...DEFAULT_STATE,
+        themePreference: localTheme,
+      };
+    }
     const parsed = JSON.parse(raw);
-    return sanitizeLoadedState(parsed, null);
+    const sanitized = sanitizeLoadedState(parsed, null);
+    return {
+      ...sanitized,
+      themePreference: parsed.themePreference || localTheme,
+    };
   } catch {
-    return DEFAULT_STATE;
+    return {
+      ...DEFAULT_STATE,
+      themePreference: localTheme,
+    };
   }
 }
 
@@ -338,9 +375,12 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
   const activeDeletedEntityIds = (st.deletedEntityIds ?? [])
     .filter((id) => !(st.restoredEntityIds || []).includes(id));
 
+  const resolvedTheme = st.themePreference || (getLocalThemePreference() || 'dark');
+
   const baseState: AppState = {
     ...DEFAULT_STATE,
     ...st,
+    themePreference: resolvedTheme,
     currentUser: profile,
     username: profile ? profile.username : (st.username ?? 'Guest User'),
     habits: st.habits ?? [],
@@ -759,11 +799,13 @@ export function useAppState() {
 
   // Reactively apply data-theme attribute on document.documentElement based on themePreference
   useEffect(() => {
-    const theme = state.themePreference || 'dark';
+    const local = getLocalThemePreference();
+    const theme = state.themePreference || local || 'dark';
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('data-theme', theme);
     }
-  }, [state.themePreference]);
+    setLocalThemePreference(theme);
+  }, [state.themePreference, state.currentUser]);
 
   // Initial Supabase data load & auth listener (single source of truth for session state)
   useEffect(() => {
@@ -824,6 +866,8 @@ export function useAppState() {
               /* ignore */
             }
           }
+          const localTheme = getLocalThemePreference() || 'dark';
+          console.log('[THEME DIAGNOSTIC] SIGNED_OUT handler computed localTheme:', localTheme);
           const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
           let guestState = DEFAULT_STATE;
           if (guestRaw) {
@@ -833,7 +877,17 @@ export function useAppState() {
               /* use default */
             }
           }
-          setState(sanitizeLoadedState(guestState, null));
+          const sanitized = sanitizeLoadedState(guestState, null);
+          const nextGuestState: AppState = {
+            ...sanitized,
+            themePreference: localTheme,
+          };
+          if (typeof document !== 'undefined') {
+            console.log('[THEME DIAGNOSTIC] SIGNED_OUT data-theme BEFORE setAttribute:', document.documentElement.getAttribute('data-theme'));
+            document.documentElement.setAttribute('data-theme', localTheme);
+            console.log('[THEME DIAGNOSTIC] SIGNED_OUT data-theme AFTER setAttribute:', document.documentElement.getAttribute('data-theme'));
+          }
+          setState(nextGuestState);
           setIsAuthChecking(false);
           return;
         }
@@ -876,6 +930,12 @@ export function useAppState() {
             if (mounted) {
               isHydrated.current = true;
               const sanitizedState = sanitizeLoadedState(hydratedState, user);
+              if (sanitizedState.themePreference) {
+                setLocalThemePreference(sanitizedState.themePreference);
+                if (typeof document !== 'undefined') {
+                  document.documentElement.setAttribute('data-theme', sanitizedState.themePreference);
+                }
+              }
               console.log('[STAGE 3: ZUSTAND STATE WRITE]', {
                 username: user.username,
                 totalPoints: sanitizedState.totalPoints,
@@ -1782,17 +1842,33 @@ export function useAppState() {
   }, []);
 
   const setThemePreference = useCallback((theme: 'dark' | 'light') => {
-    setState((prev) => ({
-      ...prev,
-      themePreference: theme,
-    }));
+    setLocalThemePreference(theme);
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    setState(
+      (prev) => ({
+        ...prev,
+        themePreference: theme,
+      }),
+      { immediate: true }
+    );
   }, [setState]);
 
   const toggleThemePreference = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      themePreference: prev.themePreference === 'light' ? 'dark' : 'light',
-    }));
+    const currentTheme = getLocalThemePreference() || stateRef.current.themePreference || 'dark';
+    const nextTheme: 'dark' | 'light' = currentTheme === 'light' ? 'dark' : 'light';
+    setLocalThemePreference(nextTheme);
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', nextTheme);
+    }
+    setState(
+      (prev) => ({
+        ...prev,
+        themePreference: nextTheme,
+      }),
+      { immediate: true }
+    );
   }, [setState]);
 
   const toggleProfilePrivacy = useCallback(async () => {

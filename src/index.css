@@ -6,6 +6,20 @@
 
 @layer base {
   :root {
+    /* Surfaces (Dark mode defaults) */
+    --color-bg-900: #0a0b0f;
+    --color-bg-900-rgb: 10 11 15;
+    --color-bg-800: #111319;
+    --color-bg-800-rgb: 17 19 25;
+    --color-bg-750: #14171e;
+    --color-bg-750-rgb: 20 23 30;
+    --color-bg-700: #171a23;
+    --color-bg-700-rgb: 23 26 35;
+    --color-bg-600: #1e222d;
+    --color-bg-600-rgb: 30 34 45;
+    --color-bg-500: #262b38;
+    --color-bg-500-rgb: 38 43 56;
+
     /* Semantic Text Content Tokens (Dark mode defaults) */
     --color-content-primary: #f1f5f9;    /* slate-100 */
     --color-content-secondary: #e2e8f0;  /* slate-200 */
@@ -25,10 +39,82 @@
     --bg-overlay-subtle: rgba(255, 255, 255, 0.05);       /* bg-white/5 */
     --bg-overlay-default: rgba(255, 255, 255, 0.10);      /* bg-white/10 */
     --bg-overlay-strong: rgba(255, 255, 255, 0.20);       /* bg-white/20 */
+
+    /* Elevation shadows (Dark mode defaults) */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+
+    /* Brand & High-Vibrancy Action Tokens (Dark mode defaults) */
+    --color-text-on-brand: #ffffff;
+
+    /* Semantic Status Tokens - Text/Foreground (Dark mode defaults) */
+    --color-success-text: #10b981;
+    --color-warning-text: #f59e0b;
+    --color-error-text: #ef4444;
+    --color-info-text: #0ea5e9;
+
+    /* Semantic Status Tokens - Soft Background Tints (Dark mode defaults) */
+    --color-success-soft: rgba(16, 185, 129, 0.12);
+    --color-warning-soft: rgba(245, 158, 11, 0.12);
+    --color-error-soft: rgba(239, 68, 68, 0.12);
+    --color-info-soft: rgba(14, 165, 233, 0.12);
   }
 
   [data-theme='light'] {
-    /* Reserved for Phase 1: Light Mode Semantic Token Definitions */
+    /* Surfaces */
+    --color-bg-900: #f6f8f7;  /* page */
+    --color-bg-900-rgb: 246 248 247;
+    --color-bg-800: #ffffff;  /* card/panel */
+    --color-bg-800-rgb: 255 255 255;
+    --color-bg-750: #ffffff;  /* elevated/modal — same as card, differentiated by shadow only */
+    --color-bg-750-rgb: 255 255 255;
+    --color-bg-700: #f1f4f3;  /* input/secondary container */
+    --color-bg-700-rgb: 241 244 243;
+    --color-bg-600: #e9edec;  /* interactive button */
+    --color-bg-600-rgb: 233 237 236;
+    --color-bg-500: #dfe5e3;  /* interactive button hover */
+    --color-bg-500-rgb: 223 229 227;
+
+    /* Text (6-tier) */
+    --color-content-primary: #0f172a;
+    --color-content-secondary: #1e293b;
+    --color-content-tertiary: #334155;
+    --color-content-muted: #556275;
+    --color-content-disabled: #94a3b8;
+    --color-content-subtle: #cbd5e1;
+
+    /* Border overlays (switched from white-alpha to black-alpha/ink-alpha) */
+    --border-overlay-subtle: rgba(15, 23, 42, 0.05);
+    --border-overlay-default: rgba(15, 23, 42, 0.09);
+    --border-overlay-medium: rgba(15, 23, 42, 0.13);
+    --border-overlay-strong: rgba(15, 23, 42, 0.18);
+    --border-overlay-heavy: rgba(15, 23, 42, 0.32);
+
+    /* Background overlays (same ink-alpha direction) */
+    --bg-overlay-subtle: rgba(15, 23, 42, 0.05);
+    --bg-overlay-default: rgba(15, 23, 42, 0.09);
+    --bg-overlay-strong: rgba(15, 23, 42, 0.18);
+
+    /* Elevation shadows (light mode conveys elevation via shadow, not lightness) */
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+
+    /* Brand & High-Vibrancy Action Tokens (Navy text on vibrant green buttons) */
+    --color-text-on-brand: #0f172a;
+
+    /* Semantic Status Tokens - Text/Foreground (High contrast on light backgrounds) */
+    --color-success-text: #047857;
+    --color-warning-text: #b45309;
+    --color-error-text: #dc2626;
+    --color-info-text: #0369a1;
+
+    /* Semantic Status Tokens - Soft Background Tints */
+    --color-success-soft: #d1fae5;
+    --color-warning-soft: #fef3c7;
+    --color-error-soft: #fee2e2;
+    --color-info-soft: #e0f2fe;
   }
 
   * {
@@ -130,19 +216,19 @@
 
 @layer components {
   .glass {
-    @apply bg-bg-800/80 backdrop-blur-xl border border-white/5;
+    @apply bg-bg-800/80 backdrop-blur-xl border border-overlay-subtle;
   }
 
   .glass-strong {
-    @apply bg-bg-700/90 backdrop-blur-xl border border-white/10;
+    @apply bg-bg-700/90 backdrop-blur-xl border border-overlay-default;
   }
 
   .card {
-    @apply bg-bg-800 border border-white/5 rounded-2xl;
+    @apply bg-bg-800 border border-overlay-subtle rounded-2xl;
   }
 
   .card-hover {
-    @apply transition-all duration-200 hover:border-white/10 hover:bg-bg-700;
+    @apply transition-all duration-200 hover:border-overlay-default hover:bg-bg-700;
   }
 
   .btn {
@@ -150,15 +236,15 @@
   }
 
   .btn-primary {
-    @apply btn bg-primary-500 text-white hover:bg-primary-600;
+    @apply btn bg-primary-500 text-on-brand hover:bg-primary-600;
   }
 
   .btn-secondary {
-    @apply btn bg-bg-600 text-slate-200 hover:bg-bg-500;
+    @apply btn bg-bg-600 text-content-secondary hover:bg-bg-500;
   }
 
   .btn-ghost {
-    @apply btn text-slate-400 hover:text-slate-200 hover:bg-white/5;
+    @apply btn text-content-muted hover:text-content-secondary hover:bg-overlay-subtle;
   }
 
   .btn-danger {
@@ -166,7 +252,7 @@
   }
 
   .input, .input-field {
-    @apply w-full bg-bg-700 border border-white/10 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 transition-all;
+    @apply w-full bg-bg-700 border border-overlay-default text-content-primary placeholder:text-content-disabled rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 transition-all;
   }
 
   .input-has-icon {
@@ -174,7 +260,7 @@
   }
 
   .label {
-    @apply block text-sm font-medium text-slate-400 mb-1.5;
+    @apply block text-sm font-medium text-content-muted mb-1.5;
   }
 
   .badge {
@@ -182,14 +268,14 @@
   }
 
   .section-title {
-    @apply text-lg font-display font-bold text-slate-100;
+    @apply text-lg font-display font-bold text-content-primary;
   }
 
   .stat-value {
-    @apply text-2xl font-display font-bold text-slate-100;
+    @apply text-2xl font-display font-bold text-content-primary;
   }
 
   .stat-label {
-    @apply text-xs text-slate-500 uppercase tracking-wide font-medium;
+    @apply text-xs text-content-disabled uppercase tracking-wide font-medium;
   }
 }

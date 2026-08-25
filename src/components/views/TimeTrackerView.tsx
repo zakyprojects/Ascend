@@ -206,7 +206,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
             onClick={() => setActiveTab('schedule')}
             className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'schedule'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/30'
+                ? 'bg-emerald-600 text-on-brand shadow-md shadow-emerald-900/30'
                 : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
             }`}
           >
@@ -229,7 +229,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
             onClick={() => setActiveTab('templates')}
             className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'templates'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/30'
+                ? 'bg-emerald-600 text-on-brand shadow-md shadow-emerald-900/30'
                 : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
             }`}
           >
@@ -252,7 +252,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
             onClick={() => setActiveTab('activities')}
             className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'activities'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/30'
+                ? 'bg-emerald-600 text-on-brand shadow-md shadow-emerald-900/30'
                 : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
             }`}
           >

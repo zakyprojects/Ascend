@@ -316,7 +316,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
             isLinked ? 'cursor-default' : 'active:scale-90'
           } ${
             done
-              ? 'bg-primary-500 text-white'
+              ? 'bg-primary-500 text-on-brand'
               : isLinked
               ? 'bg-bg-600/60 text-content-subtle border border-overlay-subtle'
               : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary border border-overlay-subtle'
