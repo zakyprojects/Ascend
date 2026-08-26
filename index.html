@@ -17,16 +17,10 @@
       (function() {
         try {
           var t = localStorage.getItem('ascend_theme_preference');
-          console.log('[THEME DIAGNOSTIC] index.html head script raw ascend_theme_preference:', t);
           if (t === 'light' || t === 'dark') {
             document.documentElement.setAttribute('data-theme', t);
-            console.log('[THEME DIAGNOSTIC] index.html head script successfully set data-theme to:', t);
-          } else {
-            console.log('[THEME DIAGNOSTIC] index.html head script no valid theme stored (found: ' + t + ')');
           }
-        } catch (e) {
-          console.error('[THEME DIAGNOSTIC] index.html head script threw error accessing localStorage:', e);
-        }
+        } catch (e) {}
       })();
     </script>
     <style>

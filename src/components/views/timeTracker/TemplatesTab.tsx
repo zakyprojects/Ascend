@@ -11,6 +11,7 @@ import {
   formatDurationHuman,
   timeStringToMinutes,
   DAYS_OF_WEEK,
+  getActivityThemeColor,
 } from '@/lib/timeTracker';
 import { todayKey, formatDateKeyHuman } from '@/lib/dates';
 import { ActivityIcon } from './ActivityIcon';
@@ -57,6 +58,7 @@ export function TemplatesTab({
 }: TemplatesTabProps) {
   const { showSuccessToast, showErrorToast } = useToast();
   const [deleteTargetTemplate, setDeleteTargetTemplate] = useState<TimeTrackerTemplate | null>(null);
+  const theme = store.state.themePreference || 'dark';
   const [conflictState, setConflictState] = useState<{
     isOpen: boolean;
     day: string;
@@ -185,19 +187,19 @@ export function TemplatesTab({
       </div>
 
       {/* Blueprint Philosophy / 8-8-8 Guide */}
-      <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-slate-900/50 border border-emerald-500/20 flex flex-col xl:flex-row gap-4 items-start">
+      <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-bg-800 to-bg-750 border border-emerald-500/20 flex flex-col xl:flex-row gap-4 items-start">
         <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-500/30 shadow-inner">
           <Compass className="text-emerald-400" size={24} />
         </div>
         <div className="flex-1 w-full">
-          <h3 className="text-sm font-bold text-emerald-300 mb-1.5">The Balance Sheet of Life: 8+8+8 Rule</h3>
+          <h3 className="text-sm font-bold text-success-text mb-1.5">The Balance Sheet of Life: 8+8+8 Rule</h3>
           <p className="text-xs text-content-tertiary leading-relaxed mb-3 max-w-3xl">
             Distribute your 24 hours intentionally to maintain a perfect balance sheet of your life. Ascend Blueprints are built on this foundational philosophy.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Hard Work */}
-            <div className="p-3 rounded-xl bg-black/20 border border-overlay-subtle hover:border-emerald-500/30 transition-colors">
+            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-emerald-500/30 transition-colors">
               <h4 className="text-[11px] font-bold text-content-secondary mb-1 flex items-center gap-1.5">
                 <Brain className="text-emerald-400" size={13} /> 
                 8 Hours: Hard Work
@@ -206,7 +208,7 @@ export function TemplatesTab({
             </div>
 
             {/* Life & Balance */}
-            <div className="p-3 rounded-xl bg-black/20 border border-overlay-subtle hover:border-rose-500/30 transition-colors">
+            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-rose-500/30 transition-colors">
               <h4 className="text-[11px] font-bold text-content-secondary mb-1.5 flex items-center gap-1.5">
                 <Heart className="text-rose-400" size={13} /> 
                 8 Hours: 3Fs, 3Hs, & 3Ss
@@ -219,7 +221,7 @@ export function TemplatesTab({
             </div>
 
             {/* Sleep */}
-            <div className="p-3 rounded-xl bg-black/20 border border-overlay-subtle hover:border-indigo-500/30 transition-colors">
+            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-indigo-500/30 transition-colors">
               <h4 className="text-[11px] font-bold text-content-secondary mb-1 flex items-center gap-1.5">
                 <Moon className="text-indigo-400" size={13} /> 
                 8 Hours: Good Sleep
@@ -366,7 +368,7 @@ export function TemplatesTab({
                           const leftPercent = (startMins / 1440) * 100;
                           const widthPercent = (duration / 1440) * 100;
                           const act = activityMap.get(block.activityId);
-                          const color = act?.color || '#10b981';
+                          const color = getActivityThemeColor(act?.color, theme);
 
                           return (
                             <div
@@ -391,7 +393,7 @@ export function TemplatesTab({
                   <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
                     {sortedBlocks.map((block) => {
                       const act = activityMap.get(block.activityId);
-                      const color = act?.color || '#10b981';
+                      const color = getActivityThemeColor(act?.color, theme);
                       return (
                         <div
                           key={block.id}

@@ -14,6 +14,7 @@ import {
   timeStringToMinutes,
   minutesToTimeString,
   getAscendViewForModule,
+  getActivityThemeColor,
 } from '@/lib/timeTracker';
 import { todayKey, formatDateKeyHuman } from '@/lib/dates';
 import { ActivityIcon } from './ActivityIcon';
@@ -76,6 +77,7 @@ export function ScheduleTab({
 
   const today = todayKey();
   const isSelectedDateToday = selectedDateKey === today;
+  const theme = store.state.themePreference || 'dark';
 
   // Auto-hydrate on date load if needed
   useEffect(() => {
@@ -282,24 +284,27 @@ export function ScheduleTab({
 
       {/* 2. Real-Time Live Status Card (When Viewing Today) */}
       {isSelectedDateToday && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-slate-900/60 to-slate-900/80 border border-emerald-500/20 backdrop-blur-md relative overflow-hidden">
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-bg-800 to-bg-750 border border-emerald-500/30 shadow-sm relative overflow-hidden">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             {/* Active Block Info */}
             <div className="flex items-center gap-3.5 min-w-0">
-              {liveStats.activeBlock && liveStats.activeBlockActivity ? (
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg relative"
-                  style={{
-                    backgroundColor: `${liveStats.activeBlockActivity.color}25`,
-                    color: liveStats.activeBlockActivity.color,
-                    border: `1px solid ${liveStats.activeBlockActivity.color}50`,
-                  }}
-                >
-                  <ActivityIcon iconName={liveStats.activeBlockActivity.icon} size={24} />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-overlay-subtle animate-ping" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-overlay-subtle" />
-                </div>
-              ) : (
+              {liveStats.activeBlock && liveStats.activeBlockActivity ? (() => {
+                const activeColor = getActivityThemeColor(liveStats.activeBlockActivity.color, theme);
+                return (
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg relative"
+                    style={{
+                      backgroundColor: `${activeColor}25`,
+                      color: activeColor,
+                      border: `1px solid ${activeColor}50`,
+                    }}
+                  >
+                    <ActivityIcon iconName={liveStats.activeBlockActivity.icon} size={24} />
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-overlay-subtle animate-ping" />
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-overlay-subtle" />
+                  </div>
+                );
+              })() : (
                 <div className="w-12 h-12 rounded-2xl bg-overlay-subtle border border-overlay-default flex items-center justify-center text-content-muted shrink-0">
                   <Clock size={22} />
                 </div>
@@ -372,7 +377,7 @@ export function ScheduleTab({
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     liveStats.activeBlock.completed
                       ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-overlay-default hover:bg-overlay-strong text-content-primary border border-overlay-default'
+                      : 'bg-overlay-subtle hover:bg-overlay-default text-content-secondary border border-overlay-default'
                   }`}
                 >
                   {liveStats.activeBlock.completed ? (
@@ -513,7 +518,7 @@ export function ScheduleTab({
               const leftPercent = (startMins / 1440) * 100;
               const widthPercent = (duration / 1440) * 100;
               const act = activityMap.get(block.activityId);
-              const color = act?.color || '#10b981';
+              const color = getActivityThemeColor(act?.color, theme);
 
               const isBlockActive =
                 isSelectedDateToday &&
@@ -667,7 +672,7 @@ export function ScheduleTab({
             {dailyBlocks.map((block) => {
               const act = activityMap.get(block.activityId);
               const durationMins = calculateBlockDurationMinutes(block.startTime, block.endTime);
-              const color = act?.color || '#10b981';
+              const color = getActivityThemeColor(act?.color, theme);
 
               const startMins = timeStringToMinutes(block.startTime);
               const endMins = timeStringToMinutes(block.endTime);

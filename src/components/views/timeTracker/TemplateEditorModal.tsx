@@ -14,7 +14,9 @@ import {
   calculateBlockDurationMinutes,
   checkTimeCollision,
   normalizeOrSplitMidnightBlock,
+  getActivityThemeColor,
 } from '@/lib/timeTracker';
+import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
 import { TimeBlockModal } from './TimeBlockModal';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
@@ -266,7 +268,7 @@ export function TemplateEditorModal({
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-emerald-600/20 border-emerald-500/70 text-emerald-300 shadow-sm'
-                        : 'bg-white/[0.02] border-overlay-subtle text-content-muted hover:bg-white/[0.05]'
+                        : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:bg-overlay-default'
                     }`}
                   >
                     {day}
@@ -302,17 +304,19 @@ export function TemplateEditorModal({
                 {blocks.map((block) => {
                   const act = activities.find((a) => a.id === block.activityId);
                   const duration = calculateBlockDurationMinutes(block.startTime, block.endTime);
+                  const theme = getLocalThemePreference() || 'dark';
+                  const resolvedColor = getActivityThemeColor(act?.color, theme);
                   return (
                     <div
                       key={block.id}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-overlay-subtle hover:border-overlay-default transition-colors"
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div
                           className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                           style={{
-                            backgroundColor: `${act?.color || '#10b981'}25`,
-                            color: act?.color || '#10b981',
+                            backgroundColor: `${resolvedColor}25`,
+                            color: resolvedColor,
                           }}
                         >
                           <ActivityIcon iconName={act?.icon || 'Clock'} size={16} />

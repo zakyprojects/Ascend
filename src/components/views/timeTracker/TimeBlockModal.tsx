@@ -11,7 +11,9 @@ import {
   checkTimeCollision,
   calculateBlockDurationMinutes,
   formatDurationHuman,
+  getActivityThemeColor,
 } from '@/lib/timeTracker';
+import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Clock, AlertTriangle, Sparkles, Tag, FileText } from 'lucide-react';
@@ -213,6 +215,8 @@ export function TimeBlockModal({
             {activities.map((act) => {
               const isPrimary = act.id === activityId;
               const isSecondary = secondaryActivityIds.includes(act.id);
+              const theme = getLocalThemePreference() || 'dark';
+              const resolvedColor = getActivityThemeColor(act.color, theme);
               return (
                 <button
                   type="button"
@@ -222,13 +226,13 @@ export function TimeBlockModal({
                     isPrimary
                       ? 'bg-emerald-500/15 border-emerald-500/60 shadow-md text-white ring-1 ring-emerald-500/40'
                       : isSecondary
-                      ? 'bg-white/[0.08] border-emerald-500/40 text-content-primary shadow-xs'
-                      : 'bg-white/[0.02] border-overlay-subtle text-content-muted hover:bg-white/[0.05] hover:border-overlay-default hover:text-content-secondary'
+                      ? 'bg-overlay-default border-emerald-500/40 text-content-primary shadow-xs'
+                      : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:bg-overlay-default hover:border-overlay-default hover:text-content-secondary'
                   }`}
                 >
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${act.color}25`, color: act.color }}
+                    style={{ backgroundColor: `${resolvedColor}25`, color: resolvedColor }}
                   >
                     <ActivityIcon iconName={act.icon} size={15} />
                   </div>

@@ -6,6 +6,8 @@ import {
   AVAILABLE_ACTIVITY_ICONS,
   AVAILABLE_ACTIVITY_COLORS,
 } from './ActivityIcon';
+import { getActivityThemeColor } from '@/lib/timeTracker';
+import { getLocalThemePreference } from '@/lib/store';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Sparkles, AlertTriangle, Link as LinkIcon, Check } from 'lucide-react';
 
@@ -43,6 +45,8 @@ export function ActivityModal({
   const [ascendModule, setAscendModule] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const theme = getLocalThemePreference() || 'dark';
+  const resolvedPreviewColor = color ? getActivityThemeColor(color, theme) : '';
 
   useEffect(() => {
     if (!open) return;
@@ -110,13 +114,13 @@ export function ActivityModal({
         )}
 
         {/* Live Preview Header */}
-        <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-overlay-default">
+        <div className="flex items-center gap-3 p-3 rounded-2xl bg-overlay-subtle border border-overlay-default">
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors shadow-inner"
             style={{
-              backgroundColor: color ? `${color}25` : 'rgba(255, 255, 255, 0.05)',
-              color: color || '#94a3b8',
-              border: color ? `1px solid ${color}40` : '1px solid rgba(255, 255, 255, 0.1)',
+              backgroundColor: resolvedPreviewColor ? `${resolvedPreviewColor}25` : 'rgba(255, 255, 255, 0.05)',
+              color: resolvedPreviewColor || '#94a3b8',
+              border: resolvedPreviewColor ? `1px solid ${resolvedPreviewColor}40` : '1px solid rgba(255, 255, 255, 0.1)',
             }}
           >
             {icon ? (
@@ -158,6 +162,7 @@ export function ActivityModal({
           <div className="flex flex-wrap gap-2">
             {AVAILABLE_ACTIVITY_COLORS.map((col) => {
               const isSelected = color === col.value;
+              const displaySwatchColor = getActivityThemeColor(col.value, theme);
               return (
                 <button
                   type="button"
@@ -166,7 +171,7 @@ export function ActivityModal({
                   className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer ${
                     isSelected ? 'scale-110 border-white shadow-lg' : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100'
                   }`}
-                  style={{ backgroundColor: col.value }}
+                  style={{ backgroundColor: displaySwatchColor }}
                   title={col.name}
                 />
               );

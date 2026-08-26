@@ -200,10 +200,9 @@ export function getLocalThemePreference(): 'dark' | 'light' | null {
   if (typeof window === 'undefined') return null;
   try {
     const rawVal = localStorage.getItem(LOCAL_THEME_STORAGE_KEY);
-    console.log('[THEME DIAGNOSTIC] getLocalThemePreference raw value:', rawVal);
     if (rawVal === 'light' || rawVal === 'dark') return rawVal;
   } catch (err) {
-    console.error('[THEME DIAGNOSTIC] getLocalThemePreference error accessing localStorage:', err);
+    // ignore local storage errors
   }
   return null;
 }
@@ -211,11 +210,9 @@ export function getLocalThemePreference(): 'dark' | 'light' | null {
 export function setLocalThemePreference(theme: 'dark' | 'light'): void {
   if (typeof window === 'undefined') return;
   try {
-    console.log('[THEME DIAGNOSTIC] setLocalThemePreference attempting to write:', theme);
     localStorage.setItem(LOCAL_THEME_STORAGE_KEY, theme);
-    console.log('[THEME DIAGNOSTIC] setLocalThemePreference write SUCCESS. Current localStorage value:', localStorage.getItem(LOCAL_THEME_STORAGE_KEY));
   } catch (err) {
-    console.error('[THEME DIAGNOSTIC] setLocalThemePreference error writing to localStorage:', err);
+    // ignore local storage errors
   }
 }
 
@@ -867,7 +864,6 @@ export function useAppState() {
             }
           }
           const localTheme = getLocalThemePreference() || 'dark';
-          console.log('[THEME DIAGNOSTIC] SIGNED_OUT handler computed localTheme:', localTheme);
           const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
           let guestState = DEFAULT_STATE;
           if (guestRaw) {
@@ -883,9 +879,7 @@ export function useAppState() {
             themePreference: localTheme,
           };
           if (typeof document !== 'undefined') {
-            console.log('[THEME DIAGNOSTIC] SIGNED_OUT data-theme BEFORE setAttribute:', document.documentElement.getAttribute('data-theme'));
             document.documentElement.setAttribute('data-theme', localTheme);
-            console.log('[THEME DIAGNOSTIC] SIGNED_OUT data-theme AFTER setAttribute:', document.documentElement.getAttribute('data-theme'));
           }
           setState(nextGuestState);
           setIsAuthChecking(false);

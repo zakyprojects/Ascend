@@ -85,7 +85,7 @@ export function ApplyTemplateModal({
                   className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-emerald-500/15 border-emerald-500/60 shadow-sm text-white'
-                      : 'bg-white/[0.02] border-overlay-subtle text-content-tertiary hover:bg-white/[0.05]'
+                      : 'bg-overlay-subtle border-overlay-subtle text-content-tertiary hover:bg-overlay-default'
                   }`}
                 >
                   <div className="min-w-0 pr-2">
@@ -115,7 +115,7 @@ export function ApplyTemplateModal({
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 mode === 'merge'
                   ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-200 font-semibold'
-                  : 'bg-white/[0.02] border-overlay-subtle text-content-muted hover:bg-white/[0.05]'
+                  : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:bg-overlay-default'
               }`}
             >
               <div className="flex items-center gap-1.5 text-xs font-medium mb-0.5">
@@ -133,7 +133,7 @@ export function ApplyTemplateModal({
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 mode === 'replace'
                   ? 'bg-amber-500/20 border-amber-500/70 text-amber-200 font-semibold'
-                  : 'bg-white/[0.02] border-overlay-subtle text-content-muted hover:bg-white/[0.05]'
+                  : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:bg-overlay-default'
               }`}
             >
               <div className="flex items-center gap-1.5 text-xs font-medium mb-0.5">

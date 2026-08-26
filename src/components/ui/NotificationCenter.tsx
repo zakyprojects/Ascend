@@ -202,7 +202,7 @@ export function NotificationCenter({
                     key={notif.id}
                     onClick={() => !notif.read && store.markNotificationRead(notif.id)}
                     className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer group ${
-                      notif.read ? 'bg-transparent hover:bg-white/[0.02]' : 'bg-primary-500/5 hover:bg-primary-500/10'
+                      notif.read ? 'bg-transparent hover:bg-overlay-subtle' : 'bg-primary-500/5 hover:bg-primary-500/10'
                     }`}
                   >
                     <div className="shrink-0 mt-0.5">

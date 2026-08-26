@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TimeTrackerActivity } from '@/types';
 import { AppStore } from '@/lib/store';
+import { getActivityThemeColor } from '@/lib/timeTracker';
 import { ActivityIcon } from './ActivityIcon';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -31,6 +32,7 @@ export function ActivitiesTab({
 }: ActivitiesTabProps) {
   const { showSuccessToast, showErrorToast } = useToast();
   const [deleteTargetActivity, setDeleteTargetActivity] = useState<TimeTrackerActivity | null>(null);
+  const theme = store.state.themePreference || 'dark';
 
   const handleConfirmDeleteActivity = async () => {
     if (!deleteTargetActivity) return;
@@ -70,7 +72,7 @@ export function ActivitiesTab({
       {/* 2. Activities Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {activities.map((act) => {
-          const color = act.color || '#10b981';
+          const color = getActivityThemeColor(act.color, theme);
           return (
             <div
               key={act.id}
