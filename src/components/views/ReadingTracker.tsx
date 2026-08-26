@@ -136,7 +136,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
-            <BookOpen className="text-amber-400" size={26} />
+            <BookOpen className="text-warning-text" size={26} />
             Reading Tracker
           </h1>
           <p className="text-sm text-content-disabled mt-1">
@@ -170,7 +170,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
       {/* Hero Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center text-warning-text shrink-0">
             <Flame size={22} />
           </div>
           <div>
@@ -194,12 +194,12 @@ export function ReadingTracker({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
             <Award size={22} />
           </div>
           <div>
             <div className="text-xs text-content-disabled">Finished Books</div>
-            <div className="text-xl font-display font-bold text-emerald-400">
+            <div className="text-xl font-display font-bold text-success-text">
               {finishedBooks.length} <span className="text-xs font-normal text-content-muted">completed</span>
             </div>
           </div>
@@ -245,7 +245,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                         <span>
                           {book.currentPage} / {book.totalPages} {book.unit}
                         </span>
-                        <span className="text-amber-400 font-bold">{percent}%</span>
+                        <span className="text-warning-text font-bold">{percent}%</span>
                       </div>
                       <div className="w-full h-2 bg-bg-700 rounded-full overflow-hidden">
                         <div
@@ -303,7 +303,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                   <div>
                     <h3 className="font-bold text-content-secondary text-sm flex items-center gap-2">
                       {book.title}
-                      <span className="badge bg-emerald-500/15 text-emerald-400 text-[10px]">Finished (+30 pts)</span>
+                      <span className="badge bg-emerald-500/15 text-success-text text-[10px]">Finished (+30 pts)</span>
                     </h3>
                     <p className="text-xs text-content-muted">by {book.author} • {book.totalPages} {book.unit}</p>
                   </div>
@@ -429,7 +429,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
 
           <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
             <span>Points for today's progress update:</span>
-            <span className="font-bold text-amber-400">+5 pts</span>
+            <span className="font-bold text-warning-text">+5 pts</span>
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -446,7 +446,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
       {/* Finish Book Reflection Modal */}
       <Modal open={!!finishModalBook} onClose={() => setFinishModalBook(null)} title={`Finish & Reflect: ${finishModalBook?.title}`}>
         <form onSubmit={handleFinishSubmit} className="space-y-4">
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 text-emerald-400">
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 text-success-text">
             <Sparkles size={20} className="shrink-0" />
             <div className="text-xs">
               <span className="font-bold">Congratulations on completing this book!</span>

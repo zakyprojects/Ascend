@@ -369,7 +369,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       case 'high':
         return 'bg-rose-500/15 text-rose-400 border-rose-500/30';
       case 'medium':
-        return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+        return 'bg-amber-500/15 text-warning-text border-amber-500/30';
       case 'low':
         return 'bg-overlay-subtle text-content-tertiary border-overlay-default';
     }
@@ -382,7 +382,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-overlay-subtle pb-4">
           <div>
             <div className="flex items-center gap-2">
-              <Target size={24} className="text-emerald-400" />
+              <Target size={24} className="text-success-text" />
               <h1 className="text-2xl font-display font-bold text-content-primary">Weekly Executive Goals & Review</h1>
             </div>
             <p className="text-sm text-content-muted mt-1">
@@ -418,7 +418,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             {selectedWeekKey !== currentWeekKey && (
               <button
                 onClick={() => setSelectedWeekKey(currentWeekKey)}
-                className="ml-1 text-[11px] font-bold text-primary-400 hover:text-primary-300 bg-primary-500/10 px-2 py-1 rounded-lg border border-primary-500/20 transition-all"
+                className="ml-1 text-[11px] font-bold text-brand-text hover:opacity-80 bg-primary-500/10 px-2 py-1 rounded-lg border border-primary-500/20 transition-all"
               >
                 Today
               </button>
@@ -431,10 +431,10 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           <div className="md:col-span-2 bg-bg-900/40 p-3.5 rounded-xl border border-overlay-subtle space-y-2">
             <div className="flex items-center justify-between text-xs font-semibold">
               <span className="text-content-tertiary flex items-center gap-1.5">
-                <BarChart2 size={14} className="text-primary-400" />
+                <BarChart2 size={14} className="text-brand-text" />
                 Weekly Target Completion
               </span>
-              <span className="text-primary-400 font-bold">{goalStats.percent}% Complete ({goalStats.completed}/{goalStats.total})</span>
+              <span className="text-brand-text font-bold">{goalStats.percent}% Complete ({goalStats.completed}/{goalStats.total})</span>
             </div>
             <div className="w-full bg-bg-900 rounded-full h-2.5 overflow-hidden border border-overlay-subtle">
               <div
@@ -451,7 +451,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </div>
             <div className="w-px h-8 bg-overlay-default" />
             <div className="text-center">
-              <span className="text-lg font-bold text-emerald-400 block">{goalStats.completed}</span>
+              <span className="text-lg font-bold text-success-text block">{goalStats.completed}</span>
               <span className="text-[10px] uppercase tracking-wider text-content-muted font-medium">Completed</span>
             </div>
             <div className="w-px h-8 bg-overlay-default" />
@@ -465,12 +465,12 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
       {/* CARRY-OVER PROMPT BANNER FOR INCOMPLETE PAST GOALS */}
       {unaddressedPastGoals.length > 0 && selectedWeekKey === currentWeekKey && (
-        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-3">
+        <div className="card p-4 space-y-3">
           <div className="flex items-start gap-2.5">
-            <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+            <AlertTriangle size={18} className="text-warning-text shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-xs font-bold text-amber-300">Unresolved Goals from Previous Weeks</h3>
-              <p className="text-xs text-amber-200/80 mt-0.5">
+              <h3 className="text-xs font-bold text-warning-text">Unresolved Goals from Previous Weeks</h3>
+              <p className="text-xs text-content-secondary mt-0.5">
                 You have {unaddressedPastGoals.length} incomplete priority goal{unaddressedPastGoals.length > 1 ? 's' : ''} from earlier weeks.
                 Select whether to carry them over into this week or dismiss them.
               </p>
@@ -481,11 +481,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             {unaddressedPastGoals.map(({ weekKey: pastWeek, goal }) => (
               <div
                 key={`${pastWeek}-${goal.id}`}
-                className="flex items-center justify-between p-2.5 bg-bg-900/70 border border-amber-500/20 rounded-lg"
+                className="flex items-center justify-between p-2.5 bg-bg-900/70 border border-overlay-default rounded-lg"
               >
                 <div className="space-y-0.5">
                   <span className="text-xs font-bold text-content-secondary block">{goal.title}</span>
-                  <span className="text-[10px] text-amber-400/90 font-medium">
+                  <span className="text-[10px] text-warning-text font-medium">
                     From {pastWeek} ({goal.priority.toUpperCase()} Priority)
                   </span>
                 </div>
@@ -513,7 +513,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       <div className="card p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
           <div className="flex items-center gap-2">
-            <Target size={18} className="text-primary-400" />
+            <Target size={18} className="text-brand-text" />
             <h3 className="text-sm font-bold text-content-secondary">
               Target Priorities for {selectedWeekKey}
             </h3>
@@ -696,7 +696,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
           <div>
             <h3 className="text-sm font-bold text-content-secondary flex items-center gap-2">
-              <Sparkles size={16} className="text-amber-400" />
+              <Sparkles size={16} className="text-warning-text" />
               Weekly Reflections
             </h3>
             <p className="text-xs text-content-muted mt-0.5">
@@ -814,12 +814,12 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                             {new Date(ref.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                           {ref.pointsAwarded ? (
-                            <span className="badge bg-emerald-500/15 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                            <span className="badge bg-emerald-500/15 text-success-text text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
                               <Sparkles size={11} /> +20 pts
                             </span>
                           ) : isBeforeCutoff && latestReflection?.id === ref.id ? (
                             <span
-                              className="badge bg-amber-500/15 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1"
+                              className="badge bg-amber-500/15 text-warning-text text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1"
                               title="Points will be awarded when cutoff passes on Sunday 17:00"
                             >
                               <Sparkles size={11} /> Pending +20 pts
@@ -1140,9 +1140,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           <p className="text-xs text-content-tertiary leading-relaxed">
             How would you like to carry over <strong className="text-content-primary">"{carryOverPromptModal?.goal.title}"</strong> into {currentWeekKey}?
           </p>
-          <div className="p-3 bg-bg-800/80 border border-overlay-subtle rounded-xl space-y-1">
+          <div className="card p-3 space-y-1">
             <span className="text-[11px] text-content-muted font-medium block">Current Progress in {carryOverPromptModal?.pastWeek}:</span>
-            <span className="text-xs font-bold text-amber-300 block">
+            <span className="text-xs font-bold text-warning-text block">
               {carryOverPromptModal?.goal.manualProgress || 0} / {carryOverPromptModal?.goal.targetValue} {carryOverPromptModal?.goal.unit || 'times'}
             </span>
           </div>

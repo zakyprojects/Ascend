@@ -7,11 +7,11 @@ export interface CuratedBookCategory {
 }
 
 export const BOOK_CATEGORIES: CuratedBookCategory[] = [
-  { name: 'Habits', color: 'text-emerald-400', bgClass: 'bg-emerald-500/15 border-emerald-500/30' },
+  { name: 'Habits', color: 'text-success-text', bgClass: 'bg-emerald-500/15 border-emerald-500/30' },
   { name: 'Mindset', color: 'text-purple-400', bgClass: 'bg-purple-500/15 border-purple-500/30' },
   { name: 'Productivity', color: 'text-blue-400', bgClass: 'bg-blue-500/15 border-blue-500/30' },
   { name: 'Discipline', color: 'text-orange-400', bgClass: 'bg-orange-500/15 border-orange-500/30' },
-  { name: 'Finance', color: 'text-amber-400', bgClass: 'bg-amber-500/15 border-amber-500/30' },
+  { name: 'Finance', color: 'text-warning-text', bgClass: 'bg-amber-500/15 border-amber-500/30' },
   { name: 'Relationships', color: 'text-rose-400', bgClass: 'bg-rose-500/15 border-rose-500/30' },
   { name: 'Spirituality', color: 'text-teal-400', bgClass: 'bg-teal-500/15 border-teal-500/30' },
   { name: 'Business', color: 'text-cyan-400', bgClass: 'bg-cyan-500/15 border-cyan-500/30' },

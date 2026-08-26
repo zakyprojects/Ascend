@@ -194,7 +194,7 @@ export function ActivityModal({
                   onClick={() => setIcon(ic)}
                   className={`p-2 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500 shadow-sm'
+                      ? 'bg-emerald-600/30 text-success-text border border-emerald-500 shadow-sm'
                       : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
                   }`}
                 >
@@ -208,7 +208,7 @@ export function ActivityModal({
         {/* Ascend Module Linkage */}
         <div>
           <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-            <LinkIcon size={13} className="text-emerald-400" />
+            <LinkIcon size={13} className="text-success-text" />
             Ascend Ecosystem Module Sync (Optional)
           </label>
           <select

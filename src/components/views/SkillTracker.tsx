@@ -57,7 +57,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
   const getLevelBadgeStyle = (level: SkillLevel) => {
     switch (level) {
       case 'beginner':
-        return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+        return 'bg-emerald-500/15 text-success-text border-emerald-500/30';
       case 'intermediate':
         return 'bg-blue-500/15 text-blue-400 border-blue-500/30';
       case 'advanced':
@@ -136,12 +136,12 @@ export function SkillTracker({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
             <Award size={22} />
           </div>
           <div>
             <div className="text-xs text-content-disabled">Practice Sessions</div>
-            <div className="text-xl font-display font-bold text-emerald-400">
+            <div className="text-xl font-display font-bold text-success-text">
               {skillLogs.length} <span className="text-xs font-normal text-content-muted">sessions</span>
             </div>
           </div>

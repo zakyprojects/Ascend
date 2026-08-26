@@ -486,7 +486,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     switch (resolvedType) {
       case 'target_goal':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-warning-text border border-amber-500/30">
             <Target size={11} /> Target Goal
           </span>
         );
@@ -537,8 +537,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     const renderReviewDueBadge = () => {
       if (!isReviewDue) return null;
       return (
-        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-md mb-2 animate-pulse">
-          <Sparkles size={13} className="text-amber-400 shrink-0" />
+        <div className="flex items-center gap-1.5 text-xs font-bold text-warning-text bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-md mb-2 animate-pulse">
+          <Sparkles size={13} className="text-warning-text shrink-0" />
           <span>Review Due ({effectiveCadence === 'monthly' ? 'Monthly' : 'Weekly'} Check-in)</span>
         </div>
       );
@@ -698,12 +698,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       return (
         <div>
           {renderReviewDueBadge()}
-          <div className="space-y-3 bg-bg-800/40 p-3 rounded-lg border border-overlay-subtle">
+          <div className="card space-y-3 p-3">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-content-tertiary">
-                Progress: <span className="text-amber-400 font-bold">{curProg}</span> / {targetVal} {plan.targetUnit || 'units'}
+                Progress: <span className="text-warning-text font-bold">{curProg}</span> / {targetVal} {plan.targetUnit || 'units'}
               </span>
-              <span className="font-bold text-amber-400">{pct}%</span>
+              <span className="font-bold text-warning-text">{pct}%</span>
             </div>
 
             {/* Progress Bar */}
@@ -723,7 +723,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             {/* Read-Only mode in Discover: NO input field or button */}
             {mode === 'read_only' ? (
               isGoalCompleted && (
-                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1 pt-1">
+                <div className="text-xs font-bold text-success-text flex items-center gap-1 pt-1">
                   <CheckCircle2 size={13} /> Completed!
                 </div>
               )
@@ -780,7 +780,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   </button>
                 )}
                 {isGoalCompleted && (
-                  <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 ml-auto mt-1 sm:mt-0">
+                  <span className="text-xs font-bold text-success-text flex items-center gap-1 ml-auto mt-1 sm:mt-0">
                     <CheckCircle2 size={13} /> Completed!
                   </span>
                 )}
@@ -801,7 +801,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       return (
         <div>
           {renderReviewDueBadge()}
-          <div className="space-y-3 bg-bg-800/40 p-3 rounded-lg border border-overlay-subtle">
+          <div className="card space-y-3 p-3">
             <div className="flex items-center justify-between text-xs">
               <span className="flex items-center gap-1.5 font-bold text-rose-400">
                 <Flame size={15} className="animate-pulse" /> {streak} {cadenceText} Streak
@@ -824,7 +824,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <div className="flex items-center gap-2">
                   {isCompletedToday ? (
                     <>
-                      <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 rounded border border-emerald-500/20">
+                      <span className="text-xs font-bold text-success-text flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 rounded border border-emerald-500/20">
                         <CheckCircle2 size={13} /> Done for {cadenceText}
                       </span>
                       <button
@@ -894,7 +894,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 /* Read-only static checkbox indicator in Discover */
                 <div className="text-content-subtle">
                   {step.completed ? (
-                    <CheckCircle2 size={15} className="text-emerald-400" />
+                    <CheckCircle2 size={15} className="text-success-text" />
                   ) : (
                     <Circle size={15} />
                   )}
@@ -909,10 +909,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       store.completeFollowedPlanStep(planId, step.id);
                     }
                   }}
-                  className="text-content-disabled hover:text-emerald-400 transition-colors"
+                  className="text-content-disabled hover:text-success-text transition-colors"
                 >
                   {step.completed ? (
-                    <CheckCircle2 size={15} className="text-emerald-400" />
+                    <CheckCircle2 size={15} className="text-success-text" />
                   ) : (
                     <Circle size={15} />
                   )}
@@ -1341,7 +1341,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create Personal Improvement Plan">
         <form onSubmit={handleCreateSubmit} className="space-y-4">
           {/* STARTER TEMPLATE ACCELERATOR */}
-          <div className="bg-bg-800/60 p-3 rounded-lg border border-overlay-subtle space-y-2">
+          <div className="card p-3 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-content-tertiary flex items-center gap-1.5">
                 <Sparkles size={13} className="text-blue-400" /> Start from Template (Optional)
@@ -1353,7 +1353,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   key={tpl.id}
                   type="button"
                   onClick={() => applyTemplate(tpl)}
-                  className="text-left p-2 rounded border border-overlay-subtle hover:border-blue-500/50 bg-bg-700/40 hover:bg-bg-700/80 transition-all text-xs group"
+                  className="text-left p-2.5 rounded-xl border border-overlay-medium hover:border-blue-500/50 bg-bg-700 hover:bg-bg-600 shadow-sm transition-all text-xs group"
                 >
                   <div className="font-bold text-content-secondary group-hover:text-blue-300 flex items-center justify-between">
                     <span>{tpl.title}</span>
@@ -1371,10 +1371,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               <button
                 type="button"
                 onClick={() => handleSelectPlanType('milestone')}
-                className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
+                className={`p-3 rounded-xl border text-left transition-all flex flex-col gap-1 ${
                   planType === 'milestone'
-                    ? 'border-blue-500 bg-blue-500/10 text-content-primary'
-                    : 'border-overlay-subtle bg-bg-800/40 text-content-muted hover:border-overlay-default'
+                    ? 'border-blue-500 bg-blue-500/10 text-content-primary ring-1 ring-blue-500/40 shadow-sm'
+                    : 'border-overlay-medium bg-bg-700 text-content-muted shadow-sm hover:border-overlay-strong hover:bg-bg-600'
                 }`}
               >
                 <div className="flex items-center gap-1.5 font-bold text-xs text-blue-400">
@@ -1386,13 +1386,13 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               <button
                 type="button"
                 onClick={() => handleSelectPlanType('target_goal')}
-                className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
+                className={`p-3 rounded-xl border text-left transition-all flex flex-col gap-1 ${
                   planType === 'target_goal'
-                    ? 'border-amber-500 bg-amber-500/10 text-content-primary'
-                    : 'border-overlay-subtle bg-bg-800/40 text-content-muted hover:border-overlay-default'
+                    ? 'border-amber-500 bg-amber-500/10 text-content-primary ring-1 ring-amber-500/40 shadow-sm'
+                    : 'border-overlay-medium bg-bg-700 text-content-muted shadow-sm hover:border-overlay-strong hover:bg-bg-600'
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-bold text-xs text-amber-400">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-warning-text">
                   <Target size={14} /> Target Goal
                 </div>
                 <div className="text-[11px] text-content-disabled leading-tight">Single measurable target value reached by date</div>
@@ -1401,10 +1401,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               <button
                 type="button"
                 onClick={() => handleSelectPlanType('habit_journey')}
-                className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
+                className={`p-3 rounded-xl border text-left transition-all flex flex-col gap-1 ${
                   planType === 'habit_journey'
-                    ? 'border-rose-500 bg-rose-500/10 text-content-primary'
-                    : 'border-overlay-subtle bg-bg-800/40 text-content-muted hover:border-overlay-default'
+                    ? 'border-rose-500 bg-rose-500/10 text-content-primary ring-1 ring-rose-500/40 shadow-sm'
+                    : 'border-overlay-medium bg-bg-700 text-content-muted shadow-sm hover:border-overlay-strong hover:bg-bg-600'
                 }`}
               >
                 <div className="flex items-center gap-1.5 font-bold text-xs text-rose-400">
@@ -1416,10 +1416,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               <button
                 type="button"
                 onClick={() => handleSelectPlanType('vision')}
-                className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
+                className={`p-3 rounded-xl border text-left transition-all flex flex-col gap-1 ${
                   planType === 'vision'
-                    ? 'border-purple-500 bg-purple-500/10 text-content-primary'
-                    : 'border-overlay-subtle bg-bg-800/40 text-content-muted hover:border-overlay-default'
+                    ? 'border-purple-500 bg-purple-500/10 text-content-primary ring-1 ring-purple-500/40 shadow-sm'
+                    : 'border-overlay-medium bg-bg-700 text-content-muted shadow-sm hover:border-overlay-strong hover:bg-bg-600'
                 }`}
               >
                 <div className="flex items-center gap-1.5 font-bold text-xs text-purple-400">
@@ -1538,7 +1538,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {planType === 'target_goal' && (
-            <div className="space-y-3 bg-bg-800/50 p-3 rounded-lg border border-overlay-subtle">
+            <div className="card space-y-3 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-content-muted mb-1">Target Value (Number)</label>
@@ -1588,7 +1588,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {planType === 'habit_journey' && (
-            <div className="space-y-3 bg-bg-800/50 p-3 rounded-lg border border-overlay-subtle">
+            <div className="card space-y-3 p-3">
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-content-muted mb-1">Cadence</label>
@@ -1626,7 +1626,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {planType === 'vision' && (
-            <div className="space-y-3 bg-bg-800/50 p-3 rounded-lg border border-overlay-subtle">
+            <div className="card space-y-3 p-3">
               <div>
                 <label className="block text-xs font-medium text-content-muted mb-1">Target Review Date (Optional)</label>
                 <input
@@ -1767,7 +1767,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {editingPlanType === 'target_goal' && (
-            <div className="space-y-3 bg-bg-800/50 p-3 rounded-lg border border-overlay-subtle">
+            <div className="card space-y-3 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-content-muted mb-1">Target Value</label>

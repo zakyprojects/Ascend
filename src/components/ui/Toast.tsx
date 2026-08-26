@@ -108,7 +108,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           const config = {
             success: {
               bg: 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200',
-              icon: <CheckCircle2 className="text-emerald-400 shrink-0" size={18} />,
+              icon: <CheckCircle2 className="text-success-text shrink-0" size={18} />,
             },
             error: {
               bg: 'bg-rose-950/90 border-rose-500/40 text-rose-200',
@@ -116,11 +116,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             },
             warning: {
               bg: 'bg-amber-950/90 border-amber-500/40 text-amber-200',
-              icon: <AlertTriangle className="text-amber-400 shrink-0" size={18} />,
+              icon: <AlertTriangle className="text-warning-text shrink-0" size={18} />,
             },
             info: {
               bg: 'bg-primary-950/90 border-primary-500/40 text-primary-200',
-              icon: <Info className="text-primary-400 shrink-0" size={18} />,
+              icon: <Info className="text-brand-text shrink-0" size={18} />,
             },
           }[toast.type];
 

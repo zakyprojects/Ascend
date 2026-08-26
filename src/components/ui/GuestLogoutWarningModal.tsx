@@ -20,7 +20,7 @@ export function GuestLogoutWarningModal({
     <Modal open={open} onClose={onClose} title="Guest Account Warning" maxWidth="max-w-md">
       <div className="space-y-4">
         <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-warning-text flex items-center justify-center shrink-0 mt-0.5">
             <AlertTriangle size={20} />
           </div>
           <div className="space-y-1">

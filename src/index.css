@@ -47,10 +47,12 @@
 
     /* Brand & High-Vibrancy Action Tokens (Dark mode defaults) */
     --color-text-on-brand: #ffffff;
+    --color-brand-text: #34d399;
 
     /* Semantic Status Tokens - Text/Foreground (Dark mode defaults) */
     --color-success-text: #10b981;
     --color-warning-text: #f59e0b;
+    --color-warning-text-muted: #fbbf24;
     --color-error-text: #ef4444;
     --color-info-text: #0ea5e9;
 
@@ -111,12 +113,14 @@
     --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
     --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
 
-    /* Brand & High-Vibrancy Action Tokens (Navy text on vibrant green buttons) */
-    --color-text-on-brand: #0f172a;
+    /* Brand & High-Vibrancy Action Tokens (White text on solid green buttons in both themes) */
+    --color-text-on-brand: #ffffff;
+    --color-brand-text: #047857;
 
     /* Semantic Status Tokens - Text/Foreground (High contrast on light backgrounds) */
     --color-success-text: #047857;
     --color-warning-text: #b45309;
+    --color-warning-text-muted: #92400e;
     --color-error-text: #dc2626;
     --color-info-text: #0369a1;
 
@@ -250,6 +254,17 @@
   [data-theme='light'] .card {
     border-color: var(--border-overlay-medium);
     box-shadow: var(--shadow-md);
+  }
+
+  [data-theme='light'] .modal-panel .card {
+    background-color: var(--color-bg-700);
+    border-color: var(--border-overlay-medium);
+    box-shadow: var(--shadow-sm);
+  }
+
+  [data-theme='light'] .modal-panel {
+    border-color: var(--border-overlay-medium);
+    box-shadow: var(--shadow-lg);
   }
 
   .badge-season {

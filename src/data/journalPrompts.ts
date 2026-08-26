@@ -6,8 +6,8 @@ export interface JournalPrompt {
 }
 
 export const JOURNAL_PROMPT_CATEGORIES = [
-  { name: 'Gratitude', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-  { name: 'Reflection', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+  { name: 'Gratitude', color: 'text-warning-text bg-amber-500/10 border-amber-500/20' },
+  { name: 'Reflection', color: 'text-success-text bg-emerald-500/10 border-emerald-500/20' },
   { name: 'Challenges', color: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
   { name: 'Forward-Looking', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
 ] as const;
@@ -17,25 +17,25 @@ export const JOURNAL_PROMPTS: JournalPrompt[] = [
   {
     id: 'grat-1',
     category: 'Gratitude',
-    categoryColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+    categoryColor: 'text-warning-text bg-amber-500/10 border-amber-500/20',
     prompt: "What's one thing or person you're genuinely grateful for today, and why?",
   },
   {
     id: 'grat-2',
     category: 'Gratitude',
-    categoryColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+    categoryColor: 'text-warning-text bg-amber-500/10 border-amber-500/20',
     prompt: 'What was a small, simple pleasure or comfort you enjoyed today?',
   },
   {
     id: 'grat-3',
     category: 'Gratitude',
-    categoryColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+    categoryColor: 'text-warning-text bg-amber-500/10 border-amber-500/20',
     prompt: 'Who made a positive difference in your day, and how did they help you?',
   },
   {
     id: 'grat-4',
     category: 'Gratitude',
-    categoryColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+    categoryColor: 'text-warning-text bg-amber-500/10 border-amber-500/20',
     prompt: 'What is an opportunity or privilege in your life right now that you appreciate?',
   },
 
@@ -43,25 +43,25 @@ export const JOURNAL_PROMPTS: JournalPrompt[] = [
   {
     id: 'refl-1',
     category: 'Reflection',
-    categoryColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    categoryColor: 'text-success-text bg-emerald-500/10 border-emerald-500/20',
     prompt: 'What was the most meaningful or rewarding part of your day?',
   },
   {
     id: 'refl-2',
     category: 'Reflection',
-    categoryColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    categoryColor: 'text-success-text bg-emerald-500/10 border-emerald-500/20',
     prompt: 'What energy did you bring to your work and the people around you today?',
   },
   {
     id: 'refl-3',
     category: 'Reflection',
-    categoryColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    categoryColor: 'text-success-text bg-emerald-500/10 border-emerald-500/20',
     prompt: 'What is one new insight or realization you discovered about yourself today?',
   },
   {
     id: 'refl-4',
     category: 'Reflection',
-    categoryColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    categoryColor: 'text-success-text bg-emerald-500/10 border-emerald-500/20',
     prompt: 'How well did your actions today align with the person you aspire to become?',
   },
 

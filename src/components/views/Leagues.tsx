@@ -46,7 +46,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
         {!currentUser && onOpenAuthModal && (
           <button
             onClick={onOpenAuthModal}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-primary-300 text-xs font-semibold rounded-xl transition-all"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-brand-text text-xs font-semibold rounded-xl transition-all"
           >
             <Sparkles size={14} />
             <span>Sign Up to Claim Username</span>
@@ -58,7 +58,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
       {(!currentUser || currentUser.isAnonymous) && (
         <div className="p-4 rounded-xl bg-gradient-to-r from-primary-500/10 via-primary-600/10 to-primary-500/5 border border-primary-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary-500/20 flex items-center justify-center shrink-0 text-primary-400">
+            <div className="w-9 h-9 rounded-xl bg-primary-500/20 flex items-center justify-center shrink-0 text-brand-text">
               <Sparkles size={18} />
             </div>
             <div>
@@ -150,7 +150,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
             <span className="text-[11px] text-content-muted">
               {activeLeague === 'ninetyDay' ? 'Season Ends in:' : 'Resets in:'}
             </span>
-            <span className="font-mono font-bold text-primary-400">{countdown}</span>
+            <span className="font-mono font-bold text-brand-text">{countdown}</span>
           </div>
         </div>
 
@@ -208,7 +208,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
                 {/* Name */}
                 <div className="flex-1 min-w-0">
-                  <span className={`text-xs sm:text-sm font-medium truncate block ${isUser ? 'text-emerald-200 font-bold' : 'text-content-tertiary'}`}>
+                  <span className={`text-xs sm:text-sm font-medium truncate block ${isUser ? 'text-success-text font-bold' : 'text-content-tertiary'}`}>
                     {competitor.name}
                   </span>
                 </div>
@@ -220,7 +220,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
                 {/* Period Points */}
                 <div className="text-right shrink-0 min-w-[55px] sm:min-w-[70px]">
-                  <span className={`text-xs sm:text-sm font-display font-bold ${isUser ? 'text-emerald-200' : 'text-content-secondary'}`}>
+                  <span className={`text-xs sm:text-sm font-display font-bold ${isUser ? 'text-success-text' : 'text-content-secondary'}`}>
                     {competitor.points.toLocaleString()}
                   </span>
                   <span className="text-[10px] sm:text-xs text-content-disabled ml-0.5 sm:ml-1">pts</span>
@@ -297,7 +297,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                     <div className="w-9 h-9 rounded-lg bg-bg-600 flex items-center justify-center text-lg shrink-0">
                       {c.avatar}
                     </div>
-                    <span className={`text-sm font-medium flex-1 truncate ${c.isUser ? 'text-emerald-200 font-bold' : 'text-content-tertiary'}`}>
+                    <span className={`text-sm font-medium flex-1 truncate ${c.isUser ? 'text-success-text font-bold' : 'text-content-tertiary'}`}>
                       {c.name}
                     </span>
                     <TierBadge totalPoints={c.totalPoints || c.points} size="sm" showName={false} />

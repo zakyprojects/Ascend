@@ -38,10 +38,10 @@ const TIER_CONFIG = {
     title: 'Start the Engine',
     text: 'Tasks are the atomic, daily actions that move the needle. Link them to projects to maintain focus.',
     buttonText: 'Create Your First Task',
-    iconBg: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400',
+    iconBg: 'bg-emerald-500/10 border-emerald-500/25 text-success-text',
     btnClass: 'bg-emerald-600 hover:bg-emerald-500 text-on-brand shadow-emerald-900/30',
     hierarchyBadge: 'Tier 1 • Atomic Execution',
-    hierarchyBadgeColor: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+    hierarchyBadgeColor: 'text-success-text border-emerald-500/30 bg-emerald-500/10',
     cardBorderHover: 'hover:border-emerald-500/30',
   },
 };
@@ -130,7 +130,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
           type="button"
           onClick={() => onTabSwitch?.('tasks')}
           className={`font-semibold transition-colors cursor-pointer hover:text-content-secondary ${
-            tier === 'tasks' ? 'text-emerald-400 underline underline-offset-4' : 'text-content-disabled'
+            tier === 'tasks' ? 'text-success-text underline underline-offset-4' : 'text-content-disabled'
           }`}
         >
           Task

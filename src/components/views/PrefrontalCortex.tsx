@@ -1117,7 +1117,7 @@ function FocusTimerSubmodule({
                   <BellOff size={12} /> Notifs Blocked
                 </span>
               ) : notificationPerm === 'granted' ? (
-                <span className="text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 font-medium text-[11px]">
+                <span className="text-success-text flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 font-medium text-[11px]">
                   <Bell size={12} /> Notifs Allowed
                 </span>
               ) : (
@@ -1172,11 +1172,11 @@ function FocusTimerSubmodule({
             onClick={() => setTimerMode('sync')}
             className={`flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               timerMode === 'sync'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40 shadow-sm'
                 : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle border border-transparent'
             }`}
           >
-            <Radio size={14} className={timerMode === 'sync' ? 'text-emerald-400 animate-pulse' : 'text-content-muted'} />
+            <Radio size={14} className={timerMode === 'sync' ? 'text-success-text animate-pulse' : 'text-content-muted'} />
             <span className="whitespace-nowrap">Live Schedule Sync</span>
             {isScheduleIgnited && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
@@ -1387,7 +1387,7 @@ function FocusTimerSubmodule({
           /* State A: Not Ignited */
           <div className="card p-8 text-center space-y-6 bg-gradient-to-b from-emerald-500/10 via-bg-800 to-bg-750 border border-emerald-500/30 rounded-2xl relative overflow-hidden shadow-xl">
             <div className="max-w-md mx-auto space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-success-text flex items-center justify-center mx-auto shadow-inner">
                 <Flame size={32} className="animate-pulse" />
               </div>
 
@@ -1402,7 +1402,7 @@ function FocusTimerSubmodule({
 
               <div className="p-3.5 rounded-xl bg-overlay-subtle border border-overlay-subtle text-xs text-content-tertiary flex items-center justify-between">
                 <div className="flex items-center gap-2 text-content-muted">
-                  <CalendarDays size={15} className="text-emerald-400" />
+                  <CalendarDays size={15} className="text-success-text" />
                   <span>Today&apos;s Blocks ({todayBlocks.length})</span>
                 </div>
                 <span className="font-semibold text-success-text">
@@ -1415,7 +1415,7 @@ function FocusTimerSubmodule({
                 onClick={handleIgniteSchedule}
                 className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-on-brand font-bold text-sm shadow-lg shadow-emerald-900/40 flex items-center justify-center gap-2.5 transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
-                <Flame size={18} className="fill-current text-amber-300" />
+                <Flame size={18} className="fill-current text-warning-text" />
                 <span>Ignite Today&apos;s Schedule</span>
               </button>
             </div>
@@ -1573,7 +1573,7 @@ function FocusTimerSubmodule({
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-content-muted border-b border-overlay-subtle pb-4">
               <div className="flex items-center gap-2">
                 <span className="badge bg-emerald-500/20 text-success-text border border-emerald-500/30 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1">
-                  <Radio size={12} className="text-emerald-400 animate-pulse" />
+                  <Radio size={12} className="text-success-text animate-pulse" />
                   LIVE TRACKER BLOCK
                 </span>
                 <span className="text-[11px] font-mono text-content-muted">
@@ -1628,7 +1628,7 @@ function FocusTimerSubmodule({
                               : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text border border-emerald-500/30 cursor-pointer'
                           }`}
                         >
-                          <Coffee size={13} className={isBreakDisabled ? 'text-content-disabled' : 'text-emerald-400'} />
+                          <Coffee size={13} className={isBreakDisabled ? 'text-content-disabled' : 'text-success-text'} />
                           <span>Take Break</span>
                         </button>
                       );
@@ -1675,7 +1675,7 @@ function FocusTimerSubmodule({
                           : 'bg-overlay-subtle text-content-tertiary hover:bg-overlay-default border border-overlay-default'
                       }`}
                     >
-                      <CheckCircle2 size={13} className={activeBlock.completed ? 'text-emerald-400' : 'text-content-muted'} />
+                      <CheckCircle2 size={13} className={activeBlock.completed ? 'text-success-text' : 'text-content-muted'} />
                       <span>{activeBlock.completed ? 'Completed' : 'Mark Completed'}</span>
                     </button>
                   </>
@@ -1697,7 +1697,7 @@ function FocusTimerSubmodule({
             {activeBreakState.isOnBreak ? (
               <div className="space-y-6 py-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-xs font-medium text-success-text mx-auto">
-                  <Coffee size={13} className="text-emerald-400 animate-pulse" />
+                  <Coffee size={13} className="text-success-text animate-pulse" />
                   <span>CURRENTLY ON MID-BLOCK BREAK</span>
                 </div>
 
@@ -1705,7 +1705,7 @@ function FocusTimerSubmodule({
                   <h2 className="text-2xl sm:text-3xl font-display font-bold text-content-primary tracking-tight">
                     Step away, stretch & recharge
                   </h2>
-                  <p className="text-xs sm:text-sm text-emerald-400/90 mt-1 font-medium">
+                  <p className="text-xs sm:text-sm text-success-text mt-1 font-medium">
                     Back to focus on <span className="text-content-primary font-semibold">{activeBlock.customTitle || activeBlockActivity?.name}</span> shortly.
                   </p>
                 </div>
@@ -1716,7 +1716,7 @@ function FocusTimerSubmodule({
                     {formatSeconds(activeBreakState.remainingBreakSeconds)}
                   </div>
                   <p className="text-xs text-content-muted flex items-center justify-center gap-1.5 font-mono">
-                    <Clock size={13} className="text-emerald-400" />
+                    <Clock size={13} className="text-success-text" />
                     <span>
                       {Math.ceil(activeBreakState.remainingBreakSeconds / 60)}m left in break • Block finishes at {formatTime12h(activeBlock.endTime)}
                     </span>
@@ -1737,7 +1737,7 @@ function FocusTimerSubmodule({
                     }}
                     className="px-5 py-2.5 rounded-xl bg-bg-700 hover:bg-bg-600 text-content-secondary hover:text-content-primary font-semibold text-xs border border-overlay-default flex items-center gap-2 transition-all cursor-pointer shadow-md"
                   >
-                    <RotateCcw size={14} className="text-emerald-400" />
+                    <RotateCcw size={14} className="text-success-text" />
                     <span>End Break Now & Resume Focus</span>
                   </button>
                 </div>
@@ -1772,8 +1772,8 @@ function FocusTimerSubmodule({
                           const targetView = getAscendViewForModule(activeBlockActivity.ascendModule, activeBlockActivity.name);
                           if (targetView) onNavigate(targetView);
                         }}
-                        className={`text-[10px] text-emerald-400 font-mono flex items-center gap-0.5 ${
-                          onNavigate ? 'hover:text-emerald-300 hover:underline cursor-pointer' : ''
+                        className={`text-[10px] text-success-text font-mono flex items-center gap-0.5 ${
+                          onNavigate ? 'hover:text-success-text hover:underline cursor-pointer' : ''
                         }`}
                         title={onNavigate ? `Open ${activeBlockActivity.ascendModule} module` : undefined}
                       >
@@ -1794,14 +1794,14 @@ function FocusTimerSubmodule({
                   <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
                     {activeBlock.originalStartTime && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-warning-text text-xs font-medium">
-                        <Clock size={12} className="text-amber-400" />
+                        <Clock size={12} className="text-warning-text" />
                         <span>Started early (originally scheduled for {formatTime12h(activeBlock.originalStartTime)})</span>
                       </div>
                     )}
 
                     {activeBlock.breakDurationMinutes && (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-success-text text-xs font-medium">
-                        <Coffee size={12} className="text-emerald-400" />
+                        <Coffee size={12} className="text-success-text" />
                         <span>{activeBlock.breakDurationMinutes}m break taken</span>
                       </div>
                     )}
@@ -1830,10 +1830,10 @@ function FocusTimerSubmodule({
                             }`}
                             title={secAct.ascendModule && onNavigate ? `Open ${secAct.ascendModule} module` : secAct.name}
                           >
-                            <Zap size={11} className="text-emerald-400 shrink-0" />
+                            <Zap size={11} className="text-success-text shrink-0" />
                             <span className="truncate">+{secAct.name}</span>
                             {secAct.ascendModule && (
-                              <span className="text-[10px] text-emerald-400/80 font-mono">[{secAct.ascendModule}]</span>
+                              <span className="text-[10px] text-success-text font-mono">[{secAct.ascendModule}]</span>
                             )}
                           </button>
                         );
@@ -1848,7 +1848,7 @@ function FocusTimerSubmodule({
                     {formatSeconds(activeBlockRemainingSeconds)}
                   </div>
                   <p className="text-xs text-content-muted flex items-center justify-center gap-1.5 font-mono">
-                    <Clock size={13} className="text-emerald-400" />
+                    <Clock size={13} className="text-success-text" />
                     <span>
                       Time remaining until {formatTime12h(activeBlock.endTime)} ({Math.ceil(activeBlockRemainingSeconds / 60)} mins left)
                     </span>
@@ -1890,7 +1890,7 @@ function FocusTimerSubmodule({
                   </div>
                 ) : (
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-warning-text text-xs font-semibold shadow-sm">
-                    <Clock className="text-amber-400 animate-pulse" size={12} />
+                    <Clock className="text-warning-text animate-pulse" size={12} />
                     <span>Unscheduled Time</span>
                   </div>
                 )}
@@ -2066,7 +2066,7 @@ function FocusTimerSubmodule({
               </div>
             ) : todayBlocks.length > 0 ? (
               <div className="max-w-md mx-auto space-y-4 py-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-success-text flex items-center justify-center mx-auto">
                   <CheckCircle2 size={24} />
                 </div>
                 <div className="space-y-1">
@@ -2207,7 +2207,7 @@ function FocusTimerSubmodule({
           {/* Section 3 */}
           <div className="space-y-2">
             <h4 className="font-bold text-content-primary flex items-center gap-1.5">
-              <CheckCircle2 size={15} className="text-emerald-400" /> Best Practices for Max Impact
+              <CheckCircle2 size={15} className="text-success-text" /> Best Practices for Max Impact
             </h4>
             <div className="grid grid-cols-1 gap-2 text-content-muted">
               <div className="p-2.5 bg-bg-800 rounded-lg border border-overlay-subtle">
@@ -2236,8 +2236,8 @@ function FocusTimerSubmodule({
       {/* Take Break Modal in Live Schedule Sync */}
       <Modal open={showTakeBreakModal} onClose={() => setShowTakeBreakModal(false)} title="Take a Mid-Block Break">
         <div className="space-y-5">
-          <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300">
-            <Coffee size={20} className="shrink-0 text-emerald-400" />
+          <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-success-text">
+            <Coffee size={20} className="shrink-0 text-success-text" />
             <div>
               <p className="font-semibold text-content-secondary">Recharge during {activeBlock?.customTitle || activeBlockActivity?.name}</p>
               <p className="text-content-muted mt-0.5">
@@ -2264,7 +2264,7 @@ function FocusTimerSubmodule({
                       !isAllowed
                         ? 'opacity-40 cursor-not-allowed bg-bg-800 border-overlay-subtle text-content-disabled'
                         : isSelected
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-md ring-1 ring-emerald-500/30'
+                        ? 'bg-emerald-500/20 text-success-text border-emerald-500/50 shadow-md ring-1 ring-emerald-500/30'
                         : 'bg-overlay-subtle text-content-tertiary border-overlay-default hover:bg-overlay-default hover:text-content-primary cursor-pointer'
                     }`}
                   >
@@ -2281,7 +2281,7 @@ function FocusTimerSubmodule({
             <div className="pt-2">
               <div className="flex items-center justify-between text-xs text-content-muted mb-1.5">
                 <span className="font-medium">Custom duration (1–{maxAllowedBreakMinutes}m):</span>
-                <span className="text-emerald-400 font-mono font-semibold">{selectedBreakMinutes} minutes</span>
+                <span className="text-success-text font-mono font-semibold">{selectedBreakMinutes} minutes</span>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -2346,8 +2346,8 @@ function FocusTimerSubmodule({
           <p>
             You currently have an active focus session in progress. Discarding will stop the timer and no points or logs will be saved.
           </p>
-          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-200 flex items-center gap-2">
-            <AlertTriangle size={18} className="shrink-0 text-amber-400" />
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-warning-text flex items-center gap-2">
+            <AlertTriangle size={18} className="shrink-0 text-warning-text" />
             <span>Are you sure you want to discard your current progress?</span>
           </div>
           <div className="flex gap-2 pt-2">
@@ -2478,7 +2478,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                     {d.isReflected ? (
                       <span className="badge bg-purple-500/15 text-purple-400 text-[10px]">Reflected (+15 pts)</span>
                     ) : (
-                      <span className="badge bg-amber-500/15 text-amber-300 text-[10px]">Revisit: {d.revisitDate}</span>
+                      <span className="badge bg-amber-500/15 text-warning-text text-[10px]">Revisit: {d.revisitDate}</span>
                     )}
                   </h3>
                 </div>

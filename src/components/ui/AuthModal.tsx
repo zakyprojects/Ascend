@@ -220,7 +220,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
         )}
 
         {successMsg && (
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-2 text-emerald-400 text-xs">
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-2 text-success-text text-xs">
             <Check size={16} className="shrink-0" />
             <span>{successMsg}</span>
           </div>
@@ -283,18 +283,18 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                 type="button"
                 onClick={handleGuestSignIn}
                 disabled={loading}
-                className="w-full p-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 rounded-2xl border border-emerald-500/30 transition-all flex items-center justify-between group disabled:opacity-50"
+                className="w-full p-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text rounded-2xl border border-emerald-500/30 transition-all flex items-center justify-between group disabled:opacity-50"
               >
                 <div className="text-left">
-                  <div className="font-bold text-sm flex items-center gap-2 text-emerald-400">
+                  <div className="font-bold text-sm flex items-center gap-2 text-success-text">
                     <Zap size={15} />
                     <span>Continue as Guest</span>
                   </div>
-                  <div className="text-[11px] text-emerald-400/80 mt-0.5">
+                  <div className="text-[11px] opacity-90 mt-0.5">
                     Instant access — no email or password required
                   </div>
                 </div>
-                <UserCheck size={20} className="text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
+                <UserCheck size={20} className="text-success-text group-hover:scale-110 transition-transform shrink-0" />
               </button>
             </div>
           </div>
@@ -376,7 +376,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                       {username.trim() && (
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           {usernameStatus?.available ? (
-                            <span className="text-[11px] font-medium text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                            <span className="text-[11px] font-medium text-success-text flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                               <Check size={12} /> Available
                             </span>
                           ) : usernameStatus?.reason ? (
@@ -460,7 +460,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
 
               {mode === 'signup' && hasGuestData && (
                 <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-xl space-y-2">
-                  <div className="flex items-center gap-2 text-primary-400 text-xs font-semibold">
+                  <div className="flex items-center gap-2 text-brand-text text-xs font-semibold">
                     <Sparkles size={14} />
                     <span>Guest Progress Detected</span>
                   </div>

@@ -154,7 +154,7 @@ export function TemplatesTab({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle backdrop-blur-md">
         <div>
           <h2 className="text-base font-bold text-content-primary flex items-center gap-2">
-            <Layers className="text-emerald-400" size={18} />
+            <Layers className="text-success-text" size={18} />
             <span>Recurring Templates</span>
           </h2>
           <p className="text-xs text-content-muted mt-0.5">
@@ -169,7 +169,7 @@ export function TemplatesTab({
                 store.restoreTimeTrackerTemplate('template-default-weekday');
                 showSuccessToast('Template Restored', 'Standard Productive Day blueprint has been restored.');
               }}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-success-text bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl transition-all cursor-pointer"
             >
               <RotateCcw size={13} />
               <span>Restore Default Blueprint</span>
@@ -189,7 +189,7 @@ export function TemplatesTab({
       {/* Blueprint Philosophy / 8-8-8 Guide */}
       <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-bg-800 to-bg-750 border border-emerald-500/20 flex flex-col xl:flex-row gap-4 items-start">
         <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-500/30 shadow-inner">
-          <Compass className="text-emerald-400" size={24} />
+          <Compass className="text-success-text" size={24} />
         </div>
         <div className="flex-1 w-full">
           <h3 className="text-sm font-bold text-success-text mb-1.5">The Balance Sheet of Life: 8+8+8 Rule</h3>
@@ -201,7 +201,7 @@ export function TemplatesTab({
             {/* Hard Work */}
             <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-emerald-500/30 transition-colors">
               <h4 className="text-[11px] font-bold text-content-secondary mb-1 flex items-center gap-1.5">
-                <Brain className="text-emerald-400" size={13} /> 
+                <Brain className="text-success-text" size={13} /> 
                 8 Hours: Hard Work
               </h4>
               <p className="text-[10px] text-content-muted leading-snug">Deep focus, career progression, and building your empire.</p>
@@ -235,7 +235,7 @@ export function TemplatesTab({
       {/* 2. Template Cards List */}
       {templates.length === 0 ? (
         <div className="p-8 rounded-2xl bg-bg-800/30 border border-overlay-subtle text-center space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-success-text flex items-center justify-center mx-auto shadow-inner">
             <Layers size={28} />
           </div>
           <div>
@@ -261,7 +261,7 @@ export function TemplatesTab({
                 }}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-secondary border border-overlay-default text-xs font-semibold transition-all cursor-pointer"
               >
-                <RotateCcw size={14} className="text-emerald-400" />
+                <RotateCcw size={14} className="text-success-text" />
                 <span>Restore Default Blueprint</span>
               </button>
             )}
@@ -294,7 +294,7 @@ export function TemplatesTab({
                           {sortedBlocks.length} block(s)
                         </span>
                         <span>·</span>
-                        <span className="font-mono text-emerald-300 font-medium">
+                        <span className="font-mono text-success-text font-medium">
                           {formatDurationHuman(totalMinutes)} planned
                         </span>
                       </div>
@@ -346,7 +346,7 @@ export function TemplatesTab({
                             title={`Toggle ${day} auto-apply for ${tpl.title}`}
                             className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                               isDayActive
-                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
+                                ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30 hover:bg-emerald-500/30'
                                 : 'bg-bg-900/40 text-content-subtle border border-overlay-subtle hover:text-content-muted hover:border-overlay-default'
                             }`}
                           >
@@ -417,7 +417,7 @@ export function TemplatesTab({
                                 return (
                                   <span
                                     key={secId}
-                                    className="text-[10px] text-emerald-300 font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0"
+                                    className="text-[10px] text-success-text font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0"
                                   >
                                     +{secAct.name}
                                   </span>
@@ -425,7 +425,7 @@ export function TemplatesTab({
                               })}
                           </div>
                           {act?.ascendModule && (
-                            <span className="text-[10px] text-emerald-400/80 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shrink-0">
+                            <span className="text-[10px] text-success-text bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shrink-0">
                               {act.ascendModule}
                             </span>
                           )}
@@ -446,7 +446,7 @@ export function TemplatesTab({
 
                   <button
                     onClick={() => onOpenApplyTemplateModal(tpl.id)}
-                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-all cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-success-text border border-emerald-500/30 text-xs font-semibold transition-all cursor-pointer"
                     title="Apply to custom target date or replace"
                   >
                     <Calendar size={13} />
@@ -479,9 +479,9 @@ export function TemplatesTab({
           maxWidth="max-w-md"
         >
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3 mb-6">
-            <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
-            <p className="text-sm text-amber-200/90 leading-relaxed">
-              Are you sure you want to replace it? The day <strong className="text-amber-100">{conflictState.day}</strong> is currently assigned to <strong className="text-amber-100">{conflictState.conflictingTitle}</strong>.
+            <AlertTriangle className="text-warning-text shrink-0 mt-0.5" size={18} />
+            <p className="text-sm text-warning-text-muted leading-relaxed">
+              Are you sure you want to replace it? The day <strong className="text-warning-text">{conflictState.day}</strong> is currently assigned to <strong className="text-warning-text">{conflictState.conflictingTitle}</strong>.
             </p>
           </div>
           <div className="flex justify-end gap-3">

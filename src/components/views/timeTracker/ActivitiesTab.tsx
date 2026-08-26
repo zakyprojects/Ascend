@@ -52,7 +52,7 @@ export function ActivitiesTab({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle backdrop-blur-md">
         <div>
           <h2 className="text-base font-bold text-content-primary flex items-center gap-2">
-            <Tag className="text-emerald-400" size={18} />
+            <Tag className="text-success-text" size={18} />
             <span>Master Activity Categories</span>
           </h2>
           <p className="text-xs text-content-muted mt-0.5">
@@ -105,8 +105,8 @@ export function ActivitiesTab({
                   </div>
 
                   {act.ascendModule ? (
-                    <div className="flex items-center gap-1 mt-1.5 text-emerald-300 text-[11px] font-medium">
-                      <LinkIcon size={12} className="text-emerald-400 shrink-0" />
+                    <div className="flex items-center gap-1 mt-1.5 text-success-text text-[11px] font-medium">
+                      <LinkIcon size={12} className="text-success-text shrink-0" />
                       <span className="truncate">Linked: {act.ascendModule}</span>
                     </div>
                   ) : (

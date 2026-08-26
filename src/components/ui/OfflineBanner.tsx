@@ -100,15 +100,15 @@ export function OfflineBanner() {
         aria-live="assertive"
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="p-1.5 rounded-lg bg-amber-500/20 shrink-0 text-amber-400">
+          <div className="p-1.5 rounded-lg bg-amber-500/20 shrink-0 text-warning-text">
             <WifiOff size={16} />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+            <p className="text-xs font-bold text-warning-text flex items-center gap-1.5">
               <span>You are currently offline</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+              <span className="w-1.5 h-1.5 rounded-full bg-warning-text animate-ping" />
             </p>
-            <p className="text-[11px] text-amber-200/80 truncate">
+            <p className="text-[11px] text-warning-text-muted truncate">
               Actions won't save until connection is restored. Please reconnect.
             </p>
           </div>
@@ -123,10 +123,10 @@ export function OfflineBanner() {
         className="fixed top-2 left-1/2 -translate-x-1/2 z-[9995] max-w-lg w-[calc(100%-2rem)] bg-emerald-950/90 border border-emerald-500/50 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-2xl shadow-emerald-950/50 flex items-center gap-3 text-emerald-200 animate-slide-down"
         role="status"
       >
-        <div className="p-1.5 rounded-lg bg-emerald-500/20 shrink-0 text-emerald-400">
+        <div className="p-1.5 rounded-lg bg-emerald-500/20 shrink-0 text-success-text">
           <Wifi size={16} />
         </div>
-        <p className="text-xs font-bold text-emerald-300">
+        <p className="text-xs font-bold text-success-text">
           Connection restored! Back online.
         </p>
       </div>

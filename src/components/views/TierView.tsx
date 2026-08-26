@@ -114,7 +114,7 @@ export function TierView({ store }: { store: AppStore }) {
                       {tier.name}
                     </h3>
                     {isCurrent && (
-                      <span className="badge bg-primary-500/15 text-primary-400">
+                      <span className="badge bg-primary-500/15 text-success-text">
                         <Check size={11} /> Current
                       </span>
                     )}
@@ -127,7 +127,7 @@ export function TierView({ store }: { store: AppStore }) {
                 {/* Checkmark if unlocked */}
                 {isUnlocked && !isCurrent && (
                   <div className="w-6 h-6 rounded-full bg-primary-500/15 flex items-center justify-center">
-                    <Check size={14} className="text-primary-400" />
+                    <Check size={14} className="text-success-text" />
                   </div>
                 )}
               </div>
@@ -148,7 +148,7 @@ export function TierView({ store }: { store: AppStore }) {
                     entry.amount > 0 ? 'bg-primary-500/15' : 'bg-error/15'
                   }`}
                 >
-                  <span className={`text-xs font-bold ${entry.amount > 0 ? 'text-primary-400' : 'text-error'}`}>
+                  <span className={`text-xs font-bold ${entry.amount > 0 ? 'text-brand-text' : 'text-error'}`}>
                     {entry.amount > 0 ? '+' : ''}
                     {entry.amount}
                   </span>

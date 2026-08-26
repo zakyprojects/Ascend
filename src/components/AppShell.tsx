@@ -163,7 +163,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-content-secondary truncate">{username}</p>
-                  <p className={`text-[10px] font-medium truncate ${currentUser.isAnonymous ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  <p className={`text-[10px] font-medium truncate ${currentUser.isAnonymous ? 'text-warning-text' : 'text-brand-text'}`}>
                     {currentUser.isAnonymous ? 'Guest Account' : 'Account Active'}
                   </p>
                 </div>
@@ -173,7 +173,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                   title="Settings & Preferences"
                   className={`p-1.5 rounded-lg transition-all ${
                     currentView === 'settings'
-                      ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
+                      ? 'bg-primary-500/20 text-brand-text border border-primary-500/30'
                       : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
                   }`}
                 >
@@ -191,7 +191,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
               {currentUser.isAnonymous && (
                 <button
                   onClick={onOpenAuthModal}
-                  className="w-full py-1.5 px-2 bg-gradient-to-r from-primary-500/20 to-primary-600/20 hover:from-primary-500/30 hover:to-primary-600/30 border border-primary-500/30 text-primary-300 font-semibold text-[11px] rounded-lg transition-all flex items-center justify-center gap-1.5"
+                  className="w-full py-1.5 px-2 bg-gradient-to-r from-primary-500/20 to-primary-600/20 hover:from-primary-500/30 hover:to-primary-600/30 border border-primary-500/30 text-brand-text font-semibold text-[11px] rounded-lg transition-all flex items-center justify-center gap-1.5"
                 >
                   <span>Save Progress — Create Account</span>
                 </button>
@@ -227,7 +227,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
           ) : (
             <button
               onClick={onOpenAuthModal}
-              className="w-full card p-3 bg-gradient-to-r from-primary-500/20 to-primary-600/20 hover:from-primary-500/30 hover:to-primary-600/30 border border-primary-500/30 flex items-center justify-center gap-2 text-primary-300 font-medium text-xs rounded-xl transition-all"
+              className="w-full card p-3 bg-gradient-to-r from-primary-500/20 to-primary-600/20 hover:from-primary-500/30 hover:to-primary-600/30 border border-primary-500/30 flex items-center justify-center gap-2 text-brand-text font-medium text-xs rounded-xl transition-all"
             >
               <LogIn size={16} />
               <span>Sign In / Register</span>
@@ -245,12 +245,12 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                 onClick={() => onViewChange(item.id)}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   active
-                    ? 'bg-primary-500/15 text-primary-400'
+                    ? 'bg-primary-500/15 text-brand-text'
                     : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon size={20} className={active ? 'text-primary-400' : ''} />
+                  <Icon size={20} className={active ? 'text-brand-text' : ''} />
                   <span>{item.label}</span>
                 </div>
                 {item.badgeCount && item.badgeCount > 0 ? (
@@ -360,7 +360,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                 ) : (
                   <button
                     onClick={() => { setMobileMenuOpen(false); onOpenAuthModal(); }}
-                    className="w-full py-2 bg-primary-500/20 text-primary-300 border border-primary-500/30 rounded-xl text-xs font-medium flex items-center justify-center gap-2"
+                    className="w-full py-2 bg-primary-500/20 text-brand-text border border-primary-500/30 rounded-xl text-xs font-medium flex items-center justify-center gap-2"
                   >
                     <LogIn size={15} />
                     Sign In / Register
@@ -377,7 +377,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                       key={item.id}
                       onClick={() => { onViewChange(item.id); setMobileMenuOpen(false); }}
                       className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                        active ? 'bg-primary-500/15 text-primary-400' : 'text-content-muted hover:bg-overlay-subtle'
+                        active ? 'bg-primary-500/15 text-brand-text' : 'text-content-muted hover:bg-overlay-subtle'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -415,7 +415,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                   key={item.id}
                   onClick={() => onViewChange(item.id)}
                   className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg transition-all relative ${
-                    active ? 'text-primary-400' : 'text-content-disabled'
+                    active ? 'text-brand-text' : 'text-content-disabled'
                   }`}
                 >
                   <Icon size={20} />

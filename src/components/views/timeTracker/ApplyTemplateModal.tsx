@@ -55,7 +55,7 @@ export function ApplyTemplateModal({
           {/* Target Date Picker */}
           <div className="mb-3">
             <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-              <Calendar size={13} className="text-emerald-400" />
+              <Calendar size={13} className="text-success-text" />
               <span>Target Schedule Date</span>
             </label>
             <input
@@ -84,8 +84,8 @@ export function ApplyTemplateModal({
                   onClick={() => setSelectedTemplateId(tpl.id)}
                   className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-500/15 border-emerald-500/60 shadow-sm text-white'
-                      : 'bg-overlay-subtle border-overlay-subtle text-content-tertiary hover:bg-overlay-default'
+                      ? 'bg-emerald-500/15 border-emerald-500/60 shadow-sm text-content-primary ring-1 ring-emerald-500/40'
+                      : 'bg-bg-700 border-overlay-medium text-content-tertiary shadow-sm hover:bg-bg-600'
                   }`}
                 >
                   <div className="min-w-0 pr-2">
@@ -94,7 +94,7 @@ export function ApplyTemplateModal({
                       {tpl.blocks?.length || 0} scheduled blocks ({formatDurationHuman(totalMins)})
                     </p>
                   </div>
-                  <div className="text-[10px] font-mono text-emerald-300 shrink-0 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                  <div className="text-[10px] font-mono text-success-text shrink-0 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
                     {tpl.activeDays?.length || 0} active days
                   </div>
                 </button>
@@ -114,8 +114,8 @@ export function ApplyTemplateModal({
               onClick={() => setMode('merge')}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 mode === 'merge'
-                  ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-200 font-semibold'
-                  : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:bg-overlay-default'
+                  ? 'bg-emerald-500/15 border-emerald-500/60 text-success-text font-semibold shadow-sm ring-1 ring-emerald-500/40'
+                  : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
               }`}
             >
               <div className="flex items-center gap-1.5 text-xs font-medium mb-0.5">
@@ -132,8 +132,8 @@ export function ApplyTemplateModal({
               onClick={() => setMode('replace')}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 mode === 'replace'
-                  ? 'bg-amber-500/20 border-amber-500/70 text-amber-200 font-semibold'
-                  : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:bg-overlay-default'
+                  ? 'bg-amber-500/20 border-amber-500/70 text-warning-text font-semibold shadow-sm ring-1 ring-amber-500/40'
+                  : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
               }`}
             >
               <div className="flex items-center gap-1.5 text-xs font-medium mb-0.5">

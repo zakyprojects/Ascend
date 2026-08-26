@@ -51,6 +51,9 @@ export default {
           800: '#065f46',
           900: '#064e3b',
         },
+        brand: {
+          text: 'var(--color-brand-text)',
+        },
         // Secondary — warm amber for streaks/energy
         secondary: {
           400: '#fbbf24',
@@ -90,6 +93,7 @@ export default {
         warning: {
           DEFAULT: '#f59e0b',
           text: 'var(--color-warning-text)',
+          'text-muted': 'var(--color-warning-text-muted)',
           soft: 'var(--color-warning-soft)',
         },
         error: {

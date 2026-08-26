@@ -898,7 +898,7 @@ export function ProjectsGoalsView({
       case 'high':
         return 'bg-rose-500/15 text-rose-400 border-rose-500/30';
       case 'medium':
-        return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+        return 'bg-amber-500/15 text-warning-text border-amber-500/30';
       case 'low':
         return 'bg-overlay-subtle text-content-tertiary border-overlay-default';
     }
@@ -907,7 +907,7 @@ export function ProjectsGoalsView({
   const goalStatusBadge = (status: GoalStatus) => {
     switch (status) {
       case 'active':
-        return <span className="badge bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">ACTIVE</span>;
+        return <span className="badge bg-emerald-500/15 text-success-text border border-emerald-500/30 text-[10px] font-bold">ACTIVE</span>;
       case 'achieved':
         return <span className="badge bg-purple-500/15 text-purple-300 border border-purple-500/30 text-[10px] font-bold">ACHIEVED</span>;
       case 'abandoned':
@@ -922,9 +922,9 @@ export function ProjectsGoalsView({
       case 'in_progress':
         return <span className="badge bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[10px]">In Progress</span>;
       case 'on_hold':
-        return <span className="badge bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px]">On Hold</span>;
+        return <span className="badge bg-amber-500/15 text-warning-text border border-amber-500/30 text-[10px]">On Hold</span>;
       case 'completed':
-        return <span className="badge bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px]">Completed</span>;
+        return <span className="badge bg-emerald-500/15 text-success-text border border-emerald-500/30 text-[10px]">Completed</span>;
     }
   };
 
@@ -964,7 +964,7 @@ export function ProjectsGoalsView({
             <div className="mt-2 flex items-center gap-2 bg-bg-900/60 border border-overlay-subtle px-2 sm:px-3 py-1.5 rounded-xl text-[9px] sm:text-[11px] font-bold uppercase tracking-wider overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] w-full">
               {tabOrder === 'taskFirst' && (
                 <>
-                  <div className="flex items-center gap-1.5 text-emerald-400">
+                  <div className="flex items-center gap-1.5 text-success-text">
                     <CheckSquare size={12} /> <span>1. Tasks</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
@@ -983,7 +983,7 @@ export function ProjectsGoalsView({
                     <FolderKanban size={12} /> <span>1. Projects</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-emerald-400">
+                  <div className="flex items-center gap-1.5 text-success-text">
                     <CheckSquare size={12} /> <span>2. Tasks</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
@@ -1002,7 +1002,7 @@ export function ProjectsGoalsView({
                     <FolderKanban size={12} /> <span>2. Projects</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-emerald-400">
+                  <div className="flex items-center gap-1.5 text-success-text">
                     <CheckSquare size={12} /> <span>3. Tasks</span>
                   </div>
                 </>
@@ -1055,7 +1055,7 @@ export function ProjectsGoalsView({
                   <span className="text-[9px] sm:text-[10px] uppercase font-bold text-content-muted tracking-wider">Pending Tasks</span>
                   <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.pendingTasks}</p>
                 </div>
-                <CheckSquare size={18} className="text-emerald-400 opacity-60" />
+                <CheckSquare size={18} className="text-success-text opacity-60" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1091,7 +1091,7 @@ export function ProjectsGoalsView({
                   <span className="text-[9px] sm:text-[10px] uppercase font-bold text-content-muted tracking-wider">Pending Tasks</span>
                   <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.pendingTasks}</p>
                 </div>
-                <CheckSquare size={18} className="text-emerald-400 opacity-60" />
+                <CheckSquare size={18} className="text-success-text opacity-60" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1127,7 +1127,7 @@ export function ProjectsGoalsView({
                   <span className="text-[9px] sm:text-[10px] uppercase font-bold text-content-muted tracking-wider">Pending Tasks</span>
                   <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.pendingTasks}</p>
                 </div>
-                <CheckSquare size={18} className="text-emerald-400 opacity-60" />
+                <CheckSquare size={18} className="text-success-text opacity-60" />
               </div>
             </>
           )}
@@ -1138,20 +1138,20 @@ export function ProjectsGoalsView({
           <div className="flex-1 min-w-0 flex items-center gap-1 sm:gap-2 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-1 pr-1">
             {(tabOrder === 'taskFirst'
               ? [
-                  { id: 'tasks' as const, label: `1. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+                  { id: 'tasks' as const, label: `1. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
                   { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' },
                   { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target, activeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
                 ]
               : tabOrder === 'projectFirst'
               ? [
                   { id: 'projects' as const, label: `1. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' },
-                  { id: 'tasks' as const, label: `2. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+                  { id: 'tasks' as const, label: `2. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
                   { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target, activeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
                 ]
               : [
                   { id: 'goals' as const, label: `1. Goals (${goals.length})`, icon: Target, activeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
                   { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' },
-                  { id: 'tasks' as const, label: `3. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+                  { id: 'tasks' as const, label: `3. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
                 ]
             ).map((tab) => {
               const TabIcon = tab.icon;
@@ -1255,7 +1255,7 @@ export function ProjectsGoalsView({
                 onClick={() => setGoalStatusFilter('active')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                   goalStatusFilter === 'active'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30'
                     : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
@@ -1310,7 +1310,7 @@ export function ProjectsGoalsView({
                         <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
                           {goalStatusBadge(goal.status)}
                           {goal.sequentialMode && (
-                            <span className="badge bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1">
+                            <span className="badge bg-amber-500/15 text-warning-text border border-amber-500/30 text-[10px] font-bold flex items-center gap-1">
                               <Lock size={10} className="shrink-0" />
                               <span>Sequential Mode</span>
                             </span>
@@ -1597,7 +1597,7 @@ export function ProjectsGoalsView({
                 onClick={() => setProjectStatusFilter('on_hold')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                   projectStatusFilter === 'on_hold'
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    ? 'bg-amber-500/20 text-warning-text border border-amber-500/30'
                     : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
@@ -1608,7 +1608,7 @@ export function ProjectsGoalsView({
                 onClick={() => setProjectStatusFilter('completed')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                   projectStatusFilter === 'completed'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30'
                     : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
@@ -1619,8 +1619,8 @@ export function ProjectsGoalsView({
                 onClick={() => setProjectStatusFilter('locked')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all flex items-center gap-1.5 ${
                   projectStatusFilter === 'locked'
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/35'
-                    : 'text-content-muted hover:text-amber-300'
+                    ? 'bg-amber-500/20 text-warning-text border border-amber-500/35'
+                    : 'text-content-muted hover:text-warning-text'
                 }`}
               >
                 <Lock size={12} className="shrink-0" />
@@ -1663,8 +1663,8 @@ export function ProjectsGoalsView({
                   >
                     {/* Locked Banner if Locked */}
                     {lockStatus.isLocked && (
-                      <div className="p-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-2 text-xs text-amber-300">
-                        <Lock size={13} className="shrink-0 text-amber-400" />
+                      <div className="p-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-2 text-xs text-warning-text">
+                        <Lock size={13} className="shrink-0 text-warning-text" />
                         <span className="font-medium">
                           {lockStatus.reason || 'This project is locked until prior projects in sequence are completed.'}
                         </span>
@@ -1698,9 +1698,9 @@ export function ProjectsGoalsView({
                             <span
                               className={`badge text-[10px] font-bold flex items-center gap-1 border ${
                                 lockStatus.isLocked
-                                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                  ? 'bg-amber-500/15 text-warning-text border-amber-500/30'
                                   : project.status === 'completed'
-                                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                  ? 'bg-emerald-500/15 text-success-text border-emerald-500/30'
                                   : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
                               }`}
                             >
@@ -1722,7 +1722,7 @@ export function ProjectsGoalsView({
                                 isOverdue
                                   ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 font-bold'
                                   : isDueToday
-                                  ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 font-bold'
+                                  ? 'bg-amber-500/15 text-warning-text border-amber-500/30 font-bold'
                                   : 'bg-overlay-subtle text-content-tertiary border border-overlay-default'
                               }`}
                             >
@@ -1965,8 +1965,8 @@ export function ProjectsGoalsView({
                 </div>
 
                 {filterLock.isLocked && (
-                  <div className="p-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-2 text-xs text-amber-300">
-                    <Lock size={13} className="shrink-0 text-amber-400" />
+                  <div className="p-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-2 text-xs text-warning-text">
+                    <Lock size={13} className="shrink-0 text-warning-text" />
                     <span className="font-medium">
                       {filterLock.reason || 'This project is locked by sequential goal order. Finish prior projects to unlock tasks.'}
                     </span>
@@ -2099,10 +2099,10 @@ export function ProjectsGoalsView({
                   className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                     taskViewFilter === f.id
                       ? f.id === 'locked'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/35'
-                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        ? 'bg-amber-500/20 text-warning-text border border-amber-500/35'
+                        : 'bg-emerald-500/20 text-success-text border border-emerald-500/30'
                       : f.id === 'locked'
-                      ? 'text-content-muted hover:text-amber-300'
+                      ? 'text-content-muted hover:text-warning-text'
                       : 'text-content-muted hover:text-content-secondary'
                   }`}
                 >
@@ -2186,7 +2186,7 @@ export function ProjectsGoalsView({
             <div className="space-y-2.5">
               {/* Task Level Nudge: Low Data Catalyst */}
               {tasks.length > 0 && tasks.length <= 3 && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300/90 p-3 rounded-xl text-xs flex items-center gap-2 mb-4">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 text-success-text p-3 rounded-xl text-xs flex items-center gap-2 mb-4">
                   <span className="shrink-0 text-base">🚀</span>
                   <span className="leading-relaxed">
                     Momentum check: Consistent execution requires daily input. Add a few more atomic tasks to build your workflow.
@@ -2231,7 +2231,7 @@ export function ProjectsGoalsView({
                             task.completed
                               ? 'bg-emerald-500 border-emerald-400 text-on-brand'
                               : projectLock.isLocked
-                              ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                              ? 'border-amber-500/30 bg-amber-500/10 text-warning-text'
                               : 'border-overlay-strong hover:border-emerald-400 text-transparent'
                           }`}
                           title={
@@ -2245,7 +2245,7 @@ export function ProjectsGoalsView({
                           }
                         >
                           {projectLock.isLocked ? (
-                            <Lock size={11} className="text-amber-400" />
+                            <Lock size={11} className="text-warning-text" />
                           ) : (
                             <Check size={13} strokeWidth={3} className={task.completed ? 'block' : 'hidden'} />
                           )}
@@ -2273,12 +2273,12 @@ export function ProjectsGoalsView({
                                 }}
                                 className={`badge text-[10px] flex items-center gap-1 max-w-[180px] truncate border ${
                                   projectLock.isLocked
-                                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                                    ? 'bg-amber-500/10 text-warning-text border-amber-500/30'
                                     : 'bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 border-cyan-500/20'
                                 }`}
                                 title={`Project: ${getProjectName(task.projectId)} ${projectLock.isLocked ? '(Locked)' : ''}`}
                               >
-                                {projectLock.isLocked ? <Lock size={10} className="shrink-0 text-amber-400" /> : <FolderKanban size={10} className="shrink-0" />}
+                                {projectLock.isLocked ? <Lock size={10} className="shrink-0 text-warning-text" /> : <FolderKanban size={10} className="shrink-0" />}
                                 <span className="truncate">{getProjectName(task.projectId)}</span>
                               </button>
                             )}
@@ -2289,7 +2289,7 @@ export function ProjectsGoalsView({
                                   isOverdue
                                     ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 font-bold'
                                     : isDueToday
-                                    ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 font-bold'
+                                    ? 'bg-amber-500/15 text-warning-text border-amber-500/30 font-bold'
                                     : 'bg-overlay-subtle text-content-muted border-overlay-default'
                                 }`}
                               >
@@ -2499,7 +2499,7 @@ export function ProjectsGoalsView({
           <div className="p-3 bg-bg-900 border border-overlay-default rounded-xl flex items-center justify-between gap-3">
             <div className="space-y-0.5">
               <label className="text-xs font-semibold text-content-secondary flex items-center gap-1.5 cursor-pointer">
-                <Lock size={13} className="text-amber-400" />
+                <Lock size={13} className="text-warning-text" />
                 <span>Sequential Mode</span>
               </label>
               <p className="text-[11px] text-content-muted">
@@ -2938,21 +2938,21 @@ export function ProjectsGoalsView({
             <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xs font-bold">
+                  <span className="w-6 h-6 rounded-md bg-emerald-500/20 text-success-text border border-emerald-500/30 flex items-center justify-center text-xs font-bold">
                     1
                   </span>
-                  <h4 className="text-xs sm:text-sm font-bold text-emerald-300 flex items-center gap-1.5">
+                  <h4 className="text-xs sm:text-sm font-bold text-success-text flex items-center gap-1.5">
                     <CheckSquare size={14} /> Task (Daily)
                   </h4>
                 </div>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/20 text-success-text border border-emerald-500/30">
                   Atomic Action
                 </span>
               </div>
               <p className="text-xs text-content-tertiary leading-relaxed pl-8">
                 The daily fuel. The actual, physical small work you do <em>today</em>.
               </p>
-              <div className="pl-8 pt-1 text-[11px] text-emerald-200/90 font-medium">
+              <div className="pl-8 pt-1 text-[11px] text-success-text font-medium">
                 <span className="text-content-muted font-normal">Examples:</span> Do 50 Pushups today, List 5 new products, Read 10 pages out loud, Transfer $50 to savings.
               </div>
             </div>
@@ -2961,25 +2961,25 @@ export function ProjectsGoalsView({
             <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-1.5 mt-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xs font-bold">
+                  <span className="w-6 h-6 rounded-md bg-amber-500/20 text-warning-text border border-amber-500/30 flex items-center justify-center text-xs font-bold">
                     <Lock size={12} />
                   </span>
-                  <h4 className="text-xs sm:text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                  <h4 className="text-xs sm:text-sm font-bold text-warning-text flex items-center gap-1.5">
                     Sequential Mode (Goal Setting)
                   </h4>
                 </div>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/20 text-warning-text border border-amber-500/30">
                   Advanced
                 </span>
               </div>
               <p className="text-[11px] sm:text-xs text-content-tertiary leading-relaxed pl-8">
                 Available when creating a Goal. It forces absolute focus by locking projects so you can only execute them one by one. Project B remains locked until Project A is completed.
               </p>
-              <div className="pl-8 pt-1 text-[11px] sm:text-xs text-amber-200/90 font-medium space-y-1">
+              <div className="pl-8 pt-1 text-[11px] sm:text-xs text-warning-text-muted font-medium space-y-1">
                 <p><span className="text-content-muted font-normal">How it helps:</span> Kills overwhelm and multi-tasking. Builds momentum.</p>
                 <p className="pt-0.5"><span className="text-content-muted font-normal">Example (Goal: Start a Business):</span></p>
-                <ul className="list-disc pl-4 space-y-0.5 text-amber-300/80">
-                  <li>Project 1: Market Research <span className="text-emerald-400 no-underline not-italic">(Active)</span></li>
+                <ul className="list-disc pl-4 space-y-0.5 text-warning-text-muted">
+                  <li>Project 1: Market Research <span className="text-success-text no-underline not-italic">(Active)</span></li>
                   <li>Project 2: Build MVP <span className="text-content-muted no-underline not-italic">(🔒 Locked)</span></li>
                   <li>Project 3: Launch <span className="text-content-muted no-underline not-italic">(🔒 Locked)</span></li>
                 </ul>

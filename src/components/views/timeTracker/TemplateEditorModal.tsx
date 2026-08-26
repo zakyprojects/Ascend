@@ -267,7 +267,7 @@ export function TemplateEditorModal({
                     onClick={() => toggleDay(day)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-emerald-600/20 border-emerald-500/70 text-emerald-300 shadow-sm'
+                        ? 'bg-emerald-600/20 border-emerald-500/70 text-success-text shadow-sm'
                         : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:bg-overlay-default'
                     }`}
                   >
@@ -287,7 +287,7 @@ export function TemplateEditorModal({
               <button
                 type="button"
                 onClick={handleOpenAddBlock}
-                className="flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 cursor-pointer"
+                className="flex items-center gap-1 text-xs font-semibold text-success-text hover:opacity-80 cursor-pointer"
               >
                 <Plus size={13} />
                 <span>Add Block</span>
@@ -327,7 +327,7 @@ export function TemplateEditorModal({
                               {block.customTitle || act?.name || 'Block'}
                             </p>
                             {act?.ascendModule && (
-                              <span className="text-[10px] text-emerald-400 font-mono">
+                              <span className="text-[10px] text-success-text font-mono">
                                 [{act.ascendModule}]
                               </span>
                             )}
@@ -338,7 +338,7 @@ export function TemplateEditorModal({
                                 return (
                                   <span
                                     key={secId}
-                                    className="text-[10px] text-emerald-300 font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded"
+                                    className="text-[10px] text-success-text font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded"
                                   >
                                     +{secAct.name}
                                   </span>
@@ -431,9 +431,9 @@ export function TemplateEditorModal({
           maxWidth="max-w-md"
         >
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3 mb-6">
-            <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
-            <p className="text-sm text-amber-200/90 leading-relaxed">
-              Are you sure you want to replace it? The day <strong className="text-amber-100">{conflictState.day}</strong> is currently assigned to <strong className="text-amber-100">{conflictState.conflictingTitle}</strong>.
+            <AlertTriangle className="text-warning-text shrink-0 mt-0.5" size={18} />
+            <p className="text-sm text-warning-text-muted leading-relaxed">
+              Are you sure you want to replace it? The day <strong className="text-warning-text">{conflictState.day}</strong> is currently assigned to <strong className="text-warning-text">{conflictState.conflictingTitle}</strong>.
             </p>
           </div>
           <div className="flex justify-end gap-3">

@@ -222,7 +222,7 @@ export function ScheduleTab({
           </button>
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-bg-900/60 border border-overlay-default flex-1 sm:flex-none justify-center">
-            <Calendar size={16} className="text-emerald-400 shrink-0" />
+            <Calendar size={16} className="text-success-text shrink-0" />
             <span className="text-sm font-bold text-content-primary min-w-[100px] sm:min-w-[120px] text-center">
               {formattedDayTitle}
             </span>
@@ -242,7 +242,7 @@ export function ScheduleTab({
           {!isSelectedDateToday && (
             <button
               onClick={handleJumpToToday}
-              className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all cursor-pointer shrink-0"
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text border border-emerald-500/30 transition-all cursor-pointer shrink-0"
             >
               Today
             </button>
@@ -257,7 +257,7 @@ export function ScheduleTab({
               className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-content-secondary bg-overlay-subtle hover:bg-overlay-default border border-overlay-default rounded-xl transition-all shadow-sm cursor-pointer"
               title="Apply Blueprint Template"
             >
-              <Layers size={14} className="text-emerald-400 shrink-0" />
+              <Layers size={14} className="text-success-text shrink-0" />
               <span className="whitespace-nowrap">Apply Template</span>
             </button>
           )}
@@ -312,7 +312,7 @@ export function ScheduleTab({
 
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-success-text flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     {liveStats.activeBlock ? 'Active Live Block' : 'Live Status'}
                   </span>
@@ -334,7 +334,7 @@ export function ScheduleTab({
                           return (
                             <span
                               key={secId}
-                              className="text-[10px] text-emerald-300 font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0"
+                              className="text-[10px] text-success-text font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0"
                             >
                               +{secAct.name}
                             </span>
@@ -344,7 +344,7 @@ export function ScheduleTab({
                     <p className="text-xs text-content-tertiary">
                       {formatTime12h(liveStats.activeBlock.startTime)} –{' '}
                       {formatTime12h(liveStats.activeBlock.endTime)} ·{' '}
-                      <span className="text-emerald-300 font-semibold">
+                      <span className="text-success-text font-semibold">
                         <LiveCountdown endTime={liveStats.activeBlock.endTime} />
                       </span>
                     </p>
@@ -376,13 +376,13 @@ export function ScheduleTab({
                   onClick={() => handleToggleComplete(liveStats.activeBlock!)}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     liveStats.activeBlock.completed
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30'
                       : 'bg-overlay-subtle hover:bg-overlay-default text-content-secondary border border-overlay-default'
                   }`}
                 >
                   {liveStats.activeBlock.completed ? (
                     <>
-                      <CheckCircle2 size={14} className="text-emerald-400" />
+                      <CheckCircle2 size={14} className="text-success-text" />
                       <span>Completed</span>
                     </>
                   ) : (
@@ -410,9 +410,9 @@ export function ScheduleTab({
                     <button
                       key={mod}
                       onClick={() => handleLaunchModuleHandoff(liveStats.activeBlock!, mod)}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-emerald-200 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 transition-all shadow-sm cursor-pointer"
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-success-text bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 transition-all shadow-sm cursor-pointer"
                     >
-                      <Play size={13} className="fill-current text-emerald-400" />
+                      <Play size={13} className="fill-current text-success-text" />
                       <span>Launch {mod}</span>
                     </button>
                   ));
@@ -440,7 +440,7 @@ export function ScheduleTab({
         <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
           <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Total Planned</span>
-            <Clock size={14} className="text-emerald-400" />
+            <Clock size={14} className="text-success-text" />
           </div>
           <p className="text-lg font-bold text-content-primary">
             {formatDurationHuman(liveStats.totalScheduledMinutesToday)}
@@ -451,9 +451,9 @@ export function ScheduleTab({
         <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
           <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Execution Rate</span>
-            <CheckCircle2 size={14} className="text-emerald-400" />
+            <CheckCircle2 size={14} className="text-success-text" />
           </div>
-          <p className="text-lg font-bold text-emerald-400">
+          <p className="text-lg font-bold text-success-text">
             {liveStats.dayScheduledProgressPercent}%
           </p>
           <p className="text-[11px] text-content-disabled">
@@ -475,9 +475,9 @@ export function ScheduleTab({
         <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
           <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Training & Mind</span>
-            <Activity size={14} className="text-amber-400" />
+            <Activity size={14} className="text-warning-text" />
           </div>
-          <p className="text-lg font-bold text-amber-300">
+          <p className="text-lg font-bold text-warning-text">
             {formatDurationHuman(liveStats.exerciseMinutesToday + liveStats.readingMinutesToday)}
           </p>
           <p className="text-[11px] text-content-disabled">Exercise & Reading</p>
@@ -568,7 +568,7 @@ export function ScheduleTab({
                             return (
                               <span
                                 key={secId}
-                                className="text-[10px] text-emerald-300 font-mono bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.2 rounded shrink-0"
+                                className="text-[10px] text-success-text font-mono bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.2 rounded shrink-0"
                               >
                                 +{secAct.name}
                               </span>
@@ -580,7 +580,7 @@ export function ScheduleTab({
                         <span className="text-content-muted">({formatDurationHuman(duration)})</span>
                       </p>
                       {block.completed && (
-                        <p className="text-[10px] text-emerald-400 font-semibold flex items-center justify-center gap-1">
+                        <p className="text-[10px] text-success-text font-semibold flex items-center justify-center gap-1">
                           <Check size={10} /> Completed
                         </p>
                       )}
@@ -629,7 +629,7 @@ export function ScheduleTab({
           {dailyBlocks.length > 0 && (
             <button
               onClick={() => onOpenAddBlockModal()}
-              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
+              className="text-xs font-semibold text-success-text hover:opacity-80 flex items-center gap-1 cursor-pointer"
             >
               <Plus size={13} />
               <span>Add Block</span>
@@ -639,7 +639,7 @@ export function ScheduleTab({
 
         {dailyBlocks.length === 0 ? (
           <div className="p-8 rounded-2xl bg-bg-800/30 border border-overlay-subtle text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-success-text flex items-center justify-center mx-auto shadow-inner">
               <Clock size={28} />
             </div>
             <div>
@@ -654,7 +654,7 @@ export function ScheduleTab({
                   onClick={onOpenApplyTemplateModal}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default border border-overlay-default text-xs font-semibold text-content-secondary transition-all cursor-pointer"
                 >
-                  <Layers size={14} className="text-emerald-400" />
+                  <Layers size={14} className="text-success-text" />
                   <span>Apply Template</span>
                 </button>
               )}
@@ -727,7 +727,7 @@ export function ScheduleTab({
                         onClick={() => handleToggleComplete(block)}
                         className={`mt-1 p-1 rounded-lg transition-colors shrink-0 cursor-pointer ${
                           block.completed
-                            ? 'text-emerald-400 hover:text-emerald-300'
+                            ? 'text-success-text hover:opacity-80'
                             : block.skipped
                             ? 'text-content-subtle hover:text-content-muted'
                             : 'text-content-disabled hover:text-content-tertiary'
@@ -774,7 +774,7 @@ export function ScheduleTab({
                               return (
                                 <span
                                   key={secId}
-                                  className="text-[10px] text-emerald-300 font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded truncate max-w-full"
+                                  className="text-[10px] text-success-text font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded truncate max-w-full"
                                 >
                                   +{secAct.name}
                                 </span>
@@ -790,21 +790,21 @@ export function ScheduleTab({
                           </span>
 
                           {block.breakDurationMinutes && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 flex items-center gap-1 shrink-0">
-                              <Coffee size={10} className="text-emerald-400" />
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-success-text border border-emerald-500/20 flex items-center gap-1 shrink-0">
+                              <Coffee size={10} className="text-success-text" />
                               <span>{block.breakDurationMinutes}m break</span>
                             </span>
                           )}
 
                           {isBlockActive && !block.skipped && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-success-text border border-emerald-500/30 flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                               Active Now
                             </span>
                           )}
 
                           {block.skipped && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-warning-text border border-amber-500/20 flex items-center gap-1">
                               <SkipForward size={10} />
                               Skipped
                             </span>
@@ -839,14 +839,14 @@ export function ScheduleTab({
                           <div className="flex flex-wrap items-center gap-2 mt-2">
                             {linkedModules.map((item) => (
                               <div key={item.moduleId} className="flex items-center gap-1.5">
-                                <span className="text-[10px] text-emerald-300/80 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                  <Zap size={11} className="text-emerald-400" />
+                                <span className="text-[10px] text-success-text bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                  <Zap size={11} className="text-success-text" />
                                   Linked: {item.moduleId}
                                 </span>
 
                                 <button
                                   onClick={() => handleLaunchModuleHandoff(block, item.moduleId)}
-                                  className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1 cursor-pointer"
+                                  className="text-[11px] font-semibold text-success-text hover:opacity-80 transition-colors flex items-center gap-1 cursor-pointer"
                                 >
                                   <span>Open {item.moduleId}</span>
                                   <Play size={10} className="fill-current" />
