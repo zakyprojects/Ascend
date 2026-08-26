@@ -1117,7 +1117,7 @@ function FocusTimerSubmodule({
                   <BellOff size={12} /> Notifs Blocked
                 </span>
               ) : notificationPerm === 'granted' ? (
-                <span className="text-success-text flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 font-medium text-[11px]">
+                <span className="badge-emerald flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium text-[11px]">
                   <Bell size={12} /> Notifs Allowed
                 </span>
               ) : (
@@ -1572,7 +1572,7 @@ function FocusTimerSubmodule({
             {/* Live HUD Indicator Banner */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-content-muted border-b border-overlay-subtle pb-4">
               <div className="flex items-center gap-2">
-                <span className="badge bg-emerald-500/20 text-success-text border border-emerald-500/30 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1">
+                <span className="badge badge-emerald text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1">
                   <Radio size={12} className="text-success-text animate-pulse" />
                   LIVE TRACKER BLOCK
                 </span>
@@ -1696,7 +1696,7 @@ function FocusTimerSubmodule({
             {/* Sub-State: LIVE ON BREAK OVERLAY */}
             {activeBreakState.isOnBreak ? (
               <div className="space-y-6 py-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-xs font-medium text-success-text mx-auto">
+                <div className="badge-emerald inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mx-auto">
                   <Coffee size={13} className="text-success-text animate-pulse" />
                   <span>CURRENTLY ON MID-BLOCK BREAK</span>
                 </div>
@@ -1793,14 +1793,14 @@ function FocusTimerSubmodule({
 
                   <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
                     {activeBlock.originalStartTime && (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-warning-text text-xs font-medium">
+                      <div className="badge-amber inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium">
                         <Clock size={12} className="text-warning-text" />
                         <span>Started early (originally scheduled for {formatTime12h(activeBlock.originalStartTime)})</span>
                       </div>
                     )}
 
                     {activeBlock.breakDurationMinutes && (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-success-text text-xs font-medium">
+                      <div className="badge-emerald inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium">
                         <Coffee size={12} className="text-success-text" />
                         <span>{activeBlock.breakDurationMinutes}m break taken</span>
                       </div>
@@ -2476,9 +2476,9 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                   <h3 className="font-bold text-content-secondary text-sm flex items-center gap-2">
                     {d.title}
                     {d.isReflected ? (
-                      <span className="badge bg-purple-500/15 text-purple-400 text-[10px]">Reflected (+15 pts)</span>
+                      <span className="badge badge-purple text-[10px]">Reflected (+15 pts)</span>
                     ) : (
-                      <span className="badge bg-amber-500/15 text-warning-text text-[10px]">Revisit: {d.revisitDate}</span>
+                      <span className="badge badge-amber text-[10px]">Revisit: {d.revisitDate}</span>
                     )}
                   </h3>
                 </div>

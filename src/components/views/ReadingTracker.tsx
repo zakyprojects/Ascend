@@ -303,7 +303,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                   <div>
                     <h3 className="font-bold text-content-secondary text-sm flex items-center gap-2">
                       {book.title}
-                      <span className="badge bg-emerald-500/15 text-success-text text-[10px]">Finished (+30 pts)</span>
+                      <span className="badge badge-emerald text-[10px]">Finished (+30 pts)</span>
                     </h3>
                     <p className="text-xs text-content-muted">by {book.author} • {book.totalPages} {book.unit}</p>
                   </div>

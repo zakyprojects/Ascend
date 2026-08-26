@@ -1340,11 +1340,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         {/* Dual-Pill Indicator */}
                         <div>
                           {myDone && partnerDone ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/15 border border-emerald-500/30 text-success-text text-xs font-bold rounded-full shadow-sm">
+                            <div className="badge-emerald inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full shadow-sm">
                               <CheckCircle2 size={13} /> Both Locked In Today ✓
                             </div>
                           ) : myDone && !partnerDone ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/15 border border-amber-500/30 text-warning-text text-xs font-medium rounded-full">
+                            <div className="badge-amber inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full">
                               <Clock size={13} /> You Locked In · Waiting on {activePartnerUsername}
                             </div>
                           ) : !myDone && partnerDone ? (

@@ -2945,7 +2945,7 @@ export function ProjectsGoalsView({
                     <CheckSquare size={14} /> Task (Daily)
                   </h4>
                 </div>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/20 text-success-text border border-emerald-500/30">
+                <span className="badge-emerald text-[10px] font-semibold px-2 py-0.5 rounded-md">
                   Atomic Action
                 </span>
               </div>
@@ -2968,7 +2968,7 @@ export function ProjectsGoalsView({
                     Sequential Mode (Goal Setting)
                   </h4>
                 </div>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/20 text-warning-text border border-amber-500/30">
+                <span className="badge-amber text-[10px] font-semibold px-2 py-0.5 rounded-md">
                   Advanced
                 </span>
               </div>

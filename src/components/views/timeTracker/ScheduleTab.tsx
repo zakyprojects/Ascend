@@ -334,7 +334,7 @@ export function ScheduleTab({
                           return (
                             <span
                               key={secId}
-                              className="text-[10px] text-success-text font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0"
+                              className="badge-emerald text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0"
                             >
                               +{secAct.name}
                             </span>
@@ -568,7 +568,7 @@ export function ScheduleTab({
                             return (
                               <span
                                 key={secId}
-                                className="text-[10px] text-success-text font-mono bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.2 rounded shrink-0"
+                                className="badge-emerald text-[10px] font-mono px-1 py-0.2 rounded shrink-0"
                               >
                                 +{secAct.name}
                               </span>
@@ -774,7 +774,7 @@ export function ScheduleTab({
                               return (
                                 <span
                                   key={secId}
-                                  className="text-[10px] text-success-text font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded truncate max-w-full"
+                                  className="badge-emerald text-[10px] font-mono px-1.5 py-0.5 rounded truncate max-w-full"
                                 >
                                   +{secAct.name}
                                 </span>
@@ -790,21 +790,21 @@ export function ScheduleTab({
                           </span>
 
                           {block.breakDurationMinutes && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-success-text border border-emerald-500/20 flex items-center gap-1 shrink-0">
+                            <span className="badge-emerald px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1 shrink-0">
                               <Coffee size={10} className="text-success-text" />
                               <span>{block.breakDurationMinutes}m break</span>
                             </span>
                           )}
 
                           {isBlockActive && !block.skipped && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-success-text border border-emerald-500/30 flex items-center gap-1">
+                            <span className="badge-emerald px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                               Active Now
                             </span>
                           )}
 
                           {block.skipped && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-warning-text border border-amber-500/20 flex items-center gap-1">
+                            <span className="badge-amber px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1">
                               <SkipForward size={10} />
                               Skipped
                             </span>
@@ -839,7 +839,7 @@ export function ScheduleTab({
                           <div className="flex flex-wrap items-center gap-2 mt-2">
                             {linkedModules.map((item) => (
                               <div key={item.moduleId} className="flex items-center gap-1.5">
-                                <span className="text-[10px] text-success-text bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                <span className="badge-emerald text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1">
                                   <Zap size={11} className="text-success-text" />
                                   Linked: {item.moduleId}
                                 </span>

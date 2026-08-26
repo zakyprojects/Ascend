@@ -486,7 +486,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     switch (resolvedType) {
       case 'target_goal':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-warning-text border border-amber-500/30">
+          <span className="badge-amber inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded">
             <Target size={11} /> Target Goal
           </span>
         );
@@ -537,7 +537,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     const renderReviewDueBadge = () => {
       if (!isReviewDue) return null;
       return (
-        <div className="flex items-center gap-1.5 text-xs font-bold text-warning-text bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-md mb-2 animate-pulse">
+        <div className="badge-amber flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-md mb-2 animate-pulse">
           <Sparkles size={13} className="text-warning-text shrink-0" />
           <span>Review Due ({effectiveCadence === 'monthly' ? 'Monthly' : 'Weekly'} Check-in)</span>
         </div>
@@ -824,7 +824,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <div className="flex items-center gap-2">
                   {isCompletedToday ? (
                     <>
-                      <span className="text-xs font-bold text-success-text flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 rounded border border-emerald-500/20">
+                      <span className="badge-emerald text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded">
                         <CheckCircle2 size={13} /> Done for {cadenceText}
                       </span>
                       <button
@@ -1016,7 +1016,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                   {plan.category}
                                 </span>
                               )}
-                              <span className={`badge text-[10px] font-bold ${plan.isPublic ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30' : 'bg-bg-700 text-content-muted border border-overlay-subtle'}`}>
+                              <span className={`badge text-[10px] font-bold ${plan.isPublic ? 'badge-blue' : 'bg-bg-700 text-content-muted border border-overlay-subtle'}`}>
                                 {plan.isPublic ? <Globe size={10} className="inline mr-1" /> : <Lock size={10} className="inline mr-1" />}
                                 {plan.isPublic ? 'Public' : 'Private'}
                               </span>

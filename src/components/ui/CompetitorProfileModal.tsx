@@ -50,7 +50,7 @@ export function CompetitorProfileModal({
                   </span>
                 )}
                 {competitor.isRealUser && !competitor.isUser && (
-                  <span className="text-[10px] bg-emerald-500/10 text-success-text border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium shrink-0">
+                  <span className="badge-emerald text-[10px] font-medium flex items-center gap-1 px-2 py-0.5 rounded-md shrink-0">
                     <CheckCircle2 size={10} /> Member
                   </span>
                 )}

@@ -160,7 +160,7 @@ export function NotificationCenter({
                 <Bell size={16} className="text-brand-text" />
                 <span className="font-display font-bold text-sm text-content-primary">Notifications</span>
                 {unreadCount > 0 && (
-                  <span className="bg-rose-500/20 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-500/30">
+                  <span className="badge-rose text-[10px] font-bold px-2 py-0.5 rounded-full">
                     {unreadCount} new
                   </span>
                 )}

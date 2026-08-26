@@ -597,13 +597,13 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                           </span>
 
                           {item.carriedOverFromWeekKey && (
-                            <span className="badge bg-purple-500/15 text-purple-300 border border-purple-500/30 text-[10px]">
+                            <span className="badge badge-purple text-[10px]">
                               Carried over from {item.carriedOverFromWeekKey}
                             </span>
                           )}
 
                           {item.linkedModule && item.linkedModule !== 'none' && (
-                            <span className="badge bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[10px] flex items-center gap-1">
+                            <span className="badge badge-cyan text-[10px] flex items-center gap-1">
                               <Zap size={10} /> Linked: {item.linkedModule.toUpperCase()}
                             </span>
                           )}
@@ -814,12 +814,12 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                             {new Date(ref.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                           {ref.pointsAwarded ? (
-                            <span className="badge bg-emerald-500/15 text-success-text text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                            <span className="badge badge-emerald text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                               <Sparkles size={11} /> +20 pts
                             </span>
                           ) : isBeforeCutoff && latestReflection?.id === ref.id ? (
                             <span
-                              className="badge bg-amber-500/15 text-warning-text text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1"
+                              className="badge badge-amber text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
                               title="Points will be awarded when cutoff passes on Sunday 17:00"
                             >
                               <Sparkles size={11} /> Pending +20 pts

@@ -314,7 +314,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
     if (!category) return null;
     const meta = getCategoryMeta(category as BookCategory);
     return (
-      <span className={`badge ${meta.bgClass} ${meta.color} border ${compact ? 'text-[10px] px-2 py-0.5' : ''}`}>
+      <span className={`badge ${meta.badgeClass} ${compact ? 'text-[10px] px-2 py-0.5' : ''}`}>
         {category}
       </span>
     );
@@ -555,7 +555,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           <div className="flex items-center gap-2 mb-1.5">
                             {renderCategoryBadge(book.category, true)}
                             {book.isCurated && (
-                              <span className="badge bg-amber-500/20 text-warning-text border border-amber-500/30 text-[10px] flex items-center gap-1">
+                              <span className="badge badge-amber text-[10px] flex items-center gap-1">
                                 <Sparkles size={10} /> Curated
                               </span>
                             )}
@@ -742,7 +742,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
                       {renderCategoryBadge(curated.category, true)}
-                      <span className="badge bg-amber-500/15 text-warning-text border border-amber-500/30 text-[10px] flex items-center gap-1">
+                      <span className="badge badge-amber text-[10px] flex items-center gap-1">
                         <Sparkles size={10} /> +{curated.pointsOnCompletion} pts on finish
                       </span>
                     </div>
@@ -766,9 +766,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       <span
                         className={`badge text-[10px] px-2 py-0.5 ${
                           userBook.status === 'completed'
-                            ? 'bg-emerald-500/15 text-success-text border border-emerald-500/30'
+                            ? 'badge-emerald'
                             : userBook.status === 'reading'
-                            ? 'bg-amber-500/15 text-warning-text border border-amber-500/30'
+                            ? 'badge-amber'
                             : 'bg-overlay-subtle text-content-muted border border-overlay-default'
                         }`}
                       >
@@ -821,11 +821,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     <div>
                       <div className="flex items-center gap-2">
                         {renderCategoryBadge(book.category, true)}
-                        <span className="badge bg-emerald-500/15 text-success-text border border-emerald-500/30 text-[10px] flex items-center gap-1">
+                        <span className="badge badge-emerald text-[10px] flex items-center gap-1">
                           <CheckCircle2 size={10} /> Completed
                         </span>
                         {book.pointsAwarded ? (
-                          <span className="badge bg-amber-500/20 text-warning-text border border-amber-500/30 text-[10px] flex items-center gap-1">
+                          <span className="badge badge-amber text-[10px] flex items-center gap-1">
                             <Sparkles size={10} /> +{book.pointsAwarded} pts
                           </span>
                         ) : null}

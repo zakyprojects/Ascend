@@ -424,7 +424,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     Leaderboard Username
                   </label>
                   {isCooldownActive && (
-                    <span className="text-[11px] font-medium text-warning-text flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                    <span className="badge-amber text-[11px] font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
                       <Clock size={12} />
                       Cooldown: {hoursLeft}h {minsLeft}m left
                     </span>
@@ -446,7 +446,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   {usernameInput.trim() && usernameInput.trim() !== currentUser?.username && (
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                       {usernameStatus?.available ? (
-                        <span className="text-[11px] font-medium text-success-text flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                        <span className="badge-emerald text-[11px] font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
                           <Check size={12} /> Available
                         </span>
                       ) : usernameStatus?.reason ? (
@@ -755,11 +755,11 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-content-secondary">Public Leaderboard Profile & Stats</span>
                     {(currentUser?.isProfilePublic ?? true) ? (
-                      <span className="text-[10px] bg-emerald-500/10 text-success-text border border-emerald-500/20 px-2 py-0.5 rounded-md font-bold">
+                      <span className="badge-emerald text-[10px] font-bold px-2 py-0.5 rounded-md">
                         Public
                       </span>
                     ) : (
-                      <span className="text-[10px] bg-amber-500/10 text-warning-text border border-amber-500/20 px-2 py-0.5 rounded-md font-bold">
+                      <span className="badge-amber text-[10px] font-bold px-2 py-0.5 rounded-md">
                         Private
                       </span>
                     )}
@@ -794,7 +794,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-content-secondary">Accept Partnership Invites</span>
                     {acceptsInvites ? (
-                      <span className="text-[10px] bg-emerald-500/10 text-success-text border border-emerald-500/20 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                      <span className="badge-emerald text-[10px] font-bold flex items-center gap-1 px-2 py-0.5 rounded-md">
                         <UserCheck size={11} /> Accepting Invites
                       </span>
                     ) : (

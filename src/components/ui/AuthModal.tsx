@@ -376,11 +376,11 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                       {username.trim() && (
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           {usernameStatus?.available ? (
-                            <span className="text-[11px] font-medium text-success-text flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                            <span className="badge-emerald text-[11px] font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
                               <Check size={12} /> Available
                             </span>
                           ) : usernameStatus?.reason ? (
-                            <span className="text-[11px] font-medium text-rose-400 flex items-center gap-1 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 truncate max-w-[110px]">
+                            <span className="badge-rose text-[11px] font-medium flex items-center gap-1 px-2 py-0.5 rounded-md truncate max-w-[110px]">
                               Taken / Invalid
                             </span>
                           ) : null}

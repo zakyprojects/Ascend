@@ -241,7 +241,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">
+                    <span className="badge-purple text-xs font-bold px-2.5 py-1 rounded-full">
                       +{log.pointsAwarded} pts
                     </span>
                     <button

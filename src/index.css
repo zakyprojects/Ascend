@@ -71,6 +71,47 @@
     --badge-beta-bg: rgba(245, 158, 11, 0.10);
     --badge-beta-text: #fbbf24;
     --badge-beta-border: rgba(245, 158, 11, 0.20);
+
+    /* Semantic Badge Tokens (Dark mode defaults) */
+    --badge-purple-bg: rgba(168, 85, 247, 0.20);
+    --badge-purple-text: #d8b4fe;
+    --badge-purple-border: rgba(168, 85, 247, 0.30);
+
+    --badge-blue-bg: rgba(59, 130, 246, 0.20);
+    --badge-blue-text: #93c5fd;
+    --badge-blue-border: rgba(59, 130, 246, 0.30);
+
+    --badge-sky-bg: rgba(14, 165, 233, 0.20);
+    --badge-sky-text: #7dd3fc;
+    --badge-sky-border: rgba(14, 165, 233, 0.30);
+
+    --badge-cyan-bg: rgba(6, 182, 212, 0.20);
+    --badge-cyan-text: #67e8f9;
+    --badge-cyan-border: rgba(6, 182, 212, 0.30);
+
+    --badge-teal-bg: rgba(20, 184, 166, 0.20);
+    --badge-teal-text: #5eead4;
+    --badge-teal-border: rgba(20, 184, 166, 0.30);
+
+    --badge-emerald-bg: rgba(16, 185, 129, 0.20);
+    --badge-emerald-text: var(--color-success-text);
+    --badge-emerald-border: rgba(16, 185, 129, 0.30);
+
+    --badge-amber-bg: rgba(245, 158, 11, 0.20);
+    --badge-amber-text: var(--color-warning-text);
+    --badge-amber-border: rgba(245, 158, 11, 0.30);
+
+    --badge-rose-bg: rgba(244, 63, 94, 0.20);
+    --badge-rose-text: #fda4af;
+    --badge-rose-border: rgba(244, 63, 94, 0.30);
+
+    --badge-orange-bg: rgba(249, 115, 22, 0.20);
+    --badge-orange-text: #fdba74;
+    --badge-orange-border: rgba(249, 115, 22, 0.30);
+
+    --badge-indigo-bg: rgba(99, 102, 241, 0.20);
+    --badge-indigo-text: #a5b4fc;
+    --badge-indigo-border: rgba(99, 102, 241, 0.30);
   }
 
   [data-theme='light'] {
@@ -139,6 +180,47 @@
     --badge-beta-bg: #fef3c7;
     --badge-beta-text: #b45309;
     --badge-beta-border: #fcd34d;
+
+    /* Semantic Badge Tokens (Light mode high contrast) */
+    --badge-purple-bg: #f3e8ff;
+    --badge-purple-text: #6b21a8;
+    --badge-purple-border: #d8b4fe;
+
+    --badge-blue-bg: #dbeafe;
+    --badge-blue-text: #1d4ed8;
+    --badge-blue-border: #93c5fd;
+
+    --badge-sky-bg: #e0f2fe;
+    --badge-sky-text: #0369a1;
+    --badge-sky-border: #7dd3fc;
+
+    --badge-cyan-bg: #cffafe;
+    --badge-cyan-text: #0e7490;
+    --badge-cyan-border: #67e8f9;
+
+    --badge-teal-bg: #ccfbf1;
+    --badge-teal-text: #0f766e;
+    --badge-teal-border: #5eead4;
+
+    --badge-emerald-bg: #d1fae5;
+    --badge-emerald-text: var(--color-success-text);
+    --badge-emerald-border: #a7f3d0;
+
+    --badge-amber-bg: #fef3c7;
+    --badge-amber-text: var(--color-warning-text);
+    --badge-amber-border: #fcd34d;
+
+    --badge-rose-bg: #ffe4e6;
+    --badge-rose-text: #be123c;
+    --badge-rose-border: #fecdd3;
+
+    --badge-orange-bg: #ffedd5;
+    --badge-orange-text: #c2410c;
+    --badge-orange-border: #fdba74;
+
+    --badge-indigo-bg: #e0e7ff;
+    --badge-indigo-text: #4338ca;
+    --badge-indigo-border: #a5b4fc;
   }
 
   * {
@@ -277,6 +359,66 @@
     background-color: var(--badge-beta-bg);
     color: var(--badge-beta-text);
     border: 1px solid var(--badge-beta-border);
+  }
+
+  .badge-purple {
+    background-color: var(--badge-purple-bg);
+    color: var(--badge-purple-text);
+    border: 1px solid var(--badge-purple-border);
+  }
+
+  .badge-blue {
+    background-color: var(--badge-blue-bg);
+    color: var(--badge-blue-text);
+    border: 1px solid var(--badge-blue-border);
+  }
+
+  .badge-sky {
+    background-color: var(--badge-sky-bg);
+    color: var(--badge-sky-text);
+    border: 1px solid var(--badge-sky-border);
+  }
+
+  .badge-cyan {
+    background-color: var(--badge-cyan-bg);
+    color: var(--badge-cyan-text);
+    border: 1px solid var(--badge-cyan-border);
+  }
+
+  .badge-teal {
+    background-color: var(--badge-teal-bg);
+    color: var(--badge-teal-text);
+    border: 1px solid var(--badge-teal-border);
+  }
+
+  .badge-emerald {
+    background-color: var(--badge-emerald-bg);
+    color: var(--badge-emerald-text);
+    border: 1px solid var(--badge-emerald-border);
+  }
+
+  .badge-amber {
+    background-color: var(--badge-amber-bg);
+    color: var(--badge-amber-text);
+    border: 1px solid var(--badge-amber-border);
+  }
+
+  .badge-rose {
+    background-color: var(--badge-rose-bg);
+    color: var(--badge-rose-text);
+    border: 1px solid var(--badge-rose-border);
+  }
+
+  .badge-orange {
+    background-color: var(--badge-orange-bg);
+    color: var(--badge-orange-text);
+    border: 1px solid var(--badge-orange-border);
+  }
+
+  .badge-indigo {
+    background-color: var(--badge-indigo-bg);
+    color: var(--badge-indigo-text);
+    border: 1px solid var(--badge-indigo-border);
   }
 
   .card-hover {

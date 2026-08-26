@@ -130,12 +130,12 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
       );
     if (status === 'reading')
       return (
-        <span className="badge bg-amber-500/15 text-warning-text border border-amber-500/30 text-[10px]">
+        <span className="badge badge-amber text-[10px]">
           <PlayCircle size={11} /> Reading
         </span>
       );
     return (
-      <span className="badge bg-emerald-500/15 text-success-text border border-emerald-500/30 text-[10px]">
+      <span className="badge badge-emerald text-[10px]">
         <CheckCircle2 size={11} /> Completed
       </span>
     );
@@ -144,7 +144,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
   const renderCategoryBadge = (category: BookCategory | string, compact = false) => {
     const meta = getCategoryMeta(category as BookCategory);
     return (
-      <span className={`badge ${meta.bgClass} ${meta.color} border ${compact ? 'text-[10px] px-2 py-0.5' : ''}`}>
+      <span className={`badge ${meta.badgeClass} ${compact ? 'text-[10px] px-2 py-0.5' : ''}`}>
         {category}
       </span>
     );
@@ -338,7 +338,6 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {filteredCurated.map((book) => {
             const userBook = getUserBookForCurated(book.id);
-            const catMeta = getCategoryMeta(book.category);
             return (
               <div key={book.id} className="card p-4 flex flex-col justify-between space-y-3 card-hover">
                 <div className="space-y-2">
@@ -359,8 +358,8 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
 
                 <div className="space-y-2.5 pt-1">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className={`font-medium ${catMeta.color}`}>
-                      <Sparkles size={11} className="inline mr-1" />
+                    <span className="badge badge-amber text-[10px] font-medium flex items-center gap-1">
+                      <Sparkles size={10} />
                       Curated Pick
                     </span>
                     <span className="text-warning-text font-bold">
@@ -569,7 +568,7 @@ function LibraryCard({
   const renderCategoryBadge = (category: BookCategory | string) => {
     const meta = getCategoryMeta(category as BookCategory);
     return (
-      <span className={`badge ${meta.bgClass} ${meta.color} border text-[10px] px-2 py-0.5`}>
+      <span className={`badge ${meta.badgeClass} text-[10px] px-2 py-0.5`}>
         {category}
       </span>
     );
