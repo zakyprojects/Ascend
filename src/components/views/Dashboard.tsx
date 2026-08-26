@@ -424,7 +424,7 @@ function LeagueRankCard({ type, rank, points, countdown }: { type: LeagueType; r
   return (
     <div className="card p-3 text-center relative">
       {type === 'ninetyDay' && (
-        <span className="absolute top-1.5 right-1.5 text-[9px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-bold">
+        <span className="absolute top-1.5 right-1.5 text-[9px] badge-season px-1.5 py-0.5 rounded font-bold">
           Active
         </span>
       )}

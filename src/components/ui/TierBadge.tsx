@@ -36,9 +36,9 @@ export function TierBadge({ totalPoints, size = 'md', showName = false }: TierBa
       <div
         className={`${s.box} rounded-xl flex items-center justify-center shrink-0`}
         style={{
-          backgroundColor: `${tier.color}15`,
-          border: `1.5px solid ${tier.color}40`,
-          boxShadow: `0 0 12px ${tier.color}20`,
+          backgroundColor: `${tier.color}20`,
+          border: `1.5px solid ${tier.color}45`,
+          boxShadow: `0 2px 10px ${tier.color}25`,
         }}
       >
         <Icon size={s.icon} style={{ color: tier.color }} />

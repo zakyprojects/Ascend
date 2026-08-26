@@ -141,10 +141,10 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <div className="font-display font-bold text-content-primary text-lg leading-none">Ascend</div>
-                <span className="whitespace-nowrap shrink-0 text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-bold">
+                <span className="whitespace-nowrap shrink-0 text-[10px] badge-season px-1.5 py-0.5 rounded-full font-bold">
                   {getSeasonLabel()}
                 </span>
-                <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-bold uppercase tracking-wider">
+                <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md badge-beta text-[9px] font-bold uppercase tracking-wider">
                   Beta
                 </span>
               </div>
@@ -285,7 +285,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
               className="w-8 h-8 rounded-lg object-cover shrink-0"
             />
             <span className="font-display font-bold text-content-primary">Ascend</span>
-            <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-bold uppercase tracking-wider">
+            <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md badge-beta text-[9px] font-bold uppercase tracking-wider">
               Beta
             </span>
           </div>

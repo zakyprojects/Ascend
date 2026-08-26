@@ -59,6 +59,16 @@
     --color-warning-soft: rgba(245, 158, 11, 0.12);
     --color-error-soft: rgba(239, 68, 68, 0.12);
     --color-info-soft: rgba(14, 165, 233, 0.12);
+
+    /* Semantic Season Badge Tokens (Dark mode defaults) */
+    --badge-season-bg: rgba(168, 85, 247, 0.20);
+    --badge-season-text: #d8b4fe;
+    --badge-season-border: rgba(168, 85, 247, 0.30);
+
+    /* Semantic Beta Badge Tokens (Dark mode defaults) */
+    --badge-beta-bg: rgba(245, 158, 11, 0.10);
+    --badge-beta-text: #fbbf24;
+    --badge-beta-border: rgba(245, 158, 11, 0.20);
   }
 
   [data-theme='light'] {
@@ -115,6 +125,16 @@
     --color-warning-soft: #fef3c7;
     --color-error-soft: #fee2e2;
     --color-info-soft: #e0f2fe;
+
+    /* Semantic Season Badge Tokens (Light mode high contrast) */
+    --badge-season-bg: #f3e8ff;
+    --badge-season-text: #6b21a8;
+    --badge-season-border: #d8b4fe;
+
+    /* Semantic Beta Badge Tokens (Light mode high contrast) */
+    --badge-beta-bg: #fef3c7;
+    --badge-beta-text: #b45309;
+    --badge-beta-border: #fcd34d;
   }
 
   * {
@@ -224,7 +244,24 @@
   }
 
   .card {
-    @apply bg-bg-800 border border-overlay-subtle rounded-2xl;
+    @apply bg-bg-800 border border-overlay-default rounded-2xl shadow-sm;
+  }
+
+  [data-theme='light'] .card {
+    border-color: var(--border-overlay-medium);
+    box-shadow: var(--shadow-md);
+  }
+
+  .badge-season {
+    background-color: var(--badge-season-bg);
+    color: var(--badge-season-text);
+    border: 1px solid var(--badge-season-border);
+  }
+
+  .badge-beta {
+    background-color: var(--badge-beta-bg);
+    color: var(--badge-beta-text);
+    border: 1px solid var(--badge-beta-border);
   }
 
   .card-hover {
