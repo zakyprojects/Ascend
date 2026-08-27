@@ -114,8 +114,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             },
             error: {
               bg: 'bg-rose-500/15 border-rose-500/30',
-              icon: <AlertCircle className="text-rose-400 shrink-0" size={18} />,
-              title: 'text-rose-400',
+              icon: <AlertCircle className="text-error-text shrink-0" size={18} />,
+              title: 'text-error-text',
               message: 'text-content-secondary',
             },
             warning: {

@@ -89,7 +89,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
           <p className="leading-relaxed">
             Missing a preset habit deducts points equal to its value (1st miss = -1x).
             For <span className="text-content-secondary font-semibold">Below Diamond tier</span> (Bronze to Platinum), penalty escalation caps at <span className="text-warning-text font-semibold">1.5x</span>.
-            For <span className="text-brand-text font-semibold">Diamond tier and above</span>, escalation caps at <span className="text-rose-400 font-semibold">2.5x</span>.
+            For <span className="text-brand-text font-semibold">Diamond tier and above</span>, escalation caps at <span className="text-rose-theme font-semibold">2.5x</span>.
             Completing the habit breaks the miss streak and resets the penalty to 1x!
           </p>
         </div>
@@ -382,7 +382,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
 
           {/* Consecutive Miss Penalty Warning */}
           {habit.isPreset && (habit.consecutiveMisses ?? 0) > 0 && (
-            <div className="mt-1.5 flex items-center gap-1 text-[11px] text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 w-fit font-medium">
+            <div className="mt-1.5 flex items-center gap-1 text-[11px] text-rose-theme bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 w-fit font-medium">
               <AlertTriangle size={11} className="shrink-0" />
               <span>
                 {habit.consecutiveMisses} consecutive miss{(habit.consecutiveMisses ?? 0) > 1 ? 'es' : ''} (Next miss = {getMissPenaltyMultiplier((habit.consecutiveMisses ?? 0) + 1, store.state.totalPoints)}x penalty)

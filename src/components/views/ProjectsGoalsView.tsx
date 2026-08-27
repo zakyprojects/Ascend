@@ -896,7 +896,7 @@ export function ProjectsGoalsView({
   const priorityColor = (p: TaskPriority) => {
     switch (p) {
       case 'high':
-        return 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+        return 'bg-rose-500/15 text-rose-theme border-rose-500/30';
       case 'medium':
         return 'bg-amber-500/15 text-warning-text border-amber-500/30';
       case 'low':
@@ -909,7 +909,7 @@ export function ProjectsGoalsView({
       case 'active':
         return <span className="badge bg-emerald-500/15 text-success-text border border-emerald-500/30 text-[10px] font-bold">ACTIVE</span>;
       case 'achieved':
-        return <span className="badge bg-purple-500/15 text-purple-300 border border-purple-500/30 text-[10px] font-bold">ACHIEVED</span>;
+        return <span className="badge badge-purple text-[10px] font-bold">ACHIEVED</span>;
       case 'abandoned':
         return <span className="badge bg-overlay-subtle text-content-muted border border-overlay-default text-[10px] font-bold">ABANDONED</span>;
     }
@@ -920,7 +920,7 @@ export function ProjectsGoalsView({
       case 'not_started':
         return <span className="badge bg-overlay-subtle text-content-tertiary border border-overlay-default text-[10px]">Not Started</span>;
       case 'in_progress':
-        return <span className="badge bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[10px]">In Progress</span>;
+        return <span className="badge badge-cyan text-[10px]">In Progress</span>;
       case 'on_hold':
         return <span className="badge bg-amber-500/15 text-warning-text border border-amber-500/30 text-[10px]">On Hold</span>;
       case 'completed':
@@ -948,7 +948,7 @@ export function ProjectsGoalsView({
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2.5">
-                <FolderKanban className="text-purple-400" size={26} />
+                <FolderKanban className="text-purple-hierarchy" size={26} />
                 Projects & Goals
               </h1>
               <button
@@ -957,7 +957,7 @@ export function ProjectsGoalsView({
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-default text-xs font-medium transition-all"
                 title="Learn the hierarchy framework: Goal → Project → Task"
               >
-                <HelpCircle size={13} className="text-purple-400" />
+                <HelpCircle size={13} className="text-purple-hierarchy" />
                 <span>How it works</span>
               </button>
             </div>
@@ -968,18 +968,18 @@ export function ProjectsGoalsView({
                     <CheckSquare size={12} /> <span>1. Tasks</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-cyan-400">
+                  <div className="flex items-center gap-1.5 text-cyan-hierarchy">
                     <FolderKanban size={12} /> <span>2. Projects</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-purple-400">
+                  <div className="flex items-center gap-1.5 text-purple-hierarchy">
                     <Target size={12} /> <span>3. Goals</span>
                   </div>
                 </>
               )}
               {tabOrder === 'projectFirst' && (
                 <>
-                  <div className="flex items-center gap-1.5 text-cyan-400">
+                  <div className="flex items-center gap-1.5 text-cyan-hierarchy">
                     <FolderKanban size={12} /> <span>1. Projects</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
@@ -987,18 +987,18 @@ export function ProjectsGoalsView({
                     <CheckSquare size={12} /> <span>2. Tasks</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-purple-400">
+                  <div className="flex items-center gap-1.5 text-purple-hierarchy">
                     <Target size={12} /> <span>3. Goals</span>
                   </div>
                 </>
               )}
               {tabOrder === 'goalFirst' && (
                 <>
-                  <div className="flex items-center gap-1.5 text-purple-400">
+                  <div className="flex items-center gap-1.5 text-purple-hierarchy">
                     <Target size={12} /> <span>1. Goals</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-cyan-400">
+                  <div className="flex items-center gap-1.5 text-cyan-hierarchy">
                     <FolderKanban size={12} /> <span>2. Projects</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
@@ -1063,7 +1063,7 @@ export function ProjectsGoalsView({
                   <span className="text-[9px] sm:text-[10px] uppercase font-bold text-content-muted tracking-wider">Active Projects</span>
                   <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeProjects}</p>
                 </div>
-                <FolderKanban size={18} className="text-cyan-400 opacity-60" />
+                <FolderKanban size={18} className="text-cyan-hierarchy opacity-60" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1071,7 +1071,7 @@ export function ProjectsGoalsView({
                   <span className="text-[9px] sm:text-[10px] uppercase font-bold text-content-muted tracking-wider">Active Goals</span>
                   <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeGoals}</p>
                 </div>
-                <Target size={18} className="text-purple-400 opacity-60" />
+                <Target size={18} className="text-purple-hierarchy opacity-60" />
               </div>
             </>
           )}
@@ -1083,7 +1083,7 @@ export function ProjectsGoalsView({
                   <span className="text-[9px] sm:text-[10px] uppercase font-bold text-content-muted tracking-wider">Active Projects</span>
                   <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeProjects}</p>
                 </div>
-                <FolderKanban size={18} className="text-cyan-400 opacity-60" />
+                <FolderKanban size={18} className="text-cyan-hierarchy opacity-60" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1099,7 +1099,7 @@ export function ProjectsGoalsView({
                   <span className="text-[9px] sm:text-[10px] uppercase font-bold text-content-muted tracking-wider">Active Goals</span>
                   <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeGoals}</p>
                 </div>
-                <Target size={18} className="text-purple-400 opacity-60" />
+                <Target size={18} className="text-purple-hierarchy opacity-60" />
               </div>
             </>
           )}
@@ -1111,7 +1111,7 @@ export function ProjectsGoalsView({
                   <span className="text-[9px] sm:text-[10px] uppercase font-bold text-content-muted tracking-wider">Active Goals</span>
                   <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeGoals}</p>
                 </div>
-                <Target size={18} className="text-purple-400 opacity-60" />
+                <Target size={18} className="text-purple-hierarchy opacity-60" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1119,7 +1119,7 @@ export function ProjectsGoalsView({
                   <span className="text-[9px] sm:text-[10px] uppercase font-bold text-content-muted tracking-wider">Active Projects</span>
                   <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeProjects}</p>
                 </div>
-                <FolderKanban size={18} className="text-cyan-400 opacity-60" />
+                <FolderKanban size={18} className="text-cyan-hierarchy opacity-60" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1139,18 +1139,18 @@ export function ProjectsGoalsView({
             {(tabOrder === 'taskFirst'
               ? [
                   { id: 'tasks' as const, label: `1. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
-                  { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' },
-                  { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target, activeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
+                  { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'badge-cyan' },
+                  { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target, activeColor: 'badge-purple' },
                 ]
               : tabOrder === 'projectFirst'
               ? [
-                  { id: 'projects' as const, label: `1. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' },
+                  { id: 'projects' as const, label: `1. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'badge-cyan' },
                   { id: 'tasks' as const, label: `2. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
-                  { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target, activeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
+                  { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target, activeColor: 'badge-purple' },
                 ]
               : [
-                  { id: 'goals' as const, label: `1. Goals (${goals.length})`, icon: Target, activeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
-                  { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' },
+                  { id: 'goals' as const, label: `1. Goals (${goals.length})`, icon: Target, activeColor: 'badge-purple' },
+                  { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'badge-cyan' },
                   { id: 'tasks' as const, label: `3. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
                 ]
             ).map((tab) => {
@@ -1199,10 +1199,10 @@ export function ProjectsGoalsView({
             className={`flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-xs font-semibold transition-all shrink-0 ${
               goals.length === 0
                 ? 'opacity-50 cursor-not-allowed bg-overlay-subtle border-overlay-subtle text-content-disabled'
-                : 'bg-overlay-subtle hover:bg-purple-500/20 text-content-tertiary hover:text-purple-300 border-overlay-default hover:border-purple-500/30 cursor-pointer'
+                : 'bg-overlay-subtle hover:bg-purple-500/20 text-content-tertiary hover:text-purple-hierarchy border-overlay-default hover:border-purple-500/30 cursor-pointer'
             }`}
           >
-            <ArrowDownUp size={13} className={goals.length === 0 ? 'text-content-disabled' : 'text-purple-400'} />
+            <ArrowDownUp size={13} className={goals.length === 0 ? 'text-content-disabled' : 'text-purple-hierarchy'} />
             <span className="hidden sm:inline">
               {goals.length === 0
                 ? '🔒 Sort View'
@@ -1266,7 +1266,7 @@ export function ProjectsGoalsView({
                 onClick={() => setGoalStatusFilter('achieved')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                   goalStatusFilter === 'achieved'
-                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                    ? 'badge-purple font-semibold'
                     : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
@@ -1317,13 +1317,13 @@ export function ProjectsGoalsView({
                           )}
                           {goal.category && (
                             <span className="badge bg-overlay-subtle text-content-tertiary border border-overlay-default text-[10px] flex items-center gap-1">
-                              <Tag size={10} className="text-purple-400 shrink-0" />
+                              <Tag size={10} className="text-purple-hierarchy shrink-0" />
                               <span className="truncate max-w-[140px]">{goal.category}</span>
                             </span>
                           )}
                           {goal.targetDate ? (
                             <span className="badge bg-overlay-subtle text-content-tertiary border border-overlay-default text-[10px] flex items-center gap-1">
-                              <Calendar size={10} className="text-purple-400 shrink-0" />
+                              <Calendar size={10} className="text-purple-hierarchy shrink-0" />
                               <span>Target: {formatDateShort(goal.targetDate)}</span>
                             </span>
                           ) : (
@@ -1360,7 +1360,7 @@ export function ProjectsGoalsView({
                               setFilterGoalId(goal.id);
                               setActiveTab('projects');
                             }}
-                            className="text-xs text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-colors shrink-0 whitespace-nowrap"
+                            className="text-xs text-purple-hierarchy hover:text-purple-hierarchy font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-colors shrink-0 whitespace-nowrap"
                             title="View linked projects"
                           >
                             <span>Projects</span>
@@ -1369,7 +1369,7 @@ export function ProjectsGoalsView({
                         ) : (
                           <button
                             onClick={() => openCreateProjectModal(goal.id)}
-                            className="text-xs text-content-muted hover:text-purple-300 font-medium flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-overlay-subtle border border-overlay-default transition-colors shrink-0 whitespace-nowrap"
+                            className="text-xs text-content-muted hover:text-purple-hierarchy font-medium flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-overlay-subtle border border-overlay-default transition-colors shrink-0 whitespace-nowrap"
                             title="Create first project for this goal"
                           >
                             <Plus size={12} />
@@ -1387,7 +1387,7 @@ export function ProjectsGoalsView({
                           </button>
                           <button
                             onClick={() => setDeleteGoalTarget(goal)}
-                            className="p-1.5 text-content-muted hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                            className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors"
                             title="Delete Goal"
                           >
                             <Trash2 size={14} />
@@ -1398,12 +1398,12 @@ export function ProjectsGoalsView({
 
                     {/* Goal Nudge: 0 Linked Projects */}
                     {prog.linkedProjectsCount === 0 && (
-                      <div className="bg-purple-500/10 border border-purple-500/20 text-purple-300 p-3 rounded-lg text-xs flex items-center justify-between mt-3">
+                      <div className="badge-purple p-3 rounded-lg text-xs flex items-center justify-between mt-3">
                         <span className="leading-relaxed">🎯 A goal without a plan is just a wish. Link a project to define your action phases.</span>
                         <button
                           type="button"
                           onClick={() => openCreateProjectModal(goal.id)}
-                          className="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 font-semibold border border-purple-500/30 transition-colors shrink-0 ml-3 whitespace-nowrap"
+                          className="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-hierarchy font-semibold border border-purple-500/30 transition-colors shrink-0 ml-3 whitespace-nowrap"
                         >
                           + Link Project
                         </button>
@@ -1418,7 +1418,7 @@ export function ProjectsGoalsView({
                             {prog.isManual ? 'Manual Progress' : 'Overall Progress'}
                           </span>
                           {prog.isManual ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 font-semibold border border-purple-500/20">
+                            <span className="badge badge-purple text-[10px] px-2 py-0.5 font-semibold">
                               0 linked projects
                             </span>
                           ) : (
@@ -1495,10 +1495,10 @@ export function ProjectsGoalsView({
           {filterGoalId && (
             <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-2xl flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                <Target size={16} className="text-purple-400 shrink-0" />
+                <Target size={16} className="text-purple-hierarchy shrink-0" />
                 <span className="text-xs text-content-tertiary">
                   Showing projects linked to Goal:{' '}
-                  <strong className="text-purple-300 font-bold">{getGoalName(filterGoalId)}</strong>
+                  <strong className="text-purple-hierarchy font-bold">{getGoalName(filterGoalId)}</strong>
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -1507,7 +1507,7 @@ export function ProjectsGoalsView({
                     setFilterGoalId(null);
                     setActiveTab('goals');
                   }}
-                  className="text-xs text-purple-400 hover:text-purple-300 underline font-medium"
+                  className="text-xs text-purple-hierarchy hover:text-purple-hierarchy underline font-medium"
                 >
                   ← Back to all Goals
                 </button>
@@ -1575,7 +1575,7 @@ export function ProjectsGoalsView({
                 onClick={() => setProjectStatusFilter('in_progress')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
                   projectStatusFilter === 'in_progress'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                    ? 'badge-cyan font-semibold'
                     : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
@@ -1683,7 +1683,7 @@ export function ProjectsGoalsView({
                                 setFilterGoalId(project.goalId || null);
                                 setActiveTab('goals');
                               }}
-                              className="badge bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border border-purple-500/20 text-[10px] truncate flex items-center gap-1 transition-colors"
+                              className="badge bg-purple-500/10 text-purple-hierarchy hover:bg-purple-500/20 border border-purple-500/20 text-[10px] truncate flex items-center gap-1 transition-colors"
                               title={`Linked to Goal: ${getGoalName(project.goalId)}`}
                             >
                               <Target size={10} className="shrink-0" />
@@ -1701,7 +1701,7 @@ export function ProjectsGoalsView({
                                   ? 'bg-amber-500/15 text-warning-text border-amber-500/30'
                                   : project.status === 'completed'
                                   ? 'bg-emerald-500/15 text-success-text border-emerald-500/30'
-                                  : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
+                                  : 'badge-cyan'
                               }`}
                             >
                               {lockStatus.isLocked ? (
@@ -1720,7 +1720,7 @@ export function ProjectsGoalsView({
                             <span
                               className={`badge text-[10px] flex items-center gap-1 border ${
                                 isOverdue
-                                  ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 font-bold'
+                                  ? 'bg-rose-500/15 text-rose-theme border-rose-500/30 font-bold'
                                   : isDueToday
                                   ? 'bg-amber-500/15 text-warning-text border-amber-500/30 font-bold'
                                   : 'bg-overlay-subtle text-content-tertiary border border-overlay-default'
@@ -1803,7 +1803,7 @@ export function ProjectsGoalsView({
                             setFilterProjectId(project.id);
                             setActiveTab('tasks');
                           }}
-                          className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 transition-colors shrink-0 whitespace-nowrap"
+                          className="text-xs text-cyan-hierarchy hover:text-cyan-hierarchy font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 transition-colors shrink-0 whitespace-nowrap"
                           title="View project tasks"
                         >
                           <span>Tasks</span>
@@ -1820,7 +1820,7 @@ export function ProjectsGoalsView({
                           </button>
                           <button
                             onClick={() => setDeleteProjectTarget(project)}
-                            className="p-1.5 text-content-muted hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                            className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors"
                             title="Delete Project"
                           >
                             <Trash2 size={14} />
@@ -1831,7 +1831,7 @@ export function ProjectsGoalsView({
 
                     {/* Project Nudge: 0 Linked Tasks */}
                     {prog.total === 0 && (
-                      <div className="bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 p-3 rounded-lg text-xs flex items-center justify-between mt-3">
+                      <div className="badge-cyan p-3 rounded-lg text-xs flex items-center justify-between mt-3">
                         <span className="leading-relaxed">⚡ This project is stalled. Break it down and add an atomic task to start the engine.</span>
                         <button
                           type="button"
@@ -1843,7 +1843,7 @@ export function ProjectsGoalsView({
                               quickTaskInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 font-semibold border border-cyan-500/30 transition-colors shrink-0 ml-3 whitespace-nowrap"
+                          className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-hierarchy font-semibold border border-cyan-500/30 transition-colors shrink-0 ml-3 whitespace-nowrap"
                         >
                           + Add Task
                         </button>
@@ -1858,7 +1858,7 @@ export function ProjectsGoalsView({
                             {prog.isManual ? 'Manual Progress' : 'Task Completion'}
                           </span>
                           {prog.isManual ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 font-semibold border border-cyan-500/20">
+                            <span className="badge badge-cyan text-[10px] px-2 py-0.5 font-semibold">
                               0 linked tasks
                             </span>
                           ) : (
@@ -1938,10 +1938,10 @@ export function ProjectsGoalsView({
               <div className="space-y-2">
                 <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <FolderKanban size={16} className="text-cyan-400 shrink-0" />
+                    <FolderKanban size={16} className="text-cyan-hierarchy shrink-0" />
                     <span className="text-xs text-content-tertiary">
                       Showing tasks for Project:{' '}
-                      <strong className="text-cyan-300 font-bold">{getProjectName(filterProjectId)}</strong>
+                      <strong className="text-cyan-hierarchy font-bold">{getProjectName(filterProjectId)}</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -1950,7 +1950,7 @@ export function ProjectsGoalsView({
                         setFilterProjectId(null);
                         setActiveTab('projects');
                       }}
-                      className="text-xs text-cyan-400 hover:text-cyan-300 underline font-medium"
+                      className="text-xs text-cyan-hierarchy hover:text-cyan-hierarchy underline font-medium"
                     >
                       ← Back to all Projects
                     </button>
@@ -2116,13 +2116,13 @@ export function ProjectsGoalsView({
           {filteredTasks.length === 0 ? (
             goals.length === 0 ? (
               /* The 'Wake-Up Call' Intervention: No Goals Set Yet */
-              <div className="card p-8 sm:p-10 text-center border border-purple-500/30 bg-gradient-to-b from-purple-950/20 via-bg-800/80 to-bg-900/90 rounded-2xl space-y-5 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+              <div className="card p-8 sm:p-10 text-center border-overlay-medium space-y-5 shadow-md relative overflow-hidden hero-card-glow-purple">
+                <div className="hero-glow hero-glow-purple" />
                 <div className="flex flex-col items-center gap-3 relative z-10">
-                  <span className="px-3 py-1 rounded-full text-[11px] font-semibold border border-purple-500/30 bg-purple-500/10 text-purple-300">
+                  <span className="badge badge-purple">
                     🎯 Vision-First Architecture
                   </span>
-                  <div className="w-16 h-16 rounded-2xl border border-purple-500/30 bg-purple-500/10 flex items-center justify-center text-purple-400 shadow-lg shadow-purple-950/50">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg hero-icon-glow-purple badge-purple">
                     <Target size={32} />
                   </div>
                 </div>
@@ -2131,10 +2131,10 @@ export function ProjectsGoalsView({
                   <h3 className="text-base sm:text-xl font-bold text-content-primary tracking-tight">
                     Don&apos;t just be busy, be effective.
                   </h3>
-                  <p className="text-[10px] sm:text-sm text-slate-300/90 leading-relaxed">
+                  <p className="text-[10px] sm:text-sm text-content-secondary leading-relaxed">
                     A task without a goal is just a distraction. Set your north star first, then build the daily habits to reach it.
                   </p>
-                  <p className="text-[9px] sm:text-xs italic text-purple-300/80 pt-1">
+                  <p className="text-[9px] sm:text-xs italic text-purple-hierarchy pt-1 font-medium">
                     “Dreams without goals are just dreams.” – Denzel Washington
                   </p>
                 </div>
@@ -2161,7 +2161,7 @@ export function ProjectsGoalsView({
                   </button>
                 </div>
 
-                <div className="pt-4 mt-2 border-t border-purple-500/20 w-full relative z-10">
+                <div className="pt-4 mt-2 border-t border-overlay-default w-full relative z-10">
                   <p className="text-xs text-content-muted">
                     <strong className="text-content-tertiary font-semibold">What comes next?</strong> Once your Goal is set, this space will become your daily engine. Tasks are the small, actionable steps you&apos;ll take every day to achieve it.
                   </p>
@@ -2274,7 +2274,7 @@ export function ProjectsGoalsView({
                                 className={`badge text-[10px] flex items-center gap-1 max-w-[180px] truncate border ${
                                   projectLock.isLocked
                                     ? 'bg-amber-500/10 text-warning-text border-amber-500/30'
-                                    : 'bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 border-cyan-500/20'
+                                    : 'badge-cyan'
                                 }`}
                                 title={`Project: ${getProjectName(task.projectId)} ${projectLock.isLocked ? '(Locked)' : ''}`}
                               >
@@ -2287,7 +2287,7 @@ export function ProjectsGoalsView({
                               <span
                                 className={`badge text-[10px] flex items-center gap-1 border ${
                                   isOverdue
-                                    ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 font-bold'
+                                    ? 'bg-rose-500/15 text-rose-theme border-rose-500/30 font-bold'
                                     : isDueToday
                                     ? 'bg-amber-500/15 text-warning-text border-amber-500/30 font-bold'
                                     : 'bg-overlay-subtle text-content-muted border-overlay-default'
@@ -2319,7 +2319,7 @@ export function ProjectsGoalsView({
                               onStartFocusSession(task.title);
                             }
                           }}
-                          className="px-2.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-400 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+                          className="px-2.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-hierarchy text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
                           title="Start Deep Focus Session with this task"
                         >
                           <Timer size={13} />
@@ -2336,7 +2336,7 @@ export function ProjectsGoalsView({
 
                         <button
                           onClick={() => setDeleteTaskTarget(task)}
-                          className="p-1.5 text-content-muted hover:text-rose-400 transition-colors"
+                          className="p-1.5 text-content-muted hover:text-rose-theme transition-colors"
                           title="Delete Task"
                         >
                           <Trash2 size={14} />
@@ -2394,7 +2394,7 @@ export function ProjectsGoalsView({
 
                               <button
                                 onClick={() => store.deleteSubtask(task.id, st.id)}
-                                className="p-1 text-content-disabled hover:text-rose-400 opacity-0 group-hover/st:opacity-100 transition-all"
+                                className="p-1 text-content-disabled hover:text-rose-theme opacity-0 group-hover/st:opacity-100 transition-all"
                                 title="Delete Subtask"
                               >
                                 <Trash2 size={12} />
@@ -2449,7 +2449,7 @@ export function ProjectsGoalsView({
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-content-tertiary mb-1">
-              Goal Title <span className="text-rose-400">*</span>
+              Goal Title <span className="text-rose-theme">*</span>
             </label>
             <input
               type="text"
@@ -2487,7 +2487,7 @@ export function ProjectsGoalsView({
                   key={cat}
                   type="button"
                   onClick={() => setGoalFormCategory(cat)}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-overlay-subtle hover:bg-purple-500/20 text-content-muted hover:text-purple-300 border border-overlay-subtle transition-all"
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-overlay-subtle hover:bg-purple-500/20 text-content-muted hover:text-purple-hierarchy border border-overlay-subtle transition-all"
                 >
                   {cat}
                 </button>
@@ -2576,7 +2576,7 @@ export function ProjectsGoalsView({
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-content-tertiary mb-1">
-              Project Title <span className="text-rose-400">*</span>
+              Project Title <span className="text-rose-theme">*</span>
             </label>
             <input
               type="text"
@@ -2686,7 +2686,7 @@ export function ProjectsGoalsView({
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-content-tertiary mb-1">
-              Task Title <span className="text-rose-400">*</span>
+              Task Title <span className="text-rose-theme">*</span>
             </label>
             <input
               type="text"
@@ -2761,7 +2761,7 @@ export function ProjectsGoalsView({
                   <button
                     type="button"
                     onClick={() => setTaskFormSubtasks((prev) => prev.filter((_, i) => i !== idx))}
-                    className="text-content-muted hover:text-rose-400 p-1"
+                    className="text-content-muted hover:text-rose-theme p-1"
                   >
                     <Trash2 size={12} />
                   </button>
@@ -2892,21 +2892,21 @@ export function ProjectsGoalsView({
             <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/25 space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-md bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center text-xs font-bold">
+                  <span className="w-6 h-6 rounded-md bg-purple-500/20 text-purple-hierarchy border border-purple-500/30 flex items-center justify-center text-xs font-bold">
                     3
                   </span>
-                  <h4 className="text-xs sm:text-sm font-bold text-purple-300 flex items-center gap-1.5">
+                  <h4 className="text-xs sm:text-sm font-bold text-purple-hierarchy flex items-center gap-1.5">
                     <Target size={14} /> Goal (Long Term)
                   </h4>
                 </div>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                <span className="badge-purple text-[10px] font-semibold px-2 py-0.5 rounded-md">
                   North Star
                 </span>
               </div>
               <p className="text-xs text-content-tertiary leading-relaxed pl-8">
                 The final destination. What you want your life to look like in the future.
               </p>
-              <div className="pl-8 pt-1 text-[11px] text-purple-200/90 font-medium">
+              <div className="pl-8 pt-1 text-[11px] text-purple-hierarchy font-medium">
                 <span className="text-content-muted font-normal">Examples:</span> Financial Freedom, Peak Physical Health, Fluent in a New Language, Become Debt-Free.
               </div>
             </div>
@@ -2915,21 +2915,21 @@ export function ProjectsGoalsView({
             <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/25 space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-md bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-xs font-bold">
+                  <span className="w-6 h-6 rounded-md bg-cyan-500/20 text-cyan-hierarchy border border-cyan-500/30 flex items-center justify-center text-xs font-bold">
                     2
                   </span>
-                  <h4 className="text-xs sm:text-sm font-bold text-cyan-300 flex items-center gap-1.5">
+                  <h4 className="text-xs sm:text-sm font-bold text-cyan-hierarchy flex items-center gap-1.5">
                     <FolderKanban size={14} /> Project (Medium Term)
                   </h4>
                 </div>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className="badge-cyan text-[10px] font-semibold px-2 py-0.5 rounded-md">
                   Action Phase
                 </span>
               </div>
               <p className="text-xs text-content-tertiary leading-relaxed pl-8">
                 The vehicle. A short-term mission linked directly to your Goal to get you closer.
               </p>
-              <div className="pl-8 pt-1 text-[11px] text-cyan-200/90 font-medium">
+              <div className="pl-8 pt-1 text-[11px] text-cyan-hierarchy font-medium">
                 <span className="text-content-muted font-normal">Examples:</span> 90-Day Gym Bootcamp, Launch Shopify Store, 30-Day Speaking Course, Pay off Credit Card.
               </div>
             </div>

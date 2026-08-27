@@ -110,7 +110,7 @@ export function NotificationCenter({
       case 'partner_invite':
       case 'partner_invite_accepted':
       case 'partner_invite_declined':
-        return <Users size={16} className="text-sky-400" />;
+        return <Users size={16} className="text-sky-theme" />;
       case 'partner_nudge':
         return <Zap size={16} className="text-warning-text" />;
       case 'partner_pledge_done':
@@ -118,13 +118,13 @@ export function NotificationCenter({
       case 'missed_habit':
       case 'partner_missed_habit':
       case 'streak_risk':
-        return <AlertTriangle size={16} className="text-rose-400" />;
+        return <AlertTriangle size={16} className="text-rose-theme" />;
       case 'challenge_completed':
         return <Award size={16} className="text-success-text" />;
       case 'daily_reminder':
         return <Calendar size={16} className="text-warning-text" />;
       default:
-        return <Info size={16} className="text-purple-400" />;
+        return <Info size={16} className="text-purple-hierarchy" />;
     }
   };
 
@@ -247,7 +247,7 @@ export function NotificationCenter({
                       <button
                         onClick={(e) => handleClear(notif.id, e)}
                         title="Clear notification"
-                        className="p-1 text-content-disabled hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                        className="p-1 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all"
                       >
                         <Trash2 size={14} />
                       </button>

@@ -195,8 +195,8 @@ export function TimeBlockModal({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Validation Error Banner */}
         {validationError && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2.5 text-rose-300 text-xs animate-shake">
-            <AlertTriangle size={16} className="shrink-0 mt-0.5 text-rose-400" />
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2.5 text-rose-theme text-xs animate-shake">
+            <AlertTriangle size={16} className="shrink-0 mt-0.5 text-rose-theme" />
             <span className="leading-relaxed">{validationError}</span>
           </div>
         )}

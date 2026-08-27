@@ -265,7 +265,7 @@ export function ScheduleTab({
           {dailyBlocks.length > 0 && (
             <button
               onClick={() => setShowClearDayModal(true)}
-              className="p-2 text-xs text-content-muted hover:text-rose-300 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer shrink-0"
+              className="p-2 text-xs text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer shrink-0"
               title="Clear Schedule for this Day"
             >
               <RotateCcw size={15} />
@@ -464,9 +464,9 @@ export function ScheduleTab({
         <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
           <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Deep Work</span>
-            <BrainCircuit size={14} className="text-indigo-400" />
+            <BrainCircuit size={14} className="text-indigo-theme" />
           </div>
-          <p className="text-lg font-bold text-indigo-300">
+          <p className="text-lg font-bold text-indigo-theme">
             {formatDurationHuman(liveStats.deepWorkMinutesToday)}
           </p>
           <p className="text-[11px] text-content-disabled">Focus & High-leverage</p>
@@ -869,7 +869,7 @@ export function ScheduleTab({
                       </button>
                       <button
                         onClick={() => setDeleteTargetBlock(block)}
-                        className="p-1.5 text-content-muted hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                         title="Delete Block"
                       >
                         <Trash2 size={15} />

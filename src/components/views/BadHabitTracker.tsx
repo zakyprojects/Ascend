@@ -115,7 +115,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
-            <ShieldAlert className="text-rose-400" size={26} />
+            <ShieldAlert className="text-rose-theme" size={26} />
             Bad Habit Reduction Tracker
           </h1>
           <p className="text-sm text-content-disabled mt-1">
@@ -143,7 +143,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-theme shrink-0">
             <TrendingUp size={22} />
           </div>
           <div>
@@ -155,7 +155,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
             <Award size={22} />
           </div>
           <div>
@@ -179,10 +179,10 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               <span className="text-content-secondary">Point Eligibility:</span> Only the <span className="text-success-text font-semibold">first 2 habits</span> (by creation order) earn/lose points. Slot reassigns automatically upon deletion or completion.
             </li>
             <li>
-              <span className="text-content-secondary">Daily Actions:</span> Resisted awards <span className="text-success-text font-semibold">+10 pts</span>. Logging Occurred deducts points using rank-tiered escalation (capped at <span className="text-warning-text font-bold">1.5x</span> for Bronze–Platinum, <span className="text-rose-400 font-bold">2.5x</span> for Diamond+). Once logged, action locks for today. Undo is available for today's action.
+              <span className="text-content-secondary">Daily Actions:</span> Resisted awards <span className="text-success-text font-semibold">+10 pts</span>. Logging Occurred deducts points using rank-tiered escalation (capped at <span className="text-warning-text font-bold">1.5x</span> for Bronze–Platinum, <span className="text-rose-theme font-bold">2.5x</span> for Diamond+). Once logged, action locks for today. Undo is available for today's action.
             </li>
             <li>
-              <span className="text-content-secondary">No-Report Auto-Penalty:</span> Missing a day applies an automatic <span className="text-rose-400 font-semibold">-5 pts base</span> penalty at local midnight/hydration (scaled by your tier multiplier), breaks streak, and escalates future penalties. Cannot be undone.
+              <span className="text-content-secondary">No-Report Auto-Penalty:</span> Missing a day applies an automatic <span className="text-rose-theme font-semibold">-5 pts base</span> penalty at local midnight/hydration (scaled by your tier multiplier), breaks streak, and escalates future penalties. Cannot be undone.
             </li>
             <li>
               <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="text-brand-text font-semibold">75%</span> of commitment duration. Completing preserves points earned!
@@ -285,7 +285,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                       {/* Delete Button */}
                       <button
                         onClick={() => setDeleteModalHabit(bh)}
-                        className="p-1.5 rounded-lg text-content-disabled hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                        className="p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all"
                         title="Delete Bad Habit (Reverses net points)"
                       >
                         <Trash2 size={16} />
@@ -351,13 +351,13 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         disabled={!!todayLog}
                         className={`flex-1 py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 font-medium text-xs transition-all ${
                           status === 'occurred'
-                            ? 'bg-rose-500/20 border-rose-500 text-rose-300 font-bold shadow-lg shadow-rose-500/10'
+                            ? 'bg-rose-500/20 border-rose-500 text-rose-theme font-bold shadow-lg shadow-rose-500/10'
                             : todayLog
                             ? 'bg-bg-800 border-overlay-subtle text-content-subtle cursor-not-allowed opacity-60'
                             : 'bg-bg-700/80 border-overlay-default text-content-tertiary hover:bg-rose-500/10 hover:border-rose-500/40'
                         }`}
                       >
-                        <XCircle size={16} className={status === 'occurred' ? 'text-rose-400' : 'text-content-muted'} />
+                        <XCircle size={16} className={status === 'occurred' ? 'text-rose-theme' : 'text-content-muted'} />
                         <span>Occurred Today {isPointEligible ? '(Deduct Pts)' : '(0 pts)'}</span>
                       </button>
                     </div>
@@ -369,7 +369,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           <Lock size={12} className="text-content-disabled" />
                           Today's action locked ({todayLog.status === 'resisted' ? 'Resisted' : todayLog.status === 'occurred' ? 'Occurred' : 'No Report Penalty'})
                           {todayLog.pointsAwardedOrDeducted !== 0 && (
-                            <span className={todayLog.pointsAwardedOrDeducted > 0 ? 'text-success-text font-bold' : 'text-rose-400 font-bold'}>
+                            <span className={todayLog.pointsAwardedOrDeducted > 0 ? 'text-success-text font-bold' : 'text-rose-theme font-bold'}>
                               ({todayLog.pointsAwardedOrDeducted > 0 ? `+${todayLog.pointsAwardedOrDeducted}` : todayLog.pointsAwardedOrDeducted} pts)
                             </span>
                           )}
@@ -410,7 +410,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                               isResisted
                                 ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40'
                                 : isOccurred
-                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+                                ? 'bg-rose-500/20 text-rose-theme border border-rose-500/40'
                                 : isNoReport
                                 ? 'bg-amber-500/20 text-warning-text border border-amber-500/40'
                                 : 'bg-bg-700/50 text-content-subtle border border-overlay-subtle'
@@ -472,7 +472,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
                   <button
                     onClick={() => setDeleteModalHabit(bh)}
-                    className="btn-secondary text-xs py-1.5 px-3 text-rose-400 hover:bg-rose-500/10 border-rose-500/20"
+                    className="btn-secondary text-xs py-1.5 px-3 text-rose-theme hover:bg-rose-500/10 border-rose-500/20"
                     title="Delete permanently (reverses net points)"
                   >
                     Delete Record
@@ -557,7 +557,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               </div>
             )}
 
-            {durationError && <p className="text-xs text-rose-400 mt-1">{durationError}</p>}
+            {durationError && <p className="text-xs text-error-text mt-1">{durationError}</p>}
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -598,7 +598,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 </div>
               ) : (
                 <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-content-secondary space-y-2">
-                  <p className="font-bold text-rose-400 flex items-center gap-1.5">
+                  <p className="font-bold text-rose-theme flex items-center gap-1.5">
                     <AlertTriangle size={16} />
                     Warning: Strict Point Reversal Rule
                   </p>
@@ -606,7 +606,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                     Deleting <strong className="text-content-primary">"{deleteModalHabit.name}"</strong> will permanently remove all logs and streak history.
                   </p>
                   <p>
-                    Current net point contribution: <strong className={netPoints >= 0 ? 'text-success-text' : 'text-rose-400'}>{netPoints >= 0 ? `+${netPoints}` : netPoints} pts</strong>.
+                    Current net point contribution: <strong className={netPoints >= 0 ? 'text-success-text' : 'text-rose-theme'}>{netPoints >= 0 ? `+${netPoints}` : netPoints} pts</strong>.
                   </p>
                   <p className="text-content-muted italic">
                     Deleting will reverse all {netPoints} pts from your total score so your balance is adjusted as if this habit was never created.

@@ -59,9 +59,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
       case 'beginner':
         return 'bg-emerald-500/15 text-success-text border-emerald-500/30';
       case 'intermediate':
-        return 'bg-blue-500/15 text-blue-400 border-blue-500/30';
+        return 'badge-blue';
       case 'advanced':
-        return 'bg-purple-500/15 text-purple-400 border-purple-500/30';
+        return 'badge-purple';
     }
   };
 
@@ -96,7 +96,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
-            <Zap className="text-purple-400" size={26} />
+            <Zap className="text-purple-hierarchy" size={26} />
             Skill Learning Tracker
           </h1>
           <p className="text-sm text-content-disabled mt-1">
@@ -112,7 +112,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
       {/* Hero Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
             <Target size={22} />
           </div>
           <div>
@@ -124,7 +124,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-theme shrink-0">
             <Clock size={22} />
           </div>
           <div>
@@ -175,7 +175,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       </div>
                       <button
                         onClick={() => setDeleteModalSkill(skill)}
-                        className="text-content-subtle hover:text-rose-400 p-1"
+                        className="text-content-subtle hover:text-rose-theme p-1"
                         title="Delete Skill"
                       >
                         <Trash2 size={16} />
@@ -228,7 +228,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
               return (
                 <div key={log.id} className="card p-3.5 flex items-start justify-between card-hover">
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0 mt-0.5">
+                    <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0 mt-0.5">
                       <Clock size={18} />
                     </div>
                     <div>
@@ -246,7 +246,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     </span>
                     <button
                       onClick={() => setDeleteModalLog(log)}
-                      className="text-content-subtle hover:text-rose-400 p-1 transition-colors"
+                      className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
                       title="Delete Practice Session Log"
                     >
                       <Trash2 size={16} />
@@ -324,7 +324,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
           <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
             <span>Points to earn:</span>
-            <span className="font-bold text-purple-400">+{Math.min(duration, 60)} pts</span>
+            <span className="font-bold text-purple-hierarchy">+{Math.min(duration, 60)} pts</span>
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -351,7 +351,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                   onClick={() => setManualLevel(lvl)}
                   className={`p-3 rounded-xl border text-xs font-bold capitalize transition-all ${
                     manualLevel === lvl
-                      ? 'bg-purple-500/20 border-purple-500 text-purple-300'
+                      ? 'badge-purple border-purple-500'
                       : 'bg-bg-700 border-overlay-default text-content-muted hover:bg-bg-600'
                   }`}
                 >

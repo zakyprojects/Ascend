@@ -367,7 +367,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const priorityColor = (p: WeeklyGoalPriority) => {
     switch (p) {
       case 'high':
-        return 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+        return 'bg-rose-500/15 text-rose-theme border-rose-500/30';
       case 'medium':
         return 'bg-amber-500/15 text-warning-text border-amber-500/30';
       case 'low':
@@ -456,7 +456,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </div>
             <div className="w-px h-8 bg-overlay-default" />
             <div className="text-center">
-              <span className="text-lg font-bold text-rose-400 block">{goalStats.highPriorityCompleted}</span>
+              <span className="text-lg font-bold text-rose-theme block">{goalStats.highPriorityCompleted}</span>
               <span className="text-[10px] uppercase tracking-wider text-content-muted font-medium">High Pri Done</span>
             </div>
           </div>
@@ -625,7 +625,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                       </button>
                       <button
                         onClick={() => setDeleteGoalModal(item)}
-                        className="p-1.5 text-content-muted hover:text-rose-400 transition-colors"
+                        className="p-1.5 text-content-muted hover:text-rose-theme transition-colors"
                         title="Delete Goal"
                       >
                         <Trash2 size={15} />
@@ -839,7 +839,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                     </button>
                     <button
                       onClick={() => setDeleteReflectionModal(ref)}
-                      className="p-1 text-content-muted hover:text-rose-400 transition-colors"
+                      className="p-1 text-content-muted hover:text-rose-theme transition-colors"
                       title="Delete reflection"
                     >
                       <Trash2 size={14} />
@@ -867,7 +867,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         <div className="space-y-4 pt-2">
           <div>
             <label className="block text-xs font-semibold text-content-tertiary mb-1">
-              Goal Title <span className="text-rose-400">*</span>
+              Goal Title <span className="text-rose-theme">*</span>
             </label>
             <input
               type="text"
@@ -939,7 +939,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-content-tertiary mb-1">
-                  Select Workout <span className="text-rose-400">*</span>
+                  Select Workout <span className="text-rose-theme">*</span>
                 </label>
                 <select
                   value={linkedItemId}
@@ -947,8 +947,8 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                     const selectedVal = e.target.value;
                     setLinkedItemId(selectedVal);
                     if (selectedVal) {
-                      const selectedLower = selectedVal.trim().toLowerCase();
-                      const recentLog = (store.state.workouts || [])
+                       const selectedLower = selectedVal.trim().toLowerCase();
+                       const recentLog = (store.state.workouts || [])
                         .slice()
                         .reverse()
                         .find((w) => (w.type || '').trim().toLowerCase() === selectedLower);
@@ -971,7 +971,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-content-tertiary mb-1">
-                  Target Unit <span className="text-rose-400">*</span>
+                  Target Unit <span className="text-rose-theme">*</span>
                 </label>
                 <select
                   value={unit}
@@ -991,7 +991,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {linkedModule === 'habit' && (
             <div>
               <label className="block text-xs font-semibold text-content-tertiary mb-1">
-                Select Habit <span className="text-rose-400">*</span>
+                Select Habit <span className="text-rose-theme">*</span>
               </label>
               <select
                 value={linkedItemId}
@@ -1011,7 +1011,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {linkedModule === 'reading' && (
             <div>
               <label className="block text-xs font-semibold text-content-tertiary mb-1">
-                Select Book <span className="text-rose-400">*</span>
+                Select Book <span className="text-rose-theme">*</span>
               </label>
               <select
                 value={linkedItemId}
@@ -1031,7 +1031,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {linkedModule === 'skill' && (
             <div>
               <label className="block text-xs font-semibold text-content-tertiary mb-1">
-                Select Skill <span className="text-rose-400">*</span>
+                Select Skill <span className="text-rose-theme">*</span>
               </label>
               <select
                 value={linkedItemId}

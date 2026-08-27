@@ -182,7 +182,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-theme shrink-0">
             <BookMarked size={22} />
           </div>
           <div>
@@ -233,7 +233,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                       </div>
                       <button
                         onClick={() => setDeleteModalBook(book)}
-                        className="text-content-subtle hover:text-rose-400 p-1"
+                        className="text-content-subtle hover:text-rose-theme p-1"
                         title="Delete Book"
                       >
                         <Trash2 size={16} />
@@ -256,7 +256,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                       {book.targetFinishDate && (
                         <div className="text-[11px] text-content-muted mt-2 flex items-center justify-between">
                           <span>Target Deadline:</span>
-                          <span className={`font-mono font-medium ${book.targetFinishDate < today ? 'text-rose-400' : 'text-content-tertiary'}`}>
+                          <span className={`font-mono font-medium ${book.targetFinishDate < today ? 'text-rose-theme' : 'text-content-tertiary'}`}>
                             {book.targetFinishDate} {book.targetFinishDate < today ? '(Overdue)' : ''}
                           </span>
                         </div>
@@ -313,7 +313,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                     </span>
                     <button
                       onClick={() => setDeleteModalBook(book)}
-                      className="text-content-subtle hover:text-rose-400 p-1 transition-colors"
+                      className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
                       title="Delete Finished Book"
                     >
                       <Trash2 size={16} />
@@ -551,7 +551,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
                 store.setReadingGoal(null);
                 setGoalModalOpen(false);
               }}
-              className="btn-secondary text-rose-400 border-rose-500/20 hover:bg-rose-500/10 text-xs px-3"
+              className="btn-secondary text-rose-theme border-rose-500/20 hover:bg-rose-500/10 text-xs px-3"
             >
               Disable Goal
             </button>

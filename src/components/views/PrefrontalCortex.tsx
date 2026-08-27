@@ -229,7 +229,7 @@ export function PrefrontalCortex({
       {/* Header */}
       <div>
         <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
-          <BrainCircuit className="text-cyan-400" size={26} />
+          <BrainCircuit className="text-cyan-hierarchy" size={26} />
           Prefrontal Cortex Module
         </h1>
         <p className="text-sm text-content-disabled mt-1">
@@ -243,7 +243,7 @@ export function PrefrontalCortex({
           onClick={() => setActiveTab('focus')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
             activeTab === 'focus'
-              ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+              ? 'bg-cyan-500/15 text-cyan-hierarchy border border-cyan-500/30'
               : 'text-content-muted hover:bg-overlay-subtle'
           }`}
         >
@@ -255,7 +255,7 @@ export function PrefrontalCortex({
           onClick={() => setActiveTab('decision')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
             activeTab === 'decision'
-              ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+              ? 'bg-purple-500/15 text-purple-hierarchy border border-purple-500/30'
               : 'text-content-muted hover:bg-overlay-subtle'
           }`}
         >
@@ -267,7 +267,7 @@ export function PrefrontalCortex({
           onClick={() => setActiveTab('emotion')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
             activeTab === 'emotion'
-              ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+              ? 'bg-rose-500/15 text-rose-theme border border-rose-500/30'
               : 'text-content-muted hover:bg-overlay-subtle'
           }`}
         >
@@ -1068,7 +1068,7 @@ function FocusTimerSubmodule({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="card p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center text-cyan-400 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center text-cyan-hierarchy shrink-0">
               <Timer size={22} />
             </div>
             <div>
@@ -1081,7 +1081,7 @@ function FocusTimerSubmodule({
 
           <button
             onClick={() => setAboutModalOpen(true)}
-            className="btn-ghost text-xs text-cyan-400 hover:bg-cyan-500/10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-500/20"
+            className="btn-ghost text-xs text-cyan-hierarchy hover:bg-cyan-500/10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-500/20"
           >
             <HelpCircle size={15} />
             <span className="hidden sm:inline">About Deep Focus</span>
@@ -1090,12 +1090,12 @@ function FocusTimerSubmodule({
 
         <div className="card p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
               <Award size={22} />
             </div>
             <div>
               <div className="text-xs text-content-disabled">Completed Sessions</div>
-              <div className="text-xl font-display font-bold text-purple-400">
+              <div className="text-xl font-display font-bold text-purple-hierarchy">
                 {weeklyFocusLogs.length} <span className="text-xs font-normal text-content-muted">sessions</span>
               </div>
             </div>
@@ -1113,7 +1113,7 @@ function FocusTimerSubmodule({
               }
             >
               {notificationPerm === 'denied' ? (
-                <span className="text-rose-400 flex items-center gap-1.5 bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/20 font-medium text-[11px]">
+                <span className="text-rose-theme flex items-center gap-1.5 bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/20 font-medium text-[11px]">
                   <BellOff size={12} /> Notifs Blocked
                 </span>
               ) : notificationPerm === 'granted' ? (
@@ -1121,7 +1121,7 @@ function FocusTimerSubmodule({
                   <Bell size={12} /> Notifs Allowed
                 </span>
               ) : (
-                <span className="text-cyan-400 flex items-center gap-1.5 bg-cyan-500/10 px-2.5 py-1 rounded-md border border-cyan-500/20 font-medium text-[11px]">
+                <span className="text-cyan-hierarchy flex items-center gap-1.5 bg-cyan-500/10 px-2.5 py-1 rounded-md border border-cyan-500/20 font-medium text-[11px]">
                   <Bell size={12} /> Enable Notifs
                 </span>
               )}
@@ -1159,11 +1159,11 @@ function FocusTimerSubmodule({
             onClick={() => setTimerMode('manual')}
             className={`flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               timerMode === 'manual'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                ? 'badge-cyan shadow-sm'
                 : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle border border-transparent'
             }`}
           >
-            <Timer size={14} className={timerMode === 'manual' ? 'text-cyan-400' : 'text-content-muted'} />
+            <Timer size={14} className={timerMode === 'manual' ? 'text-cyan-hierarchy' : 'text-content-muted'} />
             <span className="whitespace-nowrap">Manual Timer</span>
           </button>
 
@@ -1194,7 +1194,7 @@ function FocusTimerSubmodule({
               <span className="font-bold text-content-secondary uppercase tracking-widest text-[11px] flex items-center gap-1.5">
                 {mode === 'focus' ? '🎯 Focus Session' : '☕ Rest Break'}
                 {activeSession && (
-                  <span className="badge bg-cyan-500/20 text-cyan-300 text-[10px] lowercase normal-case tracking-normal">
+                  <span className="badge badge-cyan text-[10px] lowercase normal-case tracking-normal">
                     {activeSession.isPaused ? 'paused' : 'live timer'}
                   </span>
                 )}
@@ -1207,7 +1207,7 @@ function FocusTimerSubmodule({
                 onClick={() => handlePresetSelect(25, 5, false)}
                 className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all justify-center cursor-pointer ${
                   !isCustom && focusMinutes === 25
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+                    ? 'badge-cyan font-bold'
                     : 'bg-bg-700 text-content-muted hover:bg-bg-600'
                 } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -1218,7 +1218,7 @@ function FocusTimerSubmodule({
                 onClick={() => handlePresetSelect(50, 10, false)}
                 className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all justify-center cursor-pointer ${
                   !isCustom && focusMinutes === 50
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+                    ? 'badge-cyan font-bold'
                     : 'bg-bg-700 text-content-muted hover:bg-bg-600'
                 } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -1229,7 +1229,7 @@ function FocusTimerSubmodule({
                 onClick={() => handlePresetSelect(90, 15, false)}
                 className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all justify-center cursor-pointer ${
                   !isCustom && focusMinutes === 90
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+                    ? 'badge-cyan font-bold'
                     : 'bg-bg-700 text-content-muted hover:bg-bg-600'
                 } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -1240,7 +1240,7 @@ function FocusTimerSubmodule({
                 onClick={() => handlePresetSelect(customFocusMins, customBreakMins, true)}
                 className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all flex items-center justify-center gap-1 cursor-pointer ${
                   isCustom
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+                    ? 'badge-cyan font-bold'
                     : 'bg-bg-700 text-content-muted hover:bg-bg-600'
                 } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -1254,7 +1254,7 @@ function FocusTimerSubmodule({
           {isCustom && !activeSession && (
             <div className="p-4 bg-bg-900/60 rounded-xl border border-cyan-500/20 max-w-md mx-auto text-left space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                <span className="text-xs font-bold text-cyan-hierarchy flex items-center gap-1.5">
                   <Sliders size={14} /> Custom Duration Settings
                 </span>
                 <span className="text-[10px] text-content-disabled">Min 1m • No Upper Limit</span>
@@ -1287,7 +1287,7 @@ function FocusTimerSubmodule({
               </div>
 
               {customError && (
-                <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px] flex items-center gap-2">
+                <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-theme text-[11px] flex items-center gap-2">
                   <AlertTriangle size={14} className="shrink-0" />
                   <span>{customError}</span>
                 </div>
@@ -1302,7 +1302,7 @@ function FocusTimerSubmodule({
             </div>
             {activeSession && (
               <p className="text-xs text-content-muted mt-2 flex items-center justify-center gap-1.5">
-                <Clock size={13} className="text-cyan-400" />
+                <Clock size={13} className="text-cyan-hierarchy" />
                 <span>
                   Timestamp-persisted session ({activeSession.totalSessionMinutes} mins) • Survives backgrounding & reloads
                 </span>
@@ -1424,7 +1424,7 @@ function FocusTimerSubmodule({
           /* State: Custom Stop Confirmation UI */
           <div className="card p-8 text-center space-y-6 bg-gradient-to-b from-rose-500/15 via-bg-800 to-bg-750 border border-rose-500/50 rounded-2xl relative overflow-hidden shadow-xl">
             <div className="max-w-md mx-auto space-y-5 py-4">
-              <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto shadow-inner">
+              <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-theme flex items-center justify-center mx-auto shadow-inner">
                 <PowerOff className="animate-pulse" size={32} />
               </div>
 
@@ -1460,7 +1460,7 @@ function FocusTimerSubmodule({
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-error-text border-b border-rose-500/20 pb-4">
               <div className="flex items-center gap-2">
                 <span className="badge bg-rose-500/20 text-error-text border border-rose-500/40 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1">
-                  <AlertTriangle size={13} className="text-rose-400 animate-bounce" />
+                  <AlertTriangle size={13} className="text-rose-theme animate-bounce" />
                   LIVE TRACKER BLOCK • OVERDUE
                 </span>
                 <span className="text-[11px] font-mono text-content-muted">
@@ -1483,8 +1483,8 @@ function FocusTimerSubmodule({
 
             {/* Warning Icon & Heading */}
             <div className="space-y-3">
-              <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto shadow-inner">
-                <AlertTriangle size={32} className="animate-pulse text-rose-400" />
+              <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-theme flex items-center justify-center mx-auto shadow-inner">
+                <AlertTriangle size={32} className="animate-pulse text-rose-theme" />
               </div>
 
               <div className="space-y-1">
@@ -1513,7 +1513,7 @@ function FocusTimerSubmodule({
                   );
                 })()}
                 <span className="font-semibold text-content-secondary">{overdueBlock.customTitle || overdueBlockActivity?.name || 'Scheduled Block'}</span>
-                <span className="text-[10px] text-rose-400 font-mono">
+                <span className="text-[10px] text-rose-theme font-mono">
                   (Ended at {formatTime12h(overdueBlock.endTime)})
                 </span>
               </div>
@@ -1521,11 +1521,11 @@ function FocusTimerSubmodule({
 
             {/* Locked Timer Display */}
             <div className="py-2 space-y-2">
-              <div className="text-6xl sm:text-8xl font-display font-black text-rose-400 tracking-tight drop-shadow-sm font-mono animate-pulse">
+              <div className="text-6xl sm:text-8xl font-display font-black text-rose-theme tracking-tight drop-shadow-sm font-mono animate-pulse">
                 00:00
               </div>
-              <p className="text-xs text-rose-400/90 flex items-center justify-center gap-1.5 font-mono">
-                <Clock size={13} className="text-rose-400" />
+              <p className="text-xs text-rose-theme-muted flex items-center justify-center gap-1.5 font-mono">
+                <Clock size={13} className="text-rose-theme" />
                 <span>HUD locked. Awaiting completion confirmation to resume schedule.</span>
               </p>
             </div>
@@ -1685,7 +1685,7 @@ function FocusTimerSubmodule({
                   type="button"
                   onClick={(e) => handleStopSync(e)}
                   title="Stop Schedule Sync"
-                  className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-400 hover:bg-rose-500/10 border border-overlay-subtle hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-overlay-subtle hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <PowerOff size={13} />
                   <span className="hidden sm:inline">Stop Sync</span>
@@ -1885,7 +1885,7 @@ function FocusTimerSubmodule({
                   </div>
                 ) : currentResolvedBlock?.completed ? (
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-content-primary text-xs font-semibold shadow-sm">
-                    <CheckCircle2 className="text-cyan-400" size={12} />
+                    <CheckCircle2 className="text-cyan-hierarchy" size={12} />
                     <span>Completed Early</span>
                   </div>
                 ) : (
@@ -1900,7 +1900,7 @@ function FocusTimerSubmodule({
                 type="button"
                 onClick={(e) => handleStopSync(e)}
                 title="Stop Schedule Sync"
-                className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-400 hover:bg-rose-500/10 border border-overlay-subtle hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
+                className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-overlay-subtle hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <PowerOff size={13} />
                 <span className="hidden sm:inline">Stop Sync</span>
@@ -2151,12 +2151,12 @@ function FocusTimerSubmodule({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20 whitespace-nowrap">
+                      <span className="font-bold text-cyan-hierarchy bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20 whitespace-nowrap">
                         +{log.pointsAwarded} pts
                       </span>
                       <button
                         onClick={() => setDeleteModalLog(log)}
-                        className="text-content-subtle hover:text-rose-400 p-1 transition-colors shrink-0"
+                        className="text-content-subtle hover:text-rose-theme p-1 transition-colors shrink-0"
                         title="Delete Focus Session Log"
                       >
                         <Trash2 size={16} />
@@ -2181,7 +2181,7 @@ function FocusTimerSubmodule({
         <div className="space-y-5 text-content-tertiary text-xs leading-relaxed max-h-[75vh] overflow-y-auto pr-1">
           {/* Section 1 */}
           <div className="p-3.5 bg-cyan-500/10 rounded-xl border border-cyan-500/20 space-y-1.5">
-            <h3 className="font-bold text-cyan-300 text-sm flex items-center gap-2">
+            <h3 className="font-bold text-cyan-hierarchy text-sm flex items-center gap-2">
               <Zap size={16} /> What is Deep Work?
             </h3>
             <p className="text-content-tertiary">
@@ -2192,7 +2192,7 @@ function FocusTimerSubmodule({
           {/* Section 2 */}
           <div className="space-y-2">
             <h4 className="font-bold text-content-primary flex items-center gap-1.5">
-              <BrainCircuit size={15} className="text-purple-400" /> Prefrontal Cortex & Neural Plasticity
+              <BrainCircuit size={15} className="text-purple-hierarchy" /> Prefrontal Cortex & Neural Plasticity
             </h4>
             <p className="text-content-muted">
               Deep focus activates the <em>dorsolateral prefrontal cortex (dlPFC)</em>, which manages impulse control, working memory, and strategic problem-solving. By single-tasking for extended periods:
@@ -2484,7 +2484,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                 </div>
                 <button
                   onClick={() => setDeleteModalDecision(d)}
-                  className="text-content-subtle hover:text-rose-400 p-1 transition-colors"
+                  className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
                   title="Delete Decision Journal Entry"
                 >
                   <Trash2 size={16} />
@@ -2504,7 +2504,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
 
               {d.reflection ? (
                 <div className="p-3 bg-purple-500/10 rounded-xl text-xs text-purple-200 border border-purple-500/20 break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full min-w-0">
-                  <span className="font-bold text-purple-300 block mb-1">Reflection & Learnings:</span>
+                  <span className="font-bold text-purple-hierarchy block mb-1">Reflection & Learnings:</span>
                   "{d.reflection}"
                 </div>
               ) : (
@@ -2512,7 +2512,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                   onClick={() => setReflectModalDecision(d)}
                   className="btn-secondary text-xs w-full py-1.5 flex items-center justify-center gap-1.5"
                 >
-                  <Sparkles size={14} className="text-purple-400" />
+                  <Sparkles size={14} className="text-purple-hierarchy" />
                   <span>Revisit & Add Reflection (+15 pts)</span>
                 </button>
               )}
@@ -2674,7 +2674,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
           <h3 className="text-xs font-bold text-content-tertiary mb-3">Most Frequently Labeled Emotions</h3>
           <div className="flex flex-wrap gap-2">
             {sortedEmotions.map(([name, count]) => (
-              <div key={name} className="badge bg-rose-500/15 text-rose-300 border border-rose-500/30 px-3 py-1.5 text-xs font-medium flex items-center gap-2">
+              <div key={name} className="badge bg-rose-500/15 text-rose-theme border border-rose-500/30 px-3 py-1.5 text-xs font-medium flex items-center gap-2">
                 <span>{name}</span>
                 <span className="bg-rose-500/30 px-1.5 py-0.5 rounded-full font-bold text-[10px]">{count}x</span>
               </div>
@@ -2700,18 +2700,18 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
               <div>
                 <div className="font-bold text-content-secondary flex items-center gap-2">
                   {l.emotion}
-                  <span className="text-rose-400 font-mono">({l.intensity}/10)</span>
+                  <span className="text-rose-theme font-mono">({l.intensity}/10)</span>
                 </div>
                 {l.context && <p className="text-content-muted mt-0.5">{l.context}</p>}
                 <p className="text-[10px] text-content-disabled mt-1">{formatDateLong(l.date)}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
+                <span className="font-bold text-rose-theme bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
                   +5 pts
                 </span>
                 <button
                   onClick={() => setDeleteModalEmotion(l)}
-                  className="text-content-subtle hover:text-rose-400 p-1 transition-colors"
+                  className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
                   title="Delete Emotion Log"
                 >
                   <Trash2 size={16} />
@@ -2748,7 +2748,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
           <div>
             <div className="flex justify-between text-xs text-content-muted mb-1">
               <span>Intensity</span>
-              <span className="font-bold text-rose-400">{intensity} / 10</span>
+              <span className="font-bold text-rose-theme">{intensity} / 10</span>
             </div>
             <input
               type="range"

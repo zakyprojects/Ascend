@@ -206,7 +206,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
-            <BookMarked className="text-violet-400" size={26} />
+            <BookMarked className="text-violet-theme" size={26} />
             Self Improvement Books
           </h1>
           <p className="text-sm text-content-disabled mt-1">
@@ -230,7 +230,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
           </div>
         </div>
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-sky-500/15 flex items-center justify-center text-sky-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-sky-500/15 flex items-center justify-center text-sky-theme shrink-0">
             <ListTodo size={20} />
           </div>
           <div>
@@ -461,7 +461,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
 
       <Modal open={addCustomModalOpen} onClose={() => setAddCustomModalOpen(false)} title="Add Custom Book">
         <form onSubmit={handleAddCustomSubmit} className="space-y-4">
-          <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl flex items-center gap-3 text-sky-400">
+          <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl flex items-center gap-3 text-sky-theme">
             <BookOpen size={18} className="shrink-0" />
             <div className="text-xs">
               <span className="font-bold">Custom books don't award curated bonus points.</span>
@@ -593,7 +593,7 @@ function LibraryCard({
             {userBook.category && renderCategoryBadge(userBook.category)}
             <button
               onClick={onRemove}
-              className="text-content-subtle hover:text-rose-400 p-1"
+              className="text-content-subtle hover:text-rose-theme p-1"
               title="Remove from library"
             >
               <Trash2 size={15} />

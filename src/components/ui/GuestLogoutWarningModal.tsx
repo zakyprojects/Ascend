@@ -50,7 +50,7 @@ export function GuestLogoutWarningModal({
               onClose();
               onLogoutAnyway();
             }}
-            className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-theme border border-rose-500/30 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
           >
             <LogOut size={15} />
             <span>Log Out Anyway (Delete Progress)</span>

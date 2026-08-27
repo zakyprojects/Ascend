@@ -350,15 +350,15 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   className={`w-full flex items-center gap-3 px-2.5 sm:px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                     active
                       ? sec.danger
-                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-md'
+                        ? 'bg-rose-500/20 text-rose-theme border border-rose-500/30 shadow-md'
                         : 'bg-primary-500/20 text-brand-text border border-primary-500/30 shadow-md'
                       : sec.danger
-                      ? 'text-rose-400/80 hover:bg-rose-500/10 hover:text-rose-300 border border-transparent'
+                      ? 'text-rose-theme-muted hover:bg-rose-500/10 hover:text-rose-theme border border-transparent'
                       : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle border border-transparent'
                   }`}
                   title={sec.label}
                 >
-                  <span className={`shrink-0 ${active ? (sec.danger ? 'text-rose-400' : 'text-brand-text') : ''}`}>
+                  <span className={`shrink-0 ${active ? (sec.danger ? 'text-rose-theme' : 'text-brand-text') : ''}`}>
                     {sec.icon}
                   </span>
                   <span className="hidden sm:inline truncate text-left">{sec.label}</span>
@@ -450,7 +450,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                           <Check size={12} /> Available
                         </span>
                       ) : usernameStatus?.reason ? (
-                        <span className="text-[11px] font-medium text-rose-400 flex items-center gap-1 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 truncate max-w-[110px]">
+                        <span className="text-[11px] font-medium text-rose-theme flex items-center gap-1 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 truncate max-w-[110px]">
                           Taken / Invalid
                         </span>
                       ) : null}
@@ -463,7 +463,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     className={`p-2.5 rounded-xl text-xs flex items-center gap-2 ${
                       usernameMsg.type === 'success'
                         ? 'bg-emerald-500/10 border border-emerald-500/30 text-success-text'
-                        : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
+                        : 'bg-rose-500/10 border border-rose-500/30 text-rose-theme'
                     }`}
                   >
                     {usernameMsg.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
@@ -601,7 +601,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       {passwordMsg && (
                         <div
                           className={`p-2 rounded-lg text-xs flex items-center gap-2 ${
-                            passwordMsg.type === 'success' ? 'text-success-text' : 'text-rose-400'
+                            passwordMsg.type === 'success' ? 'text-success-text' : 'text-error-text'
                           }`}
                         >
                           {passwordMsg.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
@@ -727,11 +727,11 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 </label>
 
                 {notifBrowserPerm === 'denied' && (
-                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-2.5 text-xs text-rose-300">
-                    <BellOff size={16} className="text-rose-400 shrink-0 mt-0.5" />
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-2.5 text-xs text-rose-theme">
+                    <BellOff size={16} className="text-rose-theme shrink-0 mt-0.5" />
                     <div className="space-y-1">
-                      <p className="font-bold text-rose-200">Browser Notification Permission Denied</p>
-                      <p className="text-[11px] text-rose-300/80 leading-relaxed">
+                      <p className="font-bold text-rose-theme">Browser Notification Permission Denied</p>
+                      <p className="text-[11px] text-rose-theme-muted leading-relaxed">
                         Notifications are blocked by your browser settings. Even with this preference enabled, alerts cannot fire until you allow notification permissions for this website in your browser's site settings.
                       </p>
                     </div>
@@ -798,7 +798,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                         <UserCheck size={11} /> Accepting Invites
                       </span>
                     ) : (
-                      <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                      <span className="text-[10px] bg-rose-500/10 text-rose-theme border border-rose-500/20 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
                         <UserX size={11} /> Blocking Invites
                       </span>
                     )}
@@ -864,7 +864,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {activeSection === 'danger' && (
             <div className="card p-5 space-y-4 border border-rose-500/20">
               <h2 className="text-base font-display font-bold text-content-primary flex items-center gap-2 border-b border-overlay-subtle pb-3">
-                <Shield size={18} className="text-rose-400" />
+                <Shield size={18} className="text-rose-theme" />
                 Account Management
               </h2>
 
@@ -885,7 +885,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold text-xs rounded-xl border border-rose-500/30 transition-all flex items-center justify-center gap-2"
+                  className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-theme font-semibold text-xs rounded-xl border border-rose-500/30 transition-all flex items-center justify-center gap-2"
                 >
                   <Trash2 size={16} />
                   <span>Delete Account & Purge Data</span>
@@ -957,7 +957,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       <Modal open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete Account Permanently" maxWidth="max-w-md">
         <div className="space-y-4">
           <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-theme flex items-center justify-center shrink-0 mt-0.5">
               <Trash2 size={20} />
             </div>
             <div className="space-y-1">

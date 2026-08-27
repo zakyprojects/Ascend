@@ -396,7 +396,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
             <Award size={22} />
           </div>
           <div>
@@ -565,7 +565,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         </div>
                         <button
                           onClick={() => setDeleteModalBook(book)}
-                          className="p-1.5 text-content-disabled hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-all shrink-0"
+                          className="p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all shrink-0"
                           title="Remove Book"
                         >
                           <Trash2 size={16} />
@@ -694,7 +694,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       </div>
                       <button
                         onClick={() => setDeleteModalBook(book)}
-                        className="p-1 text-content-disabled hover:text-rose-400 rounded transition-all"
+                        className="p-1 text-content-disabled hover:text-rose-theme rounded transition-all"
                         title="Remove Book"
                       >
                         <Trash2 size={14} />
@@ -843,7 +843,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       )}
                       <button
                         onClick={() => setDeleteModalBook(book)}
-                        className="p-1.5 text-content-disabled hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-all"
+                        className="p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all"
                         title="Remove Book"
                       >
                         <Trash2 size={16} />
@@ -887,7 +887,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         <form onSubmit={handleAddCustomSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-content-tertiary mb-1">
-              Book Title <span className="text-rose-400">*</span>
+              Book Title <span className="text-rose-theme">*</span>
             </label>
             <input
               type="text"
@@ -1035,7 +1035,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-content-tertiary mb-1">
-                Total Length <span className="text-rose-400">*</span>
+                Total Length <span className="text-rose-theme">*</span>
               </label>
               <input
                 type="number"
@@ -1181,7 +1181,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div>
             <label className="block text-xs font-semibold text-content-tertiary mb-1">
-              Key Insights & Reflections <span className="text-rose-400">*</span>
+              Key Insights & Reflections <span className="text-rose-theme">*</span>
             </label>
             <textarea
               required

@@ -54,7 +54,7 @@ export const MOODS: MoodMeta[] = [
     icon: Frown,
     color: '#38bdf8', // Sky blue
     bgClass: 'bg-sky-500/15',
-    textClass: 'text-sky-400',
+    textClass: 'text-sky-theme',
     borderClass: 'border-sky-500/30',
     borderLeftClass: 'border-l-sky-400',
   },
@@ -995,7 +995,7 @@ export function Journal({ store }: { store: AppStore }) {
                         e.stopPropagation();
                         setDeleteModalEntry(entry);
                       }}
-                      className="text-content-subtle hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
+                      className="text-content-subtle hover:text-rose-theme p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
                       title="Delete Journal Entry"
                     >
                       <Trash2 size={16} />
@@ -1079,7 +1079,7 @@ export function Journal({ store }: { store: AppStore }) {
                     setSelectedEntry(null);
                     setDeleteModalEntry(target);
                   }}
-                  className="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all"
+                  className="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-theme text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all"
                 >
                   <Trash2 size={14} />
                   <span>Delete Entry</span>

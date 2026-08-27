@@ -107,7 +107,7 @@ export function ActivityModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-300 text-xs">
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
             <AlertTriangle size={15} className="shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
@@ -142,7 +142,7 @@ export function ActivityModal({
         {/* Category Name */}
         <div>
           <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
-            Category Name <span className="text-rose-400">*</span>
+            Category Name <span className="text-rose-theme">*</span>
           </label>
           <input
             type="text"
@@ -157,7 +157,7 @@ export function ActivityModal({
         {/* Color Picker */}
         <div>
           <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
-            Color Accent <span className="text-rose-400">*</span>
+            Color Accent <span className="text-rose-theme">*</span>
           </label>
           <div className="flex flex-wrap gap-2">
             {AVAILABLE_ACTIVITY_COLORS.map((col) => {
@@ -182,7 +182,7 @@ export function ActivityModal({
         {/* Icon Picker */}
         <div>
           <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
-            Category Icon <span className="text-rose-400">*</span>
+            Category Icon <span className="text-rose-theme">*</span>
           </label>
           <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-36 overflow-y-auto p-1 bg-bg-900/50 rounded-xl border border-overlay-subtle">
             {AVAILABLE_ACTIVITY_ICONS.map((ic) => {

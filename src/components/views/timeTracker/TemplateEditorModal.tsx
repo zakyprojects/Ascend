@@ -228,7 +228,7 @@ export function TemplateEditorModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Validation Error Banner */}
           {validationError && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-300 text-xs">
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
               <AlertTriangle size={15} className="shrink-0 mt-0.5" />
               <span>{validationError}</span>
             </div>
@@ -363,7 +363,7 @@ export function TemplateEditorModal({
                         <button
                           type="button"
                           onClick={() => handleRemoveBlock(block.id)}
-                          className="p-1.5 rounded-lg text-content-muted hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors cursor-pointer"
                           title="Remove block"
                         >
                           <Trash2 size={14} />

@@ -181,7 +181,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           {/* Exercise Summary Widget */}
           <button
             onClick={() => onViewChange('exercise')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-emerald-500"
+            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-emerald-theme"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs text-content-muted font-medium">Exercise Tracker</span>
@@ -196,7 +196,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           {/* Reading Summary Widget */}
           <button
             onClick={() => onViewChange('reading')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-amber-500"
+            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-amber-theme"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs text-content-muted font-medium">Reading Hub</span>
@@ -211,11 +211,11 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           {/* Skill Summary Widget */}
           <button
             onClick={() => onViewChange('skills')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-purple-500"
+            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-purple-theme"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs text-content-muted font-medium">Skill Learning</span>
-              <Zap size={18} className="text-purple-400" />
+              <Zap size={18} className="text-purple-hierarchy" />
             </div>
             <div>
               <div className="text-xl font-bold text-content-primary">{totalSkillHours} <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
@@ -226,11 +226,11 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           {/* Bad Habit Summary Widget */}
           <button
             onClick={() => onViewChange('bad-habits')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-rose-500"
+            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-rose-theme"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs text-content-muted font-medium">Bad Habits Reduction</span>
-              <ShieldAlert size={18} className="text-rose-400" />
+              <ShieldAlert size={18} className="text-rose-theme" />
             </div>
             <div>
               <div className="text-xl font-bold text-content-primary">{badHabitCount} <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
@@ -241,7 +241,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           {/* Addiction Recovery Summary Widget */}
           <button
             onClick={() => onViewChange('recovery')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-red-500"
+            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-red-theme"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs text-content-muted font-medium">Addiction Recovery</span>
@@ -258,11 +258,11 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           {/* Deep Focus Summary Widget */}
           <button
             onClick={() => onViewChange('prefrontal')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-cyan-500"
+            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-cyan-theme"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs text-content-muted font-medium">Prefrontal / Focus</span>
-              <Timer size={18} className="text-cyan-400" />
+              <Timer size={18} className="text-cyan-hierarchy" />
             </div>
             <div>
               <div className="text-xl font-bold text-content-primary">{weeklyFocusMins} <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
@@ -273,11 +273,11 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           {/* Time Tracker Blueprint Widget */}
           <button
             onClick={() => onViewChange('time-tracker')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-indigo-500"
+            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-indigo-theme"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs text-content-muted font-medium">Time Tracker</span>
-              <Clock size={18} className="text-indigo-400" />
+              <Clock size={18} className="text-indigo-theme" />
             </div>
             <div>
               <div className="text-xl font-bold text-content-primary">

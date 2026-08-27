@@ -128,7 +128,7 @@ export function ActivitiesTab({
                 {!act.isSystemDefault && (
                   <button
                     onClick={() => setDeleteTargetActivity(act)}
-                    className="p-1.5 text-content-muted hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                    className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                     title="Delete Category"
                   >
                     <Trash2 size={14} />

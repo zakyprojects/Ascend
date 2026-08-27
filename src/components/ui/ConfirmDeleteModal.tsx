@@ -49,7 +49,7 @@ export function ConfirmDeleteModal({
     <Modal open={open} onClose={onClose} title={title} maxWidth="max-w-md">
       <div className="space-y-4">
         <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-3">
-          <AlertTriangle size={20} className="text-rose-400 shrink-0 mt-0.5" />
+          <AlertTriangle size={20} className="text-rose-theme shrink-0 mt-0.5" />
           <p className="text-xs text-content-tertiary leading-relaxed">
             {description || (
               <>

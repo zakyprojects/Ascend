@@ -210,7 +210,7 @@ export function TemplatesTab({
             {/* Life & Balance */}
             <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-rose-500/30 transition-colors">
               <h4 className="text-[11px] font-bold text-content-secondary mb-1.5 flex items-center gap-1.5">
-                <Heart className="text-rose-400" size={13} /> 
+                <Heart className="text-rose-theme" size={13} /> 
                 8 Hours: 3Fs, 3Hs, & 3Ss
               </h4>
               <div className="text-[10px] text-content-muted leading-snug space-y-0.5">
@@ -223,7 +223,7 @@ export function TemplatesTab({
             {/* Sleep */}
             <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-indigo-500/30 transition-colors">
               <h4 className="text-[11px] font-bold text-content-secondary mb-1 flex items-center gap-1.5">
-                <Moon className="text-indigo-400" size={13} /> 
+                <Moon className="text-indigo-theme" size={13} /> 
                 8 Hours: Good Sleep
               </h4>
               <p className="text-[10px] text-content-muted leading-snug">High-quality recovery to repair the prefrontal cortex and body.</p>
@@ -310,7 +310,7 @@ export function TemplatesTab({
                       </button>
                       <button
                         onClick={() => setDeleteTargetTemplate(tpl)}
-                        className="p-1.5 text-content-muted hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                         title="Delete Template"
                       >
                         <Trash2 size={15} />

@@ -182,7 +182,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                 <button
                   onClick={handleLogoutClick}
                   title="Log Out"
-                  className="p-1.5 rounded-lg text-content-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                  className="p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-all"
                 >
                   <LogOut size={15} />
                 </button>
@@ -303,7 +303,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                 >
                   <Settings size={13} />
                 </button>
-                <button onClick={handleLogoutClick} title="Log Out" className="text-content-muted hover:text-rose-400 ml-0.5">
+                <button onClick={handleLogoutClick} title="Log Out" className="text-content-muted hover:text-rose-theme ml-0.5">
                   <LogOut size={13} />
                 </button>
               </div>
@@ -352,7 +352,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                     </div>
                     <button
                       onClick={handleLogoutClick}
-                      className="btn-ghost text-xs text-rose-400 hover:bg-rose-500/10 py-1 px-2"
+                      className="btn-ghost text-xs text-rose-theme hover:bg-rose-500/10 py-1 px-2"
                     >
                       Log Out
                     </button>

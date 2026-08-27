@@ -213,7 +213,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
       <div className="space-y-4">
         {/* Error / Success Notifications */}
         {errorMsg && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-2 text-rose-400 text-xs">
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-2 text-error-text text-xs">
             <AlertCircle size={16} className="shrink-0" />
             <span>{errorMsg}</span>
           </div>
@@ -359,7 +359,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
 
                   <div>
                     <label className="block text-xs font-medium text-content-tertiary mb-1">
-                      Leaderboard Username {mode === 'signup' && <span className="text-rose-400">*</span>}
+                      Leaderboard Username {mode === 'signup' && <span className="text-error-text">*</span>}
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
@@ -388,7 +388,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                       )}
                     </div>
                     {usernameStatus && !usernameStatus.available && (
-                      <p className="text-[11px] text-rose-400 mt-1">{usernameStatus.reason}</p>
+                      <p className="text-[11px] text-error-text mt-1">{usernameStatus.reason}</p>
                     )}
                   </div>
                 </>
@@ -396,7 +396,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
 
               <div>
                 <label className="block text-xs font-medium text-content-tertiary mb-1">
-                  Email Address <span className="text-rose-400">*</span>
+                  Email Address <span className="text-error-text">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
@@ -415,7 +415,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
 
               <div>
                 <label className="block text-xs font-medium text-content-tertiary mb-1">
-                  Password <span className="text-rose-400">*</span>
+                  Password <span className="text-error-text">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
@@ -435,7 +435,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               {(mode === 'signup' || mode === 'upgrade') && (
                 <div>
                   <label className="block text-xs font-medium text-content-tertiary mb-1">
-                    Confirm Password <span className="text-rose-400">*</span>
+                    Confirm Password <span className="text-error-text">*</span>
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
@@ -451,7 +451,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                     />
                   </div>
                   {confirmPassword && password !== confirmPassword && (
-                    <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                    <p className="text-[11px] text-error-text mt-1 flex items-center gap-1 font-medium">
                       Passwords do not match
                     </p>
                   )}
