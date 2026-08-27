@@ -189,7 +189,7 @@
 
     /* Semantic Badge Tokens (Light mode high contrast) */
     --badge-purple-bg: #f3e8ff;
-    --badge-purple-text: #6b21a8;
+    --badge-purple-text: #a855f7;
     --badge-purple-border: #d8b4fe;
 
     --badge-blue-bg: #dbeafe;
@@ -201,7 +201,7 @@
     --badge-sky-border: #7dd3fc;
 
     --badge-cyan-bg: #cffafe;
-    --badge-cyan-text: #0e7490;
+    --badge-cyan-text: #06b6d4;
     --badge-cyan-border: #67e8f9;
 
     --badge-teal-bg: #ccfbf1;
@@ -209,15 +209,15 @@
     --badge-teal-border: #5eead4;
 
     --badge-emerald-bg: #d1fae5;
-    --badge-emerald-text: var(--color-success-text);
+    --badge-emerald-text: #10b981;
     --badge-emerald-border: #a7f3d0;
 
     --badge-amber-bg: #fef3c7;
-    --badge-amber-text: var(--color-warning-text);
+    --badge-amber-text: #f59e0b;
     --badge-amber-border: #fcd34d;
 
     --badge-rose-bg: #ffe4e6;
-    --badge-rose-text: #be123c;
+    --badge-rose-text: #f43f5e;
     --badge-rose-border: #fecdd3;
 
     --badge-orange-bg: #ffedd5;
@@ -225,8 +225,12 @@
     --badge-orange-border: #fdba74;
 
     --badge-indigo-bg: #e0e7ff;
-    --badge-indigo-text: #4338ca;
+    --badge-indigo-text: #6366f1;
     --badge-indigo-border: #a5b4fc;
+
+    --badge-red-bg: #fee2e2;
+    --badge-red-text: #ef4444;
+    --badge-red-border: #fca5a5;
 
     --badge-violet-bg: #ede9fe;
     --badge-violet-text: #5b21b6;
