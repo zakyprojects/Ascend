@@ -180,7 +180,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
             const rank = idx + 1;
             const isUser = competitor.isUser;
             const isTop3 = rank <= 3;
-            const medalColors = ['#fbbf24', '#c0c0c0', '#cd7f32'];
+            const medalVarNames = ['var(--medal-gold)', 'var(--medal-silver)', 'var(--medal-bronze)'];
 
             return (
               <button
@@ -188,14 +188,14 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                 onClick={() => setSelectedCompetitor(competitor)}
                 className={`w-full flex items-center gap-2 sm:gap-4 px-2.5 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all text-left cursor-pointer group ${
                   isUser
-                    ? 'bg-emerald-950/40 border-2 border-emerald-500/80 shadow-lg shadow-emerald-950/20 hover:border-emerald-400'
+                    ? 'league-user-row border-2 hover:border-emerald-400'
                     : 'bg-bg-700/50 hover:bg-bg-700 border border-overlay-subtle'
                 }`}
               >
                 {/* Rank Position */}
                 <div className="w-5 sm:w-7 text-center shrink-0">
                   {isTop3 ? (
-                    <Crown size={15} className="mx-auto" style={{ color: medalColors[rank - 1] }} />
+                    <Crown size={15} className="mx-auto" style={{ color: medalVarNames[rank - 1] }} />
                   ) : (
                     <span className="text-xs sm:text-sm font-bold text-content-disabled">{rank}</span>
                   )}
@@ -287,7 +287,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                     key={idx}
                     className={`flex items-center gap-3 p-3 rounded-xl ${
                       c.isUser
-                        ? 'bg-emerald-950/40 border border-emerald-500/80 shadow-lg shadow-emerald-950/20'
+                        ? 'league-user-row border'
                         : 'bg-bg-700/50 border border-overlay-subtle'
                     }`}
                   >

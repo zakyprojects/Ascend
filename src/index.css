@@ -117,6 +117,14 @@
     --badge-violet-bg: rgba(139, 92, 246, 0.20);
     --badge-violet-text: #c4b5fd;
     --badge-violet-border: rgba(139, 92, 246, 0.30);
+
+    /* League Leaderboard Tokens */
+    --league-user-bg: rgba(2, 44, 34, 0.40);
+    --league-user-border: rgba(16, 185, 129, 0.80);
+    --league-user-shadow: 0 10px 15px -3px rgba(2, 44, 34, 0.20), 0 4px 6px -4px rgba(2, 44, 34, 0.20);
+    --medal-gold: #fbbf24;
+    --medal-silver: #c0c0c0;
+    --medal-bronze: #cd7f32;
   }
 
   [data-theme='light'] {
@@ -235,6 +243,14 @@
     --badge-violet-bg: #ede9fe;
     --badge-violet-text: #5b21b6;
     --badge-violet-border: #c4b5fd;
+
+    /* League Leaderboard Tokens */
+    --league-user-bg: #d1fae5;
+    --league-user-border: #10b981;
+    --league-user-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+    --medal-gold: #d97706;
+    --medal-silver: #64748b;
+    --medal-bronze: #92400e;
   }
 
   * {
@@ -548,6 +564,13 @@
   }
   .border-l-purple-400, .border-l-purple-500 {
     border-left-color: var(--badge-purple-text) !important;
+  }
+
+  /* League Current User Row Highlight (Theme-Aware via CSS Tokens) */
+  .league-user-row {
+    background-color: var(--league-user-bg) !important;
+    border-color: var(--league-user-border);
+    box-shadow: var(--league-user-shadow) !important;
   }
 
   /* Hero Card Ambient Glow */
