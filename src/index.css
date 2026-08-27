@@ -522,6 +522,26 @@
     border-color: var(--badge-indigo-text) !important;
   }
 
+  /* List-Row & Banner Left-Border Accent Rules (Scoped strictly to border-left-color) */
+  .border-l-sky-400, .border-l-sky-500 {
+    border-left-color: var(--badge-sky-text) !important;
+  }
+  .border-l-slate-400, .border-l-slate-500 {
+    border-left-color: #94a3b8 !important;
+  }
+  .border-l-emerald-400, .border-l-emerald-500 {
+    border-left-color: var(--badge-emerald-text) !important;
+  }
+  .border-l-amber-400, .border-l-amber-500 {
+    border-left-color: var(--badge-amber-text) !important;
+  }
+  .border-l-rose-400, .border-l-rose-500 {
+    border-left-color: var(--badge-rose-text) !important;
+  }
+  .border-l-purple-400, .border-l-purple-500 {
+    border-left-color: var(--badge-purple-text) !important;
+  }
+
   /* Hero Card Ambient Glow */
   .hero-glow {
     position: absolute;

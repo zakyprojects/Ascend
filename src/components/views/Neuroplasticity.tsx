@@ -36,7 +36,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
       </div>
 
       {/* Core principle */}
-      <div className="card p-5 border-l-2 border-purple-500/50">
+      <div className="card p-5 border-l-2 border-l-purple-500">
         <p className="text-lg font-display font-bold text-content-primary mb-2">
           "Neurons that fire together, wire together."
         </p>

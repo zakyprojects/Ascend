@@ -298,7 +298,7 @@ export function ReadingTracker({ store }: { store: AppStore }) {
           <h2 className="section-title mb-3">Finished Books Shelf</h2>
           <div className="space-y-3">
             {finishedBooks.map((book) => (
-              <div key={book.id} className="card p-4 border-l-4 border-emerald-500/80 space-y-2">
+              <div key={book.id} className="card p-4 border-l-4 border-l-emerald-500 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-content-secondary text-sm flex items-center gap-2">

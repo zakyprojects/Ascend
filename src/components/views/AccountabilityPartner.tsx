@@ -682,7 +682,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       </div>
 
       {inviteError && (
-        <div className="card p-4 border-l-4 border-rose-500 bg-rose-500/10 text-xs text-rose-theme flex items-center justify-between">
+        <div className="card p-4 border-l-4 border-l-rose-500 bg-rose-500/10 text-xs text-rose-theme flex items-center justify-between">
           <span>{inviteError}</span>
           <button onClick={() => setInviteError(null)} className="text-content-muted hover:text-content-primary">
             <X size={14} />

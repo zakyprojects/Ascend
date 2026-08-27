@@ -111,7 +111,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       </div>
 
       {/* Persistent Disclaimer Banner */}
-      <div className="card p-4 border-l-4 border-amber-500 bg-amber-500/10 flex items-start gap-3">
+      <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-500/10 flex items-start gap-3">
         <AlertCircle size={22} className="text-warning-text shrink-0 mt-0.5" />
         <div className="text-xs text-content-tertiary leading-relaxed">
           <span className="font-bold text-warning-text">Important Medical Disclaimer:</span> This module is a self-management support tool designed to complement — but <span className="underline">not replace</span> — professional medical treatment or therapy. If you are experiencing severe addiction, physical withdrawal, or crisis, please seek immediate assistance from a licensed healthcare professional or hotline (e.g. SAMHSA Helpline: 1-800-662-4357).

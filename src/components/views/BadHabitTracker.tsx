@@ -168,7 +168,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       </div>
 
       {/* Rules & System Banner Callout */}
-      <div className="card p-4 border-l-4 border-amber-500/80 bg-amber-500/5 flex items-start gap-3">
+      <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-500/5 flex items-start gap-3">
         <AlertTriangle size={20} className="text-warning-text shrink-0 mt-0.5" />
         <div className="text-xs text-content-tertiary leading-relaxed space-y-1">
           <div>
