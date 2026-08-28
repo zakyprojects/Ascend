@@ -1,7 +1,7 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "ascend",
   "private": true,
-  "version": "0.0.0",
+  "version": "6.9.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
