@@ -22,6 +22,7 @@ interface TierBadgeProps {
 export function TierBadge({ totalPoints, size = 'md', showName = false }: TierBadgeProps) {
   const tier = getCurrentTier(totalPoints);
   const Icon = TIER_ICONS[tier.icon] ?? Medal;
+  const tierKey = tier.name.toLowerCase();
 
   const sizes = {
     sm: { box: 'w-7 h-7', icon: 14, text: 'text-xs' },
@@ -36,16 +37,21 @@ export function TierBadge({ totalPoints, size = 'md', showName = false }: TierBa
       <div
         className={`${s.box} rounded-xl flex items-center justify-center shrink-0`}
         style={{
-          backgroundColor: `${tier.color}20`,
-          border: `1.5px solid ${tier.color}45`,
-          boxShadow: `0 2px 10px ${tier.color}25`,
+          backgroundColor: `var(--rank-${tierKey}-bg)`,
+          border: `1.5px solid var(--rank-${tierKey}-border)`,
+          boxShadow: `0 2px 10px var(--rank-${tierKey}-glow)`,
         }}
       >
-        <Icon size={s.icon} style={{ color: tier.color }} />
+        <Icon size={s.icon} style={{ color: `var(--rank-${tierKey}-text)` }} />
       </div>
       {showName && (
         <div>
-          <div className={`font-display font-bold text-content-primary ${s.text}`}>{tier.name}</div>
+          <div
+            className={`font-display font-bold ${s.text}`}
+            style={{ color: `var(--rank-${tierKey}-text)` }}
+          >
+            {tier.name}
+          </div>
           {size === 'lg' || size === 'xl' ? (
             <div className="text-xs text-content-disabled">{totalPoints.toLocaleString()} pts</div>
           ) : null}
@@ -63,11 +69,15 @@ export function TierProgress({ totalPoints }: TierProgressProps) {
   const tier = getCurrentTier(totalPoints);
   const next = getNextTier(totalPoints);
   const progress = getProgressToNextTier(totalPoints);
+  const tierKey = tier.name.toLowerCase();
+  const nextKey = next ? next.name.toLowerCase() : tierKey;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-content-tertiary">{tier.name}</span>
+        <span className="text-sm font-medium" style={{ color: `var(--rank-${tierKey}-text)` }}>
+          {tier.name}
+        </span>
         {next ? (
           <span className="text-xs text-content-disabled">
             {next.name} at {next.minPoints.toLocaleString()}
@@ -81,7 +91,7 @@ export function TierProgress({ totalPoints }: TierProgressProps) {
           className="h-full rounded-full transition-all duration-500"
           style={{
             width: `${progress.percent}%`,
-            background: `linear-gradient(90deg, ${tier.color}, ${next?.color ?? tier.color})`,
+            background: `linear-gradient(90deg, var(--rank-${tierKey}-text), var(--rank-${nextKey}-text))`,
           }}
         />
       </div>
