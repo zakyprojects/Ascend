@@ -216,8 +216,8 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
               <span
                 className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
                   activeTab === 'schedule'
-                    ? 'bg-overlay-strong text-content-primary'
-                    : 'bg-emerald-500/20 text-emerald-300'
+                    ? 'bg-overlay-strong dark:text-content-primary text-on-brand'
+                    : 'dark:bg-emerald-500/20 dark:text-emerald-300 bg-overlay-default text-content-muted'
                 }`}
               >
                 {currentDailyBlocks.length}
@@ -239,8 +239,8 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
               <span
                 className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
                   activeTab === 'templates'
-                    ? 'bg-overlay-strong text-content-primary'
-                    : 'bg-emerald-500/20 text-emerald-300'
+                    ? 'bg-overlay-strong dark:text-content-primary text-on-brand'
+                    : 'dark:bg-emerald-500/20 dark:text-emerald-300 bg-overlay-default text-content-muted'
                 }`}
               >
                 {templates.length}
@@ -261,8 +261,8 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
             <span
               className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
                 activeTab === 'activities'
-                  ? 'bg-overlay-strong text-content-primary'
-                  : 'bg-emerald-500/20 text-emerald-300'
+                  ? 'bg-overlay-strong dark:text-content-primary text-on-brand'
+                  : 'dark:bg-emerald-500/20 dark:text-emerald-300 bg-overlay-default text-content-muted'
               }`}
             >
               {activities.length}

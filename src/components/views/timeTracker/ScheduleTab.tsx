@@ -424,7 +424,7 @@ export function ScheduleTab({
           {/* Active Block Progress Bar */}
           {liveStats.activeBlock && (
             <div className="mt-3">
-              <div className="w-full h-1.5 bg-bg-900/80 rounded-full overflow-hidden">
+              <div className="w-full h-1.5 bg-bg-700 rounded-full overflow-hidden border border-overlay-subtle">
                 <div
                   className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 rounded-full"
                   style={{ width: `${liveStats.activeBlockProgressPercent}%` }}
@@ -536,7 +536,7 @@ export function ScheduleTab({
                   onClick={() => onOpenEditBlockModal(block)}
                   className={`group absolute top-1 bottom-1 rounded-md cursor-pointer transition-all flex items-center justify-center px-1 overflow-hidden z-1 shadow-sm ${
                     isBlockActive
-                      ? 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-slate-950 shadow-md'
+                      ? 'ring-2 ring-emerald-500 dark:ring-emerald-400 ring-offset-1 ring-offset-bg-900 dark:ring-offset-slate-950 shadow-md'
                       : isBlockPast
                       ? 'opacity-70 hover:opacity-100'
                       : 'hover:brightness-110 hover:shadow-md'
@@ -712,7 +712,7 @@ export function ScheduleTab({
                     block.skipped
                       ? 'bg-bg-900/20 border-overlay-subtle opacity-60'
                       : isBlockActive
-                      ? 'bg-emerald-950/20 border-emerald-500/40 shadow-xl shadow-emerald-950/30 ring-2 ring-emerald-500/30'
+                      ? 'dark:bg-emerald-950/20 dark:border-emerald-500/40 dark:shadow-xl dark:shadow-emerald-950/30 dark:ring-2 dark:ring-emerald-500/30 bg-emerald-50 border-emerald-500/60 shadow-lg shadow-emerald-950/10 ring-2 ring-emerald-400/40'
                       : isBlockPast
                       ? 'bg-bg-900/40 border-overlay-subtle opacity-60 grayscale-[0.35] hover:opacity-90 hover:grayscale-0'
                       : block.completed
