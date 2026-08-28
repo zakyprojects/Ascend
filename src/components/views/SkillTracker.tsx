@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
-import { Target, Zap, Plus, Trash2, Clock, Award } from 'lucide-react';
+import { Target, Zap, Plus, Trash2, Clock, Award, Flame } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Skill, SkillLevel, SkillSessionLog } from '@/types';
-import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal } from '@/lib/dates';
+import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak } from '@/lib/dates';
 
 export function SkillTracker({ store }: { store: AppStore }) {
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -318,6 +318,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
             {filteredSkills.map((skill) => {
               const { level, hours, progressPercent, progressText } = getEffectiveSkillLevel(skill);
               const lastPracticed = getLastPracticedText(skill.id);
+              const skillDates = skillLogs.filter((l) => l.skillId === skill.id).map((l) => l.date);
+              const streak = calculateStreak(skillDates, 'daily');
               return (
                 <div key={skill.id} className="card p-4 flex flex-col justify-between space-y-3">
                   <div className="space-y-3">
@@ -340,6 +342,15 @@ export function SkillTracker({ store }: { store: AppStore }) {
                         {level}
                       </span>
                       <div className="flex items-center gap-2 text-xs text-content-disabled">
+                        {streak > 0 && (
+                          <>
+                            <span className="flex items-center gap-1 text-secondary-400 font-medium">
+                              <Flame size={13} className="text-secondary-500" />
+                              {streak} day{streak !== 1 ? 's' : ''}
+                            </span>
+                            <span>•</span>
+                          </>
+                        )}
                         <span>{hours.toFixed(1)} hrs</span>
                         <span>•</span>
                         <span>Last: {lastPracticed}</span>
