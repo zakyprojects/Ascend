@@ -268,7 +268,7 @@ export interface UserBook {
 }
 
 // Module 3: Skill Learning Tracker
-export type SkillLevel = 'beginner' | 'intermediate' | 'advanced';
+export type SkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
 
 export interface Skill {
   id: string;
