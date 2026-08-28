@@ -1,5 +1,15 @@
+function withOpacityValue(varName) {
+  return ({ opacityValue }) => {
+    if (opacityValue !== undefined) {
+      return `rgb(var(${varName}-rgb) / ${opacityValue})`;
+    }
+    return `var(${varName})`;
+  };
+}
+
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: ['selector', '[data-theme="dark"]'],
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
@@ -13,17 +23,20 @@ export default {
           disabled: 'var(--color-content-disabled)',
           subtle: 'var(--color-content-subtle)',
         },
+        // Brand action text token
+        'on-brand': 'var(--color-text-on-brand)',
         // Semantic overlay background tokens
         'overlay-subtle': 'var(--bg-overlay-subtle)',
         'overlay-default': 'var(--bg-overlay-default)',
         'overlay-strong': 'var(--bg-overlay-strong)',
-        // Base dark surfaces
+        // Base surfaces (themeable via CSS variables with opacity support)
         bg: {
-          900: '#0a0b0f',
-          800: '#111319',
-          700: '#171a23',
-          600: '#1e222d',
-          500: '#262b38',
+          900: withOpacityValue('--color-bg-900'),
+          800: withOpacityValue('--color-bg-800'),
+          750: withOpacityValue('--color-bg-750'),
+          700: withOpacityValue('--color-bg-700'),
+          600: withOpacityValue('--color-bg-600'),
+          500: withOpacityValue('--color-bg-500'),
           400: '#313747',
         },
         // Primary — teal/emerald accent
@@ -38,6 +51,9 @@ export default {
           700: '#047857',
           800: '#065f46',
           900: '#064e3b',
+        },
+        brand: {
+          text: 'var(--color-brand-text)',
         },
         // Secondary — warm amber for streaks/energy
         secondary: {
@@ -70,10 +86,27 @@ export default {
           conqueror: '#f97316',
           legend: '#a855f7',
         },
-        success: '#10b981',
-        warning: '#f59e0b',
-        error: '#ef4444',
-        info: '#0ea5e9',
+        success: {
+          DEFAULT: '#10b981',
+          text: 'var(--color-success-text)',
+          soft: 'var(--color-success-soft)',
+        },
+        warning: {
+          DEFAULT: '#f59e0b',
+          text: 'var(--color-warning-text)',
+          'text-muted': 'var(--color-warning-text-muted)',
+          soft: 'var(--color-warning-soft)',
+        },
+        error: {
+          DEFAULT: '#ef4444',
+          text: 'var(--color-error-text)',
+          soft: 'var(--color-error-soft)',
+        },
+        info: {
+          DEFAULT: '#0ea5e9',
+          text: 'var(--color-info-text)',
+          soft: 'var(--color-info-soft)',
+        },
       },
       borderColor: {
         'overlay-subtle': 'var(--border-overlay-subtle)',
@@ -81,6 +114,11 @@ export default {
         'overlay-medium': 'var(--border-overlay-medium)',
         'overlay-strong': 'var(--border-overlay-strong)',
         'overlay-heavy': 'var(--border-overlay-heavy)',
+      },
+      boxShadow: {
+        sm: 'var(--shadow-sm)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

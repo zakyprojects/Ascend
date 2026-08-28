@@ -110,21 +110,21 @@ export function NotificationCenter({
       case 'partner_invite':
       case 'partner_invite_accepted':
       case 'partner_invite_declined':
-        return <Users size={16} className="text-sky-400" />;
+        return <Users size={16} className="text-sky-theme" />;
       case 'partner_nudge':
-        return <Zap size={16} className="text-amber-400" />;
+        return <Zap size={16} className="text-warning-text" />;
       case 'partner_pledge_done':
-        return <CheckCircle2 size={16} className="text-emerald-400" />;
+        return <CheckCircle2 size={16} className="text-success-text" />;
       case 'missed_habit':
       case 'partner_missed_habit':
       case 'streak_risk':
-        return <AlertTriangle size={16} className="text-rose-400" />;
+        return <AlertTriangle size={16} className="text-rose-theme" />;
       case 'challenge_completed':
-        return <Award size={16} className="text-emerald-400" />;
+        return <Award size={16} className="text-success-text" />;
       case 'daily_reminder':
-        return <Calendar size={16} className="text-amber-400" />;
+        return <Calendar size={16} className="text-warning-text" />;
       default:
-        return <Info size={16} className="text-purple-400" />;
+        return <Info size={16} className="text-purple-hierarchy" />;
     }
   };
 
@@ -157,10 +157,10 @@ export function NotificationCenter({
             {/* Header */}
             <div className="p-3.5 border-b border-overlay-subtle flex items-center justify-between bg-bg-800/50">
               <div className="flex items-center gap-2">
-                <Bell size={16} className="text-primary-400" />
+                <Bell size={16} className="text-brand-text" />
                 <span className="font-display font-bold text-sm text-content-primary">Notifications</span>
                 {unreadCount > 0 && (
-                  <span className="bg-rose-500/20 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-500/30">
+                  <span className="badge-rose text-[10px] font-bold px-2 py-0.5 rounded-full">
                     {unreadCount} new
                   </span>
                 )}
@@ -170,7 +170,7 @@ export function NotificationCenter({
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="text-[11px] text-content-muted hover:text-primary-300 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-overlay-subtle transition-all"
+                    className="text-[11px] text-content-muted hover:text-brand-text flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-overlay-subtle transition-all"
                     title="Mark all as read"
                   >
                     <CheckCheck size={14} />
@@ -202,7 +202,7 @@ export function NotificationCenter({
                     key={notif.id}
                     onClick={() => !notif.read && store.markNotificationRead(notif.id)}
                     className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer group ${
-                      notif.read ? 'bg-transparent hover:bg-white/[0.02]' : 'bg-primary-500/5 hover:bg-primary-500/10'
+                      notif.read ? 'bg-transparent hover:bg-overlay-subtle' : 'bg-primary-500/5 hover:bg-primary-500/10'
                     }`}
                   >
                     <div className="shrink-0 mt-0.5">
@@ -239,7 +239,7 @@ export function NotificationCenter({
                         <button
                           onClick={(e) => handleMarkRead(notif.id, e)}
                           title="Mark as read"
-                          className="p-1 text-content-disabled hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"
+                          className="p-1 text-content-disabled hover:text-success-text hover:bg-emerald-500/10 rounded-lg transition-all"
                         >
                           <Check size={14} />
                         </button>
@@ -247,7 +247,7 @@ export function NotificationCenter({
                       <button
                         onClick={(e) => handleClear(notif.id, e)}
                         title="Clear notification"
-                        className="p-1 text-content-disabled hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                        className="p-1 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -271,7 +271,7 @@ export function NotificationCenter({
         title="Notifications"
         className={`relative p-2 rounded-xl transition-all ${
           open
-            ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
+            ? 'bg-primary-500/20 text-brand-text border border-primary-500/30'
             : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
         }`}
       >

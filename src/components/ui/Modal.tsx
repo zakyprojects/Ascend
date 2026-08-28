@@ -33,7 +33,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', p
         onClick={() => { if (!preventClose) onClose(); }}
       />
       <div
-        className={`relative w-full ${maxWidth} glass-strong rounded-t-3xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto`}
+        className={`modal-panel relative w-full ${maxWidth} bg-bg-750 border border-overlay-default shadow-2xl rounded-t-3xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto`}
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-display font-bold text-content-primary">{title}</h2>

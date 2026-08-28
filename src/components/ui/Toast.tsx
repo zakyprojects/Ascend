@@ -107,38 +107,47 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((toast) => {
           const config = {
             success: {
-              bg: 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200',
-              icon: <CheckCircle2 className="text-emerald-400 shrink-0" size={18} />,
+              bg: 'bg-emerald-500/15 border-emerald-500/30',
+              icon: <CheckCircle2 className="text-success-text shrink-0" size={18} />,
+              title: 'text-success-text',
+              message: 'text-content-secondary',
             },
             error: {
-              bg: 'bg-rose-950/90 border-rose-500/40 text-rose-200',
-              icon: <AlertCircle className="text-rose-400 shrink-0" size={18} />,
+              bg: 'bg-rose-500/15 border-rose-500/30',
+              icon: <AlertCircle className="text-error-text shrink-0" size={18} />,
+              title: 'text-error-text',
+              message: 'text-content-secondary',
             },
             warning: {
-              bg: 'bg-amber-950/90 border-amber-500/40 text-amber-200',
-              icon: <AlertTriangle className="text-amber-400 shrink-0" size={18} />,
+              bg: 'bg-amber-500/15 border-amber-500/30',
+              icon: <AlertTriangle className="text-warning-text shrink-0" size={18} />,
+              title: 'text-warning-text',
+              message: 'text-warning-text-muted',
             },
             info: {
-              bg: 'bg-primary-950/90 border-primary-500/40 text-primary-200',
-              icon: <Info className="text-primary-400 shrink-0" size={18} />,
+              bg: 'bg-primary-500/15 border-primary-500/30',
+              icon: <Info className="text-brand-text shrink-0" size={18} />,
+              title: 'text-brand-text',
+              message: 'text-content-secondary',
             },
           }[toast.type];
 
           return (
             <div
               key={toast.id}
-              className={`pointer-events-auto p-3.5 rounded-xl border backdrop-blur-md shadow-2xl flex items-start gap-3 transition-all animate-slide-in-right ${config.bg}`}
+              className={`pointer-events-auto p-3.5 rounded-xl border backdrop-blur-md shadow-lg flex items-start gap-3 transition-all animate-slide-in-right ${config.bg}`}
             >
               <div className="mt-0.5">{config.icon}</div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-bold leading-snug">{toast.title}</h4>
+                <h4 className={`text-xs font-bold leading-snug ${config.title}`}>{toast.title}</h4>
                 {toast.message && (
-                  <p className="text-[11px] opacity-85 mt-0.5 leading-relaxed">{toast.message}</p>
+                  <p className={`text-[11px] mt-0.5 leading-relaxed ${config.message}`}>{toast.message}</p>
                 )}
               </div>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="p-1 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
+                className="p-1 rounded-lg text-content-muted hover:text-content-primary hover:bg-overlay-subtle transition-colors"
+                aria-label="Dismiss toast"
               >
                 <X size={14} />
               </button>

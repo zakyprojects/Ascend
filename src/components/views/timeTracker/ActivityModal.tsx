@@ -6,6 +6,8 @@ import {
   AVAILABLE_ACTIVITY_ICONS,
   AVAILABLE_ACTIVITY_COLORS,
 } from './ActivityIcon';
+import { getActivityThemeColor } from '@/lib/timeTracker';
+import { getLocalThemePreference } from '@/lib/store';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Sparkles, AlertTriangle, Link as LinkIcon, Check } from 'lucide-react';
 
@@ -43,6 +45,8 @@ export function ActivityModal({
   const [ascendModule, setAscendModule] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const theme = getLocalThemePreference() || 'dark';
+  const resolvedPreviewColor = color ? getActivityThemeColor(color, theme) : '';
 
   useEffect(() => {
     if (!open) return;
@@ -103,33 +107,33 @@ export function ActivityModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-300 text-xs">
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
             <AlertTriangle size={15} className="shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
         {/* Live Preview Header */}
-        <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/10">
+        <div className="flex items-center gap-3 p-3 rounded-2xl bg-overlay-subtle border border-overlay-default">
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors shadow-inner"
             style={{
-              backgroundColor: color ? `${color}25` : 'rgba(255, 255, 255, 0.05)',
-              color: color || '#94a3b8',
-              border: color ? `1px solid ${color}40` : '1px solid rgba(255, 255, 255, 0.1)',
+              backgroundColor: resolvedPreviewColor ? `${resolvedPreviewColor}25` : 'rgba(255, 255, 255, 0.05)',
+              color: resolvedPreviewColor || '#94a3b8',
+              border: resolvedPreviewColor ? `1px solid ${resolvedPreviewColor}40` : '1px solid rgba(255, 255, 255, 0.1)',
             }}
           >
             {icon ? (
               <ActivityIcon iconName={icon} size={24} />
             ) : (
-              <Sparkles size={22} className="text-slate-500" />
+              <Sparkles size={22} className="text-content-disabled" />
             )}
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-100">
+            <p className="text-sm font-semibold text-content-primary">
               {name.trim() || 'Category Name Preview'}
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-content-muted">
               {ascendModule ? `Linked to ${ascendModule}` : 'Standard tracking category'}
             </p>
           </div>
@@ -137,27 +141,28 @@ export function ActivityModal({
 
         {/* Category Name */}
         <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-            Category Name <span className="text-rose-400">*</span>
+          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
+            Category Name <span className="text-rose-theme">*</span>
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Client Consulting, Meditation, Piano"
-            className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3.5 py-2.5 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
             required
           />
         </div>
 
         {/* Color Picker */}
         <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            Color Accent <span className="text-rose-400">*</span>
+          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
+            Color Accent <span className="text-rose-theme">*</span>
           </label>
           <div className="flex flex-wrap gap-2">
             {AVAILABLE_ACTIVITY_COLORS.map((col) => {
               const isSelected = color === col.value;
+              const displaySwatchColor = getActivityThemeColor(col.value, theme);
               return (
                 <button
                   type="button"
@@ -166,7 +171,7 @@ export function ActivityModal({
                   className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer ${
                     isSelected ? 'scale-110 border-white shadow-lg' : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100'
                   }`}
-                  style={{ backgroundColor: col.value }}
+                  style={{ backgroundColor: displaySwatchColor }}
                   title={col.name}
                 />
               );
@@ -176,10 +181,10 @@ export function ActivityModal({
 
         {/* Icon Picker */}
         <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            Category Icon <span className="text-rose-400">*</span>
+          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
+            Category Icon <span className="text-rose-theme">*</span>
           </label>
-          <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-36 overflow-y-auto p-1 bg-slate-950/50 rounded-xl border border-white/5">
+          <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-36 overflow-y-auto p-1 bg-bg-900/50 rounded-xl border border-overlay-subtle">
             {AVAILABLE_ACTIVITY_ICONS.map((ic) => {
               const isSelected = icon === ic;
               return (
@@ -189,8 +194,8 @@ export function ActivityModal({
                   onClick={() => setIcon(ic)}
                   className={`p-2 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                      ? 'bg-emerald-600/30 text-success-text border border-emerald-500 shadow-sm'
+                      : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
                   }`}
                 >
                   <ActivityIcon iconName={ic} size={18} />
@@ -202,40 +207,40 @@ export function ActivityModal({
 
         {/* Ascend Module Linkage */}
         <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-            <LinkIcon size={13} className="text-emerald-400" />
+          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <LinkIcon size={13} className="text-success-text" />
             Ascend Ecosystem Module Sync (Optional)
           </label>
           <select
             value={ascendModule}
             onChange={(e) => setAscendModule(e.target.value)}
-            className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2.5 text-sm text-content-primary focus:outline-none focus:border-emerald-500"
           >
             {MODULE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-slate-900 text-slate-100">
+              <option key={opt.value} value={opt.value} className="bg-bg-800 text-content-primary">
                 {opt.label}
               </option>
             ))}
           </select>
-          <p className="text-[11px] text-slate-500 mt-1">
+          <p className="text-[11px] text-content-disabled mt-1">
             Linking an activity connects completed scheduled blocks with bonus discipline points and one-click session handoffs.
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/5">
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-overlay-subtle">
           <button
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            className="px-4 py-2 text-xs font-medium text-content-muted hover:text-content-secondary transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSaving}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
           >
             {isSaving ? (
               <>

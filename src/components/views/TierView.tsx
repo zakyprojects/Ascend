@@ -24,25 +24,25 @@ export function TierView({ store }: { store: AppStore }) {
       <div className="card p-6 text-center relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-10"
-          style={{ background: `radial-gradient(circle at center, ${currentTier.color}, transparent 70%)` }}
+          style={{ background: `radial-gradient(circle at center, var(--rank-${currentTier.name.toLowerCase()}-glow), transparent 70%)` }}
         />
         <div className="relative">
           <div
             className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-4 animate-pulse-glow"
             style={{
-              backgroundColor: `${currentTier.color}15`,
-              border: `2px solid ${currentTier.color}40`,
+              backgroundColor: `var(--rank-${currentTier.name.toLowerCase()}-bg)`,
+              border: `2px solid var(--rank-${currentTier.name.toLowerCase()}-border)`,
             }}
           >
             {(() => {
               const Icon = TIER_ICONS[currentTier.icon] ?? Medal;
-              return <Icon size={44} style={{ color: currentTier.color }} />;
+              return <Icon size={44} style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }} />;
             })()}
           </div>
-          <h2 className="text-2xl font-display font-bold" style={{ color: currentTier.color }}>
+          <h2 className="text-2xl font-display font-bold" style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }}>
             {currentTier.name}
           </h2>
-          <p className="text-sm text-content-disabled mt-1">
+          <p className="text-sm text-content-muted mt-1">
             {totalPoints.toLocaleString()} total points
           </p>
 
@@ -51,18 +51,18 @@ export function TierView({ store }: { store: AppStore }) {
             <div className="mt-5 max-w-sm mx-auto">
               <div className="flex items-center justify-between mb-2 text-sm">
                 <span className="text-content-muted">Progress to {nextTier.name}</span>
-                <span className="text-content-disabled">{Math.round(progress.percent)}%</span>
+                <span className="text-content-muted font-medium">{Math.round(progress.percent)}%</span>
               </div>
               <div className="h-3 bg-bg-600 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${progress.percent}%`,
-                    background: `linear-gradient(90deg, ${currentTier.color}, ${nextTier.color})`,
+                    background: `linear-gradient(90deg, var(--rank-${currentTier.name.toLowerCase()}-text), var(--rank-${nextTier.name.toLowerCase()}-text))`,
                   }}
                 />
               </div>
-              <p className="text-xs text-content-disabled mt-2">
+              <p className="text-xs text-content-muted mt-2">
                 {(nextTier.minPoints - totalPoints).toLocaleString()} points to reach {nextTier.name}
               </p>
             </div>
@@ -78,6 +78,7 @@ export function TierView({ store }: { store: AppStore }) {
             const isUnlocked = totalPoints >= tier.minPoints;
             const isCurrent = tier.name === currentTier.name;
             const Icon = TIER_ICONS[tier.icon] ?? Medal;
+            const tierKey = tier.name.toLowerCase();
 
             return (
               <div
@@ -85,7 +86,7 @@ export function TierView({ store }: { store: AppStore }) {
                 className={`card p-4 flex items-center gap-4 transition-all ${
                   isCurrent ? 'border-overlay-default bg-bg-700' : ''
                 } ${isUnlocked ? '' : 'opacity-50'}`}
-                style={isCurrent ? { boxShadow: `0 0 20px ${tier.color}20` } : {}}
+                style={isCurrent ? { boxShadow: `0 0 20px var(--rank-${tierKey}-glow)` } : {}}
               >
                 {/* Rank number */}
                 <div className="text-xs font-display font-bold text-content-subtle w-6 text-center">
@@ -94,14 +95,20 @@ export function TierView({ store }: { store: AppStore }) {
 
                 {/* Icon */}
                 <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                  style={{
-                    backgroundColor: isUnlocked ? `${tier.color}15` : '#1e222d',
-                    border: `1.5px solid ${isUnlocked ? `${tier.color}40` : '#313747'}`,
-                  }}
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                    !isUnlocked ? 'bg-bg-600 border border-overlay-default text-content-subtle' : ''
+                  }`}
+                  style={
+                    isUnlocked
+                      ? {
+                          backgroundColor: `var(--rank-${tierKey}-bg)`,
+                          border: `1.5px solid var(--rank-${tierKey}-border)`,
+                        }
+                      : undefined
+                  }
                 >
                   {isUnlocked ? (
-                    <Icon size={22} style={{ color: tier.color }} />
+                    <Icon size={22} style={{ color: `var(--rank-${tierKey}-text)` }} />
                   ) : (
                     <Lock size={18} className="text-content-subtle" />
                   )}
@@ -110,16 +117,19 @@ export function TierView({ store }: { store: AppStore }) {
                 {/* Info */}
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-display font-bold" style={{ color: isUnlocked ? tier.color : '#64748b' }}>
+                    <h3
+                      className="font-display font-bold"
+                      style={{ color: isUnlocked ? `var(--rank-${tierKey}-text)` : 'var(--color-content-disabled)' }}
+                    >
                       {tier.name}
                     </h3>
                     {isCurrent && (
-                      <span className="badge bg-primary-500/15 text-primary-400">
+                      <span className="badge bg-primary-500/15 text-success-text">
                         <Check size={11} /> Current
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-content-disabled mt-0.5">
+                  <p className="text-xs text-content-muted mt-0.5">
                     {tier.minPoints.toLocaleString()} points
                   </p>
                 </div>
@@ -127,7 +137,7 @@ export function TierView({ store }: { store: AppStore }) {
                 {/* Checkmark if unlocked */}
                 {isUnlocked && !isCurrent && (
                   <div className="w-6 h-6 rounded-full bg-primary-500/15 flex items-center justify-center">
-                    <Check size={14} className="text-primary-400" />
+                    <Check size={14} className="text-success-text" />
                   </div>
                 )}
               </div>
@@ -148,7 +158,7 @@ export function TierView({ store }: { store: AppStore }) {
                     entry.amount > 0 ? 'bg-primary-500/15' : 'bg-error/15'
                   }`}
                 >
-                  <span className={`text-xs font-bold ${entry.amount > 0 ? 'text-primary-400' : 'text-error'}`}>
+                  <span className={`text-xs font-bold ${entry.amount > 0 ? 'text-brand-text' : 'text-error'}`}>
                     {entry.amount > 0 ? '+' : ''}
                     {entry.amount}
                   </span>

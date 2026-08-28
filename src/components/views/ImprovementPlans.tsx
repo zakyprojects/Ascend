@@ -65,7 +65,7 @@ function ExpandableDescription({ text }: { text: string }) {
       {isOverflowing && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-[11px] text-purple-400 hover:underline flex items-center gap-1 mt-1"
+          className="text-[11px] text-purple-hierarchy hover:underline flex items-center gap-1 mt-1"
         >
           {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />} 
           {isExpanded ? 'Read less' : 'Read more'}
@@ -486,26 +486,26 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     switch (resolvedType) {
       case 'target_goal':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          <span className="badge-amber inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded">
             <Target size={11} /> Target Goal
           </span>
         );
       case 'habit_journey':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/15 text-rose-theme border border-rose-500/30">
             <Flame size={11} /> Habit Journey
           </span>
         );
       case 'vision':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/30">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded badge-purple">
             <Compass size={11} /> Vision & Reflection
           </span>
         );
       case 'milestone':
       default:
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded badge-blue">
             <CheckSquare size={11} /> Milestone Plan
           </span>
         );
@@ -537,8 +537,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     const renderReviewDueBadge = () => {
       if (!isReviewDue) return null;
       return (
-        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-md mb-2 animate-pulse">
-          <Sparkles size={13} className="text-amber-400 shrink-0" />
+        <div className="badge-amber flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-md mb-2 animate-pulse">
+          <Sparkles size={13} className="text-warning-text shrink-0" />
           <span>Review Due ({effectiveCadence === 'monthly' ? 'Monthly' : 'Weekly'} Check-in)</span>
         </div>
       );
@@ -555,14 +555,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       if (mode === 'read_only' && notes.length === 0) return null;
 
       return (
-        <div className="space-y-3 mt-3 bg-slate-900/40 p-3 rounded-lg border border-slate-800/60">
+        <div className="space-y-3 mt-3 bg-bg-800/40 p-3 rounded-lg border border-overlay-subtle">
           {/* Add Reflection Note Field (Interactive mode ONLY) */}
           {mode !== 'read_only' && (
             <div className="space-y-1">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="font-semibold text-content-muted">Add Reflection Note</span>
                 {effectiveCadence && (
-                  <span className="text-[10px] text-purple-400 font-mono">
+                  <span className="text-[10px] text-purple-hierarchy font-mono">
                     Cadence: {effectiveCadence === 'weekly' ? 'Weekly' : 'Monthly'}
                   </span>
                 )}
@@ -587,7 +587,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       setReflectionInput({ ...reflectionInput, [planId]: '' });
                     }
                   }}
-                  className="btn-secondary text-xs py-1 px-3 flex items-center gap-1 text-purple-300 hover:text-purple-200 shrink-0"
+                  className="btn-secondary text-xs py-1 px-3 flex items-center gap-1 text-purple-hierarchy hover:text-purple-hierarchy shrink-0"
                 >
                   <Send size={12} /> Post
                 </button>
@@ -598,12 +598,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {/* Reflections List Header */}
           <div className="flex items-center justify-between pt-1">
             <span className="text-xs font-semibold text-content-muted flex items-center gap-1">
-              <MessageSquare size={13} className="text-purple-400" /> {notes.length} Check-in Reflection(s)
+              <MessageSquare size={13} className="text-purple-hierarchy" /> {notes.length} Check-in Reflection(s)
             </span>
             {notes.length > 0 && (
               <button
                 onClick={() => setExpandedReflections({ ...expandedReflections, [planId]: !isExpanded })}
-                className="text-xs text-purple-400 hover:underline flex items-center gap-1"
+                className="text-xs text-purple-hierarchy hover:underline flex items-center gap-1"
               >
                 {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {isExpanded ? 'Hide' : 'View Notes'}
               </button>
@@ -612,14 +612,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           {/* Expanded Reflection List with Edit & Delete */}
           {isExpanded && notes.length > 0 && (
-            <div className="space-y-2 pt-1 border-t border-slate-800">
+            <div className="space-y-2 pt-1 border-t border-overlay-subtle">
               {notes.map((n) => {
                 const noteKey = n.id || n.date || n.createdAt;
                 const noteDate = n.createdAt || n.date || new Date().toISOString();
                 const isEditingThisNote = editingNoteId[noteKey] ?? false;
 
                 return (
-                  <div key={noteKey} className="text-xs p-2 rounded bg-slate-800/60 border border-slate-700/50 space-y-1">
+                  <div key={noteKey} className="text-xs p-2 rounded bg-bg-700/60 border border-overlay-subtle space-y-1">
                     <div className="flex items-center justify-between text-[10px] text-content-disabled font-mono">
                       <span>{new Date(noteDate).toLocaleString()}</span>
                       {mode !== 'read_only' && (
@@ -629,14 +629,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               setEditingNoteId({ ...editingNoteId, [noteKey]: !isEditingThisNote });
                               setEditingNoteText({ ...editingNoteText, [noteKey]: n.note });
                             }}
-                            className="text-content-muted hover:text-purple-300 transition-colors"
+                            className="text-content-muted hover:text-purple-hierarchy transition-colors"
                             title="Edit Note"
                           >
                             <Edit3 size={12} />
                           </button>
                           <button
                             onClick={() => setNoteToDelete({ planId, noteKey, mode })}
-                            className="text-content-muted hover:text-rose-400 transition-colors"
+                            className="text-content-muted hover:text-rose-theme transition-colors"
                             title="Delete Note"
                           >
                             <Trash2 size={12} />
@@ -698,16 +698,16 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       return (
         <div>
           {renderReviewDueBadge()}
-          <div className="space-y-3 bg-slate-900/40 p-3 rounded-lg border border-slate-800/60">
+          <div className="card space-y-3 p-3">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-content-tertiary">
-                Progress: <span className="text-amber-400 font-bold">{curProg}</span> / {targetVal} {plan.targetUnit || 'units'}
+                Progress: <span className="text-warning-text font-bold">{curProg}</span> / {targetVal} {plan.targetUnit || 'units'}
               </span>
-              <span className="font-bold text-amber-400">{pct}%</span>
+              <span className="font-bold text-warning-text">{pct}%</span>
             </div>
 
             {/* Progress Bar */}
-            <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-bg-700 rounded-full h-2 overflow-hidden">
               <div 
                 className={`${isGoalCompleted ? 'bg-emerald-500' : 'bg-gradient-to-r from-amber-500 to-emerald-500'} h-full transition-all duration-500`} 
                 style={{ width: `${pct}%` }} 
@@ -723,7 +723,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             {/* Read-Only mode in Discover: NO input field or button */}
             {mode === 'read_only' ? (
               isGoalCompleted && (
-                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1 pt-1">
+                <div className="text-xs font-bold text-success-text flex items-center gap-1 pt-1">
                   <CheckCircle2 size={13} /> Completed!
                 </div>
               )
@@ -780,7 +780,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   </button>
                 )}
                 {isGoalCompleted && (
-                  <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 ml-auto mt-1 sm:mt-0">
+                  <span className="text-xs font-bold text-success-text flex items-center gap-1 ml-auto mt-1 sm:mt-0">
                     <CheckCircle2 size={13} /> Completed!
                   </span>
                 )}
@@ -801,9 +801,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       return (
         <div>
           {renderReviewDueBadge()}
-          <div className="space-y-3 bg-slate-900/40 p-3 rounded-lg border border-slate-800/60">
+          <div className="card space-y-3 p-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 font-bold text-rose-400">
+              <span className="flex items-center gap-1.5 font-bold text-rose-theme">
                 <Flame size={15} className="animate-pulse" /> {streak} {cadenceText} Streak
               </span>
               <span className="text-content-muted text-[11px]">
@@ -824,7 +824,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <div className="flex items-center gap-2">
                   {isCompletedToday ? (
                     <>
-                      <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 rounded border border-emerald-500/20">
+                      <span className="badge-emerald text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded">
                         <CheckCircle2 size={13} /> Done for {cadenceText}
                       </span>
                       <button
@@ -835,7 +835,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             store.undoHabitJourneyDone(planId);
                           }
                         }}
-                        className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1.5 border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                        className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1.5 border-rose-500/30 text-rose-theme hover:bg-rose-500/10"
                         title="Undo today's completion and re-enable mark done"
                       >
                         <RotateCcw size={13} /> Undo Today's Mark
@@ -874,8 +874,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         <div>
           {renderReviewDueBadge()}
           {plan.targetReviewDate && (
-            <div className="text-[11px] text-purple-300 flex items-center gap-1 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/60 mb-2">
-              <Calendar size={12} className="text-purple-400" /> Target Review Date: {plan.targetReviewDate}
+            <div className="text-[11px] text-purple-hierarchy flex items-center gap-1 bg-bg-800/40 p-2.5 rounded-lg border border-overlay-subtle mb-2">
+              <Calendar size={12} className="text-purple-hierarchy" /> Target Review Date: {plan.targetReviewDate}
             </div>
           )}
           {renderReflectionSection()}
@@ -887,14 +887,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     return (
       <div>
         {renderReviewDueBadge()}
-        <div className="space-y-1.5 mt-2 bg-slate-900/40 p-3 rounded-lg border border-slate-800/60">
+        <div className="space-y-1.5 mt-2 bg-bg-800/40 p-3 rounded-lg border border-overlay-subtle">
           {plan.steps && plan.steps.map((step) => (
             <div key={step.id} className="flex items-center gap-2 text-xs">
               {mode === 'read_only' ? (
                 /* Read-only static checkbox indicator in Discover */
                 <div className="text-content-subtle">
                   {step.completed ? (
-                    <CheckCircle2 size={15} className="text-emerald-400" />
+                    <CheckCircle2 size={15} className="text-success-text" />
                   ) : (
                     <Circle size={15} />
                   )}
@@ -909,10 +909,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       store.completeFollowedPlanStep(planId, step.id);
                     }
                   }}
-                  className="text-content-disabled hover:text-emerald-400 transition-colors"
+                  className="text-content-disabled hover:text-success-text transition-colors"
                 >
                   {step.completed ? (
-                    <CheckCircle2 size={15} className="text-emerald-400" />
+                    <CheckCircle2 size={15} className="text-success-text" />
                   ) : (
                     <Circle size={15} />
                   )}
@@ -935,7 +935,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
-            <Compass className="text-blue-400" size={26} />
+            <Compass className="text-blue-theme" size={26} />
             Personal Improvement Plans
           </h1>
           <p className="text-sm text-content-disabled mt-1">
@@ -949,13 +949,13 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
         <div className="flex gap-4">
           <button
             onClick={() => setActiveTab('my_plans')}
             className={`pb-2 font-medium text-sm transition-colors border-b-2 ${
               activeTab === 'my_plans'
-                ? 'border-blue-500 text-blue-400'
+                ? 'border-blue-500 text-blue-theme'
                 : 'border-transparent text-content-disabled hover:text-content-tertiary'
             }`}
           >
@@ -965,7 +965,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             onClick={() => setActiveTab('discover')}
             className={`pb-2 font-medium text-sm transition-colors border-b-2 ${
               activeTab === 'discover'
-                ? 'border-blue-500 text-blue-400'
+                ? 'border-blue-500 text-blue-theme'
                 : 'border-transparent text-content-disabled hover:text-content-tertiary'
             }`}
           >
@@ -977,7 +977,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           <button
             onClick={() => loadPlans()}
             disabled={isRefreshing}
-            className="btn-ghost text-xs flex items-center gap-1.5 text-content-muted hover:text-blue-400"
+            className="btn-ghost text-xs flex items-center gap-1.5 text-content-muted hover:text-blue-theme"
           >
             <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
             <span>Refresh</span>
@@ -1004,7 +1004,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     : (plan.copyCount || 0);
 
                   return (
-                    <div key={plan.id} className="card p-4 space-y-3 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+                    <div key={plan.id} className="card p-4 space-y-3 flex flex-col justify-between hover:border-overlay-default transition-all">
                       <div>
                         <div className="flex justify-between items-start gap-3">
                           {/* LEFT SIDE: Type Badge, Title, Category */}
@@ -1012,11 +1012,11 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             <div className="flex flex-wrap items-center gap-2">
                               {renderPlanTypeBadge(plan.planType)}
                               {plan.category && (
-                                <span className="badge text-[10px] bg-slate-800 text-content-muted border border-slate-700/50">
+                                <span className="badge text-[10px] bg-bg-700 text-content-muted border border-overlay-subtle">
                                   {plan.category}
                                 </span>
                               )}
-                              <span className={`badge text-[10px] font-bold ${plan.isPublic ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30' : 'bg-slate-800 text-content-muted border border-slate-700/50'}`}>
+                              <span className={`badge text-[10px] font-bold ${plan.isPublic ? 'badge-blue' : 'bg-bg-700 text-content-muted border border-overlay-subtle'}`}>
                                 {plan.isPublic ? <Globe size={10} className="inline mr-1" /> : <Lock size={10} className="inline mr-1" />}
                                 {plan.isPublic ? 'Public' : 'Private'}
                               </span>
@@ -1026,8 +1026,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           </div>
 
                           {/* RIGHT SIDE: Action Button Group */}
-                          <div className="flex items-center gap-1.5 shrink-0 bg-slate-900/60 p-1.5 rounded-lg border border-slate-800">
-                            <span className="flex items-center gap-1 text-[11px] font-bold text-blue-400 px-1" title="Times copied">
+                          <div className="flex items-center gap-1.5 shrink-0 bg-bg-800/60 p-1.5 rounded-lg border border-overlay-subtle">
+                            <span className="flex items-center gap-1 text-[11px] font-bold text-blue-theme px-1" title="Times copied">
                               <Copy size={12} /> {displayCopyCount}
                             </span>
 
@@ -1038,8 +1038,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               }}
                               className={`p-1.5 rounded transition-colors ${
                                 plan.isPublic
-                                  ? 'text-blue-400 hover:bg-blue-500/20'
-                                  : 'text-content-disabled hover:text-content-tertiary hover:bg-slate-800'
+                                  ? 'text-blue-theme hover:bg-blue-500/20'
+                                  : 'text-content-disabled hover:text-content-tertiary hover:bg-bg-700'
                               }`}
                               title={plan.isPublic ? 'Make Private' : 'Make Public'}
                             >
@@ -1049,7 +1049,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             {/* Pencil Edit Icon */}
                             <button
                               onClick={() => handleOpenEdit(plan)}
-                              className="p-1.5 rounded text-content-muted hover:text-blue-400 hover:bg-slate-800 transition-colors"
+                              className="p-1.5 rounded text-content-muted hover:text-blue-theme hover:bg-bg-700 transition-colors"
                               title="Edit Structure"
                             >
                               <Edit3 size={14} />
@@ -1058,7 +1058,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             {/* Trash Delete Icon */}
                             <button
                               onClick={() => setPlanToDelete(plan)}
-                              className="p-1.5 rounded text-content-muted hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                              className="p-1.5 rounded text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors"
                               title="Delete Plan"
                             >
                               <Trash2 size={14} />
@@ -1086,7 +1086,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {followedPlans.map((follow) => (
-                  <div key={follow.id} className="card p-4 space-y-3 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+                  <div key={follow.id} className="card p-4 space-y-3 flex flex-col justify-between hover:border-overlay-default transition-all">
                     <div>
                       <div className="flex justify-between items-start gap-3">
                         <div className="space-y-1 min-w-0 flex-1">
@@ -1099,7 +1099,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
                         <button
                           onClick={() => setFollowToDelete(follow)}
-                          className="p-1.5 rounded text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center gap-1 text-xs shrink-0 border border-rose-500/20 transition-colors"
+                          className="p-1.5 rounded text-rose-theme hover:text-rose-theme-muted hover:bg-rose-500/10 flex items-center gap-1 text-xs shrink-0 border border-rose-500/20 transition-colors"
                           title="Remove copied plan from your account"
                         >
                           <Trash2 size={13} /> Unfollow
@@ -1121,7 +1121,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       {activeTab === 'discover' && (
         <div className="space-y-4">
           {/* Server-Side Search, Filter, & Sort Control Bar */}
-          <div className="card p-4 space-y-3 bg-slate-900/60 border-slate-800">
+          <div className="card p-4 space-y-3 bg-bg-800/60 border-overlay-subtle">
             {/* Search Input & Sort Dropdown */}
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
               <div className="relative flex-1">
@@ -1141,7 +1141,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
               <div className="flex items-center gap-2 shrink-0">
                 <label className="text-xs font-medium text-content-muted flex items-center gap-1">
-                  <Filter size={13} className="text-blue-400" /> Sort:
+                  <Filter size={13} className="text-blue-theme" /> Sort:
                 </label>
                 <select
                   value={discoverSortBy}
@@ -1150,7 +1150,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     setDiscoverSortBy(sort);
                     loadPlans(discoverSearch, discoverCategory, discoverPlanType, sort);
                   }}
-                  className="input text-xs py-1.5 px-3 bg-slate-800 border-slate-700 text-content-secondary"
+                  className="input text-xs py-1.5 px-3 bg-bg-700 border-overlay-default text-content-secondary"
                 >
                   <option value="recent">Most Recent</option>
                   <option value="followed">Most Followed (Copy Count)</option>
@@ -1160,7 +1160,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             </div>
 
             {/* Category Filter Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-800/80">
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-overlay-default">
               <span className="text-[11px] font-semibold text-content-disabled mr-1">Category:</span>
               {['All', ...PLAN_CATEGORIES].map((cat) => (
                 <button
@@ -1171,8 +1171,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   }}
                   className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
                     discoverCategory === cat
-                      ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 font-semibold'
-                      : 'bg-slate-800/60 text-content-muted border-slate-700/50 hover:bg-slate-800 hover:text-content-secondary'
+                      ? 'badge-blue font-semibold'
+                      : 'bg-bg-700/60 text-content-muted border-overlay-subtle hover:bg-bg-700 hover:text-content-secondary'
                   }`}
                 >
                   {cat}
@@ -1198,8 +1198,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   }}
                   className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
                     discoverPlanType === t.id
-                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 font-semibold'
-                      : 'bg-slate-800/60 text-content-muted border-slate-700/50 hover:bg-slate-800 hover:text-content-secondary'
+                      ? 'bg-purple-500/20 text-purple-hierarchy border-purple-500/40 font-semibold'
+                      : 'bg-bg-700/60 text-content-muted border-overlay-subtle hover:bg-bg-700 hover:text-content-secondary'
                   }`}
                 >
                   {t.label}
@@ -1241,7 +1241,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 const isAlreadyCopied = followedPlans.some((f) => f.originalPlanId === plan.id);
 
                 return (
-                  <div key={plan.id} className="card p-4 space-y-3 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+                  <div key={plan.id} className="card p-4 space-y-3 flex flex-col justify-between hover:border-overlay-default transition-all">
                     <div>
                       {/* Creator Info Header */}
                       <div className="flex justify-between items-start gap-3 mb-3">
@@ -1256,8 +1256,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0 bg-slate-900/60 p-1.5 rounded-lg border border-slate-800">
-                          <span className="flex items-center gap-1 text-[11px] font-bold text-blue-400 px-1" title="Times copied">
+                        <div className="flex items-center gap-1.5 shrink-0 bg-bg-800/60 p-1.5 rounded-lg border border-overlay-subtle">
+                          <span className="flex items-center gap-1 text-[11px] font-bold text-blue-theme px-1" title="Times copied">
                             <Copy size={12} /> {plan.copyCount || 0}
                           </span>
                           {isOwnPlan && (
@@ -1268,8 +1268,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                 }}
                                 className={`p-1.5 rounded transition-colors ${
                                   plan.isPublic
-                                    ? 'text-blue-400 hover:bg-blue-500/20'
-                                    : 'text-content-disabled hover:text-content-tertiary hover:bg-slate-800'
+                                    ? 'text-blue-theme hover:bg-blue-500/20'
+                                    : 'text-content-disabled hover:text-content-tertiary hover:bg-bg-700'
                                 }`}
                                 title={plan.isPublic ? 'Make Private' : 'Make Public'}
                               >
@@ -1277,14 +1277,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               </button>
                               <button
                                 onClick={() => handleOpenEdit(plan)}
-                                className="p-1.5 rounded text-content-muted hover:text-blue-400 hover:bg-slate-800 transition-colors"
+                                className="p-1.5 rounded text-content-muted hover:text-blue-theme hover:bg-bg-700 transition-colors"
                                 title="Edit Structure"
                               >
                                 <Edit3 size={14} />
                               </button>
                               <button
                                 onClick={() => setPlanToDelete(plan)}
-                                className="p-1.5 rounded text-content-muted hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                                className="p-1.5 rounded text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors"
                                 title="Delete Plan"
                               >
                                 <Trash2 size={14} />
@@ -1299,7 +1299,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                         <div className="flex flex-wrap items-center gap-2">
                           {renderPlanTypeBadge(plan.planType)}
                           {plan.category && (
-                            <span className="badge text-[10px] bg-slate-800 text-content-muted border border-slate-700/50">
+                            <span className="badge text-[10px] bg-bg-700 text-content-muted border border-overlay-subtle">
                               {plan.category}
                             </span>
                           )}
@@ -1313,7 +1313,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     {renderPlanCardBody(plan, 'read_only')}
 
                     {/* Copy Action Footer */}
-                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                    <div className="pt-2 border-t border-overlay-default flex items-center justify-between">
                       <span className="text-[10px] text-content-disabled">Created: {new Date(plan.createdAt).toLocaleDateString()}</span>
 
                       {!isOwnPlan && (
@@ -1321,7 +1321,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           onClick={() => store.copyPublicPlan(plan)}
                           disabled={isAlreadyCopied}
                           className={`btn-primary text-xs py-1 px-3 flex items-center gap-1.5 ${
-                            isAlreadyCopied ? 'opacity-50 cursor-not-allowed bg-slate-700 text-content-muted' : ''
+                            isAlreadyCopied ? 'opacity-50 cursor-not-allowed bg-bg-600 text-content-muted' : ''
                           }`}
                         >
                           <Copy size={13} />
@@ -1341,10 +1341,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create Personal Improvement Plan">
         <form onSubmit={handleCreateSubmit} className="space-y-4">
           {/* STARTER TEMPLATE ACCELERATOR */}
-          <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 space-y-2">
+          <div className="card p-3 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-content-tertiary flex items-center gap-1.5">
-                <Sparkles size={13} className="text-blue-400" /> Start from Template (Optional)
+                <Sparkles size={13} className="text-blue-theme" /> Start from Template (Optional)
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -1353,9 +1353,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   key={tpl.id}
                   type="button"
                   onClick={() => applyTemplate(tpl)}
-                  className="text-left p-2 rounded border border-slate-800 hover:border-blue-500/50 bg-slate-800/40 hover:bg-slate-800/80 transition-all text-xs group"
+                  className="text-left p-2.5 rounded-xl border border-overlay-medium hover:border-blue-500/50 bg-bg-700 hover:bg-bg-600 shadow-sm transition-all text-xs group"
                 >
-                  <div className="font-bold text-content-secondary group-hover:text-blue-300 flex items-center justify-between">
+                  <div className="font-bold text-content-secondary group-hover:text-blue-theme flex items-center justify-between">
                     <span>{tpl.title}</span>
                   </div>
                   <div className="text-[10px] text-content-disabled line-clamp-2 mt-0.5">{tpl.description}</div>
@@ -1371,13 +1371,13 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               <button
                 type="button"
                 onClick={() => handleSelectPlanType('milestone')}
-                className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
+                className={`p-3 rounded-xl border text-left transition-all flex flex-col gap-1 ${
                   planType === 'milestone'
-                    ? 'border-blue-500 bg-blue-500/10 text-content-primary'
-                    : 'border-slate-800 bg-slate-900/40 text-content-muted hover:border-slate-700'
+                    ? 'border-blue-500 bg-blue-500/10 text-content-primary ring-1 ring-blue-500/40 shadow-sm'
+                    : 'border-overlay-medium bg-bg-700 text-content-muted shadow-sm hover:border-overlay-strong hover:bg-bg-600'
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-bold text-xs text-blue-400">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-blue-theme">
                   <CheckSquare size={14} /> Milestone Plan
                 </div>
                 <div className="text-[11px] text-content-disabled leading-tight">Ordered list of milestones & step completion</div>
@@ -1386,13 +1386,13 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               <button
                 type="button"
                 onClick={() => handleSelectPlanType('target_goal')}
-                className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
+                className={`p-3 rounded-xl border text-left transition-all flex flex-col gap-1 ${
                   planType === 'target_goal'
-                    ? 'border-amber-500 bg-amber-500/10 text-content-primary'
-                    : 'border-slate-800 bg-slate-900/40 text-content-muted hover:border-slate-700'
+                    ? 'border-amber-500 bg-amber-500/10 text-content-primary ring-1 ring-amber-500/40 shadow-sm'
+                    : 'border-overlay-medium bg-bg-700 text-content-muted shadow-sm hover:border-overlay-strong hover:bg-bg-600'
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-bold text-xs text-amber-400">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-warning-text">
                   <Target size={14} /> Target Goal
                 </div>
                 <div className="text-[11px] text-content-disabled leading-tight">Single measurable target value reached by date</div>
@@ -1401,13 +1401,13 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               <button
                 type="button"
                 onClick={() => handleSelectPlanType('habit_journey')}
-                className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
+                className={`p-3 rounded-xl border text-left transition-all flex flex-col gap-1 ${
                   planType === 'habit_journey'
-                    ? 'border-rose-500 bg-rose-500/10 text-content-primary'
-                    : 'border-slate-800 bg-slate-900/40 text-content-muted hover:border-slate-700'
+                    ? 'border-rose-500 bg-rose-500/10 text-content-primary ring-1 ring-rose-500/40 shadow-sm'
+                    : 'border-overlay-medium bg-bg-700 text-content-muted shadow-sm hover:border-overlay-strong hover:bg-bg-600'
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-bold text-xs text-rose-400">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-rose-theme">
                   <Flame size={14} /> Habit Journey
                 </div>
                 <div className="text-[11px] text-content-disabled leading-tight">Daily/weekly habit commitment with streak counter</div>
@@ -1416,13 +1416,13 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               <button
                 type="button"
                 onClick={() => handleSelectPlanType('vision')}
-                className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 ${
+                className={`p-3 rounded-xl border text-left transition-all flex flex-col gap-1 ${
                   planType === 'vision'
-                    ? 'border-purple-500 bg-purple-500/10 text-content-primary'
-                    : 'border-slate-800 bg-slate-900/40 text-content-muted hover:border-slate-700'
+                    ? 'border-purple-500 bg-purple-500/10 text-content-primary ring-1 ring-purple-500/40 shadow-sm'
+                    : 'border-overlay-medium bg-bg-700 text-content-muted shadow-sm hover:border-overlay-strong hover:bg-bg-600'
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-bold text-xs text-purple-400">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-purple-hierarchy">
                   <Compass size={14} /> Vision & Reflection
                 </div>
                 <div className="text-[11px] text-content-disabled leading-tight">Long-term vision with dated check-in notes</div>
@@ -1507,7 +1507,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-xs font-medium text-content-muted">Steps & Milestones</label>
-                <button type="button" onClick={handleAddStepField} className="text-xs text-blue-400 hover:underline">
+                <button type="button" onClick={handleAddStepField} className="text-xs text-blue-theme hover:underline">
                   + Add Step
                 </button>
               </div>
@@ -1526,7 +1526,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       <button
                         type="button"
                         onClick={() => handleRemoveStepField(idx)}
-                        className="text-content-subtle hover:text-rose-400 p-1"
+                        className="text-content-subtle hover:text-rose-theme p-1"
                       >
                         <Trash2 size={15} />
                       </button>
@@ -1538,7 +1538,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {planType === 'target_goal' && (
-            <div className="space-y-3 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+            <div className="card space-y-3 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-content-muted mb-1">Target Value (Number)</label>
@@ -1588,7 +1588,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {planType === 'habit_journey' && (
-            <div className="space-y-3 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+            <div className="card space-y-3 p-3">
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-content-muted mb-1">Cadence</label>
@@ -1626,7 +1626,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {planType === 'vision' && (
-            <div className="space-y-3 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+            <div className="card space-y-3 p-3">
               <div>
                 <label className="block text-xs font-medium text-content-muted mb-1">Target Review Date (Optional)</label>
                 <input
@@ -1731,7 +1731,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <button
                   type="button"
                   onClick={() => setEditSteps([...editSteps, `Step ${editSteps.length + 1}`])}
-                  className="text-xs text-blue-400 hover:underline"
+                  className="text-xs text-blue-theme hover:underline"
                 >
                   + Add Step
                 </button>
@@ -1755,7 +1755,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       <button
                         type="button"
                         onClick={() => setEditSteps(editSteps.filter((_, i) => i !== idx))}
-                        className="text-content-subtle hover:text-rose-400 p-1"
+                        className="text-content-subtle hover:text-rose-theme p-1"
                       >
                         <Trash2 size={15} />
                       </button>
@@ -1767,7 +1767,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {editingPlanType === 'target_goal' && (
-            <div className="space-y-3 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+            <div className="card space-y-3 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-content-muted mb-1">Target Value</label>
@@ -1805,7 +1805,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {editingPlanType === 'habit_journey' && (
-            <div className="grid grid-cols-2 gap-3 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+            <div className="grid grid-cols-2 gap-3 bg-bg-800/50 p-3 rounded-lg border border-overlay-subtle">
               <div>
                 <label className="block text-xs font-medium text-content-muted mb-1">Cadence</label>
                 <select
@@ -1832,7 +1832,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {editingPlanType === 'vision' && (
-            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+            <div className="bg-bg-800/50 p-3 rounded-lg border border-overlay-subtle">
               <label className="block text-xs font-medium text-content-muted mb-1">Target Review Date</label>
               <input
                 type="date"

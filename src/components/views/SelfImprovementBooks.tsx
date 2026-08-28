@@ -124,18 +124,18 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
   const renderStatusBadge = (status: UserBookStatus) => {
     if (status === 'to-read')
       return (
-        <span className="badge bg-slate-500/15 text-content-muted border border-slate-500/30 text-[10px]">
+        <span className="badge bg-overlay-subtle text-content-muted border border-overlay-default text-[10px]">
           <ListTodo size={11} /> To Read
         </span>
       );
     if (status === 'reading')
       return (
-        <span className="badge bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px]">
+        <span className="badge badge-amber text-[10px]">
           <PlayCircle size={11} /> Reading
         </span>
       );
     return (
-      <span className="badge bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px]">
+      <span className="badge badge-emerald text-[10px]">
         <CheckCircle2 size={11} /> Completed
       </span>
     );
@@ -144,7 +144,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
   const renderCategoryBadge = (category: BookCategory | string, compact = false) => {
     const meta = getCategoryMeta(category as BookCategory);
     return (
-      <span className={`badge ${meta.bgClass} ${meta.color} border ${compact ? 'text-[10px] px-2 py-0.5' : ''}`}>
+      <span className={`badge ${meta.badgeClass} ${compact ? 'text-[10px] px-2 py-0.5' : ''}`}>
         {category}
       </span>
     );
@@ -190,7 +190,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
         {status !== 'completed' && (
           <button
             onClick={() => userBook && store.updateUserBookStatus(userBook.id, 'completed')}
-            className="flex-1 text-xs py-1.5 min-w-[70px] rounded-xl inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 active:scale-95 border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+            className="flex-1 text-xs py-1.5 min-w-[70px] rounded-xl inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 active:scale-95 border border-emerald-500/40 bg-emerald-500/10 text-success-text hover:bg-emerald-500/20"
             title="Mark as Completed (+pts for curated)"
           >
             <CheckCircle2 size={12} />
@@ -206,7 +206,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
-            <BookMarked className="text-violet-400" size={26} />
+            <BookMarked className="text-violet-theme" size={26} />
             Self Improvement Books
           </h1>
           <p className="text-sm text-content-disabled mt-1">
@@ -221,7 +221,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-500/15 flex items-center justify-center text-content-muted shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-overlay-subtle flex items-center justify-center text-content-muted shrink-0">
             <Library size={20} />
           </div>
           <div>
@@ -230,7 +230,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
           </div>
         </div>
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-sky-500/15 flex items-center justify-center text-sky-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-sky-500/15 flex items-center justify-center text-sky-theme shrink-0">
             <ListTodo size={20} />
           </div>
           <div>
@@ -239,7 +239,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
           </div>
         </div>
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center text-warning-text shrink-0">
             <PlayCircle size={20} />
           </div>
           <div>
@@ -248,12 +248,12 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
           </div>
         </div>
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
             <Award size={20} />
           </div>
           <div>
             <div className="text-xs text-content-disabled">Completed</div>
-            <div className="text-xl font-display font-bold text-emerald-400">
+            <div className="text-xl font-display font-bold text-success-text">
               {stats.completed}
               <span className="text-xs ml-1 font-sans text-content-muted font-normal">· {stats.curatedCompletedPoints} pts</span>
             </div>
@@ -267,7 +267,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
             onClick={() => setTab('discover')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               tab === 'discover'
-                ? 'bg-primary-500/20 text-primary-400'
+                ? 'bg-primary-500/20 text-brand-text'
                 : 'text-content-muted hover:text-content-secondary'
             }`}
           >
@@ -280,7 +280,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
             onClick={() => setTab('library')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               tab === 'library'
-                ? 'bg-primary-500/20 text-primary-400'
+                ? 'bg-primary-500/20 text-brand-text'
                 : 'text-content-muted hover:text-content-secondary'
             }`}
           >
@@ -338,7 +338,6 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {filteredCurated.map((book) => {
             const userBook = getUserBookForCurated(book.id);
-            const catMeta = getCategoryMeta(book.category);
             return (
               <div key={book.id} className="card p-4 flex flex-col justify-between space-y-3 card-hover">
                 <div className="space-y-2">
@@ -359,11 +358,11 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
 
                 <div className="space-y-2.5 pt-1">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className={`font-medium ${catMeta.color}`}>
-                      <Sparkles size={11} className="inline mr-1" />
+                    <span className="badge badge-amber text-[10px] font-medium flex items-center gap-1">
+                      <Sparkles size={10} />
                       Curated Pick
                     </span>
-                    <span className="text-amber-400 font-bold">
+                    <span className="text-warning-text font-bold">
                       +{book.pointsOnCompletion} pts
                       <span className="text-content-disabled font-normal ml-1">on finish</span>
                     </span>
@@ -373,7 +372,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
                     <div className="flex items-center justify-between">
                       {renderStatusBadge(userBook.status)}
                       {userBook.pointsAwarded > 0 && (
-                        <span className="text-[10px] text-emerald-400 font-bold">
+                        <span className="text-[10px] text-success-text font-bold">
                           ✓ {userBook.pointsAwarded} pts awarded
                         </span>
                       )}
@@ -407,8 +406,8 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
                   <div key={groupStatus}>
                     <h2 className="section-title mb-3 flex items-center gap-2">
                       {groupStatus === 'to-read' && <ListTodo size={18} className="text-content-muted" />}
-                      {groupStatus === 'reading' && <PlayCircle size={18} className="text-amber-400" />}
-                      {groupStatus === 'completed' && <CheckCircle2 size={18} className="text-emerald-400" />}
+                      {groupStatus === 'reading' && <PlayCircle size={18} className="text-warning-text" />}
+                      {groupStatus === 'completed' && <CheckCircle2 size={18} className="text-success-text" />}
                       {groupStatus === 'to-read' ? 'To Read' : groupStatus === 'reading' ? 'Currently Reading' : 'Completed'}
                       <span className="text-sm font-sans font-normal text-content-disabled">({groupBooks.length})</span>
                     </h2>
@@ -462,7 +461,7 @@ export function SelfImprovementBooks({ store }: { store: AppStore }) {
 
       <Modal open={addCustomModalOpen} onClose={() => setAddCustomModalOpen(false)} title="Add Custom Book">
         <form onSubmit={handleAddCustomSubmit} className="space-y-4">
-          <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl flex items-center gap-3 text-sky-400">
+          <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl flex items-center gap-3 text-sky-theme">
             <BookOpen size={18} className="shrink-0" />
             <div className="text-xs">
               <span className="font-bold">Custom books don't award curated bonus points.</span>
@@ -569,7 +568,7 @@ function LibraryCard({
   const renderCategoryBadge = (category: BookCategory | string) => {
     const meta = getCategoryMeta(category as BookCategory);
     return (
-      <span className={`badge ${meta.bgClass} ${meta.color} border text-[10px] px-2 py-0.5`}>
+      <span className={`badge ${meta.badgeClass} text-[10px] px-2 py-0.5`}>
         {category}
       </span>
     );
@@ -583,7 +582,7 @@ function LibraryCard({
             <div className="flex items-center gap-1.5 flex-wrap">
               <h3 className="font-semibold text-content-secondary text-base leading-snug">{userBook.title}</h3>
               {userBook.isCustom && (
-                <span className="badge bg-slate-500/10 text-content-muted text-[9px] border border-slate-500/20">
+                <span className="badge bg-overlay-subtle text-content-muted text-[9px] border border-overlay-subtle">
                   Custom
                 </span>
               )}
@@ -594,7 +593,7 @@ function LibraryCard({
             {userBook.category && renderCategoryBadge(userBook.category)}
             <button
               onClick={onRemove}
-              className="text-content-subtle hover:text-rose-400 p-1"
+              className="text-content-subtle hover:text-rose-theme p-1"
               title="Remove from library"
             >
               <Trash2 size={15} />
@@ -612,10 +611,10 @@ function LibraryCard({
           <span>Added {formatDateLong(userBook.addedAt)}</span>
           <div className="flex items-center gap-2">
             {userBook.status === 'completed' && userBook.completedAt && (
-              <span className="text-emerald-400">✓ {formatDateLong(userBook.completedAt)}</span>
+              <span className="text-success-text">✓ {formatDateLong(userBook.completedAt)}</span>
             )}
             {userBook.pointsAwarded > 0 && (
-              <span className="text-amber-400 font-bold">+{userBook.pointsAwarded} pts</span>
+              <span className="text-warning-text font-bold">+{userBook.pointsAwarded} pts</span>
             )}
           </div>
         </div>
@@ -643,7 +642,7 @@ function LibraryCard({
         {userBook.status !== 'completed' && (
           <button
             onClick={() => onStatusChange('completed')}
-            className="flex-1 text-xs py-1.5 rounded-xl inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 active:scale-95 border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+            className="flex-1 text-xs py-1.5 rounded-xl inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 active:scale-95 border border-emerald-500/40 bg-emerald-500/10 text-success-text hover:bg-emerald-500/20"
           >
             <CheckCircle2 size={12} />
             <span className="hidden sm:inline">Complete</span>

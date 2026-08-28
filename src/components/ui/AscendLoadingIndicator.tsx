@@ -63,7 +63,7 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
 }) => {
   return (
     <div
-      className="fixed inset-0 z-[9999] bg-bg-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-fadeIn"
+      className="fixed inset-0 z-[9999] bg-bg-900/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-fadeIn"
       role="dialog"
       aria-modal="true"
       aria-label={message}
@@ -94,7 +94,7 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
         {/* Brand Name */}
         <div className="flex items-center gap-2 mb-1.5">
           <span className="font-display font-bold text-content-primary text-xl tracking-wide">Ascend</span>
-          <span className="text-[10px] bg-primary-500/20 text-primary-300 border border-primary-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+          <span className="text-[10px] bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
             Self Growth
           </span>
         </div>

@@ -54,20 +54,20 @@ export function ApplyTemplateModal({
         <div>
           {/* Target Date Picker */}
           <div className="mb-3">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-              <Calendar size={13} className="text-emerald-400" />
+            <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <Calendar size={13} className="text-success-text" />
               <span>Target Schedule Date</span>
             </label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900/90 border border-white/10 rounded-xl text-slate-100 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+              className="w-full px-3 py-2 bg-bg-800/90 border border-overlay-default rounded-xl text-content-primary text-xs focus:outline-none focus:border-emerald-500 transition-colors"
               required
             />
           </div>
 
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
             Select Template
           </label>
           <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
@@ -84,17 +84,17 @@ export function ApplyTemplateModal({
                   onClick={() => setSelectedTemplateId(tpl.id)}
                   className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-500/15 border-emerald-500/60 shadow-sm text-white'
-                      : 'bg-white/[0.02] border-white/5 text-slate-300 hover:bg-white/[0.05]'
+                      ? 'bg-emerald-500/15 border-emerald-500/60 shadow-sm text-content-primary ring-1 ring-emerald-500/40'
+                      : 'bg-bg-700 border-overlay-medium text-content-tertiary shadow-sm hover:bg-bg-600'
                   }`}
                 >
                   <div className="min-w-0 pr-2">
                     <p className="text-xs font-semibold truncate">{tpl.title}</p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-content-muted">
                       {tpl.blocks?.length || 0} scheduled blocks ({formatDurationHuman(totalMins)})
                     </p>
                   </div>
-                  <div className="text-[10px] font-mono text-emerald-300 shrink-0 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                  <div className="text-[10px] font-mono text-success-text shrink-0 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
                     {tpl.activeDays?.length || 0} active days
                   </div>
                 </button>
@@ -105,7 +105,7 @@ export function ApplyTemplateModal({
 
         {/* Application Mode */}
         <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
             Application Mode
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -114,15 +114,15 @@ export function ApplyTemplateModal({
               onClick={() => setMode('merge')}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 mode === 'merge'
-                  ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-200 font-semibold'
-                  : 'bg-white/[0.02] border-white/5 text-slate-400 hover:bg-white/[0.05]'
+                  ? 'bg-emerald-500/15 border-emerald-500/60 text-success-text font-semibold shadow-sm ring-1 ring-emerald-500/40'
+                  : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
               }`}
             >
               <div className="flex items-center gap-1.5 text-xs font-medium mb-0.5">
                 <Plus size={13} />
                 <span>Merge Safely</span>
               </div>
-              <p className="text-[10px] text-slate-400 font-normal leading-tight">
+              <p className="text-[10px] text-content-muted font-normal leading-tight">
                 Add non-colliding blueprint blocks without removing existing ones.
               </p>
             </button>
@@ -132,15 +132,15 @@ export function ApplyTemplateModal({
               onClick={() => setMode('replace')}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 mode === 'replace'
-                  ? 'bg-amber-500/20 border-amber-500/70 text-amber-200 font-semibold'
-                  : 'bg-white/[0.02] border-white/5 text-slate-400 hover:bg-white/[0.05]'
+                  ? 'bg-amber-500/20 border-amber-500/70 text-warning-text font-semibold shadow-sm ring-1 ring-amber-500/40'
+                  : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
               }`}
             >
               <div className="flex items-center gap-1.5 text-xs font-medium mb-0.5">
                 <RefreshCw size={13} />
                 <span>Replace Schedule</span>
               </div>
-              <p className="text-[10px] text-slate-400 font-normal leading-tight">
+              <p className="text-[10px] text-content-muted font-normal leading-tight">
                 Overwrite today&rsquo;s blocks completely with this template.
               </p>
             </button>
@@ -148,19 +148,19 @@ export function ApplyTemplateModal({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/5">
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-overlay-subtle">
           <button
             type="button"
             onClick={onClose}
             disabled={isApplying}
-            className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            className="px-4 py-2 text-xs font-medium text-content-muted hover:text-content-secondary transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isApplying || !selectedTemplateId}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
           >
             {isApplying ? (
               <>

@@ -314,7 +314,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
     if (!category) return null;
     const meta = getCategoryMeta(category as BookCategory);
     return (
-      <span className={`badge ${meta.bgClass} ${meta.color} border ${compact ? 'text-[10px] px-2 py-0.5' : ''}`}>
+      <span className={`badge ${meta.badgeClass} ${compact ? 'text-[10px] px-2 py-0.5' : ''}`}>
         {category}
       </span>
     );
@@ -326,7 +326,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2.5">
-            <BookOpen className="text-amber-400" size={26} />
+            <BookOpen className="text-warning-text" size={26} />
             Reading Hub
           </h1>
           <p className="text-sm text-content-muted mt-1">
@@ -337,9 +337,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
           {readingHabit ? (
             <button
               onClick={() => setUnlinkConfirmOpen(true)}
-              className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-2 border-emerald-500/30 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 whitespace-nowrap"
+              className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-2 border-emerald-500/30 text-success-text bg-emerald-500/10 hover:bg-emerald-500/20 whitespace-nowrap"
             >
-              <Check size={14} className="text-emerald-400 shrink-0" />
+              <Check size={14} className="text-success-text shrink-0" />
               <span className="whitespace-nowrap font-medium">Linked to Habits</span>
             </button>
           ) : (
@@ -364,7 +364,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       {/* Hero Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center text-warning-text shrink-0">
             <Flame size={22} />
           </div>
           <div>
@@ -376,7 +376,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-primary-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
             <PlayCircle size={22} />
           </div>
           <div>
@@ -386,7 +386,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
             <CheckCircle2 size={22} />
           </div>
           <div>
@@ -396,7 +396,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
             <Award size={22} />
           </div>
           <div>
@@ -410,7 +410,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
           {/* Main Navigation Tabs */}
-          <div className="flex items-stretch justify-between w-full bg-slate-800/40 p-1 rounded-xl gap-1">
+          <div className="flex items-stretch justify-between w-full bg-bg-700/40 p-1 rounded-xl gap-1">
             <button
               onClick={() => setActiveTab('reading')}
               className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
@@ -509,7 +509,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         <div className="space-y-4">
           {filteredInProgress.length === 0 ? (
             <div className="card p-8 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-warning-text flex items-center justify-center mx-auto">
                 <BookOpen size={24} />
               </div>
               <h3 className="text-base font-bold text-content-secondary">No books currently in progress</h3>
@@ -555,7 +555,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           <div className="flex items-center gap-2 mb-1.5">
                             {renderCategoryBadge(book.category, true)}
                             {book.isCurated && (
-                              <span className="badge bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] flex items-center gap-1">
+                              <span className="badge badge-amber text-[10px] flex items-center gap-1">
                                 <Sparkles size={10} /> Curated
                               </span>
                             )}
@@ -565,7 +565,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         </div>
                         <button
                           onClick={() => setDeleteModalBook(book)}
-                          className="p-1.5 text-content-disabled hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-all shrink-0"
+                          className="p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all shrink-0"
                           title="Remove Book"
                         >
                           <Trash2 size={16} />
@@ -584,7 +584,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           <span className="text-content-muted">
                             {current} / {total} {unit}
                           </span>
-                          <span className="font-bold text-amber-400">{percent}%</span>
+                          <span className="font-bold text-warning-text">{percent}%</span>
                         </div>
                         <div className="h-2 w-full bg-bg-950/60 rounded-full overflow-hidden border border-overlay-subtle">
                           <div
@@ -597,7 +597,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       {/* Target Date */}
                       {book.targetFinishDate && (
                         <div className="flex items-center gap-1.5 text-[11px] text-content-muted mt-2.5">
-                          <Calendar size={12} className="text-amber-400" />
+                          <Calendar size={12} className="text-warning-text" />
                           <span>Target Finish: {formatDateLong(book.targetFinishDate)}</span>
                         </div>
                       )}
@@ -623,7 +623,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           }}
                           className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5 whitespace-nowrap"
                         >
-                          <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                          <CheckCircle2 size={14} className="text-success-text shrink-0" />
                           <span>Finish</span>
                         </button>
                       </div>
@@ -651,7 +651,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         <div className="space-y-4">
           {filteredToRead.length === 0 ? (
             <div className="card p-8 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-500/15 text-content-muted flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-overlay-subtle text-content-muted flex items-center justify-center mx-auto">
                 <ListTodo size={24} />
               </div>
               <h3 className="text-base font-bold text-content-secondary">No books in your library</h3>
@@ -694,7 +694,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       </div>
                       <button
                         onClick={() => setDeleteModalBook(book)}
-                        className="p-1 text-content-disabled hover:text-rose-400 rounded transition-all"
+                        className="p-1 text-content-disabled hover:text-rose-theme rounded transition-all"
                         title="Remove Book"
                       >
                         <Trash2 size={14} />
@@ -737,12 +737,12 @@ export function ReadingHub({ store }: { store: AppStore }) {
               return (
                 <div
                   key={curated.id}
-                  className="card p-5 flex flex-col justify-between space-y-4 border border-overlay-subtle hover:border-amber-500/30 transition-all"
+                  className="card p-5 flex flex-col justify-between space-y-4 border-overlay-medium shadow-sm hover:border-amber-500/40 transition-all"
                 >
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
                       {renderCategoryBadge(curated.category, true)}
-                      <span className="badge bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] flex items-center gap-1">
+                      <span className="badge badge-amber text-[10px] flex items-center gap-1">
                         <Sparkles size={10} /> +{curated.pointsOnCompletion} pts on finish
                       </span>
                     </div>
@@ -766,10 +766,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       <span
                         className={`badge text-[10px] px-2 py-0.5 ${
                           userBook.status === 'completed'
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                            ? 'badge-emerald'
                             : userBook.status === 'reading'
-                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                            : 'bg-slate-500/15 text-content-muted border border-slate-500/30'
+                            ? 'badge-amber'
+                            : 'bg-overlay-subtle text-content-muted border border-overlay-default'
                         }`}
                       >
                         {userBook.status === 'completed'
@@ -802,7 +802,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         <div className="space-y-4">
           {filteredCompleted.length === 0 ? (
             <div className="card p-8 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-success-text flex items-center justify-center mx-auto">
                 <CheckCircle2 size={24} />
               </div>
               <h3 className="text-base font-bold text-content-secondary">No completed books yet</h3>
@@ -821,11 +821,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     <div>
                       <div className="flex items-center gap-2">
                         {renderCategoryBadge(book.category, true)}
-                        <span className="badge bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] flex items-center gap-1">
+                        <span className="badge badge-emerald text-[10px] flex items-center gap-1">
                           <CheckCircle2 size={10} /> Completed
                         </span>
                         {book.pointsAwarded ? (
-                          <span className="badge bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] flex items-center gap-1">
+                          <span className="badge badge-amber text-[10px] flex items-center gap-1">
                             <Sparkles size={10} /> +{book.pointsAwarded} pts
                           </span>
                         ) : null}
@@ -837,13 +837,13 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     <div className="flex items-center gap-2 shrink-0">
                       {book.dateCompleted && (
                         <span className="text-xs text-content-muted flex items-center gap-1">
-                          <Calendar size={12} className="text-emerald-400" />
+                          <Calendar size={12} className="text-success-text" />
                           {formatDateLong(book.dateCompleted)}
                         </span>
                       )}
                       <button
                         onClick={() => setDeleteModalBook(book)}
-                        className="p-1.5 text-content-disabled hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-all"
+                        className="p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all"
                         title="Remove Book"
                       >
                         <Trash2 size={16} />
@@ -853,7 +853,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
                   {book.reflection && (
                     <div className="p-3.5 bg-bg-900/80 rounded-xl border border-emerald-500/15 text-xs text-content-tertiary leading-relaxed space-y-1">
-                      <span className="font-semibold text-emerald-400 block text-[11px]">
+                      <span className="font-semibold text-success-text block text-[11px]">
                         Key Takeaway / Reflection:
                       </span>
                       <p>{book.reflection}</p>
@@ -866,7 +866,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     </span>
                     <button
                       onClick={() => store.restartBook(book.id)}
-                      className="text-xs text-amber-400 hover:text-amber-300 font-medium transition-colors"
+                      className="text-xs text-warning-text hover:text-warning-text-muted font-medium transition-colors"
                     >
                       Re-read book →
                     </button>
@@ -887,7 +887,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         <form onSubmit={handleAddCustomSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-content-tertiary mb-1">
-              Book Title <span className="text-rose-400">*</span>
+              Book Title <span className="text-rose-theme">*</span>
             </label>
             <input
               type="text"
@@ -1035,7 +1035,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-content-tertiary mb-1">
-                Total Length <span className="text-rose-400">*</span>
+                Total Length <span className="text-rose-theme">*</span>
               </label>
               <input
                 type="number"
@@ -1167,8 +1167,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
         title={finishModalBook ? `Celebrate: ${finishModalBook.title}` : 'Book Finished'}
       >
         <form onSubmit={handleFinishSubmit} className="space-y-4">
-          <div className="p-3.5 bg-amber-500/15 border border-amber-500/30 rounded-xl flex items-center gap-3 text-amber-300">
-            <Sparkles size={24} className="shrink-0 text-amber-400" />
+          <div className="p-3.5 bg-amber-500/15 border border-amber-500/30 rounded-xl flex items-center gap-3 text-warning-text">
+            <Sparkles size={24} className="shrink-0 text-warning-text" />
             <div className="text-xs">
               <span className="font-bold block">Congratulations on finishing!</span>
               <span>
@@ -1181,7 +1181,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div>
             <label className="block text-xs font-semibold text-content-tertiary mb-1">
-              Key Insights & Reflections <span className="text-rose-400">*</span>
+              Key Insights & Reflections <span className="text-rose-theme">*</span>
             </label>
             <textarea
               required

@@ -51,13 +51,13 @@ const CATEGORY_OPTIONS: {
   borderColor: string;
   bgColor: string;
 }[] = [
-  { value: 'habit', label: 'Habit', icon: CheckCircle2, color: 'text-emerald-400', borderColor: 'border-emerald-500/40', bgColor: 'bg-emerald-500/10' },
-  { value: 'exercise', label: 'Workout', icon: Dumbbell, color: 'text-amber-400', borderColor: 'border-amber-500/40', bgColor: 'bg-amber-500/10' },
-  { value: 'reading', label: 'Reading', icon: BookOpen, color: 'text-sky-400', borderColor: 'border-sky-500/40', bgColor: 'bg-sky-500/10' },
-  { value: 'bad_habit', label: 'Reduction', icon: AlertTriangle, color: 'text-rose-400', borderColor: 'border-rose-500/40', bgColor: 'bg-rose-500/10' },
-  { value: 'skill', label: 'Skill', icon: Zap, color: 'text-purple-400', borderColor: 'border-purple-500/40', bgColor: 'bg-purple-500/10' },
-  { value: 'journal', label: 'Journal', icon: FileText, color: 'text-indigo-400', borderColor: 'border-indigo-500/40', bgColor: 'bg-indigo-500/10' },
-  { value: 'recovery', label: 'Sobriety', icon: ShieldAlert, color: 'text-teal-400', borderColor: 'border-teal-500/40', bgColor: 'bg-teal-500/10' },
+  { value: 'habit', label: 'Habit', icon: CheckCircle2, color: 'text-success-text', borderColor: 'border-emerald-500/40', bgColor: 'bg-emerald-500/10' },
+  { value: 'exercise', label: 'Workout', icon: Dumbbell, color: 'text-warning-text', borderColor: 'border-amber-500/40', bgColor: 'bg-amber-500/10' },
+  { value: 'reading', label: 'Reading', icon: BookOpen, color: 'text-sky-theme', borderColor: 'border-sky-500/40', bgColor: 'bg-sky-500/10' },
+  { value: 'bad_habit', label: 'Reduction', icon: AlertTriangle, color: 'text-rose-theme', borderColor: 'border-rose-500/40', bgColor: 'bg-rose-500/10' },
+  { value: 'skill', label: 'Skill', icon: Zap, color: 'text-purple-hierarchy', borderColor: 'border-purple-500/40', bgColor: 'bg-purple-500/10' },
+  { value: 'journal', label: 'Journal', icon: FileText, color: 'text-indigo-theme', borderColor: 'border-indigo-500/40', bgColor: 'bg-indigo-500/10' },
+  { value: 'recovery', label: 'Sobriety', icon: ShieldAlert, color: 'text-teal-theme', borderColor: 'border-teal-500/40', bgColor: 'bg-teal-500/10' },
 ];
 
 const SUGGESTIONS_BY_CATEGORY: Record<SharedChallengeCategory, string[]> = {
@@ -655,10 +655,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
-              <Users className="text-emerald-400" size={26} />
+              <Users className="text-success-text" size={26} />
               Accountability Partners
             </h1>
-            <span className="badge bg-emerald-500/15 text-emerald-400 font-bold text-xs px-2.5 py-1">
+            <span className="badge bg-emerald-500/15 text-success-text font-bold text-xs px-2.5 py-1">
               {partnerships.length} / 5 Partners
             </span>
           </div>
@@ -682,7 +682,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       </div>
 
       {inviteError && (
-        <div className="card p-4 border-l-4 border-rose-500 bg-rose-500/10 text-xs text-rose-300 flex items-center justify-between">
+        <div className="card p-4 border-l-4 border-l-rose-500 bg-rose-500/10 text-xs text-rose-theme flex items-center justify-between">
           <span>{inviteError}</span>
           <button onClick={() => setInviteError(null)} className="text-content-muted hover:text-content-primary">
             <X size={14} />
@@ -693,7 +693,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       {/* PENDING INVITES SECTION (INCOMING & SENT) */}
       {(incomingInvites.length > 0 || sentInvites.length > 0) && (
         <div className="card p-4 space-y-3 bg-bg-800 border border-emerald-500/20">
-          <h2 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-xs font-bold text-success-text uppercase tracking-wider flex items-center gap-2">
             <Clock size={16} /> Partner Requests & Invites
           </h2>
 
@@ -713,7 +713,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleAcceptInvite(invite.id)}
-                      className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg transition-all"
+                      className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-on-brand font-bold rounded-lg transition-all"
                     >
                       Accept
                     </button>
@@ -736,12 +736,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               {sentInvites.map((invite) => (
                 <div key={invite.id} className="flex items-center justify-between bg-bg-700/40 p-2.5 rounded-xl border border-overlay-subtle text-xs">
                   <div className="flex items-center gap-2 text-content-tertiary">
-                    <Clock size={14} className="text-amber-400" />
+                    <Clock size={14} className="text-warning-text" />
                     <span>Invite sent to <strong>{invite.toUsername}</strong></span>
                   </div>
                   <button
                     onClick={() => setInviteToCancel(invite)}
-                    className="text-xs text-rose-400 hover:text-rose-300 font-medium transition-all px-2 py-1 bg-rose-500/10 rounded-lg hover:bg-rose-500/20"
+                    className="text-xs text-rose-theme hover:text-rose-theme-muted font-medium transition-all px-2 py-1 bg-rose-500/10 rounded-lg hover:bg-rose-500/20"
                   >
                     Cancel Invite
                   </button>
@@ -777,7 +777,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-success-text flex items-center justify-center font-bold text-sm">
                         {pUsername.charAt(0).toUpperCase()}
                       </div>
                       <span className="font-bold text-sm text-content-primary truncate max-w-[100px]">{pUsername}</span>
@@ -787,7 +787,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
                   <div className="flex items-center justify-between text-[11px] text-content-muted pt-2 border-t border-overlay-subtle">
                     <span>Active Pacts:</span>
-                    <span className="font-bold text-emerald-400">{pChallenges.length}</span>
+                    <span className="font-bold text-success-text">{pChallenges.length}</span>
                   </div>
                 </button>
               );
@@ -803,13 +803,13 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           <div className="card p-5 space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-overlay-subtle pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xl shadow-inner">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-success-text font-bold text-xl shadow-inner">
                   {activePartnerUsername?.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <h2 className="text-lg font-display font-bold text-content-primary flex items-center gap-2">
                     <span>Partner: {activePartnerUsername}</span>
-                    <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">Active</span>
+                    <span className="text-xs font-mono text-success-text bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">Active</span>
                   </h2>
                   <p className="text-xs text-content-muted mt-0.5">Paired on {formatDateShort(activePartnership.pairedAt)}</p>
                 </div>
@@ -820,7 +820,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   <Plus size={15} />
                   <span>Pledge Joint Pact</span>
                 </button>
-                <button onClick={() => setEndConfirmOpen(true)} className="btn-secondary text-xs text-rose-400 hover:text-rose-300 border-rose-500/30 hover:bg-rose-500/10 transition-all duration-200 active:scale-95">
+                <button onClick={() => setEndConfirmOpen(true)} className="btn-secondary text-xs text-rose-theme hover:text-rose-theme-muted border-rose-500/30 hover:bg-rose-500/10 transition-all duration-200 active:scale-95">
                   End Pairing
                 </button>
               </div>
@@ -830,14 +830,14 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             <div className="p-3.5 bg-bg-700/50 rounded-xl border border-overlay-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <Shield size={16} className={currentUserAllowStats ? 'text-emerald-400' : 'text-content-muted'} />
+                  <Shield size={16} className={currentUserAllowStats ? 'text-success-text' : 'text-content-muted'} />
                   <span className="text-xs font-bold text-content-secondary">Share Profile Stats with {activePartnerUsername}</span>
                   {bothStatsAllowed ? (
-                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <span className="text-[10px] font-bold text-success-text bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
                       <CheckCircle2 size={11} /> Mutual Stats Active
                     </span>
                   ) : (
-                    <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
+                    <span className="text-[10px] font-bold text-warning-text bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
                       Mutual Opt-In Required
                     </span>
                   )}
@@ -852,7 +852,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                 onClick={handleToggleStats}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 hover:scale-[1.02] cursor-pointer select-none flex items-center gap-1.5 shrink-0 ${
                   currentUserAllowStats
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                    ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40 hover:bg-emerald-500/30'
                     : 'bg-bg-800 text-content-tertiary border border-overlay-default hover:bg-bg-700'
                 }`}
               >
@@ -879,17 +879,17 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   {/* Versus Header */}
                   <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
                     <div className="flex items-center gap-2">
-                      <Trophy size={16} className="text-amber-400" />
+                      <Trophy size={16} className="text-warning-text" />
                       <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">Head-to-Head Comparison</span>
                     </div>
 
                     <div className="text-xs font-semibold">
                       {myTotalPoints > partnerTotalPoints ? (
-                        <span className="text-emerald-400 flex items-center gap-1">
+                        <span className="text-success-text flex items-center gap-1">
                           <TrendingUp size={13} /> You lead by {(myTotalPoints - partnerTotalPoints).toLocaleString()} pts
                         </span>
                       ) : partnerTotalPoints > myTotalPoints ? (
-                        <span className="text-amber-400 flex items-center gap-1">
+                        <span className="text-warning-text flex items-center gap-1">
                           <TrendingUp size={13} /> {activePartnerUsername} leads by {(partnerTotalPoints - myTotalPoints).toLocaleString()} pts
                         </span>
                       ) : (
@@ -913,7 +913,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           <span className="text-xl">{currentUser?.avatar || '🧑'}</span>
                           <div>
                             <span className="text-sm font-bold text-content-primary">You ({currentUsername})</span>
-                            <span className="block text-[10px] text-emerald-400 font-semibold">{myTier.name} Tier</span>
+                            <span className="block text-[10px] text-success-text font-semibold">{myTier.name} Tier</span>
                           </div>
                         </div>
                         <TierBadge totalPoints={myTotalPoints} size="sm" />
@@ -922,7 +922,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                           <span className="text-[10px] text-content-muted block">Total Points</span>
-                          <span className="text-sm font-display font-bold text-amber-400">{myTotalPoints.toLocaleString()}</span>
+                          <span className="text-sm font-display font-bold text-warning-text">{myTotalPoints.toLocaleString()}</span>
                         </div>
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                           <span className="text-[10px] text-content-muted block">Current Streak</span>
@@ -930,11 +930,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         </div>
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                           <span className="text-[10px] text-content-muted block">Habits Done Today</span>
-                          <span className="text-sm font-display font-bold text-sky-400">{myHabitsCompletedToday}</span>
+                          <span className="text-sm font-display font-bold text-sky-theme">{myHabitsCompletedToday}</span>
                         </div>
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                           <span className="text-[10px] text-content-muted block">Total Habits</span>
-                          <span className="text-sm font-display font-bold text-emerald-400">{myHabitsCompletedTotal}</span>
+                          <span className="text-sm font-display font-bold text-success-text">{myHabitsCompletedTotal}</span>
                         </div>
                       </div>
                     </div>
@@ -952,7 +952,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           <span className="text-xl">{partnerStatsData?.avatar || '🧑'}</span>
                           <div>
                             <span className="text-sm font-bold text-content-primary">{activePartnerUsername}</span>
-                            <span className="block text-[10px] text-emerald-400 font-semibold">{partnerTier.name} Tier</span>
+                            <span className="block text-[10px] text-success-text font-semibold">{partnerTier.name} Tier</span>
                           </div>
                         </div>
                         <TierBadge totalPoints={partnerTotalPoints} size="sm" />
@@ -961,7 +961,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                           <span className="text-[10px] text-content-muted block">Total Points</span>
-                          <span className="text-sm font-display font-bold text-amber-400">{partnerTotalPoints.toLocaleString()}</span>
+                          <span className="text-sm font-display font-bold text-warning-text">{partnerTotalPoints.toLocaleString()}</span>
                         </div>
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                           <span className="text-[10px] text-content-muted block">Current Streak</span>
@@ -969,11 +969,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         </div>
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                           <span className="text-[10px] text-content-muted block">Habits Done Today</span>
-                          <span className="text-sm font-display font-bold text-sky-400">{partnerHabitsCompletedToday}</span>
+                          <span className="text-sm font-display font-bold text-sky-theme">{partnerHabitsCompletedToday}</span>
                         </div>
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                           <span className="text-[10px] text-content-muted block">Total Habits</span>
-                          <span className="text-sm font-display font-bold text-emerald-400">{partnerHabitsCompleted}</span>
+                          <span className="text-sm font-display font-bold text-success-text">{partnerHabitsCompleted}</span>
                         </div>
                       </div>
                     </div>
@@ -990,21 +990,21 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             <div className="p-4 bg-bg-800/80 rounded-2xl border border-overlay-default space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-overlay-subtle pb-2.5">
                 <div className="flex items-center gap-2">
-                  <Calendar size={16} className="text-emerald-400" />
+                  <Calendar size={16} className="text-success-text" />
                   <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">
                     {matrixTimeline.length > 0 ? `${matrixTimeline.length}-Day` : '14-Day'} Consistency Matrix
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-[11px] flex-wrap">
                   <span className="text-content-muted">
-                    Joint Sync Rate: <strong className="text-emerald-400">{jointSyncRate}%</strong> ({jointSyncCount}/{elapsedDaysCount} active {elapsedDaysCount === 1 ? 'day' : 'days'})
+                    Joint Sync Rate: <strong className="text-success-text">{jointSyncRate}%</strong> ({jointSyncCount}/{elapsedDaysCount} active {elapsedDaysCount === 1 ? 'day' : 'days'})
                   </span>
                   <div className="flex items-center gap-2 text-[10px] text-content-muted flex-wrap">
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" /> Both Locked In</span>
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-500/80 inline-block" /> You Only</span>
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-sky-500/80 inline-block" /> Partner Only</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-rose-500/15 border border-rose-500/40 text-rose-400 font-extrabold text-[9px] inline-flex items-center justify-center leading-none">!</span> Missed Day</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-bg-900 border border-amber-500/40 text-amber-400 text-[9px] inline-flex items-center justify-center">·</span> Pending</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-rose-500/15 border border-rose-500/40 text-rose-theme font-extrabold text-[9px] inline-flex items-center justify-center leading-none">!</span> Missed Day</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-bg-900 border border-amber-500/40 text-warning-text text-[9px] inline-flex items-center justify-center">·</span> Pending</span>
                   </div>
                 </div>
               </div>
@@ -1016,10 +1016,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   <div className="w-20 text-[10px] font-bold text-content-disabled uppercase tracking-wider">Day</div>
                   {heatmapData.map((d) => (
                     <div key={d.dateKey} className="flex-1 text-center">
-                      <span className={`text-[10px] font-semibold block ${d.isToday ? 'text-emerald-400 font-bold' : d.isFuture ? 'text-content-subtle' : 'text-content-muted'}`}>
+                      <span className={`text-[10px] font-semibold block ${d.isToday ? 'text-success-text font-bold' : d.isFuture ? 'text-content-subtle' : 'text-content-muted'}`}>
                         {d.dayLabel}
                       </span>
-                      <span className={`text-[9px] block ${d.isToday ? 'text-emerald-400/80 font-bold' : d.isFuture ? 'text-slate-700' : 'text-content-disabled'}`}>
+                      <span className={`text-[9px] block ${d.isToday ? 'text-success-text font-bold' : d.isFuture ? 'text-slate-700' : 'text-content-disabled'}`}>
                         D{d.dayNumber}
                       </span>
                     </div>
@@ -1045,7 +1045,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     } else if (d.isPast) {
                       if (d.hasActivePacts) {
                         cellContent = '!';
-                        cellStyle = 'bg-rose-500/15 border border-rose-500/40 text-rose-400 font-extrabold shadow-sm';
+                        cellStyle = 'bg-rose-500/15 border border-rose-500/40 text-rose-theme font-extrabold shadow-sm';
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): Missed pledge ⚠️`;
                       } else {
                         cellContent = '·';
@@ -1055,7 +1055,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     } else if (d.isToday) {
                       if (d.hasActivePacts) {
                         cellContent = '·';
-                        cellStyle = 'bg-bg-900 border border-amber-500/40 text-amber-400 font-bold ring-1 ring-amber-500/20';
+                        cellStyle = 'bg-bg-900 border border-amber-500/40 text-warning-text font-bold ring-1 ring-amber-500/20';
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): Pending today`;
                       } else {
                         cellContent = '·';
@@ -1103,7 +1103,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     } else if (d.isPast) {
                       if (d.hasActivePacts) {
                         cellContent = '!';
-                        cellStyle = 'bg-rose-500/15 border border-rose-500/40 text-rose-400 font-extrabold shadow-sm';
+                        cellStyle = 'bg-rose-500/15 border border-rose-500/40 text-rose-theme font-extrabold shadow-sm';
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): ${activePartnerUsername} missed pledge ⚠️`;
                       } else {
                         cellContent = '·';
@@ -1113,7 +1113,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     } else if (d.isToday) {
                       if (d.hasActivePacts) {
                         cellContent = '·';
-                        cellStyle = 'bg-bg-900 border border-amber-500/40 text-amber-400 font-bold ring-1 ring-amber-500/20';
+                        cellStyle = 'bg-bg-900 border border-amber-500/40 text-warning-text font-bold ring-1 ring-amber-500/20';
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): Pending today`;
                       } else {
                         cellContent = '·';
@@ -1149,7 +1149,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="section-title flex items-center gap-2">
-                <Award size={18} className="text-amber-400" />
+                <Award size={18} className="text-warning-text" />
                 <span>Active Joint Pacts with {activePartnerUsername} ({activePacts.length})</span>
               </h2>
               <button onClick={() => setChallengeModalOpen(true)} className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5">
@@ -1210,7 +1210,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     <div key={challenge.id} className="card p-5 space-y-4 relative group border border-overlay-subtle hover:border-emerald-500/30 transition-all">
                       <button
                         onClick={() => setChallengeToDelete(challenge)}
-                        className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 hover:scale-110 cursor-pointer"
+                        className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 hover:scale-110 cursor-pointer"
                         title="Delete Joint Pact"
                       >
                         <Trash2 size={16} />
@@ -1221,7 +1221,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         <div className="space-y-1">
                           <h3 className="font-display font-bold text-base text-content-primary">{challenge.title}</h3>
                           <div className="flex items-center gap-2 text-xs text-content-muted">
-                            <span className="font-mono text-emerald-400 font-bold">
+                            <span className="font-mono text-success-text font-bold">
                               Current Streak: {challenge.jointStreak}d · Total Locked In: {totalCompleted} of {challenge.durationDays} Days
                             </span>
                           </div>
@@ -1244,7 +1244,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                               cx="48"
                               cy="48"
                               r={ringRadius}
-                              className="text-emerald-500 stroke-current transition-all duration-700 ease-out"
+                              className="text-success-text stroke-current transition-all duration-700 ease-out"
                               strokeWidth="8"
                               strokeDasharray={ringCircumference}
                               strokeDashoffset={ringOffset}
@@ -1254,7 +1254,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           </svg>
 
                           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                            <Flame size={18} className="text-amber-400 animate-pulse mb-0.5" />
+                            <Flame size={18} className="text-warning-text animate-pulse mb-0.5" />
                             <span className="font-display font-extrabold text-xs text-content-primary leading-none">
                               {challenge.jointStreak}d
                             </span>
@@ -1277,7 +1277,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                               key={m.pct}
                               className={`text-center py-1 px-1.5 rounded-lg text-[10px] font-semibold border transition-all ${
                                 achieved
-                                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-sm'
+                                  ? 'bg-emerald-500/15 border-emerald-500/40 text-success-text shadow-sm'
                                   : 'bg-bg-900 border-overlay-subtle text-content-disabled'
                               }`}
                             >
@@ -1296,11 +1296,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           <span className="font-medium text-content-secondary block truncate">{myTarget}</span>
                           <div className="pt-0.5">
                             {myDone ? (
-                              <span className="text-emerald-400 font-bold flex items-center gap-1 text-[11px]">
+                              <span className="text-success-text font-bold flex items-center gap-1 text-[11px]">
                                 <CheckCircle2 size={13} /> Pledge Locked In ✓
                               </span>
                             ) : (
-                              <span className="text-amber-400/90 font-medium flex items-center gap-1 text-[11px]">
+                              <span className="text-warning-text font-medium flex items-center gap-1 text-[11px]">
                                 <Clock size={12} /> Pending Today
                               </span>
                             )}
@@ -1313,7 +1313,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           <span className="font-medium text-content-secondary block truncate">{partnerTarget}</span>
                           <div className="pt-0.5">
                             {partnerDone ? (
-                              <span className="text-emerald-400 font-bold flex items-center gap-1 text-[11px]">
+                              <span className="text-success-text font-bold flex items-center gap-1 text-[11px]">
                                 <CheckCircle2 size={13} /> Pledge Locked In ✓
                               </span>
                             ) : (
@@ -1324,10 +1324,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                                 className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all duration-200 active:scale-95 hover:scale-105 hover:brightness-110 flex items-center gap-1 cursor-pointer select-none ${
                                   isNudgeCooldown
                                     ? 'bg-bg-900 text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
-                                    : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-sm'
+                                    : 'bg-amber-500/20 hover:bg-amber-500/30 text-warning-text border border-amber-500/40 shadow-sm'
                                 }`}
                               >
-                                <Zap size={11} className={isNudgeCooldown ? 'text-content-disabled' : 'text-amber-400 fill-amber-400'} />
+                                <Zap size={11} className={isNudgeCooldown ? 'text-content-disabled' : 'text-warning-text fill-warning-text'} />
                                 <span>{isNudgeCooldown ? `Nudged (${nudgeCooldownMinutes}m)` : `⚡ Nudge ${activePartnerUsername}`}</span>
                               </button>
                             )}
@@ -1340,15 +1340,15 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         {/* Dual-Pill Indicator */}
                         <div>
                           {myDone && partnerDone ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-full shadow-sm">
+                            <div className="badge-emerald inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full shadow-sm">
                               <CheckCircle2 size={13} /> Both Locked In Today ✓
                             </div>
                           ) : myDone && !partnerDone ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-medium rounded-full">
+                            <div className="badge-amber inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full">
                               <Clock size={13} /> You Locked In · Waiting on {activePartnerUsername}
                             </div>
                           ) : !myDone && partnerDone ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-500/15 border border-sky-500/30 text-sky-400 text-xs font-medium rounded-full">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-500/15 border border-sky-500/30 text-sky-theme text-xs font-medium rounded-full">
                               <Clock size={13} /> {activePartnerUsername} Locked In · Log your pledge!
                             </div>
                           ) : (
@@ -1369,8 +1369,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           }}
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 hover:scale-[1.02] cursor-pointer select-none flex items-center gap-1.5 ${
                             myDone
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
-                              : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md hover:shadow-emerald-500/20'
+                              ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40 hover:bg-emerald-500/30'
+                              : 'bg-emerald-500 hover:bg-emerald-600 text-on-brand shadow-md hover:shadow-emerald-500/20'
                           }`}
                         >
                           <CheckCircle2 size={14} />
@@ -1428,7 +1428,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         >
                           <button
                             onClick={() => setChallengeToDelete(challenge)}
-                            className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 hover:scale-110 cursor-pointer"
+                            className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 hover:scale-110 cursor-pointer"
                             title="Delete Pact History"
                           >
                             <Trash2 size={16} />
@@ -1439,11 +1439,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                               <div className="flex items-center gap-2">
                                 <h3 className="font-display font-bold text-base text-content-secondary">{challenge.title}</h3>
                                 {isCompleted ? (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-success-text border border-emerald-500/40">
                                     Completed 🎉
                                   </span>
                                 ) : (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-warning-text border border-amber-500/40">
                                     Expired
                                   </span>
                                 )}
@@ -1504,7 +1504,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       ) : (
         /* NO ACTIVE PARTNERS EMPTY STATE */
         <div className="card p-10 text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto text-2xl">
+          <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-success-text flex items-center justify-center mx-auto text-2xl">
             <Users size={32} />
           </div>
           <div className="max-w-md mx-auto space-y-1">
@@ -1549,7 +1549,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             />
           </div>
 
-          {inviteError && <div className="text-xs text-rose-400 font-semibold">{inviteError}</div>}
+          {inviteError && <div className="text-xs text-rose-theme font-semibold">{inviteError}</div>}
 
           <div className="flex justify-end gap-2 pt-2">
             <button
@@ -1605,7 +1605,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               className={`input-field text-sm ${challengeError ? 'border-rose-500/60 focus:border-rose-500 focus:ring-rose-500/30' : ''}`}
             />
             {challengeError && (
-              <div className="text-xs text-rose-400 font-semibold mt-1.5 flex items-center gap-1.5">
+              <div className="text-xs text-rose-theme font-semibold mt-1.5 flex items-center gap-1.5">
                 <AlertCircle size={14} className="shrink-0" />
                 <span>{challengeError}</span>
               </div>
@@ -1625,12 +1625,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     onClick={() => setChallengeDuration(opt.days)}
                     className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
                       isSelected
-                        ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 ring-2 ring-emerald-500/30 shadow-md'
-                        : 'bg-bg-800 border-overlay-subtle hover:border-overlay-strong text-content-muted'
+                        ? 'bg-emerald-500/20 border-emerald-500 text-success-text ring-2 ring-emerald-500/30 shadow-md'
+                        : 'bg-bg-700 border-overlay-medium hover:border-overlay-strong shadow-sm text-content-muted hover:bg-bg-600'
                     }`}
                   >
                     <span className="font-bold text-xs text-content-primary">{opt.label}</span>
-                    <span className="text-[10px] text-emerald-400 font-semibold mt-0.5">{opt.bonus}</span>
+                    <span className="text-[10px] text-success-text font-semibold mt-0.5">{opt.bonus}</span>
                   </button>
                 );
               })}
@@ -1638,9 +1638,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           </div>
 
           {/* User 1 (Your Pledge) Section */}
-          <div className="p-4 bg-bg-800/80 rounded-2xl border border-overlay-subtle space-y-3.5">
+          <div className="card p-4 space-y-3.5 border-overlay-medium shadow-sm">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-success-text flex items-center gap-1.5">
                 <CheckCircle2 size={15} /> Your Daily Pledge
               </label>
               <span className="text-[11px] text-content-disabled">Pick category & target</span>
@@ -1662,7 +1662,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     className={`p-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
                       isSelected
                         ? `${cat.bgColor} ${cat.borderColor} ring-1 ring-emerald-400 shadow-sm`
-                        : 'bg-bg-900 border-overlay-subtle hover:border-overlay-default text-content-muted'
+                        : 'bg-bg-700 border-overlay-medium hover:border-overlay-default shadow-sm text-content-muted hover:bg-bg-600'
                     }`}
                   >
                     <Icon size={16} className={cat.color} />
@@ -1699,8 +1699,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       onClick={() => setUser1Target(suggestion)}
                       className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all ${
                         user1Target === suggestion
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                          : 'bg-bg-900 text-content-muted border-overlay-subtle hover:border-overlay-strong hover:text-content-secondary'
+                          ? 'bg-emerald-500/20 text-success-text border-emerald-500/40 shadow-sm'
+                          : 'bg-bg-700 text-content-muted border-overlay-medium shadow-sm hover:border-overlay-strong hover:text-content-secondary hover:bg-bg-600'
                       }`}
                     >
                       + {suggestion}
@@ -1712,9 +1712,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           </div>
 
           {/* User 2 (Partner's Pledge) Section */}
-          <div className="p-4 bg-bg-800/80 rounded-2xl border border-overlay-subtle space-y-3.5">
+          <div className="card p-4 space-y-3.5 border-overlay-medium shadow-sm">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-sky-400 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-sky-theme flex items-center gap-1.5">
                 <Users size={15} /> {activePartnerUsername}'s Daily Pledge
               </label>
               <span className="text-[11px] text-content-disabled">Partner objective</span>
@@ -1736,7 +1736,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     className={`p-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
                       isSelected
                         ? `${cat.bgColor} ${cat.borderColor} ring-1 ring-sky-400 shadow-sm`
-                        : 'bg-bg-900 border-overlay-subtle hover:border-overlay-default text-content-muted'
+                        : 'bg-bg-700 border-overlay-medium hover:border-overlay-default shadow-sm text-content-muted hover:bg-bg-600'
                     }`}
                   >
                     <Icon size={16} className={cat.color} />
@@ -1770,7 +1770,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       onClick={() => setUser2Target(suggestion)}
                       className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all ${
                         user2Target === suggestion
-                          ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                          ? 'badge-sky'
                           : 'bg-bg-900 text-content-muted border-overlay-subtle hover:border-overlay-strong hover:text-content-secondary'
                       }`}
                     >

@@ -54,7 +54,7 @@ export const MOODS: MoodMeta[] = [
     icon: Frown,
     color: '#38bdf8', // Sky blue
     bgClass: 'bg-sky-500/15',
-    textClass: 'text-sky-400',
+    textClass: 'text-sky-theme',
     borderClass: 'border-sky-500/30',
     borderLeftClass: 'border-l-sky-400',
   },
@@ -64,9 +64,9 @@ export const MOODS: MoodMeta[] = [
     score: 2,
     icon: Meh,
     color: '#94a3b8', // Slate grey
-    bgClass: 'bg-slate-500/15',
+    bgClass: 'bg-overlay-subtle',
     textClass: 'text-content-muted',
-    borderClass: 'border-slate-500/30',
+    borderClass: 'border-overlay-default',
     borderLeftClass: 'border-l-slate-400',
   },
   {
@@ -76,7 +76,7 @@ export const MOODS: MoodMeta[] = [
     icon: Smile,
     color: '#10b981', // Emerald green
     bgClass: 'bg-emerald-500/15',
-    textClass: 'text-emerald-400',
+    textClass: 'text-success-text',
     borderClass: 'border-emerald-500/30',
     borderLeftClass: 'border-l-emerald-400',
   },
@@ -87,7 +87,7 @@ export const MOODS: MoodMeta[] = [
     icon: Zap,
     color: '#f59e0b', // Amber
     bgClass: 'bg-amber-500/15',
-    textClass: 'text-amber-400',
+    textClass: 'text-warning-text',
     borderClass: 'border-amber-500/30',
     borderLeftClass: 'border-l-amber-400',
   },
@@ -321,7 +321,7 @@ export function Journal({ store }: { store: AppStore }) {
 
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div className="flex items-center gap-2">
-            <Calendar size={18} className="text-primary-400" />
+            <Calendar size={18} className="text-brand-text" />
             <h2 className="section-title">Today's Journal Entry</h2>
           </div>
           <span className="text-xs text-content-muted font-medium bg-bg-800 px-3 py-1 rounded-lg border border-overlay-subtle">
@@ -341,22 +341,22 @@ export function Journal({ store }: { store: AppStore }) {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center text-success-text shrink-0">
                   <CheckCircle2 size={18} className={justCelebrated ? 'animate-celebrate' : ''} />
                 </div>
                 <div>
-                  <p className="text-xs text-emerald-300 font-bold">
+                  <p className="text-xs text-success-text font-bold">
                     {justCelebrated ? "Reflection saved! Great work today." : "Today's entry saved and confirmed"}
                   </p>
-                  <p className="text-[11px] text-emerald-400/80">
+                  <p className="text-[11px] text-success-text-muted">
                     Your mood and daily notes have been recorded in history.
                   </p>
                 </div>
               </div>
 
               {existingToday.pointsAwarded && (
-                <span className="text-xs font-bold text-emerald-300 bg-emerald-500/25 px-3 py-1 rounded-full border border-emerald-500/40 flex items-center gap-1.5 shrink-0 shadow-sm animate-scale-in">
-                  <Award size={14} className="text-emerald-300" />
+                <span className="text-xs font-bold text-success-text bg-emerald-500/25 px-3 py-1 rounded-full border border-emerald-500/40 flex items-center gap-1.5 shrink-0 shadow-sm animate-scale-in">
+                  <Award size={14} className="text-success-text" />
                   <span>+5 pts earned</span>
                 </span>
               )}
@@ -387,7 +387,7 @@ export function Journal({ store }: { store: AppStore }) {
 
                 <button
                   onClick={() => setIsEditingToday(true)}
-                  className="px-3 py-1.5 bg-primary-500/15 hover:bg-primary-500/25 border border-primary-500/30 text-primary-300 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                  className="px-3 py-1.5 bg-primary-500/15 hover:bg-primary-500/25 border border-primary-500/30 text-brand-text text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                 >
                   <Edit3 size={14} />
                   <span>Edit Entry</span>
@@ -414,16 +414,16 @@ export function Journal({ store }: { store: AppStore }) {
           /* STATE 1: WRITING / EDITING MODE */
           <div className="space-y-5 animate-fade-in">
             {/* Status notice */}
-            <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-xl flex items-center justify-between gap-2 text-xs text-primary-300 font-medium">
+            <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-xl flex items-center justify-between gap-2 text-xs text-brand-text font-medium">
               <div className="flex items-center gap-2">
-                <Info size={16} className="shrink-0 text-primary-400" />
+                <Info size={16} className="shrink-0 text-brand-text" />
                 <span>
                   {existingToday
                     ? "Editing today's entry. Update your notes and save."
                     : "Write at least a sentence (10+ characters) to earn +5 points."}
                 </span>
               </div>
-              <span className="text-[11px] font-bold bg-primary-500/20 px-2 py-0.5 rounded text-primary-300 border border-primary-500/30 shrink-0">
+              <span className="text-[11px] font-bold bg-primary-500/20 px-2 py-0.5 rounded text-brand-text border border-primary-500/30 shrink-0">
                 +5 pts
               </span>
             </div>
@@ -479,7 +479,7 @@ export function Journal({ store }: { store: AppStore }) {
                     onClick={() => toggleGuidedPrompt(true)}
                     className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
                       showGuidedPrompt
-                        ? 'bg-primary-500 text-white shadow-sm'
+                        ? 'bg-primary-500 text-on-brand shadow-sm'
                         : 'text-content-muted hover:text-content-secondary'
                     }`}
                   >
@@ -510,7 +510,7 @@ export function Journal({ store }: { store: AppStore }) {
                     <button
                       type="button"
                       onClick={() => setPromptOffset((prev) => prev + 1)}
-                      className="text-xs text-content-muted hover:text-primary-400 flex items-center gap-1 py-0.5 px-2 rounded-lg hover:bg-overlay-subtle transition-all"
+                      className="text-xs text-content-muted hover:text-brand-text flex items-center gap-1 py-0.5 px-2 rounded-lg hover:bg-overlay-subtle transition-all"
                       title="Show another prompt"
                     >
                       <RotateCcw size={12} />
@@ -546,19 +546,19 @@ export function Journal({ store }: { store: AppStore }) {
                       Write at least {MIN_JOURNAL_CONTENT_LENGTH} characters to save today's reflection.
                     </span>
                   ) : !hasEnoughContent ? (
-                    <span className="text-amber-400 flex items-center gap-1 font-medium animate-fade-in">
-                      <AlertCircle size={13} className="text-amber-400" />
+                    <span className="text-warning-text flex items-center gap-1 font-medium animate-fade-in">
+                      <AlertCircle size={13} className="text-warning-text" />
                       Write a bit more before saving — {charsNeeded} more {charsNeeded === 1 ? 'character' : 'characters'} needed.
                     </span>
                   ) : (
-                    <span className="text-emerald-400 flex items-center gap-1 font-semibold animate-fade-in">
-                      <CheckCircle2 size={13} className="text-emerald-400" />
+                    <span className="text-success-text flex items-center gap-1 font-semibold animate-fade-in">
+                      <CheckCircle2 size={13} className="text-success-text" />
                       Ready to save ({trimmedContent.length} characters) • +5 pts
                     </span>
                   )}
                 </div>
 
-                <span className={`text-[11px] font-mono ${hasEnoughContent ? 'text-emerald-400 font-bold' : 'text-content-muted'}`}>
+                <span className={`text-[11px] font-mono ${hasEnoughContent ? 'text-success-text font-bold' : 'text-content-muted'}`}>
                   {trimmedContent.length}/{MIN_JOURNAL_CONTENT_LENGTH} min
                 </span>
               </div>
@@ -580,7 +580,7 @@ export function Journal({ store }: { store: AppStore }) {
                 {isSaving ? (
                   <AscendLoadingIndicator size="sm" />
                 ) : (
-                  <Save size={16} className={hasEnoughContent ? 'text-white' : 'text-content-disabled'} />
+                  <Save size={16} className={hasEnoughContent ? 'text-on-brand' : 'text-content-disabled'} />
                 )}
                 <span>
                   {isSaving
@@ -611,7 +611,7 @@ export function Journal({ store }: { store: AppStore }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="section-title flex items-center gap-2">
-              <TrendingUp size={18} className="text-primary-400" />
+              <TrendingUp size={18} className="text-brand-text" />
               Mood Trend & Overview
             </h2>
             <p className="text-xs text-content-disabled mt-0.5">
@@ -626,7 +626,7 @@ export function Journal({ store }: { store: AppStore }) {
               onClick={() => setChartRange('7d')}
               className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                 chartRange === '7d'
-                  ? 'bg-primary-500 text-white shadow-sm'
+                  ? 'bg-primary-500 text-on-brand shadow-sm'
                   : 'text-content-muted hover:text-content-secondary'
               }`}
             >
@@ -637,7 +637,7 @@ export function Journal({ store }: { store: AppStore }) {
               onClick={() => setChartRange('30d')}
               className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                 chartRange === '30d'
-                  ? 'bg-primary-500 text-white shadow-sm'
+                  ? 'bg-primary-500 text-on-brand shadow-sm'
                   : 'text-content-muted hover:text-content-secondary'
               }`}
             >
@@ -649,7 +649,7 @@ export function Journal({ store }: { store: AppStore }) {
         {/* Empty State vs Active Trend Chart */}
         {!hasEnoughDataForTrend ? (
           <div className="p-8 text-center bg-bg-800/60 rounded-xl border border-overlay-subtle space-y-3">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-400">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-brand-text">
               <TrendingUp size={24} />
             </div>
             <div>
@@ -839,7 +839,7 @@ export function Journal({ store }: { store: AppStore }) {
                   chartData.map((d) => (
                     <span
                       key={d.dateKey}
-                      className={d.isToday ? 'text-primary-400 font-bold' : 'text-content-muted'}
+                      className={d.isToday ? 'text-brand-text font-bold' : 'text-content-muted'}
                     >
                       {d.shortLabel}
                     </span>
@@ -848,7 +848,7 @@ export function Journal({ store }: { store: AppStore }) {
                   <>
                     <span>{chartData[0]?.label}</span>
                     <span>{chartData[Math.floor(chartData.length / 2)]?.label}</span>
-                    <span className="text-primary-400 font-bold">Today</span>
+                    <span className="text-brand-text font-bold">Today</span>
                   </>
                 )}
               </div>
@@ -894,7 +894,7 @@ export function Journal({ store }: { store: AppStore }) {
                 </div>
                 <div className="flex items-center gap-2 text-content-muted">
                   <span className="font-medium">Average Mood Score:</span>
-                  <span className="text-emerald-400 font-bold font-mono">
+                  <span className="text-success-text font-bold font-mono">
                     {averageScore} / 4.0
                   </span>
                 </div>
@@ -952,7 +952,7 @@ export function Journal({ store }: { store: AppStore }) {
                       </span>
 
                       {isToday && (
-                        <span className="text-[10px] bg-primary-500/20 text-primary-300 border border-primary-500/30 px-2 py-0.5 rounded-full font-bold">
+                        <span className="text-[10px] bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-bold">
                           Today
                         </span>
                       )}
@@ -984,7 +984,7 @@ export function Journal({ store }: { store: AppStore }) {
                   {/* Points & Action Buttons */}
                   <div className="flex items-center gap-2.5 shrink-0">
                     {entry.pointsAwarded && (
-                      <span className="text-xs text-emerald-400 font-display font-bold bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 flex items-center gap-1">
+                      <span className="text-xs text-success-text font-display font-bold bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 flex items-center gap-1">
                         <Award size={13} /> +5 pts
                       </span>
                     )}
@@ -995,7 +995,7 @@ export function Journal({ store }: { store: AppStore }) {
                         e.stopPropagation();
                         setDeleteModalEntry(entry);
                       }}
-                      className="text-content-subtle hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
+                      className="text-content-subtle hover:text-rose-theme p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
                       title="Delete Journal Entry"
                     >
                       <Trash2 size={16} />
@@ -1046,7 +1046,7 @@ export function Journal({ store }: { store: AppStore }) {
                 </div>
 
                 {selectedEntry.pointsAwarded ? (
-                  <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 flex items-center gap-1.5">
+                  <span className="text-xs text-success-text font-bold bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 flex items-center gap-1.5">
                     <Award size={14} /> +5 pts Earned
                   </span>
                 ) : (
@@ -1079,7 +1079,7 @@ export function Journal({ store }: { store: AppStore }) {
                     setSelectedEntry(null);
                     setDeleteModalEntry(target);
                   }}
-                  className="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all"
+                  className="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-theme text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all"
                 >
                   <Trash2 size={14} />
                   <span>Delete Entry</span>

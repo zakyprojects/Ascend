@@ -155,7 +155,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
-            <Activity className="text-emerald-400" size={26} />
+            <Activity className="text-success-text" size={26} />
             Exercise Tracker
           </h1>
           <p className="text-sm text-content-disabled mt-1">
@@ -185,7 +185,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       {/* Hero Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
             <Flame size={22} />
           </div>
           <div>
@@ -197,7 +197,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-theme shrink-0">
             <Dumbbell size={22} />
           </div>
           <div>
@@ -209,12 +209,12 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
             <Award size={22} />
           </div>
           <div>
             <div className="text-xs text-content-disabled">Points Today</div>
-            <div className="text-xl font-display font-bold text-primary-400">
+            <div className="text-xl font-display font-bold text-brand-text">
               {pointsEarnedToday} <span className="text-xs font-normal text-content-disabled">/ 60 pts cap</span>
             </div>
           </div>
@@ -225,7 +225,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="section-title flex items-center gap-2">
-            <Calendar size={18} className="text-primary-400" />
+            <Calendar size={18} className="text-brand-text" />
             Weekly Activity Summary
           </h2>
           <span className="text-xs text-content-disabled">Mon - Sun (Points)</span>
@@ -249,7 +249,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                     style={{ height: `${Math.max(d.points > 0 ? 10 : 0, heightPercent)}%` }}
                   />
                 </div>
-                <span className={`text-[11px] mt-2 font-medium ${d.isToday ? 'text-emerald-400 font-bold' : 'text-content-disabled'}`}>
+                <span className={`text-[11px] mt-2 font-medium ${d.isToday ? 'text-success-text font-bold' : 'text-content-disabled'}`}>
                   {d.dayLabel}
                 </span>
               </div>
@@ -276,14 +276,14 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             {workouts.map((w) => (
               <div key={w.id} className="card p-3.5 flex items-center justify-between card-hover">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
                     <Activity size={20} />
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-content-secondary">{w.type}</h3>
                     <p className="text-xs text-content-disabled">
                       {formatDateLong(w.date)} • {w.amount !== undefined && w.unit && w.unit !== 'mins' ? (
-                        <span className="text-emerald-400 font-medium">{w.amount} {w.unit}</span>
+                        <span className="text-success-text font-medium">{w.amount} {w.unit}</span>
                       ) : (
                         <span className="text-content-muted">{w.amount ?? w.durationMinutes} mins</span>
                       )}
@@ -292,12 +292,12 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                  <span className="text-xs font-bold text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
                     +{w.pointsAwarded} pts
                   </span>
                   <button
                     onClick={() => setDeleteModalWorkout(w)}
-                    className="p-1.5 rounded-lg text-content-disabled hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                    className="p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all"
                     title="Delete Workout"
                   >
                     <Trash2 size={16} />
@@ -426,7 +426,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
 
           <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
             <span>Points to earn:</span>
-            <span className="font-bold text-emerald-400">+{previewPointsToEarn} pts</span>
+            <span className="font-bold text-success-text">+{previewPointsToEarn} pts</span>
           </div>
 
           <div className="flex gap-2 pt-2">

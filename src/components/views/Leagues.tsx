@@ -46,7 +46,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
         {!currentUser && onOpenAuthModal && (
           <button
             onClick={onOpenAuthModal}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-primary-300 text-xs font-semibold rounded-xl transition-all"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-brand-text text-xs font-semibold rounded-xl transition-all"
           >
             <Sparkles size={14} />
             <span>Sign Up to Claim Username</span>
@@ -58,7 +58,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
       {(!currentUser || currentUser.isAnonymous) && (
         <div className="p-4 rounded-xl bg-gradient-to-r from-primary-500/10 via-primary-600/10 to-primary-500/5 border border-primary-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary-500/20 flex items-center justify-center shrink-0 text-primary-400">
+            <div className="w-9 h-9 rounded-xl bg-primary-500/20 flex items-center justify-center shrink-0 text-brand-text">
               <Sparkles size={18} />
             </div>
             <div>
@@ -73,7 +73,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
           {onOpenAuthModal && (
             <button
               onClick={onOpenAuthModal}
-              className="px-3.5 py-1.5 bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold rounded-lg shadow-md transition-all shrink-0 w-full sm:w-auto"
+              className="px-3.5 py-1.5 bg-primary-500 hover:bg-primary-600 text-on-brand text-xs font-semibold rounded-lg shadow-md transition-all shrink-0 w-full sm:w-auto"
             >
               Save Progress / Create Account
             </button>
@@ -136,7 +136,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                   {activeLeague === 'ninetyDay' ? `${getSeasonLabel()} — 90-Day League` : config.name}
                 </h2>
                 {activeLeague === 'ninetyDay' && (
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">
+                  <span className="text-[10px] badge-purple px-2 py-0.5 rounded-full font-bold">
                     Active
                   </span>
                 )}
@@ -150,7 +150,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
             <span className="text-[11px] text-content-muted">
               {activeLeague === 'ninetyDay' ? 'Season Ends in:' : 'Resets in:'}
             </span>
-            <span className="font-mono font-bold text-primary-400">{countdown}</span>
+            <span className="font-mono font-bold text-brand-text">{countdown}</span>
           </div>
         </div>
 
@@ -162,7 +162,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
         {activeLeague === 'ninetyDay' && (
           <div className="card bg-bg-700/60 p-4 mb-4 border-l-2" style={{ borderColor: config.color }}>
             <div className="flex items-start gap-2">
-              <Brain size={16} className="text-purple-400 mt-0.5 shrink-0" />
+              <Brain size={16} className="text-purple-hierarchy mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm text-content-secondary font-bold mb-1">90 Days to Rewire Your Brain</p>
                 <p className="text-xs text-content-muted leading-relaxed">
@@ -180,7 +180,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
             const rank = idx + 1;
             const isUser = competitor.isUser;
             const isTop3 = rank <= 3;
-            const medalColors = ['#fbbf24', '#c0c0c0', '#cd7f32'];
+            const medalVarNames = ['var(--medal-gold)', 'var(--medal-silver)', 'var(--medal-bronze)'];
 
             return (
               <button
@@ -188,14 +188,14 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                 onClick={() => setSelectedCompetitor(competitor)}
                 className={`w-full flex items-center gap-2 sm:gap-4 px-2.5 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all text-left cursor-pointer group ${
                   isUser
-                    ? 'bg-emerald-950/40 border-2 border-emerald-500/80 shadow-lg shadow-emerald-950/20 hover:border-emerald-400'
+                    ? 'league-user-row border-2 hover:border-emerald-400'
                     : 'bg-bg-700/50 hover:bg-bg-700 border border-overlay-subtle'
                 }`}
               >
                 {/* Rank Position */}
                 <div className="w-5 sm:w-7 text-center shrink-0">
                   {isTop3 ? (
-                    <Crown size={15} className="mx-auto" style={{ color: medalColors[rank - 1] }} />
+                    <Crown size={15} className="mx-auto" style={{ color: medalVarNames[rank - 1] }} />
                   ) : (
                     <span className="text-xs sm:text-sm font-bold text-content-disabled">{rank}</span>
                   )}
@@ -208,7 +208,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
                 {/* Name */}
                 <div className="flex-1 min-w-0">
-                  <span className={`text-xs sm:text-sm font-medium truncate block ${isUser ? 'text-emerald-200 font-bold' : 'text-content-tertiary'}`}>
+                  <span className={`text-xs sm:text-sm font-medium truncate block ${isUser ? 'text-success-text font-bold' : 'text-content-tertiary'}`}>
                     {competitor.name}
                   </span>
                 </div>
@@ -220,7 +220,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
                 {/* Period Points */}
                 <div className="text-right shrink-0 min-w-[55px] sm:min-w-[70px]">
-                  <span className={`text-xs sm:text-sm font-display font-bold ${isUser ? 'text-emerald-200' : 'text-content-secondary'}`}>
+                  <span className={`text-xs sm:text-sm font-display font-bold ${isUser ? 'text-success-text' : 'text-content-secondary'}`}>
                     {competitor.points.toLocaleString()}
                   </span>
                   <span className="text-[10px] sm:text-xs text-content-disabled ml-0.5 sm:ml-1">pts</span>
@@ -287,7 +287,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                     key={idx}
                     className={`flex items-center gap-3 p-3 rounded-xl ${
                       c.isUser
-                        ? 'bg-emerald-950/40 border border-emerald-500/80 shadow-lg shadow-emerald-950/20'
+                        ? 'league-user-row border'
                         : 'bg-bg-700/50 border border-overlay-subtle'
                     }`}
                   >
@@ -297,7 +297,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                     <div className="w-9 h-9 rounded-lg bg-bg-600 flex items-center justify-center text-lg shrink-0">
                       {c.avatar}
                     </div>
-                    <span className={`text-sm font-medium flex-1 truncate ${c.isUser ? 'text-emerald-200 font-bold' : 'text-content-tertiary'}`}>
+                    <span className={`text-sm font-medium flex-1 truncate ${c.isUser ? 'text-success-text font-bold' : 'text-content-tertiary'}`}>
                       {c.name}
                     </span>
                     <TierBadge totalPoints={c.totalPoints || c.points} size="sm" showName={false} />

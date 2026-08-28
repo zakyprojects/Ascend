@@ -6,6 +6,20 @@
 
 @layer base {
   :root {
+    /* Surfaces (Dark mode defaults) */
+    --color-bg-900: #0a0b0f;
+    --color-bg-900-rgb: 10 11 15;
+    --color-bg-800: #111319;
+    --color-bg-800-rgb: 17 19 25;
+    --color-bg-750: #14171e;
+    --color-bg-750-rgb: 20 23 30;
+    --color-bg-700: #171a23;
+    --color-bg-700-rgb: 23 26 35;
+    --color-bg-600: #1e222d;
+    --color-bg-600-rgb: 30 34 45;
+    --color-bg-500: #262b38;
+    --color-bg-500-rgb: 38 43 56;
+
     /* Semantic Text Content Tokens (Dark mode defaults) */
     --color-content-primary: #f1f5f9;    /* slate-100 */
     --color-content-secondary: #e2e8f0;  /* slate-200 */
@@ -25,10 +39,310 @@
     --bg-overlay-subtle: rgba(255, 255, 255, 0.05);       /* bg-white/5 */
     --bg-overlay-default: rgba(255, 255, 255, 0.10);      /* bg-white/10 */
     --bg-overlay-strong: rgba(255, 255, 255, 0.20);       /* bg-white/20 */
+
+    /* Elevation shadows (Dark mode defaults) */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+
+    /* Brand & High-Vibrancy Action Tokens (Dark mode defaults) */
+    --color-text-on-brand: #ffffff;
+    --color-brand-text: #34d399;
+
+    /* Semantic Status Tokens - Text/Foreground (Dark mode defaults) */
+    --color-success-text: #10b981;
+    --color-warning-text: #f59e0b;
+    --color-warning-text-muted: #fbbf24;
+    --color-error-text: #ef4444;
+    --color-rose-text-muted: #fda4af;
+    --color-info-text: #0ea5e9;
+
+    /* Semantic Status Tokens - Soft Background Tints (Dark mode defaults) */
+    --color-success-soft: rgba(16, 185, 129, 0.12);
+    --color-warning-soft: rgba(245, 158, 11, 0.12);
+    --color-error-soft: rgba(239, 68, 68, 0.12);
+    --color-info-soft: rgba(14, 165, 233, 0.12);
+
+    /* Semantic Season Badge Tokens (Dark mode defaults) */
+    --badge-season-bg: rgba(168, 85, 247, 0.20);
+    --badge-season-text: #d8b4fe;
+    --badge-season-border: rgba(168, 85, 247, 0.30);
+
+    /* Semantic Beta Badge Tokens (Dark mode defaults) */
+    --badge-beta-bg: rgba(245, 158, 11, 0.10);
+    --badge-beta-text: #fbbf24;
+    --badge-beta-border: rgba(245, 158, 11, 0.20);
+
+    /* Semantic Badge Tokens (Dark mode defaults) */
+    --badge-purple-bg: rgba(168, 85, 247, 0.20);
+    --badge-purple-text: #d8b4fe;
+    --badge-purple-border: rgba(168, 85, 247, 0.30);
+
+    --badge-blue-bg: rgba(59, 130, 246, 0.20);
+    --badge-blue-text: #93c5fd;
+    --badge-blue-border: rgba(59, 130, 246, 0.30);
+
+    --badge-sky-bg: rgba(14, 165, 233, 0.20);
+    --badge-sky-text: #7dd3fc;
+    --badge-sky-border: rgba(14, 165, 233, 0.30);
+
+    --badge-cyan-bg: rgba(6, 182, 212, 0.20);
+    --badge-cyan-text: #67e8f9;
+    --badge-cyan-border: rgba(6, 182, 212, 0.30);
+
+    --badge-teal-bg: rgba(20, 184, 166, 0.20);
+    --badge-teal-text: #5eead4;
+    --badge-teal-border: rgba(20, 184, 166, 0.30);
+
+    --badge-emerald-bg: rgba(16, 185, 129, 0.20);
+    --badge-emerald-text: var(--color-success-text);
+    --badge-emerald-border: rgba(16, 185, 129, 0.30);
+
+    --badge-amber-bg: rgba(245, 158, 11, 0.20);
+    --badge-amber-text: var(--color-warning-text);
+    --badge-amber-border: rgba(245, 158, 11, 0.30);
+
+    --badge-rose-bg: rgba(244, 63, 94, 0.20);
+    --badge-rose-text: #fda4af;
+    --badge-rose-border: rgba(244, 63, 94, 0.30);
+
+    --badge-orange-bg: rgba(249, 115, 22, 0.20);
+    --badge-orange-text: #fdba74;
+    --badge-orange-border: rgba(249, 115, 22, 0.30);
+
+    --badge-indigo-bg: rgba(99, 102, 241, 0.20);
+    --badge-indigo-text: #a5b4fc;
+    --badge-indigo-border: rgba(99, 102, 241, 0.30);
+
+    --badge-violet-bg: rgba(139, 92, 246, 0.20);
+    --badge-violet-text: #c4b5fd;
+    --badge-violet-border: rgba(139, 92, 246, 0.30);
+
+    /* League Leaderboard Tokens */
+    --league-user-bg: rgba(2, 44, 34, 0.40);
+    --league-user-border: rgba(16, 185, 129, 0.80);
+    --league-user-shadow: 0 10px 15px -3px rgba(2, 44, 34, 0.20), 0 4px 6px -4px rgba(2, 44, 34, 0.20);
+    --medal-gold: #fbbf24;
+    --medal-silver: #c0c0c0;
+    --medal-bronze: #cd7f32;
+
+    /* Rank Ladder Tokens (Pinned to tiers.ts in Dark Mode) */
+    --rank-bronze-text: #cd7f32;
+    --rank-bronze-bg: rgba(205, 127, 50, 0.08);
+    --rank-bronze-border: rgba(205, 127, 50, 0.25);
+    --rank-bronze-glow: rgba(205, 127, 50, 0.08);
+
+    --rank-silver-text: #c0c0c0;
+    --rank-silver-bg: rgba(192, 192, 192, 0.08);
+    --rank-silver-border: rgba(192, 192, 192, 0.25);
+    --rank-silver-glow: rgba(192, 192, 192, 0.08);
+
+    --rank-gold-text: #fbbf24;
+    --rank-gold-bg: rgba(251, 191, 36, 0.08);
+    --rank-gold-border: rgba(251, 191, 36, 0.25);
+    --rank-gold-glow: rgba(251, 191, 36, 0.08);
+
+    --rank-platinum-text: #e5e7eb;
+    --rank-platinum-bg: rgba(229, 231, 235, 0.08);
+    --rank-platinum-border: rgba(229, 231, 235, 0.25);
+    --rank-platinum-glow: rgba(229, 231, 235, 0.08);
+
+    --rank-diamond-text: #60a5fa;
+    --rank-diamond-bg: rgba(96, 165, 250, 0.08);
+    --rank-diamond-border: rgba(96, 165, 250, 0.25);
+    --rank-diamond-glow: rgba(96, 165, 250, 0.08);
+
+    --rank-crown-text: #f472b6;
+    --rank-crown-bg: rgba(244, 114, 182, 0.08);
+    --rank-crown-border: rgba(244, 114, 182, 0.25);
+    --rank-crown-glow: rgba(244, 114, 182, 0.08);
+
+    --rank-ace-text: #34d399;
+    --rank-ace-bg: rgba(52, 211, 153, 0.08);
+    --rank-ace-border: rgba(52, 211, 153, 0.25);
+    --rank-ace-glow: rgba(52, 211, 153, 0.08);
+
+    --rank-conqueror-text: #f97316;
+    --rank-conqueror-bg: rgba(249, 115, 22, 0.08);
+    --rank-conqueror-border: rgba(249, 115, 22, 0.25);
+    --rank-conqueror-glow: rgba(249, 115, 22, 0.08);
+
+    --rank-legend-text: #a855f7;
+    --rank-legend-bg: rgba(168, 85, 247, 0.08);
+    --rank-legend-border: rgba(168, 85, 247, 0.25);
+    --rank-legend-glow: rgba(168, 85, 247, 0.08);
   }
 
   [data-theme='light'] {
-    /* Reserved for Phase 1: Light Mode Semantic Token Definitions */
+    /* Surfaces */
+    --color-bg-900: #f6f8f7;  /* page */
+    --color-bg-900-rgb: 246 248 247;
+    --color-bg-800: #ffffff;  /* card/panel */
+    --color-bg-800-rgb: 255 255 255;
+    --color-bg-750: #ffffff;  /* elevated/modal — same as card, differentiated by shadow only */
+    --color-bg-750-rgb: 255 255 255;
+    --color-bg-700: #f1f4f3;  /* input/secondary container */
+    --color-bg-700-rgb: 241 244 243;
+    --color-bg-600: #e9edec;  /* interactive button */
+    --color-bg-600-rgb: 233 237 236;
+    --color-bg-500: #dfe5e3;  /* interactive button hover */
+    --color-bg-500-rgb: 223 229 227;
+
+    /* Text (6-tier) */
+    --color-content-primary: #0f172a;
+    --color-content-secondary: #1e293b;
+    --color-content-tertiary: #334155;
+    --color-content-muted: #556275;
+    --color-content-disabled: #94a3b8;
+    --color-content-subtle: #cbd5e1;
+
+    /* Border overlays (switched from white-alpha to black-alpha/ink-alpha) */
+    --border-overlay-subtle: rgba(15, 23, 42, 0.05);
+    --border-overlay-default: rgba(15, 23, 42, 0.09);
+    --border-overlay-medium: rgba(15, 23, 42, 0.13);
+    --border-overlay-strong: rgba(15, 23, 42, 0.18);
+    --border-overlay-heavy: rgba(15, 23, 42, 0.32);
+
+    /* Background overlays (same ink-alpha direction) */
+    --bg-overlay-subtle: rgba(15, 23, 42, 0.05);
+    --bg-overlay-default: rgba(15, 23, 42, 0.09);
+    --bg-overlay-strong: rgba(15, 23, 42, 0.18);
+
+    /* Elevation shadows (light mode conveys elevation via shadow, not lightness) */
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+
+    /* Brand & High-Vibrancy Action Tokens (White text on solid green buttons in both themes) */
+    --color-text-on-brand: #ffffff;
+    --color-brand-text: #047857;
+
+    /* Semantic Status Tokens - Text/Foreground (High contrast on light backgrounds) */
+    --color-success-text: #047857;
+    --color-warning-text: #b45309;
+    --color-warning-text-muted: #92400e;
+    --color-error-text: #dc2626;
+    --color-rose-text-muted: #9f1239;
+    --color-info-text: #0369a1;
+
+    /* Semantic Status Tokens - Soft Background Tints */
+    --color-success-soft: #d1fae5;
+    --color-warning-soft: #fef3c7;
+    --color-error-soft: #fee2e2;
+    --color-info-soft: #e0f2fe;
+
+    /* Semantic Season Badge Tokens (Light mode high contrast) */
+    --badge-season-bg: #f3e8ff;
+    --badge-season-text: #6b21a8;
+    --badge-season-border: #d8b4fe;
+
+    /* Semantic Beta Badge Tokens (Light mode high contrast) */
+    --badge-beta-bg: #fef3c7;
+    --badge-beta-text: #b45309;
+    --badge-beta-border: #fcd34d;
+
+    /* Semantic Badge Tokens (Light mode high contrast) */
+    --badge-purple-bg: #f3e8ff;
+    --badge-purple-text: #a855f7;
+    --badge-purple-border: #d8b4fe;
+
+    --badge-blue-bg: #dbeafe;
+    --badge-blue-text: #1d4ed8;
+    --badge-blue-border: #93c5fd;
+
+    --badge-sky-bg: #e0f2fe;
+    --badge-sky-text: #0369a1;
+    --badge-sky-border: #7dd3fc;
+
+    --badge-cyan-bg: #cffafe;
+    --badge-cyan-text: #06b6d4;
+    --badge-cyan-border: #67e8f9;
+
+    --badge-teal-bg: #ccfbf1;
+    --badge-teal-text: #0f766e;
+    --badge-teal-border: #5eead4;
+
+    --badge-emerald-bg: #d1fae5;
+    --badge-emerald-text: #10b981;
+    --badge-emerald-border: #a7f3d0;
+
+    --badge-amber-bg: #fef3c7;
+    --badge-amber-text: #f59e0b;
+    --badge-amber-border: #fcd34d;
+
+    --badge-rose-bg: #ffe4e6;
+    --badge-rose-text: #f43f5e;
+    --badge-rose-border: #fecdd3;
+
+    --badge-orange-bg: #ffedd5;
+    --badge-orange-text: #c2410c;
+    --badge-orange-border: #fdba74;
+
+    --badge-indigo-bg: #e0e7ff;
+    --badge-indigo-text: #6366f1;
+    --badge-indigo-border: #a5b4fc;
+
+    --badge-red-bg: #fee2e2;
+    --badge-red-text: #ef4444;
+    --badge-red-border: #fca5a5;
+
+    --badge-violet-bg: #ede9fe;
+    --badge-violet-text: #5b21b6;
+    --badge-violet-border: #c4b5fd;
+
+    /* League Leaderboard Tokens */
+    --league-user-bg: #d1fae5;
+    --league-user-border: #10b981;
+    --league-user-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+    --medal-gold: #d97706;
+    --medal-silver: #64748b;
+    --medal-bronze: #92400e;
+
+    /* Rank Ladder Tokens (Calibrated WCAG AA for Light Mode) */
+    --rank-bronze-text: #92400e;
+    --rank-bronze-bg: #ffedd5;
+    --rank-bronze-border: #fdba74;
+    --rank-bronze-glow: rgba(146, 64, 14, 0.10);
+
+    --rank-silver-text: #475569;
+    --rank-silver-bg: #f1f5f9;
+    --rank-silver-border: #cbd5e1;
+    --rank-silver-glow: rgba(71, 85, 105, 0.10);
+
+    --rank-gold-text: #b45309;
+    --rank-gold-bg: #fef3c7;
+    --rank-gold-border: #fcd34d;
+    --rank-gold-glow: rgba(180, 83, 9, 0.10);
+
+    --rank-platinum-text: #334155;
+    --rank-platinum-bg: #e0f2fe;
+    --rank-platinum-border: #bae6fd;
+    --rank-platinum-glow: rgba(51, 65, 85, 0.10);
+
+    --rank-diamond-text: #1d4ed8;
+    --rank-diamond-bg: #dbeafe;
+    --rank-diamond-border: #93c5fd;
+    --rank-diamond-glow: rgba(29, 78, 216, 0.10);
+
+    --rank-crown-text: #be185d;
+    --rank-crown-bg: #ffe4e6;
+    --rank-crown-border: #fecdd3;
+    --rank-crown-glow: rgba(190, 24, 93, 0.10);
+
+    --rank-ace-text: #047857;
+    --rank-ace-bg: #d1fae5;
+    --rank-ace-border: #a7f3d0;
+    --rank-ace-glow: rgba(4, 120, 87, 0.10);
+
+    --rank-conqueror-text: #c2410c;
+    --rank-conqueror-bg: #ffedd5;
+    --rank-conqueror-border: #fdba74;
+    --rank-conqueror-glow: rgba(194, 65, 12, 0.10);
+
+    --rank-legend-text: #6b21a8;
+    --rank-legend-bg: #f3e8ff;
+    --rank-legend-border: #d8b4fe;
+    --rank-legend-glow: rgba(107, 33, 168, 0.10);
   }
 
   * {
@@ -97,6 +411,14 @@
     box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
   }
 
+  [data-theme='light'] input[type='range']::-webkit-slider-runnable-track {
+    background-color: var(--color-bg-500);
+  }
+
+  [data-theme='light'] input[type='range']::-moz-range-track {
+    background-color: var(--color-bg-500);
+  }
+
   /* Native Time, Date, and DateTime Input Clock/Calendar Icon Emerald Override */
   input[type='time'],
   input[type='date'],
@@ -130,19 +452,310 @@
 
 @layer components {
   .glass {
-    @apply bg-bg-800/80 backdrop-blur-xl border border-white/5;
+    @apply bg-bg-800/80 backdrop-blur-xl border border-overlay-subtle;
   }
 
   .glass-strong {
-    @apply bg-bg-700/90 backdrop-blur-xl border border-white/10;
+    @apply bg-bg-700/90 backdrop-blur-xl border border-overlay-default;
   }
 
   .card {
-    @apply bg-bg-800 border border-white/5 rounded-2xl;
+    @apply bg-bg-800 border border-overlay-default rounded-2xl shadow-sm;
+  }
+
+  [data-theme='light'] .card {
+    border-color: var(--border-overlay-medium);
+    box-shadow: var(--shadow-md);
+  }
+
+  [data-theme='light'] .modal-panel .card {
+    background-color: var(--color-bg-700);
+    border-color: var(--border-overlay-medium);
+    box-shadow: var(--shadow-sm);
+  }
+
+  [data-theme='light'] .modal-panel {
+    border-color: var(--border-overlay-medium);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .badge-season {
+    background-color: var(--badge-season-bg);
+    color: var(--badge-season-text);
+    border: 1px solid var(--badge-season-border);
+  }
+
+  .badge-beta {
+    background-color: var(--badge-beta-bg);
+    color: var(--badge-beta-text);
+    border: 1px solid var(--badge-beta-border);
+  }
+
+  .badge-purple {
+    background-color: var(--badge-purple-bg);
+    color: var(--badge-purple-text);
+    border: 1px solid var(--badge-purple-border);
+  }
+
+  .badge-blue {
+    background-color: var(--badge-blue-bg);
+    color: var(--badge-blue-text);
+    border: 1px solid var(--badge-blue-border);
+  }
+
+  .badge-sky {
+    background-color: var(--badge-sky-bg);
+    color: var(--badge-sky-text);
+    border: 1px solid var(--badge-sky-border);
+  }
+
+  .badge-cyan {
+    background-color: var(--badge-cyan-bg);
+    color: var(--badge-cyan-text);
+    border: 1px solid var(--badge-cyan-border);
+  }
+
+  .badge-teal {
+    background-color: var(--badge-teal-bg);
+    color: var(--badge-teal-text);
+    border: 1px solid var(--badge-teal-border);
+  }
+
+  .badge-emerald {
+    background-color: var(--badge-emerald-bg);
+    color: var(--badge-emerald-text);
+    border: 1px solid var(--badge-emerald-border);
+  }
+
+  .badge-amber {
+    background-color: var(--badge-amber-bg);
+    color: var(--badge-amber-text);
+    border: 1px solid var(--badge-amber-border);
+  }
+
+  .badge-rose {
+    background-color: var(--badge-rose-bg);
+    color: var(--badge-rose-text);
+    border: 1px solid var(--badge-rose-border);
+  }
+
+  .badge-orange {
+    background-color: var(--badge-orange-bg);
+    color: var(--badge-orange-text);
+    border: 1px solid var(--badge-orange-border);
+  }
+
+  .badge-indigo {
+    background-color: var(--badge-indigo-bg);
+    color: var(--badge-indigo-text);
+    border: 1px solid var(--badge-indigo-border);
+  }
+
+  .badge-violet {
+    background-color: var(--badge-violet-bg);
+    color: var(--badge-violet-text);
+    border: 1px solid var(--badge-violet-border);
+  }
+
+  .text-purple-hierarchy {
+    color: var(--badge-purple-text);
+  }
+
+  .text-cyan-hierarchy {
+    color: var(--badge-cyan-text);
+  }
+
+  .text-blue-theme {
+    color: var(--badge-blue-text);
+  }
+
+  .text-sky-theme {
+    color: var(--badge-sky-text);
+  }
+
+  .text-indigo-theme {
+    color: var(--badge-indigo-text);
+  }
+
+  .text-violet-theme {
+    color: var(--badge-violet-text);
+  }
+
+  .text-teal-theme {
+    color: var(--badge-teal-text);
+  }
+
+  .text-rose-theme {
+    color: var(--badge-rose-text);
+  }
+
+  .text-rose-theme-muted {
+    color: var(--color-rose-text-muted);
+  }
+
+  /* Activity Summary Card 4-Sided Theme Borders (100% Original -500 in Dark Mode, Contrast-Adjusted in Light Mode) */
+  .border-emerald-theme, .border-l-emerald-theme {
+    border-color: #10b981 !important;
+  }
+  .border-amber-theme, .border-l-amber-theme {
+    border-color: #f59e0b !important;
+  }
+  .border-purple-theme, .border-l-purple-theme {
+    border-color: #a855f7 !important;
+  }
+  .border-rose-theme, .border-l-rose-theme {
+    border-color: #f43f5e !important;
+  }
+  .border-red-theme, .border-l-red-theme {
+    border-color: #ef4444 !important;
+  }
+  .border-cyan-theme, .border-l-cyan-theme {
+    border-color: #06b6d4 !important;
+  }
+  .border-indigo-theme, .border-l-indigo-theme {
+    border-color: #6366f1 !important;
+  }
+
+  [data-theme='light'] .border-emerald-theme, [data-theme='light'] .border-l-emerald-theme {
+    border-color: var(--badge-emerald-text) !important;
+  }
+  [data-theme='light'] .border-amber-theme, [data-theme='light'] .border-l-amber-theme {
+    border-color: var(--badge-amber-text) !important;
+  }
+  [data-theme='light'] .border-purple-theme, [data-theme='light'] .border-l-purple-theme {
+    border-color: var(--badge-purple-text) !important;
+  }
+  [data-theme='light'] .border-rose-theme, [data-theme='light'] .border-l-rose-theme {
+    border-color: var(--badge-rose-text) !important;
+  }
+  [data-theme='light'] .border-red-theme, [data-theme='light'] .border-l-red-theme {
+    border-color: var(--badge-red-text) !important;
+  }
+  [data-theme='light'] .border-cyan-theme, [data-theme='light'] .border-l-cyan-theme {
+    border-color: var(--badge-cyan-text) !important;
+  }
+  [data-theme='light'] .border-indigo-theme, [data-theme='light'] .border-l-indigo-theme {
+    border-color: var(--badge-indigo-text) !important;
+  }
+
+  /* List-Row & Banner Left-Border Accent Rules (Scoped strictly to border-left-color) */
+  .border-l-sky-400, .border-l-sky-500 {
+    border-left-color: var(--badge-sky-text) !important;
+  }
+  .border-l-slate-400, .border-l-slate-500 {
+    border-left-color: #94a3b8 !important;
+  }
+  .border-l-emerald-400, .border-l-emerald-500 {
+    border-left-color: var(--badge-emerald-text) !important;
+  }
+  .border-l-amber-400, .border-l-amber-500 {
+    border-left-color: var(--badge-amber-text) !important;
+  }
+  .border-l-rose-400, .border-l-rose-500 {
+    border-left-color: var(--badge-rose-text) !important;
+  }
+  .border-l-purple-400, .border-l-purple-500 {
+    border-left-color: var(--badge-purple-text) !important;
+  }
+
+  /* League Current User Row Highlight (Theme-Aware via CSS Tokens) */
+  .league-user-row {
+    background-color: var(--league-user-bg) !important;
+    border-color: var(--league-user-border);
+    box-shadow: var(--league-user-shadow) !important;
+  }
+
+  /* Hero Card Ambient Glow */
+  .hero-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    pointer-events: none;
+    background: radial-gradient(ellipse 560px 340px at 50% 0%, rgba(168, 85, 247, 0.35) 0%, rgba(168, 85, 247, 0.12) 45%, transparent 75%);
+  }
+
+  .hero-glow-purple {
+    background: radial-gradient(ellipse 560px 340px at 50% 0%, rgba(168, 85, 247, 0.35) 0%, rgba(168, 85, 247, 0.12) 45%, transparent 75%);
+  }
+
+  .hero-glow-cyan {
+    background: radial-gradient(ellipse 560px 340px at 50% 0%, rgba(6, 182, 212, 0.35) 0%, rgba(6, 182, 212, 0.12) 45%, transparent 75%);
+  }
+
+  .hero-glow-emerald {
+    background: radial-gradient(ellipse 560px 340px at 50% 0%, rgba(16, 185, 129, 0.35) 0%, rgba(16, 185, 129, 0.12) 45%, transparent 75%);
+  }
+
+  /* Hero Card Inset Inward Glow */
+  .hero-card-glow-purple {
+    box-shadow: inset 0 0 40px rgba(168, 85, 247, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  }
+
+  .hero-card-glow-cyan {
+    box-shadow: inset 0 0 40px rgba(6, 182, 212, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  }
+
+  .hero-card-glow-emerald {
+    box-shadow: inset 0 0 40px rgba(16, 185, 129, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Hero Icon Box Outward Halo Glow */
+  .hero-icon-glow-purple {
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.45);
+  }
+
+  .hero-icon-glow-cyan {
+    box-shadow: 0 0 16px rgba(6, 182, 212, 0.45);
+  }
+
+  .hero-icon-glow-emerald {
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.45);
+  }
+
+  [data-theme='light'] .hero-glow {
+    background: radial-gradient(ellipse 560px 340px at 50% 0%, rgba(168, 85, 247, 0.30) 0%, rgba(168, 85, 247, 0.16) 50%, transparent 85%);
+  }
+
+  [data-theme='light'] .hero-glow-purple {
+    background: radial-gradient(ellipse 560px 340px at 50% 0%, rgba(168, 85, 247, 0.30) 0%, rgba(168, 85, 247, 0.16) 50%, transparent 85%);
+  }
+
+  [data-theme='light'] .hero-glow-cyan {
+    background: radial-gradient(ellipse 560px 340px at 50% 0%, rgba(6, 182, 212, 0.30) 0%, rgba(6, 182, 212, 0.16) 50%, transparent 85%);
+  }
+
+  [data-theme='light'] .hero-glow-emerald {
+    background: radial-gradient(ellipse 560px 340px at 50% 0%, rgba(16, 185, 129, 0.30) 0%, rgba(16, 185, 129, 0.16) 50%, transparent 85%);
+  }
+
+  [data-theme='light'] .hero-card-glow-purple {
+    box-shadow: inset 0 0 40px rgba(168, 85, 247, 0.10), 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme='light'] .hero-card-glow-cyan {
+    box-shadow: inset 0 0 40px rgba(6, 182, 212, 0.10), 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme='light'] .hero-card-glow-emerald {
+    box-shadow: inset 0 0 40px rgba(16, 185, 129, 0.10), 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme='light'] .hero-icon-glow-purple {
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.22);
+  }
+
+  [data-theme='light'] .hero-icon-glow-cyan {
+    box-shadow: 0 0 16px rgba(6, 182, 212, 0.22);
+  }
+
+  [data-theme='light'] .hero-icon-glow-emerald {
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.22);
   }
 
   .card-hover {
-    @apply transition-all duration-200 hover:border-white/10 hover:bg-bg-700;
+    @apply transition-all duration-200 hover:border-overlay-default hover:bg-bg-700;
   }
 
   .btn {
@@ -150,15 +763,15 @@
   }
 
   .btn-primary {
-    @apply btn bg-primary-500 text-white hover:bg-primary-600;
+    @apply btn bg-primary-500 text-on-brand hover:bg-primary-600;
   }
 
   .btn-secondary {
-    @apply btn bg-bg-600 text-slate-200 hover:bg-bg-500;
+    @apply btn bg-bg-600 text-content-secondary hover:bg-bg-500;
   }
 
   .btn-ghost {
-    @apply btn text-slate-400 hover:text-slate-200 hover:bg-white/5;
+    @apply btn text-content-muted hover:text-content-secondary hover:bg-overlay-subtle;
   }
 
   .btn-danger {
@@ -166,7 +779,7 @@
   }
 
   .input, .input-field {
-    @apply w-full bg-bg-700 border border-white/10 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 transition-all;
+    @apply w-full bg-bg-700 border border-overlay-default text-content-primary placeholder:text-content-disabled rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 transition-all;
   }
 
   .input-has-icon {
@@ -174,7 +787,7 @@
   }
 
   .label {
-    @apply block text-sm font-medium text-slate-400 mb-1.5;
+    @apply block text-sm font-medium text-content-muted mb-1.5;
   }
 
   .badge {
@@ -182,14 +795,14 @@
   }
 
   .section-title {
-    @apply text-lg font-display font-bold text-slate-100;
+    @apply text-lg font-display font-bold text-content-primary;
   }
 
   .stat-value {
-    @apply text-2xl font-display font-bold text-slate-100;
+    @apply text-2xl font-display font-bold text-content-primary;
   }
 
   .stat-label {
-    @apply text-xs text-slate-500 uppercase tracking-wide font-medium;
+    @apply text-xs text-content-disabled uppercase tracking-wide font-medium;
   }
 }

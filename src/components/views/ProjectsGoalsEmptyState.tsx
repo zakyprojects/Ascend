@@ -16,10 +16,10 @@ const TIER_CONFIG = {
     text: 'Goals are your ultimate long-term targets. Set a north star to align your daily actions.',
     quote: '“Dreams without goals are just dreams.” – Denzel Washington',
     buttonText: 'Create Your First Goal',
-    iconBg: 'bg-purple-500/10 border-purple-500/25 text-purple-400',
+    iconBg: 'badge-purple',
     btnClass: 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-900/30',
     hierarchyBadge: 'Tier 3 • North Star',
-    hierarchyBadgeColor: 'text-purple-400 border-purple-500/30 bg-purple-500/10',
+    hierarchyBadgeColor: 'badge badge-purple',
     cardBorderHover: 'hover:border-purple-500/30',
   },
   projects: {
@@ -27,10 +27,10 @@ const TIER_CONFIG = {
     title: 'Bridge the Gap',
     text: 'Projects group related tasks together to achieve your broader goals. Break down your vision into actionable phases.',
     buttonText: 'Create Your First Project',
-    iconBg: 'bg-cyan-500/10 border-cyan-500/25 text-cyan-400',
+    iconBg: 'badge-cyan',
     btnClass: 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-900/30',
     hierarchyBadge: 'Tier 2 • Action Phases',
-    hierarchyBadgeColor: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/10',
+    hierarchyBadgeColor: 'badge badge-cyan',
     cardBorderHover: 'hover:border-cyan-500/30',
   },
   tasks: {
@@ -38,10 +38,10 @@ const TIER_CONFIG = {
     title: 'Start the Engine',
     text: 'Tasks are the atomic, daily actions that move the needle. Link them to projects to maintain focus.',
     buttonText: 'Create Your First Task',
-    iconBg: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400',
-    btnClass: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/30',
+    iconBg: 'badge-emerald',
+    btnClass: 'bg-emerald-600 hover:bg-emerald-500 text-on-brand shadow-emerald-900/30',
     hierarchyBadge: 'Tier 1 • Atomic Execution',
-    hierarchyBadgeColor: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+    hierarchyBadgeColor: 'badge badge-emerald',
     cardBorderHover: 'hover:border-emerald-500/30',
   },
 };
@@ -76,34 +76,38 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
 
   return (
     <div
-      className={`card p-10 sm:p-12 text-center border border-overlay-default bg-gradient-to-b ${
+      className={`card p-10 sm:p-12 text-center border-overlay-medium space-y-6 shadow-md transition-all relative overflow-hidden ${
         tier === 'goals'
-          ? 'from-purple-950/20'
+          ? 'hero-card-glow-purple'
           : tier === 'projects'
-          ? 'from-cyan-950/20'
-          : 'from-emerald-950/20'
-      } via-bg-800/80 to-bg-900/90 rounded-2xl space-y-6 shadow-xl transition-all relative overflow-hidden ${config.cardBorderHover}`}
+          ? 'hero-card-glow-cyan'
+          : 'hero-card-glow-emerald'
+      } ${config.cardBorderHover}`}
     >
       {/* Ambient Gradient Glow */}
       <div
-        className={`absolute top-0 right-0 w-64 h-64 ${
+        className={`hero-glow ${
           tier === 'goals'
-            ? 'bg-purple-500/5'
+            ? 'hero-glow-purple'
             : tier === 'projects'
-            ? 'bg-cyan-500/5'
-            : 'bg-emerald-500/5'
-        } rounded-full blur-3xl pointer-events-none -mr-20 -mt-20`}
+            ? 'hero-glow-cyan'
+            : 'hero-glow-emerald'
+        }`}
       />
 
       {/* Tier Badge & Hierarchy Context */}
       <div className="flex flex-col items-center gap-3 relative z-10">
-        <span
-          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${config.hierarchyBadgeColor}`}
-        >
+        <span className={config.hierarchyBadgeColor}>
           {config.hierarchyBadge}
         </span>
         <div
-          className={`w-16 h-16 rounded-2xl border flex items-center justify-center shadow-lg transition-transform hover:scale-105 duration-200 ${config.iconBg}`}
+          className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-105 duration-200 ${
+            tier === 'goals'
+              ? 'hero-icon-glow-purple'
+              : tier === 'projects'
+              ? 'hero-icon-glow-cyan'
+              : 'hero-icon-glow-emerald'
+          } ${config.iconBg}`}
         >
           <Icon size={32} />
         </div>
@@ -114,11 +118,11 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
         <h3 className="text-base sm:text-lg font-bold text-content-primary tracking-tight">
           {config.title}
         </h3>
-        <p className="text-xs sm:text-sm text-slate-300/90 leading-relaxed">
+        <p className="text-xs sm:text-sm text-content-secondary leading-relaxed">
           {config.text}
         </p>
         {'quote' in config && config.quote && (
-          <p className="text-xs italic text-purple-300/90 pt-1 font-medium">
+          <p className="text-xs italic text-purple-hierarchy pt-1 font-medium">
             {config.quote}
           </p>
         )}
@@ -130,7 +134,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
           type="button"
           onClick={() => onTabSwitch?.('tasks')}
           className={`font-semibold transition-colors cursor-pointer hover:text-content-secondary ${
-            tier === 'tasks' ? 'text-emerald-400 underline underline-offset-4' : 'text-content-disabled'
+            tier === 'tasks' ? 'text-success-text underline underline-offset-4' : 'text-content-disabled'
           }`}
         >
           Task
@@ -140,7 +144,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
           type="button"
           onClick={() => onTabSwitch?.('projects')}
           className={`font-semibold transition-colors cursor-pointer hover:text-content-secondary ${
-            tier === 'projects' ? 'text-cyan-400 underline underline-offset-4' : 'text-content-disabled'
+            tier === 'projects' ? 'text-cyan-hierarchy underline underline-offset-4' : 'text-content-disabled'
           }`}
         >
           Project
@@ -150,7 +154,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
           type="button"
           onClick={() => onTabSwitch?.('goals')}
           className={`font-semibold transition-colors cursor-pointer hover:text-content-secondary ${
-            tier === 'goals' ? 'text-purple-400 underline underline-offset-4' : 'text-content-disabled'
+            tier === 'goals' ? 'text-purple-hierarchy underline underline-offset-4' : 'text-content-disabled'
           }`}
         >
           Goal

@@ -445,6 +445,37 @@ export function getAscendViewForModule(
 }
 
 /**
+ * Bidirectional color resolver mapping between Dark Mode canonical hexes
+ * and WCAG AA/AAA-passing Light Mode category color tokens.
+ */
+export const DARK_TO_LIGHT_ACTIVITY_COLORS: Record<string, string> = {
+  '#6366f1': '#4338ca', // Sleep (Indigo)
+  '#06b6d4': '#0e7490', // Deep Work (Cyan)
+  '#eab308': '#a16207', // Praying (Amber)
+  '#ef4444': '#dc2626', // Exercise (Red)
+  '#3b82f6': '#2563eb', // Reading (Blue)
+  '#8b5cf6': '#7c3aed', // Skills (Violet)
+  '#10b981': '#047857', // Break (Emerald)
+  '#f97316': '#c2410c', // Meals (Orange)
+  '#a855f7': '#9333ea', // Entertainment (Purple)
+  '#14b8a6': '#0f766e', // Walking (Teal)
+};
+
+/**
+ * Resolves an activity color hex string based on the active theme ('dark' | 'light').
+ * - In 'dark' mode: returns the canonical raw color unchanged.
+ * - In 'light' mode: looks up case-insensitively in the map; returns mapped light hex if found,
+ *   otherwise returns the raw custom color unchanged.
+ */
+export function getActivityThemeColor(rawColor: string | undefined | null, theme: 'dark' | 'light' = 'dark'): string {
+  if (!rawColor) return theme === 'light' ? '#047857' : '#10b981';
+  if (theme === 'dark') return rawColor;
+
+  const normalized = rawColor.trim().toLowerCase();
+  return DARK_TO_LIGHT_ACTIVITY_COLORS[normalized] || rawColor;
+}
+
+/**
  * Ensures system default activities are present and merged in state.
  */
 export function ensureDefaultActivities(

@@ -20,7 +20,7 @@ export function GuestLogoutWarningModal({
     <Modal open={open} onClose={onClose} title="Guest Account Warning" maxWidth="max-w-md">
       <div className="space-y-4">
         <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-warning-text flex items-center justify-center shrink-0 mt-0.5">
             <AlertTriangle size={20} />
           </div>
           <div className="space-y-1">
@@ -38,7 +38,7 @@ export function GuestLogoutWarningModal({
               onClose();
               onSaveProgressFirst();
             }}
-            className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-on-brand font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
           >
             <Shield size={16} />
             <span>Save Progress First (Create Account)</span>
@@ -50,7 +50,7 @@ export function GuestLogoutWarningModal({
               onClose();
               onLogoutAnyway();
             }}
-            className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-theme border border-rose-500/30 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
           >
             <LogOut size={15} />
             <span>Log Out Anyway (Delete Progress)</span>

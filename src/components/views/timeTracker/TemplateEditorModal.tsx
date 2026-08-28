@@ -14,7 +14,9 @@ import {
   calculateBlockDurationMinutes,
   checkTimeCollision,
   normalizeOrSplitMidnightBlock,
+  getActivityThemeColor,
 } from '@/lib/timeTracker';
+import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
 import { TimeBlockModal } from './TimeBlockModal';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
@@ -226,7 +228,7 @@ export function TemplateEditorModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Validation Error Banner */}
           {validationError && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-300 text-xs">
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
               <AlertTriangle size={15} className="shrink-0 mt-0.5" />
               <span>{validationError}</span>
             </div>
@@ -234,7 +236,7 @@ export function TemplateEditorModal({
 
           {/* Template Title */}
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
               Template Title
             </label>
             <input
@@ -242,17 +244,17 @@ export function TemplateEditorModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Standard Weekday Template, Focus Day, Weekend Recovery..."
-              className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
               required
             />
           </div>
 
           {/* Active Days of Week (Auto-Apply Assignment) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
               Auto-Apply Days
             </label>
-            <p className="text-[11px] text-slate-400 mb-2">
+            <p className="text-[11px] text-content-muted mb-2">
               On the selected days, opening the schedule for an empty day will automatically apply this template.
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -265,8 +267,8 @@ export function TemplateEditorModal({
                     onClick={() => toggleDay(day)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-emerald-600/20 border-emerald-500/70 text-emerald-300 shadow-sm'
-                        : 'bg-white/[0.02] border-white/5 text-slate-400 hover:bg-white/[0.05]'
+                        ? 'bg-emerald-600/20 border-emerald-500/70 text-success-text shadow-sm'
+                        : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:bg-overlay-default'
                     }`}
                   >
                     {day}
@@ -279,13 +281,13 @@ export function TemplateEditorModal({
           {/* Blueprint Blocks Section */}
           <div className="pt-2">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <label className="text-xs font-semibold text-content-muted uppercase tracking-wider">
                 Template Blocks ({blocks.length})
               </label>
               <button
                 type="button"
                 onClick={handleOpenAddBlock}
-                className="flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 cursor-pointer"
+                className="flex items-center gap-1 text-xs font-semibold text-success-text hover:opacity-80 cursor-pointer"
               >
                 <Plus size={13} />
                 <span>Add Block</span>
@@ -294,7 +296,7 @@ export function TemplateEditorModal({
 
             {/* Block List */}
             {blocks.length === 0 ? (
-              <div className="p-5 border border-dashed border-white/10 rounded-xl text-center text-slate-500 text-xs">
+              <div className="p-5 border border-dashed border-overlay-default rounded-xl text-center text-content-disabled text-xs">
                 No blocks in this template yet. Click &ldquo;Add Block&rdquo; to build the template schedule.
               </div>
             ) : (
@@ -302,28 +304,30 @@ export function TemplateEditorModal({
                 {blocks.map((block) => {
                   const act = activities.find((a) => a.id === block.activityId);
                   const duration = calculateBlockDurationMinutes(block.startTime, block.endTime);
+                  const theme = getLocalThemePreference() || 'dark';
+                  const resolvedColor = getActivityThemeColor(act?.color, theme);
                   return (
                     <div
                       key={block.id}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors"
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div
                           className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                           style={{
-                            backgroundColor: `${act?.color || '#10b981'}25`,
-                            color: act?.color || '#10b981',
+                            backgroundColor: `${resolvedColor}25`,
+                            color: resolvedColor,
                           }}
                         >
                           <ActivityIcon iconName={act?.icon || 'Clock'} size={16} />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-xs font-medium text-slate-200 truncate">
+                            <p className="text-xs font-medium text-content-secondary truncate">
                               {block.customTitle || act?.name || 'Block'}
                             </p>
                             {act?.ascendModule && (
-                              <span className="text-[10px] text-emerald-400 font-mono">
+                              <span className="text-[10px] text-success-text font-mono">
                                 [{act.ascendModule}]
                               </span>
                             )}
@@ -334,14 +338,14 @@ export function TemplateEditorModal({
                                 return (
                                   <span
                                     key={secId}
-                                    className="text-[10px] text-emerald-300 font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded"
+                                    className="text-[10px] text-success-text font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded"
                                   >
                                     +{secAct.name}
                                   </span>
                                 );
                               })}
                           </div>
-                          <p className="text-[11px] text-slate-400 font-mono">
+                          <p className="text-[11px] text-content-muted font-mono">
                             {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)} ({formatDurationHuman(duration)})
                           </p>
                         </div>
@@ -351,7 +355,7 @@ export function TemplateEditorModal({
                         <button
                           type="button"
                           onClick={() => handleOpenEditBlock(block)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors cursor-pointer"
                           title="Edit block"
                         >
                           <Edit2 size={14} />
@@ -359,7 +363,7 @@ export function TemplateEditorModal({
                         <button
                           type="button"
                           onClick={() => handleRemoveBlock(block.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors cursor-pointer"
                           title="Remove block"
                         >
                           <Trash2 size={14} />
@@ -373,19 +377,19 @@ export function TemplateEditorModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/5">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-overlay-subtle">
             <button
               type="button"
               onClick={onClose}
               disabled={isSaving}
-              className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              className="px-4 py-2 text-xs font-medium text-content-muted hover:text-content-secondary transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
             >
               {isSaving ? (
                 <>
@@ -427,16 +431,16 @@ export function TemplateEditorModal({
           maxWidth="max-w-md"
         >
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3 mb-6">
-            <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
-            <p className="text-sm text-amber-200/90 leading-relaxed">
-              Are you sure you want to replace it? The day <strong className="text-amber-100">{conflictState.day}</strong> is currently assigned to <strong className="text-amber-100">{conflictState.conflictingTitle}</strong>.
+            <AlertTriangle className="text-warning-text shrink-0 mt-0.5" size={18} />
+            <p className="text-sm text-warning-text-muted leading-relaxed">
+              Are you sure you want to replace it? The day <strong className="text-warning-text">{conflictState.day}</strong> is currently assigned to <strong className="text-warning-text">{conflictState.conflictingTitle}</strong>.
             </p>
           </div>
           <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={() => setConflictState(null)}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-content-tertiary hover:text-content-primary hover:bg-bg-700 transition-colors cursor-pointer"
             >
               Cancel
             </button>

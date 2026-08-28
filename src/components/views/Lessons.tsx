@@ -39,7 +39,7 @@ export function Lessons({ store }: { store: AppStore }) {
         </div>
         <div className="card p-4">
           <div className="stat-label">Points Earned</div>
-          <div className="stat-value mt-1 text-primary-400">
+          <div className="stat-value mt-1 text-brand-text">
             {earnedPoints}
             <span className="text-base text-content-disabled">/{totalPoints}</span>
           </div>
@@ -64,7 +64,7 @@ export function Lessons({ store }: { store: AppStore }) {
           onClick={() => setSelectedCategory(null)}
           className={`badge px-3 py-1.5 transition-all ${
             selectedCategory === null
-              ? 'bg-primary-500/15 text-primary-400'
+              ? 'bg-primary-500/15 text-brand-text'
               : 'bg-bg-700 text-content-muted hover:bg-bg-600'
           }`}
         >
@@ -76,7 +76,7 @@ export function Lessons({ store }: { store: AppStore }) {
             onClick={() => setSelectedCategory(cat)}
             className={`badge px-3 py-1.5 transition-all ${
               selectedCategory === cat
-                ? 'bg-primary-500/15 text-primary-400'
+                ? 'bg-primary-500/15 text-brand-text'
                 : 'bg-bg-700 text-content-muted hover:bg-bg-600'
             }`}
           >
@@ -101,7 +101,7 @@ export function Lessons({ store }: { store: AppStore }) {
                 }`}
               >
                 {isRead ? (
-                  <Check size={18} className="text-primary-400" />
+                  <Check size={18} className="text-brand-text" />
                 ) : (
                   <BookOpen size={18} className="text-content-disabled" />
                 )}
@@ -113,7 +113,7 @@ export function Lessons({ store }: { store: AppStore }) {
                   <span className="text-xs text-content-subtle flex items-center gap-0.5">
                     <Clock size={11} /> {lesson.readTime} min
                   </span>
-                  <span className="text-xs text-primary-400">+{lesson.points} pts</span>
+                  <span className="text-xs text-brand-text">+{lesson.points} pts</span>
                 </div>
               </div>
             </button>
@@ -141,14 +141,14 @@ export function Lessons({ store }: { store: AppStore }) {
               <span className="flex items-center gap-0.5">
                 <Clock size={11} /> {openLesson.readTime} min read
               </span>
-              <span className="text-primary-400">+{openLesson.points} pts</span>
+              <span className="text-brand-text">+{openLesson.points} pts</span>
             </div>
             <div className="prose prose-invert prose-sm max-w-none">
               {renderLessonContent(openLesson.content)}
             </div>
             <div className="mt-6 pt-4 border-t border-overlay-subtle">
               {readIds.includes(openLesson.id) ? (
-                <div className="flex items-center gap-2 text-sm text-primary-400">
+                <div className="flex items-center gap-2 text-sm text-brand-text">
                   <Check size={16} />
                   Lesson completed
                 </div>

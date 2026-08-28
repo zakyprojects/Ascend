@@ -213,14 +213,14 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
       <div className="space-y-4">
         {/* Error / Success Notifications */}
         {errorMsg && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-2 text-rose-400 text-xs">
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-2 text-error-text text-xs">
             <AlertCircle size={16} className="shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-2 text-emerald-400 text-xs">
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-2 text-success-text text-xs">
             <Check size={16} className="shrink-0" />
             <span>{successMsg}</span>
           </div>
@@ -248,7 +248,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               <button
                 type="button"
                 onClick={() => { setMode('signup'); resetForm(); }}
-                className="w-full p-4 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-2xl shadow-xl transition-all flex items-center justify-between group border border-primary-400/30"
+                className="w-full p-4 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-on-brand rounded-2xl shadow-xl transition-all flex items-center justify-between group border border-primary-400/30"
               >
                 <div className="text-left">
                   <div className="font-bold text-sm flex items-center gap-2">
@@ -283,18 +283,18 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                 type="button"
                 onClick={handleGuestSignIn}
                 disabled={loading}
-                className="w-full p-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 rounded-2xl border border-emerald-500/30 transition-all flex items-center justify-between group disabled:opacity-50"
+                className="w-full p-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text rounded-2xl border border-emerald-500/30 transition-all flex items-center justify-between group disabled:opacity-50"
               >
                 <div className="text-left">
-                  <div className="font-bold text-sm flex items-center gap-2 text-emerald-400">
+                  <div className="font-bold text-sm flex items-center gap-2 text-success-text">
                     <Zap size={15} />
                     <span>Continue as Guest</span>
                   </div>
-                  <div className="text-[11px] text-emerald-400/80 mt-0.5">
+                  <div className="text-[11px] opacity-90 mt-0.5">
                     Instant access — no email or password required
                   </div>
                 </div>
-                <UserCheck size={20} className="text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
+                <UserCheck size={20} className="text-success-text group-hover:scale-110 transition-transform shrink-0" />
               </button>
             </div>
           </div>
@@ -359,7 +359,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
 
                   <div>
                     <label className="block text-xs font-medium text-content-tertiary mb-1">
-                      Leaderboard Username {mode === 'signup' && <span className="text-rose-400">*</span>}
+                      Leaderboard Username {mode === 'signup' && <span className="text-error-text">*</span>}
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
@@ -376,11 +376,11 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                       {username.trim() && (
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           {usernameStatus?.available ? (
-                            <span className="text-[11px] font-medium text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                            <span className="badge-emerald text-[11px] font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
                               <Check size={12} /> Available
                             </span>
                           ) : usernameStatus?.reason ? (
-                            <span className="text-[11px] font-medium text-rose-400 flex items-center gap-1 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 truncate max-w-[110px]">
+                            <span className="badge-rose text-[11px] font-medium flex items-center gap-1 px-2 py-0.5 rounded-md truncate max-w-[110px]">
                               Taken / Invalid
                             </span>
                           ) : null}
@@ -388,7 +388,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                       )}
                     </div>
                     {usernameStatus && !usernameStatus.available && (
-                      <p className="text-[11px] text-rose-400 mt-1">{usernameStatus.reason}</p>
+                      <p className="text-[11px] text-error-text mt-1">{usernameStatus.reason}</p>
                     )}
                   </div>
                 </>
@@ -396,7 +396,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
 
               <div>
                 <label className="block text-xs font-medium text-content-tertiary mb-1">
-                  Email Address <span className="text-rose-400">*</span>
+                  Email Address <span className="text-error-text">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
@@ -415,7 +415,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
 
               <div>
                 <label className="block text-xs font-medium text-content-tertiary mb-1">
-                  Password <span className="text-rose-400">*</span>
+                  Password <span className="text-error-text">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
@@ -435,7 +435,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               {(mode === 'signup' || mode === 'upgrade') && (
                 <div>
                   <label className="block text-xs font-medium text-content-tertiary mb-1">
-                    Confirm Password <span className="text-rose-400">*</span>
+                    Confirm Password <span className="text-error-text">*</span>
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
@@ -451,7 +451,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                     />
                   </div>
                   {confirmPassword && password !== confirmPassword && (
-                    <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                    <p className="text-[11px] text-error-text mt-1 flex items-center gap-1 font-medium">
                       Passwords do not match
                     </p>
                   )}
@@ -460,7 +460,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
 
               {mode === 'signup' && hasGuestData && (
                 <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-xl space-y-2">
-                  <div className="flex items-center gap-2 text-primary-400 text-xs font-semibold">
+                  <div className="flex items-center gap-2 text-brand-text text-xs font-semibold">
                     <Sparkles size={14} />
                     <span>Guest Progress Detected</span>
                   </div>
@@ -482,7 +482,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-medium text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-on-brand font-medium text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
                   <>

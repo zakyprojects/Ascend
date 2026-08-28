@@ -93,7 +93,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
-            <HeartPulse className="text-rose-400" size={26} />
+            <HeartPulse className="text-rose-theme" size={26} />
             Addiction Recovery Module
           </h1>
           <p className="text-sm text-content-disabled mt-1">
@@ -111,17 +111,17 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       </div>
 
       {/* Persistent Disclaimer Banner */}
-      <div className="card p-4 border-l-4 border-amber-500 bg-amber-500/10 flex items-start gap-3">
-        <AlertCircle size={22} className="text-amber-400 shrink-0 mt-0.5" />
+      <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-500/10 flex items-start gap-3">
+        <AlertCircle size={22} className="text-warning-text shrink-0 mt-0.5" />
         <div className="text-xs text-content-tertiary leading-relaxed">
-          <span className="font-bold text-amber-300">Important Medical Disclaimer:</span> This module is a self-management support tool designed to complement — but <span className="underline">not replace</span> — professional medical treatment or therapy. If you are experiencing severe addiction, physical withdrawal, or crisis, please seek immediate assistance from a licensed healthcare professional or hotline (e.g. SAMHSA Helpline: 1-800-662-4357).
+          <span className="font-bold text-warning-text">Important Medical Disclaimer:</span> This module is a self-management support tool designed to complement — but <span className="underline">not replace</span> — professional medical treatment or therapy. If you are experiencing severe addiction, physical withdrawal, or crisis, please seek immediate assistance from a licensed healthcare professional or hotline (e.g. SAMHSA Helpline: 1-800-662-4357).
         </div>
       </div>
 
       {/* Main Sobriety Streak Card */}
       {!tracker ? (
         <div className="card p-8 text-center space-y-3">
-          <ShieldCheck size={36} className="mx-auto text-rose-400" />
+          <ShieldCheck size={36} className="mx-auto text-rose-theme" />
           <h2 className="text-lg font-bold text-content-primary">Set Up Your Sobriety Tracker</h2>
           <p className="text-xs text-content-muted max-w-md mx-auto">
             Choose what you are recovering from (e.g., Alcohol, Smoking, Sugar, Social Media) and start tracking your milestone achievements today.
@@ -140,14 +140,14 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setResetConfirmOpen(true)}
-                className="btn-ghost text-xs text-content-muted hover:text-amber-400 flex items-center gap-1.5"
+                className="btn-ghost text-xs text-content-muted hover:text-warning-text flex items-center gap-1.5"
               >
                 <RefreshCw size={14} />
                 <span>Reset Timer</span>
               </button>
               <button
                 onClick={() => setDeleteTrackerConfirmOpen(true)}
-                className="btn-ghost text-xs text-content-muted hover:text-rose-400 flex items-center gap-1.5"
+                className="btn-ghost text-xs text-content-muted hover:text-rose-theme flex items-center gap-1.5"
                 title="Delete Sobriety Tracker Entirely"
               >
                 <Trash2 size={14} />
@@ -159,7 +159,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           {/* Live Counter Display */}
           <div className="grid grid-cols-4 gap-2 text-center">
             <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-rose-400">{timeElapsed.days}</div>
+              <div className="text-3xl sm:text-4xl font-display font-bold text-rose-theme">{timeElapsed.days}</div>
               <div className="text-[10px] text-content-disabled uppercase font-semibold mt-1">Days</div>
             </div>
             <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
@@ -179,7 +179,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           {/* Milestones Celebrations */}
           <div>
             <div className="text-xs font-bold text-content-tertiary mb-3 flex items-center gap-2">
-              <Award size={16} className="text-amber-400" />
+              <Award size={16} className="text-warning-text" />
               Milestone Celebrations & Badges
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -237,13 +237,13 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                 <div key={log.id} className="card p-3 bg-bg-800/60 border border-overlay-subtle space-y-1 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-content-secondary flex items-center gap-2">
-                      Intensity: <span className={`px-2 py-0.5 rounded font-mono ${log.intensity >= 7 ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-300'}`}>{log.intensity}/10</span>
+                      Intensity: <span className={`px-2 py-0.5 rounded font-mono ${log.intensity >= 7 ? 'bg-rose-500/20 text-rose-theme' : 'bg-amber-500/20 text-warning-text'}`}>{log.intensity}/10</span>
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="text-content-disabled text-[10px]">{formatDateLong(log.date)}</span>
                       <button
                         onClick={() => setDeleteCravingModalLog(log)}
-                        className="text-content-subtle hover:text-rose-400 p-0.5 transition-colors"
+                        className="text-content-subtle hover:text-rose-theme p-0.5 transition-colors"
                         title="Delete Craving Log"
                       >
                         <Trash2 size={14} />
@@ -251,7 +251,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                     </div>
                   </div>
                   {log.trigger && <p className="text-content-muted"><span className="text-content-disabled font-medium">Trigger:</span> {log.trigger}</p>}
-                  {log.copingStrategy && <p className="text-emerald-400"><span className="text-content-disabled font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
+                  {log.copingStrategy && <p className="text-success-text"><span className="text-content-disabled font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
                 </div>
               ))}
             </div>
@@ -264,7 +264,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         <div className="space-y-6">
           {/* Guided Breathing Box */}
           <div className="card p-5 text-center bg-bg-800 border border-purple-500/30 space-y-4">
-            <h3 className="text-sm font-bold text-purple-300 flex items-center justify-center gap-2">
+            <h3 className="text-sm font-bold text-purple-hierarchy flex items-center justify-center gap-2">
               <Sparkles size={16} /> Guided 4-4-4-4 Box Breathing
             </h3>
             <BreathingCircle />
@@ -276,12 +276,12 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               <h4 className="text-xs font-bold text-content-secondary">Quick Distraction Activity</h4>
               <button
                 onClick={() => setDistractionIdx((prev) => (prev + 1) % DISTRACTION_ACTIVITIES.length)}
-                className="btn-ghost text-[11px] text-primary-400 flex items-center gap-1"
+                className="btn-ghost text-[11px] text-brand-text flex items-center gap-1"
               >
                 <RefreshCw size={12} /> Next Suggestion
               </button>
             </div>
-            <div className="p-3 bg-primary-500/10 rounded-xl text-sm font-semibold text-primary-300 text-center border border-primary-500/20">
+            <div className="p-3 bg-primary-500/10 rounded-xl text-sm font-semibold text-brand-text text-center border border-primary-500/20">
               "{DISTRACTION_ACTIVITIES[distractionIdx]}"
             </div>
           </div>
@@ -300,7 +300,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           <div>
             <div className="flex justify-between text-xs text-content-muted mb-1">
               <span>Craving Intensity</span>
-              <span className="font-bold text-amber-400">{intensity} / 10</span>
+              <span className="font-bold text-warning-text">{intensity} / 10</span>
             </div>
             <input
               type="range"
@@ -400,7 +400,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       {/* Milestone Unlocked Modal */}
       <Modal open={!!celebrationMilestone} onClose={() => setCelebrationMilestone(null)} title="Milestone Unlocked! 🎉">
         <div className="text-center space-y-4 py-2">
-          <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-3xl mx-auto animate-bounce">
+          <div className="w-16 h-16 rounded-full bg-amber-500/20 text-warning-text border border-amber-500/40 flex items-center justify-center text-3xl mx-auto animate-bounce">
             🏆
           </div>
           <h3 className="text-lg font-bold text-content-primary">{celebrationMilestone}</h3>
@@ -494,7 +494,7 @@ function BreathingCircle() {
         <div
           className={`w-28 h-28 rounded-full border-2 transition-all duration-1000 flex flex-col items-center justify-center ${getCircleScale()}`}
         >
-          <span className="text-xs uppercase tracking-widest text-purple-300 font-bold">{phase}</span>
+          <span className="text-xs uppercase tracking-widest text-purple-hierarchy font-bold">{phase}</span>
           <span className="text-2xl font-display font-bold text-white mt-0.5">{seconds}s</span>
         </div>
       </div>
@@ -502,7 +502,7 @@ function BreathingCircle() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => setIsActive(!isActive)}
-          className="btn-ghost text-xs text-purple-300 flex items-center gap-1"
+          className="btn-ghost text-xs text-purple-hierarchy flex items-center gap-1"
         >
           {isActive ? <Pause size={14} /> : <Play size={14} />}
           <span>{isActive ? 'Pause' : 'Start'}</span>

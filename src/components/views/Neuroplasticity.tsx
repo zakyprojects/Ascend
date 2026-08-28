@@ -18,7 +18,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
         <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #a855f7, transparent 70%)' }} />
         <div className="relative">
           <div className="w-16 h-16 rounded-2xl bg-purple-500/15 flex items-center justify-center mb-4">
-            <Brain size={32} className="text-purple-400" />
+            <Brain size={32} className="text-purple-hierarchy" />
           </div>
           <h2 className="text-xl font-display font-bold text-content-primary mb-2">
             Your brain is not fixed.
@@ -29,14 +29,14 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             every skill you practice, every experience you have physically changes its structure.
           </p>
           <p className="text-sm text-content-muted leading-relaxed mt-3">
-            This is called <span className="text-purple-400 font-medium">neuroplasticity</span>, and it means
+            This is called <span className="text-purple-hierarchy font-medium">neuroplasticity</span>, and it means
             you are never stuck with who you are. Change is always possible — it just requires the right approach.
           </p>
         </div>
       </div>
 
       {/* Core principle */}
-      <div className="card p-5 border-l-2 border-purple-500/50">
+      <div className="card p-5 border-l-2 border-l-purple-500">
         <p className="text-lg font-display font-bold text-content-primary mb-2">
           "Neurons that fire together, wire together."
         </p>
@@ -94,7 +94,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
       <div className="card p-5 border-2 border-purple-500/30 bg-purple-500/5">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0">
-            <Target size={20} className="text-purple-400" />
+            <Target size={20} className="text-purple-hierarchy" />
           </div>
           <div className="flex-1">
             <h3 className="font-display font-bold text-content-primary mb-1">The 90-Day League</h3>
@@ -129,7 +129,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             "Novelty: The Brain's Growth Trigger",
           ].map((title) => (
             <div key={title} className="card p-3 flex items-center gap-2 text-sm text-content-muted">
-              <Brain size={14} className="text-purple-400 shrink-0" />
+              <Brain size={14} className="text-purple-hierarchy shrink-0" />
               {title}
             </div>
           ))}
@@ -167,7 +167,7 @@ function Tip({ num, text }: { num: string; text: string }) {
   return (
     <div className="flex items-start gap-3">
       <div className="w-6 h-6 rounded-lg bg-purple-500/15 flex items-center justify-center shrink-0 mt-0.5">
-        <span className="text-xs font-bold text-purple-400">{num}</span>
+        <span className="text-xs font-bold text-purple-hierarchy">{num}</span>
       </div>
       <p className="text-sm text-content-muted leading-relaxed">{text}</p>
     </div>
