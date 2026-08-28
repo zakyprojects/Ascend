@@ -113,14 +113,14 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
       {/* Tier + Points hero */}
       <div className="card p-5 relative overflow-hidden">
         <div
-          className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-10"
-          style={{ background: `radial-gradient(circle, ${tier.color}, transparent 70%)` }}
+          className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-15 dark:opacity-10 pointer-events-none"
+          style={{ background: `radial-gradient(circle, var(--rank-${tier.name.toLowerCase()}-text), transparent 70%)` }}
         />
         <div className="relative flex items-center gap-4">
           <TierBadge totalPoints={totalPoints} size="xl" />
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-display font-bold" style={{ color: tier.color }}>
+              <h2 className="text-xl font-display font-bold" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
                 {tier.name}
               </h2>
               {nextTier && (

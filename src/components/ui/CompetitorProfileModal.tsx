@@ -226,7 +226,7 @@ export function CompetitorProfileModal({
                             <p className="text-xs font-bold text-content-secondary truncate">
                               {historyRecord.seasonName}
                             </p>
-                            <p className="text-[10px] font-medium truncate" style={{ color: tier.color }}>
+                            <p className="text-[10px] font-medium truncate" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
                               {tier.name} Tier
                             </p>
                           </div>
