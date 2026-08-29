@@ -267,7 +267,7 @@
     --badge-emerald-border: #a7f3d0;
 
     --badge-amber-bg: #fef3c7;
-    --badge-amber-text: #f59e0b;
+    --badge-amber-text: var(--color-warning-text);
     --badge-amber-border: #fcd34d;
 
     --badge-rose-bg: #ffe4e6;

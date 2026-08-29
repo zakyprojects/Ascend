@@ -1,27 +1,50 @@
 import { useState, useMemo } from 'react';
-import { Target, Zap, Plus, Trash2, Clock, Award, ChevronRight, Edit3 } from 'lucide-react';
+import { Target, Zap, Plus, Trash2, Clock, Award, Flame } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Skill, SkillLevel, SkillSessionLog } from '@/types';
-import { todayKey, formatDateLong } from '@/lib/dates';
+import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak } from '@/lib/dates';
 
 export function SkillTracker({ store }: { store: AppStore }) {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [logModalSkill, setLogModalSkill] = useState<Skill | null>(null);
-  const [editLevelSkill, setEditLevelSkill] = useState<Skill | null>(null);
   const [deleteModalSkill, setDeleteModalSkill] = useState<Skill | null>(null);
   const [deleteModalLog, setDeleteModalLog] = useState<SkillSessionLog | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [categorySuggestionsOpen, setCategorySuggestionsOpen] = useState(false);
 
   // Form states
   const [skillName, setSkillName] = useState('');
   const [category, setCategory] = useState('');
   const [duration, setDuration] = useState(30);
   const [note, setNote] = useState('');
-  const [manualLevel, setManualLevel] = useState<SkillLevel>('beginner');
+  const [noteTouched, setNoteTouched] = useState(false);
 
   const skills = store.state.skills;
   const skillLogs = store.state.skillLogs;
+
+  const rawCategories = useMemo(() => {
+    return Array.from(
+      new Set(skills.map((s) => s.category?.trim()).filter((c): c is string => Boolean(c)))
+    );
+  }, [skills]);
+
+  const categories = useMemo(() => {
+    return ['All', ...rawCategories];
+  }, [rawCategories]);
+
+  const categorySuggestions = useMemo(() => {
+    if (!category.trim()) return rawCategories;
+    return rawCategories.filter((c) =>
+      c.toLowerCase().includes(category.trim().toLowerCase())
+    );
+  }, [rawCategories, category]);
+
+  const filteredSkills = useMemo(() => {
+    if (selectedCategory === 'All') return skills;
+    return skills.filter((s) => s.category?.trim() === selectedCategory);
+  }, [skills, selectedCategory]);
 
   const linkedSkillGoalsCount = useMemo(() => {
     if (!deleteModalSkill) return 0;
@@ -39,20 +62,117 @@ export function SkillTracker({ store }: { store: AppStore }) {
   const totalPracticeMinutes = skillLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
   const totalPracticeHours = (totalPracticeMinutes / 60).toFixed(1);
 
-  const getEffectiveSkillLevel = (skill: Skill): { level: SkillLevel; hours: number; isManual: boolean } => {
+  const getEffectiveSkillLevel = (skill: Skill): {
+    level: SkillLevel;
+    hours: number;
+    nextLevelLabel: string | null;
+    targetHours: number | null;
+    progressPercent: number;
+    progressText: string;
+  } => {
     const skillMinutes = skillLogs
       .filter((l) => l.skillId === skill.id)
       .reduce((sum, l) => sum + l.durationMinutes, 0);
     const hours = skillMinutes / 60;
 
-    if (skill.manualLevel) {
-      return { level: skill.manualLevel, hours, isManual: true };
+    if (hours < 10) {
+      const targetHours = 10;
+      const progressPercent = Math.min(100, Math.max(0, (hours / targetHours) * 100));
+      return {
+        level: 'beginner',
+        hours,
+        nextLevelLabel: 'Intermediate',
+        targetHours,
+        progressPercent,
+        progressText: `${hours.toFixed(1)}/10 hrs to Intermediate`,
+      };
     }
 
-    if (hours < 10) return { level: 'beginner', hours, isManual: false };
-    if (hours < 50) return { level: 'intermediate', hours, isManual: false };
-    return { level: 'advanced', hours, isManual: false };
+    if (hours < 25) {
+      const targetHours = 25;
+      const progressPercent = Math.min(100, Math.max(0, (hours / targetHours) * 100));
+      return {
+        level: 'intermediate',
+        hours,
+        nextLevelLabel: 'Advanced',
+        targetHours,
+        progressPercent,
+        progressText: `${hours.toFixed(1)}/25 hrs to Advanced`,
+      };
+    }
+
+    if (hours < 50) {
+      const targetHours = 50;
+      const progressPercent = Math.min(100, Math.max(0, (hours / targetHours) * 100));
+      return {
+        level: 'advanced',
+        hours,
+        nextLevelLabel: 'Expert',
+        targetHours,
+        progressPercent,
+        progressText: `${hours.toFixed(1)}/50 hrs to Expert`,
+      };
+    }
+
+    return {
+      level: 'expert',
+      hours,
+      nextLevelLabel: null,
+      targetHours: null,
+      progressPercent: 100,
+      progressText: `${hours.toFixed(1)} hrs logged • Top Tier`,
+    };
   };
+
+  const getLastPracticedText = (skillId: string): string => {
+    const latestLog = skillLogs.find((l) => l.skillId === skillId);
+    if (!latestLog) return 'Never';
+
+    const today = todayKey();
+    if (latestLog.date === today) return 'Today';
+    if (isYesterdayLocal(latestLog.date)) return 'Yesterday';
+
+    const [tY, tM, tD] = today.split('-').map(Number);
+    const todayMidnight = new Date(tY, tM - 1, tD).getTime();
+    const [lY, lM, lD] = latestLog.date.split('-').map(Number);
+    const logMidnight = new Date(lY, lM - 1, lD).getTime();
+    const diffDays = Math.round((todayMidnight - logMidnight) / 86400000);
+
+    if (diffDays > 1 && diffDays < 30) return `${diffDays} days ago`;
+    if (diffDays >= 30 && diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return `${months} mo ago`;
+    }
+    return formatDateShort(latestLog.date);
+  };
+
+  const groupedHistoryLogs = useMemo(() => {
+    const sliced = skillLogs.slice(0, 15);
+    const today = todayKey();
+    const yesterday = todayKey(new Date(getNow().getTime() - 86400000));
+    const { dateStrings: thisWeekDates } = getWeekDates();
+
+    const groups: { title: string; logs: SkillSessionLog[] }[] = [
+      { title: 'Today', logs: [] },
+      { title: 'Yesterday', logs: [] },
+      { title: 'This Week', logs: [] },
+      { title: 'Older', logs: [] },
+    ];
+
+    sliced.forEach((log) => {
+      if (log.date === today) {
+        groups[0].logs.push(log);
+      } else if (log.date === yesterday) {
+        groups[1].logs.push(log);
+      } else if (thisWeekDates.includes(log.date)) {
+        groups[2].logs.push(log);
+      } else {
+        groups[3].logs.push(log);
+      }
+    });
+
+    return groups.filter((g) => g.logs.length > 0);
+  }, [skillLogs]);
 
   const getLevelBadgeStyle = (level: SkillLevel) => {
     switch (level) {
@@ -62,6 +182,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
         return 'badge-blue';
       case 'advanced':
         return 'badge-purple';
+      case 'expert':
+        return 'badge-amber';
     }
   };
 
@@ -76,18 +198,15 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
   const handleLogPracticeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!logModalSkill || duration <= 0) return;
-    store.logSkillPractice(logModalSkill.id, Number(duration), note);
+    if (!logModalSkill || duration <= 0 || !note.trim()) {
+      setNoteTouched(true);
+      return;
+    }
+    store.logSkillPractice(logModalSkill.id, Number(duration), note.trim());
     setLogModalSkill(null);
     setDuration(30);
     setNote('');
-  };
-
-  const handleLevelUpdateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editLevelSkill) return;
-    store.updateSkillLevel(editLevelSkill.id, manualLevel);
-    setEditLevelSkill(null);
+    setNoteTouched(false);
   };
 
   return (
@@ -150,24 +269,60 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
       {/* Skills Grid */}
       <div>
-        <h2 className="section-title mb-3">Your Active Skills</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <h2 className="section-title">Your Active Skills</h2>
+
+          {/* Category Filter Chips */}
+          {categories.length > 1 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-2.5 py-1 rounded-lg text-xs transition-all ${
+                    selectedCategory === cat
+                      ? 'bg-purple-500/20 text-purple-hierarchy border border-purple-500/40 font-semibold'
+                      : 'bg-bg-800 text-content-disabled hover:text-content-muted border border-overlay-subtle'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {skills.length === 0 ? (
           <div className="card p-8 text-center">
             <Target size={32} className="mx-auto text-content-subtle mb-2" />
             <p className="text-sm font-medium text-content-muted">No skills added yet</p>
-            <p className="text-xs text-content-disabled mt-1 mb-4">Add a skill (e.g. Coding, Spanish, Guitar, Design) to log practice sessions and earn points.</p>
+            <p className="text-xs text-content-disabled mt-1 mb-4">
+              Add a skill (e.g. Coding, Spanish, Guitar, Design) to log practice sessions and earn points.
+            </p>
             <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
               Add Your First Skill
             </button>
           </div>
+        ) : filteredSkills.length === 0 ? (
+          <div className="card p-6 text-center">
+            <p className="text-sm text-content-disabled">No skills found in category &ldquo;{selectedCategory}&rdquo;</p>
+            <button
+              onClick={() => setSelectedCategory('All')}
+              className="text-xs text-purple-hierarchy hover:underline mt-2 inline-block font-medium"
+            >
+              Show all skills
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {skills.map((skill) => {
-              const { level, hours, isManual } = getEffectiveSkillLevel(skill);
+            {filteredSkills.map((skill) => {
+              const { level, hours, progressPercent, progressText } = getEffectiveSkillLevel(skill);
+              const lastPracticed = getLastPracticedText(skill.id);
+              const skillDates = skillLogs.filter((l) => l.skillId === skill.id).map((l) => l.date);
+              const streak = calculateStreak(skillDates, 'daily');
               return (
                 <div key={skill.id} className="card p-4 flex flex-col justify-between space-y-3">
-                  <div>
+                  <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="font-semibold text-content-secondary text-base">{skill.name}</h3>
@@ -182,21 +337,38 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center justify-between gap-2">
                       <span className={`badge border capitalize font-semibold px-2.5 py-0.5 text-xs ${getLevelBadgeStyle(level)}`}>
-                        {level} {isManual ? '(Manual)' : ''}
+                        {level}
                       </span>
-                      <button
-                        onClick={() => {
-                          setEditLevelSkill(skill);
-                          setManualLevel(level);
-                        }}
-                        className="text-content-disabled hover:text-content-tertiary p-1"
-                        title="Set level manually"
-                      >
-                        <Edit3 size={13} />
-                      </button>
-                      <span className="text-xs text-content-disabled ml-auto">{hours.toFixed(1)} hrs practiced</span>
+                      <div className="flex items-center gap-2 text-xs text-content-disabled">
+                        {streak > 0 && (
+                          <>
+                            <span className="flex items-center gap-1 text-secondary-400 font-medium">
+                              <Flame size={13} className="text-secondary-500" />
+                              {streak} day{streak !== 1 ? 's' : ''}
+                            </span>
+                            <span>•</span>
+                          </>
+                        )}
+                        <span>{hours.toFixed(1)} hrs</span>
+                        <span>•</span>
+                        <span>Last: {lastPracticed}</span>
+                      </div>
+                    </div>
+
+                    {/* Level Progress Bar */}
+                    <div className="space-y-1 pt-0.5">
+                      <div className="flex justify-between items-center text-[11px] text-content-disabled">
+                        <span>{progressText}</span>
+                        <span>{Math.round(progressPercent)}%</span>
+                      </div>
+                      <div className="w-full bg-bg-800 rounded-full h-1.5 overflow-hidden border border-overlay-subtle">
+                        <div
+                          className="bg-purple-500 h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -206,7 +378,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       setDuration(30);
                       setNote('');
                     }}
-                    className="btn-primary text-xs py-2 w-full flex items-center justify-center gap-1.5"
+                    className="btn-primary text-xs py-2 w-full flex items-center justify-center gap-1.5 mt-1"
                   >
                     <Plus size={14} />
                     <span>Log Practice Session</span>
@@ -222,39 +394,48 @@ export function SkillTracker({ store }: { store: AppStore }) {
       {skillLogs.length > 0 && (
         <div>
           <h2 className="section-title mb-3">Practice History Log</h2>
-          <div className="space-y-2.5">
-            {skillLogs.slice(0, 15).map((log) => {
-              const skill = skills.find((s) => s.id === log.skillId);
-              return (
-                <div key={log.id} className="card p-3.5 flex items-start justify-between card-hover">
-                  <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0 mt-0.5">
-                      <Clock size={18} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-content-secondary text-sm">{skill?.name || 'Skill'}</span>
-                        <span className="text-xs text-content-disabled">({log.durationMinutes} mins)</span>
-                      </div>
-                      {log.note && <p className="text-xs text-content-muted mt-0.5">{log.note}</p>}
-                      <p className="text-[10px] text-content-disabled mt-1">{formatDateLong(log.date)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="badge-purple text-xs font-bold px-2.5 py-1 rounded-full">
-                      +{log.pointsAwarded} pts
-                    </span>
-                    <button
-                      onClick={() => setDeleteModalLog(log)}
-                      className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
-                      title="Delete Practice Session Log"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+          <div className="space-y-4">
+            {groupedHistoryLogs.map((group) => (
+              <div key={group.title} className="space-y-2">
+                <div className="text-xs font-semibold text-content-disabled uppercase tracking-wider px-1">
+                  {group.title}
                 </div>
-              );
-            })}
+                <div className="space-y-2">
+                  {group.logs.map((log) => {
+                    const skill = skills.find((s) => s.id === log.skillId);
+                    return (
+                      <div key={log.id} className="card p-3.5 flex items-start justify-between card-hover">
+                        <div className="flex items-start gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0 mt-0.5">
+                            <Clock size={18} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-content-secondary text-sm">{skill?.name || 'Skill'}</span>
+                              <span className="text-xs text-content-disabled">({log.durationMinutes} mins)</span>
+                            </div>
+                            {log.note && <p className="text-xs text-content-muted mt-0.5">{log.note}</p>}
+                            <p className="text-[10px] text-content-disabled mt-1">{formatDateLong(log.date)}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="badge-purple text-xs font-bold px-2.5 py-1 rounded-full">
+                            +{log.pointsAwarded} pts
+                          </span>
+                          <button
+                            onClick={() => setDeleteModalLog(log)}
+                            className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
+                            title="Delete Practice Session Log"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -274,15 +455,45 @@ export function SkillTracker({ store }: { store: AppStore }) {
             />
           </div>
 
-          <div>
+          <div className="relative">
             <label className="block text-xs font-medium text-content-muted mb-1">Category (Optional)</label>
             <input
               type="text"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                setCategorySuggestionsOpen(true);
+              }}
+              onFocus={() => setCategorySuggestionsOpen(true)}
+              onBlur={() => {
+                // Short delay to allow clicking a suggestion item
+                setTimeout(() => setCategorySuggestionsOpen(false), 200);
+              }}
               placeholder="e.g. Technology, Music, Language"
               className="input"
             />
+            {categorySuggestionsOpen && categorySuggestions.length > 0 && (
+              <div className="absolute z-50 left-0 right-0 mt-1 bg-bg-750 border border-overlay-medium rounded-xl shadow-lg max-h-36 overflow-y-auto p-1 space-y-0.5">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-content-disabled px-2.5 py-1">
+                  Existing Categories
+                </div>
+                {categorySuggestions.map((sug) => (
+                  <button
+                    key={sug}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setCategory(sug);
+                      setCategorySuggestionsOpen(false);
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-content-secondary hover:bg-bg-600 transition-colors flex items-center justify-between"
+                  >
+                    <span>{sug}</span>
+                    <span className="text-[10px] text-content-disabled">Select</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -297,7 +508,14 @@ export function SkillTracker({ store }: { store: AppStore }) {
       </Modal>
 
       {/* Log Practice Session Modal */}
-      <Modal open={!!logModalSkill} onClose={() => setLogModalSkill(null)} title={`Log Practice: ${logModalSkill?.name}`}>
+      <Modal
+        open={!!logModalSkill}
+        onClose={() => {
+          setLogModalSkill(null);
+          setNoteTouched(false);
+        }}
+        title={`Log Practice: ${logModalSkill?.name}`}
+      >
         <form onSubmit={handleLogPracticeSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-content-muted mb-1">Practice Duration (Minutes)</label>
@@ -316,10 +534,16 @@ export function SkillTracker({ store }: { store: AppStore }) {
             <label className="block text-xs font-medium text-content-muted mb-1">Short Note / What did you practice?</label>
             <textarea
               value={note}
-              onChange={(e) => setNote(e.target.value)}
+              onChange={(e) => {
+                setNote(e.target.value);
+                if (noteTouched && e.target.value.trim()) setNoteTouched(false);
+              }}
               placeholder="e.g. Practiced React hooks state management and custom components"
-              className="input min-h-[80px]"
+              className={`input min-h-[80px] ${noteTouched && !note.trim() ? 'border-rose-500 focus:border-rose-500' : ''}`}
             />
+            {noteTouched && !note.trim() && (
+              <p className="text-xs text-rose-400 mt-1">Please enter a note describing what you practiced.</p>
+            )}
           </div>
 
           <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
@@ -328,45 +552,22 @@ export function SkillTracker({ store }: { store: AppStore }) {
           </div>
 
           <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setLogModalSkill(null)} className="btn-secondary flex-1">
+            <button
+              type="button"
+              onClick={() => {
+                setLogModalSkill(null);
+                setNoteTouched(false);
+              }}
+              className="btn-secondary flex-1"
+            >
               Cancel
             </button>
-            <button type="submit" className="btn-primary flex-1">
+            <button
+              type="submit"
+              disabled={!note.trim()}
+              className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Save Session
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Edit Level Modal */}
-      <Modal open={!!editLevelSkill} onClose={() => setEditLevelSkill(null)} title={`Set Skill Level: ${editLevelSkill?.name}`}>
-        <form onSubmit={handleLevelUpdateSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-content-muted mb-2">Select Skill Level</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['beginner', 'intermediate', 'advanced'] as SkillLevel[]).map((lvl) => (
-                <button
-                  type="button"
-                  key={lvl}
-                  onClick={() => setManualLevel(lvl)}
-                  className={`p-3 rounded-xl border text-xs font-bold capitalize transition-all ${
-                    manualLevel === lvl
-                      ? 'badge-purple border-purple-500'
-                      : 'bg-bg-700 border-overlay-default text-content-muted hover:bg-bg-600'
-                  }`}
-                >
-                  {lvl}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setEditLevelSkill(null)} className="btn-secondary flex-1">
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary flex-1">
-              Update Level
             </button>
           </div>
         </form>
