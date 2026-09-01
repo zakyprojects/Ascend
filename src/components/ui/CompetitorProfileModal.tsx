@@ -74,7 +74,7 @@ export function CompetitorProfileModal({
 
           {/* Tier Badge */}
           <div className="shrink-0 bg-bg-700/80 p-2.5 rounded-xl border border-overlay-default self-start sm:self-center">
-            <TierBadge totalPoints={competitor.totalPoints || competitor.points} size="md" showName />
+            <TierBadge totalPoints={competitor.points} size="md" showName />
           </div>
         </div>
 

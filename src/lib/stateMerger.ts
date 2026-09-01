@@ -40,6 +40,7 @@ import {
 } from '@/types';
 import { mergeSharedChallenge } from './pactLifecycle';
 import { ensureDefaultActivities } from './timeTracker';
+import { calculateChronologicalTotal } from './leagues';
 
 function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string }>(
   baseArr: T[] = [],
@@ -77,6 +78,147 @@ function mergeEntityArrays<T extends { id?: string; createdAt?: string | number;
   }
 
   return Array.from(map.values());
+}
+
+function normalizeHabitCompletions(
+  completions: Habit['completions'] | string[] | undefined,
+  fallbackTime: string
+): Record<string, { done: boolean; updatedAt: string }> {
+  if (!completions) return {};
+  if (Array.isArray(completions)) {
+    const res: Record<string, { done: boolean; updatedAt: string }> = {};
+    for (const d of completions) {
+      if (typeof d === 'string' && d) {
+        res[d] = { done: true, updatedAt: fallbackTime };
+      }
+    }
+    return res;
+  }
+  return { ...completions };
+}
+
+function mergeHabitCompletions(
+  baseCompletions: Record<string, { done: boolean; updatedAt: string }>,
+  incomingCompletions: Record<string, { done: boolean; updatedAt: string }>
+): Record<string, { done: boolean; updatedAt: string }> {
+  const merged: Record<string, { done: boolean; updatedAt: string }> = { ...baseCompletions };
+  for (const [dateKey, incEntry] of Object.entries(incomingCompletions || {})) {
+    const baseEntry = merged[dateKey];
+    if (!baseEntry) {
+      merged[dateKey] = incEntry;
+    } else {
+      const baseTime = baseEntry.updatedAt || '';
+      const incTime = incEntry.updatedAt || '';
+      if (incTime >= baseTime) {
+        merged[dateKey] = incEntry;
+      }
+    }
+  }
+  return merged;
+}
+
+/**
+ * Deduplicate preset habits by normalized name while strictly leaving custom habits untouched.
+ * For duplicate preset habits with the same normalized name:
+ * - The habit with the earliest createdAt is kept as winner.
+ * - Completions across all duplicate members are merged into the winner.
+ * - Non-winner habit IDs are added to deletedEntityIds.
+ */
+export function deduplicatePresetHabits(
+  habits: Habit[] = [],
+  deletedEntityIds: string[] = []
+): { habits: Habit[]; deletedEntityIds: string[] } {
+  const customHabits: Habit[] = [];
+  const presetGroups = new Map<string, Habit[]>();
+
+  for (const h of habits) {
+    if (!h) continue;
+    if (!h.isPreset) {
+      customHabits.push(h);
+    } else {
+      const normName = (h.name || '').trim().toLowerCase();
+      const existingGroup = presetGroups.get(normName) || [];
+      existingGroup.push(h);
+      presetGroups.set(normName, existingGroup);
+    }
+  }
+
+  const newDeletedIds = new Set(deletedEntityIds || []);
+  const processedPresetWinners = new Map<string, Habit>();
+
+  for (const [normName, group] of presetGroups.entries()) {
+    if (group.length === 1) {
+      processedPresetWinners.set(normName, {
+        ...group[0],
+        completions: normalizeHabitCompletions(
+          group[0].completions,
+          group[0].updatedAt || group[0].createdAt || new Date().toISOString()
+        ),
+      });
+      continue;
+    }
+
+    // Multiple preset habits with same name: find winner with earliest createdAt
+    const sorted = [...group].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return (timeA || 0) - (timeB || 0);
+    });
+
+    const winner = sorted[0];
+    let mergedComps = normalizeHabitCompletions(
+      winner.completions,
+      winner.updatedAt || winner.createdAt || new Date().toISOString()
+    );
+    const mergedMissedPeriods = new Set<string>(winner.missedPeriods || []);
+
+    for (const member of group) {
+      for (const mp of member.missedPeriods || []) {
+        mergedMissedPeriods.add(mp);
+      }
+      if (member.id && member.id !== winner.id) {
+        newDeletedIds.add(member.id);
+        const memberComps = normalizeHabitCompletions(
+          member.completions,
+          member.updatedAt || member.createdAt || new Date().toISOString()
+        );
+        mergedComps = mergeHabitCompletions(mergedComps, memberComps);
+      }
+    }
+
+    processedPresetWinners.set(normName, {
+      ...winner,
+      missedPeriods: Array.from(mergedMissedPeriods),
+      completions: mergedComps,
+    });
+  }
+
+  // Build final array preserving original relative array ordering
+  const finalHabits: Habit[] = [];
+  const emittedPresetNames = new Set<string>();
+
+  for (const h of habits) {
+    if (!h) continue;
+    if (!h.isPreset) {
+      finalHabits.push(h);
+    } else {
+      const normName = (h.name || '').trim().toLowerCase();
+      if (!emittedPresetNames.has(normName)) {
+        emittedPresetNames.add(normName);
+        const winnerHabit = processedPresetWinners.get(normName);
+        if (winnerHabit) {
+          finalHabits.push(winnerHabit);
+        }
+      }
+    }
+  }
+
+  const finalDeletedIds = Array.from(newDeletedIds).slice(-500);
+
+  return {
+    habits: finalHabits,
+    deletedEntityIds: finalDeletedIds,
+  };
 }
 
 function mergeWeeklyGoals(
@@ -244,23 +386,36 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     ])
   ).slice(-500);
 
-  // 2. Habits (merge completions, filter tombstones)
-  const habits = mergeEntityArrays(
+  // 2. Habits (last-write-wins by updatedAt/createdAt, with per-date completions merge)
+  const mergedHabitsRaw = mergeEntityArrays(
     baseState.habits || [],
     incomingState.habits || [],
     tombstoneSet,
     (baseH: Habit, incH: Habit) => {
-      const allCompletions = Array.from(new Set([...(baseH.completions || []), ...(incH.completions || [])]));
-      const baseTime = baseH.createdAt || '';
-      const incTime = incH.createdAt || '';
-      const primary = incTime >= baseTime ? incH : baseH;
-      const secondary = incTime >= baseTime ? baseH : incH;
+      const baseTime = baseH.updatedAt || baseH.createdAt || '';
+      const incTime = incH.updatedAt || incH.createdAt || '';
+      const winner = incTime >= baseTime ? incH : baseH;
+      const baseComps = normalizeHabitCompletions(baseH.completions, baseTime || new Date().toISOString());
+      const incComps = normalizeHabitCompletions(incH.completions, incTime || new Date().toISOString());
+      const mergedComps = mergeHabitCompletions(baseComps, incComps);
+      const mergedMissed = Array.from(
+        new Set([...(baseH.missedPeriods || []), ...(incH.missedPeriods || [])])
+      );
       return {
-        ...secondary,
-        ...primary,
-        completions: allCompletions,
+        ...winner,
+        missedPeriods: mergedMissed,
+        completions: mergedComps,
       };
     }
+  );
+  const normalizedHabits = mergedHabitsRaw.map((h) => ({
+    ...h,
+    completions: normalizeHabitCompletions(h.completions, h.updatedAt || h.createdAt || new Date().toISOString()),
+  }));
+
+  const { habits, deletedEntityIds: postHabitDeletedEntityIds } = deduplicatePresetHabits(
+    normalizedHabits,
+    mergedDeletedEntityIds
   );
 
   // 3. Journal entries
@@ -271,7 +426,16 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
   );
 
   // 4. Points history & Total points
-  const pointsHistory = mergeEntityArrays(
+  let mergedPos = Math.max(
+    typeof baseState.evictedPos === 'number' && baseState.evictedPos >= 0 ? baseState.evictedPos : 0,
+    typeof incomingState.evictedPos === 'number' && incomingState.evictedPos >= 0 ? incomingState.evictedPos : 0
+  );
+  let mergedNeg = Math.max(
+    typeof baseState.evictedNeg === 'number' && baseState.evictedNeg >= 0 ? baseState.evictedNeg : 0,
+    typeof incomingState.evictedNeg === 'number' && incomingState.evictedNeg >= 0 ? incomingState.evictedNeg : 0
+  );
+
+  const mergedHistoryFull = mergeEntityArrays(
     baseState.pointsHistory || [],
     incomingState.pointsHistory || [],
     tombstoneSet
@@ -281,8 +445,13 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     return timeB - timeA;
   });
 
-  const sumPoints = pointsHistory.reduce((acc, p) => acc + (p.amount || 0), 0);
-  const totalPoints = Math.max(0, baseState.totalPoints || 0, incomingState.totalPoints || 0, sumPoints);
+  const finalHistory = mergedHistoryFull.slice(0, 500);
+
+  const totalPoints = calculateChronologicalTotal(mergedPos, mergedNeg, finalHistory);
+
+  const evictedPos = mergedPos;
+  const evictedNeg = mergedNeg;
+  const pointsHistory = finalHistory;
 
   // 5. Workouts
   const workouts = mergeEntityArrays(
@@ -659,6 +828,8 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     currentUser,
     username,
     totalPoints,
+    evictedPos,
+    evictedNeg,
     pointsHistory,
     habits,
     journalEntries,
@@ -690,7 +861,7 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     notifications,
     leagueArchives,
     readLessonIds,
-    deletedEntityIds: mergedDeletedEntityIds,
+    deletedEntityIds: postHabitDeletedEntityIds,
     restoredEntityIds: mergedRestoredEntityIds,
     timeTracker: mergedTimeTracker,
     themePreference: incomingState.themePreference || baseState.themePreference || 'dark',

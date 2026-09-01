@@ -128,10 +128,11 @@ export function calculatePeriodPoints(
   pointsHistory: PointsEntry[],
   start: Date,
   end: Date = new Date(),
-  totalPointsFallback?: number
+  currentTotalPoints?: number, // Kept for signature compatibility
+  evictedPointsOffset: number = 0 // Kept for signature compatibility
 ): number {
   if (!pointsHistory || pointsHistory.length === 0) {
-    return Math.max(0, totalPointsFallback || 0);
+    return 0;
   }
 
   // Sort history ascending by timestamp
@@ -139,38 +140,29 @@ export function calculatePeriodPoints(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
-  let runningTotal = 0;
-  let pointsAtStart = 0;
-  let hasStartSet = false;
+  let periodScore = 0;
 
   for (const entry of history) {
     const ts = new Date(entry.timestamp);
-    if (!hasStartSet && ts >= start) {
-      pointsAtStart = runningTotal;
-      hasStartSet = true;
-    }
-    runningTotal = Math.max(0, runningTotal + (entry.amount || 0));
-  }
+    
+    // Only process entries that fall within the requested time period
+    if (ts >= start && ts <= end) {
+      // Ignore physical compensating entries used for lifetime debt forgiveness;
+      // seasonal scores dynamically floor at 0 on their own timeline.
+      if (entry.reason === 'System: Debt Forgiveness' || entry.source === 'system') {
+        continue;
+      }
 
-  if (!hasStartSet) {
-    // All entries occurred before 'start'
-    pointsAtStart = runningTotal;
-  }
-
-  let periodPoints = Math.max(0, runningTotal - pointsAtStart);
-
-  if (totalPointsFallback !== undefined && totalPointsFallback > 0) {
-    const fallbackMax = Math.max(0, totalPointsFallback);
-    if (periodPoints === 0 && history.length > 0) {
-      const allInPeriod = history.every((e) => new Date(e.timestamp) >= start);
-      if (allInPeriod) {
-        periodPoints = fallbackMax;
+      periodScore += (entry.amount || 0);
+      
+      // Seasonal Debt Forgiveness: Never let the season score fall below zero
+      if (periodScore < 0) {
+        periodScore = 0;
       }
     }
-    periodPoints = Math.min(periodPoints, fallbackMax);
   }
 
-  return periodPoints;
+  return periodScore;
 }
 
 /**
@@ -305,3 +297,33 @@ export const LEAGUE_CONFIG: Record<LeagueType, { name: string; description: stri
     color: '#a855f7',
   },
 };
+
+export function calculateChronologicalTotal(
+  evictedPos: number = 0,
+  evictedNeg: number = 0,
+  history: PointsEntry[] = []
+): number {
+  if (!history || history.length === 0) {
+    return Math.max(0, evictedPos - evictedNeg);
+  }
+
+  const sorted = [...history].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  let current = evictedPos - evictedNeg;
+
+  for (const p of sorted) {
+    // Ignore legacy ghost transactions from previous buggy architectures
+    if (p.reason === 'System: Debt Forgiveness' || p.source === 'system') {
+      continue;
+    }
+    current += (p.amount || 0);
+    // Dynamic Debt Forgiveness
+    if (current < 0) {
+      current = 0;
+    }
+  }
+
+  return current;
+}
+

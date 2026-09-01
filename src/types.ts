@@ -63,8 +63,9 @@ export interface Habit {
   /** Preset category, if from library */
   category?: string;
   createdAt: string;
-  /** ISO date strings (YYYY-MM-DD) or week keys of completed periods */
-  completions: string[];
+  updatedAt?: string;
+  /** Map of period/date keys to completion status with ISO timestamp */
+  completions: Record<string, { done: boolean; updatedAt: string }>;
   createdAtPeriod: string;
   /** Periods that were missed and penalized */
   missedPeriods?: string[];
@@ -94,7 +95,7 @@ export interface LeagueCompetitor {
   name: string;
   avatar: string; // emoji
   points: number; // period points
-  totalPoints: number; // overall lifetime points driving overall tier
+  totalPoints: number; // overall lifetime points (tier is driven by season points)
   isUser?: boolean;
   isRealUser?: boolean;
   isSeed?: boolean;
@@ -128,6 +129,9 @@ export interface AppState {
   journalEntries: JournalEntry[];
   /** Lifetime total points (drives tier, never resets) */
   totalPoints: number;
+  /** Cumulative points offset for items evicted past the pointsHistory array cap */
+  evictedPos?: number;
+  evictedNeg?: number;
   /** Points ledger entries for history */
   pointsHistory: PointsEntry[];
   /** League archives — final standings from completed periods */
@@ -631,6 +635,7 @@ export interface AppState {
   journalEntries: JournalEntry[];
   /** Lifetime total points (drives tier, never resets) */
   totalPoints: number;
+  evictedPointsOffset?: number;
   /** Points ledger entries for history */
   pointsHistory: PointsEntry[];
   /** League archives — final standings from completed periods */

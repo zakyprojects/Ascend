@@ -23,9 +23,10 @@ interface DashboardProps {
 
 export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardProps) {
   const habits = store.state.habits;
-  const totalPoints = store.state.totalPoints;
-  const tier = getCurrentTier(totalPoints);
-  const nextTier = getNextTier(totalPoints);
+  const ninetyDayData = store.getLeagueData('ninetyDay');
+  const seasonPoints = ninetyDayData.userPoints;
+  const tier = getCurrentTier(seasonPoints);
+  const nextTier = getNextTier(seasonPoints);
 
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
 
@@ -43,7 +44,6 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   // League data
   const weeklyData = store.getLeagueData('weekly');
   const monthlyData = store.getLeagueData('monthly');
-  const ninetyDayData = store.getLeagueData('ninetyDay');
 
   // Summary Metrics from new modules
   const now = new Date();
@@ -117,7 +117,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           style={{ background: `radial-gradient(circle, var(--rank-${tier.name.toLowerCase()}-text), transparent 70%)` }}
         />
         <div className="relative flex items-center gap-4">
-          <TierBadge totalPoints={totalPoints} size="xl" />
+          <TierBadge totalPoints={seasonPoints} size="xl" />
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-display font-bold" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
@@ -131,14 +131,14 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             </div>
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="text-3xl font-display font-bold text-content-primary">
-                {totalPoints.toLocaleString()}
+                {ninetyDayData.userPoints.toLocaleString()}
               </span>
-              <span className="text-sm text-content-disabled">total points</span>
+              <span className="text-sm text-content-disabled">points</span>
             </div>
           </div>
         </div>
         <div className="mt-4">
-          <TierProgress totalPoints={totalPoints} />
+          <TierProgress totalPoints={seasonPoints} />
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import {
   fetchUserDataWithStatusFromSupabase,
   setUserDataWatermark,
+  computeStateDataWeight,
   fetchPartnerInvitesSupabase,
   fetchPartnershipSupabase,
   fetchPartnershipsSupabase,
@@ -246,7 +247,7 @@ export async function hydrateUserSession(
       /* ignore */
     }
 
-    if (localState && (localState.totalPoints > 0 || (localState.habits && localState.habits.length > 0))) {
+    if (localState && computeStateDataWeight(localState).itemCount > 0) {
       state = {
         ...DEFAULT_STATE,
         ...localState,

@@ -7,10 +7,10 @@ const TIER_ICONS: Record<string, LucideIcon> = {
 };
 
 export function TierView({ store }: { store: AppStore }) {
-  const totalPoints = store.state.totalPoints;
-  const currentTier = getCurrentTier(totalPoints);
-  const nextTier = getNextTier(totalPoints);
-  const progress = getProgressToNextTier(totalPoints);
+  const seasonPoints = store.getLeagueData('ninetyDay').userPoints;
+  const currentTier = getCurrentTier(seasonPoints);
+  const nextTier = getNextTier(seasonPoints);
+  const progress = getProgressToNextTier(seasonPoints);
   const currentIdx = TIERS.findIndex((t) => t.name === currentTier.name);
 
   return (
@@ -43,7 +43,7 @@ export function TierView({ store }: { store: AppStore }) {
             {currentTier.name}
           </h2>
           <p className="text-sm text-content-muted mt-1">
-            {totalPoints.toLocaleString()} total points
+            {seasonPoints.toLocaleString()} points
           </p>
 
           {/* Progress to next */}
@@ -63,7 +63,7 @@ export function TierView({ store }: { store: AppStore }) {
                 />
               </div>
               <p className="text-xs text-content-muted mt-2">
-                {(nextTier.minPoints - totalPoints).toLocaleString()} points to reach {nextTier.name}
+                {(nextTier.minPoints - seasonPoints).toLocaleString()} points to reach {nextTier.name}
               </p>
             </div>
           )}
@@ -75,7 +75,7 @@ export function TierView({ store }: { store: AppStore }) {
         <h2 className="section-title mb-3">All Ranks</h2>
         <div className="space-y-2">
           {TIERS.map((tier, idx) => {
-            const isUnlocked = totalPoints >= tier.minPoints;
+            const isUnlocked = seasonPoints >= tier.minPoints;
             const isCurrent = tier.name === currentTier.name;
             const Icon = TIER_ICONS[tier.icon] ?? Medal;
             const tierKey = tier.name.toLowerCase();

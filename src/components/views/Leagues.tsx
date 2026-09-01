@@ -215,7 +215,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
                 {/* Tier Badge visible for EVERY entry */}
                 <div className="shrink-0">
-                  <TierBadge totalPoints={competitor.totalPoints || competitor.points} size="sm" showName={false} />
+                  <TierBadge totalPoints={competitor.points} size="sm" showName={false} />
                 </div>
 
                 {/* Period Points */}
@@ -300,7 +300,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                     <span className={`text-sm font-medium flex-1 truncate ${c.isUser ? 'text-success-text font-bold' : 'text-content-tertiary'}`}>
                       {c.name}
                     </span>
-                    <TierBadge totalPoints={c.totalPoints || c.points} size="sm" showName={false} />
+                    <TierBadge totalPoints={c.points} size="sm" showName={false} />
                     <span className="text-sm font-display font-bold text-content-secondary">
                       {c.points.toLocaleString()} pts
                     </span>

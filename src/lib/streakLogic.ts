@@ -181,12 +181,18 @@ export function calculateUnifiedStreak(
     const lin = lineageMap.get(name)!;
     if (h.category) lin.category = h.category;
 
-    (h.completions || []).forEach((c) => {
-      const dKey = toNormalizedDateKey(c);
-      if (dKey) {
-        trackLatestDate(dKey);
-        if (!lin.dateNet.has(dKey)) {
-          lin.dateNet.set(dKey, 1);
+    const completionsEntries = Array.isArray(h.completions)
+      ? h.completions.map((c) => [c, { done: true }] as const)
+      : Object.entries(h.completions || {});
+
+    completionsEntries.forEach(([dateKey, c]) => {
+      if (c && c.done) {
+        const dKey = toNormalizedDateKey(dateKey);
+        if (dKey) {
+          trackLatestDate(dKey);
+          if (!lin.dateNet.has(dKey)) {
+            lin.dateNet.set(dKey, 1);
+          }
         }
       }
     });

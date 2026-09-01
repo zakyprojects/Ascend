@@ -76,6 +76,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
   const currentUser = store.state.currentUser;
   const username = store.state.username;
   const totalPoints = store.state.totalPoints;
+  const seasonPoints = store.getLeagueData('ninetyDay').userPoints;
   const userAvatar = currentUser?.avatar || '🧑';
 
   const handleLogoutClick = () => {
@@ -266,9 +267,9 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
         <div className="p-4 border-t border-overlay-subtle">
           <div className="card p-4">
             <div className="stat-label mb-2">Your Rank</div>
-            <TierBadge totalPoints={totalPoints} size="md" showName />
+            <TierBadge totalPoints={seasonPoints} size="md" showName />
             <div className="mt-2 text-xs text-content-disabled">
-              {totalPoints.toLocaleString()} total points
+              {seasonPoints.toLocaleString()} points
             </div>
           </div>
         </div>
@@ -331,9 +332,9 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
             <div className="flex flex-col h-full space-y-4">
               <div className="card p-3">
                 <div className="stat-label mb-1">Your Rank</div>
-                <TierBadge totalPoints={totalPoints} size="md" showName />
+                <TierBadge totalPoints={seasonPoints} size="md" showName />
                 <div className="mt-1 text-xs text-content-disabled">
-                  {totalPoints.toLocaleString()} total points
+                  {seasonPoints.toLocaleString()} points
                 </div>
               </div>
 
