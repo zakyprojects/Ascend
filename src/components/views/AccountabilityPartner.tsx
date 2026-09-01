@@ -34,6 +34,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
 import { getCurrentTier } from '@/lib/tiers';
+import { getSeasonNumber } from '@/lib/leagues';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { todayKey, formatDateShort, parseDate, calculateElapsedDays } from '@/lib/dates';
 import { createNotificationSupabase, checkRecentPartnerNudgeSent } from '@/lib/supabase';
@@ -228,9 +229,15 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     };
   }, [activePartnerUsername, bothStatsAllowed, getPartnerProfileStats]);
 
+  // Current Season & Lazy Client-Side Evaluation
+  const currentSeason = getSeasonNumber();
+
   // Current User Stats
-  const myTotalPoints = store.state.totalPoints || 0;
-  const mySeasonPoints = store.getLeagueData('ninetyDay').userPoints;
+  const userSeason = store.state.seasonId || 1;
+  const mySeasonPoints = userSeason === currentSeason
+    ? (store.state.seasonPoints ?? store.getLeagueData('ninetyDay').userPoints)
+    : 0;
+  const myTotalPoints = mySeasonPoints;
   const myTier = getCurrentTier(mySeasonPoints);
   const myHabitsCompletedToday = (store.state.habits || []).filter((h) => {
     const today = todayKey();
@@ -249,11 +256,13 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const myStreakData = useMemo(() => calculateUnifiedStreak(store.state), [store.state]);
   const myCurrentStreakDays = myStreakData.currentStreakDays || 0;
 
-  // Partner Stats
-  const partnerTotalPoints = partnerStatsData ? partnerStatsData.totalPoints : 0;
-  const partnerSeasonPoints =
-    partnerStatsData?.seasonPoints ??
-    (activePartnerUsername ? getProfileSeasonPointsByUsername(activePartnerUsername) : 0);
+  // Partner Stats (Lazy Client-Side Evaluation)
+  const partnerSeason = (partnerStatsData as any)?.season_id ?? (partnerStatsData as any)?.seasonId ?? 1;
+  const partnerPoints = (partnerSeason === currentSeason)
+    ? (partnerStatsData?.seasonPoints ?? (partnerStatsData as any)?.season_points ?? partnerStatsData?.totalPoints ?? (activePartnerUsername ? getProfileSeasonPointsByUsername(activePartnerUsername) : 0))
+    : 0;
+  const partnerTotalPoints = partnerPoints;
+  const partnerSeasonPoints = partnerPoints;
   const partnerTier = getCurrentTier(partnerSeasonPoints);
   const partnerHabitsCompleted = partnerStatsData?.stats?.habitsCompletedCount ?? 0;
   const partnerHabitsCompletedToday = partnerStatsData?.stats?.habitsCompletedTodayCount ?? 0;

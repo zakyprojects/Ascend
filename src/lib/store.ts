@@ -72,6 +72,10 @@ import {
   getLeaguePeriodLabel,
   calculatePeriodPoints,
   calculateChronologicalTotal,
+  calculateSeasonalTotal,
+  createDeterministicArchiveId,
+  startOfNinetyDayCycle,
+  getSeasonNumber,
   generateCompetitors,
   getUserRank,
   createArchive,
@@ -245,6 +249,40 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
   const pointsHistory = st.pointsHistory ?? [];
   const currentHistorySum = pointsHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
   
+  const activeSeasonNumber = getSeasonNumber();
+  const activeSeasonStart = startOfNinetyDayCycle();
+
+  let seasonId = typeof st.seasonId === 'number' ? st.seasonId : 1;
+  let seasonEvictedPos = typeof st.seasonEvictedPos === 'number' && st.seasonEvictedPos >= 0 ? st.seasonEvictedPos : 0;
+  let seasonEvictedNeg = typeof st.seasonEvictedNeg === 'number' && st.seasonEvictedNeg >= 0 ? st.seasonEvictedNeg : 0;
+  let leagueArchives: LeagueArchive[] = st.leagueArchives ? [...st.leagueArchives] : [];
+
+  // Check if loaded state belongs to an older season (Rollover Check)
+  if (st.seasonId === undefined || st.seasonId < activeSeasonNumber) {
+    if (typeof st.seasonId === 'number' && st.seasonId > 0) {
+      const pastSeasonNum = st.seasonId;
+      const pastArchiveId = createDeterministicArchiveId(pastSeasonNum);
+      if (!leagueArchives.some((a) => a.id === pastArchiveId || (a.type === 'ninetyDay' && a.seasonNumber === pastSeasonNum))) {
+        const pastPoints = typeof st.seasonPoints === 'number' ? st.seasonPoints : (st.totalPoints || 0);
+        leagueArchives.push({
+          id: pastArchiveId,
+          type: 'ninetyDay',
+          periodLabel: `Season ${pastSeasonNum}`,
+          seasonNumber: pastSeasonNum,
+          competitors: [],
+          userRank: 1,
+          userPoints: pastPoints,
+          archivedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          participantCount: 1,
+        });
+      }
+    }
+    seasonId = activeSeasonNumber;
+    seasonEvictedPos = 0;
+    seasonEvictedNeg = 0;
+  }
+
   let evictedPos = typeof st.evictedPos === 'number' && st.evictedPos >= 0 ? st.evictedPos : 0;
   let evictedNeg = typeof st.evictedNeg === 'number' && st.evictedNeg >= 0 ? st.evictedNeg : 0;
 
@@ -263,7 +301,7 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     }
   }
 
-  const totalPoints = calculateChronologicalTotal(evictedPos, evictedNeg, pointsHistory);
+  const computedSeasonPoints = calculateSeasonalTotal(seasonEvictedPos, seasonEvictedNeg, pointsHistory, activeSeasonStart);
 
   // Deduplicate badHabitLogs by (badHabitId, date) keeping latest entry
   const logsMap = new Map<string, BadHabitLog>();
@@ -422,11 +460,15 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     username: profile ? profile.username : (st.username ?? 'Guest User'),
     habits: sanitizedHabits,
     journalEntries: st.journalEntries ?? [],
-    totalPoints,
+    seasonId,
+    seasonPoints: computedSeasonPoints,
+    seasonEvictedPos,
+    seasonEvictedNeg,
+    totalPoints: computedSeasonPoints,
     evictedPos,
     evictedNeg,
     pointsHistory,
-    leagueArchives: st.leagueArchives ?? [],
+    leagueArchives,
     readLessonIds: st.readLessonIds ?? [],
     workouts: st.workouts ?? [],
     books: [], // Wiped out to eliminate JSON payload bloat on sync
@@ -574,7 +616,39 @@ function addPointsInternal(
   reason: string,
   source: string,
   metadata?: Record<string, any>
-): Pick<AppState, 'totalPoints' | 'pointsHistory' | 'evictedPos' | 'evictedNeg'> {
+): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'seasonEvictedPos' | 'seasonEvictedNeg' | 'pointsHistory' | 'evictedPos' | 'evictedNeg' | 'leagueArchives'> {
+  const activeSeasonNumber = getSeasonNumber();
+  const activeSeasonStart = startOfNinetyDayCycle();
+
+  let seasonId = typeof prev.seasonId === 'number' ? prev.seasonId : 1;
+  let prevSeasonPos = typeof prev.seasonEvictedPos === 'number' && prev.seasonEvictedPos >= 0 ? prev.seasonEvictedPos : 0;
+  let prevSeasonNeg = typeof prev.seasonEvictedNeg === 'number' && prev.seasonEvictedNeg >= 0 ? prev.seasonEvictedNeg : 0;
+  let leagueArchives: LeagueArchive[] = prev.leagueArchives ? [...prev.leagueArchives] : [];
+
+  // Season Rollover Check
+  if (seasonId < activeSeasonNumber) {
+    const pastSeasonNum = seasonId;
+    const pastArchiveId = createDeterministicArchiveId(pastSeasonNum);
+    if (!leagueArchives.some((a) => a.id === pastArchiveId || (a.type === 'ninetyDay' && a.seasonNumber === pastSeasonNum))) {
+      const pastPoints = typeof prev.seasonPoints === 'number' ? prev.seasonPoints : (prev.totalPoints || 0);
+      leagueArchives.push({
+        id: pastArchiveId,
+        type: 'ninetyDay',
+        periodLabel: `Season ${pastSeasonNum}`,
+        seasonNumber: pastSeasonNum,
+        competitors: [],
+        userRank: 1,
+        userPoints: pastPoints,
+        archivedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        participantCount: 1,
+      });
+    }
+    seasonId = activeSeasonNumber;
+    prevSeasonPos = 0;
+    prevSeasonNeg = 0;
+  }
+
   const prevPos = typeof prev.evictedPos === 'number' && prev.evictedPos >= 0 ? prev.evictedPos : 0;
   const prevNeg = typeof prev.evictedNeg === 'number' && prev.evictedNeg >= 0 ? prev.evictedNeg : 0;
   const prevHistory = prev.pointsHistory || [];
@@ -594,20 +668,37 @@ function addPointsInternal(
 
   let posDrop = 0;
   let negDrop = 0;
+  let seasonPosDrop = 0;
+  let seasonNegDrop = 0;
+
   for (const p of droppedHistory) {
-    if ((p.amount || 0) > 0) posDrop += p.amount;
-    else negDrop += Math.abs(p.amount || 0);
+    const amt = p.amount || 0;
+    if (amt > 0) posDrop += amt;
+    else negDrop += Math.abs(amt);
+
+    if (new Date(p.timestamp) >= activeSeasonStart) {
+      if (amt > 0) seasonPosDrop += amt;
+      else seasonNegDrop += Math.abs(amt);
+    }
   }
 
   const newEvictedPos = prevPos + posDrop;
   const newEvictedNeg = prevNeg + negDrop;
-  const newTotalPoints = calculateChronologicalTotal(newEvictedPos, newEvictedNeg, keptHistory);
+  const newSeasonEvictedPos = prevSeasonPos + seasonPosDrop;
+  const newSeasonEvictedNeg = prevSeasonNeg + seasonNegDrop;
+
+  const newSeasonPoints = calculateSeasonalTotal(newSeasonEvictedPos, newSeasonEvictedNeg, keptHistory, activeSeasonStart);
 
   return {
-    totalPoints: newTotalPoints,
+    seasonId,
+    seasonPoints: newSeasonPoints,
+    seasonEvictedPos: newSeasonEvictedPos,
+    seasonEvictedNeg: newSeasonEvictedNeg,
+    totalPoints: newSeasonPoints,
     evictedPos: newEvictedPos,
     evictedNeg: newEvictedNeg,
     pointsHistory: keptHistory,
+    leagueArchives,
   };
 }
 
@@ -1611,7 +1702,7 @@ export function useAppState() {
     setState(
       (prev) => {
         const target = prev.habits.find((h) => h.id === habitId);
-        let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
         const completedCount = Array.isArray(target?.completions)
           ? target.completions.length
           : Object.values(target?.completions || {}).filter((c) => c && c.done).length;
@@ -1642,7 +1733,7 @@ export function useAppState() {
       (prev) => {
         const existing = prev.habits.find((h) => h.linkedModule === 'reading');
         if (existing) {
-          let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+          let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
           const completedCount = Array.isArray(existing?.completions)
             ? existing.completions.length
             : Object.values(existing?.completions || {}).filter((c) => c && c.done).length;
@@ -1688,7 +1779,7 @@ export function useAppState() {
             linkedModule: 'reading',
           };
 
-          let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+          let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
           if (hasReadToday) {
             pointsUpdate = addPointsInternal(
               prev,
@@ -2158,7 +2249,7 @@ export function useAppState() {
         createdAt: new Date().toISOString(),
       };
 
-      let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+      let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
       if (pointsToAward > 0) {
         const metricSuffix = workout.amount && workout.unit && workout.unit !== 'mins'
           ? `, ${workout.amount} ${workout.unit}`
@@ -2225,7 +2316,7 @@ export function useAppState() {
 
         const netPointDelta = newDatePoints - oldDatePoints;
 
-        let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
         if (netPointDelta !== 0) {
           pointsUpdate = addPointsInternal(
             prev,
@@ -2808,7 +2899,7 @@ export function useAppState() {
         createdAt: new Date().toISOString(),
       };
 
-      let pointsUpdate = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+      let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
       if (pointsToAward > 0) {
         pointsUpdate = addPointsInternal(prev, pointsToAward, `Skill practiced: ${targetSkill.name} (${durationMinutes}m)`, 'skill');
       }
@@ -5446,9 +5537,18 @@ export function useAppState() {
     const start = getLeaguePeriodStart('ninetyDay', new Date());
     const seasonPoints = calculatePeriodPoints(profile.points_history || [], start, new Date(), profile.total_points);
 
+    const activeSeasonNumber = getSeasonNumber();
+    const profileSeasonId = typeof profile.season_id === 'number' ? profile.season_id : 1;
+    const computedSeasonPts = profileSeasonId === activeSeasonNumber
+      ? (typeof profile.season_points === 'number' ? profile.season_points : seasonPoints)
+      : 0;
+
     return {
       totalPoints: profile.total_points || 0,
-      seasonPoints,
+      seasonPoints: computedSeasonPts,
+      seasonId: profileSeasonId,
+      season_id: profileSeasonId,
+      season_points: computedSeasonPts,
       stats: {
         ...rawStats,
         streakDays,

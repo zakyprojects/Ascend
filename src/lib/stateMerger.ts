@@ -40,7 +40,12 @@ import {
 } from '@/types';
 import { mergeSharedChallenge } from './pactLifecycle';
 import { ensureDefaultActivities } from './timeTracker';
-import { calculateChronologicalTotal } from './leagues';
+import {
+  calculateChronologicalTotal,
+  calculateSeasonalTotal,
+  getSeasonNumber,
+  startOfNinetyDayCycle,
+} from './leagues';
 
 function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string }>(
   baseArr: T[] = [],
@@ -425,7 +430,28 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     tombstoneSet
   );
 
-  // 4. Points history & Total points
+  // 4. Points history & Total points (Epoch-Gated Seasonal Resolution)
+  const currentWallClockSeason = getSeasonNumber();
+  const baseSeason = baseState.seasonId || 1;
+  const incSeason = incomingState.seasonId || 1;
+  const maxSeason = Math.max(baseSeason, incSeason, currentWallClockSeason);
+
+  let mergedSeasonPos = 0;
+  let mergedSeasonNeg = 0;
+  if (baseSeason === maxSeason && incSeason === maxSeason) {
+    mergedSeasonPos = Math.max(baseState.seasonEvictedPos || 0, incomingState.seasonEvictedPos || 0);
+    mergedSeasonNeg = Math.max(baseState.seasonEvictedNeg || 0, incomingState.seasonEvictedNeg || 0);
+  } else if (baseSeason === maxSeason) {
+    mergedSeasonPos = baseState.seasonEvictedPos || 0;
+    mergedSeasonNeg = baseState.seasonEvictedNeg || 0;
+  } else if (incSeason === maxSeason) {
+    mergedSeasonPos = incomingState.seasonEvictedPos || 0;
+    mergedSeasonNeg = incomingState.seasonEvictedNeg || 0;
+  } else {
+    mergedSeasonPos = 0;
+    mergedSeasonNeg = 0;
+  }
+
   let mergedPos = Math.max(
     typeof baseState.evictedPos === 'number' && baseState.evictedPos >= 0 ? baseState.evictedPos : 0,
     typeof incomingState.evictedPos === 'number' && incomingState.evictedPos >= 0 ? incomingState.evictedPos : 0
@@ -447,8 +473,18 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
 
   const finalHistory = mergedHistoryFull.slice(0, 500);
 
-  const totalPoints = calculateChronologicalTotal(mergedPos, mergedNeg, finalHistory);
+  const computedSeasonPoints = calculateSeasonalTotal(
+    mergedSeasonPos,
+    mergedSeasonNeg,
+    finalHistory,
+    startOfNinetyDayCycle()
+  );
 
+  const seasonId = maxSeason;
+  const seasonPoints = computedSeasonPoints;
+  const seasonEvictedPos = mergedSeasonPos;
+  const seasonEvictedNeg = mergedSeasonNeg;
+  const totalPoints = computedSeasonPoints;
   const evictedPos = mergedPos;
   const evictedNeg = mergedNeg;
   const pointsHistory = finalHistory;
@@ -827,6 +863,10 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     ...incomingState,
     currentUser,
     username,
+    seasonId,
+    seasonPoints,
+    seasonEvictedPos,
+    seasonEvictedNeg,
     totalPoints,
     evictedPos,
     evictedNeg,

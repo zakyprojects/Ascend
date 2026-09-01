@@ -106,12 +106,16 @@ export interface LeagueCompetitor {
 }
 
 export interface LeagueArchive {
+  id?: string;
   type: LeagueType;
   periodLabel: string;
+  seasonNumber?: number;
   competitors: LeagueCompetitor[];
   userRank: number;
   userPoints: number;
   archivedAt: string;
+  completedAt?: string;
+  participantCount?: number;
 }
 
 export interface Lesson {
@@ -127,8 +131,12 @@ export interface AppState {
   currentUser: UserProfile | null;
   habits: Habit[];
   journalEntries: JournalEntry[];
-  /** Lifetime total points (drives tier, never resets) */
-  totalPoints: number;
+  seasonId: number;
+  seasonPoints: number;
+  seasonEvictedPos: number;
+  seasonEvictedNeg: number;
+  /** DEPRECATED: Mirrored alias for seasonPoints to maintain backward compatibility */
+  totalPoints?: number;
   /** Cumulative points offset for items evicted past the pointsHistory array cap */
   evictedPos?: number;
   evictedNeg?: number;
@@ -633,9 +641,15 @@ export interface AppState {
   currentUser: UserProfile | null;
   habits: Habit[];
   journalEntries: JournalEntry[];
-  /** Lifetime total points (drives tier, never resets) */
-  totalPoints: number;
+  seasonId: number;
+  seasonPoints: number;
+  seasonEvictedPos: number;
+  seasonEvictedNeg: number;
+  /** DEPRECATED: Mirrored alias for seasonPoints to maintain backward compatibility */
+  totalPoints?: number;
   evictedPointsOffset?: number;
+  evictedPos?: number;
+  evictedNeg?: number;
   /** Points ledger entries for history */
   pointsHistory: PointsEntry[];
   /** League archives — final standings from completed periods */
@@ -918,6 +932,10 @@ export const DEFAULT_STATE: AppState = {
   currentUser: null,
   habits: [],
   journalEntries: [],
+  seasonId: 1,
+  seasonPoints: 0,
+  seasonEvictedPos: 0,
+  seasonEvictedNeg: 0,
   totalPoints: 0,
   pointsHistory: [],
   leagueArchives: [],

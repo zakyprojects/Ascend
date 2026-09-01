@@ -339,6 +339,8 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
         notif_daily_reminder: finalState.currentUser.notifDailyReminder ?? true,
         notif_partner_activity: finalState.currentUser.notifPartnerActivity ?? true,
         notif_league_updates: finalState.currentUser.notifLeagueUpdates ?? true,
+        season_id: finalState.seasonId || 1,
+        season_points: typeof finalState.seasonPoints === 'number' ? finalState.seasonPoints : (finalState.totalPoints || 0),
         total_points: finalState.totalPoints || 0,
         points_history: finalState.pointsHistory || [],
         stats: userStats,

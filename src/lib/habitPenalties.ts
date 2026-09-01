@@ -1,7 +1,15 @@
-import { AppState, Habit, BadHabitLog } from '@/types';
+import { AppState, Habit, BadHabitLog, LeagueArchive } from '@/types';
 import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, uid } from './dates';
 import { createNotificationSupabase } from './supabase';
-import { getLeaguePeriodStart, calculatePeriodPoints, calculateChronologicalTotal } from './leagues';
+import {
+  getLeaguePeriodStart,
+  calculatePeriodPoints,
+  calculateChronologicalTotal,
+  calculateSeasonalTotal,
+  createDeterministicArchiveId,
+  startOfNinetyDayCycle,
+  getSeasonNumber,
+} from './leagues';
 
 export const MAX_RETROACTIVE_PENALTY_DAYS = 90;
 
@@ -242,6 +250,38 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
           .filter((n) => !n.createdAt || n.createdAt >= thirtyDaysAgoIso)
           .slice(0, 50);
 
+        const activeSeasonNumber = getSeasonNumber();
+        const activeSeasonStart = startOfNinetyDayCycle();
+
+        let seasonId = typeof updatedState.seasonId === 'number' ? updatedState.seasonId : 1;
+        let prevSeasonPos = typeof updatedState.seasonEvictedPos === 'number' && updatedState.seasonEvictedPos >= 0 ? updatedState.seasonEvictedPos : 0;
+        let prevSeasonNeg = typeof updatedState.seasonEvictedNeg === 'number' && updatedState.seasonEvictedNeg >= 0 ? updatedState.seasonEvictedNeg : 0;
+        let leagueArchives: LeagueArchive[] = updatedState.leagueArchives ? [...updatedState.leagueArchives] : [];
+
+        // Season Rollover Check
+        if (seasonId < activeSeasonNumber) {
+          const pastSeasonNum = seasonId;
+          const pastArchiveId = createDeterministicArchiveId(pastSeasonNum);
+          if (!leagueArchives.some((a) => a.id === pastArchiveId || (a.type === 'ninetyDay' && a.seasonNumber === pastSeasonNum))) {
+            const pastPoints = typeof updatedState.seasonPoints === 'number' ? updatedState.seasonPoints : (updatedState.totalPoints || 0);
+            leagueArchives.push({
+              id: pastArchiveId,
+              type: 'ninetyDay',
+              periodLabel: `Season ${pastSeasonNum}`,
+              seasonNumber: pastSeasonNum,
+              competitors: [],
+              userRank: 1,
+              userPoints: pastPoints,
+              archivedAt: new Date().toISOString(),
+              completedAt: new Date().toISOString(),
+              participantCount: 1,
+            });
+          }
+          seasonId = activeSeasonNumber;
+          prevSeasonPos = 0;
+          prevSeasonNeg = 0;
+        }
+
         const newEntry = {
           id: uid(),
           amount: -penaltyAmount,
@@ -261,23 +301,39 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
         
         let posDrop = 0;
         let negDrop = 0;
-        for (const p of droppedHistory) {
-          if ((p.amount || 0) > 0) posDrop += p.amount;
-          else negDrop += Math.abs(p.amount || 0);
+        let seasonPosDrop = 0;
+        let seasonNegDrop = 0;
+
+        for (const dropEntry of droppedHistory) {
+          const amt = dropEntry.amount || 0;
+          if (amt > 0) posDrop += amt;
+          else negDrop += Math.abs(amt);
+
+          if (new Date(dropEntry.timestamp) >= activeSeasonStart) {
+            if (amt > 0) seasonPosDrop += amt;
+            else seasonNegDrop += Math.abs(amt);
+          }
         }
 
         const newEvictedPos = (typeof updatedState?.evictedPos === "number" && updatedState.evictedPos >= 0 ? updatedState.evictedPos : 0) + posDrop;
         const newEvictedNeg = (typeof updatedState?.evictedNeg === "number" && updatedState.evictedNeg >= 0 ? updatedState.evictedNeg : 0) + negDrop;
+        const newSeasonEvictedPos = prevSeasonPos + seasonPosDrop;
+        const newSeasonEvictedNeg = prevSeasonNeg + seasonNegDrop;
         
-        const newTotalPts = calculateChronologicalTotal(newEvictedPos, newEvictedNeg, keptHistory);
+        const newSeasonPoints = calculateSeasonalTotal(newSeasonEvictedPos, newSeasonEvictedNeg, keptHistory, activeSeasonStart);
 
         updatedState = {
           ...updatedState,
           notifications: prunedNotifs,
-          totalPoints: newTotalPts,
+          seasonId,
+          seasonPoints: newSeasonPoints,
+          seasonEvictedPos: newSeasonEvictedPos,
+          seasonEvictedNeg: newSeasonEvictedNeg,
+          totalPoints: newSeasonPoints,
           evictedPos: newEvictedPos,
           evictedNeg: newEvictedNeg,
           pointsHistory: keptHistory,
+          leagueArchives,
         };
       }
     }

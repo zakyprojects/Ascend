@@ -298,6 +298,43 @@ export const LEAGUE_CONFIG: Record<LeagueType, { name: string; description: stri
   },
 };
 
+export function calculateSeasonalTotal(
+  seasonEvictedPos: number = 0,
+  seasonEvictedNeg: number = 0,
+  history: PointsEntry[] = [],
+  seasonStart: Date = startOfNinetyDayCycle()
+): number {
+  if (!history || history.length === 0) {
+    return Math.max(0, seasonEvictedPos - seasonEvictedNeg);
+  }
+
+  // Sort chronological
+  const sorted = [...history].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  let current = seasonEvictedPos - seasonEvictedNeg;
+
+  for (const p of sorted) {
+    if (p.reason === 'System: Debt Forgiveness' || p.source === 'system') {
+      continue;
+    }
+    // ONLY process entries inside the active season
+    if (new Date(p.timestamp) >= seasonStart) {
+      current += (p.amount || 0);
+      // Dynamic zero-flooring
+      if (current < 0) {
+        current = 0;
+      }
+    }
+  }
+
+  return current;
+}
+
+export function createDeterministicArchiveId(seasonNumber: number): string {
+  return `archive-ninetyDay-season-${seasonNumber}`;
+}
+
 export function calculateChronologicalTotal(
   evictedPos: number = 0,
   evictedNeg: number = 0,
