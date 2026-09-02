@@ -41,7 +41,6 @@ import {
 import { mergeSharedChallenge } from './pactLifecycle';
 import { ensureDefaultActivities } from './timeTracker';
 import {
-  calculateChronologicalTotal,
   calculateSeasonalTotal,
   getSeasonNumber,
   startOfNinetyDayCycle,
@@ -99,7 +98,18 @@ function normalizeHabitCompletions(
     }
     return res;
   }
-  return { ...completions };
+  const res: Record<string, { done: boolean; updatedAt: string }> = {};
+  for (const [key, val] of Object.entries(completions)) {
+    if (val && typeof val === 'object') {
+      res[key] = {
+        done: Boolean((val as { done?: boolean }).done ?? true),
+        updatedAt: (val as { updatedAt?: string }).updatedAt || fallbackTime,
+      };
+    } else if (typeof val === 'boolean') {
+      res[key] = { done: val, updatedAt: fallbackTime };
+    }
+  }
+  return res;
 }
 
 function mergeHabitCompletions(
@@ -317,16 +327,24 @@ function mergeBadHabitLogs(
   const processLog = (log: BadHabitLog) => {
     if (!log) return;
     if (log.id && tombstoneSet.has(log.id)) return;
-    const compositeKey = `${log.badHabitId}_${log.date}`;
-    if (tombstoneSet.has(compositeKey)) return;
+    if (log.badHabitId && tombstoneSet.has(log.badHabitId)) return;
 
-    const key = log.id || compositeKey;
+    // Use compositeKey in map to prevent duplicate logs for the same bad habit on the same date via LWW
+    const key = `${log.badHabitId}_${log.date}`;
     const existing = map.get(key);
     if (!existing) {
       map.set(key, log);
     } else {
-      const existingTime = existing.createdAt ? new Date(existing.createdAt).getTime() : 0;
-      const incomingTime = log.createdAt ? new Date(log.createdAt).getTime() : 0;
+      const existingTime = existing.updatedAt
+        ? new Date(existing.updatedAt).getTime()
+        : existing.createdAt
+        ? new Date(existing.createdAt).getTime()
+        : 0;
+      const incomingTime = log.updatedAt
+        ? new Date(log.updatedAt).getTime()
+        : log.createdAt
+        ? new Date(log.createdAt).getTime()
+        : 0;
       if (incomingTime >= existingTime) {
         map.set(key, log);
       }
@@ -337,7 +355,7 @@ function mergeBadHabitLogs(
   incomingList.forEach(processLog);
 
   return Array.from(map.values()).sort(
-    (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    (a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
   );
 }
 
@@ -366,15 +384,37 @@ function mergeLeagueArchives(
   );
 }
 
+/**
+ * Pattern matching invalid/poisoned domain-slot composite tombstones.
+ * Rejects composite patterns such as:
+ * - `<entityId>_<YYYY-MM-DD>` (e.g. `badHabitId_2026-09-01`)
+ * - `<entityId>_<periodKey>` or other domain-slot formats.
+ * Preserves clean entity UUIDs, points entry IDs (e.g., `p_...`), and standalone IDs.
+ */
+const POISONED_COMPOSITE_KEY_REGEX = /^[A-Za-z0-9_-]+_\d{4}-\d{2}-\d{2}$/;
+
+export function isLegitimateTombstoneId(id: unknown): id is string {
+  if (typeof id !== 'string' || !id.trim()) return false;
+  const trimmed = id.trim();
+  // Reject composite date-slot keys
+  if (POISONED_COMPOSITE_KEY_REGEX.test(trimmed)) {
+    return false;
+  }
+  return true;
+}
+
 export function mergeAppState(baseState: AppState, incomingState: AppState): AppState {
   if (!baseState) return incomingState || DEFAULT_STATE;
   if (!incomingState) return baseState || DEFAULT_STATE;
 
-  // 1. Tombstones union and cap
-  const tombstoneSet = new Set<string>([
+  // 1. Tombstones union and cap with Global Ingestion Sanitizer
+  const rawTombstones = [
     ...(baseState.deletedEntityIds || []),
     ...(incomingState.deletedEntityIds || []),
-  ]);
+  ];
+
+  const sanitizedTombstones = rawTombstones.filter(isLegitimateTombstoneId);
+  const tombstoneSet = new Set<string>(sanitizedTombstones);
 
   // Un-tombstone IDs that were explicitly restored in incomingState
   for (const restoredId of incomingState.restoredEntityIds || []) {
@@ -452,15 +492,6 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     mergedSeasonNeg = 0;
   }
 
-  let mergedPos = Math.max(
-    typeof baseState.evictedPos === 'number' && baseState.evictedPos >= 0 ? baseState.evictedPos : 0,
-    typeof incomingState.evictedPos === 'number' && incomingState.evictedPos >= 0 ? incomingState.evictedPos : 0
-  );
-  let mergedNeg = Math.max(
-    typeof baseState.evictedNeg === 'number' && baseState.evictedNeg >= 0 ? baseState.evictedNeg : 0,
-    typeof incomingState.evictedNeg === 'number' && incomingState.evictedNeg >= 0 ? incomingState.evictedNeg : 0
-  );
-
   const mergedHistoryFull = mergeEntityArrays(
     baseState.pointsHistory || [],
     incomingState.pointsHistory || [],
@@ -473,11 +504,21 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
 
   const finalHistory = mergedHistoryFull.slice(0, 500);
 
+  const mergedEvictedExcisionRecords = mergeEntityArrays(
+    baseState.evictedExcisionRecords || [],
+    incomingState.evictedExcisionRecords || [],
+    tombstoneSet
+  )
+    .filter((r) => r && r.seasonNumber === maxSeason)
+    .slice(-500);
+
   const computedSeasonPoints = calculateSeasonalTotal(
     mergedSeasonPos,
     mergedSeasonNeg,
     finalHistory,
-    startOfNinetyDayCycle()
+    startOfNinetyDayCycle(),
+    mergedEvictedExcisionRecords,
+    maxSeason
   );
 
   const seasonId = maxSeason;
@@ -485,9 +526,8 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
   const seasonEvictedPos = mergedSeasonPos;
   const seasonEvictedNeg = mergedSeasonNeg;
   const totalPoints = computedSeasonPoints;
-  const evictedPos = mergedPos;
-  const evictedNeg = mergedNeg;
   const pointsHistory = finalHistory;
+  const evictedExcisionRecords = mergedEvictedExcisionRecords;
 
   // 5. Workouts
   const workouts = mergeEntityArrays(
@@ -867,9 +907,8 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     seasonPoints,
     seasonEvictedPos,
     seasonEvictedNeg,
+    evictedExcisionRecords,
     totalPoints,
-    evictedPos,
-    evictedNeg,
     pointsHistory,
     habits,
     journalEntries,

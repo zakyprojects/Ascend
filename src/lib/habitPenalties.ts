@@ -4,7 +4,6 @@ import { createNotificationSupabase } from './supabase';
 import {
   getLeaguePeriodStart,
   calculatePeriodPoints,
-  calculateChronologicalTotal,
   calculateSeasonalTotal,
   createDeterministicArchiveId,
   startOfNinetyDayCycle,
@@ -122,6 +121,97 @@ export function getHighestUserStreak(state: AppState, now: Date = new Date()): S
       category: unified.currentStreakCategory,
       label: 'Current Streak',
     },
+  };
+}
+
+export function applyPenaltyDeductionInternal(
+  state: AppState,
+  penaltyAmount: number,
+  reason: string,
+  source: string,
+  metadata?: Record<string, any>
+): Pick<AppState, 'seasonId' | 'seasonPoints' | 'seasonEvictedPos' | 'seasonEvictedNeg' | 'evictedExcisionRecords' | 'totalPoints' | 'pointsHistory' | 'leagueArchives'> {
+  const activeSeasonNumber = getSeasonNumber();
+  const activeSeasonStart = startOfNinetyDayCycle();
+
+  let seasonId = typeof state.seasonId === 'number' ? state.seasonId : 1;
+  let prevSeasonPos = typeof state.seasonEvictedPos === 'number' && state.seasonEvictedPos >= 0 ? state.seasonEvictedPos : 0;
+  let prevSeasonNeg = typeof state.seasonEvictedNeg === 'number' && state.seasonEvictedNeg >= 0 ? state.seasonEvictedNeg : 0;
+  let leagueArchives: LeagueArchive[] = state.leagueArchives ? [...state.leagueArchives] : [];
+
+  // Season Rollover Check
+  if (seasonId < activeSeasonNumber) {
+    const pastSeasonNum = seasonId;
+    const pastArchiveId = createDeterministicArchiveId(pastSeasonNum);
+    if (!leagueArchives.some((a) => a.id === pastArchiveId || (a.type === 'ninetyDay' && a.seasonNumber === pastSeasonNum))) {
+      const pastPoints = typeof state.seasonPoints === 'number' ? state.seasonPoints : (state.totalPoints || 0);
+      leagueArchives.push({
+        id: pastArchiveId,
+        type: 'ninetyDay',
+        periodLabel: `Season ${pastSeasonNum}`,
+        seasonNumber: pastSeasonNum,
+        competitors: [],
+        userRank: 1,
+        userPoints: pastPoints,
+        archivedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        participantCount: 1,
+      });
+    }
+    seasonId = activeSeasonNumber;
+    prevSeasonPos = 0;
+    prevSeasonNeg = 0;
+  }
+
+  const currentEvictedExcisionRecords = (state.evictedExcisionRecords || []).filter(
+    (r) => r && r.seasonNumber === seasonId
+  );
+
+  const newEntry = {
+    id: uid(),
+    amount: -penaltyAmount,
+    reason,
+    source,
+    timestamp: new Date().toISOString(),
+    ...(metadata ? { metadata } : {}),
+  };
+
+  const fullHistory = [newEntry, ...(state.pointsHistory || [])];
+  const keptHistory = fullHistory.slice(0, 500);
+  const droppedHistory = fullHistory.slice(500);
+
+  let seasonPosDrop = 0;
+  let seasonNegDrop = 0;
+
+  for (const dropEntry of droppedHistory) {
+    const amt = dropEntry.amount || 0;
+    if (new Date(dropEntry.timestamp) >= activeSeasonStart) {
+      if (amt > 0) seasonPosDrop += amt;
+      else seasonNegDrop += Math.abs(amt);
+    }
+  }
+
+  const newSeasonEvictedPos = prevSeasonPos + seasonPosDrop;
+  const newSeasonEvictedNeg = prevSeasonNeg + seasonNegDrop;
+
+  const newSeasonPoints = calculateSeasonalTotal(
+    newSeasonEvictedPos,
+    newSeasonEvictedNeg,
+    keptHistory,
+    activeSeasonStart,
+    currentEvictedExcisionRecords,
+    seasonId
+  );
+
+  return {
+    seasonId,
+    seasonPoints: newSeasonPoints,
+    seasonEvictedPos: newSeasonEvictedPos,
+    seasonEvictedNeg: newSeasonEvictedNeg,
+    evictedExcisionRecords: currentEvictedExcisionRecords,
+    totalPoints: newSeasonPoints,
+    pointsHistory: keptHistory,
+    leagueArchives,
   };
 }
 
@@ -250,90 +340,23 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
           .filter((n) => !n.createdAt || n.createdAt >= thirtyDaysAgoIso)
           .slice(0, 50);
 
-        const activeSeasonNumber = getSeasonNumber();
-        const activeSeasonStart = startOfNinetyDayCycle();
-
-        let seasonId = typeof updatedState.seasonId === 'number' ? updatedState.seasonId : 1;
-        let prevSeasonPos = typeof updatedState.seasonEvictedPos === 'number' && updatedState.seasonEvictedPos >= 0 ? updatedState.seasonEvictedPos : 0;
-        let prevSeasonNeg = typeof updatedState.seasonEvictedNeg === 'number' && updatedState.seasonEvictedNeg >= 0 ? updatedState.seasonEvictedNeg : 0;
-        let leagueArchives: LeagueArchive[] = updatedState.leagueArchives ? [...updatedState.leagueArchives] : [];
-
-        // Season Rollover Check
-        if (seasonId < activeSeasonNumber) {
-          const pastSeasonNum = seasonId;
-          const pastArchiveId = createDeterministicArchiveId(pastSeasonNum);
-          if (!leagueArchives.some((a) => a.id === pastArchiveId || (a.type === 'ninetyDay' && a.seasonNumber === pastSeasonNum))) {
-            const pastPoints = typeof updatedState.seasonPoints === 'number' ? updatedState.seasonPoints : (updatedState.totalPoints || 0);
-            leagueArchives.push({
-              id: pastArchiveId,
-              type: 'ninetyDay',
-              periodLabel: `Season ${pastSeasonNum}`,
-              seasonNumber: pastSeasonNum,
-              competitors: [],
-              userRank: 1,
-              userPoints: pastPoints,
-              archivedAt: new Date().toISOString(),
-              completedAt: new Date().toISOString(),
-              participantCount: 1,
-            });
-          }
-          seasonId = activeSeasonNumber;
-          prevSeasonPos = 0;
-          prevSeasonNeg = 0;
-        }
-
-        const newEntry = {
-          id: uid(),
-          amount: -penaltyAmount,
-          reason: `Missed habit (${multiplier}x penalty): ${habit.name}`,
-          source: 'habit_missed',
-          timestamp: new Date().toISOString(),
-          metadata: {
+        const penaltyUpdate = applyPenaltyDeductionInternal(
+          updatedState,
+          penaltyAmount,
+          `Missed habit (${multiplier}x penalty): ${habit.name}`,
+          'habit_missed',
+          {
             habitId: habit.id,
             habitName: habit.name,
             period: p,
             multiplier,
-          },
-        };
-        const fullHistory = [newEntry, ...(updatedState.pointsHistory || [])];
-        const keptHistory = fullHistory.slice(0, 500);
-        const droppedHistory = fullHistory.slice(500);
-        
-        let posDrop = 0;
-        let negDrop = 0;
-        let seasonPosDrop = 0;
-        let seasonNegDrop = 0;
-
-        for (const dropEntry of droppedHistory) {
-          const amt = dropEntry.amount || 0;
-          if (amt > 0) posDrop += amt;
-          else negDrop += Math.abs(amt);
-
-          if (new Date(dropEntry.timestamp) >= activeSeasonStart) {
-            if (amt > 0) seasonPosDrop += amt;
-            else seasonNegDrop += Math.abs(amt);
           }
-        }
-
-        const newEvictedPos = (typeof updatedState?.evictedPos === "number" && updatedState.evictedPos >= 0 ? updatedState.evictedPos : 0) + posDrop;
-        const newEvictedNeg = (typeof updatedState?.evictedNeg === "number" && updatedState.evictedNeg >= 0 ? updatedState.evictedNeg : 0) + negDrop;
-        const newSeasonEvictedPos = prevSeasonPos + seasonPosDrop;
-        const newSeasonEvictedNeg = prevSeasonNeg + seasonNegDrop;
-        
-        const newSeasonPoints = calculateSeasonalTotal(newSeasonEvictedPos, newSeasonEvictedNeg, keptHistory, activeSeasonStart);
+        );
 
         updatedState = {
           ...updatedState,
           notifications: prunedNotifs,
-          seasonId,
-          seasonPoints: newSeasonPoints,
-          seasonEvictedPos: newSeasonEvictedPos,
-          seasonEvictedNeg: newSeasonEvictedNeg,
-          totalPoints: newSeasonPoints,
-          evictedPos: newEvictedPos,
-          evictedNeg: newEvictedNeg,
-          pointsHistory: keptHistory,
-          leagueArchives,
+          ...penaltyUpdate,
         };
       }
     }
@@ -435,36 +458,23 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
             }
           }
 
-          const newEntry = {
-            id: uid(),
-            amount: -penaltyAmount,
-            reason: `No-report bad habit penalty (${multiplier}x penalty): ${habit.name}`,
-            source: 'bad_habit_no_report',
-            timestamp: new Date().toISOString(),
+          const penaltyUpdate = applyPenaltyDeductionInternal(
+            updatedState,
+            penaltyAmount,
+            `No-report bad habit penalty (${multiplier}x penalty): ${habit.name}`,
+            'bad_habit_no_report',
+            {
+              badHabitId: habit.id,
+              badHabitName: habit.name,
+              date: key,
+              multiplier,
+            }
+          );
+
+          updatedState = {
+            ...updatedState,
+            ...penaltyUpdate,
           };
-          const fullHistory = [newEntry, ...(updatedState.pointsHistory || [])];
-        const keptHistory = fullHistory.slice(0, 500);
-        const droppedHistory = fullHistory.slice(500);
-        
-        let posDrop = 0;
-        let negDrop = 0;
-        for (const p of droppedHistory) {
-          if ((p.amount || 0) > 0) posDrop += p.amount;
-          else negDrop += Math.abs(p.amount || 0);
-        }
-
-        const newEvictedPos = (typeof updatedState?.evictedPos === "number" && updatedState.evictedPos >= 0 ? updatedState.evictedPos : 0) + posDrop;
-        const newEvictedNeg = (typeof updatedState?.evictedNeg === "number" && updatedState.evictedNeg >= 0 ? updatedState.evictedNeg : 0) + negDrop;
-        
-        const newTotalPts = calculateChronologicalTotal(newEvictedPos, newEvictedNeg, keptHistory);
-
-        updatedState = {
-          ...updatedState,
-          totalPoints: newTotalPts,
-          evictedPos: newEvictedPos,
-          evictedNeg: newEvictedNeg,
-          pointsHistory: keptHistory,
-        };
         }
       }
 
@@ -525,36 +535,23 @@ export function processExerciseTargetPenalties(state: AppState, now: Date = new 
       }, 0);
     }
 
-    const newEntry = {
-      id: uid(),
-      amount: -penaltyAmount,
-      reason: `Missed weekly workout goal (${loggedInLastWeek}/${target} sessions, ${multiplier}x penalty)`,
-      source: 'exercise_missed',
-      timestamp: new Date().toISOString(),
+    const penaltyUpdate = applyPenaltyDeductionInternal(
+      updatedState,
+      penaltyAmount,
+      `Missed weekly workout goal (${loggedInLastWeek}/${target} sessions, ${multiplier}x penalty)`,
+      'exercise_missed',
+      {
+        weekKey: lastWeekKey,
+        logged: loggedInLastWeek,
+        target,
+        multiplier,
+      }
+    );
+
+    updatedState = {
+      ...updatedState,
+      ...penaltyUpdate,
     };
-    const fullHistory = [newEntry, ...(updatedState.pointsHistory || [])];
-        const keptHistory = fullHistory.slice(0, 500);
-        const droppedHistory = fullHistory.slice(500);
-        
-        let posDrop = 0;
-        let negDrop = 0;
-        for (const p of droppedHistory) {
-          if ((p.amount || 0) > 0) posDrop += p.amount;
-          else negDrop += Math.abs(p.amount || 0);
-        }
-
-        const newEvictedPos = (typeof updatedState?.evictedPos === "number" && updatedState.evictedPos >= 0 ? updatedState.evictedPos : 0) + posDrop;
-        const newEvictedNeg = (typeof updatedState?.evictedNeg === "number" && updatedState.evictedNeg >= 0 ? updatedState.evictedNeg : 0) + negDrop;
-        
-        const newTotalPts = calculateChronologicalTotal(newEvictedPos, newEvictedNeg, keptHistory);
-
-        updatedState = {
-          ...updatedState,
-          totalPoints: newTotalPts,
-          evictedPos: newEvictedPos,
-          evictedNeg: newEvictedNeg,
-          pointsHistory: keptHistory,
-        };
   } else {
     consecutiveMisses = 0;
   }
@@ -605,36 +602,21 @@ export function processReadingTargetPenalties(state: AppState, now: Date = new D
         }, 0);
       }
 
-      const newEntry = {
-        id: uid(),
-        amount: -penaltyAmount,
-        reason: `Missed daily reading target on ${yesterdayStr} (${multiplier}x penalty)`,
-        source: 'reading_missed',
-        timestamp: new Date().toISOString(),
-      };
-      const fullHistory = [newEntry, ...(updatedState.pointsHistory || [])];
-        const keptHistory = fullHistory.slice(0, 500);
-        const droppedHistory = fullHistory.slice(500);
-        
-        let posDrop = 0;
-        let negDrop = 0;
-        for (const p of droppedHistory) {
-          if ((p.amount || 0) > 0) posDrop += p.amount;
-          else negDrop += Math.abs(p.amount || 0);
+      const penaltyUpdate = applyPenaltyDeductionInternal(
+        updatedState,
+        penaltyAmount,
+        `Missed daily reading target on ${yesterdayStr} (${multiplier}x penalty)`,
+        'reading_missed',
+        {
+          date: yesterdayStr,
+          multiplier,
         }
+      );
 
-        const newEvictedPos = (typeof updatedState?.evictedPos === "number" && updatedState.evictedPos >= 0 ? updatedState.evictedPos : 0) + posDrop;
-        const newEvictedNeg = (typeof updatedState?.evictedNeg === "number" && updatedState.evictedNeg >= 0 ? updatedState.evictedNeg : 0) + negDrop;
-        
-        const newTotalPts = calculateChronologicalTotal(newEvictedPos, newEvictedNeg, keptHistory);
-
-        updatedState = {
-          ...updatedState,
-          totalPoints: newTotalPts,
-          evictedPos: newEvictedPos,
-          evictedNeg: newEvictedNeg,
-          pointsHistory: keptHistory,
-        };
+      updatedState = {
+        ...updatedState,
+        ...penaltyUpdate,
+      };
     } else {
       consecutiveMisses = 0;
     }
@@ -684,36 +666,23 @@ export function processReadingTargetPenalties(state: AppState, now: Date = new D
         }, 0);
       }
 
-      const newEntry = {
-        id: uid(),
-        amount: -penaltyAmount,
-        reason: `Missed weekly reading goal (${totalPagesLastWeek}/${goal.targetPages} pages, ${multiplier}x penalty)`,
-        source: 'reading_missed',
-        timestamp: new Date().toISOString(),
-      };
-      const fullHistory = [newEntry, ...(updatedState.pointsHistory || [])];
-        const keptHistory = fullHistory.slice(0, 500);
-        const droppedHistory = fullHistory.slice(500);
-        
-        let posDrop = 0;
-        let negDrop = 0;
-        for (const p of droppedHistory) {
-          if ((p.amount || 0) > 0) posDrop += p.amount;
-          else negDrop += Math.abs(p.amount || 0);
+      const penaltyUpdate = applyPenaltyDeductionInternal(
+        updatedState,
+        penaltyAmount,
+        `Missed weekly reading goal (${totalPagesLastWeek}/${goal.targetPages} pages, ${multiplier}x penalty)`,
+        'reading_missed',
+        {
+          weekKey: lastWeekKey,
+          logged: totalPagesLastWeek,
+          target: goal.targetPages,
+          multiplier,
         }
+      );
 
-        const newEvictedPos = (typeof updatedState?.evictedPos === "number" && updatedState.evictedPos >= 0 ? updatedState.evictedPos : 0) + posDrop;
-        const newEvictedNeg = (typeof updatedState?.evictedNeg === "number" && updatedState.evictedNeg >= 0 ? updatedState.evictedNeg : 0) + negDrop;
-        
-        const newTotalPts = calculateChronologicalTotal(newEvictedPos, newEvictedNeg, keptHistory);
-
-        updatedState = {
-          ...updatedState,
-          totalPoints: newTotalPts,
-          evictedPos: newEvictedPos,
-          evictedNeg: newEvictedNeg,
-          pointsHistory: keptHistory,
-        };
+      updatedState = {
+        ...updatedState,
+        ...penaltyUpdate,
+      };
     } else {
       consecutiveMisses = 0;
     }
@@ -758,36 +727,23 @@ export function processBookDeadlinePenalties(state: AppState, now: Date = new Da
         });
       }
 
-      const newEntry = {
-        id: uid(),
-        amount: -penaltyAmount,
-        reason: `Missed book completion deadline for "${book.title}" (${multiplier}x penalty)`,
-        source: 'book_deadline_missed',
-        timestamp: new Date().toISOString(),
-      };
-      const fullHistory = [newEntry, ...(updatedState.pointsHistory || [])];
-        const keptHistory = fullHistory.slice(0, 500);
-        const droppedHistory = fullHistory.slice(500);
-        
-        let posDrop = 0;
-        let negDrop = 0;
-        for (const p of droppedHistory) {
-          if ((p.amount || 0) > 0) posDrop += p.amount;
-          else negDrop += Math.abs(p.amount || 0);
+      const penaltyUpdate = applyPenaltyDeductionInternal(
+        updatedState,
+        penaltyAmount,
+        `Missed book completion deadline for "${book.title}" (${multiplier}x penalty)`,
+        'book_deadline_missed',
+        {
+          bookId: book.id,
+          bookTitle: book.title,
+          targetFinishDate: book.targetFinishDate,
+          multiplier,
         }
+      );
 
-        const newEvictedPos = (typeof updatedState?.evictedPos === "number" && updatedState.evictedPos >= 0 ? updatedState.evictedPos : 0) + posDrop;
-        const newEvictedNeg = (typeof updatedState?.evictedNeg === "number" && updatedState.evictedNeg >= 0 ? updatedState.evictedNeg : 0) + negDrop;
-        
-        const newTotalPts = calculateChronologicalTotal(newEvictedPos, newEvictedNeg, keptHistory);
-
-        updatedState = {
-          ...updatedState,
-          totalPoints: newTotalPts,
-          evictedPos: newEvictedPos,
-          evictedNeg: newEvictedNeg,
-          pointsHistory: keptHistory,
-        };
+      updatedState = {
+        ...updatedState,
+        ...penaltyUpdate,
+      };
 
       booksChanged = true;
       return {

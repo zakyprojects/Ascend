@@ -39,6 +39,7 @@ import {
   PlanType,
   SharedChallengeCategory,
   AppNotification,
+  EvictedExcisionRecord,
   Goal,
   Project,
   Task,
@@ -71,7 +72,6 @@ import {
   getLeaguePeriodStart,
   getLeaguePeriodLabel,
   calculatePeriodPoints,
-  calculateChronologicalTotal,
   calculateSeasonalTotal,
   createDeterministicArchiveId,
   startOfNinetyDayCycle,
@@ -283,25 +283,18 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     seasonEvictedNeg = 0;
   }
 
-  let evictedPos = typeof st.evictedPos === 'number' && st.evictedPos >= 0 ? st.evictedPos : 0;
-  let evictedNeg = typeof st.evictedNeg === 'number' && st.evictedNeg >= 0 ? st.evictedNeg : 0;
+  const evictedExcisionRecords = (st.evictedExcisionRecords ?? [])
+    .filter((r) => r && r.seasonNumber === seasonId)
+    .slice(-500);
 
-  // Cleanup corrupted legacy state where evictedNeg was stored as negative or unmigrated
-  if (typeof st.evictedNeg === 'number' && st.evictedNeg < 0) {
-    evictedNeg = 0;
-    evictedPos = Math.max(0, (st.totalPoints || 0) - currentHistorySum);
-  } else if (st.evictedPos === undefined && st.evictedNeg === undefined) {
-    if (typeof (st as any).evictedPointsOffset === 'number') {
-      const net = (st as any).evictedPointsOffset;
-      if (net >= 0) evictedPos = net;
-      else evictedNeg = Math.abs(net);
-    } else {
-      evictedPos = Math.max(0, (st.totalPoints || 0) - currentHistorySum);
-      evictedNeg = 0;
-    }
-  }
-
-  const computedSeasonPoints = calculateSeasonalTotal(seasonEvictedPos, seasonEvictedNeg, pointsHistory, activeSeasonStart);
+  const computedSeasonPoints = calculateSeasonalTotal(
+    seasonEvictedPos,
+    seasonEvictedNeg,
+    pointsHistory,
+    activeSeasonStart,
+    evictedExcisionRecords,
+    seasonId
+  );
 
   // Deduplicate badHabitLogs by (badHabitId, date) keeping latest entry
   const logsMap = new Map<string, BadHabitLog>();
@@ -432,14 +425,24 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
   const rawSanitizedHabits = (st.habits ?? []).map((h) => {
     let normalizedCompletions: Record<string, { done: boolean; updatedAt: string }> = {};
     if (Array.isArray(h.completions)) {
-      const defaultTime = h.updatedAt || h.createdAt || new Date().toISOString();
+      const defaultTime = h.updatedAt || h.createdAt || `init_${h.id}`;
       for (const d of h.completions) {
         if (typeof d === 'string' && d) {
           normalizedCompletions[d] = { done: true, updatedAt: defaultTime };
         }
       }
     } else if (h.completions && typeof h.completions === 'object') {
-      normalizedCompletions = h.completions;
+      const defaultTime = h.updatedAt || h.createdAt || `init_${h.id}`;
+      for (const [key, val] of Object.entries(h.completions)) {
+        if (val && typeof val === 'object') {
+          normalizedCompletions[key] = {
+            done: Boolean((val as { done?: boolean }).done ?? true),
+            updatedAt: (val as { updatedAt?: string }).updatedAt || defaultTime,
+          };
+        } else if (typeof val === 'boolean') {
+          normalizedCompletions[key] = { done: val, updatedAt: defaultTime };
+        }
+      }
     }
     return {
       ...h,
@@ -464,9 +467,8 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     seasonPoints: computedSeasonPoints,
     seasonEvictedPos,
     seasonEvictedNeg,
+    evictedExcisionRecords,
     totalPoints: computedSeasonPoints,
-    evictedPos,
-    evictedNeg,
     pointsHistory,
     leagueArchives,
     readLessonIds: st.readLessonIds ?? [],
@@ -616,7 +618,7 @@ function addPointsInternal(
   reason: string,
   source: string,
   metadata?: Record<string, any>
-): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'seasonEvictedPos' | 'seasonEvictedNeg' | 'pointsHistory' | 'evictedPos' | 'evictedNeg' | 'leagueArchives'> {
+): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'seasonEvictedPos' | 'seasonEvictedNeg' | 'evictedExcisionRecords' | 'pointsHistory' | 'leagueArchives'> {
   const activeSeasonNumber = getSeasonNumber();
   const activeSeasonStart = startOfNinetyDayCycle();
 
@@ -649,8 +651,9 @@ function addPointsInternal(
     prevSeasonNeg = 0;
   }
 
-  const prevPos = typeof prev.evictedPos === 'number' && prev.evictedPos >= 0 ? prev.evictedPos : 0;
-  const prevNeg = typeof prev.evictedNeg === 'number' && prev.evictedNeg >= 0 ? prev.evictedNeg : 0;
+  const currentEvictedExcisionRecords = (prev.evictedExcisionRecords || []).filter(
+    (r) => r && r.seasonNumber === seasonId
+  );
   const prevHistory = prev.pointsHistory || [];
 
   const newEntry: PointsEntry = {
@@ -666,39 +669,181 @@ function addPointsInternal(
   const keptHistory = fullHistory.slice(0, 500);
   const droppedHistory = fullHistory.slice(500);
 
-  let posDrop = 0;
-  let negDrop = 0;
   let seasonPosDrop = 0;
   let seasonNegDrop = 0;
 
   for (const p of droppedHistory) {
     const amt = p.amount || 0;
-    if (amt > 0) posDrop += amt;
-    else negDrop += Math.abs(amt);
-
     if (new Date(p.timestamp) >= activeSeasonStart) {
       if (amt > 0) seasonPosDrop += amt;
       else seasonNegDrop += Math.abs(amt);
     }
   }
 
-  const newEvictedPos = prevPos + posDrop;
-  const newEvictedNeg = prevNeg + negDrop;
   const newSeasonEvictedPos = prevSeasonPos + seasonPosDrop;
   const newSeasonEvictedNeg = prevSeasonNeg + seasonNegDrop;
 
-  const newSeasonPoints = calculateSeasonalTotal(newSeasonEvictedPos, newSeasonEvictedNeg, keptHistory, activeSeasonStart);
+  const newSeasonPoints = calculateSeasonalTotal(
+    newSeasonEvictedPos,
+    newSeasonEvictedNeg,
+    keptHistory,
+    activeSeasonStart,
+    currentEvictedExcisionRecords,
+    seasonId
+  );
 
   return {
     seasonId,
     seasonPoints: newSeasonPoints,
     seasonEvictedPos: newSeasonEvictedPos,
     seasonEvictedNeg: newSeasonEvictedNeg,
+    evictedExcisionRecords: currentEvictedExcisionRecords,
     totalPoints: newSeasonPoints,
-    evictedPos: newEvictedPos,
-    evictedNeg: newEvictedNeg,
     pointsHistory: keptHistory,
     leagueArchives,
+  };
+}
+
+export function excisePointsEntriesInternal(
+  prev: AppState,
+  matcher: (entry: PointsEntry) => boolean,
+  fallbackDeductAmount?: { pos?: number; neg?: number },
+  maxExciseCount: number = Infinity,
+  fallbackExcisionKey?: string
+): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'seasonEvictedPos' | 'seasonEvictedNeg' | 'evictedExcisionRecords' | 'pointsHistory' | 'leagueArchives'> & {
+  excisedEntryIds: string[];
+} {
+  const activeSeasonNumber = getSeasonNumber();
+  const activeSeasonStart = startOfNinetyDayCycle();
+
+  let seasonId = typeof prev.seasonId === 'number' ? prev.seasonId : 1;
+  let prevSeasonPos = typeof prev.seasonEvictedPos === 'number' && prev.seasonEvictedPos >= 0 ? prev.seasonEvictedPos : 0;
+  let prevSeasonNeg = typeof prev.seasonEvictedNeg === 'number' && prev.seasonEvictedNeg >= 0 ? prev.seasonEvictedNeg : 0;
+  let leagueArchives: LeagueArchive[] = prev.leagueArchives ? [...prev.leagueArchives] : [];
+
+  // Season Rollover Check
+  if (seasonId < activeSeasonNumber) {
+    const pastSeasonNum = seasonId;
+    const pastArchiveId = createDeterministicArchiveId(pastSeasonNum);
+    if (!leagueArchives.some((a) => a.id === pastArchiveId || (a.type === 'ninetyDay' && a.seasonNumber === pastSeasonNum))) {
+      const pastPoints = typeof prev.seasonPoints === 'number' ? prev.seasonPoints : (prev.totalPoints || 0);
+      leagueArchives.push({
+        id: pastArchiveId,
+        type: 'ninetyDay',
+        periodLabel: `Season ${pastSeasonNum}`,
+        seasonNumber: pastSeasonNum,
+        competitors: [],
+        userRank: 1,
+        userPoints: pastPoints,
+        archivedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        participantCount: 1,
+      });
+    }
+    seasonId = activeSeasonNumber;
+    prevSeasonPos = 0;
+    prevSeasonNeg = 0;
+  }
+
+  const prevHistory = prev.pointsHistory || [];
+  const excisedEntryIds: string[] = [];
+  const excisedEntries: PointsEntry[] = [];
+  const keptAfterExcise: PointsEntry[] = [];
+  let excisedCount = 0;
+
+  for (const entry of prevHistory) {
+    if (excisedCount < maxExciseCount && matcher(entry)) {
+      excisedEntries.push(entry);
+      if (entry.id) {
+        excisedEntryIds.push(entry.id);
+      }
+      excisedCount++;
+    } else {
+      keptAfterExcise.push(entry);
+    }
+  }
+
+  let excisedSeasonPos = 0;
+  let excisedSeasonNeg = 0;
+
+  for (const entry of excisedEntries) {
+    const amt = entry.amount || 0;
+    if (new Date(entry.timestamp) >= activeSeasonStart) {
+      if (amt > 0) excisedSeasonPos += amt;
+      else excisedSeasonNeg += Math.abs(amt);
+    }
+  }
+
+  const currentEvictedExcisionRecords = (prev.evictedExcisionRecords || []).filter(
+    (r) => r && r.seasonNumber === seasonId
+  );
+
+  if (fallbackDeductAmount) {
+    const remainingPosToExcise = typeof fallbackDeductAmount.pos === 'number'
+      ? Math.max(0, fallbackDeductAmount.pos - excisedSeasonPos)
+      : 0;
+    const remainingNegToExcise = typeof fallbackDeductAmount.neg === 'number'
+      ? Math.max(0, fallbackDeductAmount.neg - excisedSeasonNeg)
+      : 0;
+
+    if (remainingPosToExcise > 0 || remainingNegToExcise > 0) {
+      const recordId = fallbackExcisionKey
+        ? `ex_${seasonId}_${fallbackExcisionKey}`
+        : `ex_${uid()}`;
+      const existingIdx = currentEvictedExcisionRecords.findIndex((r) => r.id === recordId);
+      const excisionRecord: EvictedExcisionRecord = {
+        id: recordId,
+        seasonNumber: seasonId,
+        posAmount: remainingPosToExcise,
+        negAmount: remainingNegToExcise,
+        timestamp: new Date().toISOString(),
+      };
+      if (existingIdx >= 0) {
+        currentEvictedExcisionRecords[existingIdx] = excisionRecord;
+      } else {
+        currentEvictedExcisionRecords.push(excisionRecord);
+      }
+    }
+  }
+
+  const keptExcisionRecords = currentEvictedExcisionRecords.slice(-500);
+
+  const keptHistory = keptAfterExcise.slice(0, 500);
+  const droppedHistory = keptAfterExcise.slice(500);
+
+  let seasonPosDrop = 0;
+  let seasonNegDrop = 0;
+
+  for (const p of droppedHistory) {
+    const amt = p.amount || 0;
+    if (new Date(p.timestamp) >= activeSeasonStart) {
+      if (amt > 0) seasonPosDrop += amt;
+      else seasonNegDrop += Math.abs(amt);
+    }
+  }
+
+  const newSeasonEvictedPos = prevSeasonPos + seasonPosDrop;
+  const newSeasonEvictedNeg = prevSeasonNeg + seasonNegDrop;
+
+  const newSeasonPoints = calculateSeasonalTotal(
+    newSeasonEvictedPos,
+    newSeasonEvictedNeg,
+    keptHistory,
+    activeSeasonStart,
+    keptExcisionRecords,
+    seasonId
+  );
+
+  return {
+    seasonId,
+    seasonPoints: newSeasonPoints,
+    seasonEvictedPos: newSeasonEvictedPos,
+    seasonEvictedNeg: newSeasonEvictedNeg,
+    evictedExcisionRecords: keptExcisionRecords,
+    totalPoints: newSeasonPoints,
+    pointsHistory: keptHistory,
+    leagueArchives,
+    excisedEntryIds,
   };
 }
 
@@ -1853,12 +1998,15 @@ export function useAppState() {
               totalPoints: prev.totalPoints,
               pointsHistory: prev.pointsHistory,
             };
+            let updatedDeletedEntityIds = prev.deletedEntityIds;
 
             if (habit) {
+              const currentPeriodKey = periodKey(habit.frequency);
               const habitMeta = {
                 category: habit.category,
                 habitId: habit.id,
                 habitName: habit.name,
+                periodKey: currentPeriodKey,
               };
               const pts = (habit.isPreset && habit.points > 0) ? habit.points : 0;
               if (completed) {
@@ -1870,13 +2018,33 @@ export function useAppState() {
                   habitMeta
                 );
               } else {
-                pointsUpdate = addPointsInternal(
+                const prevCompletions = Array.isArray(habit.completions)
+                  ? Object.fromEntries(habit.completions.map((c) => [c, { done: true, updatedAt: habit.updatedAt || nowIso }]))
+                  : (habit.completions || {});
+                const targetCompletion = prevCompletions[currentPeriodKey];
+                const completionInstanceTimestamp = targetCompletion?.updatedAt || habit.createdAt || currentPeriodKey;
+                const exciseResult = excisePointsEntriesInternal(
                   prev,
-                  -pts,
-                  `Habit unchecked: ${habit.name}`,
-                  'habit_unchecked',
-                  habitMeta
+                  (entry) => {
+                    if (entry.source === 'habit_completed') {
+                      if (entry.metadata?.habitId === habit.id) {
+                        if (entry.metadata?.periodKey && entry.metadata.periodKey === currentPeriodKey) return true;
+                        return true;
+                      }
+                    }
+                    return false;
+                  },
+                  { pos: pts },
+                  1,
+                  `habit_${habit.id}_${currentPeriodKey}_${completionInstanceTimestamp}`
                 );
+                const { excisedEntryIds, ...restPoints } = exciseResult;
+                pointsUpdate = restPoints;
+                if (excisedEntryIds && excisedEntryIds.length > 0) {
+                  updatedDeletedEntityIds = Array.from(
+                    new Set([...(prev.deletedEntityIds || []), ...excisedEntryIds])
+                  ).slice(-500);
+                }
               }
             }
 
@@ -1908,7 +2076,7 @@ export function useAppState() {
               });
             }
 
-            return { ...prev, habits, sharedChallenges: updatedChallenges, ...pointsUpdate };
+            return { ...prev, habits, sharedChallenges: updatedChallenges, deletedEntityIds: updatedDeletedEntityIds, ...pointsUpdate };
           },
           { immediate: true }
         );
@@ -2997,9 +3165,38 @@ export function useAppState() {
         if (!bh || bh.isCompleted) return prev;
 
         const existingLog = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
-        if (existingLog) return prev;
+        if (existingLog && existingLog.status === status) return prev;
 
-        const activeHabits = prev.badHabits
+        let baseState = prev;
+        let excisedIds: string[] = [];
+
+        // When modifying an existing log on the same date with different status, excise old points transaction first
+        if (existingLog && existingLog.pointsAwardedOrDeducted !== 0) {
+          const isDeduction = (existingLog.pointsAwardedOrDeducted || 0) < 0;
+          const ptsAmt = Math.abs(existingLog.pointsAwardedOrDeducted || 0);
+          const logInstance = existingLog.id || existingLog.createdAt || existingLog.updatedAt || date;
+          const exciseResult = excisePointsEntriesInternal(
+            baseState,
+            (entry) => {
+              if (entry.metadata?.badHabitId === badHabitId && entry.metadata?.date === date) return true;
+              if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_resisted' || entry.source === 'bad_habit_no_report') {
+                if (entry.metadata?.badHabitId === badHabitId && (!entry.metadata?.date || entry.metadata.date === date)) return true;
+              }
+              return false;
+            },
+            isDeduction ? { neg: ptsAmt } : { pos: ptsAmt },
+            1,
+            `badhabit_${badHabitId}_${date}_${logInstance}`
+          );
+          const { excisedEntryIds, ...pointsState } = exciseResult;
+          excisedIds = excisedEntryIds;
+          baseState = {
+            ...baseState,
+            ...pointsState,
+          };
+        }
+
+        const activeHabits = baseState.badHabits
           .filter((h) => !h.isCompleted)
           .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         const activeIndex = activeHabits.findIndex((h) => h.id === badHabitId);
@@ -3013,7 +3210,7 @@ export function useAppState() {
           pointsChange = isPointEligible ? 10 : 0;
           reason = `Bad habit resisted: ${bh.name}`;
         } else {
-          const pastLogs = (prev.badHabitLogs || [])
+          const pastLogs = (baseState.badHabitLogs || [])
             .filter((l) => l && l.badHabitId === badHabitId && l.date < date)
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
@@ -3027,7 +3224,7 @@ export function useAppState() {
           }
 
           const seasonStart = getLeaguePeriodStart('ninetyDay', new Date());
-          const seasonPts = calculatePeriodPoints(prev.pointsHistory || [], seasonStart, new Date(), prev.totalPoints);
+          const seasonPts = calculatePeriodPoints(baseState.pointsHistory || [], seasonStart, new Date(), baseState.totalPoints);
           const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
           const penaltyAmount = isPointEligible ? Math.round(10 * multiplier) : 0;
           pointsChange = -penaltyAmount;
@@ -3037,27 +3234,39 @@ export function useAppState() {
         let pointsUpdate = {};
         if (pointsChange !== 0) {
           pointsUpdate = addPointsInternal(
-            prev,
+            baseState,
             pointsChange,
             reason,
-            status === 'resisted' ? 'bad_habit_resisted' : 'bad_habit_occurred'
+            status === 'resisted' ? 'bad_habit_resisted' : 'bad_habit_occurred',
+            { badHabitId, date, status }
           );
         }
 
+        const nowIso = new Date().toISOString();
+        const logId = existingLog?.id || uid();
         const newLog: BadHabitLog = {
-          id: uid(),
+          id: logId,
           badHabitId,
           date,
           status,
           consecutiveOccurrences: status === 'occurred' ? consecutiveOccurrences : 0,
           pointsAwardedOrDeducted: pointsChange,
-          createdAt: new Date().toISOString(),
+          createdAt: existingLog?.createdAt || nowIso,
+          updatedAt: nowIso,
         };
 
-        const filteredLogs = (prev.badHabitLogs || []).filter((l) => !(l && l.badHabitId === badHabitId && l.date === date));
+        const sanitizedDeletedEntityIds = (baseState.deletedEntityIds || []).filter(
+          (id) => id !== `${badHabitId}_${date}`
+        );
+        const updatedDeletedEntityIds = Array.from(
+          new Set([...sanitizedDeletedEntityIds, ...excisedIds])
+        ).slice(-500);
+
+        const filteredLogs = (baseState.badHabitLogs || []).filter((l) => !(l && l.badHabitId === badHabitId && l.date === date));
         return {
-          ...prev,
+          ...baseState,
           badHabitLogs: [newLog, ...filteredLogs],
+          deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
       } catch (err) {
@@ -3075,20 +3284,40 @@ export function useAppState() {
       if (target.status === 'no_report') return prev;
 
       let pointsUpdate = {};
+      let excisedIds: string[] = [];
       if (target.pointsAwardedOrDeducted !== 0) {
-        const reverseAmount = -target.pointsAwardedOrDeducted;
-        const bh = prev.badHabits.find((b) => b.id === badHabitId);
-        pointsUpdate = addPointsInternal(
+        const isDeduction = target.pointsAwardedOrDeducted < 0;
+        const ptsAmt = Math.abs(target.pointsAwardedOrDeducted);
+        const logInstance = target.id || target.createdAt || target.updatedAt || today;
+        const exciseResult = excisePointsEntriesInternal(
           prev,
-          reverseAmount,
-          `Undid today's action for bad habit: ${bh?.name || badHabitId}`,
-          'bad_habit_undo'
+          (entry) => {
+            if (entry.metadata?.badHabitId === badHabitId && entry.metadata?.date === today) return true;
+            if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_resisted' || entry.source === 'bad_habit_undo') {
+              if (entry.metadata?.badHabitId === badHabitId && (!entry.metadata?.date || entry.metadata.date === today)) return true;
+            }
+            return false;
+          },
+          isDeduction ? { neg: ptsAmt } : { pos: ptsAmt },
+          1,
+          `badhabit_${badHabitId}_${today}_${logInstance}`
         );
+        const { excisedEntryIds, ...restPoints } = exciseResult;
+        pointsUpdate = restPoints;
+        excisedIds = excisedEntryIds;
       }
+
+      const toTombstone = [
+        ...(prev.deletedEntityIds || []),
+        ...(target.id ? [target.id] : []),
+        ...excisedIds,
+      ];
+      const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
 
       return {
         ...prev,
         badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === today)),
+        deletedEntityIds: updatedDeletedEntityIds,
         ...pointsUpdate,
       };
     });
@@ -3101,25 +3330,38 @@ export function useAppState() {
         const bh = prev.badHabits.find((b) => b.id === badHabitId);
 
         let pointsUpdate = {};
+        let excisedIds: string[] = [];
         if (bh && !bh.isCompleted) {
-          const netPoints = habitLogs.reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
+          const posPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) > 0).reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
+          const negPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) < 0).reduce((s, l) => s + Math.abs(l.pointsAwardedOrDeducted || 0), 0);
 
-          if (netPoints !== 0) {
-            const reverseAmount = -netPoints;
-            pointsUpdate = addPointsInternal(
+          if (posPoints > 0 || negPoints > 0) {
+            const exciseResult = excisePointsEntriesInternal(
               prev,
-              reverseAmount,
-              `Bad habit deleted (reversed net points): ${bh.name}`,
-              'bad_habit_delete'
+              (entry) => {
+                if (entry.metadata?.badHabitId === badHabitId) return true;
+                if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_resisted' || entry.source === 'bad_habit_no_report') {
+                  if (entry.metadata?.badHabitId === badHabitId || entry.reason.includes(bh.name)) return true;
+                }
+                return false;
+              },
+              { pos: posPoints, neg: negPoints },
+              Infinity,
+              `badhabit_all_${badHabitId}`
             );
+            const { excisedEntryIds, ...restPoints } = exciseResult;
+            pointsUpdate = restPoints;
+            excisedIds = excisedEntryIds;
           }
         }
 
-        const updatedDeletedEntityIds = [
+        const toTombstone = [
           ...(prev.deletedEntityIds || []),
           badHabitId,
-          ...habitLogs.map((l) => l.id || `${l.badHabitId}_${l.date}`),
-        ].slice(-500);
+          ...habitLogs.map((l) => l.id).filter(Boolean),
+          ...excisedIds,
+        ];
+        const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
 
         return {
           ...prev,
@@ -3170,16 +3412,33 @@ export function useAppState() {
       (prev) => {
         const target = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
         let pointsUpdate = {};
+        let excisedIds: string[] = [];
         if (target && target.pointsAwardedOrDeducted !== 0) {
-          pointsUpdate = addPointsInternal(
+          const isDeduction = target.pointsAwardedOrDeducted < 0;
+          const ptsAmt = Math.abs(target.pointsAwardedOrDeducted);
+          const exciseResult = excisePointsEntriesInternal(
             prev,
-            -target.pointsAwardedOrDeducted,
-            `Bad habit log cleared for ${date}`,
-            'bad_habit_clear'
+            (entry) => {
+              if (entry.metadata?.badHabitId === badHabitId && entry.metadata?.date === date) return true;
+              if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_resisted' || entry.source === 'bad_habit_no_report') {
+                if (entry.metadata?.badHabitId === badHabitId && entry.metadata?.date === date) return true;
+              }
+              return false;
+            },
+            isDeduction ? { neg: ptsAmt } : { pos: ptsAmt },
+            1,
+            `badhabit_${badHabitId}_${date}_${target.id || target.createdAt || target.updatedAt || date}`
           );
+          const { excisedEntryIds, ...restPoints } = exciseResult;
+          pointsUpdate = restPoints;
+          excisedIds = excisedEntryIds;
         }
-        const targetComposite = target?.id || `${badHabitId}_${date}`;
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), targetComposite].slice(-500);
+        const toTombstone = [
+          ...(prev.deletedEntityIds || []),
+          ...(target?.id ? [target.id] : []),
+          ...excisedIds,
+        ];
+        const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
         return {
           ...prev,
           badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === date)),

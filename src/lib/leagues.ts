@@ -1,4 +1,4 @@
-import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile } from '@/types';
+import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile, EvictedExcisionRecord } from '@/types';
 import { getSeedCompetitors } from './seedAccounts';
 import { getRegisteredCompetitors } from './auth';
 
@@ -302,17 +302,37 @@ export function calculateSeasonalTotal(
   seasonEvictedPos: number = 0,
   seasonEvictedNeg: number = 0,
   history: PointsEntry[] = [],
-  seasonStart: Date = startOfNinetyDayCycle()
+  seasonStart: Date = startOfNinetyDayCycle(),
+  evictedExcisionRecords: EvictedExcisionRecord[] = [],
+  activeSeasonNumber?: number
 ): number {
+  const targetSeason = typeof activeSeasonNumber === 'number' ? activeSeasonNumber : getSeasonNumber();
+  let seasonExcisedPosOffset = 0;
+  let seasonExcisedNegOffset = 0;
+
+  for (const rec of evictedExcisionRecords || []) {
+    if (rec && rec.seasonNumber === targetSeason) {
+      if (typeof rec.posAmount === 'number' && rec.posAmount > 0) {
+        seasonExcisedPosOffset += rec.posAmount;
+      }
+      if (typeof rec.negAmount === 'number' && rec.negAmount > 0) {
+        seasonExcisedNegOffset += rec.negAmount;
+      }
+    }
+  }
+
+  const effectivePos = Math.max(0, seasonEvictedPos - seasonExcisedPosOffset);
+  const effectiveNeg = Math.max(0, seasonEvictedNeg - seasonExcisedNegOffset);
+
   if (!history || history.length === 0) {
-    return Math.max(0, seasonEvictedPos - seasonEvictedNeg);
+    return Math.max(0, effectivePos - effectiveNeg);
   }
 
   // Sort chronological
   const sorted = [...history].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
-  let current = seasonEvictedPos - seasonEvictedNeg;
+  let current = effectivePos - effectiveNeg;
 
   for (const p of sorted) {
     if (p.reason === 'System: Debt Forgiveness' || p.source === 'system') {
@@ -333,34 +353,5 @@ export function calculateSeasonalTotal(
 
 export function createDeterministicArchiveId(seasonNumber: number): string {
   return `archive-ninetyDay-season-${seasonNumber}`;
-}
-
-export function calculateChronologicalTotal(
-  evictedPos: number = 0,
-  evictedNeg: number = 0,
-  history: PointsEntry[] = []
-): number {
-  if (!history || history.length === 0) {
-    return Math.max(0, evictedPos - evictedNeg);
-  }
-
-  const sorted = [...history].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  );
-  let current = evictedPos - evictedNeg;
-
-  for (const p of sorted) {
-    // Ignore legacy ghost transactions from previous buggy architectures
-    if (p.reason === 'System: Debt Forgiveness' || p.source === 'system') {
-      continue;
-    }
-    current += (p.amount || 0);
-    // Dynamic Debt Forgiveness
-    if (current < 0) {
-      current = 0;
-    }
-  }
-
-  return current;
 }
 

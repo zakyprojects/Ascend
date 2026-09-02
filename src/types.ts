@@ -127,6 +127,14 @@ export interface Lesson {
   points: number;
 }
 
+export interface EvictedExcisionRecord {
+  id: string;
+  seasonNumber: number;
+  posAmount: number;
+  negAmount: number;
+  timestamp: string;
+}
+
 export interface AppState {
   currentUser: UserProfile | null;
   habits: Habit[];
@@ -135,11 +143,10 @@ export interface AppState {
   seasonPoints: number;
   seasonEvictedPos: number;
   seasonEvictedNeg: number;
+  /** Evicted excision records to adjust evicted baseline without scalar desync */
+  evictedExcisionRecords: EvictedExcisionRecord[];
   /** DEPRECATED: Mirrored alias for seasonPoints to maintain backward compatibility */
   totalPoints?: number;
-  /** Cumulative points offset for items evicted past the pointsHistory array cap */
-  evictedPos?: number;
-  evictedNeg?: number;
   /** Points ledger entries for history */
   pointsHistory: PointsEntry[];
   /** League archives — final standings from completed periods */
@@ -318,6 +325,7 @@ export interface BadHabitLog {
   consecutiveOccurrences?: number;
   pointsAwardedOrDeducted: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // Module 5: Addiction Recovery Tracker
@@ -645,11 +653,10 @@ export interface AppState {
   seasonPoints: number;
   seasonEvictedPos: number;
   seasonEvictedNeg: number;
+  /** Evicted excision records to adjust evicted baseline without scalar desync */
+  evictedExcisionRecords: EvictedExcisionRecord[];
   /** DEPRECATED: Mirrored alias for seasonPoints to maintain backward compatibility */
   totalPoints?: number;
-  evictedPointsOffset?: number;
-  evictedPos?: number;
-  evictedNeg?: number;
   /** Points ledger entries for history */
   pointsHistory: PointsEntry[];
   /** League archives — final standings from completed periods */
@@ -936,6 +943,7 @@ export const DEFAULT_STATE: AppState = {
   seasonPoints: 0,
   seasonEvictedPos: 0,
   seasonEvictedNeg: 0,
+  evictedExcisionRecords: [],
   totalPoints: 0,
   pointsHistory: [],
   leagueArchives: [],
