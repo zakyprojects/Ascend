@@ -916,7 +916,6 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     exerciseGoal: incomingState.exerciseGoal !== undefined ? incomingState.exerciseGoal : baseState.exerciseGoal,
     books: [],
     readingLogs,
-    readingGoal: incomingState.readingGoal !== undefined ? incomingState.readingGoal : baseState.readingGoal,
     skills,
     skillLogs,
     badHabits,

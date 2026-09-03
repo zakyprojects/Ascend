@@ -155,8 +155,8 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         if (matchingBook?.id) matchingIds.add(matchingBook.id);
         if (matchingBook?.linkedBookId) matchingIds.add(matchingBook.linkedBookId);
 
-        const filtered = matchingIds.size > 0 ? logs.filter((l) => matchingIds.has(l.bookId)) : logs;
-        const totalPages = filtered.reduce((acc, l) => acc + (l.progressAmount || 0), 0);
+        const filtered = matchingIds.size > 0 ? logs.filter((l) => Boolean(l.bookId && matchingIds.has(l.bookId))) : logs;
+        const totalPages = filtered.reduce((acc, l) => acc + (l.pagesRead ?? l.progressAmount ?? 0), 0);
         return { current: totalPages, target, unit: 'pages', percent: Math.min(100, Math.round((totalPages / target) * 100)) };
       }
 

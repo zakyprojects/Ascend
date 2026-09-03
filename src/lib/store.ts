@@ -10,6 +10,7 @@ import {
   UserProfile,
   WorkoutLog,
   Book,
+  ReadingLog,
   ReadingProgressLog,
   Skill,
   SkillSessionLog,
@@ -99,7 +100,6 @@ import {
   processHabitPenalties,
   processBadHabitNoReports,
   processExerciseTargetPenalties,
-  processReadingTargetPenalties,
   processBookDeadlinePenalties,
   getMissPenaltyMultiplier,
   getHighestUserStreak,
@@ -1685,8 +1685,7 @@ export function useAppState() {
         const habitPenalized = processHabitPenalties(archivedState, targetNow);
         const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
         const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
-        const readingPenalized = processReadingTargetPenalties(exercisePenalized, targetNow);
-        const bookPenalized = processBookDeadlinePenalties(readingPenalized, targetNow);
+        const bookPenalized = processBookDeadlinePenalties(exercisePenalized, targetNow);
 
         const reconciledChallenges = (bookPenalized.sharedChallenges || []).map((c) => {
           const updated = reconcileSharedChallengeLifecycle(c, targetNow);
@@ -2587,13 +2586,6 @@ export function useAppState() {
     []
   );
 
-  const setReadingGoal = useCallback((goal: { cadence: 'daily' | 'weekly'; targetPages?: number } | null) => {
-    setState((prev) => ({
-      ...prev,
-      readingGoal: goal ? { ...goal, consecutiveMisses: 0 } : null,
-    }));
-  }, []);
-
   const updateBookTargetDate = useCallback((bookId: string, targetFinishDate?: string) => {
     const formatted = targetFinishDate?.trim() || undefined;
     setState((prev) => ({
@@ -2614,36 +2606,41 @@ export function useAppState() {
       if (!targetUserBook) return prev;
 
       const title = targetUserBook.title || 'Book';
+      const existingPage = targetUserBook.currentAmount ?? targetUserBook.currentPage ?? 0;
       const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
       const clampedPage = Math.min(maxPages, Math.max(0, newCurrentPage));
+      const pageDelta = Math.max(0, clampedPage - existingPage);
 
       const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
 
-      const alreadyLoggedToday = prev.readingLogs.some(
+      const alreadyLoggedToday = (prev.readingLogs || []).some(
         (l) => l.date === date && (l.bookId === bookId || l.bookId === targetUserBook.id)
       );
 
       // Points balancing: If reading habit is linked, do NOT award +5 reading hub points (habit completion awards points)
       let pointsToAward = 0;
-      if (!readingHabit && !alreadyLoggedToday && progressAmount > 0) {
+      if (!readingHabit && !alreadyLoggedToday && pageDelta > 0) {
         pointsToAward = 5;
       }
 
-      const readingLog: ReadingProgressLog = {
-        id: `reading-log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        bookId: targetUserBook.id,
-        date,
-        progressAmount,
-        pointsAwarded: pointsToAward,
-        createdAt: new Date().toISOString(),
-      };
-
-      const updatedReadingLogs = [readingLog, ...(prev.readingLogs || [])];
+      let updatedReadingLogs = prev.readingLogs || [];
+      if (pageDelta > 0) {
+        const readingLog: ReadingLog = {
+          id: `reading-log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          bookId: targetUserBook.id,
+          date,
+          pagesRead: pageDelta,
+          progressAmount: pageDelta,
+          pointsAwarded: pointsToAward,
+          createdAt: new Date().toISOString(),
+        };
+        updatedReadingLogs = [readingLog, ...updatedReadingLogs];
+      }
 
       // Calculate total pages read today across ALL books
       const totalPagesToday = updatedReadingLogs
         .filter((l) => l.date === date)
-        .reduce((sum, l) => sum + (l.progressAmount || 0), 0);
+        .reduce((sum, l) => sum + (l.pagesRead ?? l.progressAmount ?? 0), 0);
 
       const updatedLibraryBooks = prev.libraryBooks.map((lb) => {
         if (lb.id === bookId || lb.linkedBookId === bookId || lb.id === targetUserBook.id) {
@@ -2659,7 +2656,7 @@ export function useAppState() {
 
       let pointsUpdate = {};
       if (pointsToAward > 0) {
-        pointsUpdate = addPointsInternal(prev, pointsToAward, `Read ${progressAmount} ${targetUserBook.unit || 'pages'} of ${title}`, 'reading');
+        pointsUpdate = addPointsInternal(prev, pointsToAward, `Read ${pageDelta} ${targetUserBook.unit || 'pages'} of ${title}`, 'reading');
       }
 
       let updatedHabits = prev.habits;
@@ -2770,6 +2767,23 @@ export function useAppState() {
         const alreadyAwarded = (targetUserBook?.pointsAwarded ?? 0) > 0;
         const pointsToAward = alreadyAwarded ? 0 : bonusPoints;
 
+        const currentPage = targetUserBook.currentAmount ?? targetUserBook.currentPage ?? 0;
+        const unreadDelta = Math.max(0, maxPages - currentPage);
+
+        let updatedReadingLogs = prev.readingLogs || [];
+        if (unreadDelta > 0) {
+          const finishLog: ReadingLog = {
+            id: `reading-log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            bookId: targetUserBook.id,
+            date: todayKey(new Date()),
+            pagesRead: unreadDelta,
+            progressAmount: unreadDelta,
+            pointsAwarded: 0,
+            createdAt: now,
+          };
+          updatedReadingLogs = [finishLog, ...updatedReadingLogs];
+        }
+
         const updatedLibraryBooks = prev.libraryBooks.map((lb) => {
           if (lb.id === bookId || lb.linkedBookId === bookId || lb.id === targetUserBook.id) {
             return {
@@ -2795,6 +2809,7 @@ export function useAppState() {
         return {
           ...prev,
           libraryBooks: updatedLibraryBooks,
+          readingLogs: updatedReadingLogs,
           books: [],
           ...pointsUpdate,
         };
@@ -2814,7 +2829,7 @@ export function useAppState() {
         if (targetUserBook.linkedBookId) allMatchingIds.add(targetUserBook.linkedBookId);
 
         const targetTitleLower = (targetUserBook.title || '').toLowerCase();
-        const bookLogs = prev.readingLogs.filter((l) => allMatchingIds.has(l.bookId));
+        const bookLogs = prev.readingLogs.filter((l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)));
         const logPointsTotal = bookLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
         const completionPoints = targetUserBook.pointsAwarded || (targetUserBook.status === 'completed' ? 30 : 0);
         const totalBookPoints = logPointsTotal + completionPoints;
@@ -2837,7 +2852,7 @@ export function useAppState() {
           libraryBooks: prev.libraryBooks.filter(
             (lb) => !allMatchingIds.has(lb.id) && lb.title.toLowerCase() !== targetTitleLower
           ),
-          readingLogs: prev.readingLogs.filter((l) => !allMatchingIds.has(l.bookId)),
+          readingLogs: prev.readingLogs.filter((l) => !l.bookId || !allMatchingIds.has(l.bookId)),
           weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsArray),
           deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
@@ -7420,7 +7435,6 @@ export function useAppState() {
     addBook,
     updateBookTargetDate,
     updateReadingProgress,
-    setReadingGoal,
     finishBook,
     deleteBook,
     addSkill,

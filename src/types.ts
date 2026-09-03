@@ -207,21 +207,17 @@ export interface ExerciseGoal {
   createdAt?: string;
 }
 
-export interface ReadingGoal {
-  cadence: 'daily' | 'weekly';
-  targetPages?: number;
-  consecutiveMisses?: number;
-  lastEvaluatedPeriod?: string;
+export interface ReadingLog {
+  id: string;
+  bookId?: string;
+  date: string; // YYYY-MM-DD
+  pagesRead: number; // positive delta only
+  createdAt: string; // ISO timestamp
+  progressAmount?: number;
+  pointsAwarded?: number;
 }
 
-export interface ReadingProgressLog {
-  id: string;
-  bookId: string;
-  date: string; // YYYY-MM-DD
-  progressAmount: number; // pages/chapters added in this session
-  pointsAwarded: number;
-  createdAt: string;
-}
+export type ReadingProgressLog = ReadingLog;
 
 // Self Improvement Books - Curated Library & User Library
 export type BookCategory =
@@ -673,8 +669,7 @@ export interface AppState {
   exerciseGoal?: ExerciseGoal | null;
   // Unified Reading Hub & Literature Module
   libraryBooks: UserBook[];
-  readingLogs: ReadingProgressLog[];
-  readingGoal?: ReadingGoal | null;
+  readingLogs: ReadingLog[];
   /** @deprecated Legacy books array. All reading data is migrated to libraryBooks and cleared on next sync */
   books: Book[];
   skills: Skill[];
@@ -955,7 +950,6 @@ export const DEFAULT_STATE: AppState = {
   exerciseGoal: null,
   books: [],
   readingLogs: [],
-  readingGoal: null,
   skills: [],
   skillLogs: [],
   badHabits: [],
