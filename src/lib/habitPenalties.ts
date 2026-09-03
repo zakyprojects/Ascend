@@ -1,5 +1,5 @@
-import { AppState, Habit, BadHabitLog, LeagueArchive } from '@/types';
-import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, uid } from './dates';
+import { AppState, Habit, BadHabitLog, LeagueArchive, ExerciseGoal, WorkoutLog } from '@/types';
+import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, uid, addDays, addWeeks, getNow } from './dates';
 import { createNotificationSupabase } from './supabase';
 import {
   getLeaguePeriodStart,
@@ -102,6 +102,114 @@ export function getMissPenaltyMultiplier(consecutiveMisses: number, seasonPoints
     if (consecutiveMisses === 2) return 2.0;
     return 2.5;
   }
+}
+
+/**
+ * Checks if a habit was completed for a given period key.
+ * Supports both modern dictionary format { [key]: { done: true } } and legacy array format.
+ */
+export function isHabitPeriodCompleted(habit: Habit, pKey: string): boolean {
+  if (!habit || !habit.completions) return false;
+  if (Array.isArray(habit.completions)) {
+    return (habit.completions as string[]).includes(pKey);
+  }
+  return habit.completions[pKey]?.done === true;
+}
+
+/**
+ * Derives the consecutive miss streak ending at a specific historical period.
+ * Steps backwards period-by-period starting from targetPeriod:
+ * - Increments for each missed/uncompleted period
+ * - Stops immediately when a completed period is encountered
+ * - Stops immediately when stepping prior to habit.createdAtPeriod
+ */
+export function getHabitConsecutiveMissesUpToPeriod(
+  habit: Habit,
+  targetPeriod: string,
+  now: Date = getNow()
+): number {
+  if (!habit) return 0;
+  const freq = habit.frequency || 'daily';
+  const createdKey = habit.createdAtPeriod || periodKey(freq, habit.createdAt ? new Date(habit.createdAt) : now);
+
+  if (targetPeriod < createdKey) return 0;
+
+  let misses = 0;
+  let currentP = targetPeriod;
+  const maxLookback = freq === 'daily' ? MAX_RETROACTIVE_PENALTY_DAYS : 52;
+
+  for (let i = 0; i < maxLookback; i++) {
+    if (currentP < createdKey) {
+      break;
+    }
+    if (isHabitPeriodCompleted(habit, currentP)) {
+      break;
+    }
+    misses++;
+    currentP = freq === 'daily' ? addDays(currentP, -1) : addWeeks(currentP, -1);
+  }
+
+  return misses;
+}
+
+/**
+ * Derives the current active consecutive miss count for a habit.
+ * - If current period is already completed, the miss streak is broken (returns 0).
+ * - Otherwise, derives consecutive misses starting from the most recent finished period.
+ */
+export function getHabitConsecutiveMisses(habit: Habit, now: Date = getNow()): number {
+  if (!habit) return 0;
+  const freq = habit.frequency || 'daily';
+  const currentKey = periodKey(freq, now);
+
+  if (isHabitPeriodCompleted(habit, currentKey)) {
+    return 0;
+  }
+
+  const mostRecentFinishedPeriod = previousPeriodKey(freq, 1, now);
+  return getHabitConsecutiveMissesUpToPeriod(habit, mostRecentFinishedPeriod, now);
+}
+
+/**
+ * Derives the consecutive missed weeks for weekly ExerciseGoal from AppState.workouts.
+ * Steps backwards week-by-week starting from the most recently finished ISO week:
+ * - Increments for each week where workout count < exerciseGoal.targetWeeklySessions
+ * - Stops when a week meets targetWeeklySessions
+ * - Stops at exerciseGoal.createdAt (hard lower bound — does not count weeks before goal existed)
+ */
+export function getExerciseGoalConsecutiveMisses(
+  exerciseGoal: ExerciseGoal | null | undefined,
+  workouts: WorkoutLog[] = [],
+  now: Date = getNow()
+): number {
+  if (!exerciseGoal || !exerciseGoal.targetWeeklySessions || exerciseGoal.targetWeeklySessions <= 0) {
+    return 0;
+  }
+
+  const target = exerciseGoal.targetWeeklySessions;
+  const createdWeekKey = exerciseGoal.createdAt
+    ? weekKey(parseDate(exerciseGoal.createdAt) || now)
+    : undefined;
+
+  let misses = 0;
+  for (let i = 1; i <= 52; i++) {
+    const wKey = previousPeriodKey('weekly', i, now);
+    if (createdWeekKey && wKey < createdWeekKey) {
+      break;
+    }
+
+    const count = (workouts || []).filter((w) => {
+      const d = parseDate(w.date);
+      return d && weekKey(d) === wKey;
+    }).length;
+
+    if (count >= target) {
+      break;
+    }
+    misses++;
+  }
+
+  return misses;
 }
 
 import { calculateUnifiedStreak } from './streakLogic';
@@ -267,15 +375,12 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
     if (!habit.isPreset || habit.points <= 0) return habit;
 
     const missedPeriods = habit.missedPeriods ? [...habit.missedPeriods] : [];
-    let consecutiveMisses = habit.consecutiveMisses ?? 0;
     let habitModified = false;
 
     const pastPeriods = getPastDuePeriods(habit, now);
 
     for (const p of pastPeriods) {
-      const isCompleted = Array.isArray(habit.completions)
-        ? (habit.completions as any).includes(p)
-        : habit.completions?.[p]?.done === true;
+      const isCompleted = isHabitPeriodCompleted(habit, p);
       const isAlreadyMissed =
         missedPeriods.includes(p) ||
         (updatedState.pointsHistory || []).some(
@@ -286,9 +391,9 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
         );
 
       if (isCompleted) {
-        consecutiveMisses = 0;
+        // Completed period breaks the streak; nothing to penalize
       } else if (!isAlreadyMissed) {
-        consecutiveMisses += 1;
+        const consecutiveMisses = getHabitConsecutiveMissesUpToPeriod(habit, p, now);
         const seasonPts = getAppStateSeasonPoints(updatedState, now);
         const multiplier = getMissPenaltyMultiplier(consecutiveMisses, seasonPts);
         const penaltyAmount = Math.round(habit.points * multiplier);
@@ -361,12 +466,11 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
       }
     }
 
-    if (habitModified || consecutiveMisses !== (habit.consecutiveMisses ?? 0)) {
+    if (habitModified) {
       habitsChanged = true;
       return {
         ...habit,
         missedPeriods,
-        consecutiveMisses,
       };
     }
 
@@ -507,11 +611,10 @@ export function processExerciseTargetPenalties(state: AppState, now: Date = new 
   }).length;
 
   const target = state.exerciseGoal.targetWeeklySessions;
-  let consecutiveMisses = state.exerciseGoal.consecutiveMisses || 0;
   let updatedState = state;
 
   if (loggedInLastWeek < target) {
-    consecutiveMisses += 1;
+    const consecutiveMisses = getExerciseGoalConsecutiveMisses(state.exerciseGoal, state.workouts, now);
     const seasonPts = getAppStateSeasonPoints(state, now);
     const multiplier = getMissPenaltyMultiplier(consecutiveMisses, seasonPts);
     // Base award derived from user's average logged workout duration (or 30 mins default from ExerciseTracker log form state)
@@ -552,15 +655,12 @@ export function processExerciseTargetPenalties(state: AppState, now: Date = new 
       ...updatedState,
       ...penaltyUpdate,
     };
-  } else {
-    consecutiveMisses = 0;
   }
 
   return {
     ...updatedState,
     exerciseGoal: {
       ...state.exerciseGoal,
-      consecutiveMisses,
       lastEvaluatedWeek: lastWeekKey,
     },
   };

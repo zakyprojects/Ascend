@@ -134,14 +134,14 @@ export function calculateBestStreak(
   return best;
 }
 
-function addDays(key: string, n: number): string {
+export function addDays(key: string, n: number): string {
   const [y, m, d] = key.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   date.setDate(date.getDate() + n);
   return todayKey(date);
 }
 
-function addWeeks(key: string, n: number): string {
+export function addWeeks(key: string, n: number): string {
   // weekKey format: YYYY-Www
   const match = key.match(/^(\d{4})-W(\d{2})$/);
   if (!match) return key;

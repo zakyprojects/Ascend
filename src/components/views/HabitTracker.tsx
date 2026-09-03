@@ -6,7 +6,7 @@ import { calculateStreak, calculateBestStreak, periodKey } from '@/lib/dates';
 import { PRESET_CATEGORIES, PresetHabit } from '@/lib/presets';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { getMissPenaltyMultiplier } from '@/lib/habitPenalties';
+import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habitPenalties';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 
@@ -382,14 +382,18 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
           </div>
 
           {/* Consecutive Miss Penalty Warning */}
-          {habit.isPreset && (habit.consecutiveMisses ?? 0) > 0 && (
-            <div className="mt-1.5 flex items-center gap-1 text-[11px] text-rose-theme bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 w-fit font-medium">
-              <AlertTriangle size={11} className="shrink-0" />
-              <span>
-                {habit.consecutiveMisses} consecutive miss{(habit.consecutiveMisses ?? 0) > 1 ? 'es' : ''} (Next miss = {getMissPenaltyMultiplier((habit.consecutiveMisses ?? 0) + 1, seasonPoints)}x penalty)
-              </span>
-            </div>
-          )}
+          {(() => {
+            const consecutiveMisses = getHabitConsecutiveMisses(habit);
+            if (!habit.isPreset || consecutiveMisses <= 0) return null;
+            return (
+              <div className="mt-1.5 flex items-center gap-1 text-[11px] text-rose-theme bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 w-fit font-medium">
+                <AlertTriangle size={11} className="shrink-0" />
+                <span>
+                  {consecutiveMisses} consecutive miss{consecutiveMisses > 1 ? 'es' : ''} (Next miss = {getMissPenaltyMultiplier(consecutiveMisses + 1, seasonPoints)}x penalty)
+                </span>
+              </div>
+            );
+          })()}
         </div>
 
         <button

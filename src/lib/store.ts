@@ -1988,7 +1988,6 @@ export function useAppState() {
                     ...currentCompletions,
                     [key]: { done: true, updatedAt: nowIso },
                   },
-                  consecutiveMisses: 0, // Completion breaks the consecutive miss streak!
                   updatedAt: nowIso,
                 };
               }
@@ -2516,7 +2515,14 @@ export function useAppState() {
   const setExerciseGoal = useCallback((targetWeeklySessions: number) => {
     setState((prev) => ({
       ...prev,
-      exerciseGoal: targetWeeklySessions > 0 ? { targetWeeklySessions, consecutiveMisses: 0 } : null,
+      exerciseGoal:
+        targetWeeklySessions > 0
+          ? {
+              targetWeeklySessions,
+              createdAt: prev.exerciseGoal?.createdAt || new Date().toISOString(),
+              lastEvaluatedWeek: prev.exerciseGoal?.lastEvaluatedWeek,
+            }
+          : null,
     }));
   }, []);
 
@@ -2685,7 +2691,6 @@ export function useAppState() {
                       : (h.completions || {})),
                     [key]: { done: true, updatedAt: nowIso },
                   },
-                  consecutiveMisses: 0,
                   updatedAt: nowIso,
                 }
               : h

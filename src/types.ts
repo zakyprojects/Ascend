@@ -69,7 +69,7 @@ export interface Habit {
   createdAtPeriod: string;
   /** Periods that were missed and penalized */
   missedPeriods?: string[];
-  /** Consecutive missed periods count (resets to 0 upon completion) */
+  /** @deprecated Phase A: Replaced with dynamic derivation from habit.completions. Kept for schema compatibility. */
   consecutiveMisses?: number;
   /** Whether this habit is automatically linked to a system module */
   isSystemLinked?: boolean;
@@ -201,8 +201,10 @@ export interface Book {
 
 export interface ExerciseGoal {
   targetWeeklySessions: number;
+  /** @deprecated Phase A: Replaced with dynamic derivation from AppState.workouts. Kept for schema compatibility. */
   consecutiveMisses?: number;
   lastEvaluatedWeek?: string;
+  createdAt?: string;
 }
 
 export interface ReadingGoal {
