@@ -233,10 +233,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const currentSeason = getSeasonNumber();
 
   // Current User Stats
-  const userSeason = store.state.seasonId || 1;
-  const mySeasonPoints = userSeason === currentSeason
-    ? (store.state.seasonPoints ?? store.getLeagueData('ninetyDay').userPoints)
-    : 0;
+  const mySeasonPoints = store.getLeagueData('ninetyDay').userPoints;
   const myTotalPoints = mySeasonPoints;
   const myTier = getCurrentTier(mySeasonPoints);
   const myHabitsCompletedToday = (store.state.habits || []).filter((h) => {

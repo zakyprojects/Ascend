@@ -1,4 +1,4 @@
-import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile, EvictedExcisionRecord } from '@/types';
+import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile, EvictedExcisionRecord, AppState } from '@/types';
 import { getSeedCompetitors } from './seedAccounts';
 import { getRegisteredCompetitors } from './auth';
 
@@ -349,6 +349,31 @@ export function calculateSeasonalTotal(
   }
 
   return current;
+}
+
+/**
+ * Computes the live effective season points for the currently active season.
+ * If state.seasonId is behind the live season, stale evicted scalar baselines and excision records
+ * are ignored (treated as 0/empty), falling back cleanly to pointsHistory filtered from startOfNinetyDayCycle().
+ */
+export function getEffectiveSeasonPoints(state: AppState): number {
+  const liveSeason = getSeasonNumber();
+  const evictedValid = state.seasonId === liveSeason;
+
+  const effectivePos = evictedValid ? (state.seasonEvictedPos || 0) : 0;
+  const effectiveNeg = evictedValid ? (state.seasonEvictedNeg || 0) : 0;
+  const effectiveExcisionRecords = evictedValid
+    ? (state.evictedExcisionRecords || []).filter((r) => r && r.seasonNumber === liveSeason)
+    : [];
+
+  return calculateSeasonalTotal(
+    effectivePos,
+    effectiveNeg,
+    state.pointsHistory || [],
+    startOfNinetyDayCycle(),
+    effectiveExcisionRecords,
+    liveSeason
+  );
 }
 
 export function createDeterministicArchiveId(seasonNumber: number): string {

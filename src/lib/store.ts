@@ -77,6 +77,7 @@ import {
   createDeterministicArchiveId,
   startOfNinetyDayCycle,
   getSeasonNumber,
+  getEffectiveSeasonPoints,
   generateCompetitors,
   getUserRank,
   createArchive,
@@ -6124,8 +6125,13 @@ export function useAppState() {
   // Multi-user & Seed Competitor League Helper
   const getLeagueData = useCallback(
     (type: LeagueType) => {
-      const start = getLeaguePeriodStart(type);
-      const userPoints = calculatePeriodPoints(state.pointsHistory, start, new Date(), state.totalPoints);
+      let userPoints: number;
+      if (type === 'ninetyDay') {
+        userPoints = getEffectiveSeasonPoints(state);
+      } else {
+        const start = getLeaguePeriodStart(type);
+        userPoints = calculatePeriodPoints(state.pointsHistory, start, new Date(), state.totalPoints);
+      }
 
       const unified = calculateUnifiedStreak(state);
 
@@ -6188,6 +6194,10 @@ export function useAppState() {
       state.currentUser,
       state.username,
       state.totalPoints,
+      state.seasonId,
+      state.seasonEvictedPos,
+      state.seasonEvictedNeg,
+      state.evictedExcisionRecords,
     ]
   );
 
