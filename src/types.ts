@@ -195,7 +195,9 @@ export interface Book {
   finishedAt?: string;
   createdAt: string;
   targetFinishDate?: string;
+  /** @deprecated Book deadline penalties removed. Field retained for schema/backward compatibility. */
   consecutiveMisses?: number;
+  /** @deprecated Book deadline penalties removed. Field retained for schema/backward compatibility. */
   lastPenalizedDate?: string;
 }
 
@@ -280,7 +282,9 @@ export interface UserBook {
   completedAt?: string;
   isFinished?: boolean;
   linkedBookId?: string;
+  /** @deprecated Book deadline penalties removed. Field retained for schema/backward compatibility. */
   consecutiveMisses?: number;
+  /** @deprecated Book deadline penalties removed. Field retained for schema/backward compatibility. */
   lastPenalizedDate?: string;
 }
 

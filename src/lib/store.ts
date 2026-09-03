@@ -100,7 +100,6 @@ import {
   processHabitPenalties,
   processBadHabitNoReports,
   processExerciseTargetPenalties,
-  processBookDeadlinePenalties,
   getMissPenaltyMultiplier,
   getHighestUserStreak,
 } from './habitPenalties';
@@ -1685,9 +1684,8 @@ export function useAppState() {
         const habitPenalized = processHabitPenalties(archivedState, targetNow);
         const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
         const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
-        const bookPenalized = processBookDeadlinePenalties(exercisePenalized, targetNow);
 
-        const reconciledChallenges = (bookPenalized.sharedChallenges || []).map((c) => {
+        const reconciledChallenges = (exercisePenalized.sharedChallenges || []).map((c) => {
           const updated = reconcileSharedChallengeLifecycle(c, targetNow);
           if (updated.status !== c.status || updated.jointStreak !== c.jointStreak) {
             saveSharedChallengeSupabase(updated);
@@ -1697,7 +1695,7 @@ export function useAppState() {
         });
 
         return {
-          ...bookPenalized,
+          ...exercisePenalized,
           sharedChallenges: reconciledChallenges,
         };
       });
