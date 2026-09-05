@@ -135,6 +135,12 @@ export interface EvictedExcisionRecord {
   timestamp: string;
 }
 
+export interface EvictedEntryRecord {
+  id: string;
+  seasonNumber: number;
+  amount: number;
+}
+
 export interface AppState {
   currentUser: UserProfile | null;
   habits: Habit[];
@@ -145,6 +151,8 @@ export interface AppState {
   seasonEvictedNeg: number;
   /** Evicted excision records to adjust evicted baseline without scalar desync */
   evictedExcisionRecords: EvictedExcisionRecord[];
+  /** Evicted entry IDs for normal 500-cap pointsHistory eviction tracking */
+  evictedEntryIds: EvictedEntryRecord[];
   /** DEPRECATED: Mirrored alias for seasonPoints to maintain backward compatibility */
   totalPoints?: number;
   /** Points ledger entries for history */
@@ -331,11 +339,19 @@ export interface BadHabitLog {
 }
 
 // Module 5: Addiction Recovery Tracker
+export interface AddictionMilestoneAward {
+  milestone: string; // '24h' | '1w' | '1m'
+  seasonNumber: number;
+  timestamp: string; // ISO timestamp
+  points: number;
+}
+
 export interface AddictionTracker {
   id: string;
   title: string;
   startDate: string; // ISO timestamp
-  milestonesUnlocked: string[]; // ['24h', '1w', '1m']
+  milestonesUnlocked: string[]; // ['24h', '1w', '1m'] - active streak milestones
+  awardedMilestones?: AddictionMilestoneAward[]; // lifetime awarded milestones ledger (immune to resets)
   createdAt: string;
 }
 
@@ -657,6 +673,8 @@ export interface AppState {
   seasonEvictedNeg: number;
   /** Evicted excision records to adjust evicted baseline without scalar desync */
   evictedExcisionRecords: EvictedExcisionRecord[];
+  /** Evicted entry IDs for normal 500-cap pointsHistory eviction tracking */
+  evictedEntryIds: EvictedEntryRecord[];
   /** DEPRECATED: Mirrored alias for seasonPoints to maintain backward compatibility */
   totalPoints?: number;
   /** Points ledger entries for history */
@@ -945,6 +963,7 @@ export const DEFAULT_STATE: AppState = {
   seasonEvictedPos: 0,
   seasonEvictedNeg: 0,
   evictedExcisionRecords: [],
+  evictedEntryIds: [],
   totalPoints: 0,
   pointsHistory: [],
   leagueArchives: [],

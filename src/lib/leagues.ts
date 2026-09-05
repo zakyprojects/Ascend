@@ -356,8 +356,8 @@ export function calculateSeasonalTotal(
  * If state.seasonId is behind the live season, stale evicted scalar baselines and excision records
  * are ignored (treated as 0/empty), falling back cleanly to pointsHistory filtered from startOfNinetyDayCycle().
  */
-export function getEffectiveSeasonPoints(state: AppState): number {
-  const liveSeason = getSeasonNumber();
+export function getEffectiveSeasonPoints(state: AppState, now: Date = new Date()): number {
+  const liveSeason = getSeasonNumber(now);
   const evictedValid = state.seasonId === liveSeason;
 
   const effectivePos = evictedValid ? (state.seasonEvictedPos || 0) : 0;
@@ -370,7 +370,7 @@ export function getEffectiveSeasonPoints(state: AppState): number {
     effectivePos,
     effectiveNeg,
     state.pointsHistory || [],
-    startOfNinetyDayCycle(),
+    startOfNinetyDayCycle(now),
     effectiveExcisionRecords,
     liveSeason
   );

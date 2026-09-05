@@ -1,20 +1,15 @@
-import { AppState, Habit, BadHabitLog, LeagueArchive, ExerciseGoal, WorkoutLog } from '@/types';
+import { AppState, Habit, BadHabitLog, ExerciseGoal, WorkoutLog } from '@/types';
 import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, uid, addDays, addWeeks, getNow } from './dates';
 import { createNotificationSupabase } from './supabase';
-import {
-  getLeaguePeriodStart,
-  calculatePeriodPoints,
-  calculateSeasonalTotal,
-  createDeterministicArchiveId,
-  startOfNinetyDayCycle,
-  getSeasonNumber,
-} from './leagues';
+import { getEffectiveSeasonPoints } from './leagues';
+import { applyPenaltyDeductionInternal } from './pointsLedger';
+
+export { applyPenaltyDeductionInternal };
 
 export const MAX_RETROACTIVE_PENALTY_DAYS = 90;
 
 export function getAppStateSeasonPoints(state: AppState, now: Date = new Date()): number {
-  const start = getLeaguePeriodStart('ninetyDay', now);
-  return calculatePeriodPoints(state.pointsHistory || [], start, now, state.totalPoints);
+  return getEffectiveSeasonPoints(state, now);
 }
 
 export interface StreakInfo {
@@ -229,97 +224,6 @@ export function getHighestUserStreak(state: AppState, now: Date = new Date()): S
       category: unified.currentStreakCategory,
       label: 'Current Streak',
     },
-  };
-}
-
-export function applyPenaltyDeductionInternal(
-  state: AppState,
-  penaltyAmount: number,
-  reason: string,
-  source: string,
-  metadata?: Record<string, any>
-): Pick<AppState, 'seasonId' | 'seasonPoints' | 'seasonEvictedPos' | 'seasonEvictedNeg' | 'evictedExcisionRecords' | 'totalPoints' | 'pointsHistory' | 'leagueArchives'> {
-  const activeSeasonNumber = getSeasonNumber();
-  const activeSeasonStart = startOfNinetyDayCycle();
-
-  let seasonId = typeof state.seasonId === 'number' ? state.seasonId : 1;
-  let prevSeasonPos = typeof state.seasonEvictedPos === 'number' && state.seasonEvictedPos >= 0 ? state.seasonEvictedPos : 0;
-  let prevSeasonNeg = typeof state.seasonEvictedNeg === 'number' && state.seasonEvictedNeg >= 0 ? state.seasonEvictedNeg : 0;
-  let leagueArchives: LeagueArchive[] = state.leagueArchives ? [...state.leagueArchives] : [];
-
-  // Season Rollover Check
-  if (seasonId < activeSeasonNumber) {
-    const pastSeasonNum = seasonId;
-    const pastArchiveId = createDeterministicArchiveId(pastSeasonNum);
-    if (!leagueArchives.some((a) => a.id === pastArchiveId || (a.type === 'ninetyDay' && a.seasonNumber === pastSeasonNum))) {
-      const pastPoints = typeof state.seasonPoints === 'number' ? state.seasonPoints : (state.totalPoints || 0);
-      leagueArchives.push({
-        id: pastArchiveId,
-        type: 'ninetyDay',
-        periodLabel: `Season ${pastSeasonNum}`,
-        seasonNumber: pastSeasonNum,
-        competitors: [],
-        userRank: 1,
-        userPoints: pastPoints,
-        archivedAt: new Date().toISOString(),
-        completedAt: new Date().toISOString(),
-        participantCount: 1,
-      });
-    }
-    seasonId = activeSeasonNumber;
-    prevSeasonPos = 0;
-    prevSeasonNeg = 0;
-  }
-
-  const currentEvictedExcisionRecords = (state.evictedExcisionRecords || []).filter(
-    (r) => r && r.seasonNumber === seasonId
-  );
-
-  const newEntry = {
-    id: uid(),
-    amount: -penaltyAmount,
-    reason,
-    source,
-    timestamp: new Date().toISOString(),
-    ...(metadata ? { metadata } : {}),
-  };
-
-  const fullHistory = [newEntry, ...(state.pointsHistory || [])];
-  const keptHistory = fullHistory.slice(0, 500);
-  const droppedHistory = fullHistory.slice(500);
-
-  let seasonPosDrop = 0;
-  let seasonNegDrop = 0;
-
-  for (const dropEntry of droppedHistory) {
-    const amt = dropEntry.amount || 0;
-    if (new Date(dropEntry.timestamp) >= activeSeasonStart) {
-      if (amt > 0) seasonPosDrop += amt;
-      else seasonNegDrop += Math.abs(amt);
-    }
-  }
-
-  const newSeasonEvictedPos = prevSeasonPos + seasonPosDrop;
-  const newSeasonEvictedNeg = prevSeasonNeg + seasonNegDrop;
-
-  const newSeasonPoints = calculateSeasonalTotal(
-    newSeasonEvictedPos,
-    newSeasonEvictedNeg,
-    keptHistory,
-    activeSeasonStart,
-    currentEvictedExcisionRecords,
-    seasonId
-  );
-
-  return {
-    seasonId,
-    seasonPoints: newSeasonPoints,
-    seasonEvictedPos: newSeasonEvictedPos,
-    seasonEvictedNeg: newSeasonEvictedNeg,
-    evictedExcisionRecords: currentEvictedExcisionRecords,
-    totalPoints: newSeasonPoints,
-    pointsHistory: keptHistory,
-    leagueArchives,
   };
 }
 

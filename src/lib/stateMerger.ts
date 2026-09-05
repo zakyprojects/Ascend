@@ -30,6 +30,7 @@ import {
   Partnership,
   SharedChallenge,
   AppNotification,
+  EvictedEntryRecord,
   TimeTrackerState,
   TimeTrackerActivity,
   TimeTrackerTemplate,
@@ -476,21 +477,75 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
   const incSeason = incomingState.seasonId || 1;
   const maxSeason = Math.max(baseSeason, incSeason, currentWallClockSeason);
 
-  let mergedSeasonPos = 0;
-  let mergedSeasonNeg = 0;
-  if (baseSeason === maxSeason && incSeason === maxSeason) {
-    mergedSeasonPos = Math.max(baseState.seasonEvictedPos || 0, incomingState.seasonEvictedPos || 0);
-    mergedSeasonNeg = Math.max(baseState.seasonEvictedNeg || 0, incomingState.seasonEvictedNeg || 0);
-  } else if (baseSeason === maxSeason) {
-    mergedSeasonPos = baseState.seasonEvictedPos || 0;
-    mergedSeasonNeg = baseState.seasonEvictedNeg || 0;
-  } else if (incSeason === maxSeason) {
-    mergedSeasonPos = incomingState.seasonEvictedPos || 0;
-    mergedSeasonNeg = incomingState.seasonEvictedNeg || 0;
-  } else {
-    mergedSeasonPos = 0;
-    mergedSeasonNeg = 0;
+  const mergedEvictedEntryIds = mergeEntityArrays(
+    baseState.evictedEntryIds || [],
+    incomingState.evictedEntryIds || [],
+    tombstoneSet,
+    (a, b) => ({ ...a, ...b, amount: typeof b.amount === 'number' ? b.amount : (a.amount || 0) })
+  )
+    .filter((r) => r && r.seasonNumber === maxSeason)
+    .slice(-1000);
+
+  const evictedEntryIdSet = new Set(
+    mergedEvictedEntryIds.map((r) => r && r.id).filter(Boolean)
+  );
+
+  let ledgerSeasonPos = 0;
+  let ledgerSeasonNeg = 0;
+  for (const record of mergedEvictedEntryIds) {
+    const amt = record.amount || 0;
+    if (amt > 0) {
+      ledgerSeasonPos += amt;
+    } else if (amt < 0) {
+      ledgerSeasonNeg += Math.abs(amt);
+    }
   }
+
+  // Calculate each side's own ledger sum for maxSeason
+  let baseOwnLedgerPos = 0;
+  let baseOwnLedgerNeg = 0;
+  if (baseSeason === maxSeason) {
+    for (const r of baseState.evictedEntryIds || []) {
+      if (r && r.seasonNumber === maxSeason) {
+        const amt = r.amount || 0;
+        if (amt > 0) baseOwnLedgerPos += amt;
+        else if (amt < 0) baseOwnLedgerNeg += Math.abs(amt);
+      }
+    }
+  }
+
+  let incOwnLedgerPos = 0;
+  let incOwnLedgerNeg = 0;
+  if (incSeason === maxSeason) {
+    for (const r of incomingState.evictedEntryIds || []) {
+      if (r && r.seasonNumber === maxSeason) {
+        const amt = r.amount || 0;
+        if (amt > 0) incOwnLedgerPos += amt;
+        else if (amt < 0) incOwnLedgerNeg += Math.abs(amt);
+      }
+    }
+  }
+
+  // Legacy gap = scalar minus own ledger sum (untracked pre-ledger points)
+  const baseLegacyGapPos = baseSeason === maxSeason ? Math.max(0, (baseState.seasonEvictedPos || 0) - baseOwnLedgerPos) : 0;
+  const baseLegacyGapNeg = baseSeason === maxSeason ? Math.max(0, (baseState.seasonEvictedNeg || 0) - baseOwnLedgerNeg) : 0;
+
+  const incLegacyGapPos = incSeason === maxSeason ? Math.max(0, (incomingState.seasonEvictedPos || 0) - incOwnLedgerPos) : 0;
+  const incLegacyGapNeg = incSeason === maxSeason ? Math.max(0, (incomingState.seasonEvictedNeg || 0) - incOwnLedgerNeg) : 0;
+
+  // Resolution of untracked legacy gaps:
+  // We take Math.max of the two legacy gaps. This aligns with the codebase's existing pre-ledger merge philosophy
+  // (which used Math.max of scalar counters between syncs). In multi-device setups that previously synced before
+  // ledger tracking was introduced, both devices frequently shared the same untracked evicted baseline; summing
+  // the gaps would double-count that shared pre-ledger history. The residual risk is that if two devices were
+  // completely offline/partitioned from each other for their entire pre-ledger history, only the larger legacy gap
+  // is credited rather than both. Since new evictions are fully tracked by ID in the ledger and properly summed,
+  // this bounded legacy gap only applies to pre-migration data and safely expires at season rollover.
+  const resolvedLegacyGapPos = Math.max(baseLegacyGapPos, incLegacyGapPos);
+  const resolvedLegacyGapNeg = Math.max(baseLegacyGapNeg, incLegacyGapNeg);
+
+  let mergedSeasonPos = ledgerSeasonPos + resolvedLegacyGapPos;
+  let mergedSeasonNeg = ledgerSeasonNeg + resolvedLegacyGapNeg;
 
   const mergedHistoryFull = mergeEntityArrays(
     baseState.pointsHistory || [],
@@ -502,8 +557,6 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     return timeB - timeA;
   });
 
-  const finalHistory = mergedHistoryFull.slice(0, 500);
-
   const mergedEvictedExcisionRecords = mergeEntityArrays(
     baseState.evictedExcisionRecords || [],
     incomingState.evictedExcisionRecords || [],
@@ -511,6 +564,53 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
   )
     .filter((r) => r && r.seasonNumber === maxSeason)
     .slice(-500);
+
+  const evictedExcisionIdSet = new Set(
+    mergedEvictedExcisionRecords.map((r) => r && r.id).filter(Boolean)
+  );
+
+  const finalHistory = mergedHistoryFull.slice(0, 500);
+  const droppedHistory = mergedHistoryFull.slice(500);
+  const newEvictedFromMerge: EvictedEntryRecord[] = [];
+
+  if (droppedHistory.length > 0) {
+    const activeSeasonStart = startOfNinetyDayCycle();
+    let additionalEvictedPos = 0;
+    let additionalEvictedNeg = 0;
+
+    for (const dropEntry of droppedHistory) {
+      if (!dropEntry) continue;
+      const amt = dropEntry.amount || 0;
+      if (amt === 0) continue;
+
+      const dropTime = dropEntry.timestamp ? new Date(dropEntry.timestamp) : new Date(0);
+      if (dropTime >= activeSeasonStart) {
+        const dropId = dropEntry.id;
+        const alreadyRecorded = Boolean(
+          dropId &&
+            (evictedExcisionIdSet.has(dropId) ||
+              evictedExcisionIdSet.has(`ex_${maxSeason}_${dropId}`) ||
+              evictedEntryIdSet.has(dropId))
+        );
+        if (!alreadyRecorded) {
+          if (amt > 0) {
+            additionalEvictedPos += amt;
+          } else {
+            additionalEvictedNeg += Math.abs(amt);
+          }
+          if (dropId) {
+            newEvictedFromMerge.push({ id: dropId, seasonNumber: maxSeason, amount: amt });
+            evictedEntryIdSet.add(dropId);
+          }
+        }
+      }
+    }
+
+    mergedSeasonPos += additionalEvictedPos;
+    mergedSeasonNeg += additionalEvictedNeg;
+  }
+
+  const finalEvictedEntryIds = [...mergedEvictedEntryIds, ...newEvictedFromMerge].slice(-1000);
 
   const computedSeasonPoints = calculateSeasonalTotal(
     mergedSeasonPos,
@@ -528,6 +628,7 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
   const totalPoints = computedSeasonPoints;
   const pointsHistory = finalHistory;
   const evictedExcisionRecords = mergedEvictedExcisionRecords;
+  const evictedEntryIds = finalEvictedEntryIds;
 
   // 5. Workouts
   const workouts = mergeEntityArrays(
@@ -893,9 +994,26 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
   const currentUser = incomingState.currentUser || baseState.currentUser || null;
   const username = (currentUser && currentUser.username) || incomingState.username || baseState.username || 'Guest User';
 
-  const addictionTracker = incomingState.addictionTracker !== undefined
+  let addictionTracker = incomingState.addictionTracker !== undefined
     ? incomingState.addictionTracker
     : baseState.addictionTracker;
+
+  if (baseState.addictionTracker && incomingState.addictionTracker && baseState.addictionTracker.id === incomingState.addictionTracker.id) {
+    const baseAwards = baseState.addictionTracker.awardedMilestones || [];
+    const incAwards = incomingState.addictionTracker.awardedMilestones || [];
+    const awardsMap = new Map<string, any>();
+    for (const a of [...baseAwards, ...incAwards]) {
+      if (a && a.milestone && !awardsMap.has(a.milestone)) {
+        awardsMap.set(a.milestone, a);
+      }
+    }
+    if (addictionTracker) {
+      addictionTracker = {
+        ...addictionTracker,
+        awardedMilestones: Array.from(awardsMap.values()),
+      };
+    }
+  }
 
   return {
     ...DEFAULT_STATE,
@@ -908,6 +1026,7 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     seasonEvictedPos,
     seasonEvictedNeg,
     evictedExcisionRecords,
+    evictedEntryIds,
     totalPoints,
     pointsHistory,
     habits,

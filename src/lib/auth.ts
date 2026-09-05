@@ -1,6 +1,6 @@
 import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, PartnerInvite, Partnership } from '@/types';
 import { SEED_ACCOUNTS, calculateSeedAccountPoints } from './seedAccounts';
-import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory } from './leagues';
+import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory, getSeasonNumber } from './leagues';
 import { generateNumericUID, todayKey } from './dates';
 import { getHighestUserStreak } from './habitPenalties';
 import {
@@ -56,6 +56,31 @@ export function getProfilePointsByUsername(username: string): number {
   return match?.total_points || match?.totalPoints || 0;
 }
 
+export function computeCompetitorLeaguePoints(
+  profile: any,
+  type: LeagueType,
+  now: Date = new Date()
+): number {
+  const pointsHistory = profile.points_history || [];
+  const start = getLeaguePeriodStart(type, now);
+
+  if (type === 'ninetyDay') {
+    const activeSeason = getSeasonNumber(now);
+    const profileSeasonId = typeof profile.season_id === 'number' ? profile.season_id : 1;
+    if (profileSeasonId === activeSeason) {
+      if (typeof profile.season_points === 'number') {
+        return profile.season_points;
+      }
+      // Residual fallback for legacy profiles saved without season_points
+      return calculatePeriodPoints(pointsHistory, start, now, profile.total_points);
+    }
+    // Competitor has not been active in the current season cycle
+    return 0;
+  }
+
+  return calculatePeriodPoints(pointsHistory, start, now, profile.total_points);
+}
+
 export function getProfileSeasonPointsByUsername(
   username: string,
   type: LeagueType = 'ninetyDay',
@@ -73,9 +98,7 @@ export function getProfileSeasonPointsByUsername(
   // Check cached profiles
   const profile = cachedProfiles.find((p) => p.username?.toLowerCase() === lower);
   if (profile) {
-    const pointsHistory = profile.points_history || [];
-    const start = getLeaguePeriodStart(type, now);
-    return calculatePeriodPoints(pointsHistory, start, now, profile.total_points);
+    return computeCompetitorLeaguePoints(profile, type, now);
   }
 
   return 0;
@@ -676,13 +699,11 @@ export function getRegisteredCompetitors(
 ): LeagueCompetitor[] {
   const profiles = profilesOverride || cachedProfiles;
   const competitors: LeagueCompetitor[] = [];
-  const start = getLeaguePeriodStart(type, now);
 
   for (const p of profiles) {
     if (p.id === currentUserId) continue;
 
-    const pointsHistory = p.points_history || [];
-    const periodPoints = calculatePeriodPoints(pointsHistory, start, now, p.total_points);
+    const periodPoints = computeCompetitorLeaguePoints(p, type, now);
 
     const reconstructedState = reconstructStateFromProfile(p);
     const highestInfo = getHighestUserStreak(reconstructedState, now);
