@@ -557,6 +557,51 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     return timeB - timeA;
   });
 
+  // Deduplicate habit_completed entries by (habitId, periodKey), keeping earliest timestamp (with deterministic id tie-breaker)
+  const habitCompletionBest = new Map<string, PointsEntry>();
+  const duplicateHabitEntryIds = new Set<string>();
+
+  for (const entry of mergedHistoryFull) {
+    if (
+      entry &&
+      entry.source === 'habit_completed' &&
+      entry.metadata &&
+      typeof entry.metadata.habitId === 'string' &&
+      entry.metadata.habitId &&
+      typeof entry.metadata.periodKey === 'string' &&
+      entry.metadata.periodKey
+    ) {
+      const dedupKey = `${entry.metadata.habitId}_${entry.metadata.periodKey}`;
+      const existing = habitCompletionBest.get(dedupKey);
+      if (!existing) {
+        habitCompletionBest.set(dedupKey, entry);
+      } else {
+        const timeCand = entry.timestamp ? new Date(entry.timestamp).getTime() : 0;
+        const timeExist = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+        let replace = false;
+        if (timeCand !== timeExist) {
+          replace = timeCand < timeExist; // earliest timestamp wins
+        } else {
+          replace = (entry.id || '') < (existing.id || ''); // deterministic tie-breaker
+        }
+        if (replace) {
+          if (existing.id) duplicateHabitEntryIds.add(existing.id);
+          habitCompletionBest.set(dedupKey, entry);
+        } else {
+          if (entry.id) duplicateHabitEntryIds.add(entry.id);
+        }
+      }
+    }
+  }
+
+  const dedupedHistoryFull = duplicateHabitEntryIds.size > 0
+    ? mergedHistoryFull.filter((e) => e && e.id && !duplicateHabitEntryIds.has(e.id))
+    : mergedHistoryFull;
+
+  const postPointsDeletedEntityIds = duplicateHabitEntryIds.size > 0
+    ? Array.from(new Set([...postHabitDeletedEntityIds, ...duplicateHabitEntryIds])).slice(-500)
+    : postHabitDeletedEntityIds;
+
   const mergedEvictedExcisionRecords = mergeEntityArrays(
     baseState.evictedExcisionRecords || [],
     incomingState.evictedExcisionRecords || [],
@@ -569,8 +614,8 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     mergedEvictedExcisionRecords.map((r) => r && r.id).filter(Boolean)
   );
 
-  const finalHistory = mergedHistoryFull.slice(0, 500);
-  const droppedHistory = mergedHistoryFull.slice(500);
+  const finalHistory = dedupedHistoryFull.slice(0, 500);
+  const droppedHistory = dedupedHistoryFull.slice(500);
   const newEvictedFromMerge: EvictedEntryRecord[] = [];
 
   if (droppedHistory.length > 0) {
@@ -1091,7 +1136,7 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     notifications,
     leagueArchives,
     readLessonIds,
-    deletedEntityIds: postHabitDeletedEntityIds,
+    deletedEntityIds: postPointsDeletedEntityIds,
     restoredEntityIds: mergedRestoredEntityIds,
     timeTracker: mergedTimeTracker,
     themePreference: incomingState.themePreference || baseState.themePreference || 'dark',
