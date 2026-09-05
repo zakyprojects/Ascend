@@ -2504,6 +2504,7 @@ export function useAppState() {
         unit,
         targetFinishDate: targetFinishDate?.trim() || undefined,
         addedAt: now,
+        updatedAt: now,
         dateStarted: now,
         startedAt: now,
         isFinished: false,
@@ -2538,7 +2539,7 @@ export function useAppState() {
       ...prev,
       libraryBooks: prev.libraryBooks.map((lb) =>
         lb.id === bookId || lb.linkedBookId === bookId
-          ? { ...lb, targetFinishDate: formatted }
+          ? { ...lb, targetFinishDate: formatted, updatedAt: new Date().toISOString() }
           : lb
       ),
       books: [],
@@ -2547,6 +2548,7 @@ export function useAppState() {
 
   const updateReadingProgress = useCallback((bookId: string, progressAmount: number, newCurrentPage: number) => {
     const date = todayKey();
+    const nowIso = new Date().toISOString();
     setState((prev) => {
       const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
       if (!targetUserBook) return prev;
@@ -2555,12 +2557,13 @@ export function useAppState() {
       const existingPage = targetUserBook.currentAmount ?? targetUserBook.currentPage ?? 0;
       const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
       const clampedPage = Math.min(maxPages, Math.max(0, newCurrentPage));
-      const pageDelta = Math.max(0, clampedPage - existingPage);
+      const pageDelta = clampedPage - existingPage;
 
       const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
 
       const alreadyLoggedToday = (prev.readingLogs || []).some(
-        (l) => l.date === date && (l.bookId === bookId || l.bookId === targetUserBook.id)
+        (l) => l.date === date && [targetUserBook.id, bookId, targetUserBook.linkedBookId, targetUserBook.curatedBookId]
+          .filter(Boolean).includes(l.bookId)
       );
 
       // Points balancing: If reading habit is linked, do NOT award +5 reading hub points (habit completion awards points)
@@ -2570,6 +2573,7 @@ export function useAppState() {
       }
 
       let updatedReadingLogs = prev.readingLogs || [];
+      let removedLogIds: string[] = [];
       if (pageDelta > 0) {
         const readingLog: ReadingLog = {
           id: `reading-log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -2581,6 +2585,27 @@ export function useAppState() {
           createdAt: new Date().toISOString(),
         };
         updatedReadingLogs = [readingLog, ...updatedReadingLogs];
+      } else if (pageDelta < 0) {
+        let decreaseToApply = Math.abs(pageDelta);
+        const validBookIds = new Set(
+          [targetUserBook.id, bookId, targetUserBook.linkedBookId, targetUserBook.curatedBookId].filter(Boolean)
+        );
+        const nowIso = new Date().toISOString();
+        updatedReadingLogs = updatedReadingLogs.map((l) => {
+          if (decreaseToApply <= 0 || l.date !== date || !l.bookId || !validBookIds.has(l.bookId)) {
+            return l;
+          }
+          const currentLogPages = l.pagesRead ?? l.progressAmount ?? 0;
+          if (currentLogPages <= decreaseToApply) {
+            decreaseToApply -= currentLogPages;
+            removedLogIds.push(l.id);
+            return null;
+          } else {
+            const remaining = currentLogPages - decreaseToApply;
+            decreaseToApply = 0;
+            return { ...l, pagesRead: remaining, progressAmount: remaining, updatedAt: nowIso };
+          }
+        }).filter((l): l is ReadingLog => l !== null);
       }
 
       // Calculate total pages read today across ALL books
@@ -2595,6 +2620,7 @@ export function useAppState() {
             currentAmount: clampedPage,
             currentPage: clampedPage,
             status: (clampedPage >= maxPages && lb.status !== 'completed' ? 'reading' : lb.status) as UserBookStatus,
+            updatedAt: nowIso,
           };
         }
         return lb;
@@ -2606,10 +2632,14 @@ export function useAppState() {
       }
 
       let updatedHabits = prev.habits;
+      let updatedDeletedEntityIds = prev.deletedEntityIds || [];
+      if (removedLogIds.length > 0) {
+        updatedDeletedEntityIds = Array.from(new Set([...updatedDeletedEntityIds, ...removedLogIds])).slice(-500);
+      }
 
       // Auto-Check / Un-Check linked reading habit
       if (readingHabit) {
-        const key = periodKey(readingHabit.frequency);
+        const key = periodKey(readingHabit.frequency || 'daily');
         const currentCompletions = Array.isArray(readingHabit.completions)
           ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || new Date().toISOString() }]))
           : (readingHabit.completions || {});
@@ -2619,6 +2649,7 @@ export function useAppState() {
           category: readingHabit.category,
           habitId: readingHabit.id,
           habitName: readingHabit.name,
+          periodKey: key,
         };
 
         const nowIso = new Date().toISOString();
@@ -2650,6 +2681,9 @@ export function useAppState() {
           };
         } else if (totalPagesToday <= 0 && isCheckedToday) {
           // Auto-uncheck habit (negative corrections)
+          const currentPeriodKey = key;
+          const targetCompletion = currentCompletions[currentPeriodKey];
+          const completionInstanceTimestamp = targetCompletion?.updatedAt || readingHabit.createdAt || currentPeriodKey;
           updatedHabits = prev.habits.map((h) =>
             h.id === readingHabit.id
               ? {
@@ -2664,16 +2698,21 @@ export function useAppState() {
                 }
               : h
           );
-          pointsUpdate = {
-            ...pointsUpdate,
-            ...addPointsInternal(
-              { ...prev, ...pointsUpdate },
-              -habitPts,
-              `Habit unchecked: ${readingHabit.name}`,
-              'habit_unchecked',
-              habitMeta
-            ),
-          };
+          const prevToExcise = { ...prev, ...pointsUpdate };
+          const exciseResult = excisePointsEntriesInternal(
+            prevToExcise,
+            (entry) => entry.source === 'habit_completed'
+              && entry.metadata?.habitId === readingHabit.id
+              && entry.metadata?.periodKey === currentPeriodKey,
+            { pos: habitPts },
+            Infinity,
+            `habit_${readingHabit.id}_${currentPeriodKey}_${completionInstanceTimestamp}`
+          );
+          const { excisedEntryIds, ...restPoints } = exciseResult;
+          pointsUpdate = { ...pointsUpdate, ...restPoints };
+          if (excisedEntryIds?.length) {
+            updatedDeletedEntityIds = Array.from(new Set([...updatedDeletedEntityIds, ...excisedEntryIds])).slice(-500);
+          }
         }
       }
 
@@ -2683,6 +2722,7 @@ export function useAppState() {
         books: [],
         readingLogs: updatedReadingLogs,
         habits: updatedHabits,
+        deletedEntityIds: updatedDeletedEntityIds,
         ...pointsUpdate,
       };
     },
@@ -2741,6 +2781,7 @@ export function useAppState() {
               reflection: reflection.trim() || lb.reflection,
               dateCompleted: now,
               completedAt: now,
+              updatedAt: now,
               pointsAwarded: (lb.pointsAwarded || 0) + pointsToAward,
             };
           }
@@ -2773,6 +2814,7 @@ export function useAppState() {
         const allMatchingIds = new Set<string>([bookId]);
         if (targetUserBook.id) allMatchingIds.add(targetUserBook.id);
         if (targetUserBook.linkedBookId) allMatchingIds.add(targetUserBook.linkedBookId);
+        if (targetUserBook.curatedBookId) allMatchingIds.add(targetUserBook.curatedBookId);
 
         const targetTitleLower = (targetUserBook.title || '').toLowerCase();
         const bookLogs = prev.readingLogs.filter((l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)));
@@ -2785,11 +2827,65 @@ export function useAppState() {
           pointsUpdate = addPointsInternal(prev, -totalBookPoints, `Book deleted: ${targetUserBook.title}`, 'reading');
         }
 
+        const remainingReadingLogs = prev.readingLogs.filter((l) => !l.bookId || !allMatchingIds.has(l.bookId));
+        const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
+        let updatedHabits = prev.habits;
+        let habitExcisedIds: string[] = [];
+
+        if (readingHabit) {
+          const today = todayKey();
+          const key = periodKey(readingHabit.frequency || 'daily');
+          const currentCompletions = Array.isArray(readingHabit.completions)
+            ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || new Date().toISOString() }]))
+            : (readingHabit.completions || {});
+          const isCheckedToday = currentCompletions[key]?.done === true;
+          const remainingPagesToday = remainingReadingLogs
+            .filter((l) => l.date === today)
+            .reduce((sum, l) => sum + (l.pagesRead ?? l.progressAmount ?? 0), 0);
+
+          if (remainingPagesToday <= 0 && isCheckedToday) {
+            const nowIso = new Date().toISOString();
+            const habitPts = (readingHabit.isPreset && readingHabit.points > 0) ? readingHabit.points : 12;
+            const targetCompletion = currentCompletions[key];
+            const completionInstanceTimestamp = targetCompletion?.updatedAt || readingHabit.createdAt || key;
+
+            updatedHabits = prev.habits.map((h) =>
+              h.id === readingHabit.id
+                ? {
+                    ...h,
+                    completions: {
+                      ...(Array.isArray(h.completions)
+                        ? Object.fromEntries(h.completions.map((c) => [c, { done: true, updatedAt: h.updatedAt || nowIso }]))
+                        : (h.completions || {})),
+                      [key]: { done: false, updatedAt: nowIso },
+                    },
+                    updatedAt: nowIso,
+                  }
+                : h
+            );
+
+            const stateAfterBookPoints = { ...prev, ...pointsUpdate };
+            const exciseResult = excisePointsEntriesInternal(
+              stateAfterBookPoints,
+              (entry) => entry.source === 'habit_completed'
+                && entry.metadata?.habitId === readingHabit.id
+                && entry.metadata?.periodKey === key,
+              { pos: habitPts },
+              Infinity,
+              `habit_${readingHabit.id}_${key}_${completionInstanceTimestamp}`
+            );
+            const { excisedEntryIds, ...restPoints } = exciseResult;
+            pointsUpdate = { ...pointsUpdate, ...restPoints };
+            habitExcisedIds = excisedEntryIds || [];
+          }
+        }
+
         const idsArray = Array.from(allMatchingIds);
         const updatedDeletedEntityIds = [
           ...(prev.deletedEntityIds || []),
           ...idsArray,
           ...bookLogs.map((l) => l.id),
+          ...habitExcisedIds,
         ].slice(-500);
 
         return {
@@ -2798,7 +2894,8 @@ export function useAppState() {
           libraryBooks: prev.libraryBooks.filter(
             (lb) => !allMatchingIds.has(lb.id) && lb.title.toLowerCase() !== targetTitleLower
           ),
-          readingLogs: prev.readingLogs.filter((l) => !l.bookId || !allMatchingIds.has(l.bookId)),
+          readingLogs: remainingReadingLogs,
+          habits: updatedHabits,
           weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsArray),
           deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
@@ -2843,6 +2940,7 @@ export function useAppState() {
         unit,
         targetFinishDate: customTargetDate?.trim() || undefined,
         addedAt: now,
+        updatedAt: now,
         dateStarted: initialStatus === 'reading' || initialStatus === 'completed' ? now : undefined,
         startedAt: initialStatus === 'reading' || initialStatus === 'completed' ? now : undefined,
         completedAt: initialStatus === 'completed' ? now : undefined,
@@ -2901,6 +2999,7 @@ export function useAppState() {
         unit,
         targetFinishDate: targetFinishDate?.trim() || undefined,
         addedAt: now,
+        updatedAt: now,
         dateStarted: status === 'reading' ? now : undefined,
         startedAt: status === 'reading' ? now : undefined,
       };
@@ -2938,6 +3037,7 @@ export function useAppState() {
                 currentAmount: status === 'completed' ? maxPages : b.currentAmount,
                 currentPage: status === 'completed' ? maxPages : b.currentPage,
                 isFinished: status === 'completed',
+                updatedAt: now,
                 dateStarted: status === 'reading' && !b.dateStarted ? now : b.dateStarted,
                 startedAt: status === 'reading' && !b.startedAt ? now : b.startedAt,
                 completedAt: status === 'completed' ? (b.completedAt || now) : undefined,
@@ -2965,6 +3065,7 @@ export function useAppState() {
               currentPage: 0,
               status: 'reading' as UserBookStatus,
               isFinished: false,
+              updatedAt: now,
               dateStarted: now,
               startedAt: now,
               dateCompleted: undefined,

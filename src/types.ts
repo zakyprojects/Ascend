@@ -286,6 +286,7 @@ export interface UserBook {
   totalPages?: number;
   currentPage?: number;
   addedAt: string;
+  updatedAt?: string;
   startedAt?: string;
   completedAt?: string;
   isFinished?: boolean;

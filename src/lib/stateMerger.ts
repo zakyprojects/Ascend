@@ -777,20 +777,53 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     incomingLib,
     tombstoneSet,
     (baseB: UserBook, incB: UserBook) => {
-      const baseTime = baseB.addedAt || '';
-      const incTime = incB.addedAt || '';
-      const primary = incTime >= baseTime ? incB : baseB;
-      const secondary = incTime >= baseTime ? baseB : incB;
-      const effectiveStatus: UserBookStatus = (primary.status === 'completed' || secondary.status === 'completed')
-        ? 'completed'
-        : (primary.status === 'reading' || secondary.status === 'reading')
-        ? 'reading'
-        : (primary.status as UserBookStatus);
+      const baseUpdated = baseB.updatedAt;
+      const incUpdated = incB.updatedAt;
+
+      let primary: UserBook;
+      let secondary: UserBook;
+      let resolvedCurrentAmount: number;
+      let resolvedStatus: UserBookStatus;
+
+      if (baseUpdated && incUpdated) {
+        primary = incUpdated >= baseUpdated ? incB : baseB;
+        secondary = incUpdated >= baseUpdated ? baseB : incB;
+        resolvedCurrentAmount = primary.currentAmount ?? primary.currentPage ?? 0;
+        resolvedStatus = primary.status;
+      } else if (incUpdated && !baseUpdated) {
+        primary = incB;
+        secondary = baseB;
+        resolvedCurrentAmount = incB.currentAmount ?? incB.currentPage ?? 0;
+        resolvedStatus = incB.status;
+      } else if (baseUpdated && !incUpdated) {
+        primary = baseB;
+        secondary = incB;
+        resolvedCurrentAmount = baseB.currentAmount ?? baseB.currentPage ?? 0;
+        resolvedStatus = baseB.status;
+      } else {
+        // Fallback for legacy records that both predate updatedAt tracking:
+        const baseTime = baseB.addedAt || '';
+        const incTime = incB.addedAt || '';
+        primary = incTime >= baseTime ? incB : baseB;
+        secondary = incTime >= baseTime ? baseB : incB;
+        resolvedCurrentAmount = Math.max(
+          baseB.currentAmount ?? baseB.currentPage ?? 0,
+          incB.currentAmount ?? incB.currentPage ?? 0
+        );
+        resolvedStatus = (primary.status === 'completed' || secondary.status === 'completed')
+          ? 'completed'
+          : (primary.status === 'reading' || secondary.status === 'reading')
+          ? 'reading'
+          : (primary.status as UserBookStatus);
+      }
+
       return {
         ...secondary,
         ...primary,
-        status: effectiveStatus,
-        currentAmount: Math.max(baseB.currentAmount ?? baseB.currentPage ?? 0, incB.currentAmount ?? incB.currentPage ?? 0),
+        status: resolvedStatus,
+        currentAmount: resolvedCurrentAmount,
+        currentPage: resolvedCurrentAmount,
+        updatedAt: primary.updatedAt,
         totalAmount: incB.totalAmount ?? baseB.totalAmount ?? incB.totalPages ?? baseB.totalPages,
         targetFinishDate: incB.targetFinishDate ?? baseB.targetFinishDate,
         dateStarted: incB.dateStarted ?? baseB.dateStarted ?? incB.startedAt ?? baseB.startedAt,
