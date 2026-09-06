@@ -1,6 +1,6 @@
 import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, PartnerInvite, Partnership } from '@/types';
-import { SEED_ACCOUNTS } from './seedAccounts';
-import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory } from './leagues';
+import { SEED_ACCOUNTS, calculateSeedAccountPoints } from './seedAccounts';
+import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory, getSeasonNumber } from './leagues';
 import { generateNumericUID, todayKey } from './dates';
 import { getHighestUserStreak } from './habitPenalties';
 import {
@@ -54,6 +54,54 @@ export function getProfilePointsByUsername(username: string): number {
   if (!username) return 0;
   const match = cachedProfiles.find((p) => p.username?.toLowerCase() === username.toLowerCase());
   return match?.total_points || match?.totalPoints || 0;
+}
+
+export function computeCompetitorLeaguePoints(
+  profile: any,
+  type: LeagueType,
+  now: Date = new Date()
+): number {
+  const pointsHistory = profile.points_history || [];
+  const start = getLeaguePeriodStart(type, now);
+
+  if (type === 'ninetyDay') {
+    const activeSeason = getSeasonNumber(now);
+    const profileSeasonId = typeof profile.season_id === 'number' ? profile.season_id : 1;
+    if (profileSeasonId === activeSeason) {
+      if (typeof profile.season_points === 'number') {
+        return profile.season_points;
+      }
+      // Residual fallback for legacy profiles saved without season_points
+      return calculatePeriodPoints(pointsHistory, start, now, profile.total_points);
+    }
+    // Competitor has not been active in the current season cycle
+    return 0;
+  }
+
+  return calculatePeriodPoints(pointsHistory, start, now, profile.total_points);
+}
+
+export function getProfileSeasonPointsByUsername(
+  username: string,
+  type: LeagueType = 'ninetyDay',
+  now: Date = new Date()
+): number {
+  if (!username) return 0;
+  const lower = username.toLowerCase();
+
+  // Check seed accounts
+  const seed = SEED_ACCOUNTS.find((s) => s.username.toLowerCase() === lower);
+  if (seed) {
+    return calculateSeedAccountPoints(seed, type, now);
+  }
+
+  // Check cached profiles
+  const profile = cachedProfiles.find((p) => p.username?.toLowerCase() === lower);
+  if (profile) {
+    return computeCompetitorLeaguePoints(profile, type, now);
+  }
+
+  return 0;
 }
 
 /**
@@ -564,14 +612,22 @@ export function reconstructStateFromProfile(p: any): AppState {
     }
   });
 
-  const habits = activeHabits.map((h: any, i: number) => ({
-    id: `h-${i}`,
-    name: h.name,
-    category: h.category,
-    frequency: h.frequency || 'daily',
-    completions: habitCompletionsMap[h.name] || [],
-    createdAtPeriod: todayKey(),
-  }));
+  const nowIso = new Date().toISOString();
+  const habits = activeHabits.map((h: any, i: number) => {
+    const dates: string[] = habitCompletionsMap[h.name] || [];
+    const completionsMap: Record<string, { done: boolean; updatedAt: string }> = {};
+    dates.forEach((d) => {
+      completionsMap[d] = { done: true, updatedAt: nowIso };
+    });
+    return {
+      id: `h-${i}`,
+      name: h.name,
+      category: h.category,
+      frequency: h.frequency || 'daily',
+      completions: completionsMap,
+      createdAtPeriod: todayKey(),
+    };
+  });
 
   const workoutDates: string[] = [];
   pointsHistory.forEach((e: any) => {
@@ -643,13 +699,11 @@ export function getRegisteredCompetitors(
 ): LeagueCompetitor[] {
   const profiles = profilesOverride || cachedProfiles;
   const competitors: LeagueCompetitor[] = [];
-  const start = getLeaguePeriodStart(type, now);
 
   for (const p of profiles) {
     if (p.id === currentUserId) continue;
 
-    const pointsHistory = p.points_history || [];
-    const periodPoints = calculatePeriodPoints(pointsHistory, start, now, p.total_points);
+    const periodPoints = computeCompetitorLeaguePoints(p, type, now);
 
     const reconstructedState = reconstructStateFromProfile(p);
     const highestInfo = getHighestUserStreak(reconstructedState, now);

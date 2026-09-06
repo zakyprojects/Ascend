@@ -87,7 +87,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
     return () => clearTimeout(timer);
   }, [username, mode, guestState.currentUser]);
 
-  const guestPoints = guestState.totalPoints;
+  const guestPoints = guestState.seasonPoints ?? guestState.totalPoints ?? 0;
   const guestHabitsCount = guestState.habits.length;
   const hasGuestData = guestPoints > 0 || guestHabitsCount > 0;
 

@@ -61,14 +61,18 @@ export function previousPeriodKey(frequency: 'daily' | 'weekly', periodsAgo: num
   return weekKey(d);
 }
 
-/** Calculate current streak from completions array */
+/** Calculate current streak from completions map or array */
 export function calculateStreak(
-  completions: string[],
+  completions: Record<string, { done: boolean; updatedAt: string }> | string[] | undefined | null,
   frequency: 'daily' | 'weekly',
   now?: Date
 ): number {
-  if (completions.length === 0) return 0;
-  const sorted = [...completions].sort();
+  if (!completions) return 0;
+  const doneDates = Array.isArray(completions)
+    ? completions
+    : Object.entries(completions).filter(([, c]) => c && c.done).map(([d]) => d);
+  if (doneDates.length === 0) return 0;
+  const sorted = [...doneDates].sort();
 
   const effectiveNow = now || getNow();
   let streak = 0;
@@ -98,13 +102,17 @@ export function calculateStreak(
   return streak;
 }
 
-/** Calculate best (longest) streak from completions array */
+/** Calculate best (longest) streak from completions map or array */
 export function calculateBestStreak(
-  completions: string[],
+  completions: Record<string, { done: boolean; updatedAt: string }> | string[] | undefined | null,
   frequency: 'daily' | 'weekly'
 ): number {
-  if (completions.length === 0) return 0;
-  const sorted = [...completions].sort();
+  if (!completions) return 0;
+  const doneDates = Array.isArray(completions)
+    ? completions
+    : Object.entries(completions).filter(([, c]) => c && c.done).map(([d]) => d);
+  if (doneDates.length === 0) return 0;
+  const sorted = [...doneDates].sort();
   let best = 1;
   let current = 1;
 
@@ -126,14 +134,14 @@ export function calculateBestStreak(
   return best;
 }
 
-function addDays(key: string, n: number): string {
+export function addDays(key: string, n: number): string {
   const [y, m, d] = key.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   date.setDate(date.getDate() + n);
   return todayKey(date);
 }
 
-function addWeeks(key: string, n: number): string {
+export function addWeeks(key: string, n: number): string {
   // weekKey format: YYYY-Www
   const match = key.match(/^(\d{4})-W(\d{2})$/);
   if (!match) return key;

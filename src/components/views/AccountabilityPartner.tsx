@@ -34,6 +34,8 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
 import { getCurrentTier } from '@/lib/tiers';
+import { getSeasonNumber } from '@/lib/leagues';
+import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { todayKey, formatDateShort, parseDate, calculateElapsedDays } from '@/lib/dates';
 import { createNotificationSupabase, checkRecentPartnerNudgeSent } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
@@ -180,6 +182,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   // Real Partner high-level stats state loaded from Supabase
   const [partnerStatsData, setPartnerStatsData] = useState<{
     totalPoints: number;
+    seasonPoints?: number;
     stats: {
       streakDays: number;
       streakSource?: string;
@@ -226,22 +229,38 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     };
   }, [activePartnerUsername, bothStatsAllowed, getPartnerProfileStats]);
 
+  // Current Season & Lazy Client-Side Evaluation
+  const currentSeason = getSeasonNumber();
+
   // Current User Stats
-  const myTotalPoints = store.state.totalPoints || 0;
-  const myTier = getCurrentTier(myTotalPoints);
-  const myHabitsCompletedToday = (store.state.habits || []).filter(
-    (h) => (h.completions || []).includes(todayKey())
-  ).length;
+  const mySeasonPoints = store.getLeagueData('ninetyDay').userPoints;
+  const myTotalPoints = mySeasonPoints;
+  const myTier = getCurrentTier(mySeasonPoints);
+  const myHabitsCompletedToday = (store.state.habits || []).filter((h) => {
+    const today = todayKey();
+    return Array.isArray(h.completions)
+      ? h.completions.includes(today)
+      : h.completions?.[today]?.done === true;
+  }).length;
   const myHabitsCompletedTotal = (store.state.habits || []).reduce(
-    (acc, h) => acc + (h.completions?.length || 0),
+    (acc, h) =>
+      acc +
+      (Array.isArray(h.completions)
+        ? h.completions.length
+        : Object.values(h.completions || {}).filter((c) => c && c.done).length),
     0
   );
   const myStreakData = useMemo(() => calculateUnifiedStreak(store.state), [store.state]);
   const myCurrentStreakDays = myStreakData.currentStreakDays || 0;
 
-  // Partner Stats
-  const partnerTotalPoints = partnerStatsData ? partnerStatsData.totalPoints : 0;
-  const partnerTier = getCurrentTier(partnerTotalPoints);
+  // Partner Stats (Lazy Client-Side Evaluation)
+  const partnerSeason = (partnerStatsData as any)?.season_id ?? (partnerStatsData as any)?.seasonId ?? 1;
+  const partnerPoints = (partnerSeason === currentSeason)
+    ? (partnerStatsData?.seasonPoints ?? (partnerStatsData as any)?.season_points ?? partnerStatsData?.totalPoints ?? (activePartnerUsername ? getProfileSeasonPointsByUsername(activePartnerUsername) : 0))
+    : 0;
+  const partnerTotalPoints = partnerPoints;
+  const partnerSeasonPoints = partnerPoints;
+  const partnerTier = getCurrentTier(partnerSeasonPoints);
   const partnerHabitsCompleted = partnerStatsData?.stats?.habitsCompletedCount ?? 0;
   const partnerHabitsCompletedToday = partnerStatsData?.stats?.habitsCompletedTodayCount ?? 0;
   const partnerCurrentStreakDays =
@@ -884,13 +903,13 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     </div>
 
                     <div className="text-xs font-semibold">
-                      {myTotalPoints > partnerTotalPoints ? (
+                      {mySeasonPoints > partnerSeasonPoints ? (
                         <span className="text-success-text flex items-center gap-1">
-                          <TrendingUp size={13} /> You lead by {(myTotalPoints - partnerTotalPoints).toLocaleString()} pts
+                          <TrendingUp size={13} /> You lead by {(mySeasonPoints - partnerSeasonPoints).toLocaleString()} pts
                         </span>
-                      ) : partnerTotalPoints > myTotalPoints ? (
+                      ) : partnerSeasonPoints > mySeasonPoints ? (
                         <span className="text-warning-text flex items-center gap-1">
-                          <TrendingUp size={13} /> {activePartnerUsername} leads by {(partnerTotalPoints - myTotalPoints).toLocaleString()} pts
+                          <TrendingUp size={13} /> {activePartnerUsername} leads by {(partnerSeasonPoints - mySeasonPoints).toLocaleString()} pts
                         </span>
                       ) : (
                         <span className="text-content-muted">Tied in points</span>
@@ -903,7 +922,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     {/* You Column */}
                     <div
                       className={`p-4 rounded-xl border transition-all ${
-                        myTotalPoints >= partnerTotalPoints
+                        mySeasonPoints >= partnerSeasonPoints
                           ? 'bg-emerald-500/5 border-emerald-500/30 shadow-sm ring-1 ring-emerald-500/20'
                           : 'bg-bg-800/60 border-overlay-subtle'
                       }`}
@@ -916,13 +935,13 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                             <span className="block text-[10px] text-success-text font-semibold">{myTier.name} Tier</span>
                           </div>
                         </div>
-                        <TierBadge totalPoints={myTotalPoints} size="sm" />
+                        <TierBadge totalPoints={mySeasonPoints} size="sm" />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
-                          <span className="text-[10px] text-content-muted block">Total Points</span>
-                          <span className="text-sm font-display font-bold text-warning-text">{myTotalPoints.toLocaleString()}</span>
+                          <span className="text-[10px] text-content-muted block">Points</span>
+                          <span className="text-sm font-display font-bold text-warning-text">{mySeasonPoints.toLocaleString()}</span>
                         </div>
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                           <span className="text-[10px] text-content-muted block">Current Streak</span>
@@ -942,7 +961,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     {/* Partner Column */}
                     <div
                       className={`p-4 rounded-xl border transition-all ${
-                        partnerTotalPoints > myTotalPoints
+                        partnerSeasonPoints > mySeasonPoints
                           ? 'bg-emerald-500/5 border-emerald-500/30 shadow-sm ring-1 ring-emerald-500/20'
                           : 'bg-bg-800/60 border-overlay-subtle'
                       }`}
@@ -955,13 +974,13 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                             <span className="block text-[10px] text-success-text font-semibold">{partnerTier.name} Tier</span>
                           </div>
                         </div>
-                        <TierBadge totalPoints={partnerTotalPoints} size="sm" />
+                        <TierBadge totalPoints={partnerSeasonPoints} size="sm" />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
-                          <span className="text-[10px] text-content-muted block">Total Points</span>
-                          <span className="text-sm font-display font-bold text-warning-text">{partnerTotalPoints.toLocaleString()}</span>
+                          <span className="text-[10px] text-content-muted block">Points</span>
+                          <span className="text-sm font-display font-bold text-warning-text">{partnerSeasonPoints.toLocaleString()}</span>
                         </div>
                         <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                           <span className="text-[10px] text-content-muted block">Current Streak</span>

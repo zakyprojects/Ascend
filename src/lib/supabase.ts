@@ -95,13 +95,12 @@ export const syncBroadcaster = new SyncBroadcaster();
 // --- SUPABASE DATABASE SYNC HELPERS ---
 
 export interface UserDataWeight {
-  totalPoints: number;
   itemCount: number;
   arrayBreakdown: Record<string, number>;
 }
 
 export function computeStateDataWeight(state: Partial<AppState> | null | undefined): UserDataWeight {
-  if (!state) return { totalPoints: 0, itemCount: 0, arrayBreakdown: {} };
+  if (!state) return { itemCount: 0, arrayBreakdown: {} };
 
   const arrayBreakdown: Record<string, number> = {
     habits: state.habits?.length || 0,
@@ -133,14 +132,12 @@ export function computeStateDataWeight(state: Partial<AppState> | null | undefin
     notifications: state.notifications?.length || 0,
   };
 
-  const totalPoints = typeof state.totalPoints === 'number' ? Math.max(0, state.totalPoints) : 0;
   const itemCount =
     Object.values(arrayBreakdown).reduce((sum, c) => sum + c, 0) +
     (state.addictionTracker ? 1 : 0) +
-    (state.exerciseGoal ? 1 : 0) +
-    (state.readingGoal ? 1 : 0);
+    (state.exerciseGoal ? 1 : 0);
 
-  return { totalPoints, itemCount, arrayBreakdown };
+  return { itemCount, arrayBreakdown };
 }
 
 const userWatermarkMap = new Map<string, UserDataWeight>();
@@ -153,7 +150,6 @@ export function setUserDataWatermark(userId: string, stateOrWeight: AppState | U
     userWatermarkMap.set(userId, weight);
   } else {
     userWatermarkMap.set(userId, {
-      totalPoints: Math.max(existing.totalPoints, weight.totalPoints),
       itemCount: Math.max(existing.itemCount, weight.itemCount),
       arrayBreakdown: { ...existing.arrayBreakdown, ...weight.arrayBreakdown },
     });
@@ -228,9 +224,9 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
   const watermark = userWatermarkMap.get(userId);
 
   // Check 2A: Active in-memory session watermark guard
-  if (watermark && (watermark.itemCount > 0 || watermark.totalPoints > 0)) {
-    // Block total wipe: incoming is empty (0 items and 0 points)
-    if (incomingWeight.itemCount === 0 && incomingWeight.totalPoints === 0) {
+  if (watermark && watermark.itemCount > 0) {
+    // Block total wipe: incoming is empty (0 items)
+    if (incomingWeight.itemCount === 0) {
       console.error('[CRITICAL GUARD] Blocked catastrophic zero-out wipe to user_data for established account:', {
         userId,
         watermark,
@@ -251,11 +247,11 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
   }
 
   // Check 2B: Cold baseline check if no session watermark has been registered yet
-  if (!watermark && incomingWeight.itemCount === 0 && incomingWeight.totalPoints === 0) {
+  if (!watermark && incomingWeight.itemCount === 0) {
     const existingRes = await fetchUserDataWithStatusFromSupabase(userId);
     if (existingRes.exists && existingRes.state) {
       const existingWeight = computeStateDataWeight(existingRes.state);
-      if (existingWeight.itemCount > 0 || existingWeight.totalPoints > 0) {
+      if (existingWeight.itemCount > 0) {
         console.error('[CRITICAL GUARD] Blocked cold zero-out wipe over existing rich database state:', {
           userId,
           existingWeight,
@@ -290,10 +286,20 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
     const profilePromise = (async () => {
       if (!finalState.currentUser) return null;
 
-      const habitsCompletedCount = (finalState.habits || []).reduce((acc, h) => acc + (h.completions?.length || 0), 0);
+      const habitsCompletedCount = (finalState.habits || []).reduce(
+        (acc, h) =>
+          acc +
+          (Array.isArray(h.completions)
+            ? h.completions.length
+            : Object.values(h.completions || {}).filter((c) => c.done).length),
+        0
+      );
       const habitsCompletedTodayCount = (finalState.habits || []).reduce((acc, h) => {
         const todayStr = new Date().toISOString().split('T')[0];
-        return acc + (h.completions?.includes(todayStr) ? 1 : 0);
+        const isDone = Array.isArray(h.completions)
+          ? h.completions.includes(todayStr)
+          : h.completions?.[todayStr]?.done === true;
+        return acc + (isDone ? 1 : 0);
       }, 0);
       const unified = calculateUnifiedStreak(finalState);
       const exerciseMinutes = (finalState.workouts || []).reduce((sum, w) => sum + w.durationMinutes, 0);
@@ -332,6 +338,8 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
         notif_daily_reminder: finalState.currentUser.notifDailyReminder ?? true,
         notif_partner_activity: finalState.currentUser.notifPartnerActivity ?? true,
         notif_league_updates: finalState.currentUser.notifLeagueUpdates ?? true,
+        season_id: finalState.seasonId || 1,
+        season_points: typeof finalState.seasonPoints === 'number' ? finalState.seasonPoints : (finalState.totalPoints || 0),
         total_points: finalState.totalPoints || 0,
         points_history: finalState.pointsHistory || [],
         stats: userStats,

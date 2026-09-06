@@ -35,7 +35,7 @@ import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CAT
 import { getCurrentTier } from '@/lib/tiers';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { fetchPublicPlansFromSupabase, mapRowToImprovementPlan, supabase, syncBroadcaster } from '@/lib/supabase';
-import { getProfilePointsByUsername } from '@/lib/auth';
+import { getProfilePointsByUsername, getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { isTodayLocal, calculateActivePlanStreak } from '@/lib/dates';
 import { STARTER_TEMPLATES } from '@/data/planTemplates';
 
@@ -1236,7 +1236,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {remotePublicPlans.map((plan) => {
-                const creatorPts = plan.creatorPoints || getProfilePointsByUsername(plan.creatorUsername) || 0;
+                const creatorLifetimePts = plan.creatorPoints || getProfilePointsByUsername(plan.creatorUsername) || 0;
+                const creatorSeasonPts = getProfileSeasonPointsByUsername(plan.creatorUsername) || 0;
                 const isOwnPlan = (plan.creatorUsername || '').toLowerCase() === (currentUsername || '').toLowerCase();
                 const isAlreadyCopied = followedPlans.some((f) => f.originalPlanId === plan.id);
 
@@ -1250,9 +1251,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           <div>
                             <div className="text-xs font-bold text-content-secondary flex items-center gap-1.5">
                               {plan.creatorUsername}
-                              <TierBadge totalPoints={creatorPts} size="sm" />
+                              <TierBadge totalPoints={creatorSeasonPts} size="sm" />
                             </div>
-                            <span className="text-[10px] text-content-disabled">{creatorPts} pts</span>
+                            <span className="text-[10px] text-content-disabled">{creatorSeasonPts} pts</span>
                           </div>
                         </div>
 

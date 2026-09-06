@@ -30,6 +30,7 @@ import {
   Partnership,
   SharedChallenge,
   AppNotification,
+  EvictedEntryRecord,
   TimeTrackerState,
   TimeTrackerActivity,
   TimeTrackerTemplate,
@@ -40,6 +41,11 @@ import {
 } from '@/types';
 import { mergeSharedChallenge } from './pactLifecycle';
 import { ensureDefaultActivities } from './timeTracker';
+import {
+  calculateSeasonalTotal,
+  getSeasonNumber,
+  startOfNinetyDayCycle,
+} from './leagues';
 
 function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string }>(
   baseArr: T[] = [],
@@ -77,6 +83,158 @@ function mergeEntityArrays<T extends { id?: string; createdAt?: string | number;
   }
 
   return Array.from(map.values());
+}
+
+function normalizeHabitCompletions(
+  completions: Habit['completions'] | string[] | undefined,
+  fallbackTime: string
+): Record<string, { done: boolean; updatedAt: string }> {
+  if (!completions) return {};
+  if (Array.isArray(completions)) {
+    const res: Record<string, { done: boolean; updatedAt: string }> = {};
+    for (const d of completions) {
+      if (typeof d === 'string' && d) {
+        res[d] = { done: true, updatedAt: fallbackTime };
+      }
+    }
+    return res;
+  }
+  const res: Record<string, { done: boolean; updatedAt: string }> = {};
+  for (const [key, val] of Object.entries(completions)) {
+    if (val && typeof val === 'object') {
+      res[key] = {
+        done: Boolean((val as { done?: boolean }).done ?? true),
+        updatedAt: (val as { updatedAt?: string }).updatedAt || fallbackTime,
+      };
+    } else if (typeof val === 'boolean') {
+      res[key] = { done: val, updatedAt: fallbackTime };
+    }
+  }
+  return res;
+}
+
+function mergeHabitCompletions(
+  baseCompletions: Record<string, { done: boolean; updatedAt: string }>,
+  incomingCompletions: Record<string, { done: boolean; updatedAt: string }>
+): Record<string, { done: boolean; updatedAt: string }> {
+  const merged: Record<string, { done: boolean; updatedAt: string }> = { ...baseCompletions };
+  for (const [dateKey, incEntry] of Object.entries(incomingCompletions || {})) {
+    const baseEntry = merged[dateKey];
+    if (!baseEntry) {
+      merged[dateKey] = incEntry;
+    } else {
+      const baseTime = baseEntry.updatedAt || '';
+      const incTime = incEntry.updatedAt || '';
+      if (incTime >= baseTime) {
+        merged[dateKey] = incEntry;
+      }
+    }
+  }
+  return merged;
+}
+
+/**
+ * Deduplicate preset habits by normalized name while strictly leaving custom habits untouched.
+ * For duplicate preset habits with the same normalized name:
+ * - The habit with the earliest createdAt is kept as winner.
+ * - Completions across all duplicate members are merged into the winner.
+ * - Non-winner habit IDs are added to deletedEntityIds.
+ */
+export function deduplicatePresetHabits(
+  habits: Habit[] = [],
+  deletedEntityIds: string[] = []
+): { habits: Habit[]; deletedEntityIds: string[] } {
+  const customHabits: Habit[] = [];
+  const presetGroups = new Map<string, Habit[]>();
+
+  for (const h of habits) {
+    if (!h) continue;
+    if (!h.isPreset) {
+      customHabits.push(h);
+    } else {
+      const normName = (h.name || '').trim().toLowerCase();
+      const existingGroup = presetGroups.get(normName) || [];
+      existingGroup.push(h);
+      presetGroups.set(normName, existingGroup);
+    }
+  }
+
+  const newDeletedIds = new Set(deletedEntityIds || []);
+  const processedPresetWinners = new Map<string, Habit>();
+
+  for (const [normName, group] of presetGroups.entries()) {
+    if (group.length === 1) {
+      processedPresetWinners.set(normName, {
+        ...group[0],
+        completions: normalizeHabitCompletions(
+          group[0].completions,
+          group[0].updatedAt || group[0].createdAt || new Date().toISOString()
+        ),
+      });
+      continue;
+    }
+
+    // Multiple preset habits with same name: find winner with earliest createdAt
+    const sorted = [...group].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return (timeA || 0) - (timeB || 0);
+    });
+
+    const winner = sorted[0];
+    let mergedComps = normalizeHabitCompletions(
+      winner.completions,
+      winner.updatedAt || winner.createdAt || new Date().toISOString()
+    );
+    const mergedMissedPeriods = new Set<string>(winner.missedPeriods || []);
+
+    for (const member of group) {
+      for (const mp of member.missedPeriods || []) {
+        mergedMissedPeriods.add(mp);
+      }
+      if (member.id && member.id !== winner.id) {
+        newDeletedIds.add(member.id);
+        const memberComps = normalizeHabitCompletions(
+          member.completions,
+          member.updatedAt || member.createdAt || new Date().toISOString()
+        );
+        mergedComps = mergeHabitCompletions(mergedComps, memberComps);
+      }
+    }
+
+    processedPresetWinners.set(normName, {
+      ...winner,
+      missedPeriods: Array.from(mergedMissedPeriods),
+      completions: mergedComps,
+    });
+  }
+
+  // Build final array preserving original relative array ordering
+  const finalHabits: Habit[] = [];
+  const emittedPresetNames = new Set<string>();
+
+  for (const h of habits) {
+    if (!h) continue;
+    if (!h.isPreset) {
+      finalHabits.push(h);
+    } else {
+      const normName = (h.name || '').trim().toLowerCase();
+      if (!emittedPresetNames.has(normName)) {
+        emittedPresetNames.add(normName);
+        const winnerHabit = processedPresetWinners.get(normName);
+        if (winnerHabit) {
+          finalHabits.push(winnerHabit);
+        }
+      }
+    }
+  }
+
+  const finalDeletedIds = Array.from(newDeletedIds).slice(-500);
+
+  return {
+    habits: finalHabits,
+    deletedEntityIds: finalDeletedIds,
+  };
 }
 
 function mergeWeeklyGoals(
@@ -170,16 +328,24 @@ function mergeBadHabitLogs(
   const processLog = (log: BadHabitLog) => {
     if (!log) return;
     if (log.id && tombstoneSet.has(log.id)) return;
-    const compositeKey = `${log.badHabitId}_${log.date}`;
-    if (tombstoneSet.has(compositeKey)) return;
+    if (log.badHabitId && tombstoneSet.has(log.badHabitId)) return;
 
-    const key = log.id || compositeKey;
+    // Use compositeKey in map to prevent duplicate logs for the same bad habit on the same date via LWW
+    const key = `${log.badHabitId}_${log.date}`;
     const existing = map.get(key);
     if (!existing) {
       map.set(key, log);
     } else {
-      const existingTime = existing.createdAt ? new Date(existing.createdAt).getTime() : 0;
-      const incomingTime = log.createdAt ? new Date(log.createdAt).getTime() : 0;
+      const existingTime = existing.updatedAt
+        ? new Date(existing.updatedAt).getTime()
+        : existing.createdAt
+        ? new Date(existing.createdAt).getTime()
+        : 0;
+      const incomingTime = log.updatedAt
+        ? new Date(log.updatedAt).getTime()
+        : log.createdAt
+        ? new Date(log.createdAt).getTime()
+        : 0;
       if (incomingTime >= existingTime) {
         map.set(key, log);
       }
@@ -190,7 +356,7 @@ function mergeBadHabitLogs(
   incomingList.forEach(processLog);
 
   return Array.from(map.values()).sort(
-    (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    (a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
   );
 }
 
@@ -219,15 +385,37 @@ function mergeLeagueArchives(
   );
 }
 
+/**
+ * Pattern matching invalid/poisoned domain-slot composite tombstones.
+ * Rejects composite patterns such as:
+ * - `<entityId>_<YYYY-MM-DD>` (e.g. `badHabitId_2026-09-01`)
+ * - `<entityId>_<periodKey>` or other domain-slot formats.
+ * Preserves clean entity UUIDs, points entry IDs (e.g., `p_...`), and standalone IDs.
+ */
+const POISONED_COMPOSITE_KEY_REGEX = /^[A-Za-z0-9_-]+_\d{4}-\d{2}-\d{2}$/;
+
+export function isLegitimateTombstoneId(id: unknown): id is string {
+  if (typeof id !== 'string' || !id.trim()) return false;
+  const trimmed = id.trim();
+  // Reject composite date-slot keys
+  if (POISONED_COMPOSITE_KEY_REGEX.test(trimmed)) {
+    return false;
+  }
+  return true;
+}
+
 export function mergeAppState(baseState: AppState, incomingState: AppState): AppState {
   if (!baseState) return incomingState || DEFAULT_STATE;
   if (!incomingState) return baseState || DEFAULT_STATE;
 
-  // 1. Tombstones union and cap
-  const tombstoneSet = new Set<string>([
+  // 1. Tombstones union and cap with Global Ingestion Sanitizer
+  const rawTombstones = [
     ...(baseState.deletedEntityIds || []),
     ...(incomingState.deletedEntityIds || []),
-  ]);
+  ];
+
+  const sanitizedTombstones = rawTombstones.filter(isLegitimateTombstoneId);
+  const tombstoneSet = new Set<string>(sanitizedTombstones);
 
   // Un-tombstone IDs that were explicitly restored in incomingState
   for (const restoredId of incomingState.restoredEntityIds || []) {
@@ -244,23 +432,36 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     ])
   ).slice(-500);
 
-  // 2. Habits (merge completions, filter tombstones)
-  const habits = mergeEntityArrays(
+  // 2. Habits (last-write-wins by updatedAt/createdAt, with per-date completions merge)
+  const mergedHabitsRaw = mergeEntityArrays(
     baseState.habits || [],
     incomingState.habits || [],
     tombstoneSet,
     (baseH: Habit, incH: Habit) => {
-      const allCompletions = Array.from(new Set([...(baseH.completions || []), ...(incH.completions || [])]));
-      const baseTime = baseH.createdAt || '';
-      const incTime = incH.createdAt || '';
-      const primary = incTime >= baseTime ? incH : baseH;
-      const secondary = incTime >= baseTime ? baseH : incH;
+      const baseTime = baseH.updatedAt || baseH.createdAt || '';
+      const incTime = incH.updatedAt || incH.createdAt || '';
+      const winner = incTime >= baseTime ? incH : baseH;
+      const baseComps = normalizeHabitCompletions(baseH.completions, baseTime || new Date().toISOString());
+      const incComps = normalizeHabitCompletions(incH.completions, incTime || new Date().toISOString());
+      const mergedComps = mergeHabitCompletions(baseComps, incComps);
+      const mergedMissed = Array.from(
+        new Set([...(baseH.missedPeriods || []), ...(incH.missedPeriods || [])])
+      );
       return {
-        ...secondary,
-        ...primary,
-        completions: allCompletions,
+        ...winner,
+        missedPeriods: mergedMissed,
+        completions: mergedComps,
       };
     }
+  );
+  const normalizedHabits = mergedHabitsRaw.map((h) => ({
+    ...h,
+    completions: normalizeHabitCompletions(h.completions, h.updatedAt || h.createdAt || new Date().toISOString()),
+  }));
+
+  const { habits, deletedEntityIds: postHabitDeletedEntityIds } = deduplicatePresetHabits(
+    normalizedHabits,
+    mergedDeletedEntityIds
   );
 
   // 3. Journal entries
@@ -270,8 +471,83 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     tombstoneSet
   );
 
-  // 4. Points history & Total points
-  const pointsHistory = mergeEntityArrays(
+  // 4. Points history & Total points (Epoch-Gated Seasonal Resolution)
+  const currentWallClockSeason = getSeasonNumber();
+  const baseSeason = baseState.seasonId || 1;
+  const incSeason = incomingState.seasonId || 1;
+  const maxSeason = Math.max(baseSeason, incSeason, currentWallClockSeason);
+
+  const mergedEvictedEntryIds = mergeEntityArrays(
+    baseState.evictedEntryIds || [],
+    incomingState.evictedEntryIds || [],
+    tombstoneSet,
+    (a, b) => ({ ...a, ...b, amount: typeof b.amount === 'number' ? b.amount : (a.amount || 0) })
+  )
+    .filter((r) => r && r.seasonNumber === maxSeason)
+    .slice(-1000);
+
+  const evictedEntryIdSet = new Set(
+    mergedEvictedEntryIds.map((r) => r && r.id).filter(Boolean)
+  );
+
+  let ledgerSeasonPos = 0;
+  let ledgerSeasonNeg = 0;
+  for (const record of mergedEvictedEntryIds) {
+    const amt = record.amount || 0;
+    if (amt > 0) {
+      ledgerSeasonPos += amt;
+    } else if (amt < 0) {
+      ledgerSeasonNeg += Math.abs(amt);
+    }
+  }
+
+  // Calculate each side's own ledger sum for maxSeason
+  let baseOwnLedgerPos = 0;
+  let baseOwnLedgerNeg = 0;
+  if (baseSeason === maxSeason) {
+    for (const r of baseState.evictedEntryIds || []) {
+      if (r && r.seasonNumber === maxSeason) {
+        const amt = r.amount || 0;
+        if (amt > 0) baseOwnLedgerPos += amt;
+        else if (amt < 0) baseOwnLedgerNeg += Math.abs(amt);
+      }
+    }
+  }
+
+  let incOwnLedgerPos = 0;
+  let incOwnLedgerNeg = 0;
+  if (incSeason === maxSeason) {
+    for (const r of incomingState.evictedEntryIds || []) {
+      if (r && r.seasonNumber === maxSeason) {
+        const amt = r.amount || 0;
+        if (amt > 0) incOwnLedgerPos += amt;
+        else if (amt < 0) incOwnLedgerNeg += Math.abs(amt);
+      }
+    }
+  }
+
+  // Legacy gap = scalar minus own ledger sum (untracked pre-ledger points)
+  const baseLegacyGapPos = baseSeason === maxSeason ? Math.max(0, (baseState.seasonEvictedPos || 0) - baseOwnLedgerPos) : 0;
+  const baseLegacyGapNeg = baseSeason === maxSeason ? Math.max(0, (baseState.seasonEvictedNeg || 0) - baseOwnLedgerNeg) : 0;
+
+  const incLegacyGapPos = incSeason === maxSeason ? Math.max(0, (incomingState.seasonEvictedPos || 0) - incOwnLedgerPos) : 0;
+  const incLegacyGapNeg = incSeason === maxSeason ? Math.max(0, (incomingState.seasonEvictedNeg || 0) - incOwnLedgerNeg) : 0;
+
+  // Resolution of untracked legacy gaps:
+  // We take Math.max of the two legacy gaps. This aligns with the codebase's existing pre-ledger merge philosophy
+  // (which used Math.max of scalar counters between syncs). In multi-device setups that previously synced before
+  // ledger tracking was introduced, both devices frequently shared the same untracked evicted baseline; summing
+  // the gaps would double-count that shared pre-ledger history. The residual risk is that if two devices were
+  // completely offline/partitioned from each other for their entire pre-ledger history, only the larger legacy gap
+  // is credited rather than both. Since new evictions are fully tracked by ID in the ledger and properly summed,
+  // this bounded legacy gap only applies to pre-migration data and safely expires at season rollover.
+  const resolvedLegacyGapPos = Math.max(baseLegacyGapPos, incLegacyGapPos);
+  const resolvedLegacyGapNeg = Math.max(baseLegacyGapNeg, incLegacyGapNeg);
+
+  let mergedSeasonPos = ledgerSeasonPos + resolvedLegacyGapPos;
+  let mergedSeasonNeg = ledgerSeasonNeg + resolvedLegacyGapNeg;
+
+  const mergedHistoryFull = mergeEntityArrays(
     baseState.pointsHistory || [],
     incomingState.pointsHistory || [],
     tombstoneSet
@@ -281,8 +557,123 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     return timeB - timeA;
   });
 
-  const sumPoints = pointsHistory.reduce((acc, p) => acc + (p.amount || 0), 0);
-  const totalPoints = Math.max(0, baseState.totalPoints || 0, incomingState.totalPoints || 0, sumPoints);
+  // Deduplicate habit_completed entries by (habitId, periodKey), keeping earliest timestamp (with deterministic id tie-breaker)
+  const habitCompletionBest = new Map<string, PointsEntry>();
+  const duplicateHabitEntryIds = new Set<string>();
+
+  for (const entry of mergedHistoryFull) {
+    if (
+      entry &&
+      entry.source === 'habit_completed' &&
+      entry.metadata &&
+      typeof entry.metadata.habitId === 'string' &&
+      entry.metadata.habitId &&
+      typeof entry.metadata.periodKey === 'string' &&
+      entry.metadata.periodKey
+    ) {
+      const dedupKey = `${entry.metadata.habitId}_${entry.metadata.periodKey}`;
+      const existing = habitCompletionBest.get(dedupKey);
+      if (!existing) {
+        habitCompletionBest.set(dedupKey, entry);
+      } else {
+        const timeCand = entry.timestamp ? new Date(entry.timestamp).getTime() : 0;
+        const timeExist = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+        let replace = false;
+        if (timeCand !== timeExist) {
+          replace = timeCand < timeExist; // earliest timestamp wins
+        } else {
+          replace = (entry.id || '') < (existing.id || ''); // deterministic tie-breaker
+        }
+        if (replace) {
+          if (existing.id) duplicateHabitEntryIds.add(existing.id);
+          habitCompletionBest.set(dedupKey, entry);
+        } else {
+          if (entry.id) duplicateHabitEntryIds.add(entry.id);
+        }
+      }
+    }
+  }
+
+  const dedupedHistoryFull = duplicateHabitEntryIds.size > 0
+    ? mergedHistoryFull.filter((e) => e && e.id && !duplicateHabitEntryIds.has(e.id))
+    : mergedHistoryFull;
+
+  const postPointsDeletedEntityIds = duplicateHabitEntryIds.size > 0
+    ? Array.from(new Set([...postHabitDeletedEntityIds, ...duplicateHabitEntryIds])).slice(-500)
+    : postHabitDeletedEntityIds;
+
+  const mergedEvictedExcisionRecords = mergeEntityArrays(
+    baseState.evictedExcisionRecords || [],
+    incomingState.evictedExcisionRecords || [],
+    tombstoneSet
+  )
+    .filter((r) => r && r.seasonNumber === maxSeason)
+    .slice(-500);
+
+  const evictedExcisionIdSet = new Set(
+    mergedEvictedExcisionRecords.map((r) => r && r.id).filter(Boolean)
+  );
+
+  const finalHistory = dedupedHistoryFull.slice(0, 500);
+  const droppedHistory = dedupedHistoryFull.slice(500);
+  const newEvictedFromMerge: EvictedEntryRecord[] = [];
+
+  if (droppedHistory.length > 0) {
+    const activeSeasonStart = startOfNinetyDayCycle();
+    let additionalEvictedPos = 0;
+    let additionalEvictedNeg = 0;
+
+    for (const dropEntry of droppedHistory) {
+      if (!dropEntry) continue;
+      const amt = dropEntry.amount || 0;
+      if (amt === 0) continue;
+
+      const dropTime = dropEntry.timestamp ? new Date(dropEntry.timestamp) : new Date(0);
+      if (dropTime >= activeSeasonStart) {
+        const dropId = dropEntry.id;
+        const alreadyRecorded = Boolean(
+          dropId &&
+            (evictedExcisionIdSet.has(dropId) ||
+              evictedExcisionIdSet.has(`ex_${maxSeason}_${dropId}`) ||
+              evictedEntryIdSet.has(dropId))
+        );
+        if (!alreadyRecorded) {
+          if (amt > 0) {
+            additionalEvictedPos += amt;
+          } else {
+            additionalEvictedNeg += Math.abs(amt);
+          }
+          if (dropId) {
+            newEvictedFromMerge.push({ id: dropId, seasonNumber: maxSeason, amount: amt });
+            evictedEntryIdSet.add(dropId);
+          }
+        }
+      }
+    }
+
+    mergedSeasonPos += additionalEvictedPos;
+    mergedSeasonNeg += additionalEvictedNeg;
+  }
+
+  const finalEvictedEntryIds = [...mergedEvictedEntryIds, ...newEvictedFromMerge].slice(-1000);
+
+  const computedSeasonPoints = calculateSeasonalTotal(
+    mergedSeasonPos,
+    mergedSeasonNeg,
+    finalHistory,
+    startOfNinetyDayCycle(),
+    mergedEvictedExcisionRecords,
+    maxSeason
+  );
+
+  const seasonId = maxSeason;
+  const seasonPoints = computedSeasonPoints;
+  const seasonEvictedPos = mergedSeasonPos;
+  const seasonEvictedNeg = mergedSeasonNeg;
+  const totalPoints = computedSeasonPoints;
+  const pointsHistory = finalHistory;
+  const evictedExcisionRecords = mergedEvictedExcisionRecords;
+  const evictedEntryIds = finalEvictedEntryIds;
 
   // 5. Workouts
   const workouts = mergeEntityArrays(
@@ -431,20 +822,53 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     incomingLib,
     tombstoneSet,
     (baseB: UserBook, incB: UserBook) => {
-      const baseTime = baseB.addedAt || '';
-      const incTime = incB.addedAt || '';
-      const primary = incTime >= baseTime ? incB : baseB;
-      const secondary = incTime >= baseTime ? baseB : incB;
-      const effectiveStatus: UserBookStatus = (primary.status === 'completed' || secondary.status === 'completed')
-        ? 'completed'
-        : (primary.status === 'reading' || secondary.status === 'reading')
-        ? 'reading'
-        : (primary.status as UserBookStatus);
+      const baseUpdated = baseB.updatedAt;
+      const incUpdated = incB.updatedAt;
+
+      let primary: UserBook;
+      let secondary: UserBook;
+      let resolvedCurrentAmount: number;
+      let resolvedStatus: UserBookStatus;
+
+      if (baseUpdated && incUpdated) {
+        primary = incUpdated >= baseUpdated ? incB : baseB;
+        secondary = incUpdated >= baseUpdated ? baseB : incB;
+        resolvedCurrentAmount = primary.currentAmount ?? primary.currentPage ?? 0;
+        resolvedStatus = primary.status;
+      } else if (incUpdated && !baseUpdated) {
+        primary = incB;
+        secondary = baseB;
+        resolvedCurrentAmount = incB.currentAmount ?? incB.currentPage ?? 0;
+        resolvedStatus = incB.status;
+      } else if (baseUpdated && !incUpdated) {
+        primary = baseB;
+        secondary = incB;
+        resolvedCurrentAmount = baseB.currentAmount ?? baseB.currentPage ?? 0;
+        resolvedStatus = baseB.status;
+      } else {
+        // Fallback for legacy records that both predate updatedAt tracking:
+        const baseTime = baseB.addedAt || '';
+        const incTime = incB.addedAt || '';
+        primary = incTime >= baseTime ? incB : baseB;
+        secondary = incTime >= baseTime ? baseB : incB;
+        resolvedCurrentAmount = Math.max(
+          baseB.currentAmount ?? baseB.currentPage ?? 0,
+          incB.currentAmount ?? incB.currentPage ?? 0
+        );
+        resolvedStatus = (primary.status === 'completed' || secondary.status === 'completed')
+          ? 'completed'
+          : (primary.status === 'reading' || secondary.status === 'reading')
+          ? 'reading'
+          : (primary.status as UserBookStatus);
+      }
+
       return {
         ...secondary,
         ...primary,
-        status: effectiveStatus,
-        currentAmount: Math.max(baseB.currentAmount ?? baseB.currentPage ?? 0, incB.currentAmount ?? incB.currentPage ?? 0),
+        status: resolvedStatus,
+        currentAmount: resolvedCurrentAmount,
+        currentPage: resolvedCurrentAmount,
+        updatedAt: primary.updatedAt,
         totalAmount: incB.totalAmount ?? baseB.totalAmount ?? incB.totalPages ?? baseB.totalPages,
         targetFinishDate: incB.targetFinishDate ?? baseB.targetFinishDate,
         dateStarted: incB.dateStarted ?? baseB.dateStarted ?? incB.startedAt ?? baseB.startedAt,
@@ -648,9 +1072,26 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
   const currentUser = incomingState.currentUser || baseState.currentUser || null;
   const username = (currentUser && currentUser.username) || incomingState.username || baseState.username || 'Guest User';
 
-  const addictionTracker = incomingState.addictionTracker !== undefined
+  let addictionTracker = incomingState.addictionTracker !== undefined
     ? incomingState.addictionTracker
     : baseState.addictionTracker;
+
+  if (baseState.addictionTracker && incomingState.addictionTracker && baseState.addictionTracker.id === incomingState.addictionTracker.id) {
+    const baseAwards = baseState.addictionTracker.awardedMilestones || [];
+    const incAwards = incomingState.addictionTracker.awardedMilestones || [];
+    const awardsMap = new Map<string, any>();
+    for (const a of [...baseAwards, ...incAwards]) {
+      if (a && a.milestone && !awardsMap.has(a.milestone)) {
+        awardsMap.set(a.milestone, a);
+      }
+    }
+    if (addictionTracker) {
+      addictionTracker = {
+        ...addictionTracker,
+        awardedMilestones: Array.from(awardsMap.values()),
+      };
+    }
+  }
 
   return {
     ...DEFAULT_STATE,
@@ -658,6 +1099,12 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     ...incomingState,
     currentUser,
     username,
+    seasonId,
+    seasonPoints,
+    seasonEvictedPos,
+    seasonEvictedNeg,
+    evictedExcisionRecords,
+    evictedEntryIds,
     totalPoints,
     pointsHistory,
     habits,
@@ -666,7 +1113,6 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     exerciseGoal: incomingState.exerciseGoal !== undefined ? incomingState.exerciseGoal : baseState.exerciseGoal,
     books: [],
     readingLogs,
-    readingGoal: incomingState.readingGoal !== undefined ? incomingState.readingGoal : baseState.readingGoal,
     skills,
     skillLogs,
     badHabits,
@@ -690,7 +1136,7 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     notifications,
     leagueArchives,
     readLessonIds,
-    deletedEntityIds: mergedDeletedEntityIds,
+    deletedEntityIds: postPointsDeletedEntityIds,
     restoredEntityIds: mergedRestoredEntityIds,
     timeTracker: mergedTimeTracker,
     themePreference: incomingState.themePreference || baseState.themePreference || 'dark',

@@ -63,12 +63,13 @@ export interface Habit {
   /** Preset category, if from library */
   category?: string;
   createdAt: string;
-  /** ISO date strings (YYYY-MM-DD) or week keys of completed periods */
-  completions: string[];
+  updatedAt?: string;
+  /** Map of period/date keys to completion status with ISO timestamp */
+  completions: Record<string, { done: boolean; updatedAt: string }>;
   createdAtPeriod: string;
   /** Periods that were missed and penalized */
   missedPeriods?: string[];
-  /** Consecutive missed periods count (resets to 0 upon completion) */
+  /** @deprecated Phase A: Replaced with dynamic derivation from habit.completions. Kept for schema compatibility. */
   consecutiveMisses?: number;
   /** Whether this habit is automatically linked to a system module */
   isSystemLinked?: boolean;
@@ -94,7 +95,7 @@ export interface LeagueCompetitor {
   name: string;
   avatar: string; // emoji
   points: number; // period points
-  totalPoints: number; // overall lifetime points driving overall tier
+  totalPoints: number; // overall lifetime points (tier is driven by season points)
   isUser?: boolean;
   isRealUser?: boolean;
   isSeed?: boolean;
@@ -105,12 +106,16 @@ export interface LeagueCompetitor {
 }
 
 export interface LeagueArchive {
+  id?: string;
   type: LeagueType;
   periodLabel: string;
+  seasonNumber?: number;
   competitors: LeagueCompetitor[];
   userRank: number;
   userPoints: number;
   archivedAt: string;
+  completedAt?: string;
+  participantCount?: number;
 }
 
 export interface Lesson {
@@ -122,12 +127,34 @@ export interface Lesson {
   points: number;
 }
 
+export interface EvictedExcisionRecord {
+  id: string;
+  seasonNumber: number;
+  posAmount: number;
+  negAmount: number;
+  timestamp: string;
+}
+
+export interface EvictedEntryRecord {
+  id: string;
+  seasonNumber: number;
+  amount: number;
+}
+
 export interface AppState {
   currentUser: UserProfile | null;
   habits: Habit[];
   journalEntries: JournalEntry[];
-  /** Lifetime total points (drives tier, never resets) */
-  totalPoints: number;
+  seasonId: number;
+  seasonPoints: number;
+  seasonEvictedPos: number;
+  seasonEvictedNeg: number;
+  /** Evicted excision records to adjust evicted baseline without scalar desync */
+  evictedExcisionRecords: EvictedExcisionRecord[];
+  /** Evicted entry IDs for normal 500-cap pointsHistory eviction tracking */
+  evictedEntryIds: EvictedEntryRecord[];
+  /** DEPRECATED: Mirrored alias for seasonPoints to maintain backward compatibility */
+  totalPoints?: number;
   /** Points ledger entries for history */
   pointsHistory: PointsEntry[];
   /** League archives — final standings from completed periods */
@@ -176,31 +203,31 @@ export interface Book {
   finishedAt?: string;
   createdAt: string;
   targetFinishDate?: string;
+  /** @deprecated Book deadline penalties removed. Field retained for schema/backward compatibility. */
   consecutiveMisses?: number;
+  /** @deprecated Book deadline penalties removed. Field retained for schema/backward compatibility. */
   lastPenalizedDate?: string;
 }
 
 export interface ExerciseGoal {
   targetWeeklySessions: number;
+  /** @deprecated Phase A: Replaced with dynamic derivation from AppState.workouts. Kept for schema compatibility. */
   consecutiveMisses?: number;
   lastEvaluatedWeek?: string;
+  createdAt?: string;
 }
 
-export interface ReadingGoal {
-  cadence: 'daily' | 'weekly';
-  targetPages?: number;
-  consecutiveMisses?: number;
-  lastEvaluatedPeriod?: string;
-}
-
-export interface ReadingProgressLog {
+export interface ReadingLog {
   id: string;
-  bookId: string;
+  bookId?: string;
   date: string; // YYYY-MM-DD
-  progressAmount: number; // pages/chapters added in this session
-  pointsAwarded: number;
-  createdAt: string;
+  pagesRead: number; // positive delta only
+  createdAt: string; // ISO timestamp
+  progressAmount?: number;
+  pointsAwarded?: number;
 }
+
+export type ReadingProgressLog = ReadingLog;
 
 // Self Improvement Books - Curated Library & User Library
 export type BookCategory =
@@ -259,11 +286,14 @@ export interface UserBook {
   totalPages?: number;
   currentPage?: number;
   addedAt: string;
+  updatedAt?: string;
   startedAt?: string;
   completedAt?: string;
   isFinished?: boolean;
   linkedBookId?: string;
+  /** @deprecated Book deadline penalties removed. Field retained for schema/backward compatibility. */
   consecutiveMisses?: number;
+  /** @deprecated Book deadline penalties removed. Field retained for schema/backward compatibility. */
   lastPenalizedDate?: string;
 }
 
@@ -306,14 +336,23 @@ export interface BadHabitLog {
   consecutiveOccurrences?: number;
   pointsAwardedOrDeducted: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // Module 5: Addiction Recovery Tracker
+export interface AddictionMilestoneAward {
+  milestone: string; // '24h' | '1w' | '1m'
+  seasonNumber: number;
+  timestamp: string; // ISO timestamp
+  points: number;
+}
+
 export interface AddictionTracker {
   id: string;
   title: string;
   startDate: string; // ISO timestamp
-  milestonesUnlocked: string[]; // ['24h', '1w', '1m']
+  milestonesUnlocked: string[]; // ['24h', '1w', '1m'] - active streak milestones
+  awardedMilestones?: AddictionMilestoneAward[]; // lifetime awarded milestones ledger (immune to resets)
   createdAt: string;
 }
 
@@ -629,8 +668,16 @@ export interface AppState {
   currentUser: UserProfile | null;
   habits: Habit[];
   journalEntries: JournalEntry[];
-  /** Lifetime total points (drives tier, never resets) */
-  totalPoints: number;
+  seasonId: number;
+  seasonPoints: number;
+  seasonEvictedPos: number;
+  seasonEvictedNeg: number;
+  /** Evicted excision records to adjust evicted baseline without scalar desync */
+  evictedExcisionRecords: EvictedExcisionRecord[];
+  /** Evicted entry IDs for normal 500-cap pointsHistory eviction tracking */
+  evictedEntryIds: EvictedEntryRecord[];
+  /** DEPRECATED: Mirrored alias for seasonPoints to maintain backward compatibility */
+  totalPoints?: number;
   /** Points ledger entries for history */
   pointsHistory: PointsEntry[];
   /** League archives — final standings from completed periods */
@@ -645,8 +692,7 @@ export interface AppState {
   exerciseGoal?: ExerciseGoal | null;
   // Unified Reading Hub & Literature Module
   libraryBooks: UserBook[];
-  readingLogs: ReadingProgressLog[];
-  readingGoal?: ReadingGoal | null;
+  readingLogs: ReadingLog[];
   /** @deprecated Legacy books array. All reading data is migrated to libraryBooks and cleared on next sync */
   books: Book[];
   skills: Skill[];
@@ -913,6 +959,12 @@ export const DEFAULT_STATE: AppState = {
   currentUser: null,
   habits: [],
   journalEntries: [],
+  seasonId: 1,
+  seasonPoints: 0,
+  seasonEvictedPos: 0,
+  seasonEvictedNeg: 0,
+  evictedExcisionRecords: [],
+  evictedEntryIds: [],
   totalPoints: 0,
   pointsHistory: [],
   leagueArchives: [],
@@ -922,7 +974,6 @@ export const DEFAULT_STATE: AppState = {
   exerciseGoal: null,
   books: [],
   readingLogs: [],
-  readingGoal: null,
   skills: [],
   skillLogs: [],
   badHabits: [],

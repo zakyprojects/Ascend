@@ -91,7 +91,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         if (!habit || !habit.completions) {
           return { current: item.completed ? target : 0, target, unit, percent: item.completed ? 100 : 0 };
         }
-        const count = habit.completions.filter((c) => dateStrings.includes(typeof c === 'string' ? c : (c as any).date)).length;
+        const count = Array.isArray(habit.completions)
+          ? habit.completions.filter((c) => dateStrings.includes(typeof c === 'string' ? c : (c as any).date)).length
+          : Object.entries(habit.completions || {}).filter(([date, c]) => c && c.done && dateStrings.includes(date)).length;
         return {
           current: count,
           target,
@@ -153,8 +155,8 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         if (matchingBook?.id) matchingIds.add(matchingBook.id);
         if (matchingBook?.linkedBookId) matchingIds.add(matchingBook.linkedBookId);
 
-        const filtered = matchingIds.size > 0 ? logs.filter((l) => matchingIds.has(l.bookId)) : logs;
-        const totalPages = filtered.reduce((acc, l) => acc + (l.progressAmount || 0), 0);
+        const filtered = matchingIds.size > 0 ? logs.filter((l) => Boolean(l.bookId && matchingIds.has(l.bookId))) : logs;
+        const totalPages = filtered.reduce((acc, l) => acc + (l.pagesRead ?? l.progressAmount ?? 0), 0);
         return { current: totalPages, target, unit: 'pages', percent: Math.min(100, Math.round((totalPages / target) * 100)) };
       }
 

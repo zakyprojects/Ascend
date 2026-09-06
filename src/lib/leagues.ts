@@ -1,4 +1,4 @@
-import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile } from '@/types';
+import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile, EvictedExcisionRecord, AppState } from '@/types';
 import { getSeedCompetitors } from './seedAccounts';
 import { getRegisteredCompetitors } from './auth';
 
@@ -128,10 +128,11 @@ export function calculatePeriodPoints(
   pointsHistory: PointsEntry[],
   start: Date,
   end: Date = new Date(),
-  totalPointsFallback?: number
+  currentTotalPoints?: number, // Kept for signature compatibility
+  evictedPointsOffset: number = 0 // Kept for signature compatibility
 ): number {
   if (!pointsHistory || pointsHistory.length === 0) {
-    return Math.max(0, totalPointsFallback || 0);
+    return 0;
   }
 
   // Sort history ascending by timestamp
@@ -139,38 +140,29 @@ export function calculatePeriodPoints(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
-  let runningTotal = 0;
-  let pointsAtStart = 0;
-  let hasStartSet = false;
+  let periodScore = 0;
 
   for (const entry of history) {
     const ts = new Date(entry.timestamp);
-    if (!hasStartSet && ts >= start) {
-      pointsAtStart = runningTotal;
-      hasStartSet = true;
-    }
-    runningTotal = Math.max(0, runningTotal + (entry.amount || 0));
-  }
+    
+    // Only process entries that fall within the requested time period
+    if (ts >= start && ts <= end) {
+      // Ignore physical compensating entries used for lifetime debt forgiveness;
+      // seasonal scores dynamically floor at 0 on their own timeline.
+      if (entry.reason === 'System: Debt Forgiveness' || entry.source === 'system') {
+        continue;
+      }
 
-  if (!hasStartSet) {
-    // All entries occurred before 'start'
-    pointsAtStart = runningTotal;
-  }
-
-  let periodPoints = Math.max(0, runningTotal - pointsAtStart);
-
-  if (totalPointsFallback !== undefined && totalPointsFallback > 0) {
-    const fallbackMax = Math.max(0, totalPointsFallback);
-    if (periodPoints === 0 && history.length > 0) {
-      const allInPeriod = history.every((e) => new Date(e.timestamp) >= start);
-      if (allInPeriod) {
-        periodPoints = fallbackMax;
+      periodScore += (entry.amount || 0);
+      
+      // Seasonal Debt Forgiveness: Never let the season score fall below zero
+      if (periodScore < 0) {
+        periodScore = 0;
       }
     }
-    periodPoints = Math.min(periodPoints, fallbackMax);
   }
 
-  return periodPoints;
+  return periodScore;
 }
 
 /**
@@ -305,3 +297,86 @@ export const LEAGUE_CONFIG: Record<LeagueType, { name: string; description: stri
     color: '#a855f7',
   },
 };
+
+export function calculateSeasonalTotal(
+  seasonEvictedPos: number = 0,
+  seasonEvictedNeg: number = 0,
+  history: PointsEntry[] = [],
+  seasonStart: Date = startOfNinetyDayCycle(),
+  evictedExcisionRecords: EvictedExcisionRecord[] = [],
+  activeSeasonNumber?: number
+): number {
+  const targetSeason = typeof activeSeasonNumber === 'number' ? activeSeasonNumber : getSeasonNumber();
+  let seasonExcisedPosOffset = 0;
+  let seasonExcisedNegOffset = 0;
+
+  for (const rec of evictedExcisionRecords || []) {
+    if (rec && rec.seasonNumber === targetSeason) {
+      if (typeof rec.posAmount === 'number' && rec.posAmount > 0) {
+        seasonExcisedPosOffset += rec.posAmount;
+      }
+      if (typeof rec.negAmount === 'number' && rec.negAmount > 0) {
+        seasonExcisedNegOffset += rec.negAmount;
+      }
+    }
+  }
+
+  const effectivePos = Math.max(0, seasonEvictedPos - seasonExcisedPosOffset);
+  const effectiveNeg = Math.max(0, seasonEvictedNeg - seasonExcisedNegOffset);
+
+  if (!history || history.length === 0) {
+    return Math.max(0, effectivePos - effectiveNeg);
+  }
+
+  // Sort chronological
+  const sorted = [...history].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  let current = effectivePos - effectiveNeg;
+
+  for (const p of sorted) {
+    if (p.reason === 'System: Debt Forgiveness' || p.source === 'system') {
+      continue;
+    }
+    // ONLY process entries inside the active season
+    if (new Date(p.timestamp) >= seasonStart) {
+      current += (p.amount || 0);
+      // Dynamic zero-flooring
+      if (current < 0) {
+        current = 0;
+      }
+    }
+  }
+
+  return current;
+}
+
+/**
+ * Computes the live effective season points for the currently active season.
+ * If state.seasonId is behind the live season, stale evicted scalar baselines and excision records
+ * are ignored (treated as 0/empty), falling back cleanly to pointsHistory filtered from startOfNinetyDayCycle().
+ */
+export function getEffectiveSeasonPoints(state: AppState, now: Date = new Date()): number {
+  const liveSeason = getSeasonNumber(now);
+  const evictedValid = state.seasonId === liveSeason;
+
+  const effectivePos = evictedValid ? (state.seasonEvictedPos || 0) : 0;
+  const effectiveNeg = evictedValid ? (state.seasonEvictedNeg || 0) : 0;
+  const effectiveExcisionRecords = evictedValid
+    ? (state.evictedExcisionRecords || []).filter((r) => r && r.seasonNumber === liveSeason)
+    : [];
+
+  return calculateSeasonalTotal(
+    effectivePos,
+    effectiveNeg,
+    state.pointsHistory || [],
+    startOfNinetyDayCycle(now),
+    effectiveExcisionRecords,
+    liveSeason
+  );
+}
+
+export function createDeterministicArchiveId(seasonNumber: number): string {
+  return `archive-ninetyDay-season-${seasonNumber}`;
+}
+

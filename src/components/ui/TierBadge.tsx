@@ -96,7 +96,7 @@ export function TierProgress({ totalPoints }: TierProgressProps) {
         />
       </div>
       <div className="flex items-center justify-between mt-1.5">
-        <span className="text-xs text-content-disabled">{totalPoints.toLocaleString()} total</span>
+        <span className="text-xs text-content-disabled">{totalPoints.toLocaleString()} points</span>
         {next && (
           <span className="text-xs text-content-disabled">
             {(next.minPoints - totalPoints).toLocaleString()} to go
