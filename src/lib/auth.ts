@@ -282,19 +282,46 @@ export async function upgradeAnonymousUser(
   const trimmedEmail = email.trim().toLowerCase();
   const trimmedUsername = newUsername?.trim();
 
+  // 1. Retrieve current user to obtain their ID
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('No active user session found to upgrade.');
+  }
+
+  // 2. Validate username availability if provided
   if (trimmedUsername) {
-    const { data: { user } } = await supabase.auth.getUser();
-    const check = await isUsernameAvailable(trimmedUsername, user?.id);
+    const check = await isUsernameAvailable(trimmedUsername, user.id);
     if (!check.available) {
       throw new Error(check.reason || 'Username is not available.');
     }
   }
 
+  // 3. Update profiles table FIRST so DB row is authoritative before auth events fire
+  const updates: Record<string, any> = { email: trimmedEmail };
+  if (trimmedUsername) updates.username = trimmedUsername;
+  if (newAvatar) updates.avatar = newAvatar;
+
+  const { error: profileError } = await supabase.from('profiles').update(updates).eq('id', user.id);
+  if (profileError) {
+    console.warn('Warning updating profile during upgrade:', profileError.message);
+  }
+
+  // 4. Clear stale local cache
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem("ascend_user_cache_" + user.id);
+      localStorage.removeItem('ascend_guest_state_v2');
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // 5. FINALLY, update auth user. This fires USER_UPDATED when DB and cache are already correct
   const userMetadata: Record<string, any> = {};
   if (trimmedUsername) userMetadata.username = trimmedUsername;
   if (newAvatar) userMetadata.avatar = newAvatar;
 
-  const { data, error } = await supabase.auth.updateUser({
+  const { error } = await supabase.auth.updateUser({
     email: trimmedEmail,
     password,
     data: userMetadata,
@@ -302,14 +329,6 @@ export async function upgradeAnonymousUser(
 
   if (error) {
     throw new Error(error.message || 'Failed to upgrade account.');
-  }
-
-  if (data.user) {
-    const updates: Record<string, any> = { email: trimmedEmail };
-    if (trimmedUsername) updates.username = trimmedUsername;
-    if (newAvatar) updates.avatar = newAvatar;
-
-    await supabase.from('profiles').update(updates).eq('id', data.user.id);
   }
 }
 

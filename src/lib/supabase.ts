@@ -213,7 +213,7 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
   try {
     const existingRes = await fetchUserDataWithStatusFromSupabase(userId);
     if (existingRes.exists && existingRes.state) {
-      finalState = mergeAppState(existingRes.state, state);
+      finalState = mergeAppState(existingRes.state, state, 'writeSync');
     }
   } catch (e) {
     console.warn('[SAVE MERGE] Pre-fetch merge non-fatal exception, persisting local state:', e);

@@ -404,7 +404,13 @@ export function isLegitimateTombstoneId(id: unknown): id is string {
   return true;
 }
 
-export function mergeAppState(baseState: AppState, incomingState: AppState): AppState {
+export type MergeContext = 'hydration' | 'writeSync';
+
+export function mergeAppState(
+  baseState: AppState,
+  incomingState: AppState,
+  mergeContext: MergeContext = 'hydration'
+): AppState {
   if (!baseState) return incomingState || DEFAULT_STATE;
   if (!incomingState) return baseState || DEFAULT_STATE;
 
@@ -1069,8 +1075,78 @@ export function mergeAppState(baseState: AppState, incomingState: AppState): App
     clearedDates: mergedClearedDates,
   };
 
-  const currentUser = incomingState.currentUser || baseState.currentUser || null;
-  const username = (currentUser && currentUser.username) || incomingState.username || baseState.username || 'Guest User';
+  const isIncomingGuest = incomingState.currentUser?.isAnonymous || (incomingState.currentUser as any)?.is_anonymous;
+  const isBasePermanent = baseState.currentUser && !baseState.currentUser.isAnonymous && !(baseState.currentUser as any)?.is_anonymous;
+  
+  // Parse lastUsernameChangeAt timestamps to guarantee the most recent update takes precedence
+  const baseTimeStr = baseState.currentUser?.lastUsernameChangeAt || (baseState.currentUser as any)?.last_username_change_at;
+  const incomingTimeStr = incomingState.currentUser?.lastUsernameChangeAt || (incomingState.currentUser as any)?.last_username_change_at;
+  const baseChangeTs = baseTimeStr ? new Date(baseTimeStr).getTime() : 0;
+  const incomingChangeTs = incomingTimeStr ? new Date(incomingTimeStr).getTime() : 0;
+
+  let currentUser = incomingState.currentUser || baseState.currentUser || null;
+  if (isIncomingGuest && isBasePermanent) {
+      currentUser = baseState.currentUser; // Upgraded permanent server identity wins
+  } else if (baseState.currentUser && incomingState.currentUser) {
+      if (incomingChangeTs > baseChangeTs) {
+          // Incoming user has a more recent username update
+          currentUser = {
+              ...baseState.currentUser,
+              ...incomingState.currentUser,
+              username: incomingState.currentUser.username || baseState.currentUser.username,
+              lastUsernameChangeAt: incomingState.currentUser.lastUsernameChangeAt || baseState.currentUser.lastUsernameChangeAt,
+          };
+      } else if (baseChangeTs > incomingChangeTs) {
+          // Base user has a more recent username update (e.g. fresh database fetch)
+          currentUser = {
+              ...incomingState.currentUser,
+              ...baseState.currentUser,
+              username: baseState.currentUser.username || incomingState.currentUser.username,
+              lastUsernameChangeAt: baseState.currentUser.lastUsernameChangeAt || incomingState.currentUser.lastUsernameChangeAt,
+          };
+      } else {
+          // baseChangeTs === incomingChangeTs (exact tie or both 0/missing)
+          if (baseChangeTs > 0 && incomingChangeTs > 0) {
+            console.warn(
+              `[stateMerger] Timestamp collision on lastUsernameChangeAt (${baseChangeTs}). Resolving tie using mergeContext: '${mergeContext}'`
+            );
+          }
+
+          if (mergeContext === 'writeSync') {
+            // writeSync: incoming represents the active user's local write intent; base is existing server JSON
+            currentUser = {
+              ...baseState.currentUser,
+              ...incomingState.currentUser,
+              username: incomingState.currentUser.username || baseState.currentUser.username,
+              lastUsernameChangeAt: incomingState.currentUser.lastUsernameChangeAt || baseState.currentUser.lastUsernameChangeAt,
+            };
+          } else {
+            // hydration: base represents the authoritative freshly fetched server state; incoming is in-memory state
+            currentUser = {
+              ...incomingState.currentUser,
+              ...baseState.currentUser,
+              username: baseState.currentUser.username || incomingState.currentUser.username,
+              lastUsernameChangeAt: baseState.currentUser.lastUsernameChangeAt || incomingState.currentUser.lastUsernameChangeAt,
+            };
+          }
+      }
+  }
+  
+  const resolvedUsername = currentUser?.username;
+  let username = resolvedUsername;
+  if (!username) {
+      if (incomingChangeTs > baseChangeTs) {
+          username = incomingState.username || baseState.username || 'Guest User';
+      } else if (baseChangeTs > incomingChangeTs) {
+          username = baseState.username || incomingState.username || 'Guest User';
+      } else {
+          if (mergeContext === 'writeSync') {
+            username = incomingState.username || baseState.username || 'Guest User';
+          } else {
+            username = baseState.username || incomingState.username || 'Guest User';
+          }
+      }
+  }
 
   let addictionTracker = incomingState.addictionTracker !== undefined
     ? incomingState.addictionTracker
