@@ -135,7 +135,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
         }
 
         await withTimeout(upgradeAnonymousUser(email, password, username, avatar));
-        onClose();
+        window.location.reload();
       } else if (mode === 'signup') {
         const check = await isUsernameAvailable(username);
         if (!check.available) {

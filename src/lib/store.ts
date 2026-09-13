@@ -474,8 +474,12 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     };
   });
 
+  const activeDeletedEntityIdSet = new Set(activeDeletedEntityIds);
+  const filterActiveTombstones = <T extends { id?: string }>(items: T[] | undefined): T[] =>
+    (items ?? []).filter((item) => !item || !item.id || !activeDeletedEntityIdSet.has(item.id));
+
   const { habits: sanitizedHabits, deletedEntityIds: sanitizedDeletedEntityIds } = deduplicatePresetHabits(
-    rawSanitizedHabits,
+    rawSanitizedHabits.filter((h) => !h.id || !activeDeletedEntityIdSet.has(h.id)),
     activeDeletedEntityIds
   );
 
@@ -486,7 +490,7 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     currentUser: profile,
     username: profile ? profile.username : (st.username ?? 'Guest User'),
     habits: sanitizedHabits,
-    journalEntries: st.journalEntries ?? [],
+    journalEntries: filterActiveTombstones(st.journalEntries),
     seasonId,
     seasonPoints: computedSeasonPoints,
     seasonEvictedPos,
@@ -497,19 +501,21 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     pointsHistory,
     leagueArchives,
     readLessonIds: st.readLessonIds ?? [],
-    workouts: st.workouts ?? [],
+    workouts: filterActiveTombstones(st.workouts),
     books: [], // Wiped out to eliminate JSON payload bloat on sync
-    libraryBooks: sanitizedLibraryBooks,
-    readingLogs: st.readingLogs ?? [],
-    skills: st.skills ?? [],
-    skillLogs: st.skillLogs ?? [],
-    badHabits: (st.badHabits ?? []).map((bh) => ({
+    libraryBooks: sanitizedLibraryBooks.filter((b) => !b.id || !activeDeletedEntityIdSet.has(b.id)),
+    readingLogs: filterActiveTombstones(st.readingLogs),
+    skills: filterActiveTombstones(st.skills),
+    skillLogs: filterActiveTombstones(st.skillLogs),
+    badHabits: filterActiveTombstones(st.badHabits).map((bh) => ({
       ...bh,
       commitmentDays: bh.commitmentDays || 30,
       isCompleted: bh.isCompleted ?? false,
     })),
-    badHabitLogs: sanitizedBadHabitLogs,
-    addictionTracker: st.addictionTracker
+    badHabitLogs: sanitizedBadHabitLogs.filter(
+      (l) => (!l.id || !activeDeletedEntityIdSet.has(l.id)) && (!l.badHabitId || !activeDeletedEntityIdSet.has(l.badHabitId))
+    ),
+    addictionTracker: st.addictionTracker && (!st.addictionTracker.id || !activeDeletedEntityIdSet.has(st.addictionTracker.id))
       ? {
           ...st.addictionTracker,
           milestonesUnlocked: Array.isArray(st.addictionTracker.milestonesUnlocked)
@@ -520,12 +526,14 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
             : [],
         }
       : null,
-    cravingLogs: st.cravingLogs ?? [],
-    focusLogs: st.focusLogs ?? [],
-    decisionLogs: st.decisionLogs ?? [],
-    emotionLogs: st.emotionLogs ?? [],
-    weeklyGoals: (st.weeklyGoals ?? []).map((wg) => {
-      let reflections: WeeklyGoalReflection[] = Array.isArray(wg.reflections) ? wg.reflections : [];
+    cravingLogs: filterActiveTombstones(st.cravingLogs),
+    focusLogs: filterActiveTombstones(st.focusLogs),
+    decisionLogs: filterActiveTombstones(st.decisionLogs),
+    emotionLogs: filterActiveTombstones(st.emotionLogs),
+    weeklyGoals: filterActiveTombstones(st.weeklyGoals).map((wg) => {
+      let reflections: WeeklyGoalReflection[] = Array.isArray(wg.reflections)
+        ? wg.reflections.filter((r) => !r.id || !activeDeletedEntityIdSet.has(r.id))
+        : [];
       if (reflections.length === 0 && wg.insights && wg.insights.trim()) {
         reflections = [
           {
@@ -539,44 +547,48 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
       return {
         ...wg,
         reflections,
-        goals: (wg.goals ?? []).map((g: any) => ({
-          id: g.id || uid(),
-          title: g.title || g.text || 'Weekly Goal',
-          targetDescription: g.targetDescription || '',
-          priority: g.priority || 'medium',
-          linkedModule: g.linkedModule || 'none',
-          linkedItemId: g.linkedItemId || undefined,
-          targetValue: typeof g.targetValue === 'number' ? g.targetValue : undefined,
-          unit: g.unit || undefined,
-          manualProgress: typeof g.manualProgress === 'number' ? g.manualProgress : undefined,
-          completed: Boolean(g.completed ?? g.done),
-          archived: Boolean(g.archived),
-          carriedOverFromWeekKey: g.carriedOverFromWeekKey || undefined,
-          createdAt: g.createdAt || new Date().toISOString(),
-        })),
+        goals: (wg.goals ?? [])
+          .filter((g: any) => !g || !g.id || !activeDeletedEntityIdSet.has(g.id))
+          .map((g: any) => ({
+            id: g.id || uid(),
+            title: g.title || g.text || 'Weekly Goal',
+            targetDescription: g.targetDescription || '',
+            priority: g.priority || 'medium',
+            linkedModule: g.linkedModule || 'none',
+            linkedItemId: g.linkedItemId || undefined,
+            targetValue: typeof g.targetValue === 'number' ? g.targetValue : undefined,
+            unit: g.unit || undefined,
+            manualProgress: typeof g.manualProgress === 'number' ? g.manualProgress : undefined,
+            completed: Boolean(g.completed ?? g.done),
+            archived: Boolean(g.archived),
+            carriedOverFromWeekKey: g.carriedOverFromWeekKey || undefined,
+            createdAt: g.createdAt || new Date().toISOString(),
+          })),
       };
     }),
-    goals: st.goals ?? [],
-    projects: st.projects ?? [],
-    tasks: (st.tasks ?? []).map((t) => ({
+    goals: filterActiveTombstones(st.goals),
+    projects: filterActiveTombstones(st.projects),
+    tasks: filterActiveTombstones(st.tasks).map((t) => ({
       ...t,
-      subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+      subtasks: (Array.isArray(t.subtasks) ? t.subtasks : []).filter(
+        (st) => !st.id || !activeDeletedEntityIdSet.has(st.id)
+      ),
     })),
-    improvementPlans: st.improvementPlans ?? [],
-    followedPlans: st.followedPlans ?? [],
+    improvementPlans: filterActiveTombstones(st.improvementPlans),
+    followedPlans: filterActiveTombstones(st.followedPlans),
     partnerInvites: (st.partnerInvites ?? []).filter(
-      (inv) => !activeDeletedEntityIds.includes(inv.id)
+      (inv) => !activeDeletedEntityIdSet.has(inv.id)
     ),
     partnership:
-      st.partnership && activeDeletedEntityIds.includes(st.partnership.id)
+      st.partnership && activeDeletedEntityIdSet.has(st.partnership.id)
         ? null
         : (st.partnership ?? null),
     partnerships: (st.partnerships ?? []).filter(
-      (p) => !activeDeletedEntityIds.includes(p.id)
+      (p) => !activeDeletedEntityIdSet.has(p.id)
     ),
     sharedChallenges: (st.sharedChallenges ?? [])
       .filter(
-        (c) => !activeDeletedEntityIds.includes(c.id) && !activeDeletedEntityIds.includes(c.partnershipId)
+        (c) => !activeDeletedEntityIdSet.has(c.id) && !activeDeletedEntityIdSet.has(c.partnershipId)
       )
       .map((c) => reconcileSharedChallengeLifecycle(c)),
     notifications: (st.notifications ?? [])
@@ -586,11 +598,20 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     deletedEntityIds: sanitizedDeletedEntityIds.slice(-500),
     restoredEntityIds: (st.restoredEntityIds ?? []).slice(-500),
     timeTracker: {
-      activities: ensureDefaultActivities(st.timeTracker?.activities ?? DEFAULT_TIME_TRACKER_ACTIVITIES),
-      templates: (st.timeTracker?.templates ?? DEFAULT_TIME_TRACKER_STATE.templates).filter(
-        (t) => !activeDeletedEntityIds.includes(t.id)
+      activities: ensureDefaultActivities(
+        (st.timeTracker?.activities ?? DEFAULT_TIME_TRACKER_ACTIVITIES).filter(
+          (act) => !act.id || !activeDeletedEntityIdSet.has(act.id)
+        )
       ),
-      dailyLogs: st.timeTracker?.dailyLogs ?? {},
+      templates: (st.timeTracker?.templates ?? DEFAULT_TIME_TRACKER_STATE.templates).filter(
+        (t) => !activeDeletedEntityIdSet.has(t.id)
+      ),
+      dailyLogs: Object.fromEntries(
+        Object.entries(st.timeTracker?.dailyLogs ?? {}).map(([date, blocks]) => [
+          date,
+          (blocks ?? []).filter((block) => !block.id || !activeDeletedEntityIdSet.has(block.id)),
+        ])
+      ),
       clearedDates: st.timeTracker?.clearedDates ?? [],
     },
   };
@@ -977,7 +998,7 @@ export function useAppState() {
             // Reconcile and union-merge server state with current state using mergeAppState
             // Tombstones (deletedEntityIds) prevent resurrecting deleted items while preserving offline progress
             const serverState = serverRes.state!;
-            const merged = mergeAppState(serverState, current);
+            const merged = mergeAppState(serverState, current, 'hydration');
             setUserDataWatermark(userId, merged);
             return merged;
           });
@@ -1131,10 +1152,10 @@ export function useAppState() {
         }
 
         if (
-          (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') &&
+          (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') &&
           session?.user
         ) {
-          if (isHydrated.current && currentUserRef.current?.id === session.user.id) {
+          if (event !== 'USER_UPDATED' && isHydrated.current && currentUserRef.current?.id === session.user.id) {
             setIsAuthChecking(false);
             return;
           }
@@ -1186,7 +1207,7 @@ export function useAppState() {
                   lastCompletedDate: p.lastCompletedDate,
                 })),
               });
-              setState(() => sanitizedState);
+              setState((current) => mergeAppState(sanitizedState, current, 'hydration'));
             }
           } catch (e) {
             console.error('Error hydrating auth session:', e);
@@ -1219,7 +1240,7 @@ export function useAppState() {
 
               if (cachedState) {
                 const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
-                setState((current) => mergeAppState(sanitizedCached, current));
+                setState((current) => mergeAppState(sanitizedCached, current, 'hydration'));
               } else {
                 setState((prev) => {
                   if (prev.currentUser?.id === userId) return prev;
@@ -2155,20 +2176,24 @@ export function useAppState() {
   }, []);
 
   const updateProfileUsername = useCallback((newUsername: string, lastChangedAt?: string) => {
-    setState((prev) => {
-      if (!prev.currentUser) return prev;
-      const updatedUser = {
-        ...prev.currentUser,
-        username: newUsername,
-        lastUsernameChangeAt: lastChangedAt || new Date().toISOString(),
-      };
-      return {
-        ...prev,
-        currentUser: updatedUser,
-        username: newUsername,
-      };
-    });
-  }, []);
+    const timestamp = lastChangedAt || new Date().toISOString();
+    setState(
+      (prev) => {
+        if (!prev.currentUser) return prev;
+        const updatedUser = {
+          ...prev.currentUser,
+          username: newUsername,
+          lastUsernameChangeAt: timestamp,
+        };
+        return {
+          ...prev,
+          currentUser: updatedUser,
+          username: newUsername,
+        };
+      },
+      { immediate: true }
+    );
+  }, [setState]);
 
   const updateProfileAvatar = useCallback((newAvatar: string) => {
     setState((prev) => {
