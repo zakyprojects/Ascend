@@ -36,6 +36,10 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
   const weeklyGoals = store.state.weeklyGoals;
 
+  useEffect(() => {
+    console.log('__WEEKLY_GOALS_DUMP__:', JSON.stringify(store.state.weeklyGoals));
+  }, [store.state.weeklyGoals]);
+
   // Available unique workout types from history or defaults
   const availableWorkoutTypes = useMemo(() => {
     const fromHistory = (store.state.workouts || [])
