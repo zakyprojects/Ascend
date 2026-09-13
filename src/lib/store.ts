@@ -1131,10 +1131,10 @@ export function useAppState() {
         }
 
         if (
-          (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') &&
+          (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') &&
           session?.user
         ) {
-          if (isHydrated.current && currentUserRef.current?.id === session.user.id) {
+          if (event !== 'USER_UPDATED' && isHydrated.current && currentUserRef.current?.id === session.user.id) {
             setIsAuthChecking(false);
             return;
           }
