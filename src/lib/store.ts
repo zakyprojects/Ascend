@@ -341,7 +341,7 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
   );
 
   // Backward compatibility migration: Merge legacy books into libraryBooks
-  const legacyBooks: Book[] = st.books ?? [];
+  const legacyBooks = (st.books ?? []) as Array<Book & Partial<UserBook>>;
   const rawLibraryBooks: UserBook[] = st.libraryBooks ?? [];
   const tombstoneSet = new Set(st.deletedEntityIds || []);
 
@@ -413,7 +413,11 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
         id: b.id,
         title: b.title,
         author: b.author || 'Unknown Author',
+        description: b.description || undefined,
+        category: b.category || undefined,
+        coverImageUrl: b.coverImageUrl || undefined,
         isCurated: false,
+        curatedBookId: b.curatedBookId || undefined,
         isCustom: true,
         pointsReward: 0,
         pointsAwarded: 0,
@@ -434,6 +438,7 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
         linkedBookId: b.id,
         consecutiveMisses: b.consecutiveMisses,
         lastPenalizedDate: b.lastPenalizedDate,
+        updatedAt: b.updatedAt || undefined,
       };
       libraryMap.set(b.id, userBook);
     }
@@ -556,12 +561,15 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
             priority: g.priority || 'medium',
             linkedModule: g.linkedModule || 'none',
             linkedItemId: g.linkedItemId || undefined,
+            linkedMetricKey: g.linkedMetricKey || undefined,
             targetValue: typeof g.targetValue === 'number' ? g.targetValue : undefined,
             unit: g.unit || undefined,
             manualProgress: typeof g.manualProgress === 'number' ? g.manualProgress : undefined,
             completed: Boolean(g.completed ?? g.done),
             archived: Boolean(g.archived),
+            carryOverDismissed: Boolean(g.carryOverDismissed),
             carriedOverFromWeekKey: g.carriedOverFromWeekKey || undefined,
+            carriedOverFromGoalId: g.carriedOverFromGoalId || undefined,
             createdAt: g.createdAt || new Date().toISOString(),
           })),
       };
@@ -1868,7 +1876,7 @@ export function useAppState() {
         } else {
           const today = todayKey();
           const todayReadingLogs = (prev.readingLogs || []).filter((l) => l.date === today);
-          const totalPagesToday = todayReadingLogs.reduce((sum, l) => sum + (l.progressAmount || 0), 0);
+          const totalPagesToday = todayReadingLogs.reduce((sum, l) => sum + (l.pagesRead || 0), 0);
           const hasReadToday = totalPagesToday > 0;
 
           const nowIso = new Date().toISOString();
@@ -2571,7 +2579,7 @@ export function useAppState() {
     }));
   }, []);
 
-  const updateReadingProgress = useCallback((bookId: string, progressAmount: number, newCurrentPage: number) => {
+  const updateReadingProgress = useCallback((bookId: string, pagesDelta: number, newCurrentPage: number) => {
     const date = todayKey();
     const nowIso = new Date().toISOString();
     setState((prev) => {
@@ -2605,7 +2613,6 @@ export function useAppState() {
           bookId: targetUserBook.id,
           date,
           pagesRead: pageDelta,
-          progressAmount: pageDelta,
           pointsAwarded: pointsToAward,
           createdAt: new Date().toISOString(),
         };
@@ -2620,7 +2627,7 @@ export function useAppState() {
           if (decreaseToApply <= 0 || l.date !== date || !l.bookId || !validBookIds.has(l.bookId)) {
             return l;
           }
-          const currentLogPages = l.pagesRead ?? l.progressAmount ?? 0;
+          const currentLogPages = l.pagesRead || 0;
           if (currentLogPages <= decreaseToApply) {
             decreaseToApply -= currentLogPages;
             removedLogIds.push(l.id);
@@ -2628,7 +2635,7 @@ export function useAppState() {
           } else {
             const remaining = currentLogPages - decreaseToApply;
             decreaseToApply = 0;
-            return { ...l, pagesRead: remaining, progressAmount: remaining, updatedAt: nowIso };
+            return { ...l, pagesRead: remaining, updatedAt: nowIso };
           }
         }).filter((l): l is ReadingLog => l !== null);
       }
@@ -2636,7 +2643,7 @@ export function useAppState() {
       // Calculate total pages read today across ALL books
       const totalPagesToday = updatedReadingLogs
         .filter((l) => l.date === date)
-        .reduce((sum, l) => sum + (l.pagesRead ?? l.progressAmount ?? 0), 0);
+        .reduce((sum, l) => sum + (l.pagesRead || 0), 0);
 
       const updatedLibraryBooks = prev.libraryBooks.map((lb) => {
         if (lb.id === bookId || lb.linkedBookId === bookId || lb.id === targetUserBook.id) {
@@ -2788,7 +2795,6 @@ export function useAppState() {
             bookId: targetUserBook.id,
             date: todayKey(new Date()),
             pagesRead: unreadDelta,
-            progressAmount: unreadDelta,
             pointsAwarded: 0,
             createdAt: now,
           };
@@ -2866,7 +2872,7 @@ export function useAppState() {
           const isCheckedToday = currentCompletions[key]?.done === true;
           const remainingPagesToday = remainingReadingLogs
             .filter((l) => l.date === today)
-            .reduce((sum, l) => sum + (l.pagesRead ?? l.progressAmount ?? 0), 0);
+            .reduce((sum, l) => sum + (l.pagesRead || 0), 0);
 
           if (remainingPagesToday <= 0 && isCheckedToday) {
             const nowIso = new Date().toISOString();
@@ -4136,11 +4142,13 @@ export function useAppState() {
         priority: goalData.priority || 'medium',
         linkedModule: goalData.linkedModule || 'none',
         linkedItemId: goalData.linkedItemId || undefined,
+        linkedMetricKey: goalData.linkedMetricKey || undefined,
         targetValue: typeof goalData.targetValue === 'number' && goalData.targetValue > 0 ? goalData.targetValue : undefined,
         unit: goalData.unit?.trim() || undefined,
         manualProgress: typeof goalData.manualProgress === 'number' ? goalData.manualProgress : 0,
         completed: Boolean(goalData.completed),
         carriedOverFromWeekKey: goalData.carriedOverFromWeekKey,
+        carriedOverFromGoalId: goalData.carriedOverFromGoalId || undefined,
         createdAt: new Date().toISOString(),
       };
 
@@ -4224,7 +4232,10 @@ export function useAppState() {
       if (
         targetDoc &&
         targetDoc.goals.some(
-          (g) => g.title.trim().toLowerCase() === targetGoal.title.trim().toLowerCase()
+          (g) =>
+            g.carriedOverFromGoalId === targetGoal.id ||
+            (!g.carriedOverFromGoalId &&
+              g.title.trim().toLowerCase() === targetGoal.title.trim().toLowerCase())
         )
       ) {
         return prev;
@@ -4236,6 +4247,7 @@ export function useAppState() {
         completed: false,
         manualProgress: options?.resumeProgress ? (targetGoal.manualProgress || 0) : 0,
         carriedOverFromWeekKey: sourceWeekKey,
+        carriedOverFromGoalId: targetGoal.id,
         createdAt: new Date().toISOString(),
       };
 

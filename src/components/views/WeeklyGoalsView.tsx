@@ -27,6 +27,7 @@ import {
   getWeekReflectionCutoff,
 } from '@/lib/dates';
 import { WeeklyGoalItem, WeeklyGoalPriority, WeeklyGoalLinkedModule, WeeklyGoalReflection } from '@/types';
+import { computeLinkedGoalProgress, GoalProgressResult, LINKED_GOAL_METRICS, LinkedModule } from '@/lib/linkedGoalMetrics';
 
 export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const { showErrorToast } = useToast();
@@ -67,109 +68,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     );
   }, [weeklyGoals, selectedWeekKey]);
 
-  // Derived progress calculator for linked modules during selectedWeekKey (or specified targetWeekKey)
-  const getLinkedGoalProgress = useCallback(
-    (item: WeeklyGoalItem, targetWeekKey?: string): { current: number; target: number; unit: string; percent: number } => {
+  // Derived progress calculator using registry-based computeLinkedGoalProgress
+  const getGoalProgress = useCallback(
+    (item: WeeklyGoalItem, targetWeekKey?: string): GoalProgressResult => {
       const weekKeyToUse = targetWeekKey || selectedWeekKey;
-      const target = item.targetValue && item.targetValue > 0 ? item.targetValue : 1;
-      const unit = item.unit || 'times';
-
-      if (!item.linkedModule || item.linkedModule === 'none') {
-        const manual = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? target : 0);
-        return {
-          current: manual,
-          target,
-          unit,
-          percent: Math.min(100, Math.round((manual / target) * 100)),
-        };
-      }
-
       const { dateStrings } = getWeekDates(weekKeyToUse);
-
-      if (item.linkedModule === 'habit') {
-        const habit = store.state.habits.find((h) => h.id === item.linkedItemId);
-        if (!habit || !habit.completions) {
-          return { current: item.completed ? target : 0, target, unit, percent: item.completed ? 100 : 0 };
-        }
-        const count = Array.isArray(habit.completions)
-          ? habit.completions.filter((c) => dateStrings.includes(typeof c === 'string' ? c : (c as any).date)).length
-          : Object.entries(habit.completions || {}).filter(([date, c]) => c && c.done && dateStrings.includes(date)).length;
-        return {
-          current: count,
-          target,
-          unit: unit || 'completions',
-          percent: Math.min(100, Math.round((count / target) * 100)),
-        };
-      }
-
-      if (item.linkedModule === 'exercise') {
-        let weekWorkouts = store.state.workouts.filter((w) => dateStrings.includes(w.date));
-
-        // If the Goal specified a 'Target Workout Name', filter the exercise logs by matching workoutType (case-insensitive, trimmed)
-        const targetWorkoutName = (item.linkedItemId || '').trim().toLowerCase();
-        if (targetWorkoutName) {
-          weekWorkouts = weekWorkouts.filter(
-            (w) => (w.type || '').trim().toLowerCase() === targetWorkoutName
-          );
-        }
-
-        const targetUnit = (item.unit || 'sessions').trim().toLowerCase();
-
-        let progress = 0;
-        if (targetUnit === 'sessions' || targetUnit === 'workouts' || targetUnit === 'session' || targetUnit === 'times') {
-          progress = weekWorkouts.length;
-        } else if (targetUnit === 'mins' || targetUnit === 'minutes' || targetUnit === 'min') {
-          progress = weekWorkouts.reduce((acc, w) => acc + (w.durationMinutes || 0), 0);
-        } else if (targetUnit === 'reps' || targetUnit === 'sets' || targetUnit === 'km') {
-          progress = weekWorkouts
-            .filter((w) => (w.unit || '').trim().toLowerCase() === targetUnit)
-            .reduce((acc, w) => acc + (typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0), 0);
-        } else {
-          // Fallback matching custom unit if present, or length
-          const matchingUnitLogs = weekWorkouts.filter(
-            (w) => (w.unit || '').trim().toLowerCase() === targetUnit
-          );
-          if (matchingUnitLogs.length > 0) {
-            progress = matchingUnitLogs.reduce(
-              (acc, w) => acc + (typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0),
-              0
-            );
-          } else {
-            progress = weekWorkouts.length;
-          }
-        }
-
-        return {
-          current: progress,
-          target,
-          unit: item.unit || 'sessions',
-          percent: Math.min(100, Math.round((progress / target) * 100)),
-        };
-      }
-
-      if (item.linkedModule === 'reading') {
-        const logs = store.state.readingLogs.filter((l) => dateStrings.includes(l.date));
-        const matchingBook = store.state.libraryBooks.find((lb) => lb.id === item.linkedItemId || lb.linkedBookId === item.linkedItemId);
-        const matchingIds = new Set<string>();
-        if (item.linkedItemId) matchingIds.add(item.linkedItemId);
-        if (matchingBook?.id) matchingIds.add(matchingBook.id);
-        if (matchingBook?.linkedBookId) matchingIds.add(matchingBook.linkedBookId);
-
-        const filtered = matchingIds.size > 0 ? logs.filter((l) => Boolean(l.bookId && matchingIds.has(l.bookId))) : logs;
-        const totalPages = filtered.reduce((acc, l) => acc + (l.pagesRead ?? l.progressAmount ?? 0), 0);
-        return { current: totalPages, target, unit: 'pages', percent: Math.min(100, Math.round((totalPages / target) * 100)) };
-      }
-
-      if (item.linkedModule === 'skill') {
-        const logs = store.state.skillLogs.filter((l) => dateStrings.includes(l.date));
-        const filtered = item.linkedItemId ? logs.filter((l) => l.skillId === item.linkedItemId) : logs;
-        const totalMins = filtered.reduce((acc, l) => acc + (l.durationMinutes || 0), 0);
-        return { current: totalMins, target, unit: 'mins', percent: Math.min(100, Math.round((totalMins / target) * 100)) };
-      }
-
-      return { current: 0, target, unit, percent: 0 };
+      return computeLinkedGoalProgress(item, store.state, dateStrings);
     },
-    [selectedWeekKey, store.state.habits, store.state.workouts, store.state.readingLogs, store.state.skillLogs]
+    [selectedWeekKey, store.state]
   );
 
   // Unaddressed incomplete goals from past weeks
@@ -177,12 +83,25 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     if (selectedWeekKey !== currentWeekKey) return [];
 
     const pastDocs = weeklyGoals.filter((w) => w.weekKey < currentWeekKey);
+
+    // Primary ID-based tracking
+    const currentCarriedSourceIds = new Set(
+      activeGoalDoc.goals
+        .map((g) => g.carriedOverFromGoalId)
+        .filter((id): id is string => Boolean(id))
+    );
+    const supersededSourceGoalIds = new Set<string>();
+
+    // Fallback title-based tracking for legacy data
     const currentGoalTitles = new Set(activeGoalDoc.goals.map((g) => g.title.trim().toLowerCase()));
+    const supersededPastGoalKeys = new Set<string>();
 
     // Collect all past goal instances that were carried forward to a later past week
-    const supersededPastGoalKeys = new Set<string>();
     pastDocs.forEach((doc) => {
       doc.goals.forEach((g) => {
+        if (g.carriedOverFromGoalId) {
+          supersededSourceGoalIds.add(g.carriedOverFromGoalId);
+        }
         if (g.carriedOverFromWeekKey && g.carriedOverFromWeekKey < currentWeekKey) {
           supersededPastGoalKeys.add(`${g.carriedOverFromWeekKey}:${g.title.trim().toLowerCase()}`);
         }
@@ -195,13 +114,19 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       doc.goals.forEach((g) => {
         const titleKey = g.title.trim().toLowerCase();
         const goalKey = `${doc.weekKey}:${titleKey}`;
-        const prog = getLinkedGoalProgress(g, doc.weekKey);
+        const prog = getGoalProgress(g, doc.weekKey);
+
+        const isAddressedById =
+          currentCarriedSourceIds.has(g.id) || supersededSourceGoalIds.has(g.id);
+        const isAddressedByTitle =
+          currentGoalTitles.has(titleKey) || supersededPastGoalKeys.has(goalKey);
+
         if (
           prog.percent < 100 &&
           !g.archived &&
           !g.carryOverDismissed &&
-          !currentGoalTitles.has(titleKey) &&
-          !supersededPastGoalKeys.has(goalKey)
+          !isAddressedById &&
+          !isAddressedByTitle
         ) {
           result.push({ weekKey: doc.weekKey, goal: g });
         }
@@ -209,7 +134,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     });
 
     return result;
-  }, [selectedWeekKey, currentWeekKey, weeklyGoals, activeGoalDoc, getLinkedGoalProgress]);
+  }, [selectedWeekKey, currentWeekKey, weeklyGoals, activeGoalDoc, getGoalProgress]);
 
   // Carry Over Prompt Modal (Resume vs Start Over)
   const [carryOverPromptModal, setCarryOverPromptModal] = useState<{ pastWeek: string; goal: WeeklyGoalItem } | null>(null);
@@ -231,6 +156,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const [priority, setPriority] = useState<WeeklyGoalPriority>('medium');
   const [linkedModule, setLinkedModule] = useState<WeeklyGoalLinkedModule>('none');
   const [linkedItemId, setLinkedItemId] = useState<string>('');
+  const [linkedMetricKey, setLinkedMetricKey] = useState<string>('');
   const [targetValue, setTargetValue] = useState<number>(1);
   const [unit, setUnit] = useState<string>('times');
 
@@ -279,6 +205,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     setPriority('medium');
     setLinkedModule('none');
     setLinkedItemId('');
+    setLinkedMetricKey('');
     setTargetValue(1);
     setUnit('times');
     setModalOpen(true);
@@ -291,6 +218,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     setPriority(goal.priority);
     setLinkedModule(goal.linkedModule || 'none');
     setLinkedItemId(goal.linkedItemId || '');
+    setLinkedMetricKey(goal.linkedMetricKey || '');
     setTargetValue(goal.targetValue || 1);
     setUnit(goal.unit || 'times');
     setModalOpen(true);
@@ -299,24 +227,31 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const handleSaveGoal = () => {
     if (!title.trim()) return;
 
-    if (linkedModule === 'exercise' && !linkedItemId) {
-      showErrorToast('Workout Required', 'Please select a specific workout to link this goal.');
-      return;
-    }
+    if (linkedModule !== 'none') {
+      if (linkedModule === 'exercise' && !linkedItemId) {
+        showErrorToast('Workout Required', 'Please select a specific workout to link this goal.');
+        return;
+      }
 
-    if (linkedModule === 'skill' && !linkedItemId) {
-      showErrorToast('Skill Required', 'Please select a specific skill to link this goal.');
-      return;
-    }
+      if (linkedModule === 'skill' && !linkedItemId) {
+        showErrorToast('Skill Required', 'Please select a specific skill to link this goal.');
+        return;
+      }
 
-    if (linkedModule === 'habit' && !linkedItemId) {
-      showErrorToast('Habit Required', 'Please select a specific habit to link this goal.');
-      return;
-    }
+      if (linkedModule === 'habit' && !linkedItemId) {
+        showErrorToast('Habit Required', 'Please select a specific habit to link this goal.');
+        return;
+      }
 
-    if (linkedModule === 'reading' && !linkedItemId) {
-      showErrorToast('Book Required', 'Please select a specific book to link this goal.');
-      return;
+      if (linkedModule === 'reading' && !linkedItemId) {
+        showErrorToast('Book Required', 'Please select a specific book to link this goal.');
+        return;
+      }
+
+      if (!linkedMetricKey) {
+        showErrorToast('Metric Required', 'Please select a metric to track for this linked goal.');
+        return;
+      }
     }
 
     const payload = {
@@ -325,8 +260,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       priority,
       linkedModule,
       linkedItemId: linkedModule !== 'none' ? linkedItemId : undefined,
+      linkedMetricKey: linkedModule !== 'none' ? linkedMetricKey : undefined,
       targetValue: targetValue && targetValue > 0 ? targetValue : 1,
-      unit: unit.trim() ? unit.trim() : 'times',
+      unit: linkedModule === 'none' ? (unit.trim() ? unit.trim() : 'times') : undefined,
     };
 
     if (editingGoal) {
@@ -349,7 +285,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     let totalPercentSum = 0;
 
     activeGoals.forEach((g) => {
-      const prog = getLinkedGoalProgress(g);
+      const prog = getGoalProgress(g);
       const isDone = g.completed || prog.percent >= 100;
       if (isDone) {
         completedCount++;
@@ -364,7 +300,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       percent: Math.round(totalPercentSum / total),
       highPriorityCompleted,
     };
-  }, [activeGoalDoc.goals, getLinkedGoalProgress]);
+  }, [activeGoalDoc.goals, getGoalProgress]);
 
   const priorityColor = (p: WeeklyGoalPriority) => {
     switch (p) {
@@ -545,7 +481,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         ) : (
           <div className="space-y-3">
             {activeGoalDoc.goals.filter((g) => !g.archived).map((item) => {
-              const prog = getLinkedGoalProgress(item);
+              const prog = getGoalProgress(item);
               const isDone = item.completed || prog.percent >= 100;
 
               return (
@@ -637,54 +573,71 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
                   {/* PROGRESS BAR FOR MEASURABLE / LINKED GOALS */}
                   <div className="space-y-1.5 pt-1 border-t border-overlay-subtle">
-                    <div className="flex items-center justify-between text-[11px] text-content-muted font-medium">
-                      <span>Progress</span>
-                      <div className="flex items-center gap-2">
-                        {(!item.linkedModule || item.linkedModule === 'none') && prog.target > 1 && (
-                          <div className="flex items-center gap-1 bg-bg-800 px-1.5 py-0.5 rounded-lg border border-overlay-default text-xs">
-                            <button
-                              onClick={() => {
-                                const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
-                                const newVal = Math.max(0, currentVal - 1);
-                                store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
-                              }}
-                              disabled={prog.current <= 0}
-                              className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:hover:text-content-muted transition-colors"
-                              title="Decrement progress"
-                            >
-                              <Minus size={12} />
-                            </button>
-                            <span className="font-bold text-content-secondary min-w-[16px] text-center">{prog.current}</span>
-                            <button
-                              onClick={() => {
-                                const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
-                                const newVal = Math.min(prog.target, currentVal + 1);
-                                store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
-                              }}
-                              disabled={prog.current >= prog.target}
-                              className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:hover:text-content-muted transition-colors"
-                              title="Increment progress"
-                            >
-                              <Plus size={12} />
-                            </button>
-                          </div>
-                        )}
-                        <span className="text-content-secondary font-bold">
-                          {prog.current} / {prog.target} {prog.unit} ({prog.percent}%)
+                    {prog.needsMetricSelection ? (
+                      <div className="flex items-center justify-between text-xs text-warning-text bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg">
+                        <span className="flex items-center gap-1.5">
+                          <AlertTriangle size={13} />
+                          <span>Choose what to track for this goal</span>
                         </span>
+                        <button
+                          onClick={() => openEditModal(item)}
+                          className="text-[11px] underline hover:text-content-primary font-medium ml-2"
+                        >
+                          Choose Metric
+                        </button>
                       </div>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between text-[11px] text-content-muted font-medium">
+                          <span>Progress</span>
+                          <div className="flex items-center gap-2">
+                            {(!item.linkedModule || item.linkedModule === 'none') && prog.target > 1 && (
+                              <div className="flex items-center gap-1 bg-bg-800 px-1.5 py-0.5 rounded-lg border border-overlay-default text-xs">
+                                <button
+                                  onClick={() => {
+                                    const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
+                                    const newVal = Math.max(0, currentVal - 1);
+                                    store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
+                                  }}
+                                  disabled={prog.current <= 0}
+                                  className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:hover:text-content-muted transition-colors"
+                                  title="Decrement progress"
+                                >
+                                  <Minus size={12} />
+                                </button>
+                                <span className="font-bold text-content-secondary min-w-[16px] text-center">{prog.current}</span>
+                                <button
+                                  onClick={() => {
+                                    const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
+                                    const newVal = Math.min(prog.target, currentVal + 1);
+                                    store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
+                                  }}
+                                  disabled={prog.current >= prog.target}
+                                  className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:hover:text-content-muted transition-colors"
+                                  title="Increment progress"
+                                >
+                                  <Plus size={12} />
+                                </button>
+                              </div>
+                            )}
+                            <span className="text-content-secondary font-bold">
+                              {prog.current} / {prog.target} {prog.unit} ({prog.percent}%)
+                            </span>
+                          </div>
+                        </div>
 
-                    <div className="w-full bg-bg-800 rounded-full h-2 overflow-hidden border border-overlay-subtle">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          prog.percent >= 100
-                            ? 'bg-emerald-400'
-                            : 'bg-primary-500'
-                        }`}
-                        style={{ width: `${prog.percent}%` }}
-                      />
-                    </div>
+                        <div className="w-full bg-bg-800 rounded-full h-2 overflow-hidden border border-overlay-subtle">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-300 ${
+                              prog.percent >= 100
+                                ? 'bg-emerald-400'
+                                : 'bg-primary-500'
+                            }`}
+                            style={{ width: `${prog.percent}%` }}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -919,11 +872,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                   const mod = e.target.value as WeeklyGoalLinkedModule;
                   setLinkedModule(mod);
                   setLinkedItemId('');
-                  if (mod === 'exercise') setUnit('sessions');
-                  else if (mod === 'reading') setUnit('pages');
-                  else if (mod === 'skill') setUnit('mins');
-                  else if (mod === 'habit') setUnit('completions');
-                  else setUnit('times');
+                  setLinkedMetricKey('');
                 }}
                 className="input w-full bg-bg-800"
               >
@@ -938,55 +887,22 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           {/* ITEM SELECTOR DEPENDING ON LINKED MODULE */}
           {linkedModule === 'exercise' && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-content-tertiary mb-1">
-                  Select Workout <span className="text-rose-theme">*</span>
-                </label>
-                <select
-                  value={linkedItemId}
-                  onChange={(e) => {
-                    const selectedVal = e.target.value;
-                    setLinkedItemId(selectedVal);
-                    if (selectedVal) {
-                       const selectedLower = selectedVal.trim().toLowerCase();
-                       const recentLog = (store.state.workouts || [])
-                        .slice()
-                        .reverse()
-                        .find((w) => (w.type || '').trim().toLowerCase() === selectedLower);
-                      if (recentLog && recentLog.unit) {
-                        setUnit(recentLog.unit);
-                      } else {
-                        setUnit('mins');
-                      }
-                    }
-                  }}
-                  className="input w-full bg-bg-800"
-                >
-                  <option value="" disabled>Select a specific workout...</option>
-                  {availableWorkoutTypes.map((workoutName) => (
-                    <option key={workoutName} value={workoutName}>
-                      {workoutName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-content-tertiary mb-1">
-                  Target Unit <span className="text-rose-theme">*</span>
-                </label>
-                <select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  className="input w-full bg-bg-800"
-                >
-                  <option value="sessions">Sessions (workouts)</option>
-                  <option value="mins">Minutes (mins)</option>
-                  <option value="reps">Reps</option>
-                  <option value="sets">Sets</option>
-                  <option value="km">Kilometers (km)</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+                Select Workout <span className="text-rose-theme">*</span>
+              </label>
+              <select
+                value={linkedItemId}
+                onChange={(e) => setLinkedItemId(e.target.value)}
+                className="input w-full bg-bg-800"
+              >
+                <option value="" disabled>Select a specific workout...</option>
+                {availableWorkoutTypes.map((workoutName) => (
+                  <option key={workoutName} value={workoutName}>
+                    {workoutName}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -1050,8 +966,8 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </div>
           )}
 
-          {/* TARGET VALUE & UNIT INPUTS */}
-          <div className={`grid ${linkedModule === 'exercise' ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
+          {/* TARGET VALUE & METRIC / UNIT INPUTS */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-content-tertiary mb-1">
                 Target Goal Amount
@@ -1065,7 +981,25 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               />
             </div>
 
-            {linkedModule !== 'exercise' && (
+            {linkedModule !== 'none' ? (
+              <div>
+                <label className="block text-xs font-semibold text-content-tertiary mb-1">
+                  Select Metric <span className="text-rose-theme">*</span>
+                </label>
+                <select
+                  value={linkedMetricKey}
+                  onChange={(e) => setLinkedMetricKey(e.target.value)}
+                  className="input w-full bg-bg-800"
+                >
+                  <option value="" disabled>Select metric...</option>
+                  {(LINKED_GOAL_METRICS[linkedModule as LinkedModule] || []).map((m) => (
+                    <option key={m.key} value={m.key}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
               <div>
                 <label className="block text-xs font-semibold text-content-tertiary mb-1">
                   Unit Label
@@ -1090,7 +1024,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </button>
             <button
               onClick={handleSaveGoal}
-              disabled={!title.trim()}
+              disabled={!title.trim() || (linkedModule !== 'none' && !linkedMetricKey)}
               className="btn-primary text-xs flex-1 disabled:opacity-50"
             >
               {editingGoal ? 'Update Goal' : 'Create Goal'}

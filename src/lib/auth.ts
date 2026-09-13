@@ -679,7 +679,6 @@ export function reconstructStateFromProfile(p: any): AppState {
   const readingLogs = readingDates.map((d, i) => ({
     id: `r-${i}`,
     bookId: `b-${i}`,
-    progressAmount: 10,
     pagesRead: 10,
     date: d,
     createdAt: d,
