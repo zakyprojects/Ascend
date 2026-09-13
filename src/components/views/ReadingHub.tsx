@@ -211,7 +211,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
   // Overall Stats
   const totalPagesRead = useMemo(() => {
-    return readingLogs.reduce((sum, l) => sum + (l.progressAmount || 0), 0);
+    return readingLogs.reduce((sum, l) => sum + (l.pagesRead || 0), 0);
   }, [readingLogs]);
 
   const totalCompletedPoints = useMemo(() => {
@@ -271,16 +271,16 @@ export function ReadingHub({ store }: { store: AppStore }) {
     if (!progressModalBook) return;
     const current = progressModalBook.currentAmount ?? progressModalBook.currentPage ?? 0;
     const newCurrent = Number(progressInput);
-    const progressAmount = newCurrent - current;
+    const pagesDelta = newCurrent - current;
     const total = progressModalBook.totalAmount ?? progressModalBook.totalPages ?? 250;
 
-    if (progressAmount === 0) {
+    if (pagesDelta === 0) {
       setProgressModalBook(null);
       return;
     }
 
     await executeProgress(async () => {
-      store.updateReadingProgress(progressModalBook.id, progressAmount, newCurrent);
+      store.updateReadingProgress(progressModalBook.id, pagesDelta, newCurrent);
 
       if (newCurrent >= total) {
         setFinishModalBook({

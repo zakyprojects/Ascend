@@ -223,7 +223,6 @@ export interface ReadingLog {
   date: string; // YYYY-MM-DD
   pagesRead: number; // positive delta only
   createdAt: string; // ISO timestamp
-  progressAmount?: number;
   pointsAwarded?: number;
 }
 
@@ -410,10 +409,12 @@ export interface WeeklyGoalItem {
   linkedItemId?: string;
   targetValue?: number;
   unit?: string;
+  linkedMetricKey?: string;
   manualProgress?: number;
   completed: boolean;
   archived?: boolean;
   carriedOverFromWeekKey?: string;
+  carriedOverFromGoalId?: string;
   carryOverDismissed?: boolean;
   createdAt: string;
   /** Legacy fields kept optional for backward compatibility */
