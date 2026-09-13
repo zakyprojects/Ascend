@@ -1106,7 +1106,11 @@ export function mergeAppState(
           };
       } else {
           // baseChangeTs === incomingChangeTs (exact tie or both 0/missing)
-          if (baseChangeTs > 0 && incomingChangeTs > 0) {
+          if (
+            baseChangeTs > 0 &&
+            incomingChangeTs > 0 &&
+            baseState.currentUser?.username !== incomingState.currentUser?.username
+          ) {
             console.warn(
               `[stateMerger] Timestamp collision on lastUsernameChangeAt (${baseChangeTs}). Resolving tie using mergeContext: '${mergeContext}'`
             );

@@ -488,6 +488,72 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     activeDeletedEntityIds
   );
 
+  const rawWeeklyGoals = filterActiveTombstones(st.weeklyGoals).map((wg) => {
+    let reflections: WeeklyGoalReflection[] = Array.isArray(wg.reflections)
+      ? wg.reflections.filter((r) => !r.id || !activeDeletedEntityIdSet.has(r.id))
+      : [];
+    if (reflections.length === 0 && wg.insights && wg.insights.trim()) {
+      reflections = [
+        {
+          id: uid(),
+          content: wg.insights.trim(),
+          createdAt: wg.createdAt || new Date().toISOString(),
+          pointsAwarded: Boolean(wg.isReviewed),
+        },
+      ];
+    }
+    return {
+      ...wg,
+      reflections,
+      goals: (wg.goals ?? [])
+        .filter((g: any) => !g || !g.id || !activeDeletedEntityIdSet.has(g.id))
+        .map((g: any) => ({
+          id: g.id || uid(),
+          title: g.title || g.text || 'Weekly Goal',
+          targetDescription: g.targetDescription || '',
+          priority: g.priority || 'medium',
+          linkedModule: g.linkedModule || 'none',
+          linkedItemId: g.linkedItemId || undefined,
+          linkedMetricKey: g.linkedMetricKey || undefined,
+          targetValue: typeof g.targetValue === 'number' ? g.targetValue : undefined,
+          unit: g.unit || undefined,
+          manualProgress: typeof g.manualProgress === 'number' ? g.manualProgress : undefined,
+          completed: Boolean(g.completed ?? g.done),
+          archived: Boolean(g.archived),
+          carryOverDismissed: Boolean(g.carryOverDismissed),
+          carriedOverFromWeekKey: g.carriedOverFromWeekKey || undefined,
+          carriedOverFromGoalId: g.carriedOverFromGoalId || undefined,
+          createdAt: g.createdAt || new Date().toISOString(),
+        })),
+    };
+  });
+
+  // Backward compatibility migration: Backfill carriedOverFromGoalId for legacy carried goals with an unambiguous 1:1 source match
+  const weeklyGoalsByWeek = new Map<string, WeeklyGoalItem[]>();
+  rawWeeklyGoals.forEach((wg) => {
+    weeklyGoalsByWeek.set(wg.weekKey, wg.goals);
+  });
+
+  const sanitizedWeeklyGoals = rawWeeklyGoals.map((wg) => ({
+    ...wg,
+    goals: wg.goals.map((g) => {
+      if (g.carriedOverFromWeekKey && !g.carriedOverFromGoalId) {
+        const sourceGoals = weeklyGoalsByWeek.get(g.carriedOverFromWeekKey) || [];
+        const titleNorm = g.title.trim().toLowerCase();
+        const candidates = sourceGoals.filter(
+          (sg) => sg.id !== g.id && sg.title.trim().toLowerCase() === titleNorm
+        );
+        if (candidates.length === 1) {
+          return {
+            ...g,
+            carriedOverFromGoalId: candidates[0].id,
+          };
+        }
+      }
+      return g;
+    }),
+  }));
+
   const baseState: AppState = {
     ...DEFAULT_STATE,
     ...st,
@@ -535,45 +601,7 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     focusLogs: filterActiveTombstones(st.focusLogs),
     decisionLogs: filterActiveTombstones(st.decisionLogs),
     emotionLogs: filterActiveTombstones(st.emotionLogs),
-    weeklyGoals: filterActiveTombstones(st.weeklyGoals).map((wg) => {
-      let reflections: WeeklyGoalReflection[] = Array.isArray(wg.reflections)
-        ? wg.reflections.filter((r) => !r.id || !activeDeletedEntityIdSet.has(r.id))
-        : [];
-      if (reflections.length === 0 && wg.insights && wg.insights.trim()) {
-        reflections = [
-          {
-            id: uid(),
-            content: wg.insights.trim(),
-            createdAt: wg.createdAt || new Date().toISOString(),
-            pointsAwarded: Boolean(wg.isReviewed),
-          },
-        ];
-      }
-      return {
-        ...wg,
-        reflections,
-        goals: (wg.goals ?? [])
-          .filter((g: any) => !g || !g.id || !activeDeletedEntityIdSet.has(g.id))
-          .map((g: any) => ({
-            id: g.id || uid(),
-            title: g.title || g.text || 'Weekly Goal',
-            targetDescription: g.targetDescription || '',
-            priority: g.priority || 'medium',
-            linkedModule: g.linkedModule || 'none',
-            linkedItemId: g.linkedItemId || undefined,
-            linkedMetricKey: g.linkedMetricKey || undefined,
-            targetValue: typeof g.targetValue === 'number' ? g.targetValue : undefined,
-            unit: g.unit || undefined,
-            manualProgress: typeof g.manualProgress === 'number' ? g.manualProgress : undefined,
-            completed: Boolean(g.completed ?? g.done),
-            archived: Boolean(g.archived),
-            carryOverDismissed: Boolean(g.carryOverDismissed),
-            carriedOverFromWeekKey: g.carriedOverFromWeekKey || undefined,
-            carriedOverFromGoalId: g.carriedOverFromGoalId || undefined,
-            createdAt: g.createdAt || new Date().toISOString(),
-          })),
-      };
-    }),
+    weeklyGoals: sanitizedWeeklyGoals,
     goals: filterActiveTombstones(st.goals),
     projects: filterActiveTombstones(st.projects),
     tasks: filterActiveTombstones(st.tasks).map((t) => ({
