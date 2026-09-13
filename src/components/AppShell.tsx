@@ -197,33 +197,6 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                   <span>Save Progress — Create Account</span>
                 </button>
               )}
-
-              {/* Privacy Toggle */}
-              <div className="pt-2 border-t border-overlay-subtle space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-content-muted">
-                  <span className="flex items-center gap-1 font-medium text-content-tertiary">
-                    Public Stats & Habits
-                  </span>
-                  <button
-                    onClick={store.toggleProfilePrivacy}
-                    title="Toggle profile privacy for public leaderboards"
-                    className={`w-8 h-4 rounded-full transition-colors relative p-0.5 border ${
-                      (currentUser.isProfilePublic ?? true)
-                        ? 'bg-primary-500 border-primary-400'
-                        : 'bg-bg-600 border-overlay-default'
-                    }`}
-                  >
-                    <div
-                      className={`w-3 h-3 rounded-full bg-white transition-transform ${
-                        (currentUser.isProfilePublic ?? true) ? 'translate-x-4' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-                <p className="text-[10px] text-content-disabled leading-tight">
-                  Hiding your stats also hides others' stats from you.
-                </p>
-              </div>
             </div>
           ) : (
             <button
