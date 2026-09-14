@@ -33,6 +33,7 @@ import {
   deleteUserProfileAndData,
 } from '@/lib/auth';
 import { Modal } from '@/components/ui/Modal';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
@@ -575,28 +576,22 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
                   {showPasswordForm && (
                     <form onSubmit={handleChangePassword} className="space-y-3 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-content-tertiary mb-1">New Password</label>
-                        <input
-                          type="password"
-                          required
-                          placeholder="••••••••"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full px-3 py-2 bg-bg-800 border border-overlay-default rounded-lg text-xs text-content-primary focus:outline-none focus:border-primary-400"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-content-tertiary mb-1">Confirm New Password</label>
-                        <input
-                          type="password"
-                          required
-                          placeholder="••••••••"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="w-full px-3 py-2 bg-bg-800 border border-overlay-default rounded-lg text-xs text-content-primary focus:outline-none focus:border-primary-400"
-                        />
-                      </div>
+                      <PasswordInput
+                        label="New Password"
+                        required
+                        autoComplete="new-password"
+                        placeholder="••••••••"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                      <PasswordInput
+                        label="Confirm New Password"
+                        required
+                        autoComplete="new-password"
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
 
                       {passwordMsg && (
                         <div
