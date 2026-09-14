@@ -891,6 +891,26 @@ export function excisePointsEntriesInternal(
   };
 }
 
+export function getWeeklyReflectionNetPoints(state: AppState, weekKey: string): number {
+  const awardId = `weekly_review_${weekKey}`;
+  const revId = `weekly_review_rev_${weekKey}`;
+
+  let total = 0;
+  for (const e of state.pointsHistory || []) {
+    if (e && (e.id === awardId || e.id === revId)) {
+      total += e.amount || 0;
+    }
+  }
+
+  for (const e of state.evictedEntryIds || []) {
+    if (e && (e.id === awardId || e.id === revId)) {
+      total += e.amount || 0;
+    }
+  }
+
+  return total;
+}
+
 export function isWeeklyReflectionAwarded(
   weekKey: string,
   refId: string,
@@ -912,19 +932,11 @@ export function isWeeklyReflectionAwarded(
     return false;
   }
 
-  // 1. Check active pointsHistory
-  const inHistory = (state.pointsHistory || []).some(
-    (e) => e && e.id === `weekly_review_${weekKey}` && (e.amount || 0) > 0
-  );
-  if (inHistory) return true;
+  // Check net awarded points in active state (active ledger + evicted entries)
+  const netPoints = getWeeklyReflectionNetPoints(state, weekKey);
+  if (netPoints > 0) return true;
 
-  // 2. Check active season evicted entries (evicted past 500-cap)
-  const inEvicted = (state.evictedEntryIds || []).some(
-    (e) => e && e.id === `weekly_review_${weekKey}` && (e.amount || 0) > 0
-  );
-  if (inEvicted) return true;
-
-  // 3. Past season check: if weekKey belongs to a completed past season
+  // Past season check: if weekKey belongs to a completed past season
   try {
     const { start } = getWeekDates(weekKey);
     const activeSeasonStart = startOfNinetyDayCycle();
@@ -958,16 +970,8 @@ export function reconcileReflectionPoints(
     };
   }
 
-  const isWeekAwarded =
-    (prevState.pointsHistory || []).some(
-      (e) => e && e.id === `weekly_review_${weekKey}` && (e.amount || 0) > 0
-    ) ||
-    (prevState.evictedEntryIds || []).some(
-      (e) => e && e.id === `weekly_review_${weekKey}` && (e.amount || 0) > 0
-    ) ||
-    (prevState.weeklyGoals.find((w) => w.weekKey === weekKey)?.reflections || []).some(
-      (r) => r.pointsAwarded
-    );
+  const netPoints = getWeeklyReflectionNetPoints(prevState, weekKey);
+  const isWeekAwarded = netPoints > 0;
 
   let latest: WeeklyGoalReflection | undefined = undefined;
   if (updatedReflections.length > 0) {
@@ -981,6 +985,16 @@ export function reconcileReflectionPoints(
   }
 
   if (latest && !isWeekAwarded) {
+    // Clean up any old reversal entry so that re-awarding gives a clean net +20
+    const revId = `weekly_review_rev_${weekKey}`;
+    const cleanedHistory = (currentState.pointsHistory || []).filter((e) => e && e.id !== revId);
+    if (cleanedHistory.length !== (currentState.pointsHistory || []).length) {
+      currentState = {
+        ...currentState,
+        pointsHistory: cleanedHistory,
+      };
+    }
+
     const pointsAward = addPointsInternal(
       currentState,
       20,
