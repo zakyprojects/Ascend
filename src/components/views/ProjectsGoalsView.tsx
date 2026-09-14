@@ -144,6 +144,10 @@ export function ProjectsGoalsView({
   const [deleteGoalTarget, setDeleteGoalTarget] = useState<Goal | null>(null);
   const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null);
   const [deleteTaskTarget, setDeleteTaskTarget] = useState<Task | null>(null);
+  const [deleteSubtaskTarget, setDeleteSubtaskTarget] = useState<{
+    taskId: string;
+    subtask: TaskSubtask;
+  } | null>(null);
 
   const goals = store.state.goals || [];
   const projects = store.state.projects || [];
@@ -870,6 +874,15 @@ export function ProjectsGoalsView({
       store.deleteTask(deleteTaskTarget.id);
       showSuccessToast('Task Deleted', 'Task removed.');
       setDeleteTaskTarget(null);
+    });
+  };
+
+  const handleDeleteSubtaskConfirm = async () => {
+    if (!deleteSubtaskTarget) return;
+    await executeWithKey(`delete_subtask_${deleteSubtaskTarget.subtask.id}`, async () => {
+      store.deleteSubtask(deleteSubtaskTarget.taskId, deleteSubtaskTarget.subtask.id);
+      showSuccessToast('Subtask Deleted', 'Subtask removed.');
+      setDeleteSubtaskTarget(null);
     });
   };
 
@@ -2393,7 +2406,7 @@ export function ProjectsGoalsView({
                               </div>
 
                               <button
-                                onClick={() => store.deleteSubtask(task.id, st.id)}
+                                onClick={() => setDeleteSubtaskTarget({ taskId: task.id, subtask: st })}
                                 className="p-1 text-content-disabled hover:text-rose-theme opacity-0 group-hover/st:opacity-100 transition-all"
                                 title="Delete Subtask"
                               >
@@ -2872,6 +2885,16 @@ export function ProjectsGoalsView({
         title="Delete Task?"
         itemName={deleteTaskTarget?.title}
         confirmText="Delete Task"
+      />
+
+      {/* 4. Delete Subtask Confirm */}
+      <ConfirmDeleteModal
+        open={Boolean(deleteSubtaskTarget)}
+        onClose={() => setDeleteSubtaskTarget(null)}
+        onConfirm={handleDeleteSubtaskConfirm}
+        title="Delete Subtask?"
+        itemName={deleteSubtaskTarget?.subtask.title}
+        confirmText="Delete Subtask"
       />
 
       {/* -------------------------------------------------------------------- */}

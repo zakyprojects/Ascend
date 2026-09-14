@@ -653,7 +653,7 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
   };
 
   let sweptState = baseState;
-  const now = new Date();
+  const now = getNow();
 
   // Auto-hydrate today's schedule from active template if dailyLog is currently empty
   if (sweptState.timeTracker) {
@@ -4065,7 +4065,8 @@ export function useAppState() {
       const { updatedReflections, nextState } = reconcileReflectionPoints(
         prev,
         weekKey,
-        candidateReflections
+        candidateReflections,
+        getNow()
       );
 
       const updatedDoc: WeeklyGoal = {
@@ -4114,7 +4115,8 @@ export function useAppState() {
       const { updatedReflections, nextState } = reconcileReflectionPoints(
         prev,
         weekKey,
-        candidateReflections
+        candidateReflections,
+        getNow()
       );
 
       const updatedDoc = { ...doc, reflections: updatedReflections };
@@ -4129,33 +4131,37 @@ export function useAppState() {
   }, []);
 
   const deleteWeeklyReflection = useCallback((weekKey: string, reflectionId: string) => {
-    setState((prev) => {
-      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
-      if (docIdx === -1) return prev;
+    setState(
+      (prev) => {
+        const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+        if (docIdx === -1) return prev;
 
-      const doc = prev.weeklyGoals[docIdx];
-      const targetRef = (doc.reflections || []).find((r) => r.id === reflectionId);
-      if (!targetRef) return prev;
+        const doc = prev.weeklyGoals[docIdx];
+        const targetRef = (doc.reflections || []).find((r) => r.id === reflectionId);
+        if (!targetRef) return prev;
 
-      const candidateReflections = (doc.reflections || []).filter((r) => r.id !== reflectionId);
+        const candidateReflections = (doc.reflections || []).filter((r) => r.id !== reflectionId);
 
-      const { updatedReflections, nextState } = reconcileReflectionPoints(
-        prev,
-        weekKey,
-        candidateReflections
-      );
+        const { updatedReflections, nextState } = reconcileReflectionPoints(
+          prev,
+          weekKey,
+          candidateReflections,
+          getNow()
+        );
 
-      const updatedDoc = { ...doc, reflections: updatedReflections };
-      const newWeeklyGoals = [...nextState.weeklyGoals];
-      newWeeklyGoals[docIdx] = updatedDoc;
-      const updatedDeletedEntityIds = [...(nextState.deletedEntityIds || []), reflectionId].slice(-500);
+        const updatedDoc = { ...doc, reflections: updatedReflections };
+        const newWeeklyGoals = [...nextState.weeklyGoals];
+        newWeeklyGoals[docIdx] = updatedDoc;
+        const updatedDeletedEntityIds = [...(nextState.deletedEntityIds || []), reflectionId].slice(-500);
 
-      return {
-        ...nextState,
-        weeklyGoals: newWeeklyGoals,
-        deletedEntityIds: updatedDeletedEntityIds,
-      };
-    });
+        return {
+          ...nextState,
+          weeklyGoals: newWeeklyGoals,
+          deletedEntityIds: updatedDeletedEntityIds,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const addWeeklyGoalItem = useCallback((weekKey: string, goalData: Partial<WeeklyGoalItem>) => {
@@ -4229,20 +4235,23 @@ export function useAppState() {
   }, []);
 
   const deleteWeeklyGoalItem = useCallback((weekKey: string, goalId: string) => {
-    setState((prev) => {
-      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
-      if (docIdx === -1) return prev;
+    setState(
+      (prev) => {
+        const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+        if (docIdx === -1) return prev;
 
-      const doc = prev.weeklyGoals[docIdx];
-      const updatedGoals = doc.goals.filter((g) => g.id !== goalId);
+        const doc = prev.weeklyGoals[docIdx];
+        const updatedGoals = doc.goals.filter((g) => g.id !== goalId);
 
-      const updatedDoc = { ...doc, goals: updatedGoals };
-      const newWeeklyGoals = [...prev.weeklyGoals];
-      newWeeklyGoals[docIdx] = updatedDoc;
-      const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
+        const updatedDoc = { ...doc, goals: updatedGoals };
+        const newWeeklyGoals = [...prev.weeklyGoals];
+        newWeeklyGoals[docIdx] = updatedDoc;
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
 
-      return { ...prev, weeklyGoals: newWeeklyGoals, deletedEntityIds: updatedDeletedEntityIds };
-    });
+        return { ...prev, weeklyGoals: newWeeklyGoals, deletedEntityIds: updatedDeletedEntityIds };
+      },
+      { immediate: true }
+    );
   }, []);
 
   const carryOverGoal = useCallback((sourceWeekKey: string, targetWeekKey: string, goalId: string, options?: { resumeProgress?: boolean }) => {
@@ -4655,23 +4664,26 @@ export function useAppState() {
   }, []);
 
   const deleteSubtask = useCallback((taskId: string, subtaskId: string) => {
-    setState((prev) => {
-      const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), subtaskId].slice(-500);
-      return {
-        ...prev,
-        tasks: prev.tasks.map((t) => {
-          if (t.id !== taskId) return t;
-          const updatedSubtasks = (t.subtasks || []).filter((st) => st.id !== subtaskId);
-          const allCompleted = updatedSubtasks.length > 0 ? updatedSubtasks.every((st) => st.completed) : t.completed;
-          return {
-            ...t,
-            subtasks: updatedSubtasks,
-            completed: allCompleted,
-          };
-        }),
-        deletedEntityIds: updatedDeletedEntityIds,
-      };
-    });
+    setState(
+      (prev) => {
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), subtaskId].slice(-500);
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) => {
+            if (t.id !== taskId) return t;
+            const updatedSubtasks = (t.subtasks || []).filter((st) => st.id !== subtaskId);
+            const allCompleted = updatedSubtasks.length > 0 ? updatedSubtasks.every((st) => st.completed) : t.completed;
+            return {
+              ...t,
+              subtasks: updatedSubtasks,
+              completed: allCompleted,
+            };
+          }),
+          deletedEntityIds: updatedDeletedEntityIds,
+        };
+      },
+      { immediate: true }
+    );
   }, []);
 
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---
