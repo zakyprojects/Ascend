@@ -4,6 +4,7 @@ import { Mail, Lock, User, Check, AlertCircle, Sparkles, LogIn, UserPlus, UserCh
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
+import { PasswordInput } from './PasswordInput';
 
 /** Wraps a promise with an 8-second hard timeout. */
 function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
@@ -32,7 +33,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [avatar, setAvatar] = useState('🧑');
+  const [avatar, setAvatar] = useState('');
   const [keepGuestProgress, setKeepGuestProgress] = useState(true);
 
   const [usernameStatus, setUsernameStatus] = useState<{ available: boolean; reason?: string } | null>(null);
@@ -46,7 +47,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
       if (isAnonymousUser) {
         setMode('upgrade');
         setUsername(guestState.currentUser?.username || '');
-        setAvatar(guestState.currentUser?.avatar || '🧑');
+        setAvatar('');
       } else if (!isAuthenticated) {
         setMode('choice');
       }
@@ -114,6 +115,11 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
 
     if (!email || !password || (mode !== 'login' && !confirmPassword)) {
       setErrorMsg('Please fill in all required fields.');
+      return;
+    }
+
+    if ((mode === 'signup' || mode === 'upgrade') && !avatar) {
+      setErrorMsg('Please select an avatar.');
       return;
     }
 
@@ -188,7 +194,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
     setPassword('');
     setConfirmPassword('');
     setUsername(isAnonymousUser ? (guestState.currentUser?.username || '') : '');
-    setAvatar(guestState.currentUser?.avatar || '🧑');
+    setAvatar('');
     setErrorMsg('');
     setSuccessMsg('');
     setUsernameStatus(null);
@@ -337,7 +343,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                 <>
                   <div>
                     <label className="block text-xs font-medium text-content-tertiary mb-1.5">
-                      Choose Leaderboard Avatar
+                      Choose Leaderboard Avatar <span className="text-error-text">*</span>
                     </label>
                     <div className="grid grid-cols-8 gap-1.5 p-2 bg-bg-800 rounded-xl border border-overlay-subtle">
                       {EMOJI_AVATARS.map((emoji) => (
@@ -413,49 +419,31 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-content-tertiary mb-1">
-                  Password <span className="text-error-text">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
-                    <Lock size={16} />
-                  </div>
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all"
-                  />
-                </div>
-              </div>
+              <PasswordInput
+                key={`auth-password-${mode}`}
+                label="Password"
+                required
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
 
               {(mode === 'signup' || mode === 'upgrade') && (
-                <div>
-                  <label className="block text-xs font-medium text-content-tertiary mb-1">
-                    Confirm Password <span className="text-error-text">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
-                      <Lock size={16} />
-                    </div>
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all"
-                    />
-                  </div>
-                  {confirmPassword && password !== confirmPassword && (
-                    <p className="text-[11px] text-error-text mt-1 flex items-center gap-1 font-medium">
-                      Passwords do not match
-                    </p>
-                  )}
-                </div>
+                <PasswordInput
+                  key={`auth-confirm-password-${mode}`}
+                  label="Confirm Password"
+                  required
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  error={
+                    confirmPassword && password !== confirmPassword
+                      ? 'Passwords do not match'
+                      : undefined
+                  }
+                />
               )}
 
               {mode === 'signup' && hasGuestData && (

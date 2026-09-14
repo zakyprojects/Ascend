@@ -190,7 +190,7 @@ export async function signUpUser(
       'ascend_signup_defaults',
       JSON.stringify({
         username: trimmedUsername,
-        avatar: avatar || '🧑',
+        avatar,
         guestState: guestStateToMigrate ?? null,
       })
     );
@@ -204,7 +204,7 @@ export async function signUpUser(
     options: {
       data: {
         username: trimmedUsername,
-        avatar: avatar || '🧑',
+        avatar,
       },
     },
   });
