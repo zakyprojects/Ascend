@@ -66,7 +66,7 @@ import {
   calculateBlockDurationMinutes,
 } from './timeTracker';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, previousPeriodKey, parseDate, getNow, getNextDateKey } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, getWeekDates, previousPeriodKey, parseDate, getNow, getNextDateKey } from './dates';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { PresetHabit } from './presets';
 import { SEED_ACCOUNTS, calculateSeedAccountPoints } from './seedAccounts';
@@ -248,8 +248,62 @@ function loadInitialState(): AppState {
   }
 }
 
-function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null): AppState {
-  const pointsHistory = st.pointsHistory ?? [];
+export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null): AppState {
+  // Weekly Review Points Consolidation Migration (Idempotent)
+  const rawHistory = st.pointsHistory ?? [];
+  const weeklyReviewMap = new Map<string, PointsEntry[]>();
+  const otherHistory: PointsEntry[] = [];
+
+  for (const entry of rawHistory) {
+    if (entry && entry.source === 'weekly_review') {
+      let weekKey: string | null = null;
+      if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
+        weekKey = entry.metadata.weekKey;
+      } else if (entry.reason) {
+        const match = entry.reason.match(/\b\d{4}-W\d{2}\b/);
+        if (match) {
+          weekKey = match[0];
+        }
+      }
+
+      if (weekKey) {
+        const group = weeklyReviewMap.get(weekKey) || [];
+        group.push(entry);
+        weeklyReviewMap.set(weekKey, group);
+      } else {
+        otherHistory.push(entry);
+      }
+    } else if (entry) {
+      otherHistory.push(entry);
+    }
+  }
+
+  const consolidatedWeeklyEntries: PointsEntry[] = [];
+  for (const [weekKey, entries] of weeklyReviewMap.entries()) {
+    const netAmount = entries.reduce((sum, e) => sum + (e.amount || 0), 0);
+    if (netAmount <= 0) {
+      // Deleted week / non-positive net -> drop all entries
+      continue;
+    }
+    // Net > 0 (e.g. 20 or corrupted duplicate 40) -> consolidate to single +20 award
+    const sorted = [...entries].sort(
+      (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
+    );
+    const earliest = sorted[0];
+    consolidatedWeeklyEntries.push({
+      id: `weekly_review_${weekKey}`,
+      amount: 20,
+      reason: `Weekly reflection completed for ${weekKey}`,
+      source: 'weekly_review',
+      timestamp: earliest.timestamp || new Date().toISOString(),
+      metadata: { weekKey },
+    });
+  }
+
+  const pointsHistory = [...otherHistory, ...consolidatedWeeklyEntries].sort(
+    (a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
+  ).slice(0, 500);
+
   const currentHistorySum = pointsHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
   
   const activeSeasonNumber = getSeasonNumber();
@@ -667,21 +721,7 @@ function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null)
     }
   }
 
-  const updatedWeeklyGoals = sweptState.weeklyGoals.map((wg) => {
-    const cutoff = getWeekReflectionCutoff(wg.weekKey);
-    if (now >= cutoff) {
-      const { updatedReflections, nextState } = reconcileReflectionPoints(
-        sweptState,
-        wg.weekKey,
-        wg.reflections || [],
-        now
-      );
-      sweptState = nextState;
-      return { ...wg, reflections: updatedReflections };
-    }
-    return wg;
-  });
-  sweptState = { ...sweptState, weeklyGoals: updatedWeeklyGoals };
+  sweptState = reconcileAllWeeklyReflections(sweptState, now);
 
   return processBadHabitNoReports(sweptState);
 }
@@ -851,7 +891,54 @@ export function excisePointsEntriesInternal(
   };
 }
 
-function reconcileReflectionPoints(
+export function isWeeklyReflectionAwarded(
+  weekKey: string,
+  refId: string,
+  state: AppState
+): boolean {
+  const goalDoc = state.weeklyGoals?.find((w) => w.weekKey === weekKey);
+  const reflections = goalDoc?.reflections || [];
+  if (reflections.length === 0) return false;
+
+  const latestReflection = reflections.reduce(
+    (prevMax, curr) =>
+      new Date(curr.createdAt).getTime() > new Date(prevMax.createdAt).getTime()
+        ? curr
+        : prevMax,
+    reflections[0]
+  );
+
+  if (!latestReflection || latestReflection.id !== refId) {
+    return false;
+  }
+
+  // 1. Check active pointsHistory
+  const inHistory = (state.pointsHistory || []).some(
+    (e) => e && e.id === `weekly_review_${weekKey}` && (e.amount || 0) > 0
+  );
+  if (inHistory) return true;
+
+  // 2. Check active season evicted entries (evicted past 500-cap)
+  const inEvicted = (state.evictedEntryIds || []).some(
+    (e) => e && e.id === `weekly_review_${weekKey}` && (e.amount || 0) > 0
+  );
+  if (inEvicted) return true;
+
+  // 3. Past season check: if weekKey belongs to a completed past season
+  try {
+    const { start } = getWeekDates(weekKey);
+    const activeSeasonStart = startOfNinetyDayCycle();
+    if (start < activeSeasonStart) {
+      return new Date(latestReflection.createdAt) <= getWeekReflectionCutoff(weekKey);
+    }
+  } catch {
+    // If weekKey fails to parse, return false
+  }
+
+  return false;
+}
+
+export function reconcileReflectionPoints(
   prevState: AppState,
   weekKey: string,
   reflections: WeeklyGoalReflection[],
@@ -861,22 +948,26 @@ function reconcileReflectionPoints(
   nextState: AppState;
 } {
   const cutoff = getWeekReflectionCutoff(weekKey);
-  let updatedReflections = [...reflections];
+  const updatedReflections = [...reflections];
   let currentState = prevState;
 
   if (now < cutoff) {
-    updatedReflections = updatedReflections.map((r) =>
-      r.pointsAwarded ? { ...r, pointsAwarded: false } : r
-    );
     return {
       updatedReflections,
       nextState: currentState,
     };
   }
 
-  const previousHolder = (
-    prevState.weeklyGoals.find((w) => w.weekKey === weekKey)?.reflections || []
-  ).find((r) => r.pointsAwarded);
+  const isWeekAwarded =
+    (prevState.pointsHistory || []).some(
+      (e) => e && e.id === `weekly_review_${weekKey}` && (e.amount || 0) > 0
+    ) ||
+    (prevState.evictedEntryIds || []).some(
+      (e) => e && e.id === `weekly_review_${weekKey}` && (e.amount || 0) > 0
+    ) ||
+    (prevState.weeklyGoals.find((w) => w.weekKey === weekKey)?.reflections || []).some(
+      (r) => r.pointsAwarded
+    );
 
   let latest: WeeklyGoalReflection | undefined = undefined;
   if (updatedReflections.length > 0) {
@@ -889,48 +980,69 @@ function reconcileReflectionPoints(
     );
   }
 
-  if (latest && previousHolder?.id !== latest.id) {
-    const latestId = latest.id;
-    if (previousHolder) {
-      const pointsDeduct = addPointsInternal(
-        currentState,
-        -20,
-        `Weekly reflection points reassigned for ${weekKey}`,
-        'weekly_review'
-      );
-      currentState = { ...currentState, ...pointsDeduct };
-    }
-
-    updatedReflections = updatedReflections.map((r) =>
-      r.id === latestId ? { ...r, pointsAwarded: true } : { ...r, pointsAwarded: false }
-    );
-
+  if (latest && !isWeekAwarded) {
     const pointsAward = addPointsInternal(
       currentState,
       20,
       `Weekly reflection completed for ${weekKey}`,
-      'weekly_review'
+      'weekly_review',
+      { weekKey },
+      undefined,
+      `weekly_review_${weekKey}`
     );
     currentState = { ...currentState, ...pointsAward };
-  } else if (!latest && previousHolder) {
+  } else if (!latest && isWeekAwarded) {
     const pointsDeduct = addPointsInternal(
       currentState,
       -20,
       `Weekly reflection deleted for ${weekKey}`,
-      'weekly_review'
+      'weekly_review',
+      { weekKey },
+      undefined,
+      `weekly_review_rev_${weekKey}`
     );
     currentState = { ...currentState, ...pointsDeduct };
-  } else if (latest) {
-    const latestId = latest.id;
-    updatedReflections = updatedReflections.map((r) =>
-      r.id === latestId ? { ...r, pointsAwarded: true } : { ...r, pointsAwarded: false }
-    );
   }
 
   return {
     updatedReflections,
     nextState: currentState,
   };
+}
+
+export function reconcileAllWeeklyReflections(
+  state: AppState,
+  now: Date = new Date()
+): AppState {
+  let reflectionReconciledState = state;
+  let reflectionsChanged = false;
+
+  const updatedWeeklyGoals = (reflectionReconciledState.weeklyGoals || []).map((wg) => {
+    const cutoff = getWeekReflectionCutoff(wg.weekKey);
+    if (now >= cutoff) {
+      const { updatedReflections, nextState } = reconcileReflectionPoints(
+        reflectionReconciledState,
+        wg.weekKey,
+        wg.reflections || [],
+        now
+      );
+      if (nextState !== reflectionReconciledState) {
+        reflectionReconciledState = nextState;
+        reflectionsChanged = true;
+        return { ...wg, reflections: updatedReflections };
+      }
+    }
+    return wg;
+  });
+
+  if (reflectionsChanged) {
+    return {
+      ...reflectionReconciledState,
+      weeklyGoals: updatedWeeklyGoals,
+    };
+  }
+
+  return state;
 }
 
 export function useAppState() {
@@ -1689,8 +1801,9 @@ export function useAppState() {
         const habitPenalized = processHabitPenalties(archivedState, targetNow);
         const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
         const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
+        const reflectionReconciledState = reconcileAllWeeklyReflections(exercisePenalized, targetNow);
 
-        const reconciledChallenges = (exercisePenalized.sharedChallenges || []).map((c) => {
+        const reconciledChallenges = (reflectionReconciledState.sharedChallenges || []).map((c) => {
           const updated = reconcileSharedChallengeLifecycle(c, targetNow);
           if (updated.status !== c.status || updated.jointStreak !== c.jointStreak) {
             saveSharedChallengeSupabase(updated);
@@ -1700,7 +1813,7 @@ export function useAppState() {
         });
 
         return {
-          ...exercisePenalized,
+          ...reflectionReconciledState,
           sharedChallenges: reconciledChallenges,
         };
       });

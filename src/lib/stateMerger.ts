@@ -47,7 +47,7 @@ import {
   startOfNinetyDayCycle,
 } from './leagues';
 
-function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string }>(
+function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string; timestamp?: string }>(
   baseArr: T[] = [],
   incomingArr: T[] = [],
   tombstoneSet: Set<string>,
@@ -71,8 +71,8 @@ function mergeEntityArrays<T extends { id?: string; createdAt?: string | number;
       if (customMerge) {
         map.set(item.id, customMerge(existing, item));
       } else {
-        const existingTime = existing.updatedAt || (existing.createdAt !== undefined ? String(existing.createdAt) : '');
-        const incomingTime = item.updatedAt || (item.createdAt !== undefined ? String(item.createdAt) : '');
+        const existingTime = existing.updatedAt || (existing.createdAt !== undefined ? String(existing.createdAt) : '') || existing.timestamp || '';
+        const incomingTime = item.updatedAt || (item.createdAt !== undefined ? String(item.createdAt) : '') || item.timestamp || '';
         if (incomingTime >= existingTime) {
           map.set(item.id, { ...existing, ...item });
         } else {
@@ -301,7 +301,13 @@ function mergeWeeklyGoals(
           if (!exR) {
             refMap.set(r.id, r);
           } else {
-            refMap.set(r.id, { ...exR, ...r });
+            const exTime = exR.updatedAt || exR.createdAt || '';
+            const inTime = r.updatedAt || r.createdAt || '';
+            if (inTime >= exTime) {
+              refMap.set(r.id, { ...exR, ...r });
+            } else {
+              refMap.set(r.id, { ...r, ...exR });
+            }
           }
         }
       }
@@ -600,12 +606,57 @@ export function mergeAppState(
     }
   }
 
-  const dedupedHistoryFull = duplicateHabitEntryIds.size > 0
-    ? mergedHistoryFull.filter((e) => e && e.id && !duplicateHabitEntryIds.has(e.id))
+  // Deduplicate weekly_review +20 award entries by weekKey, keeping earliest timestamp (with deterministic id tie-breaker)
+  const weeklyReviewBest = new Map<string, PointsEntry>();
+  const duplicateWeeklyReviewEntryIds = new Set<string>();
+
+  for (const entry of mergedHistoryFull) {
+    if (entry && entry.source === 'weekly_review' && (entry.amount || 0) > 0) {
+      let weekKey: string | null = null;
+      if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
+        weekKey = entry.metadata.weekKey;
+      } else if (entry.reason) {
+        const match = entry.reason.match(/\b\d{4}-W\d{2}\b/);
+        if (match) {
+          weekKey = match[0];
+        }
+      }
+
+      if (weekKey) {
+        const existing = weeklyReviewBest.get(weekKey);
+        if (!existing) {
+          weeklyReviewBest.set(weekKey, entry);
+        } else {
+          const timeCand = entry.timestamp ? new Date(entry.timestamp).getTime() : 0;
+          const timeExist = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+          let replace = false;
+          if (timeCand !== timeExist) {
+            replace = timeCand < timeExist; // earliest timestamp wins
+          } else {
+            replace = (entry.id || '') < (existing.id || ''); // deterministic tie-breaker
+          }
+          if (replace) {
+            if (existing.id) duplicateWeeklyReviewEntryIds.add(existing.id);
+            weeklyReviewBest.set(weekKey, entry);
+          } else {
+            if (entry.id) duplicateWeeklyReviewEntryIds.add(entry.id);
+          }
+        }
+      }
+    }
+  }
+
+  const allDuplicatePointIds = new Set<string>([
+    ...duplicateHabitEntryIds,
+    ...duplicateWeeklyReviewEntryIds,
+  ]);
+
+  const dedupedHistoryFull = allDuplicatePointIds.size > 0
+    ? mergedHistoryFull.filter((e) => e && e.id && !allDuplicatePointIds.has(e.id))
     : mergedHistoryFull;
 
-  const postPointsDeletedEntityIds = duplicateHabitEntryIds.size > 0
-    ? Array.from(new Set([...postHabitDeletedEntityIds, ...duplicateHabitEntryIds])).slice(-500)
+  const postPointsDeletedEntityIds = allDuplicatePointIds.size > 0
+    ? Array.from(new Set([...postHabitDeletedEntityIds, ...allDuplicatePointIds])).slice(-500)
     : postHabitDeletedEntityIds;
 
   const mergedEvictedExcisionRecords = mergeEntityArrays(

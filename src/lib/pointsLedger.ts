@@ -21,7 +21,8 @@ export function addPointsInternal(
   reason: string,
   source: string,
   metadata?: Record<string, any>,
-  customTimestamp?: string
+  customTimestamp?: string,
+  idOverride?: string
 ): Pick<
   AppState,
   | 'seasonPoints'
@@ -73,9 +74,12 @@ export function addPointsInternal(
     (r) => r && r.seasonNumber === seasonId
   );
   const prevHistory = prev.pointsHistory || [];
+  const filteredPrevHistory = idOverride
+    ? prevHistory.filter((e) => e && e.id !== idOverride)
+    : prevHistory;
 
   const newEntry: PointsEntry = {
-    id: uid(),
+    id: idOverride || uid(),
     amount,
     reason,
     source,
@@ -83,7 +87,7 @@ export function addPointsInternal(
     ...(metadata ? { metadata } : {}),
   };
 
-  const fullHistory = [newEntry, ...prevHistory];
+  const fullHistory = [newEntry, ...filteredPrevHistory];
   if (customTimestamp) {
     fullHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
