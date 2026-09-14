@@ -15,7 +15,7 @@ import {
   Trash2,
   Sparkles,
 } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore, isWeeklyReflectionAwarded } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -768,7 +768,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                           <span className="font-medium text-content-tertiary">
                             {new Date(ref.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
-                          {ref.pointsAwarded ? (
+                          {isWeeklyReflectionAwarded(selectedWeekKey, ref.id, store.state) ? (
                             <span className="badge badge-emerald text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                               <Sparkles size={11} /> +20 pts
                             </span>
@@ -1123,7 +1123,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         title="Delete Reflection?"
         itemName={deleteReflectionModal ? (deleteReflectionModal.content.length > 30 ? deleteReflectionModal.content.substring(0, 30) + '...' : deleteReflectionModal.content) : ''}
         description={
-          deleteReflectionModal?.pointsAwarded
+          deleteReflectionModal && isWeeklyReflectionAwarded(selectedWeekKey, deleteReflectionModal.id, store.state)
             ? 'Are you sure you want to delete this reflection? Since it earned points, 20 pts will be deducted. (Your weekly goals will remain untouched).'
             : 'Are you sure you want to delete this reflection entry? (Your weekly goals will remain untouched).'
         }
