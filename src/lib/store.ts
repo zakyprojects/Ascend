@@ -147,6 +147,9 @@ import {
 } from './supabase';
 import { mergeAppState, deduplicatePresetHabits } from './stateMerger';
 
+// [TEMPORARY TEST SCAFFOLD - FOR REMOVAL AFTER TESTING]
+const TESTING_ARTIFICIAL_LOGOUT_DELAY = true;
+
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
 
@@ -1069,6 +1072,7 @@ export function useAppState() {
   const [state, setStateRaw] = useState<AppState>(loadInitialState);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const isHydrated = useRef(false);
+  const authGenerationRef = useRef(0);
   const currentUserRef = useRef<UserProfile | null>(state.currentUser);
   const stateRef = useRef<AppState>(state);
   stateRef.current = state;
@@ -1309,6 +1313,8 @@ export function useAppState() {
         if (!mounted) return;
 
         if (event === 'SIGNED_OUT') {
+          const myGeneration = ++authGenerationRef.current;
+
           if (debounceTimer.current) {
             clearTimeout(debounceTimer.current);
             debounceTimer.current = null;
@@ -1343,6 +1349,7 @@ export function useAppState() {
           if (typeof document !== 'undefined') {
             document.documentElement.setAttribute('data-theme', localTheme);
           }
+          if (myGeneration !== authGenerationRef.current) return;
           setState(nextGuestState);
           setIsAuthChecking(false);
           return;
@@ -1356,6 +1363,8 @@ export function useAppState() {
             setIsAuthChecking(false);
             return;
           }
+
+          const myGeneration = ++authGenerationRef.current;
 
           const userId = session.user.id;
           const email = session.user.email || '';
@@ -1384,6 +1393,7 @@ export function useAppState() {
             ]);
 
             if (mounted) {
+              if (myGeneration !== authGenerationRef.current) return;
               isHydrated.current = true;
               const sanitizedState = sanitizeLoadedState(hydratedState, user);
               if (sanitizedState.themePreference) {
@@ -1410,6 +1420,7 @@ export function useAppState() {
             console.error('Error hydrating auth session:', e);
             // If hydration fails or times out, attempt to restore from local cache first
             if (mounted) {
+              if (myGeneration !== authGenerationRef.current) return;
               let cachedState: AppState | null = null;
               if (typeof window !== 'undefined') {
                 try {
@@ -1909,6 +1920,7 @@ export function useAppState() {
     // 1. Guard against re-entrancy
     if (isLoggingOutRef.current) return;
     isLoggingOutRef.current = true;
+    const myLogoutGeneration = ++authGenerationRef.current;
 
     try {
       const currentState = stateRef.current;
@@ -1920,10 +1932,15 @@ export function useAppState() {
         debounceTimer.current = null;
       }
 
+      // 15-second hard timeout: if logout network calls hang, proceed to reset locally
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Logout network calls timed out after 15s')), 15000)
+      );
+
       // 3. Force immediate flush if there is unsaved state
       let persistError: unknown = null;
       try {
-        await persistState(currentState);
+        await Promise.race([persistState(currentState), timeoutPromise]);
       } catch (persistErr) {
         persistError = persistErr;
         console.error('Failed to flush state before logout:', persistErr);
@@ -1932,13 +1949,20 @@ export function useAppState() {
       // 4. Attempt remote sign-out
       let networkError: unknown = null;
       try {
-        await logoutUser();
+        await Promise.race([logoutUser(), timeoutPromise]);
       } catch (err: unknown) {
         networkError = err;
         console.error('Logout error in auth service:', err);
       }
 
-      // 5. Unconditionally reset local state to guest
+      // [TEMPORARY TEST SCAFFOLD - FOR REMOVAL AFTER TESTING]
+      if (TESTING_ARTIFICIAL_LOGOUT_DELAY) {
+        await new Promise((r) => setTimeout(r, 4000));
+      }
+
+      // 5. Unconditionally reset local state to guest (unless superseded by a newer auth event)
+      if (myLogoutGeneration !== authGenerationRef.current) return;
+
       const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
       let guestState = DEFAULT_STATE;
       if (guestRaw) {
