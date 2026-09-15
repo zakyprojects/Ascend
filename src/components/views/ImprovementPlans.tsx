@@ -183,6 +183,99 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     storeRef.current = store;
   });
 
+  const discoverFiltersRef = useRef({
+    search: discoverSearch,
+    category: discoverCategory,
+    planType: discoverPlanType,
+    sortBy: discoverSortBy,
+  });
+
+  useEffect(() => {
+    discoverFiltersRef.current = {
+      search: discoverSearch,
+      category: discoverCategory,
+      planType: discoverPlanType,
+      sortBy: discoverSortBy,
+    };
+  }, [discoverSearch, discoverCategory, discoverPlanType, discoverSortBy]);
+
+  // Periodic silent background reconciliation for Discover tab (covers RLS-dropped visibility UPDATEs)
+  useEffect(() => {
+    if (activeTab !== 'discover') return;
+
+    let mounted = true;
+
+    const performSilentReconcile = async () => {
+      try {
+        const filters = discoverFiltersRef.current;
+        const plans = await fetchPublicPlansFromSupabase({
+          search: filters.search,
+          category: filters.category,
+          planType: filters.planType,
+          sortBy: filters.sortBy,
+        });
+
+        if (!mounted || !plans) return;
+
+        let hasDifferences = false;
+        const plansWithChangedCopyCount: { id: string; copyCount: number }[] = [];
+
+        setRemotePublicPlans((prev) => {
+          hasDifferences = false;
+          plansWithChangedCopyCount.length = 0;
+
+          const prevMap = new Map(prev.map((p) => [p.id, p]));
+
+          if (prev.length === plans.length) {
+            const isIdentical = prev.every((p, i) => {
+              const n = plans[i];
+              return (
+                p.id === n.id &&
+                p.isPublic === n.isPublic &&
+                p.copyCount === n.copyCount &&
+                p.title === n.title &&
+                p.description === n.description &&
+                p.currentProgress === n.currentProgress &&
+                p.streakCount === n.streakCount &&
+                p.lastCompletedDate === n.lastCompletedDate &&
+                p.creatorPoints === n.creatorPoints
+              );
+            });
+            if (isIdentical) return prev;
+          }
+
+          hasDifferences = true;
+
+          plans.forEach((p) => {
+            if (p.copyCount !== undefined) {
+              const prevPlan = prevMap.get(p.id);
+              if (!prevPlan || prevPlan.copyCount !== p.copyCount) {
+                plansWithChangedCopyCount.push({ id: p.id, copyCount: p.copyCount });
+              }
+            }
+          });
+
+          return plans;
+        });
+
+        if (hasDifferences && plansWithChangedCopyCount.length > 0) {
+          plansWithChangedCopyCount.forEach(({ id, copyCount }) => {
+            storeRef.current.updatePlanCopyCount(id, copyCount);
+          });
+        }
+      } catch (err) {
+        console.error('Failed to perform silent reconcile for Discover plans:', err);
+      }
+    };
+
+    const pollInterval = window.setInterval(performSilentReconcile, 25000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(pollInterval);
+    };
+  }, [activeTab]);
+
   useEffect(() => {
     let mounted = true;
 
