@@ -36,7 +36,7 @@ import { useToast } from '@/components/ui/Toast';
 import { getCurrentTier } from '@/lib/tiers';
 import { getSeasonNumber } from '@/lib/leagues';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
-import { todayKey, formatDateShort, parseDate, calculateElapsedDays } from '@/lib/dates';
+import { todayKey, formatDateShort, parseDate, calculateElapsedDays, addDays } from '@/lib/dates';
 import { createNotificationSupabase, checkRecentPartnerNudgeSent } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { Partnership, SharedChallenge, SharedChallengeCategory, PartnerInvite } from '@/types';
@@ -78,6 +78,32 @@ const DURATION_OPTIONS = [
   { days: 30, label: '30 Days', bonus: '+300 XP', desc: 'Lock-In' },
   { days: 90, label: '90 Days', bonus: '+1,000 XP', desc: 'Mastery' },
 ];
+
+function createTimelineDay(
+  baseKey: string,
+  offsetDays: number,
+  dayNumber: number,
+  todayStr: string,
+  forceFutureFalse = false
+) {
+  const dateKey = addDays(baseKey, offsetDays);
+  const d = parseDate(dateKey) || new Date();
+  const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
+  const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const isToday = dateKey === todayStr;
+  const isPast = dateKey < todayStr;
+  const isFuture = forceFutureFalse ? false : dateKey > todayStr;
+
+  return {
+    dateKey,
+    dayLabel,
+    shortDate,
+    dayNumber,
+    isToday,
+    isPast,
+    isFuture,
+  };
+}
 
 export function AccountabilityPartner({ store }: { store: AppStore }) {
   const { showSuccessToast, showInfoToast, showErrorToast } = useToast();
@@ -484,11 +510,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     }
 
     const todayStr = todayKey();
-    const [tY, tM, tD] = todayStr.split('-').map(Number);
 
     const parsedStart = parseDate(earliestStartIso);
     const startKey = parsedStart ? todayKey(parsedStart) : todayStr;
-    const [sY, sM, sD] = startKey.split('-').map(Number);
 
     // Calculate days elapsed from local start date to today using shared utility (1-indexed, Day 1 = start date)
     const elapsedDays = calculateElapsedDays(earliestStartIso);
@@ -511,92 +535,25 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     if (maxDuration <= 14) {
       // For pacts <= 14 days, show exactly maxDuration day cells (Days 1..maxDuration)
       for (let i = 0; i < maxDuration; i++) {
-        const d = new Date(sY, sM - 1, sD + i);
-        const key = todayKey(d);
-        const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
-        const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const isToday = key === todayStr;
-        const isPast = key < todayStr;
-        const isFuture = key > todayStr;
-
-        days.push({
-          dateKey: key,
-          dayLabel,
-          shortDate,
-          dayNumber: i + 1,
-          isToday,
-          isPast,
-          isFuture,
-        });
+        days.push(createTimelineDay(startKey, i, i + 1, todayStr));
       }
     } else {
       // For pacts > 14 days
       if (elapsedDays <= 14) {
         // First 14 days: Day 1..14
         for (let i = 0; i < 14; i++) {
-          const d = new Date(sY, sM - 1, sD + i);
-          const key = todayKey(d);
-          const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
-          const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const isToday = key === todayStr;
-          const isPast = key < todayStr;
-          const isFuture = key > todayStr;
-
-          days.push({
-            dateKey: key,
-            dayLabel,
-            shortDate,
-            dayNumber: i + 1,
-            isToday,
-            isPast,
-            isFuture,
-          });
+          days.push(createTimelineDay(startKey, i, i + 1, todayStr));
         }
       } else if (elapsedDays <= maxDuration) {
         // Rolling 14 trailing calendar days ending today
         for (let i = 13; i >= 0; i--) {
-          const d = new Date(tY, tM - 1, tD - i);
-          const key = todayKey(d);
-          const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
-          const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const dayNumber = elapsedDays - i;
-          const isToday = key === todayStr;
-          const isPast = key < todayStr;
-          const isFuture = false;
-
-          days.push({
-            dateKey: key,
-            dayLabel,
-            shortDate,
-            dayNumber,
-            isToday,
-            isPast,
-            isFuture,
-          });
+          days.push(createTimelineDay(todayStr, -i, elapsedDays - i, todayStr, true));
         }
       } else {
         // Pact duration window has fully elapsed -> freeze at the final 14 days (up to maxDuration)
-        const finalPactDayDate = new Date(sY, sM - 1, sD + (maxDuration - 1));
-        const [fY, fM, fD] = [finalPactDayDate.getFullYear(), finalPactDayDate.getMonth(), finalPactDayDate.getDate()];
+        const finalPactDayKey = addDays(startKey, maxDuration - 1);
         for (let i = 13; i >= 0; i--) {
-          const d = new Date(fY, fM, fD - i);
-          const key = todayKey(d);
-          const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
-          const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const dayNumber = maxDuration - i;
-          const isToday = key === todayStr;
-          const isPast = key < todayStr;
-          const isFuture = key > todayStr;
-
-          days.push({
-            dateKey: key,
-            dayLabel,
-            shortDate,
-            dayNumber,
-            isToday,
-            isPast,
-            isFuture,
-          });
+          days.push(createTimelineDay(finalPactDayKey, -i, maxDuration - i, todayStr));
         }
       }
     }
@@ -612,10 +569,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       const activePactsOnDay = isolatedChallenges.filter((c) => {
         const pDate = parseDate(c.createdAt);
         const pKey = pDate ? todayKey(pDate) : (c.createdAt ? c.createdAt.slice(0, 10) : '2000-01-01');
-        const [sY, sM, sD] = pKey.split('-').map(Number);
         const duration = c.durationDays || 14;
-        const endD = new Date(sY, sM - 1, sD + duration - 1, 12, 0, 0);
-        const endKey = todayKey(endD);
+        const endKey = addDays(pKey, duration - 1);
         return pKey <= day.dateKey && day.dateKey <= endKey;
       });
 

@@ -33,6 +33,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
 import { getCurrentTier } from '@/lib/tiers';
+import { todayKey } from '@/lib/dates';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { fetchPublicPlansFromSupabase, mapRowToImprovementPlan, supabase, syncBroadcaster } from '@/lib/supabase';
 import { getProfilePointsByUsername, getProfileSeasonPointsByUsername } from '@/lib/auth';
@@ -98,7 +99,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   // Habit Journey states
   const [cadence, setCadence] = useState<'daily' | 'weekly'>('daily');
   const [duration, setDuration] = useState<number>(30);
-  const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState<string>(todayKey());
 
   // Vision Plan & Phase C Review Loop states
   const [targetReviewDate, setTargetReviewDate] = useState<string>('');

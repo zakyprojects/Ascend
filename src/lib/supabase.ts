@@ -4,6 +4,7 @@ import { getHighestUserStreak } from './habitPenalties';
 import { calculateUnifiedStreak } from './streakLogic';
 import { mergeAppState } from './stateMerger';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
+import { todayKey } from './dates';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -295,7 +296,7 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
         0
       );
       const habitsCompletedTodayCount = (finalState.habits || []).reduce((acc, h) => {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = todayKey();
         const isDone = Array.isArray(h.completions)
           ? h.completions.includes(todayStr)
           : h.completions?.[todayStr]?.done === true;
