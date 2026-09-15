@@ -3,10 +3,14 @@ import { Target, Zap, Plus, Trash2, Clock, Award, Flame } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { useToast } from '@/components/ui/Toast';
+import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { Skill, SkillLevel, SkillSessionLog } from '@/types';
 import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak } from '@/lib/dates';
 
 export function SkillTracker({ store }: { store: AppStore }) {
+  const { showErrorToast, showSuccessToast } = useToast();
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [logModalSkill, setLogModalSkill] = useState<Skill | null>(null);
   const [deleteModalSkill, setDeleteModalSkill] = useState<Skill | null>(null);
@@ -577,12 +581,21 @@ export function SkillTracker({ store }: { store: AppStore }) {
       <ConfirmDeleteModal
         open={!!deleteModalSkill}
         onClose={() => setDeleteModalSkill(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteModalSkill) {
-            store.deleteSkill(deleteModalSkill.id);
-            setDeleteModalSkill(null);
+            const skillId = deleteModalSkill.id;
+            await executeWithKey(`delete_skill_${skillId}`, async () => {
+              try {
+                await store.deleteSkill(skillId);
+                setDeleteModalSkill(null);
+                showSuccessToast('Skill Deleted', 'Skill removed successfully.');
+              } catch (err: any) {
+                showErrorToast('Delete Failed', err?.message || 'Failed to delete skill.');
+              }
+            });
           }
         }}
+        isDeleting={deleteModalSkill ? isKeyLoading(`delete_skill_${deleteModalSkill.id}`) : false}
         title="Delete Skill?"
         itemName={deleteModalSkill?.name}
         description={`Are you sure you want to delete "${deleteModalSkill?.name}"? This will remove the skill and its recorded practice history.${
@@ -596,12 +609,21 @@ export function SkillTracker({ store }: { store: AppStore }) {
       <ConfirmDeleteModal
         open={!!deleteModalLog}
         onClose={() => setDeleteModalLog(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteModalLog) {
-            store.deleteSkillLog(deleteModalLog.id);
-            setDeleteModalLog(null);
+            const logId = deleteModalLog.id;
+            await executeWithKey(`delete_skill_log_${logId}`, async () => {
+              try {
+                await store.deleteSkillLog(logId);
+                setDeleteModalLog(null);
+                showSuccessToast('Log Deleted', 'Practice session log removed.');
+              } catch (err: any) {
+                showErrorToast('Delete Failed', err?.message || 'Failed to delete practice log.');
+              }
+            });
           }
         }}
+        isDeleting={deleteModalLog ? isKeyLoading(`delete_skill_log_${deleteModalLog.id}`) : false}
         title="Delete Practice Session Log?"
         itemName={skills.find((s) => s.id === deleteModalLog?.skillId)?.name}
         description={`Are you sure you want to delete this ${deleteModalLog?.durationMinutes}-minute practice log? Any points awarded (+${deleteModalLog?.pointsAwarded || 0} pts) will be reversed.`}

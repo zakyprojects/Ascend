@@ -55,6 +55,7 @@ import {
 } from '@/lib/timeTracker';
 import { ActivityIcon } from './timeTracker/ActivityIcon';
 import { useToast } from '@/components/ui/Toast';
+import { useAsyncActionKey } from '@/lib/useAsyncAction';
 
 type PFCTab = 'focus' | 'decision' | 'emotion';
 
@@ -392,6 +393,7 @@ function FocusTimerSubmodule({
 
   // Task & Tagging
   const { showSuccessToast, showErrorToast } = useToast();
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [taskName, setTaskName] = useState('Deep Work');
   const [selectedSkillId, setSelectedSkillId] = useState<string>('');
 
@@ -2396,12 +2398,21 @@ function FocusTimerSubmodule({
       <ConfirmDeleteModal
         open={!!deleteModalLog}
         onClose={() => setDeleteModalLog(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteModalLog) {
-            store.deleteFocusLog(deleteModalLog.id);
-            setDeleteModalLog(null);
+            const logId = deleteModalLog.id;
+            await executeWithKey(`delete_focus_log_${logId}`, async () => {
+              try {
+                await store.deleteFocusLog(logId);
+                setDeleteModalLog(null);
+                showSuccessToast('Session Deleted', 'Focus session removed.');
+              } catch (err: any) {
+                showErrorToast('Delete Failed', err?.message || 'Failed to delete focus session.');
+              }
+            });
           }
         }}
+        isDeleting={deleteModalLog ? isKeyLoading(`delete_focus_log_${deleteModalLog.id}`) : false}
         title="Delete Focus Session?"
         itemName={deleteModalLog?.taskName}
         description={`Are you sure you want to delete focus log "${deleteModalLog?.taskName}"? Any points awarded (+${deleteModalLog?.pointsAwarded || 0} pts) will be reversed.`}
@@ -2414,6 +2425,8 @@ function FocusTimerSubmodule({
 // 2. DECISION JOURNAL SUBMODULE
 // ----------------------------------------------------------------------
 function DecisionJournalSubmodule({ store }: { store: AppStore }) {
+  const { showErrorToast, showSuccessToast } = useToast();
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [modalOpen, setModalOpen] = useState(false);
   const [reflectModalDecision, setReflectModalDecision] = useState<any | null>(null);
   const [deleteModalDecision, setDeleteModalDecision] = useState<any | null>(null);
@@ -2609,12 +2622,21 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
       <ConfirmDeleteModal
         open={!!deleteModalDecision}
         onClose={() => setDeleteModalDecision(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteModalDecision) {
-            store.deleteDecisionLog(deleteModalDecision.id);
-            setDeleteModalDecision(null);
+            const decisionId = deleteModalDecision.id;
+            await executeWithKey(`delete_decision_${decisionId}`, async () => {
+              try {
+                await store.deleteDecisionLog(decisionId);
+                setDeleteModalDecision(null);
+                showSuccessToast('Decision Deleted', 'Decision entry removed.');
+              } catch (err: any) {
+                showErrorToast('Delete Failed', err?.message || 'Failed to delete decision.');
+              }
+            });
           }
         }}
+        isDeleting={deleteModalDecision ? isKeyLoading(`delete_decision_${deleteModalDecision.id}`) : false}
         title="Delete Decision Journal Entry?"
         itemName={deleteModalDecision?.title}
         description={`Are you sure you want to delete decision entry "${deleteModalDecision?.title}"?`}
@@ -2627,6 +2649,8 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
 // 3. EMOTION LABELING TOOL SUBMODULE
 // ----------------------------------------------------------------------
 function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
+  const { showErrorToast, showSuccessToast } = useToast();
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModalEmotion, setDeleteModalEmotion] = useState<any | null>(null);
   const [emotion, setEmotion] = useState('Anxiety');
@@ -2785,12 +2809,21 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
       <ConfirmDeleteModal
         open={!!deleteModalEmotion}
         onClose={() => setDeleteModalEmotion(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteModalEmotion) {
-            store.deleteEmotionLog(deleteModalEmotion.id);
-            setDeleteModalEmotion(null);
+            const emotionId = deleteModalEmotion.id;
+            await executeWithKey(`delete_emotion_${emotionId}`, async () => {
+              try {
+                await store.deleteEmotionLog(emotionId);
+                setDeleteModalEmotion(null);
+                showSuccessToast('Emotion Log Deleted', 'Emotion log entry removed.');
+              } catch (err: any) {
+                showErrorToast('Delete Failed', err?.message || 'Failed to delete emotion log.');
+              }
+            });
           }
         }}
+        isDeleting={deleteModalEmotion ? isKeyLoading(`delete_emotion_${deleteModalEmotion.id}`) : false}
         title="Delete Emotion Log?"
         itemName={deleteModalEmotion?.emotion}
         description={`Are you sure you want to delete the emotion log for "${deleteModalEmotion?.emotion}"? Any points awarded (+5 pts) will be reversed.`}

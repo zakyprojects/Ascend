@@ -378,8 +378,9 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
 
       if (profErr) {
         console.error('Error upserting profile in Supabase:', profErr);
+        throw new Error(profErr.message || 'Error upserting profile in Supabase');
       }
-      return profErr;
+      return null;
     })();
 
     const [dataResult] = await Promise.all([userDataPromise, profilePromise]);
@@ -395,48 +396,17 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
         });
         if (retryErr) {
           console.error('Error retrying user_data upsert in Supabase:', retryErr);
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-              new CustomEvent('app-toast-error', {
-                detail: {
-                  title: 'Cloud Sync Failed',
-                  message: 'Could not sync user data to cloud.',
-                },
-              })
-            );
-            window.dispatchEvent(new CustomEvent('app-network-error'));
-          }
+          throw new Error(retryErr.message || 'Error retrying user_data upsert in Supabase');
         }
       } else {
         console.error('Error upserting user_data in Supabase:', dataResult.error);
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(
-            new CustomEvent('app-toast-error', {
-              detail: {
-                title: 'Cloud Sync Failed',
-                message: 'Could not sync user data to cloud.',
-              },
-            })
-          );
-          window.dispatchEvent(new CustomEvent('app-network-error'));
-        }
+        throw new Error(dataResult.error.message || 'Error upserting user_data in Supabase');
       }
     }
     return finalState;
   } catch (e) {
     console.error('Error saving user_data to Supabase:', e);
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(
-        new CustomEvent('app-toast-error', {
-          detail: {
-            title: 'Cloud Sync Failed',
-            message: 'Network error saving data. Please check connection.',
-          },
-        })
-      );
-      window.dispatchEvent(new CustomEvent('app-network-error'));
-    }
-    return null;
+    throw e;
   }
 }
 

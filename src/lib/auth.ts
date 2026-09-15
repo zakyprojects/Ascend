@@ -869,7 +869,9 @@ export function getRegisteredUsers(): Record<string, any> {
   return {};
 }
 export function saveUserState(userId: string, state: AppState) {
-  saveUserDataToSupabase(userId, state);
+  saveUserDataToSupabase(userId, state).catch((err) => {
+    console.error('Failed to save user state in saveUserState:', err);
+  });
 }
 export function addPartnerInviteAcrossUsers(invite: PartnerInvite) {}
 export function updatePartnerInviteStatusAcrossUsers(inviteId: string, status: 'accepted' | 'declined') {}

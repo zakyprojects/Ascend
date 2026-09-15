@@ -737,20 +737,16 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
 }
 
 async function persistState(state: AppState): Promise<void> {
-  try {
-    if (state.currentUser?.id) {
-      await saveUserDataToSupabase(state.currentUser.id, state);
-      // Clean up local guest storage key once session is authenticated
-      try {
-        localStorage.removeItem(GUEST_STORAGE_KEY);
-      } catch {
-        /* ignore */
-      }
-    } else {
-      localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(state));
+  if (state.currentUser?.id) {
+    await saveUserDataToSupabase(state.currentUser.id, state);
+    // Clean up local guest storage key once session is authenticated
+    try {
+      localStorage.removeItem(GUEST_STORAGE_KEY);
+    } catch {
+      /* ignore */
     }
-  } catch (e) {
-    console.error('Failed to persist state', e);
+  } else {
+    localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(state));
   }
 }
 
@@ -1222,11 +1218,39 @@ export function useAppState() {
           clearTimeout(debounceTimer.current);
           debounceTimer.current = null;
         }
-        persistState(state);
+        persistState(state).catch((err) => {
+          console.error('[AUTOSAVE IMMEDIATE] Failed to persist state:', err);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('app-toast-error', {
+                detail: {
+                  title: 'Cloud Sync Failed',
+                  message: 'Could not sync user data to cloud.',
+                },
+              })
+            );
+            window.dispatchEvent(new CustomEvent('app-network-error'));
+          }
+        });
       } else {
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        debounceTimer.current = setTimeout(() => {
-          persistState(state);
+        debounceTimer.current = setTimeout(async () => {
+          try {
+            await persistState(state);
+          } catch (err) {
+            console.error('[AUTOSAVE DEBOUNCED] Failed to persist state:', err);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('app-toast-error', {
+                  detail: {
+                    title: 'Cloud Sync Failed',
+                    message: 'Could not sync user data to cloud.',
+                  },
+                })
+              );
+              window.dispatchEvent(new CustomEvent('app-network-error'));
+            }
+          }
         }, 500);
       }
     }

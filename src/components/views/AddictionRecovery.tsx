@@ -3,6 +3,8 @@ import { HeartPulse, ShieldCheck, Flame, AlertCircle, Sparkles, RefreshCw, Activ
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { useToast } from '@/components/ui/Toast';
+import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { CravingLog } from '@/types';
 import { formatDateLong } from '@/lib/dates';
 
@@ -17,6 +19,8 @@ const DISTRACTION_ACTIVITIES = [
 ];
 
 export function AddictionRecovery({ store }: { store: AppStore }) {
+  const { showErrorToast, showSuccessToast } = useToast();
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [cravingModalOpen, setCravingModalOpen] = useState(false);
   const [setupTrackerModalOpen, setSetupTrackerModalOpen] = useState(false);
@@ -417,10 +421,18 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <ConfirmDeleteModal
         open={deleteTrackerConfirmOpen}
         onClose={() => setDeleteTrackerConfirmOpen(false)}
-        onConfirm={() => {
-          store.deleteAddictionTracker();
-          setDeleteTrackerConfirmOpen(false);
+        onConfirm={async () => {
+          await executeWithKey('delete_addiction_tracker', async () => {
+            try {
+              await store.deleteAddictionTracker();
+              setDeleteTrackerConfirmOpen(false);
+              showSuccessToast('Tracker Deleted', 'Sobriety tracker and history removed.');
+            } catch (err: any) {
+              showErrorToast('Delete Failed', err?.message || 'Failed to delete sobriety tracker.');
+            }
+          });
         }}
+        isDeleting={isKeyLoading('delete_addiction_tracker')}
         title="Delete Sobriety Tracker?"
         itemName={tracker?.title}
         description={`Are you sure you want to delete your "${tracker?.title}" sobriety counter entirely? This will clear the active streak counter and remove all logged craving data. Any milestone points earned will be deducted.`}
@@ -431,12 +443,21 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <ConfirmDeleteModal
         open={Boolean(deleteCravingModalLog)}
         onClose={() => setDeleteCravingModalLog(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteCravingModalLog) {
-            store.deleteCravingLog(deleteCravingModalLog.id);
-            setDeleteCravingModalLog(null);
+            const logId = deleteCravingModalLog.id;
+            await executeWithKey(`delete_craving_log_${logId}`, async () => {
+              try {
+                await store.deleteCravingLog(logId);
+                setDeleteCravingModalLog(null);
+                showSuccessToast('Log Deleted', 'Craving log removed.');
+              } catch (err: any) {
+                showErrorToast('Delete Failed', err?.message || 'Failed to delete craving log.');
+              }
+            });
           }
         }}
+        isDeleting={deleteCravingModalLog ? isKeyLoading(`delete_craving_log_${deleteCravingModalLog.id}`) : false}
         title="Delete Craving Log?"
         description="Are you sure you want to delete this craving log entry?"
       />

@@ -15,10 +15,15 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
+import { useToast } from '@/components/ui/Toast';
+import { useAsyncActionKey } from '@/lib/useAsyncAction';
+import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { BadHabit } from '@/types';
 import { todayKey, formatDateLong } from '@/lib/dates';
 
 export function BadHabitTracker({ store }: { store: AppStore }) {
+  const { showErrorToast, showSuccessToast } = useToast();
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [habitName, setHabitName] = useState('');
   const [durationMode, setDurationMode] = useState<'30' | '60' | '90' | 'custom'>('30');
@@ -103,10 +108,18 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
     setDurationError('');
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteModalHabit) return;
-    store.deleteBadHabit(deleteModalHabit.id);
-    setDeleteModalHabit(null);
+    const habitId = deleteModalHabit.id;
+    await executeWithKey(`delete_bad_habit_${habitId}`, async () => {
+      try {
+        await store.deleteBadHabit(habitId);
+        setDeleteModalHabit(null);
+        showSuccessToast('Habit Deleted', 'Bad habit record removed.');
+      } catch (err: any) {
+        showErrorToast('Delete Failed', err?.message || 'Failed to delete bad habit.');
+      }
+    });
   };
 
   return (
@@ -615,11 +628,28 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               )}
 
               <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setDeleteModalHabit(null)} className="btn-secondary flex-1">
+                <button
+                  type="button"
+                  disabled={isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
+                  onClick={() => setDeleteModalHabit(null)}
+                  className="btn-secondary flex-1"
+                >
                   Cancel
                 </button>
-                <button type="button" onClick={handleConfirmDelete} className="btn-primary bg-rose-600 hover:bg-rose-500 flex-1">
-                  {deleteModalHabit.isCompleted ? 'Delete Record' : 'Confirm Delete & Reverse Pts'}
+                <button
+                  type="button"
+                  disabled={isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
+                  onClick={handleConfirmDelete}
+                  className="btn-primary bg-rose-600 hover:bg-rose-500 flex-1 flex items-center justify-center gap-2"
+                >
+                  {isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`) ? (
+                    <>
+                      <AscendLoadingIndicator size="sm" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    deleteModalHabit.isCompleted ? 'Delete Record' : 'Confirm Delete & Reverse Pts'
+                  )}
                 </button>
               </div>
             </div>

@@ -399,7 +399,9 @@ export async function hydrateUserSession(
         const cleanedPlans = savedState.improvementPlans.filter((p: any) => dbPlanIds.has(p.id));
         if (cleanedPlans.length !== savedState.improvementPlans.length) {
           console.log('[HYDRATION CLEANUP] Cleaning deleted plans out of user_data');
-          void saveUserDataToSupabase(userId, { ...savedState, improvementPlans: cleanedPlans });
+          saveUserDataToSupabase(userId, { ...savedState, improvementPlans: cleanedPlans }).catch((err) => {
+            console.error('[HYDRATION CLEANUP] Failed to save cleaned plans to user_data:', err);
+          });
         }
       }
     } else if (savedState?.improvementPlans && savedState.improvementPlans.length > 0) {
@@ -466,7 +468,9 @@ export async function hydrateUserSession(
         const cleanedFollows = savedState.followedPlans.filter((f: any) => dbFollowIds.has(f.id));
         if (cleanedFollows.length !== savedState.followedPlans.length) {
           console.log('[HYDRATION CLEANUP] Cleaning deleted followed plans out of user_data');
-          void saveUserDataToSupabase(userId, { ...savedState, followedPlans: cleanedFollows });
+          saveUserDataToSupabase(userId, { ...savedState, followedPlans: cleanedFollows }).catch((err) => {
+            console.error('[HYDRATION CLEANUP] Failed to save cleaned followed plans to user_data:', err);
+          });
         }
       }
     } else if (savedState?.followedPlans && savedState.followedPlans.length > 0) {
@@ -487,7 +491,21 @@ export async function hydrateUserSession(
 
   // Only push an immediate save during hydration if this is explicitly a fresh signup with initial defaults
   if (signupDefaults) {
-    await saveUserDataToSupabase(userId, state);
+    try {
+      await saveUserDataToSupabase(userId, state);
+    } catch (saveErr) {
+      console.error('[HYDRATION SIGNUP SAVE] Failed to save initial signup defaults to Supabase:', saveErr);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast-error', {
+            detail: {
+              title: 'Account Setup Warning',
+              message: 'Initial account setup data could not be saved to cloud. It will sync the next time you make a change.',
+            },
+          })
+        );
+      }
+    }
   }
 
   return { user, state };
