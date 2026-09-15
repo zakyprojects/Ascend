@@ -1853,7 +1853,10 @@ export function useAppState() {
   useEffect(() => {
     const checkUpdates = (simulatedNow?: Date) => {
       const targetNow = simulatedNow || new Date();
+      const challengesToSync: SharedChallenge[] = [];
+
       setState((prev) => {
+        challengesToSync.length = 0;
         const archivedState = checkAndArchiveLeagues(prev, targetNow);
         const habitPenalized = processHabitPenalties(archivedState, targetNow);
         const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
@@ -1863,8 +1866,7 @@ export function useAppState() {
         const reconciledChallenges = (reflectionReconciledState.sharedChallenges || []).map((c) => {
           const updated = reconcileSharedChallengeLifecycle(c, targetNow);
           if (updated.status !== c.status || updated.jointStreak !== c.jointStreak) {
-            saveSharedChallengeSupabase(updated);
-            syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+            challengesToSync.push(updated);
           }
           return updated;
         });
@@ -1874,6 +1876,13 @@ export function useAppState() {
           sharedChallenges: reconciledChallenges,
         };
       });
+
+      for (const updated of challengesToSync) {
+        saveSharedChallengeSupabase(updated).catch((err) => {
+          console.error('Failed to sync shared challenge from checkUpdates:', err);
+        });
+        syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+      }
     };
     checkUpdates(getNow());
     archiveTimer.current = window.setInterval(() => checkUpdates(getNow()), 60000);
@@ -2192,9 +2201,12 @@ export function useAppState() {
       inFlightHabitToggles.current.add(habitId);
 
       let completed = false;
+      const challengesToSync: SharedChallenge[] = [];
+
       try {
         setState(
           (prev) => {
+            challengesToSync.length = 0;
             const habit = prev.habits.find((h) => h.id === habitId);
             if (habit?.linkedModule === 'reading') {
               return prev;
@@ -2304,8 +2316,7 @@ export function useAppState() {
 
                 if (myCategory === 'habit' && myTarget === habit.name.trim().toLowerCase()) {
                   const { updated } = applyPledgeToggle(target, isUser1, completed);
-                  saveSharedChallengeSupabase(updated);
-                  syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+                  challengesToSync.push(updated);
                   return updated;
                 }
 
@@ -2317,6 +2328,13 @@ export function useAppState() {
           },
           { immediate: true }
         );
+
+        for (const updated of challengesToSync) {
+          saveSharedChallengeSupabase(updated).catch((err) => {
+            console.error('Failed to sync shared challenge from toggleHabit:', err);
+          });
+          syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+        }
       } finally {
         inFlightHabitToggles.current.delete(habitId);
       }
