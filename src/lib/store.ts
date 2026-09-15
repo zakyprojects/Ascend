@@ -179,6 +179,16 @@ export function broadcastStateToTabs(state: AppState, senderTabId: string) {
   }
 }
 
+function dispatchToastError(title: string, message?: string) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('app-toast-error', {
+        detail: { title, message },
+      })
+    );
+  }
+}
+
 function removeLinkedWeeklyGoals(
   weeklyGoals: WeeklyGoal[],
   linkedModule: 'habit' | 'skill' | 'reading',
@@ -5481,7 +5491,7 @@ export function useAppState() {
       // 1. Verify Session First
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        alert("Error: You must be logged in to copy a plan.");
+        dispatchToastError("Authentication Required", "You must be logged in to copy a plan.");
         return;
       }
 
@@ -5499,7 +5509,7 @@ export function useAppState() {
 
       if (rpcError) {
         console.error("[Copy Plan] RPC FAILED:", rpcError);
-        alert(`Database Error (RPC): ${rpcError.message || rpcError.code}`);
+        dispatchToastError("Database Error (RPC)", rpcError.message || rpcError.code);
         throw rpcError;
       }
 
@@ -5511,7 +5521,7 @@ export function useAppState() {
 
       // 4. NOW attempt to create the follow record
       console.log(`[Copy Plan] Inserting into user_plan_follows...`);
-      const stepsCopy: PlanStep[] = originalPlan.steps.map((s) => ({
+      const stepsCopy: PlanStep[] = (originalPlan.steps || []).map((s) => ({
         ...s,
         id: uid(),
         completed: false,
@@ -5523,11 +5533,7 @@ export function useAppState() {
         originalPlanId: planId,
         title: originalPlan.title,
         description: originalPlan.description,
-        steps: (originalPlan.steps || []).map((s) => ({
-          ...s,
-          id: uid(),
-          completed: false,
-        })),
+        steps: stepsCopy,
         isCompleted: false,
         pointsAwarded: 0,
         createdAt: new Date().toISOString(),
@@ -5559,7 +5565,8 @@ export function useAppState() {
       syncFollowedPlanToSupabase(createdFollow);
     } catch (err: any) {
       console.error("[Copy Plan] FATAL ERROR CATCH:", err);
-      alert(`Fatal Error during copy: ${err.message || 'Check console'}`);
+      dispatchToastError("Copy Failed", err.message || 'Check console');
+      throw err;
     }
   }, [updatePlanCopyCount, state.username, state.currentUser?.id, state.followedPlans]);
 
