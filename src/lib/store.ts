@@ -726,10 +726,10 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
   return processBadHabitNoReports(sweptState);
 }
 
-function persistState(state: AppState) {
+async function persistState(state: AppState): Promise<void> {
   try {
     if (state.currentUser?.id) {
-      saveUserDataToSupabase(state.currentUser.id, state);
+      await saveUserDataToSupabase(state.currentUser.id, state);
       // Clean up local guest storage key once session is authenticated
       try {
         localStorage.removeItem(GUEST_STORAGE_KEY);
@@ -1070,6 +1070,7 @@ export function useAppState() {
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveTimer = useRef<number | null>(null);
   const pendingImmediateFlush = useRef(false);
+  const isLoggingOutRef = useRef(false);
 
   // Cross-tab synchronization tracking
   const tabId = useRef<string>(Math.random().toString(36).substring(2) + Date.now().toString(36)).current;
@@ -1870,22 +1871,80 @@ export function useAppState() {
     setState(sanitizeLoadedState(newState, user));
   }, []);
 
-  const logout = useCallback(() => {
-    const localTheme = getLocalThemePreference() || 'dark';
-    logoutUser();
-    // Revert to guest state
-    const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
-    let guestState = DEFAULT_STATE;
-    if (guestRaw) {
+  const logout = useCallback(async () => {
+    // 1. Guard against re-entrancy
+    if (isLoggingOutRef.current) return;
+    isLoggingOutRef.current = true;
+
+    try {
+      const currentState = stateRef.current;
+      const localTheme = getLocalThemePreference() || 'dark';
+
+      // 2. Cancel pending debounce timer if one exists
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
+
+      // 3. Force immediate flush if there is unsaved state
+      let persistError: unknown = null;
       try {
-        guestState = JSON.parse(guestRaw);
-      } catch {}
+        await persistState(currentState);
+      } catch (persistErr) {
+        persistError = persistErr;
+        console.error('Failed to flush state before logout:', persistErr);
+      }
+
+      // 4. Attempt remote sign-out
+      let networkError: unknown = null;
+      try {
+        await logoutUser();
+      } catch (err: unknown) {
+        networkError = err;
+        console.error('Logout error in auth service:', err);
+      }
+
+      // 5. Unconditionally reset local state to guest
+      const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
+      let guestState = DEFAULT_STATE;
+      if (guestRaw) {
+        try {
+          guestState = JSON.parse(guestRaw);
+        } catch {}
+      }
+      const sanitized = sanitizeLoadedState(guestState, null);
+      setState({
+        ...sanitized,
+        themePreference: localTheme,
+      });
+
+      // 6. Surface user-facing notifications for any failures that occurred
+      if (typeof window !== 'undefined') {
+        if (persistError) {
+          window.dispatchEvent(
+            new CustomEvent('app-toast-error', {
+              detail: {
+                title: 'Sync Warning',
+                message: 'Recent changes may not have finished saving to the cloud before logout.',
+              },
+            })
+          );
+        }
+
+        if (networkError) {
+          window.dispatchEvent(
+            new CustomEvent('app-toast-error', {
+              detail: {
+                title: 'Signed Out Locally',
+                message: "Logged out locally — couldn't confirm with the server.",
+              },
+            })
+          );
+        }
+      }
+    } finally {
+      isLoggingOutRef.current = false;
     }
-    const sanitized = sanitizeLoadedState(guestState, null);
-    setState({
-      ...sanitized,
-      themePreference: localTheme,
-    });
   }, []);
 
   const addPoints = useCallback(

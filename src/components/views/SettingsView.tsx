@@ -261,17 +261,43 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
   const handleConfirmLogout = async () => {
     await executeLogout(async () => {
-      await store.logout();
-      setShowLogoutConfirm(false);
+      try {
+        await store.logout();
+      } catch (err) {
+        console.error('Logout error in SettingsView:', err);
+      } finally {
+        setShowLogoutConfirm(false);
+      }
+    });
+  };
+
+  const handleGuestLogoutAnyway = async () => {
+    await executeLogout(async () => {
+      try {
+        await store.logout();
+      } catch (err) {
+        console.error('Guest logout error in SettingsView:', err);
+      } finally {
+        setShowGuestLogoutWarning(false);
+      }
     });
   };
 
   // Delete account handler
   const handleDeleteAccount = async () => {
     await executeDeleteAccount(async () => {
-      await deleteUserProfileAndData(userId);
-      setShowDeleteConfirm(false);
-      await store.logout();
+      try {
+        await deleteUserProfileAndData(userId);
+      } catch (err) {
+        console.error('Account deletion failed in SettingsView:', err);
+      } finally {
+        setShowDeleteConfirm(false);
+        try {
+          await store.logout();
+        } catch (logoutErr) {
+          console.error('Post-deletion logout error in SettingsView:', logoutErr);
+        }
+      }
     });
   };
 
@@ -937,7 +963,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
         onSaveProgressFirst={() => {
           if (onOpenAuthModal) onOpenAuthModal();
         }}
-        onLogoutAnyway={store.logout}
+        onLogoutAnyway={handleGuestLogoutAnyway}
+        isLoggingOut={isLoggingOut}
       />
 
       {/* Account Logout Confirmation Modal */}

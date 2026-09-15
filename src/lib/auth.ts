@@ -336,6 +336,13 @@ export async function upgradeAnonymousUser(
  * Logout current user session from Supabase.
  */
 export async function logoutUser(): Promise<void> {
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error signing out from Supabase:', error);
+      throw new Error(error.message || 'Failed to sign out from authentication service.');
+    }
+  }
   if (typeof window !== 'undefined') {
     try {
       localStorage.removeItem('ascend_active_focus_session');
@@ -343,9 +350,6 @@ export async function logoutUser(): Promise<void> {
     } catch (e) {
       /* ignore */
     }
-  }
-  if (isSupabaseConfigured) {
-    await supabase.auth.signOut();
   }
 }
 

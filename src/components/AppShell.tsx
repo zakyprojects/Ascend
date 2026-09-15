@@ -91,8 +91,22 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
     setIsLoggingOut(true);
     try {
       await store.logout();
-      setLogoutConfirmOpen(false);
+    } catch (err) {
+      console.error('Logout error in AppShell:', err);
     } finally {
+      setLogoutConfirmOpen(false);
+      setIsLoggingOut(false);
+    }
+  };
+
+  const handleGuestLogoutAnyway = async () => {
+    setIsLoggingOut(true);
+    try {
+      await store.logout();
+    } catch (err) {
+      console.error('Guest logout error in AppShell:', err);
+    } finally {
+      setGuestLogoutWarningOpen(false);
       setIsLoggingOut(false);
     }
   };
@@ -408,7 +422,8 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
         open={guestLogoutWarningOpen}
         onClose={() => setGuestLogoutWarningOpen(false)}
         onSaveProgressFirst={onOpenAuthModal}
-        onLogoutAnyway={store.logout}
+        onLogoutAnyway={handleGuestLogoutAnyway}
+        isLoggingOut={isLoggingOut}
       />
 
       <LogoutConfirmModal
