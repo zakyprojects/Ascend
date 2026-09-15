@@ -25,6 +25,7 @@ import {
   offsetWeekKey,
   formatWeekRange,
   getWeekReflectionCutoff,
+  getNow,
 } from '@/lib/dates';
 import { WeeklyGoalItem, WeeklyGoalPriority, WeeklyGoalLinkedModule, WeeklyGoalReflection } from '@/types';
 import { computeLinkedGoalProgress, GoalProgressResult, LINKED_GOAL_METRICS, LinkedModule } from '@/lib/linkedGoalMetrics';
@@ -708,7 +709,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         <div className="space-y-3">
           {(() => {
             const reflectionCutoff = getWeekReflectionCutoff(selectedWeekKey);
-            const isBeforeCutoff = new Date() < reflectionCutoff;
+            const isBeforeCutoff = getNow() < reflectionCutoff;
             const reflections = activeGoalDoc.reflections || [];
             const latestReflection = reflections.length > 0
               ? reflections.reduce(
