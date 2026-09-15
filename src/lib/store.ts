@@ -147,9 +147,6 @@ import {
 } from './supabase';
 import { mergeAppState, deduplicatePresetHabits } from './stateMerger';
 
-// [TEMPORARY TEST SCAFFOLD - FOR REMOVAL AFTER TESTING]
-const TESTING_ARTIFICIAL_LOGOUT_DELAY = true;
-
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
 
@@ -1953,11 +1950,6 @@ export function useAppState() {
       } catch (err: unknown) {
         networkError = err;
         console.error('Logout error in auth service:', err);
-      }
-
-      // [TEMPORARY TEST SCAFFOLD - FOR REMOVAL AFTER TESTING]
-      if (TESTING_ARTIFICIAL_LOGOUT_DELAY) {
-        await new Promise((r) => setTimeout(r, 4000));
       }
 
       // 5. Unconditionally reset local state to guest (unless superseded by a newer auth event)
