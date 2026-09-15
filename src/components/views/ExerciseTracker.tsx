@@ -4,7 +4,7 @@ import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
-import { todayKey, formatDateLong, parseDate } from '@/lib/dates';
+import { todayKey, formatDateLong, parseDate, startOfWeek } from '@/lib/dates';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 
@@ -58,14 +58,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   const today = todayKey();
 
   // Compute stats for current week
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  const dayOfWeek = now.getDay();
-  const diffToMon = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
-  startOfWeek.setDate(now.getDate() + diffToMon);
-  startOfWeek.setHours(0, 0, 0, 0);
+  const startOfWeekDate = startOfWeek();
 
-  const thisWeekWorkouts = workouts.filter((w) => (parseDate(w.date) || new Date(0)) >= startOfWeek);
+  const thisWeekWorkouts = workouts.filter((w) => (parseDate(w.date) || new Date(0)) >= startOfWeekDate);
   const totalWeeklySessions = thisWeekWorkouts.length;
 
   // Dynamic weekly stats computation: group by unit, find dominant unit
@@ -100,8 +95,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   // Build daily breakdown for Mon - Sun (7 days) plotting points
   const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const dailyPoints = daysOfWeek.map((dayLabel, idx) => {
-    const d = new Date(startOfWeek);
-    d.setDate(startOfWeek.getDate() + idx);
+    const d = new Date(startOfWeekDate);
+    d.setDate(startOfWeekDate.getDate() + idx);
     const key = todayKey(d);
     const points = workouts
       .filter((w) => w.date === key)

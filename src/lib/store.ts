@@ -179,6 +179,16 @@ export function broadcastStateToTabs(state: AppState, senderTabId: string) {
   }
 }
 
+function dispatchToastError(title: string, message?: string) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('app-toast-error', {
+        detail: { title, message },
+      })
+    );
+  }
+}
+
 function removeLinkedWeeklyGoals(
   weeklyGoals: WeeklyGoal[],
   linkedModule: 'habit' | 'skill' | 'reading',
@@ -727,20 +737,16 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
 }
 
 async function persistState(state: AppState): Promise<void> {
-  try {
-    if (state.currentUser?.id) {
-      await saveUserDataToSupabase(state.currentUser.id, state);
-      // Clean up local guest storage key once session is authenticated
-      try {
-        localStorage.removeItem(GUEST_STORAGE_KEY);
-      } catch {
-        /* ignore */
-      }
-    } else {
-      localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(state));
+  if (state.currentUser?.id) {
+    await saveUserDataToSupabase(state.currentUser.id, state);
+    // Clean up local guest storage key once session is authenticated
+    try {
+      localStorage.removeItem(GUEST_STORAGE_KEY);
+    } catch {
+      /* ignore */
     }
-  } catch (e) {
-    console.error('Failed to persist state', e);
+  } else {
+    localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(state));
   }
 }
 
@@ -1063,6 +1069,7 @@ export function useAppState() {
   const [state, setStateRaw] = useState<AppState>(loadInitialState);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const isHydrated = useRef(false);
+  const authGenerationRef = useRef(0);
   const currentUserRef = useRef<UserProfile | null>(state.currentUser);
   const stateRef = useRef<AppState>(state);
   stateRef.current = state;
@@ -1212,11 +1219,39 @@ export function useAppState() {
           clearTimeout(debounceTimer.current);
           debounceTimer.current = null;
         }
-        persistState(state);
+        persistState(state).catch((err) => {
+          console.error('[AUTOSAVE IMMEDIATE] Failed to persist state:', err);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('app-toast-error', {
+                detail: {
+                  title: 'Cloud Sync Failed',
+                  message: 'Could not sync user data to cloud.',
+                },
+              })
+            );
+            window.dispatchEvent(new CustomEvent('app-network-error'));
+          }
+        });
       } else {
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        debounceTimer.current = setTimeout(() => {
-          persistState(state);
+        debounceTimer.current = setTimeout(async () => {
+          try {
+            await persistState(state);
+          } catch (err) {
+            console.error('[AUTOSAVE DEBOUNCED] Failed to persist state:', err);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('app-toast-error', {
+                  detail: {
+                    title: 'Cloud Sync Failed',
+                    message: 'Could not sync user data to cloud.',
+                  },
+                })
+              );
+              window.dispatchEvent(new CustomEvent('app-network-error'));
+            }
+          }
         }, 500);
       }
     }
@@ -1275,6 +1310,8 @@ export function useAppState() {
         if (!mounted) return;
 
         if (event === 'SIGNED_OUT') {
+          const myGeneration = ++authGenerationRef.current;
+
           if (debounceTimer.current) {
             clearTimeout(debounceTimer.current);
             debounceTimer.current = null;
@@ -1309,6 +1346,7 @@ export function useAppState() {
           if (typeof document !== 'undefined') {
             document.documentElement.setAttribute('data-theme', localTheme);
           }
+          if (myGeneration !== authGenerationRef.current) return;
           setState(nextGuestState);
           setIsAuthChecking(false);
           return;
@@ -1322,6 +1360,8 @@ export function useAppState() {
             setIsAuthChecking(false);
             return;
           }
+
+          const myGeneration = ++authGenerationRef.current;
 
           const userId = session.user.id;
           const email = session.user.email || '';
@@ -1350,6 +1390,7 @@ export function useAppState() {
             ]);
 
             if (mounted) {
+              if (myGeneration !== authGenerationRef.current) return;
               isHydrated.current = true;
               const sanitizedState = sanitizeLoadedState(hydratedState, user);
               if (sanitizedState.themePreference) {
@@ -1376,6 +1417,7 @@ export function useAppState() {
             console.error('Error hydrating auth session:', e);
             // If hydration fails or times out, attempt to restore from local cache first
             if (mounted) {
+              if (myGeneration !== authGenerationRef.current) return;
               let cachedState: AppState | null = null;
               if (typeof window !== 'undefined') {
                 try {
@@ -1875,6 +1917,7 @@ export function useAppState() {
     // 1. Guard against re-entrancy
     if (isLoggingOutRef.current) return;
     isLoggingOutRef.current = true;
+    const myLogoutGeneration = ++authGenerationRef.current;
 
     try {
       const currentState = stateRef.current;
@@ -1886,10 +1929,15 @@ export function useAppState() {
         debounceTimer.current = null;
       }
 
+      // 15-second hard timeout: if logout network calls hang, proceed to reset locally
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Logout network calls timed out after 15s')), 15000)
+      );
+
       // 3. Force immediate flush if there is unsaved state
       let persistError: unknown = null;
       try {
-        await persistState(currentState);
+        await Promise.race([persistState(currentState), timeoutPromise]);
       } catch (persistErr) {
         persistError = persistErr;
         console.error('Failed to flush state before logout:', persistErr);
@@ -1898,13 +1946,15 @@ export function useAppState() {
       // 4. Attempt remote sign-out
       let networkError: unknown = null;
       try {
-        await logoutUser();
+        await Promise.race([logoutUser(), timeoutPromise]);
       } catch (err: unknown) {
         networkError = err;
         console.error('Logout error in auth service:', err);
       }
 
-      // 5. Unconditionally reset local state to guest
+      // 5. Unconditionally reset local state to guest (unless superseded by a newer auth event)
+      if (myLogoutGeneration !== authGenerationRef.current) return;
+
       const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
       let guestState = DEFAULT_STATE;
       if (guestRaw) {
@@ -5481,7 +5531,7 @@ export function useAppState() {
       // 1. Verify Session First
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        alert("Error: You must be logged in to copy a plan.");
+        dispatchToastError("Authentication Required", "You must be logged in to copy a plan.");
         return;
       }
 
@@ -5499,7 +5549,7 @@ export function useAppState() {
 
       if (rpcError) {
         console.error("[Copy Plan] RPC FAILED:", rpcError);
-        alert(`Database Error (RPC): ${rpcError.message || rpcError.code}`);
+        dispatchToastError("Database Error (RPC)", rpcError.message || rpcError.code);
         throw rpcError;
       }
 
@@ -5511,7 +5561,7 @@ export function useAppState() {
 
       // 4. NOW attempt to create the follow record
       console.log(`[Copy Plan] Inserting into user_plan_follows...`);
-      const stepsCopy: PlanStep[] = originalPlan.steps.map((s) => ({
+      const stepsCopy: PlanStep[] = (originalPlan.steps || []).map((s) => ({
         ...s,
         id: uid(),
         completed: false,
@@ -5523,11 +5573,7 @@ export function useAppState() {
         originalPlanId: planId,
         title: originalPlan.title,
         description: originalPlan.description,
-        steps: (originalPlan.steps || []).map((s) => ({
-          ...s,
-          id: uid(),
-          completed: false,
-        })),
+        steps: stepsCopy,
         isCompleted: false,
         pointsAwarded: 0,
         createdAt: new Date().toISOString(),
@@ -5559,7 +5605,8 @@ export function useAppState() {
       syncFollowedPlanToSupabase(createdFollow);
     } catch (err: any) {
       console.error("[Copy Plan] FATAL ERROR CATCH:", err);
-      alert(`Fatal Error during copy: ${err.message || 'Check console'}`);
+      dispatchToastError("Copy Failed", err.message || 'Check console');
+      throw err;
     }
   }, [updatePlanCopyCount, state.username, state.currentUser?.id, state.followedPlans]);
 

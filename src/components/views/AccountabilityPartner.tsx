@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
+import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import {
   Users,
   UserPlus,
@@ -36,7 +37,7 @@ import { useToast } from '@/components/ui/Toast';
 import { getCurrentTier } from '@/lib/tiers';
 import { getSeasonNumber } from '@/lib/leagues';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
-import { todayKey, formatDateShort, parseDate, calculateElapsedDays } from '@/lib/dates';
+import { todayKey, formatDateShort, parseDate, calculateElapsedDays, addDays } from '@/lib/dates';
 import { createNotificationSupabase, checkRecentPartnerNudgeSent } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { Partnership, SharedChallenge, SharedChallengeCategory, PartnerInvite } from '@/types';
@@ -79,8 +80,38 @@ const DURATION_OPTIONS = [
   { days: 90, label: '90 Days', bonus: '+1,000 XP', desc: 'Mastery' },
 ];
 
+function createTimelineDay(
+  baseKey: string,
+  offsetDays: number,
+  dayNumber: number,
+  todayStr: string,
+  forceFutureFalse = false
+) {
+  const dateKey = addDays(baseKey, offsetDays);
+  const d = parseDate(dateKey) || new Date();
+  const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
+  const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const isToday = dateKey === todayStr;
+  const isPast = dateKey < todayStr;
+  const isFuture = forceFutureFalse ? false : dateKey > todayStr;
+
+  return {
+    dateKey,
+    dayLabel,
+    shortDate,
+    dayNumber,
+    isToday,
+    isPast,
+    isFuture,
+  };
+}
+
 export function AccountabilityPartner({ store }: { store: AppStore }) {
   const { showSuccessToast, showInfoToast, showErrorToast } = useToast();
+  const { isLoading: isStatsLoading, executeFn: executeStatsFetch } = useAsyncAction();
+  const { isLoading: isSubmittingInvite, executeFn: executeSendInvite } = useAsyncAction();
+  const { isLoading: isSubmittingChallenge, executeFn: executeCreateChallenge } = useAsyncAction();
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [challengeModalOpen, setChallengeModalOpen] = useState(false);
@@ -90,8 +121,6 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
   const [partnerUidInput, setPartnerUidInput] = useState('');
   const [showPastPacts, setShowPastPacts] = useState(false);
-  const [isSubmittingChallenge, setIsSubmittingChallenge] = useState(false);
-  const [isSubmittingInvite, setIsSubmittingInvite] = useState(false);
 
   // Shared Challenge Creation Form States
   const [challengeTitle, setChallengeTitle] = useState('');
@@ -200,34 +229,33 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     avatar?: string;
     isProfilePublic?: boolean;
   } | null>(null);
-  const [isStatsLoading, setIsStatsLoading] = useState<boolean>(false);
 
   const { getPartnerProfileStats } = store;
 
   useEffect(() => {
     let mounted = true;
     if (activePartnerUsername && bothStatsAllowed) {
-      setIsStatsLoading(true);
-      getPartnerProfileStats(activePartnerUsername)
-        .then((res) => {
+      executeStatsFetch(async () => {
+        try {
+          const res = await getPartnerProfileStats(activePartnerUsername);
           if (mounted) {
             if (res) {
               setPartnerStatsData(res as any);
+            } else {
+              setPartnerStatsData(null);
             }
-            setIsStatsLoading(false);
           }
-        })
-        .catch(() => {
-          if (mounted) setIsStatsLoading(false);
-        });
+        } catch {
+          if (mounted) setPartnerStatsData(null);
+        }
+      });
     } else {
       setPartnerStatsData(null);
-      setIsStatsLoading(false);
     }
     return () => {
       mounted = false;
     };
-  }, [activePartnerUsername, bothStatsAllowed, getPartnerProfileStats]);
+  }, [activePartnerUsername, bothStatsAllowed, getPartnerProfileStats, executeStatsFetch]);
 
   // Current Season & Lazy Client-Side Evaluation
   const currentSeason = getSeasonNumber();
@@ -315,21 +343,20 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       return;
     }
 
-    setIsSubmittingInvite(true);
-    setInviteModalOpen(false);
     const targetUid = trimmed;
-    setPartnerUidInput('');
-    store
-      .sendPartnerInvite(targetUid)
-      .then(() => {
+    await executeSendInvite(async () => {
+      try {
+        await store.sendPartnerInvite(targetUid);
+        setInviteModalOpen(false);
+        setPartnerUidInput('');
+        setInviteError(null);
         showSuccessToast('Invite Sent!', 'Accountability invite dispatched.');
-      })
-      .catch((err: any) => {
-        showErrorToast('Invite Failed', err.message || 'Failed to send invite.');
-      })
-      .finally(() => {
-        setIsSubmittingInvite(false);
-      });
+      } catch (err: any) {
+        const errorMessage = err?.message || 'Failed to send invite.';
+        setInviteError(errorMessage);
+        showErrorToast('Invite Failed', errorMessage);
+      }
+    });
   };
 
   const handleCreateChallengeSubmit = async (e: React.FormEvent) => {
@@ -337,45 +364,46 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     if (!activePartnership || isSubmittingChallenge) return;
 
     setChallengeError(null);
-    setIsSubmittingChallenge(true);
-    try {
-      const u1Target = user1Target.trim() || 'Daily Activity';
-      const u2Target = user2Target.trim() || 'Daily Activity';
-      const title = challengeTitle.trim() || `${user1Category.toUpperCase()} & ${user2Category.toUpperCase()} Pact`;
+    await executeCreateChallenge(async () => {
+      try {
+        const u1Target = user1Target.trim() || 'Daily Activity';
+        const u2Target = user2Target.trim() || 'Daily Activity';
+        const title = challengeTitle.trim() || `${user1Category.toUpperCase()} & ${user2Category.toUpperCase()} Pact`;
 
-      await store.createSharedChallenge(
-        title,
-        Number(challengeDuration),
-        isUser1InActive ? user1Category : user2Category,
-        isUser1InActive ? u1Target : u2Target,
-        isUser1InActive ? user2Category : user1Category,
-        isUser1InActive ? u2Target : u1Target,
-        activePartnership.id
-      );
+        await store.createSharedChallenge(
+          title,
+          Number(challengeDuration),
+          isUser1InActive ? user1Category : user2Category,
+          isUser1InActive ? u1Target : u2Target,
+          isUser1InActive ? user2Category : user1Category,
+          isUser1InActive ? u2Target : u1Target,
+          activePartnership.id
+        );
 
-      setChallengeModalOpen(false);
-      setChallengeTitle('');
-      setUser1Target('');
-      setUser2Target('');
-      setChallengeError(null);
-      showSuccessToast('Joint Pact Locked In!', `"${title}" has begun with @${activePartnerUsername}.`);
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to create pact.';
-      setChallengeError(errorMessage);
-      showErrorToast('Could Not Create Pact', errorMessage);
-    } finally {
-      setIsSubmittingChallenge(false);
-    }
+        setChallengeModalOpen(false);
+        setChallengeTitle('');
+        setUser1Target('');
+        setUser2Target('');
+        setChallengeError(null);
+        showSuccessToast('Joint Pact Locked In!', `"${title}" has begun with @${activePartnerUsername}.`);
+      } catch (err: any) {
+        const errorMessage = err?.message || 'Failed to create pact.';
+        setChallengeError(errorMessage);
+        showErrorToast('Could Not Create Pact', errorMessage);
+      }
+    });
   };
 
   const handleAcceptInvite = async (inviteId: string) => {
     setInviteError(null);
-    try {
-      await store.acceptPartnerInvite(inviteId);
-      showSuccessToast('Partner Connected!', 'You are now accountability partners.');
-    } catch (err: any) {
-      setInviteError(err.message || 'Failed to accept invite.');
-    }
+    await executeWithKey(`accept_invite_${inviteId}`, async () => {
+      try {
+        await store.acceptPartnerInvite(inviteId);
+        showSuccessToast('Partner Connected!', 'You are now accountability partners.');
+      } catch (err: any) {
+        setInviteError(err.message || 'Failed to accept invite.');
+      }
+    });
   };
 
   const handleToggleStats = async () => {
@@ -415,55 +443,57 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
       const today = todayKey();
 
-      // Check remote notifications table to prevent bypassing cooldown on alternate devices/browsers
-      const wasRecentlySent = await checkRecentPartnerNudgeSent(activePartnerUserId, challenge.id, today);
-      if (wasRecentlySent) {
-        const newCooldown = now + 2 * 60 * 60 * 1000;
-        const updatedCooldowns = { ...nudgeCooldowns, [challenge.id]: newCooldown };
-        setNudgeCooldowns(updatedCooldowns);
-        try {
-          localStorage.setItem('ascend_partner_nudge_cooldowns', JSON.stringify(updatedCooldowns));
-        } catch {
-          // ignore
-        }
-        showInfoToast('Nudge on Cooldown', `A nudge was already sent to @${activePartnerUsername} within the last 2 hours.`);
-        return;
-      }
-
-      const dedupKey = `partner_nudge_${challenge.id}_${today}`;
-
-      try {
-        await createNotificationSupabase({
-          recipientId: activePartnerUserId,
-          actorId: currentUser?.id,
-          actorUsername: currentUsername,
-          actorAvatar: currentUser?.avatar || '🧑',
-          type: 'partner_nudge',
-          title: 'Accountability Pact Nudge',
-          message: `${currentUsername} is waiting on you to lock in today's pledge for "${challenge.title}"!`,
-          payload: {
-            challengeId: challenge.id,
-            challengeTitle: challenge.title,
-            date: today,
-            dedupKey,
-          },
-        });
-
-        const newCooldown = now + 2 * 60 * 60 * 1000; // 2 hours
-        const updatedCooldowns = { ...nudgeCooldowns, [challenge.id]: newCooldown };
-        setNudgeCooldowns(updatedCooldowns);
-        try {
-          localStorage.setItem('ascend_partner_nudge_cooldowns', JSON.stringify(updatedCooldowns));
-        } catch {
-          // ignore localStorage err
+      await executeWithKey(`nudge_${challenge.id}`, async () => {
+        // Check remote notifications table to prevent bypassing cooldown on alternate devices/browsers
+        const wasRecentlySent = await checkRecentPartnerNudgeSent(activePartnerUserId, challenge.id, today);
+        if (wasRecentlySent) {
+          const newCooldown = now + 2 * 60 * 60 * 1000;
+          const updatedCooldowns = { ...nudgeCooldowns, [challenge.id]: newCooldown };
+          setNudgeCooldowns(updatedCooldowns);
+          try {
+            localStorage.setItem('ascend_partner_nudge_cooldowns', JSON.stringify(updatedCooldowns));
+          } catch {
+            // ignore
+          }
+          showInfoToast('Nudge on Cooldown', `A nudge was already sent to @${activePartnerUsername} within the last 2 hours.`);
+          return;
         }
 
-        showSuccessToast('⚡ Nudge Sent!', `Prompted @${activePartnerUsername} to complete today's pledge.`);
-      } catch (err: any) {
-        showErrorToast('Failed to send nudge', err.message || 'Please try again later.');
-      }
+        const dedupKey = `partner_nudge_${challenge.id}_${today}`;
+
+        try {
+          await createNotificationSupabase({
+            recipientId: activePartnerUserId,
+            actorId: currentUser?.id,
+            actorUsername: currentUsername,
+            actorAvatar: currentUser?.avatar || '🧑',
+            type: 'partner_nudge',
+            title: 'Accountability Pact Nudge',
+            message: `${currentUsername} is waiting on you to lock in today's pledge for "${challenge.title}"!`,
+            payload: {
+              challengeId: challenge.id,
+              challengeTitle: challenge.title,
+              date: today,
+              dedupKey,
+            },
+          });
+
+          const newCooldown = now + 2 * 60 * 60 * 1000; // 2 hours
+          const updatedCooldowns = { ...nudgeCooldowns, [challenge.id]: newCooldown };
+          setNudgeCooldowns(updatedCooldowns);
+          try {
+            localStorage.setItem('ascend_partner_nudge_cooldowns', JSON.stringify(updatedCooldowns));
+          } catch {
+            // ignore localStorage err
+          }
+
+          showSuccessToast('⚡ Nudge Sent!', `Prompted @${activePartnerUsername} to complete today's pledge.`);
+        } catch (err: any) {
+          showErrorToast('Failed to send nudge', err.message || 'Please try again later.');
+        }
+      });
     },
-    [activePartnerUserId, activePartnerUsername, currentUser, currentUsername, nudgeCooldowns, showInfoToast, showSuccessToast, showErrorToast]
+    [activePartnerUserId, activePartnerUsername, currentUser, currentUsername, nudgeCooldowns, showInfoToast, showSuccessToast, showErrorToast, executeWithKey]
   );
 
   // Activity Matrix Timeline anchored to pact creation start date and bounded by pact duration
@@ -484,11 +514,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     }
 
     const todayStr = todayKey();
-    const [tY, tM, tD] = todayStr.split('-').map(Number);
 
     const parsedStart = parseDate(earliestStartIso);
     const startKey = parsedStart ? todayKey(parsedStart) : todayStr;
-    const [sY, sM, sD] = startKey.split('-').map(Number);
 
     // Calculate days elapsed from local start date to today using shared utility (1-indexed, Day 1 = start date)
     const elapsedDays = calculateElapsedDays(earliestStartIso);
@@ -511,92 +539,25 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     if (maxDuration <= 14) {
       // For pacts <= 14 days, show exactly maxDuration day cells (Days 1..maxDuration)
       for (let i = 0; i < maxDuration; i++) {
-        const d = new Date(sY, sM - 1, sD + i);
-        const key = todayKey(d);
-        const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
-        const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const isToday = key === todayStr;
-        const isPast = key < todayStr;
-        const isFuture = key > todayStr;
-
-        days.push({
-          dateKey: key,
-          dayLabel,
-          shortDate,
-          dayNumber: i + 1,
-          isToday,
-          isPast,
-          isFuture,
-        });
+        days.push(createTimelineDay(startKey, i, i + 1, todayStr));
       }
     } else {
       // For pacts > 14 days
       if (elapsedDays <= 14) {
         // First 14 days: Day 1..14
         for (let i = 0; i < 14; i++) {
-          const d = new Date(sY, sM - 1, sD + i);
-          const key = todayKey(d);
-          const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
-          const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const isToday = key === todayStr;
-          const isPast = key < todayStr;
-          const isFuture = key > todayStr;
-
-          days.push({
-            dateKey: key,
-            dayLabel,
-            shortDate,
-            dayNumber: i + 1,
-            isToday,
-            isPast,
-            isFuture,
-          });
+          days.push(createTimelineDay(startKey, i, i + 1, todayStr));
         }
       } else if (elapsedDays <= maxDuration) {
         // Rolling 14 trailing calendar days ending today
         for (let i = 13; i >= 0; i--) {
-          const d = new Date(tY, tM - 1, tD - i);
-          const key = todayKey(d);
-          const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
-          const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const dayNumber = elapsedDays - i;
-          const isToday = key === todayStr;
-          const isPast = key < todayStr;
-          const isFuture = false;
-
-          days.push({
-            dateKey: key,
-            dayLabel,
-            shortDate,
-            dayNumber,
-            isToday,
-            isPast,
-            isFuture,
-          });
+          days.push(createTimelineDay(todayStr, -i, elapsedDays - i, todayStr, true));
         }
       } else {
         // Pact duration window has fully elapsed -> freeze at the final 14 days (up to maxDuration)
-        const finalPactDayDate = new Date(sY, sM - 1, sD + (maxDuration - 1));
-        const [fY, fM, fD] = [finalPactDayDate.getFullYear(), finalPactDayDate.getMonth(), finalPactDayDate.getDate()];
+        const finalPactDayKey = addDays(startKey, maxDuration - 1);
         for (let i = 13; i >= 0; i--) {
-          const d = new Date(fY, fM, fD - i);
-          const key = todayKey(d);
-          const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
-          const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const dayNumber = maxDuration - i;
-          const isToday = key === todayStr;
-          const isPast = key < todayStr;
-          const isFuture = key > todayStr;
-
-          days.push({
-            dateKey: key,
-            dayLabel,
-            shortDate,
-            dayNumber,
-            isToday,
-            isPast,
-            isFuture,
-          });
+          days.push(createTimelineDay(finalPactDayKey, -i, maxDuration - i, todayStr));
         }
       }
     }
@@ -612,10 +573,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       const activePactsOnDay = isolatedChallenges.filter((c) => {
         const pDate = parseDate(c.createdAt);
         const pKey = pDate ? todayKey(pDate) : (c.createdAt ? c.createdAt.slice(0, 10) : '2000-01-01');
-        const [sY, sM, sD] = pKey.split('-').map(Number);
         const duration = c.durationDays || 14;
-        const endD = new Date(sY, sM - 1, sD + duration - 1, 12, 0, 0);
-        const endKey = todayKey(endD);
+        const endKey = addDays(pKey, duration - 1);
         return pKey <= day.dateKey && day.dateKey <= endKey;
       });
 
@@ -731,10 +690,14 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
+                      disabled={isKeyLoading(`accept_invite_${invite.id}`)}
                       onClick={() => handleAcceptInvite(invite.id)}
-                      className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-on-brand font-bold rounded-lg transition-all"
+                      className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-on-brand font-bold rounded-lg transition-all flex items-center gap-1.5"
                     >
-                      Accept
+                      {isKeyLoading(`accept_invite_${invite.id}`) ? (
+                        <AscendLoadingIndicator size="sm" />
+                      ) : null}
+                      <span>{isKeyLoading(`accept_invite_${invite.id}`) ? 'Accepting...' : 'Accept'}</span>
                     </button>
                     <button
                       onClick={() => store.declinePartnerInvite(invite.id)}
@@ -1338,16 +1301,26 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                             ) : (
                               <button
                                 type="button"
-                                disabled={isNudgeCooldown}
+                                disabled={isNudgeCooldown || isKeyLoading(`nudge_${challenge.id}`)}
                                 onClick={() => handleNudgePartner(challenge)}
                                 className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all duration-200 active:scale-95 hover:scale-105 hover:brightness-110 flex items-center gap-1 cursor-pointer select-none ${
-                                  isNudgeCooldown
+                                  isNudgeCooldown || isKeyLoading(`nudge_${challenge.id}`)
                                     ? 'bg-bg-900 text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
                                     : 'bg-amber-500/20 hover:bg-amber-500/30 text-warning-text border border-amber-500/40 shadow-sm'
                                 }`}
                               >
-                                <Zap size={11} className={isNudgeCooldown ? 'text-content-disabled' : 'text-warning-text fill-warning-text'} />
-                                <span>{isNudgeCooldown ? `Nudged (${nudgeCooldownMinutes}m)` : `⚡ Nudge ${activePartnerUsername}`}</span>
+                                {isKeyLoading(`nudge_${challenge.id}`) ? (
+                                  <AscendLoadingIndicator size="sm" />
+                                ) : (
+                                  <Zap size={11} className={isNudgeCooldown ? 'text-content-disabled' : 'text-warning-text fill-warning-text'} />
+                                )}
+                                <span>
+                                  {isKeyLoading(`nudge_${challenge.id}`)
+                                    ? 'Nudging...'
+                                    : isNudgeCooldown
+                                    ? `Nudged (${nudgeCooldownMinutes}m)`
+                                    : `⚡ Nudge ${activePartnerUsername}`}
+                                </span>
                               </button>
                             )}
                           </div>
@@ -1379,21 +1352,38 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
                         <button
                           type="button"
+                          disabled={isKeyLoading(`log_pledge_${challenge.id}`)}
                           onClick={async () => {
-                            try {
-                              await store.logSharedChallengeHabit(challenge.id);
-                            } catch (err: any) {
-                              showErrorToast('Failed to log pledge', err.message || 'Could not save your progress in the database.');
-                            }
+                            await executeWithKey(`log_pledge_${challenge.id}`, async () => {
+                              try {
+                                await store.logSharedChallengeHabit(challenge.id);
+                              } catch (err: any) {
+                                showErrorToast('Failed to log pledge', err.message || 'Could not save your progress in the database.');
+                              }
+                            });
                           }}
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 hover:scale-[1.02] cursor-pointer select-none flex items-center gap-1.5 ${
+                            isKeyLoading(`log_pledge_${challenge.id}`)
+                              ? 'opacity-70 cursor-not-allowed'
+                              : ''
+                          } ${
                             myDone
                               ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40 hover:bg-emerald-500/30'
                               : 'bg-emerald-500 hover:bg-emerald-600 text-on-brand shadow-md hover:shadow-emerald-500/20'
                           }`}
                         >
-                          <CheckCircle2 size={14} />
-                          <span>{myDone ? 'Pledge Locked In ✓' : "Log Today's Pledge ✓"}</span>
+                          {isKeyLoading(`log_pledge_${challenge.id}`) ? (
+                            <AscendLoadingIndicator size="sm" />
+                          ) : (
+                            <CheckCircle2 size={14} />
+                          )}
+                          <span>
+                            {isKeyLoading(`log_pledge_${challenge.id}`)
+                              ? 'Logging...'
+                              : myDone
+                              ? 'Pledge Locked In ✓'
+                              : "Log Today's Pledge ✓"}
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -1830,15 +1820,18 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         onClose={() => setEndConfirmOpen(false)}
         onConfirm={async () => {
           if (activePartnership) {
-            setEndConfirmOpen(false);
-            try {
-              await store.endPartnership(activePartnership.id);
-              showSuccessToast('Pairing Ended', `Ended accountability partnership with ${activePartnerUsername}.`);
-            } catch (err: any) {
-              showErrorToast('Failed to End Pairing', err.message || 'Database error: Could not end partnership.');
-            }
+            await executeWithKey(`end_partnership_${activePartnership.id}`, async () => {
+              try {
+                await store.endPartnership(activePartnership.id);
+                showSuccessToast('Pairing Ended', `Ended accountability partnership with ${activePartnerUsername}.`);
+                setEndConfirmOpen(false);
+              } catch (err: any) {
+                showErrorToast('Failed to End Pairing', err.message || 'Database error: Could not end partnership.');
+              }
+            });
           }
         }}
+        isDeleting={activePartnership ? isKeyLoading(`end_partnership_${activePartnership.id}`) : false}
         title={`End Pairing with ${activePartnerUsername || 'Partner'}?`}
         itemName={activePartnerUsername || undefined}
         description={`Are you sure you want to end your accountability partnership with ${activePartnerUsername}? All joint pacts with this partner will be removed.`}

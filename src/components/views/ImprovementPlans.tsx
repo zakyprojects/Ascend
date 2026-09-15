@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
+import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
+import { useToast } from '@/components/ui/Toast';
 import {
   Compass,
   Plus,
@@ -33,6 +35,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
 import { getCurrentTier } from '@/lib/tiers';
+import { todayKey } from '@/lib/dates';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { fetchPublicPlansFromSupabase, mapRowToImprovementPlan, supabase, syncBroadcaster } from '@/lib/supabase';
 import { getProfilePointsByUsername, getProfileSeasonPointsByUsername } from '@/lib/auth';
@@ -76,10 +79,13 @@ function ExpandableDescription({ text }: { text: string }) {
 }
 
 export function ImprovementPlans({ store }: { store: AppStore }) {
+  const { showSuccessToast, showErrorToast } = useToast();
+  const { isLoading: isLoadingPlans, executeFn: executeLoadPlans } = useAsyncAction();
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
+
   const [activeTab, setActiveTab] = useState<'my_plans' | 'discover'>('my_plans');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Create Form states (Shared + Type-Specific)
   const [planType, setPlanType] = useState<PlanType>('milestone');
@@ -98,7 +104,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   // Habit Journey states
   const [cadence, setCadence] = useState<'daily' | 'weekly'>('daily');
   const [duration, setDuration] = useState<number>(30);
-  const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState<string>(todayKey());
 
   // Vision Plan & Phase C Review Loop states
   const [targetReviewDate, setTargetReviewDate] = useState<string>('');
@@ -144,35 +150,33 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
   // Remote public plans fetched & updated via Supabase Realtime & syncBroadcaster
   const [remotePublicPlans, setRemotePublicPlans] = useState<ImprovementPlan[]>([]);
-  const [isInitialLoadingPlans, setIsInitialLoadingPlans] = useState<boolean>(true);
 
-  const loadPlans = async (
-    overrideSearch?: string,
-    overrideCat?: string,
-    overrideType?: string,
-    overrideSort?: 'recent' | 'followed' | 'creator_rank'
-  ) => {
-    setIsRefreshing(true);
-    try {
-      const search = overrideSearch !== undefined ? overrideSearch : discoverSearch;
-      const category = overrideCat !== undefined ? overrideCat : discoverCategory;
-      const planType = overrideType !== undefined ? overrideType : discoverPlanType;
-      const sortBy = overrideSort !== undefined ? overrideSort : discoverSortBy;
+  const loadPlans = useCallback(
+    async (
+      overrideSearch?: string,
+      overrideCat?: string,
+      overrideType?: string,
+      overrideSort?: 'recent' | 'followed' | 'creator_rank'
+    ) => {
+      await executeLoadPlans(async () => {
+        const search = overrideSearch !== undefined ? overrideSearch : discoverSearch;
+        const category = overrideCat !== undefined ? overrideCat : discoverCategory;
+        const planType = overrideType !== undefined ? overrideType : discoverPlanType;
+        const sortBy = overrideSort !== undefined ? overrideSort : discoverSortBy;
 
-      const plans = await fetchPublicPlansFromSupabase({ search, category, planType, sortBy });
-      if (plans) {
-        setRemotePublicPlans(plans);
-        plans.forEach((p) => {
-          if (p.copyCount !== undefined) {
-            store.updatePlanCopyCount(p.id, p.copyCount);
-          }
-        });
-      }
-    } finally {
-      setIsRefreshing(false);
-      setIsInitialLoadingPlans(false);
-    }
-  };
+        const plans = await fetchPublicPlansFromSupabase({ search, category, planType, sortBy });
+        if (plans) {
+          setRemotePublicPlans(plans);
+          plans.forEach((p) => {
+            if (p.copyCount !== undefined) {
+              storeRef.current.updatePlanCopyCount(p.id, p.copyCount);
+            }
+          });
+        }
+      });
+    },
+    [discoverSearch, discoverCategory, discoverPlanType, discoverSortBy, executeLoadPlans]
+  );
 
   const storeRef = useRef(store);
   useEffect(() => {
@@ -183,8 +187,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     let mounted = true;
 
     const fetchInitialPlans = async () => {
-      setIsInitialLoadingPlans(true);
-      try {
+      await executeLoadPlans(async () => {
         const plans = await fetchPublicPlansFromSupabase();
         if (mounted && plans) {
           setRemotePublicPlans(plans);
@@ -194,11 +197,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             }
           });
         }
-      } finally {
-        if (mounted) {
-          setIsInitialLoadingPlans(false);
-        }
-      }
+      });
     };
 
     fetchInitialPlans();
@@ -976,10 +975,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         {activeTab === 'discover' && (
           <button
             onClick={() => loadPlans()}
-            disabled={isRefreshing}
+            disabled={isLoadingPlans}
             className="btn-ghost text-xs flex items-center gap-1.5 text-content-muted hover:text-blue-theme"
           >
-            <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={isLoadingPlans ? 'animate-spin' : ''} />
             <span>Refresh</span>
           </button>
         )}
@@ -1033,17 +1032,32 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
                             {/* Sleek Globe/Lock Toggle */}
                             <button
+                              disabled={isKeyLoading(`toggle_vis_${plan.id}`)}
                               onClick={async () => {
-                                await store.togglePlanVisibility(plan.id, !plan.isPublic);
+                                await executeWithKey(`toggle_vis_${plan.id}`, async () => {
+                                  try {
+                                    await store.togglePlanVisibility(plan.id, !plan.isPublic);
+                                  } catch (err: any) {
+                                    showErrorToast('Visibility Update Failed', err?.message || 'Could not update plan visibility.');
+                                  }
+                                });
                               }}
                               className={`p-1.5 rounded transition-colors ${
+                                isKeyLoading(`toggle_vis_${plan.id}`) ? 'opacity-50 cursor-not-allowed' : ''
+                              } ${
                                 plan.isPublic
                                   ? 'text-blue-theme hover:bg-blue-500/20'
                                   : 'text-content-disabled hover:text-content-tertiary hover:bg-bg-700'
                               }`}
                               title={plan.isPublic ? 'Make Private' : 'Make Public'}
                             >
-                              {plan.isPublic ? <Globe size={14} /> : <Lock size={14} />}
+                              {isKeyLoading(`toggle_vis_${plan.id}`) ? (
+                                <AscendLoadingIndicator size="sm" />
+                              ) : plan.isPublic ? (
+                                <Globe size={14} />
+                              ) : (
+                                <Lock size={14} />
+                              )}
                             </button>
 
                             {/* Pencil Edit Icon */}
@@ -1208,7 +1222,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             </div>
           </div>
 
-          {isInitialLoadingPlans || isRefreshing ? (
+          {isLoadingPlans ? (
             <div className="card p-12 text-center text-content-muted text-sm space-y-4 flex flex-col items-center justify-center min-h-[220px]">
               <AscendLoadingIndicator size="lg" />
               <p className="text-xs font-medium text-content-tertiary animate-pulse">Loading Public Plans...</p>
@@ -1264,17 +1278,32 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           {isOwnPlan && (
                             <>
                               <button
+                                disabled={isKeyLoading(`toggle_vis_${plan.id}`)}
                                 onClick={async () => {
-                                  await store.togglePlanVisibility(plan.id, !plan.isPublic);
+                                  await executeWithKey(`toggle_vis_${plan.id}`, async () => {
+                                    try {
+                                      await store.togglePlanVisibility(plan.id, !plan.isPublic);
+                                    } catch (err: any) {
+                                      showErrorToast('Visibility Update Failed', err?.message || 'Could not update plan visibility.');
+                                    }
+                                  });
                                 }}
                                 className={`p-1.5 rounded transition-colors ${
+                                  isKeyLoading(`toggle_vis_${plan.id}`) ? 'opacity-50 cursor-not-allowed' : ''
+                                } ${
                                   plan.isPublic
                                     ? 'text-blue-theme hover:bg-blue-500/20'
                                     : 'text-content-disabled hover:text-content-tertiary hover:bg-bg-700'
                                 }`}
                                 title={plan.isPublic ? 'Make Private' : 'Make Public'}
                               >
-                                {plan.isPublic ? <Globe size={14} /> : <Lock size={14} />}
+                                {isKeyLoading(`toggle_vis_${plan.id}`) ? (
+                                  <AscendLoadingIndicator size="sm" />
+                                ) : plan.isPublic ? (
+                                  <Globe size={14} />
+                                ) : (
+                                  <Lock size={14} />
+                                )}
                               </button>
                               <button
                                 onClick={() => handleOpenEdit(plan)}
@@ -1319,14 +1348,35 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
                       {!isOwnPlan && (
                         <button
-                          onClick={() => store.copyPublicPlan(plan)}
-                          disabled={isAlreadyCopied}
+                          onClick={async () => {
+                            await executeWithKey(`copy_plan_${plan.id}`, async () => {
+                              try {
+                                await store.copyPublicPlan(plan);
+                                showSuccessToast('Plan Copied!', `"${plan.title}" added to your saved plans.`);
+                              } catch (err: any) {
+                                showErrorToast('Copy Failed', err?.message || 'Could not copy plan.');
+                              }
+                            });
+                          }}
+                          disabled={isAlreadyCopied || isKeyLoading(`copy_plan_${plan.id}`)}
                           className={`btn-primary text-xs py-1 px-3 flex items-center gap-1.5 ${
-                            isAlreadyCopied ? 'opacity-50 cursor-not-allowed bg-bg-600 text-content-muted' : ''
+                            isAlreadyCopied || isKeyLoading(`copy_plan_${plan.id}`)
+                              ? 'opacity-50 cursor-not-allowed bg-bg-600 text-content-muted'
+                              : ''
                           }`}
                         >
-                          <Copy size={13} />
-                          <span>{isAlreadyCopied ? 'Copied to My Account' : 'Copy Plan to My Account'}</span>
+                          {isKeyLoading(`copy_plan_${plan.id}`) ? (
+                            <AscendLoadingIndicator size="sm" />
+                          ) : (
+                            <Copy size={13} />
+                          )}
+                          <span>
+                            {isKeyLoading(`copy_plan_${plan.id}`)
+                              ? 'Copying Plan...'
+                              : isAlreadyCopied
+                              ? 'Copied to My Account'
+                              : 'Copy Plan to My Account'}
+                          </span>
                         </button>
                       )}
                     </div>
@@ -1861,10 +1911,19 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         onClose={() => setPlanToDelete(null)}
         onConfirm={async () => {
           if (planToDelete) {
-            await store.deletePlan(planToDelete.id);
-            setPlanToDelete(null);
+            const planId = planToDelete.id;
+            await executeWithKey(`delete_plan_${planId}`, async () => {
+              try {
+                await store.deletePlan(planId);
+                setPlanToDelete(null);
+                showSuccessToast('Plan Deleted', 'Improvement plan removed successfully.');
+              } catch (err: any) {
+                showErrorToast('Delete Failed', err?.message || 'Could not delete plan.');
+              }
+            });
           }
         }}
+        isDeleting={planToDelete ? isKeyLoading(`delete_plan_${planToDelete.id}`) : false}
         title="Delete Improvement Plan?"
         itemName={planToDelete?.title}
         description={`Are you sure you want to delete "${planToDelete?.title}"? This will permanently remove the plan and all attached reflection notes or logs.`}
@@ -1876,10 +1935,19 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         onClose={() => setFollowToDelete(null)}
         onConfirm={async () => {
           if (followToDelete) {
-            await store.deleteFollowedPlan(followToDelete.id);
-            setFollowToDelete(null);
+            const followId = followToDelete.id;
+            await executeWithKey(`delete_follow_${followId}`, async () => {
+              try {
+                await store.deleteFollowedPlan(followId);
+                setFollowToDelete(null);
+                showSuccessToast('Plan Removed', 'Saved plan removed from your account.');
+              } catch (err: any) {
+                showErrorToast('Remove Failed', err?.message || 'Could not remove saved plan.');
+              }
+            });
           }
         }}
+        isDeleting={followToDelete ? isKeyLoading(`delete_follow_${followToDelete.id}`) : false}
         title="Remove Saved Plan?"
         itemName={followToDelete?.title}
         description={`Are you sure you want to remove "${followToDelete?.title}" from your saved plans?`}

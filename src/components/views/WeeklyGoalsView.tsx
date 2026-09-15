@@ -19,6 +19,7 @@ import { AppStore, isWeeklyReflectionAwarded } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
+import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import {
   weekKey,
   getWeekDates,
@@ -31,7 +32,8 @@ import { WeeklyGoalItem, WeeklyGoalPriority, WeeklyGoalLinkedModule, WeeklyGoalR
 import { computeLinkedGoalProgress, GoalProgressResult, LINKED_GOAL_METRICS, LinkedModule } from '@/lib/linkedGoalMetrics';
 
 export function WeeklyGoalsView({ store }: { store: AppStore }) {
-  const { showErrorToast } = useToast();
+  const { showErrorToast, showSuccessToast } = useToast();
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const currentWeekKey = weekKey();
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(currentWeekKey);
 
@@ -192,10 +194,33 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     setEditReflectionContent('');
   };
 
-  const handleDeleteReflectionConfirm = () => {
+  const handleDeleteReflectionConfirm = async () => {
     if (deleteReflectionModal) {
-      store.deleteWeeklyReflection(selectedWeekKey, deleteReflectionModal.id);
-      setDeleteReflectionModal(null);
+      const reflectionId = deleteReflectionModal.id;
+      await executeWithKey(`delete_weekly_reflection_${reflectionId}`, async () => {
+        try {
+          await store.deleteWeeklyReflection(selectedWeekKey, reflectionId);
+          setDeleteReflectionModal(null);
+          showSuccessToast('Reflection Deleted', 'Weekly reflection entry removed.');
+        } catch (err: any) {
+          showErrorToast('Delete Failed', err?.message || 'Failed to delete reflection.');
+        }
+      });
+    }
+  };
+
+  const handleDeleteGoalConfirm = async () => {
+    if (deleteGoalModal) {
+      const goalId = deleteGoalModal.id;
+      await executeWithKey(`delete_weekly_goal_${goalId}`, async () => {
+        try {
+          await store.deleteWeeklyGoalItem(selectedWeekKey, goalId);
+          setDeleteGoalModal(null);
+          showSuccessToast('Goal Deleted', 'Weekly goal removed.');
+        } catch (err: any) {
+          showErrorToast('Delete Failed', err?.message || 'Failed to delete goal.');
+        }
+      });
     }
   };
 
@@ -1038,12 +1063,8 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       <ConfirmDeleteModal
         open={Boolean(deleteGoalModal)}
         onClose={() => setDeleteGoalModal(null)}
-        onConfirm={() => {
-          if (deleteGoalModal) {
-            store.deleteWeeklyGoalItem(selectedWeekKey, deleteGoalModal.id);
-            setDeleteGoalModal(null);
-          }
-        }}
+        onConfirm={handleDeleteGoalConfirm}
+        isDeleting={deleteGoalModal ? isKeyLoading(`delete_weekly_goal_${deleteGoalModal.id}`) : false}
         title="Delete Weekly Goal?"
         itemName={deleteGoalModal?.title}
         description={`Are you sure you want to delete "${deleteGoalModal?.title}"?`}
@@ -1121,6 +1142,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         open={Boolean(deleteReflectionModal)}
         onClose={() => setDeleteReflectionModal(null)}
         onConfirm={handleDeleteReflectionConfirm}
+        isDeleting={deleteReflectionModal ? isKeyLoading(`delete_weekly_reflection_${deleteReflectionModal.id}`) : false}
         title="Delete Reflection?"
         itemName={deleteReflectionModal ? (deleteReflectionModal.content.length > 30 ? deleteReflectionModal.content.substring(0, 30) + '...' : deleteReflectionModal.content) : ''}
         description={
