@@ -156,6 +156,7 @@ import {
   markAllNotificationsReadSupabase,
   clearNotificationSupabase,
 } from './supabase';
+import { GuardBlockedError } from './errors';
 import { mergeAppState, deduplicatePresetHabits } from './stateMerger';
 
 // Cross-tab real-time state synchronization channel
@@ -708,6 +709,7 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
       .slice(0, 50),
     deletedEntityIds: sanitizedDeletedEntityIds.slice(-500),
     restoredEntityIds: (st.restoredEntityIds ?? []).slice(-500),
+    unsyncedEntityIds: (st.unsyncedEntityIds ?? []).slice(-500),
     timeTracker: {
       activities: ensureDefaultActivities(
         (st.timeTracker?.activities ?? DEFAULT_TIME_TRACKER_ACTIVITIES).filter(
@@ -1087,8 +1089,45 @@ export function useAppState() {
   const get = useCallback(() => stateRef.current, []);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveTimer = useRef<number | null>(null);
-  const pendingImmediateFlush = useRef(false);
+  const pendingImmediateResolvers = useRef<
+    Array<{
+      resolve: () => void;
+      reject: (err: unknown) => void;
+      actionLabel?: string;
+      entityId?: string;
+    }>
+  >([]);
   const isLoggingOutRef = useRef(false);
+
+  // Write-serialization queue: guarantees sequential execution of persistState calls
+  const writeQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const enqueuePersist = useCallback((stateToPersist: AppState): Promise<void> => {
+    let callResolve!: () => void;
+    let callReject!: (err: unknown) => void;
+    const callerPromise = new Promise<void>((resolve, reject) => {
+      callResolve = resolve;
+      callReject = reject;
+    });
+
+    writeQueueRef.current = writeQueueRef.current
+      .catch(() => {
+        // Isolate queue failures: prior failure does not prevent subsequent writes
+      })
+      .then(async () => {
+        try {
+          await persistState(stateToPersist);
+          callResolve();
+        } catch (err) {
+          callReject(err);
+          // Re-throw so downstream catch catches, but queue next tick remains unblocked
+          throw err;
+        }
+      });
+
+    writeQueueRef.current.catch(() => {}); // Suppress console-level unhandled rejection on stored ref; caller still gets real error via callerPromise
+
+    return callerPromise;
+  }, []);
 
   // Cross-tab synchronization tracking
   const tabId = useRef<string>(Math.random().toString(36).substring(2) + Date.now().toString(36)).current;
@@ -1102,12 +1141,27 @@ export function useAppState() {
   const setState = useCallback(
     (
       updater: AppState | ((prev: AppState) => AppState),
-      options?: { immediate?: boolean }
+      options?: { immediate?: boolean; actionLabel?: string; entityId?: string }
     ) => {
+      let immediatePromise: Promise<void> | undefined;
       if (options?.immediate) {
-        pendingImmediateFlush.current = true;
+        let callResolve!: () => void;
+        let callReject!: (err: unknown) => void;
+        immediatePromise = new Promise<void>((resolve, reject) => {
+          callResolve = resolve;
+          callReject = reject;
+        });
+        pendingImmediateResolvers.current.push({
+          resolve: callResolve,
+          reject: callReject,
+          actionLabel: options.actionLabel,
+          entityId: options.entityId,
+        });
+        // Suppress unhandled rejection on the promise itself so non-awaiting callers never produce console warnings
+        immediatePromise.catch(() => {});
       }
       setStateRaw(updater);
+      return immediatePromise;
     },
     []
   );
@@ -1224,39 +1278,105 @@ export function useAppState() {
       // Broadcast state to all other tabs immediately
       broadcastStateToTabs(state, tabId);
 
-      if (pendingImmediateFlush.current) {
-        pendingImmediateFlush.current = false;
+      if (pendingImmediateResolvers.current.length > 0) {
+        const resolversToDrain = [...pendingImmediateResolvers.current];
+        pendingImmediateResolvers.current = [];
         if (debounceTimer.current) {
           clearTimeout(debounceTimer.current);
           debounceTimer.current = null;
         }
-        persistState(state).catch((err) => {
-          console.error('[AUTOSAVE IMMEDIATE] Failed to persist state:', err);
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-              new CustomEvent('app-toast-error', {
-                detail: {
-                  title: 'Cloud Sync Failed',
-                  message: 'Could not sync user data to cloud.',
-                },
-              })
-            );
-            window.dispatchEvent(new CustomEvent('app-network-error'));
-          }
-        });
-      } else {
-        if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        debounceTimer.current = setTimeout(async () => {
-          try {
-            await persistState(state);
-          } catch (err) {
-            console.error('[AUTOSAVE DEBOUNCED] Failed to persist state:', err);
+        const justPersistedUnsyncedIds = state.unsyncedEntityIds || [];
+        enqueuePersist(state)
+          .then(() => {
+            resolversToDrain.forEach(({ resolve }) => resolve());
+            if (justPersistedUnsyncedIds.length > 0) {
+              setState((prev) => ({
+                ...prev,
+                unsyncedEntityIds: (prev.unsyncedEntityIds || []).filter(
+                  (id) => !justPersistedUnsyncedIds.includes(id)
+                ),
+              }));
+            }
+          })
+          .catch((err) => {
+            resolversToDrain.forEach(({ reject }) => reject(err));
+            console.error('[AUTOSAVE IMMEDIATE] Failed to persist state:', err);
             if (typeof window !== 'undefined') {
+              const isGuard = err instanceof GuardBlockedError;
+
+              // Collect distinct action labels
+              const distinctLabels = Array.from(
+                new Set(
+                  resolversToDrain
+                    .map((r) => r.actionLabel)
+                    .filter((label): label is string => Boolean(label && label.trim()))
+                )
+              );
+
+              // Distinct entity IDs for dedupKey if known
+              const distinctEntityIds = Array.from(
+                new Set(
+                  resolversToDrain
+                    .map((r) => r.entityId)
+                    .filter((id): id is string => Boolean(id && id.trim()))
+                )
+              );
+
+              let toastTitle: string;
+              if (distinctLabels.length === 1) {
+                toastTitle = isGuard
+                  ? `${distinctLabels[0]} blocked (Data Protection)`
+                  : `${distinctLabels[0]} failed`;
+              } else {
+                toastTitle = isGuard ? 'Data Protection Triggered' : 'Cloud Sync Failed';
+              }
+
+              const toastMessage = isGuard
+                ? (err.message || 'Prevented data loss by blocking abnormal database overwrite.')
+                : 'Could not sync user data to cloud.';
+
+              const dedupKey =
+                distinctEntityIds.length === 1
+                  ? `${distinctLabels[0] || 'immediate'}_${distinctEntityIds[0]}`
+                  : undefined;
+
               window.dispatchEvent(
                 new CustomEvent('app-toast-error', {
                   detail: {
-                    title: 'Cloud Sync Failed',
-                    message: 'Could not sync user data to cloud.',
+                    title: toastTitle,
+                    message: toastMessage,
+                    dedupKey,
+                  },
+                })
+              );
+              window.dispatchEvent(new CustomEvent('app-network-error'));
+            }
+          });
+      } else {
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        const justPersistedUnsyncedIds = state.unsyncedEntityIds || [];
+        debounceTimer.current = setTimeout(async () => {
+          try {
+            await enqueuePersist(state);
+            if (justPersistedUnsyncedIds.length > 0) {
+              setState((prev) => ({
+                ...prev,
+                unsyncedEntityIds: (prev.unsyncedEntityIds || []).filter(
+                  (id) => !justPersistedUnsyncedIds.includes(id)
+                ),
+              }));
+            }
+          } catch (err) {
+            console.error('[AUTOSAVE DEBOUNCED] Failed to persist state:', err);
+            if (typeof window !== 'undefined') {
+              const isGuard = err instanceof GuardBlockedError;
+              window.dispatchEvent(
+                new CustomEvent('app-toast-error', {
+                  detail: {
+                    title: isGuard ? 'Data Protection Triggered' : 'Cloud Sync Failed',
+                    message: isGuard
+                      ? (err.message || 'Prevented data loss by blocking abnormal database overwrite.')
+                      : 'Could not sync user data to cloud.',
                   },
                 })
               );
@@ -1327,7 +1447,7 @@ export function useAppState() {
             clearTimeout(debounceTimer.current);
             debounceTimer.current = null;
           }
-          pendingImmediateFlush.current = false;
+          pendingImmediateResolvers.current = [];
           isHydrated.current = false;
           currentUserRef.current = null;
 
@@ -1957,7 +2077,7 @@ export function useAppState() {
       // 3. Force immediate flush if there is unsaved state
       let persistError: unknown = null;
       try {
-        await Promise.race([persistState(currentState), timeoutPromise]);
+        await Promise.race([enqueuePersist(currentState), timeoutPromise]);
       } catch (persistErr) {
         persistError = persistErr;
         console.error('Failed to flush state before logout:', persistErr);
@@ -2074,7 +2194,17 @@ export function useAppState() {
       missedPeriods: [],
       consecutiveMisses: 0,
     };
-    setState((prev) => ({ ...prev, habits: [...prev.habits, habit] }), { immediate: true });
+    setState(
+      (prev) => {
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habit.id])).slice(-500);
+        return {
+          ...prev,
+          habits: [...prev.habits, habit],
+          unsyncedEntityIds: updatedUnsynced,
+        };
+      },
+      { immediate: true }
+    );
     return habit;
   }, []);
 
@@ -2083,6 +2213,8 @@ export function useAppState() {
       (prev) => {
         const habit = prev.habits.find((h) => h.id === habitId);
         if (!habit) return prev;
+
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habitId])).slice(-500);
 
         return {
           ...prev,
@@ -2095,6 +2227,7 @@ export function useAppState() {
                 }
               : h
           ),
+          unsyncedEntityIds: updatedUnsynced,
         };
       },
       { immediate: true }
@@ -3459,40 +3592,42 @@ export function useAppState() {
     }));
   }, []);
 
-  const deleteSkill = useCallback((skillId: string) => {
-    setState(
-      (prev) => {
-        const skillLogs = prev.skillLogs.filter((l) => l.skillId === skillId);
-        const totalPointsToDeduct = skillLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+  const deleteSkill = useCallback((skillId: string): Promise<void> => {
+    return (
+      setState(
+        (prev) => {
+          const skillLogs = prev.skillLogs.filter((l) => l.skillId === skillId);
+          const totalPointsToDeduct = skillLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
 
-        let pointsUpdate = {};
-        if (totalPointsToDeduct > 0) {
-          const targetSkill = prev.skills.find((s) => s.id === skillId);
-          const skillName = targetSkill ? targetSkill.name : 'Skill';
-          pointsUpdate = addPointsInternal(
-            prev,
-            -totalPointsToDeduct,
-            `Skill deleted (${skillLogs.length} session log(s) removed): ${skillName}`,
-            'skill'
-          );
-        }
+          let pointsUpdate = {};
+          if (totalPointsToDeduct > 0) {
+            const targetSkill = prev.skills.find((s) => s.id === skillId);
+            const skillName = targetSkill ? targetSkill.name : 'Skill';
+            pointsUpdate = addPointsInternal(
+              prev,
+              -totalPointsToDeduct,
+              `Skill deleted (${skillLogs.length} session log(s) removed): ${skillName}`,
+              'skill'
+            );
+          }
 
-        const updatedDeletedEntityIds = [
-          ...(prev.deletedEntityIds || []),
-          skillId,
-          ...skillLogs.map((l) => l.id),
-        ].slice(-500);
+          const updatedDeletedEntityIds = [
+            ...(prev.deletedEntityIds || []),
+            skillId,
+            ...skillLogs.map((l) => l.id),
+          ].slice(-500);
 
-        return {
-          ...prev,
-          skills: prev.skills.filter((s) => s.id !== skillId),
-          skillLogs: prev.skillLogs.filter((l) => l.skillId !== skillId),
-          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId]),
-          deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
-        };
-      },
-      { immediate: true }
+          return {
+            ...prev,
+            skills: prev.skills.filter((s) => s.id !== skillId),
+            skillLogs: prev.skillLogs.filter((l) => l.skillId !== skillId),
+            weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId]),
+            deletedEntityIds: updatedDeletedEntityIds,
+            ...pointsUpdate,
+          };
+        },
+        { immediate: true, actionLabel: 'Skill deletion', entityId: skillId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -3696,54 +3831,56 @@ export function useAppState() {
   }, []);
 
   const deleteBadHabit = useCallback((badHabitId: string) => {
-    setState(
-      (prev) => {
-        const habitLogs = prev.badHabitLogs.filter((l) => l.badHabitId === badHabitId);
-        const bh = prev.badHabits.find((b) => b.id === badHabitId);
+    return (
+      setState(
+        (prev) => {
+          const habitLogs = prev.badHabitLogs.filter((l) => l.badHabitId === badHabitId);
+          const bh = prev.badHabits.find((b) => b.id === badHabitId);
 
-        let pointsUpdate = {};
-        let excisedIds: string[] = [];
-        if (bh && !bh.isCompleted) {
-          const posPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) > 0).reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
-          const negPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) < 0).reduce((s, l) => s + Math.abs(l.pointsAwardedOrDeducted || 0), 0);
+          let pointsUpdate = {};
+          let excisedIds: string[] = [];
+          if (bh && !bh.isCompleted) {
+            const posPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) > 0).reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
+            const negPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) < 0).reduce((s, l) => s + Math.abs(l.pointsAwardedOrDeducted || 0), 0);
 
-          if (posPoints > 0 || negPoints > 0) {
-            const exciseResult = excisePointsEntriesInternal(
-              prev,
-              (entry) => {
-                if (entry.metadata?.badHabitId === badHabitId) return true;
-                if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_resisted' || entry.source === 'bad_habit_no_report') {
-                  if (entry.metadata?.badHabitId === badHabitId || entry.reason.includes(bh.name)) return true;
-                }
-                return false;
-              },
-              { pos: posPoints, neg: negPoints },
-              Infinity,
-              `badhabit_all_${badHabitId}`
-            );
-            const { excisedEntryIds, ...restPoints } = exciseResult;
-            pointsUpdate = restPoints;
-            excisedIds = excisedEntryIds;
+            if (posPoints > 0 || negPoints > 0) {
+              const exciseResult = excisePointsEntriesInternal(
+                prev,
+                (entry) => {
+                  if (entry.metadata?.badHabitId === badHabitId) return true;
+                  if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_resisted' || entry.source === 'bad_habit_no_report') {
+                    if (entry.metadata?.badHabitId === badHabitId || entry.reason.includes(bh.name)) return true;
+                  }
+                  return false;
+                },
+                { pos: posPoints, neg: negPoints },
+                Infinity,
+                `badhabit_all_${badHabitId}`
+              );
+              const { excisedEntryIds, ...restPoints } = exciseResult;
+              pointsUpdate = restPoints;
+              excisedIds = excisedEntryIds;
+            }
           }
-        }
 
-        const toTombstone = [
-          ...(prev.deletedEntityIds || []),
-          badHabitId,
-          ...habitLogs.map((l) => l.id).filter(Boolean),
-          ...excisedIds,
-        ];
-        const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
+          const toTombstone = [
+            ...(prev.deletedEntityIds || []),
+            badHabitId,
+            ...habitLogs.map((l) => l.id).filter(Boolean),
+            ...excisedIds,
+          ];
+          const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
 
-        return {
-          ...prev,
-          badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
-          badHabitLogs: prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId),
-          deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
-        };
-      },
-      { immediate: true }
+          return {
+            ...prev,
+            badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
+            badHabitLogs: prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId),
+            deletedEntityIds: updatedDeletedEntityIds,
+            ...pointsUpdate,
+          };
+        },
+        { immediate: true, actionLabel: 'Bad habit deletion', entityId: badHabitId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -3982,156 +4119,164 @@ export function useAppState() {
   }, []);
 
   const deleteAddictionTracker = useCallback(() => {
-    setState(
-      (prev) => {
-        if (!prev.addictionTracker) return prev;
-        const tracker = prev.addictionTracker;
-        const activeSeasonNum = getSeasonNumber();
+    return (
+      setState(
+        (prev) => {
+          if (!prev.addictionTracker) return prev;
+          const tracker = prev.addictionTracker;
+          const activeSeasonNum = getSeasonNumber();
 
-        // 1. Collect all awarded milestones to deduct (with legacy fallback reconstruction)
-        let awardedList: AddictionMilestoneAward[] = tracker.awardedMilestones ? [...tracker.awardedMilestones] : [];
-        if (awardedList.length === 0 && tracker.milestonesUnlocked && tracker.milestonesUnlocked.length > 0) {
-          for (const mKey of tracker.milestonesUnlocked) {
-            const pts = (mKey in SOBRIETY_MILESTONE_POINTS)
-              ? SOBRIETY_MILESTONE_POINTS[mKey as keyof typeof SOBRIETY_MILESTONE_POINTS]
-              : 0;
-            if (pts > 0) {
-              const histEntry = prev.pointsHistory?.find(
-                (e) => e.source === 'recovery_milestone' && (e.reason?.includes(mKey) || e.metadata?.milestone === mKey)
-              );
-              const ts = histEntry?.timestamp || tracker.startDate || tracker.createdAt || new Date().toISOString();
-              const sNum = getSeasonNumber(new Date(ts));
-              awardedList.push({
-                milestone: mKey,
-                seasonNumber: sNum,
-                timestamp: ts,
-                points: pts,
-              });
+          // 1. Collect all awarded milestones to deduct (with legacy fallback reconstruction)
+          let awardedList: AddictionMilestoneAward[] = tracker.awardedMilestones ? [...tracker.awardedMilestones] : [];
+          if (awardedList.length === 0 && tracker.milestonesUnlocked && tracker.milestonesUnlocked.length > 0) {
+            for (const mKey of tracker.milestonesUnlocked) {
+              const pts = (mKey in SOBRIETY_MILESTONE_POINTS)
+                ? SOBRIETY_MILESTONE_POINTS[mKey as keyof typeof SOBRIETY_MILESTONE_POINTS]
+                : 0;
+              if (pts > 0) {
+                const histEntry = prev.pointsHistory?.find(
+                  (e) => e.source === 'recovery_milestone' && (e.reason?.includes(mKey) || e.metadata?.milestone === mKey)
+                );
+                const ts = histEntry?.timestamp || tracker.startDate || tracker.createdAt || new Date().toISOString();
+                const sNum = getSeasonNumber(new Date(ts));
+                awardedList.push({
+                  milestone: mKey,
+                  seasonNumber: sNum,
+                  timestamp: ts,
+                  points: pts,
+                });
+              }
             }
           }
-        }
 
-        // 2. Partition by season
-        let currentSeasonDeduct = 0;
-        const pastSeasonDeductions: Record<number, { amount: number; timestamp: string }> = {};
+          // 2. Partition by season
+          let currentSeasonDeduct = 0;
+          const pastSeasonDeductions: Record<number, { amount: number; timestamp: string }> = {};
 
-        for (const award of awardedList) {
-          if (award.seasonNumber === activeSeasonNum) {
-            currentSeasonDeduct += award.points;
-          } else if (award.seasonNumber < activeSeasonNum) {
-            if (!pastSeasonDeductions[award.seasonNumber]) {
-              pastSeasonDeductions[award.seasonNumber] = { amount: 0, timestamp: award.timestamp };
+          for (const award of awardedList) {
+            if (award.seasonNumber === activeSeasonNum) {
+              currentSeasonDeduct += award.points;
+            } else if (award.seasonNumber < activeSeasonNum) {
+              if (!pastSeasonDeductions[award.seasonNumber]) {
+                pastSeasonDeductions[award.seasonNumber] = { amount: 0, timestamp: award.timestamp };
+              }
+              pastSeasonDeductions[award.seasonNumber].amount += award.points;
             }
-            pastSeasonDeductions[award.seasonNumber].amount += award.points;
           }
-        }
 
-        let runningState = prev;
+          let runningState = prev;
 
-        // 3. Deduct current season points via addPointsInternal (affects current season only)
-        if (currentSeasonDeduct > 0) {
-          const pointsUpdate = addPointsInternal(
-            runningState,
-            -currentSeasonDeduct,
-            'Sobriety tracker deleted',
-            'addiction_recovery',
-            { trackerId: tracker.id, seasonNumber: activeSeasonNum }
-          );
-          runningState = {
-            ...runningState,
-            ...pointsUpdate,
-          };
-        }
-
-        // 4. Attribute past season deductions (affects past season leagueArchives & history, current season total unaffected)
-        for (const [seasonStr, data] of Object.entries(pastSeasonDeductions)) {
-          const sNum = parseInt(seasonStr, 10);
-
-          // Route audit refund entry through addPointsInternal to ensure 500-cap, sorting, and eviction-ledger synchronization
-          const pointsUpdate = addPointsInternal(
-            runningState,
-            -data.amount,
-            `Sobriety tracker deleted (Season ${sNum} refund)`,
-            'addiction_recovery',
-            { trackerId: tracker.id, seasonNumber: sNum },
-            data.timestamp
-          );
-          runningState = {
-            ...runningState,
-            ...pointsUpdate,
-          };
-
-          // Update or synthesize past season leagueArchive
-          let updatedLeagueArchives = [...(runningState.leagueArchives || [])];
-          const archiveIdx = updatedLeagueArchives.findIndex(
-            (archive) => archive.seasonNumber === sNum || (archive.type === 'ninetyDay' && archive.periodLabel === `Season ${sNum}`)
-          );
-
-          if (archiveIdx >= 0) {
-            updatedLeagueArchives[archiveIdx] = {
-              ...updatedLeagueArchives[archiveIdx],
-              userPoints: Math.max(0, (updatedLeagueArchives[archiveIdx].userPoints || 0) - data.amount),
+          // 3. Deduct current season points via addPointsInternal (affects current season only)
+          if (currentSeasonDeduct > 0) {
+            const pointsUpdate = addPointsInternal(
+              runningState,
+              -currentSeasonDeduct,
+              'Sobriety tracker deleted',
+              'addiction_recovery',
+              { trackerId: tracker.id, seasonNumber: activeSeasonNum }
+            );
+            runningState = {
+              ...runningState,
+              ...pointsUpdate,
             };
-          } else if (sNum === activeSeasonNum - 1) {
-            // Only consider synthesizing if it is the immediately preceding season AND has surviving entries.
-            // For seasons older than 1 cycle (sNum < activeSeasonNum - 1), eviction has purged original activity,
-            // so we strictly skip creating a fabricated archive to prevent falsely recording near-zero historical scores.
-            const pastEntries = (runningState.pointsHistory || []).filter((p) => {
-              return getSeasonNumber(new Date(p.timestamp)) === sNum;
-            });
-            if (pastEntries.length > 0) {
-              const pastArchiveId = createDeterministicArchiveId(sNum);
-              const pastSum = pastEntries.reduce((acc, p) => acc + (p.amount || 0), 0);
-              updatedLeagueArchives.push({
-                id: pastArchiveId,
-                type: 'ninetyDay',
-                periodLabel: `Season ${sNum}`,
-                seasonNumber: sNum,
-                competitors: [],
-                userRank: 1,
-                userPoints: Math.max(0, pastSum),
-                archivedAt: data.timestamp || new Date().toISOString(),
-                completedAt: data.timestamp || new Date().toISOString(),
-                participantCount: 1,
-              });
-            }
           }
 
-          runningState = {
+          // 4. Attribute past season deductions (affects past season leagueArchives & history, current season total unaffected)
+          for (const [seasonStr, data] of Object.entries(pastSeasonDeductions)) {
+            const sNum = parseInt(seasonStr, 10);
+
+            // Route audit refund entry through addPointsInternal to ensure 500-cap, sorting, and eviction-ledger synchronization
+            const pointsUpdate = addPointsInternal(
+              runningState,
+              -data.amount,
+              `Sobriety tracker deleted (Season ${sNum} refund)`,
+              'addiction_recovery',
+              { trackerId: tracker.id, seasonNumber: sNum },
+              data.timestamp
+            );
+            runningState = {
+              ...runningState,
+              ...pointsUpdate,
+            };
+
+            // Update or synthesize past season leagueArchive
+            let updatedLeagueArchives = [...(runningState.leagueArchives || [])];
+            const archiveIdx = updatedLeagueArchives.findIndex(
+              (archive) => archive.seasonNumber === sNum || (archive.type === 'ninetyDay' && archive.periodLabel === `Season ${sNum}`)
+            );
+
+            if (archiveIdx >= 0) {
+              updatedLeagueArchives[archiveIdx] = {
+                ...updatedLeagueArchives[archiveIdx],
+                userPoints: Math.max(0, (updatedLeagueArchives[archiveIdx].userPoints || 0) - data.amount),
+              };
+            } else if (sNum === activeSeasonNum - 1) {
+              // Only consider synthesizing if it is the immediately preceding season AND has surviving entries.
+              // For seasons older than 1 cycle (sNum < activeSeasonNum - 1), eviction has purged original activity,
+              // so we strictly skip creating a fabricated archive to prevent falsely recording near-zero historical scores.
+              const pastEntries = (runningState.pointsHistory || []).filter((p) => {
+                return getSeasonNumber(new Date(p.timestamp)) === sNum;
+              });
+              if (pastEntries.length > 0) {
+                const pastArchiveId = createDeterministicArchiveId(sNum);
+                const pastSum = pastEntries.reduce((acc, p) => acc + (p.amount || 0), 0);
+                updatedLeagueArchives.push({
+                  id: pastArchiveId,
+                  type: 'ninetyDay',
+                  periodLabel: `Season ${sNum}`,
+                  seasonNumber: sNum,
+                  competitors: [],
+                  userRank: 1,
+                  userPoints: Math.max(0, pastSum),
+                  archivedAt: data.timestamp || new Date().toISOString(),
+                  completedAt: data.timestamp || new Date().toISOString(),
+                  participantCount: 1,
+                });
+              }
+            }
+
+            runningState = {
+              ...runningState,
+              leagueArchives: updatedLeagueArchives,
+            };
+          }
+
+          const trackerId = tracker.id;
+          const updatedDeletedEntityIds = [
+            ...(runningState.deletedEntityIds || []),
+            ...(trackerId ? [trackerId] : []),
+            ...runningState.cravingLogs.map((l) => l.id),
+          ].slice(-500);
+
+          return {
             ...runningState,
-            leagueArchives: updatedLeagueArchives,
+            addictionTracker: null,
+            cravingLogs: [],
+            deletedEntityIds: updatedDeletedEntityIds,
           };
+        },
+        {
+          immediate: true,
+          actionLabel: 'Sobriety tracker deletion',
+          entityId: get().addictionTracker?.id || 'sobriety_tracker',
         }
-
-        const trackerId = tracker.id;
-        const updatedDeletedEntityIds = [
-          ...(runningState.deletedEntityIds || []),
-          ...(trackerId ? [trackerId] : []),
-          ...runningState.cravingLogs.map((l) => l.id),
-        ].slice(-500);
-
-        return {
-          ...runningState,
-          addictionTracker: null,
-          cravingLogs: [],
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+      ) || Promise.resolve()
     );
-  }, []);
+  }, [get]);
 
   const deleteCravingLog = useCallback((logId: string) => {
-    setState(
-      (prev) => {
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
-        return {
-          ...prev,
-          cravingLogs: prev.cravingLogs.filter((l) => l.id !== logId),
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+    return (
+      setState(
+        (prev) => {
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
+          return {
+            ...prev,
+            cravingLogs: prev.cravingLogs.filter((l) => l.id !== logId),
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Craving log deletion', entityId: logId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -4382,36 +4527,38 @@ export function useAppState() {
   }, []);
 
   const deleteWeeklyReflection = useCallback((weekKey: string, reflectionId: string) => {
-    setState(
-      (prev) => {
-        const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
-        if (docIdx === -1) return prev;
+    return (
+      setState(
+        (prev) => {
+          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+          if (docIdx === -1) return prev;
 
-        const doc = prev.weeklyGoals[docIdx];
-        const targetRef = (doc.reflections || []).find((r) => r.id === reflectionId);
-        if (!targetRef) return prev;
+          const doc = prev.weeklyGoals[docIdx];
+          const targetRef = (doc.reflections || []).find((r) => r.id === reflectionId);
+          if (!targetRef) return prev;
 
-        const candidateReflections = (doc.reflections || []).filter((r) => r.id !== reflectionId);
+          const candidateReflections = (doc.reflections || []).filter((r) => r.id !== reflectionId);
 
-        const { updatedReflections, nextState } = reconcileReflectionPoints(
-          prev,
-          weekKey,
-          candidateReflections,
-          getNow()
-        );
+          const { updatedReflections, nextState } = reconcileReflectionPoints(
+            prev,
+            weekKey,
+            candidateReflections,
+            getNow()
+          );
 
-        const updatedDoc = { ...doc, reflections: updatedReflections };
-        const newWeeklyGoals = [...nextState.weeklyGoals];
-        newWeeklyGoals[docIdx] = updatedDoc;
-        const updatedDeletedEntityIds = [...(nextState.deletedEntityIds || []), reflectionId].slice(-500);
+          const updatedDoc = { ...doc, reflections: updatedReflections };
+          const newWeeklyGoals = [...nextState.weeklyGoals];
+          newWeeklyGoals[docIdx] = updatedDoc;
+          const updatedDeletedEntityIds = [...(nextState.deletedEntityIds || []), reflectionId].slice(-500);
 
-        return {
-          ...nextState,
-          weeklyGoals: newWeeklyGoals,
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+          return {
+            ...nextState,
+            weeklyGoals: newWeeklyGoals,
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Weekly reflection deletion', entityId: reflectionId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -4486,22 +4633,24 @@ export function useAppState() {
   }, []);
 
   const deleteWeeklyGoalItem = useCallback((weekKey: string, goalId: string) => {
-    setState(
-      (prev) => {
-        const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
-        if (docIdx === -1) return prev;
+    return (
+      setState(
+        (prev) => {
+          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+          if (docIdx === -1) return prev;
 
-        const doc = prev.weeklyGoals[docIdx];
-        const updatedGoals = doc.goals.filter((g) => g.id !== goalId);
+          const doc = prev.weeklyGoals[docIdx];
+          const updatedGoals = doc.goals.filter((g) => g.id !== goalId);
 
-        const updatedDoc = { ...doc, goals: updatedGoals };
-        const newWeeklyGoals = [...prev.weeklyGoals];
-        newWeeklyGoals[docIdx] = updatedDoc;
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
+          const updatedDoc = { ...doc, goals: updatedGoals };
+          const newWeeklyGoals = [...prev.weeklyGoals];
+          newWeeklyGoals[docIdx] = updatedDoc;
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
 
-        return { ...prev, weeklyGoals: newWeeklyGoals, deletedEntityIds: updatedDeletedEntityIds };
-      },
-      { immediate: true }
+          return { ...prev, weeklyGoals: newWeeklyGoals, deletedEntityIds: updatedDeletedEntityIds };
+        },
+        { immediate: true, actionLabel: 'Weekly goal deletion', entityId: goalId }
+      ) || Promise.resolve()
     );
   }, []);
 

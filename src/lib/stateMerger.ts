@@ -1269,6 +1269,7 @@ export function mergeAppState(
     readLessonIds,
     deletedEntityIds: postPointsDeletedEntityIds,
     restoredEntityIds: mergedRestoredEntityIds,
+    unsyncedEntityIds: Array.from(new Set([...(baseState.unsyncedEntityIds || []), ...(incomingState.unsyncedEntityIds || [])])).slice(-500),
     timeTracker: mergedTimeTracker,
     themePreference: incomingState.themePreference || baseState.themePreference || 'dark',
   };

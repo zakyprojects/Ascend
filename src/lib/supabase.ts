@@ -5,6 +5,7 @@ import { calculateUnifiedStreak } from './streakLogic';
 import { mergeAppState } from './stateMerger';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { todayKey } from './dates';
+import { GuardBlockedError } from './errors';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -233,7 +234,10 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
         watermark,
         incomingWeight,
       });
-      return null;
+      throw new GuardBlockedError(
+        'Blocked catastrophic zero-out wipe to user_data for established account',
+        'ZERO_OUT_WIPE'
+      );
     }
 
     // Block massive catastrophic entity drop (>70% vanished at once on accounts with >= 3 items)
@@ -243,7 +247,10 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
         watermarkItemCount: watermark.itemCount,
         incomingItemCount: incomingWeight.itemCount,
       });
-      return null;
+      throw new GuardBlockedError(
+        'Blocked abnormal massive data drop to user_data (>70% drop)',
+        'ABNORMAL_DROP'
+      );
     }
   }
 
@@ -259,7 +266,10 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
           incomingWeight,
         });
         setUserDataWatermark(userId, existingWeight);
-        return null;
+        throw new GuardBlockedError(
+          'Blocked cold zero-out wipe over existing rich database state',
+          'COLD_ZERO_OUT'
+        );
       }
     }
   }
