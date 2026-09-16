@@ -2710,7 +2710,7 @@ export function useAppState() {
           (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
         );
 
-        let dailyCapRemaining = WORKOUT_POINTS.dailyCap;
+        let dailyCapRemaining: number = WORKOUT_POINTS.dailyCap;
         const recalculatedMap = new Map<string, number>();
 
         for (const w of chronDayWorkouts) {
@@ -3047,7 +3047,7 @@ export function useAppState() {
         const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
 
         // Determine points: if curated, award curated points; if custom, award 30 pts completion bonus
-        let bonusPoints = READING_POINTS.customBookBonus;
+        let bonusPoints: number = READING_POINTS.customBookBonus;
         if (targetUserBook && !targetUserBook.isCustom && targetUserBook.curatedBookId) {
           const curated = findCuratedBook(targetUserBook.curatedBookId);
           if (curated) {
