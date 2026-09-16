@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Activity, Dumbbell, Flame, Plus, Trash2, Calendar, Award } from 'lucide-react';
 import { AppStore } from '@/lib/store';
+import { WORKOUT_POINTS, calculateWorkoutPoints, getWorkoutMultiplier } from '@/lib/pointsConfig';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
@@ -19,20 +20,6 @@ const DEFAULT_WORKOUT_TYPES = [
   'Boxing',
   'Pilates',
 ];
-
-const getUnitMultiplier = (unit: string): number => {
-  switch (unit) {
-    case 'sets':
-    case 'km':
-      return 10;
-    case 'sessions':
-      return 30;
-    case 'reps':
-    case 'mins':
-    default:
-      return 1;
-  }
-};
 
 export function ExerciseTracker({ store }: { store: AppStore }) {
   const [logModalOpen, setLogModalOpen] = useState(false);
@@ -104,7 +91,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
     return { dayLabel, points, isToday: key === today };
   });
 
-  const maxPointsInChart = Math.max(60, ...dailyPoints.map((d) => d.points));
+  const maxPointsInChart = Math.max(WORKOUT_POINTS.dailyCap, ...dailyPoints.map((d) => d.points));
 
   // Daily points earned today
   const pointsEarnedToday = workouts
@@ -113,8 +100,13 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
 
   // Dynamic preview points calculation for the modal
   const effectiveInputValue = metricType === 'mins' ? duration : amount;
-  const rawPreviewPoints = Math.round(Math.max(0, effectiveInputValue || 0) * getUnitMultiplier(metricType));
-  const previewPointsToEarn = Math.min(rawPreviewPoints, Math.max(0, 60 - pointsEarnedToday));
+  const remainingCap = Math.max(0, WORKOUT_POINTS.dailyCap - pointsEarnedToday);
+  const { pointsToAward: previewPointsToEarn } = calculateWorkoutPoints(
+    metricType,
+    effectiveInputValue,
+    effectiveInputValue,
+    remainingCap
+  );
 
   const { isLoading: isLogging, executeFn: executeLog } = useAsyncAction();
   const { isLoading: isSavingGoal, executeFn: executeGoalSave } = useAsyncAction();
@@ -154,7 +146,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             Exercise Tracker
           </h1>
           <p className="text-sm text-content-disabled mt-1">
-            Log workouts, track weekly activity, and earn points (up to 60 pts/day)
+            Log workouts, track weekly activity, and earn points (up to {WORKOUT_POINTS.dailyCap} pts/day)
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -210,7 +202,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           <div>
             <div className="text-xs text-content-disabled">Points Today</div>
             <div className="text-xl font-display font-bold text-brand-text">
-              {pointsEarnedToday} <span className="text-xs font-normal text-content-disabled">/ 60 pts cap</span>
+              {pointsEarnedToday} <span className="text-xs font-normal text-content-disabled">/ {WORKOUT_POINTS.dailyCap} pts cap</span>
             </div>
           </div>
         </div>

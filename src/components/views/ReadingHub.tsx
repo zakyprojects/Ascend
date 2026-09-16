@@ -27,6 +27,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
 import { todayKey, formatDateLong } from '@/lib/dates';
+import { READING_POINTS } from '@/lib/pointsConfig';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 
@@ -1173,8 +1174,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
               <span className="font-bold block">Congratulations on finishing!</span>
               <span>
                 {finishModalBook?.isCurated
-                  ? `Earned +${finishModalBook.pointsReward || 40} points bonus!`
-                  : 'Earned +30 points completion bonus!'}
+                  ? `Earned +${finishModalBook.pointsReward || READING_POINTS.curatedBookFallback} points bonus!`
+                  : `Earned +${READING_POINTS.customBookBonus} points completion bonus!`}
               </span>
             </div>
           </div>

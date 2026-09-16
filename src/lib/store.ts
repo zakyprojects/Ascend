@@ -107,6 +107,17 @@ import {
 } from './habitPenalties';
 import { addPointsInternal } from './pointsLedger';
 export { addPointsInternal };
+import {
+  JOURNAL_POINTS,
+  WEEKLY_REFLECTION_POINTS,
+  PFC_POINTS,
+  WORKOUT_POINTS,
+  SKILLS_POINTS,
+  READING_POINTS,
+  BAD_HABIT_POINTS,
+  SOBRIETY_MILESTONE_POINTS,
+  calculateWorkoutPoints,
+} from './pointsConfig';
 import { calculateUnifiedStreak } from './streakLogic';
 import {
   supabase,
@@ -302,7 +313,7 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
     const earliest = sorted[0];
     consolidatedWeeklyEntries.push({
       id: `weekly_review_${weekKey}`,
-      amount: 20,
+      amount: WEEKLY_REFLECTION_POINTS.awarded,
       reason: `Weekly reflection completed for ${weekKey}`,
       source: 'weekly_review',
       timestamp: earliest.timestamp || new Date().toISOString(),
@@ -1003,7 +1014,7 @@ export function reconcileReflectionPoints(
 
     const pointsAward = addPointsInternal(
       currentState,
-      20,
+      WEEKLY_REFLECTION_POINTS.awarded,
       `Weekly reflection completed for ${weekKey}`,
       'weekly_review',
       { weekKey },
@@ -1014,7 +1025,7 @@ export function reconcileReflectionPoints(
   } else if (!latest && isWeekAwarded) {
     const pointsDeduct = addPointsInternal(
       currentState,
-      -20,
+      WEEKLY_REFLECTION_POINTS.reversed,
       `Weekly reflection deleted for ${weekKey}`,
       'weekly_review',
       { weekKey },
@@ -2375,11 +2386,11 @@ export function useAppState() {
 
         if (isQualifying && !wasAwarded) {
           // Award points for non-empty entry
-          pointsUpdate = addPointsInternal(prev, 5, 'Journal entry completed', 'journal');
+          pointsUpdate = addPointsInternal(prev, JOURNAL_POINTS.entryCompleted, 'Journal entry completed', 'journal');
           newPointsAwarded = true;
         } else if (!isQualifying && wasAwarded) {
           // Deduct points when entry content is erased to empty
-          pointsUpdate = addPointsInternal(prev, -5, 'Journal entry content removed', 'journal');
+          pointsUpdate = addPointsInternal(prev, JOURNAL_POINTS.entryCleared, 'Journal entry content removed', 'journal');
           newPointsAwarded = false;
         }
 
@@ -2421,7 +2432,7 @@ export function useAppState() {
         };
 
         if (entry.pointsAwarded) {
-          pointsUpdate = addPointsInternal(prev, -5, 'Journal entry deleted', 'journal');
+          pointsUpdate = addPointsInternal(prev, JOURNAL_POINTS.entryDeleted, 'Journal entry deleted', 'journal');
         }
 
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), entryId].slice(-500);
@@ -2643,25 +2654,12 @@ export function useAppState() {
 
       const effectiveAmount = safeAmount !== undefined ? safeAmount : safeDurationMinutes;
 
-      let multiplier = 1;
-      if (normalizedUnit === 'sets' || normalizedUnit === 'km') {
-        multiplier = 10;
-      } else if (normalizedUnit === 'sessions') {
-        multiplier = 30;
-      } else if (normalizedUnit === 'reps' || normalizedUnit === 'mins') {
-        multiplier = 1;
-      } else {
-        multiplier = 1;
-      }
-
-      const calculatedPoints = Math.round(effectiveAmount * multiplier);
-
       const pointsEarnedToday = prev.workouts
         .filter((w) => w.date === date)
         .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
 
-      const maxAllowed = Math.max(0, 60 - pointsEarnedToday);
-      const pointsToAward = Math.min(calculatedPoints, maxAllowed);
+      const remainingCap = Math.max(0, WORKOUT_POINTS.dailyCap - pointsEarnedToday);
+      const { pointsToAward } = calculateWorkoutPoints(normalizedUnit, safeAmount, safeDurationMinutes, remainingCap);
 
       const savedDuration = normalizedUnit === 'mins' ? (safeAmount !== undefined && safeAmount > 0 ? safeAmount : safeDurationMinutes) : 0;
 
@@ -2712,22 +2710,16 @@ export function useAppState() {
           (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
         );
 
-        let dailyCapRemaining = 60;
+        let dailyCapRemaining = WORKOUT_POINTS.dailyCap;
         const recalculatedMap = new Map<string, number>();
 
         for (const w of chronDayWorkouts) {
-          const u = (w.unit || 'mins').trim().toLowerCase();
-          let mult = 1;
-          if (u === 'sets' || u === 'km') mult = 10;
-          else if (u === 'sessions') mult = 30;
-          else mult = 1;
-
-          const effAmt = typeof w.amount === 'number' && !isNaN(w.amount)
-            ? Math.max(0, w.amount)
-            : Math.max(0, w.durationMinutes || 0);
-
-          const rawPts = Math.round(effAmt * mult);
-          const awarded = Math.min(rawPts, dailyCapRemaining);
+          const { pointsToAward: awarded } = calculateWorkoutPoints(
+            w.unit,
+            w.amount,
+            w.durationMinutes,
+            dailyCapRemaining
+          );
           recalculatedMap.set(w.id, awarded);
           dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
         }
@@ -2884,7 +2876,7 @@ export function useAppState() {
       // Points balancing: If reading habit is linked, do NOT award +5 reading hub points (habit completion awards points)
       let pointsToAward = 0;
       if (!readingHabit && !alreadyLoggedToday && pageDelta > 0) {
-        pointsToAward = 5;
+        pointsToAward = READING_POINTS.unlinkedDailyLog;
       }
 
       let updatedReadingLogs = prev.readingLogs || [];
@@ -2958,7 +2950,7 @@ export function useAppState() {
           ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || new Date().toISOString() }]))
           : (readingHabit.completions || {});
         const isCheckedToday = currentCompletions[key]?.done === true;
-        const habitPts = (readingHabit.isPreset && readingHabit.points > 0) ? readingHabit.points : 12;
+        const habitPts = (readingHabit.isPreset && readingHabit.points > 0) ? readingHabit.points : READING_POINTS.presetHabitFallback;
         const habitMeta = {
           category: readingHabit.category,
           habitId: readingHabit.id,
@@ -3055,7 +3047,7 @@ export function useAppState() {
         const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
 
         // Determine points: if curated, award curated points; if custom, award 30 pts completion bonus
-        let bonusPoints = 30;
+        let bonusPoints = READING_POINTS.customBookBonus;
         if (targetUserBook && !targetUserBook.isCustom && targetUserBook.curatedBookId) {
           const curated = findCuratedBook(targetUserBook.curatedBookId);
           if (curated) {
@@ -3132,7 +3124,7 @@ export function useAppState() {
         const targetTitleLower = (targetUserBook.title || '').toLowerCase();
         const bookLogs = prev.readingLogs.filter((l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)));
         const logPointsTotal = bookLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-        const completionPoints = targetUserBook.pointsAwarded || (targetUserBook.status === 'completed' ? 30 : 0);
+        const completionPoints = targetUserBook.pointsAwarded || (targetUserBook.status === 'completed' ? READING_POINTS.customBookBonus : 0);
         const totalBookPoints = logPointsTotal + completionPoints;
 
         let pointsUpdate = {};
@@ -3158,7 +3150,7 @@ export function useAppState() {
 
           if (remainingPagesToday <= 0 && isCheckedToday) {
             const nowIso = new Date().toISOString();
-            const habitPts = (readingHabit.isPreset && readingHabit.points > 0) ? readingHabit.points : 12;
+            const habitPts = (readingHabit.isPreset && readingHabit.points > 0) ? readingHabit.points : READING_POINTS.presetHabitFallback;
             const targetCompletion = currentCompletions[key];
             const completionInstanceTimestamp = targetCompletion?.updatedAt || readingHabit.createdAt || key;
 
@@ -3243,7 +3235,7 @@ export function useAppState() {
         coverImageUrl: curatedBook.coverImageUrl,
         isCurated: true,
         isCustom: false,
-        pointsReward: curatedBook.pointsOnCompletion || curatedBook.pointsReward || 40,
+        pointsReward: curatedBook.pointsOnCompletion || curatedBook.pointsReward || READING_POINTS.curatedBookFallback,
         pointsAwarded: 0,
         status: initialStatus,
         totalAmount: numPages,
@@ -3267,7 +3259,7 @@ export function useAppState() {
       };
 
       if (initialStatus === 'completed') {
-        const reward = curatedBook.pointsOnCompletion || curatedBook.pointsReward || 40;
+        const reward = curatedBook.pointsOnCompletion || curatedBook.pointsReward || READING_POINTS.curatedBookFallback;
         const pointsUpdate = addPointsInternal(
           newState,
           reward,
@@ -3434,8 +3426,8 @@ export function useAppState() {
         .filter((l) => l.date === date)
         .reduce((sum, l) => sum + l.pointsAwarded, 0);
 
-      const maxAllowed = Math.max(0, 60 - pointsEarnedToday);
-      const pointsToAward = Math.min(durationMinutes, maxAllowed);
+      const maxAllowed = Math.max(0, SKILLS_POINTS.dailyCap - pointsEarnedToday);
+      const pointsToAward = Math.min(durationMinutes * SKILLS_POINTS.pointsPerMinute, maxAllowed);
 
       const session: SkillSessionLog = {
         id: uid(),
@@ -3587,7 +3579,7 @@ export function useAppState() {
         let consecutiveOccurrences = 0;
 
         if (status === 'resisted') {
-          pointsChange = isPointEligible ? 10 : 0;
+          pointsChange = isPointEligible ? BAD_HABIT_POINTS.resistBase : 0;
           reason = `Bad habit resisted: ${bh.name}`;
         } else {
           const pastLogs = (baseState.badHabitLogs || [])
@@ -3606,7 +3598,7 @@ export function useAppState() {
           const seasonStart = getLeaguePeriodStart('ninetyDay', new Date());
           const seasonPts = calculatePeriodPoints(baseState.pointsHistory || [], seasonStart, new Date(), baseState.totalPoints);
           const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
-          const penaltyAmount = isPointEligible ? Math.round(10 * multiplier) : 0;
+          const penaltyAmount = isPointEligible ? Math.round(BAD_HABIT_POINTS.occurBase * multiplier) : 0;
           pointsChange = -penaltyAmount;
           reason = `Bad habit occurred (${multiplier}x penalty): ${bh.name}`;
         }
@@ -3879,7 +3871,7 @@ export function useAppState() {
         if (!isAlreadyAwarded('24h')) {
           newlyUnlockedMilestones.push({
             key: '24h',
-            amount: 20,
+            amount: SOBRIETY_MILESTONE_POINTS['24h'],
             reason: 'Sobriety Milestone: 24 Hours Clean! 🎉',
             label: '24 Hours Clean',
           });
@@ -3892,7 +3884,7 @@ export function useAppState() {
         if (!isAlreadyAwarded('1w')) {
           newlyUnlockedMilestones.push({
             key: '1w',
-            amount: 50,
+            amount: SOBRIETY_MILESTONE_POINTS['1w'],
             reason: 'Sobriety Milestone: 1 Week Clean! 🏅',
             label: '1 Week Clean',
           });
@@ -3905,7 +3897,7 @@ export function useAppState() {
         if (!isAlreadyAwarded('1m')) {
           newlyUnlockedMilestones.push({
             key: '1m',
-            amount: 150,
+            amount: SOBRIETY_MILESTONE_POINTS['1m'],
             reason: 'Sobriety Milestone: 1 Month Clean! 🏆',
             label: '1 Month Clean',
           });
@@ -4000,7 +3992,9 @@ export function useAppState() {
         let awardedList: AddictionMilestoneAward[] = tracker.awardedMilestones ? [...tracker.awardedMilestones] : [];
         if (awardedList.length === 0 && tracker.milestonesUnlocked && tracker.milestonesUnlocked.length > 0) {
           for (const mKey of tracker.milestonesUnlocked) {
-            const pts = mKey === '24h' ? 20 : mKey === '1w' ? 50 : mKey === '1m' ? 150 : 0;
+            const pts = (mKey in SOBRIETY_MILESTONE_POINTS)
+              ? SOBRIETY_MILESTONE_POINTS[mKey as keyof typeof SOBRIETY_MILESTONE_POINTS]
+              : 0;
             if (pts > 0) {
               const histEntry = prev.pointsHistory?.find(
                 (e) => e.source === 'recovery_milestone' && (e.reason?.includes(mKey) || e.metadata?.milestone === mKey)
@@ -4144,7 +4138,10 @@ export function useAppState() {
   // --- MODULE 7: PREFRONTAL CORTEX ACTIONS ---
   const logFocusSession = useCallback((taskName: string, durationMinutes: number, skillId?: string, reflection?: string) => {
     const date = todayKey();
-    const pointsToAward = Math.max(5, Math.round(durationMinutes * 0.6));
+    const pointsToAward = Math.max(
+      PFC_POINTS.focus.floorPoints,
+      Math.round(durationMinutes * PFC_POINTS.focus.minuteRate)
+    );
     setState((prev) => {
       const focusLog: FocusSessionLog = {
         id: uid(),
@@ -4210,7 +4207,7 @@ export function useAppState() {
       const updatedLogs = [...prev.decisionLogs];
       updatedLogs[idx] = updated;
 
-      const pointsUpdate = addPointsInternal(prev, 15, `Decision reflection: ${target.title}`, 'decision_reflection');
+      const pointsUpdate = addPointsInternal(prev, PFC_POINTS.decision, `Decision reflection: ${target.title}`, 'decision_reflection');
       return { ...prev, decisionLogs: updatedLogs, ...pointsUpdate };
     });
   }, []);
@@ -4222,11 +4219,11 @@ export function useAppState() {
       emotion: emotion.trim(),
       intensity,
       context: context.trim(),
-      pointsAwarded: 5,
+      pointsAwarded: PFC_POINTS.emotion,
       createdAt: new Date().toISOString(),
     };
     setState((prev) => {
-      const pointsUpdate = addPointsInternal(prev, 5, `Emotion labeled: ${emotion}`, 'emotion_label');
+      const pointsUpdate = addPointsInternal(prev, PFC_POINTS.emotion, `Emotion labeled: ${emotion}`, 'emotion_label');
       return {
         ...prev,
         emotionLogs: [log, ...prev.emotionLogs],
@@ -4261,7 +4258,7 @@ export function useAppState() {
         const target = prev.decisionLogs.find((d) => d.id === logId);
         let ptsToDeduct = 0;
         if (target) {
-          ptsToDeduct = target.isReflected ? 30 : 15;
+          ptsToDeduct = target.isReflected ? PFC_POINTS.decision : 0;
         }
         let pointsUpdate = {};
         if (ptsToDeduct > 0 && target) {
@@ -4285,7 +4282,7 @@ export function useAppState() {
         const target = prev.emotionLogs.find((e) => e.id === logId);
         let pointsUpdate = {};
         if (target) {
-          pointsUpdate = addPointsInternal(prev, -5, `Emotion label deleted: ${target.emotion}`, 'emotion_label');
+          pointsUpdate = addPointsInternal(prev, -PFC_POINTS.emotion, `Emotion label deleted: ${target.emotion}`, 'emotion_label');
         }
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {

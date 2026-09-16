@@ -10,6 +10,7 @@ import { LeagueType } from '@/types';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { calculateBlockDurationMinutes, formatDurationHuman } from '@/lib/timeTracker';
+import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 
 const LEAGUE_ICONS: Record<string, typeof Trophy> = {
   Calendar, CalendarDays, Brain,
@@ -389,7 +390,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               </div>
               <div>
                 <p className="text-sm font-medium text-content-tertiary">Write today's entry</p>
-                <p className="text-xs text-content-disabled">How was your day? (+5 pts)</p>
+                <p className="text-xs text-content-disabled">How was your day? (+{JOURNAL_POINTS.entryCompleted} pts)</p>
               </div>
             </div>
           )}
