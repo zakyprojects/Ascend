@@ -4258,7 +4258,7 @@ export function useAppState() {
         const target = prev.decisionLogs.find((d) => d.id === logId);
         let ptsToDeduct = 0;
         if (target) {
-          ptsToDeduct = target.isReflected ? 30 : 15;
+          ptsToDeduct = target.isReflected ? PFC_POINTS.decision : 0;
         }
         let pointsUpdate = {};
         if (ptsToDeduct > 0 && target) {
