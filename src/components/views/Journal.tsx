@@ -23,6 +23,7 @@ import {
 import { AppStore } from '@/lib/store';
 import { Mood, JournalEntry } from '@/types';
 import { formatDateLong, todayKey, parseDate } from '@/lib/dates';
+import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/useAsyncAction';
@@ -212,7 +213,7 @@ export function Journal({ store }: { store: AppStore }) {
 
         if (!wasAwarded) {
           setJustCelebrated(true);
-          showSuccessToast('Journal Saved', 'Earned +5 points for today\'s reflection! 🎉');
+          showSuccessToast('Journal Saved', `Earned +${JOURNAL_POINTS.entryCompleted} points for today's reflection! 🎉`);
           setTimeout(() => setJustCelebrated(false), 4500);
         } else {
           showSuccessToast('Journal Updated', 'Your reflection has been updated.');
@@ -357,7 +358,7 @@ export function Journal({ store }: { store: AppStore }) {
               {existingToday.pointsAwarded && (
                 <span className="text-xs font-bold text-success-text bg-emerald-500/25 px-3 py-1 rounded-full border border-emerald-500/40 flex items-center gap-1.5 shrink-0 shadow-sm animate-scale-in">
                   <Award size={14} className="text-success-text" />
-                  <span>+5 pts earned</span>
+                  <span>+{JOURNAL_POINTS.entryCompleted} pts earned</span>
                 </span>
               )}
             </div>
@@ -420,11 +421,11 @@ export function Journal({ store }: { store: AppStore }) {
                 <span>
                   {existingToday
                     ? "Editing today's entry. Update your notes and save."
-                    : "Write at least a sentence (10+ characters) to earn +5 points."}
+                    : `Write at least a sentence (10+ characters) to earn +${JOURNAL_POINTS.entryCompleted} points.`}
                 </span>
               </div>
               <span className="text-[11px] font-bold bg-primary-500/20 px-2 py-0.5 rounded text-brand-text border border-primary-500/30 shrink-0">
-                +5 pts
+                +{JOURNAL_POINTS.entryCompleted} pts
               </span>
             </div>
 
@@ -553,7 +554,7 @@ export function Journal({ store }: { store: AppStore }) {
                   ) : (
                     <span className="text-success-text flex items-center gap-1 font-semibold animate-fade-in">
                       <CheckCircle2 size={13} className="text-success-text" />
-                      Ready to save ({trimmedContent.length} characters) • +5 pts
+                      Ready to save ({trimmedContent.length} characters) • +{JOURNAL_POINTS.entryCompleted} pts
                     </span>
                   )}
                 </div>
@@ -587,7 +588,7 @@ export function Journal({ store }: { store: AppStore }) {
                     ? 'Saving...'
                     : existingToday
                     ? 'Update Entry'
-                    : 'Save Today\'s Entry (+5 pts)'}
+                    : `Save Today's Entry (+${JOURNAL_POINTS.entryCompleted} pts)`}
                 </span>
               </button>
 
@@ -985,7 +986,7 @@ export function Journal({ store }: { store: AppStore }) {
                   <div className="flex items-center gap-2.5 shrink-0">
                     {entry.pointsAwarded && (
                       <span className="text-xs text-success-text font-display font-bold bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 flex items-center gap-1">
-                        <Award size={13} /> +5 pts
+                        <Award size={13} /> +{JOURNAL_POINTS.entryCompleted} pts
                       </span>
                     )}
 
@@ -1047,7 +1048,7 @@ export function Journal({ store }: { store: AppStore }) {
 
                 {selectedEntry.pointsAwarded ? (
                   <span className="text-xs text-success-text font-bold bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 flex items-center gap-1.5">
-                    <Award size={14} /> +5 pts Earned
+                    <Award size={14} /> +{JOURNAL_POINTS.entryCompleted} pts Earned
                   </span>
                 ) : (
                   <span className="text-xs text-content-disabled bg-bg-700 px-2.5 py-1 rounded-lg">
@@ -1114,7 +1115,7 @@ export function Journal({ store }: { store: AppStore }) {
         itemName={`Journal Entry (${deleteModalEntry?.date})`}
         description={
           deleteModalEntry?.pointsAwarded
-            ? `Are you sure you want to delete your journal entry for ${deleteModalEntry.date}? This will reverse the +5 points awarded.`
+            ? `Are you sure you want to delete your journal entry for ${deleteModalEntry.date}? This will reverse the +${JOURNAL_POINTS.entryCompleted} points awarded.`
             : `Are you sure you want to delete your journal entry for ${deleteModalEntry?.date}?`
         }
       />

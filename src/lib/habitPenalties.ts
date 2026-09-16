@@ -3,6 +3,7 @@ import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, uid, addDay
 import { createNotificationSupabase } from './supabase';
 import { getEffectiveSeasonPoints } from './leagues';
 import { applyPenaltyDeductionInternal } from './pointsLedger';
+import { BAD_HABIT_POINTS } from './pointsConfig';
 
 export { applyPenaltyDeductionInternal };
 
@@ -433,7 +434,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
 
         const seasonPts = getAppStateSeasonPoints(updatedState, now);
         const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
-        const penaltyAmount = isPointEligible ? Math.round(5 * multiplier) : 0;
+        const penaltyAmount = isPointEligible ? Math.round(BAD_HABIT_POINTS.noReportBase * multiplier) : 0;
 
         const newLog: BadHabitLog = {
           id: uid(),

@@ -20,6 +20,7 @@ import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { BadHabit } from '@/types';
 import { todayKey, formatDateLong } from '@/lib/dates';
+import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 
 export function BadHabitTracker({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -132,7 +133,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
             Bad Habit Reduction Tracker
           </h1>
           <p className="text-sm text-content-disabled mt-1">
-            Build resistance streaks (+10 pts per day), enforce rank-tiered escalating penalties, and complete 75%+ commitments.
+            Build resistance streaks (+{BAD_HABIT_POINTS.resistBase} pts per day), enforce rank-tiered escalating penalties, and complete 75%+ commitments.
           </p>
         </div>
         <button onClick={() => setAddModalOpen(true)} className="btn-primary flex items-center gap-2">
@@ -192,10 +193,10 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               <span className="text-content-secondary">Point Eligibility:</span> Only the <span className="text-success-text font-semibold">first 2 habits</span> (by creation order) earn/lose points. Slot reassigns automatically upon deletion or completion.
             </li>
             <li>
-              <span className="text-content-secondary">Daily Actions:</span> Resisted awards <span className="text-success-text font-semibold">+10 pts</span>. Logging Occurred deducts points using rank-tiered escalation (capped at <span className="text-warning-text font-bold">1.5x</span> for Bronze–Platinum, <span className="text-rose-theme font-bold">2.5x</span> for Diamond+). Once logged, action locks for today. Undo is available for today's action.
+              <span className="text-content-secondary">Daily Actions:</span> Resisted awards <span className="text-success-text font-semibold">+{BAD_HABIT_POINTS.resistBase} pts</span>. Logging Occurred deducts points using rank-tiered escalation (capped at <span className="text-warning-text font-bold">1.5x</span> for Bronze–Platinum, <span className="text-rose-theme font-bold">2.5x</span> for Diamond+). Once logged, action locks for today. Undo is available for today's action.
             </li>
             <li>
-              <span className="text-content-secondary">No-Report Auto-Penalty:</span> Missing a day applies an automatic <span className="text-rose-theme font-semibold">-5 pts base</span> penalty at local midnight/hydration (scaled by your tier multiplier), breaks streak, and escalates future penalties. Cannot be undone.
+              <span className="text-content-secondary">No-Report Auto-Penalty:</span> Missing a day applies an automatic <span className="text-rose-theme font-semibold">-{BAD_HABIT_POINTS.noReportBase} pts base</span> penalty at local midnight/hydration (scaled by your tier multiplier), breaks streak, and escalates future penalties. Cannot be undone.
             </li>
             <li>
               <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="text-brand-text font-semibold">75%</span> of commitment duration. Completing preserves points earned!
@@ -356,7 +357,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         }`}
                       >
                         <CheckCircle2 size={16} className={status === 'resisted' ? 'text-success-text' : 'text-content-muted'} />
-                        <span>Resisted Today {isPointEligible ? '(+10 pts)' : '(0 pts)'}</span>
+                        <span>Resisted Today {isPointEligible ? `(+${BAD_HABIT_POINTS.resistBase} pts)` : '(0 pts)'}</span>
                       </button>
 
                       <button

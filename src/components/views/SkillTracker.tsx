@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { Skill, SkillLevel, SkillSessionLog } from '@/types';
 import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak } from '@/lib/dates';
+import { SKILLS_POINTS } from '@/lib/pointsConfig';
 
 export function SkillTracker({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -199,6 +200,19 @@ export function SkillTracker({ store }: { store: AppStore }) {
     setSkillName('');
     setCategory('');
   };
+
+  const today = todayKey();
+  const skillPointsToday = useMemo(() => {
+    return skillLogs
+      .filter((l) => l.date === today)
+      .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+  }, [skillLogs, today]);
+
+  const remainingSkillCap = Math.max(0, SKILLS_POINTS.dailyCap - skillPointsToday);
+  const skillPreviewPoints = Math.min(
+    Math.max(0, duration) * SKILLS_POINTS.pointsPerMinute,
+    remainingSkillCap
+  );
 
   const handleLogPracticeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -552,7 +566,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
           <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
             <span>Points to earn:</span>
-            <span className="font-bold text-purple-hierarchy">+{Math.min(duration, 60)} pts</span>
+            <span className="font-bold text-purple-hierarchy">+{skillPreviewPoints} pts</span>
           </div>
 
           <div className="flex gap-2 pt-2">

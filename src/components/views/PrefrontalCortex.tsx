@@ -35,6 +35,7 @@ import {
   Coffee,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
+import { PFC_POINTS } from '@/lib/pointsConfig';
 import { DEFAULT_TIME_TRACKER_ACTIVITIES } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -2463,7 +2464,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="section-title">Decision Journal</h2>
-          <p className="text-xs text-content-disabled">Log major decisions and revisit them to eliminate cognitive bias (+15 pts per reflection)</p>
+          <p className="text-xs text-content-disabled">Log major decisions and revisit them to eliminate cognitive bias (+{PFC_POINTS.decision} pts per reflection)</p>
         </div>
         <button onClick={() => setModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5">
           <Plus size={16} />
@@ -2489,7 +2490,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                   <h3 className="font-bold text-content-secondary text-sm flex items-center gap-2">
                     {d.title}
                     {d.isReflected ? (
-                      <span className="badge badge-purple text-[10px]">Reflected (+15 pts)</span>
+                      <span className="badge badge-purple text-[10px]">Reflected (+{PFC_POINTS.decision} pts)</span>
                     ) : (
                       <span className="badge badge-amber text-[10px]">Revisit: {d.revisitDate}</span>
                     )}
@@ -2526,7 +2527,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                   className="btn-secondary text-xs w-full py-1.5 flex items-center justify-center gap-1.5"
                 >
                   <Sparkles size={14} className="text-purple-hierarchy" />
-                  <span>Revisit & Add Reflection (+15 pts)</span>
+                  <span>Revisit & Add Reflection (+{PFC_POINTS.decision} pts)</span>
                 </button>
               )}
             </div>
@@ -2612,7 +2613,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
               Cancel
             </button>
             <button type="submit" className="btn-primary flex-1">
-              Save Reflection (+15 pts)
+              Save Reflection (+{PFC_POINTS.decision} pts)
             </button>
           </div>
         </form>
@@ -2684,7 +2685,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="section-title">Affect & Emotion Labeling Tool</h2>
-          <p className="text-xs text-content-disabled">Name feelings explicitly ("Name it to tame it") to reduce amygdala reactivity (+5 pts per entry)</p>
+          <p className="text-xs text-content-disabled">Name feelings explicitly ("Name it to tame it") to reduce amygdala reactivity (+{PFC_POINTS.emotion} pts per entry)</p>
         </div>
         <button onClick={() => setModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5">
           <Plus size={16} />
@@ -2731,7 +2732,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-rose-theme bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
-                  +5 pts
+                  +{PFC_POINTS.emotion} pts
                 </span>
                 <button
                   onClick={() => setDeleteModalEmotion(l)}
@@ -2799,7 +2800,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
               Cancel
             </button>
             <button type="submit" className="btn-primary flex-1">
-              Save & Label (+5 pts)
+              Save & Label (+{PFC_POINTS.emotion} pts)
             </button>
           </div>
         </form>
@@ -2826,7 +2827,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
         isDeleting={deleteModalEmotion ? isKeyLoading(`delete_emotion_${deleteModalEmotion.id}`) : false}
         title="Delete Emotion Log?"
         itemName={deleteModalEmotion?.emotion}
-        description={`Are you sure you want to delete the emotion log for "${deleteModalEmotion?.emotion}"? Any points awarded (+5 pts) will be reversed.`}
+        description={`Are you sure you want to delete the emotion log for "${deleteModalEmotion?.emotion}"? Any points awarded (+${PFC_POINTS.emotion} pts) will be reversed.`}
       />
     </div>
   );
