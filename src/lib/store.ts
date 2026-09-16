@@ -1275,6 +1275,19 @@ export function useAppState() {
     }
 
     if (isHydrated.current) {
+      // Synchronous, network-independent local-mirror write for resilient offline reload and debounce-window protection
+      if (typeof window !== 'undefined') {
+        try {
+          if (state.currentUser?.id) {
+            localStorage.setItem(`ascend_user_cache_${state.currentUser.id}`, JSON.stringify(state));
+          } else {
+            localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(state));
+          }
+        } catch {
+          /* ignore quota/security error */
+        }
+      }
+
       // Broadcast state to all other tabs immediately
       broadcastStateToTabs(state, tabId);
 
