@@ -2406,7 +2406,7 @@ function FocusTimerSubmodule({
               try {
                 await store.deleteFocusLog(logId);
                 setDeleteModalLog(null);
-                showSuccessToast('Session Deleted', 'Focus session removed.');
+                showSuccessToast('Session Deleted', 'Focus session removed.', `focus_log_${logId}`);
               } catch (err: any) {
                 showErrorToast('Delete Failed', err?.message || 'Failed to delete focus session.');
               }
@@ -2630,7 +2630,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
               try {
                 await store.deleteDecisionLog(decisionId);
                 setDeleteModalDecision(null);
-                showSuccessToast('Decision Deleted', 'Decision entry removed.');
+                showSuccessToast('Decision Deleted', 'Decision entry removed.', `decision_${decisionId}`);
               } catch (err: any) {
                 showErrorToast('Delete Failed', err?.message || 'Failed to delete decision.');
               }
@@ -2817,7 +2817,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
               try {
                 await store.deleteEmotionLog(emotionId);
                 setDeleteModalEmotion(null);
-                showSuccessToast('Emotion Log Deleted', 'Emotion log entry removed.');
+                showSuccessToast('Emotion Log Deleted', 'Emotion log entry removed.', `emotion_${emotionId}`);
               } catch (err: any) {
                 showErrorToast('Delete Failed', err?.message || 'Failed to delete emotion log.');
               }

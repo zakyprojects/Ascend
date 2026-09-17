@@ -2009,7 +2009,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               try {
                 await store.deletePlan(planId);
                 setPlanToDelete(null);
-                showSuccessToast('Plan Deleted', 'Improvement plan removed successfully.');
+                showSuccessToast('Plan Deleted', 'Improvement plan removed successfully.', `plan_${planId}`);
               } catch (err: any) {
                 showErrorToast('Delete Failed', err?.message || 'Could not delete plan.');
               }
@@ -2033,7 +2033,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               try {
                 await store.deleteFollowedPlan(followId);
                 setFollowToDelete(null);
-                showSuccessToast('Plan Removed', 'Saved plan removed from your account.');
+                showSuccessToast('Plan Removed', 'Saved plan removed from your account.', `follow_${followId}`);
               } catch (err: any) {
                 showErrorToast('Remove Failed', err?.message || 'Could not remove saved plan.');
               }
@@ -2058,6 +2058,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             } else {
               store.deleteFollowedVisionReflectionNote(noteToDelete.planId, noteToDelete.noteKey);
             }
+            showSuccessToast('Note Deleted', 'Reflection note removed.', `note_${noteToDelete.planId}_${noteToDelete.noteKey}`);
             setNoteToDelete(null);
           }
         }}

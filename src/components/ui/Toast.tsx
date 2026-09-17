@@ -14,10 +14,10 @@ export interface ToastItem {
 
 interface ToastContextType {
   showToast: (toast: Omit<ToastItem, 'id'>) => void;
-  showSuccessToast: (title: string, message?: string) => void;
+  showSuccessToast: (title: string, message?: string, dedupKey?: string) => void;
   showErrorToast: (title: string, message?: string, dedupKey?: string) => void;
-  showWarningToast: (title: string, message?: string) => void;
-  showInfoToast: (title: string, message?: string) => void;
+  showWarningToast: (title: string, message?: string, dedupKey?: string) => void;
+  showInfoToast: (title: string, message?: string, dedupKey?: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -56,20 +56,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }
   }, [removeToast]);
 
-  const showSuccessToast = useCallback((title: string, message?: string) => {
-    showToast({ type: 'success', title, message });
+  const showSuccessToast = useCallback((title: string, message?: string, dedupKey?: string) => {
+    showToast({ type: 'success', title, message, dedupKey });
   }, [showToast]);
 
   const showErrorToast = useCallback((title: string, message?: string, dedupKey?: string) => {
     showToast({ type: 'error', title, message, dedupKey });
   }, [showToast]);
 
-  const showWarningToast = useCallback((title: string, message?: string) => {
-    showToast({ type: 'warning', title, message });
+  const showWarningToast = useCallback((title: string, message?: string, dedupKey?: string) => {
+    showToast({ type: 'warning', title, message, dedupKey });
   }, [showToast]);
 
-  const showInfoToast = useCallback((title: string, message?: string) => {
-    showToast({ type: 'info', title, message });
+  const showInfoToast = useCallback((title: string, message?: string, dedupKey?: string) => {
+    showToast({ type: 'info', title, message, dedupKey });
   }, [showToast]);
 
   // Global window event listener for central choke point calls
@@ -82,9 +82,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     };
 
     const handleToastSuccessEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ title: string; message?: string }>;
+      const customEvent = e as CustomEvent<{ title: string; message?: string; dedupKey?: string }>;
       if (customEvent.detail?.title) {
-        showSuccessToast(customEvent.detail.title, customEvent.detail.message);
+        showSuccessToast(customEvent.detail.title, customEvent.detail.message, customEvent.detail.dedupKey);
       }
     };
 

@@ -30,10 +30,12 @@ import { todayKey, formatDateLong } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
+import { useToast } from '@/components/ui/Toast';
 
 type ReadingHubTab = 'reading' | 'to-read' | 'completed' | 'discover';
 
 export function ReadingHub({ store }: { store: AppStore }) {
+  const { showSuccessToast } = useToast();
   const [activeTab, setActiveTab] = useState<ReadingHubTab>('reading');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<BookCategory | 'all'>('all');
@@ -1254,6 +1256,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           if (deleteModalBook) {
             store.deleteBook(deleteModalBook.id);
             setDeleteModalBook(null);
+            showSuccessToast('Book Deleted', 'Book removed successfully.', `book_${deleteModalBook.id}`);
           }
         }}
         title="Remove Book from Library?"

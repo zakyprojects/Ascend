@@ -201,7 +201,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       await executeWithKey(`delete_weekly_reflection_${reflectionId}`, async () => {
         store.deleteWeeklyReflection(selectedWeekKey, reflectionId);
         setDeleteReflectionModal(null);
-        showSuccessToast('Reflection Deleted', 'Weekly reflection entry removed.');
+        showSuccessToast('Reflection Deleted', 'Weekly reflection entry removed.', `weekly_reflection_${reflectionId}`);
       });
     }
   };
@@ -212,7 +212,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       await executeWithKey(`delete_weekly_goal_${goalId}`, async () => {
         store.deleteWeeklyGoalItem(selectedWeekKey, goalId);
         setDeleteGoalModal(null);
-        showSuccessToast('Goal Deleted', 'Weekly goal removed.');
+        showSuccessToast('Goal Deleted', 'Weekly goal removed.', `weekly_goal_${goalId}`);
       });
     }
   };

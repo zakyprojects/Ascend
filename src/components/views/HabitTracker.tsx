@@ -280,7 +280,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
           if (confirmDelete) {
             await store.deleteHabit(confirmDelete.id);
             setConfirmDelete(null);
-            showSuccessToast('Habit Deleted', 'Habit removed successfully.');
+            showSuccessToast('Habit Deleted', 'Habit removed successfully.', `habit_${confirmDelete.id}`);
           }
         }}
         title="Delete Habit?"

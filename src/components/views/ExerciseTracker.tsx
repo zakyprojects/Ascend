@@ -8,6 +8,7 @@ import { WorkoutLog } from '@/types';
 import { todayKey, formatDateLong, parseDate, startOfWeek } from '@/lib/dates';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
+import { useToast } from '@/components/ui/Toast';
 
 const DEFAULT_WORKOUT_TYPES = [
   'Running',
@@ -22,6 +23,7 @@ const DEFAULT_WORKOUT_TYPES = [
 ];
 
 export function ExerciseTracker({ store }: { store: AppStore }) {
+  const { showSuccessToast } = useToast();
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [deleteModalWorkout, setDeleteModalWorkout] = useState<WorkoutLog | null>(null);
@@ -438,6 +440,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             await executeDelete(async () => {
               store.deleteWorkout(deleteModalWorkout.id);
               setDeleteModalWorkout(null);
+              showSuccessToast('Workout Deleted', 'Workout removed successfully.', `workout_${deleteModalWorkout.id}`);
             });
           }
         }}
