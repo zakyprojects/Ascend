@@ -2555,7 +2555,8 @@ export function useAppState() {
             createdAt: new Date().toISOString(),
             pointsAwarded: newPointsAwarded,
           };
-          return { ...prev, journalEntries: updated, ...pointsUpdate };
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), existing.id])).slice(-500);
+          return { ...prev, journalEntries: updated, unsyncedEntityIds: updatedUnsynced, ...pointsUpdate };
         }
 
         const newEntry: JournalEntry = {
@@ -2566,37 +2567,40 @@ export function useAppState() {
           createdAt: new Date().toISOString(),
           pointsAwarded: newPointsAwarded,
         };
-        return { ...prev, journalEntries: [newEntry, ...prev.journalEntries], ...pointsUpdate };
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newEntry.id])).slice(-500);
+        return { ...prev, journalEntries: [newEntry, ...prev.journalEntries], unsyncedEntityIds: updatedUnsynced, ...pointsUpdate };
       });
     },
     []
   );
 
   const deleteJournalEntry = useCallback((entryId: string) => {
-    setState(
-      (prev) => {
-        const entry = prev.journalEntries.find((e) => e.id === entryId);
-        if (!entry) return prev;
+    return (
+      setState(
+        (prev) => {
+          const entry = prev.journalEntries.find((e) => e.id === entryId);
+          if (!entry) return prev;
 
-        let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
-          totalPoints: prev.totalPoints,
-          pointsHistory: prev.pointsHistory,
-        };
+          let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
+            totalPoints: prev.totalPoints,
+            pointsHistory: prev.pointsHistory,
+          };
 
-        if (entry.pointsAwarded) {
-          pointsUpdate = addPointsInternal(prev, JOURNAL_POINTS.entryDeleted, 'Journal entry deleted', 'journal');
-        }
+          if (entry.pointsAwarded) {
+            pointsUpdate = addPointsInternal(prev, JOURNAL_POINTS.entryDeleted, 'Journal entry deleted', 'journal');
+          }
 
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), entryId].slice(-500);
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), entryId].slice(-500);
 
-        return {
-          ...prev,
-          journalEntries: prev.journalEntries.filter((e) => e.id !== entryId),
-          deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
-        };
-      },
-      { immediate: true }
+          return {
+            ...prev,
+            journalEntries: prev.journalEntries.filter((e) => e.id !== entryId),
+            deletedEntityIds: updatedDeletedEntityIds,
+            ...pointsUpdate,
+          };
+        },
+        { immediate: true, actionLabel: 'Journal entry deletion', entityId: entryId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -2839,80 +2843,85 @@ export function useAppState() {
         );
       }
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), workout.id])).slice(-500);
+
       return {
         ...prev,
         workouts: [workout, ...prev.workouts],
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     });
   }, []);
 
   const deleteWorkout = useCallback((workoutId: string) => {
-    setState(
-      (prev) => {
-        const target = prev.workouts.find((w) => w.id === workoutId);
-        if (!target) return prev;
+    return (
+      setState(
+        (prev) => {
+          const target = prev.workouts.find((w) => w.id === workoutId);
+          if (!target) return prev;
 
-        const targetDate = target.date;
-        const remainingWorkouts = prev.workouts.filter((w) => w.id !== workoutId);
+          const targetDate = target.date;
+          const remainingWorkouts = prev.workouts.filter((w) => w.id !== workoutId);
 
-        // Recalculate points awarded for all remaining workouts on the target date in chronological order
-        const dayWorkouts = remainingWorkouts.filter((w) => w.date === targetDate);
-        const chronDayWorkouts = [...dayWorkouts].sort(
-          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-        );
-
-        let dailyCapRemaining: number = WORKOUT_POINTS.dailyCap;
-        const recalculatedMap = new Map<string, number>();
-
-        for (const w of chronDayWorkouts) {
-          const { pointsToAward: awarded } = calculateWorkoutPoints(
-            w.unit,
-            w.amount,
-            w.durationMinutes,
-            dailyCapRemaining
+          // Recalculate points awarded for all remaining workouts on the target date in chronological order
+          const dayWorkouts = remainingWorkouts.filter((w) => w.date === targetDate);
+          const chronDayWorkouts = [...dayWorkouts].sort(
+            (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
           );
-          recalculatedMap.set(w.id, awarded);
-          dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
-        }
 
-        const oldDatePoints = prev.workouts
-          .filter((w) => w.date === targetDate)
-          .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
+          let dailyCapRemaining: number = WORKOUT_POINTS.dailyCap;
+          const recalculatedMap = new Map<string, number>();
 
-        const newDatePoints = chronDayWorkouts.reduce(
-          (sum, w) => sum + (recalculatedMap.get(w.id) ?? 0),
-          0
-        );
-
-        const netPointDelta = newDatePoints - oldDatePoints;
-
-        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-        if (netPointDelta !== 0) {
-          pointsUpdate = addPointsInternal(
-            prev,
-            netPointDelta,
-            `Workout deleted: ${target.type}`,
-            'exercise'
-          );
-        }
-
-        const updatedWorkouts = remainingWorkouts.map((w) => {
-          if (w.date === targetDate && recalculatedMap.has(w.id)) {
-            return { ...w, pointsAwarded: recalculatedMap.get(w.id)! };
+          for (const w of chronDayWorkouts) {
+            const { pointsToAward: awarded } = calculateWorkoutPoints(
+              w.unit,
+              w.amount,
+              w.durationMinutes,
+              dailyCapRemaining
+            );
+            recalculatedMap.set(w.id, awarded);
+            dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
           }
-          return w;
-        });
 
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), workoutId].slice(-500);
-        return {
-          ...prev,
-          workouts: updatedWorkouts,
-          deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
-        };
-      },
-      { immediate: true }
+          const oldDatePoints = prev.workouts
+            .filter((w) => w.date === targetDate)
+            .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
+
+          const newDatePoints = chronDayWorkouts.reduce(
+            (sum, w) => sum + (recalculatedMap.get(w.id) ?? 0),
+            0
+          );
+
+          const netPointDelta = newDatePoints - oldDatePoints;
+
+          let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+          if (netPointDelta !== 0) {
+            pointsUpdate = addPointsInternal(
+              prev,
+              netPointDelta,
+              `Workout deleted: ${target.type}`,
+              'exercise'
+            );
+          }
+
+          const updatedWorkouts = remainingWorkouts.map((w) => {
+            if (w.date === targetDate && recalculatedMap.has(w.id)) {
+              return { ...w, pointsAwarded: recalculatedMap.get(w.id)! };
+            }
+            return w;
+          });
+
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), workoutId].slice(-500);
+          return {
+            ...prev,
+            workouts: updatedWorkouts,
+            deletedEntityIds: updatedDeletedEntityIds,
+            ...pointsUpdate,
+          };
+        },
+        { immediate: true, actionLabel: 'Workout deletion', entityId: workoutId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -3263,10 +3272,11 @@ export function useAppState() {
   }, []);
 
   const deleteBook = useCallback((bookId: string) => {
-    setState(
-      (prev) => {
-        const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
-        if (!targetUserBook) return prev;
+    return (
+      setState(
+        (prev) => {
+          const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
+          if (!targetUserBook) return prev;
 
         const allMatchingIds = new Set<string>([bookId]);
         if (targetUserBook.id) allMatchingIds.add(targetUserBook.id);
@@ -3358,9 +3368,10 @@ export function useAppState() {
           ...pointsUpdate,
         };
       },
-      { immediate: true }
-    );
-  }, []);
+      { immediate: true, actionLabel: 'Book deletion', entityId: bookId }
+    ) || Promise.resolve()
+  );
+}, []);
 
   // --- SELF IMPROVEMENT BOOKS / CURATED ACTIONS ---
   const addCuratedBookToLibrary = useCallback((
@@ -3404,10 +3415,13 @@ export function useAppState() {
         dateCompleted: initialStatus === 'completed' ? now : undefined,
       };
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newBook.id])).slice(-500);
+
       let newState: AppState = {
         ...prev,
         libraryBooks: [newBook, ...prev.libraryBooks],
         books: [],
+        unsyncedEntityIds: updatedUnsynced,
       };
 
       if (initialStatus === 'completed') {
@@ -3461,10 +3475,13 @@ export function useAppState() {
         startedAt: status === 'reading' ? now : undefined,
       };
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newBook.id])).slice(-500);
+
       return {
         ...prev,
         libraryBooks: [newBook, ...prev.libraryBooks],
         books: [],
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -4767,10 +4784,14 @@ export function useAppState() {
         createdAt: new Date().toISOString(),
       };
       setState(
-        (prev) => ({
-          ...prev,
-          goals: [newGoal, ...prev.goals],
-        }),
+        (prev) => {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newGoal.id])).slice(-500);
+          return {
+            ...prev,
+            goals: [newGoal, ...prev.goals],
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        },
         { immediate: true }
       );
       return newGoal;
@@ -4792,19 +4813,21 @@ export function useAppState() {
   );
 
   const deleteGoal = useCallback((id: string) => {
-    setState(
-      (prev) => {
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
-        return {
-          ...prev,
-          // Unlink linked projects by setting their goalId to undefined
-          projects: prev.projects.map((p) => (p.goalId === id ? { ...p, goalId: undefined } : p)),
-          // Remove goal
-          goals: prev.goals.filter((g) => g.id !== id),
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+    return (
+      setState(
+        (prev) => {
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
+          return {
+            ...prev,
+            // Unlink linked projects by setting their goalId to undefined
+            projects: prev.projects.map((p) => (p.goalId === id ? { ...p, goalId: undefined } : p)),
+            // Remove goal
+            goals: prev.goals.filter((g) => g.id !== id),
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Goal deletion', entityId: id }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -4856,10 +4879,14 @@ export function useAppState() {
         createdAt: new Date().toISOString(),
       };
       setState(
-        (prev) => ({
-          ...prev,
-          projects: [newProject, ...prev.projects],
-        }),
+        (prev) => {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newProject.id])).slice(-500);
+          return {
+            ...prev,
+            projects: [newProject, ...prev.projects],
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        },
         { immediate: true }
       );
       return newProject;
@@ -4952,19 +4979,21 @@ export function useAppState() {
   }, []);
 
   const deleteProject = useCallback((id: string) => {
-    setState(
-      (prev) => {
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
-        return {
-          ...prev,
-          // Unlink linked tasks by setting their projectId to undefined
-          tasks: prev.tasks.map((t) => (t.projectId === id ? { ...t, projectId: undefined } : t)),
-          // Remove project
-          projects: prev.projects.filter((p) => p.id !== id),
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+    return (
+      setState(
+        (prev) => {
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
+          return {
+            ...prev,
+            // Unlink linked tasks by setting their projectId to undefined
+            tasks: prev.tasks.map((t) => (t.projectId === id ? { ...t, projectId: undefined } : t)),
+            // Remove project
+            projects: prev.projects.filter((p) => p.id !== id),
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Project deletion', entityId: id }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -4994,10 +5023,14 @@ export function useAppState() {
         subtasks,
         createdAt: new Date().toISOString(),
       };
-      setState((prev) => ({
-        ...prev,
-        tasks: [newTask, ...prev.tasks],
-      }));
+      setState((prev) => {
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newTask.id])).slice(-500);
+        return {
+          ...prev,
+          tasks: [newTask, ...prev.tasks],
+          unsyncedEntityIds: updatedUnsynced,
+        };
+      });
       return newTask;
     },
     []
@@ -5035,18 +5068,20 @@ export function useAppState() {
   }, []);
 
   const deleteTask = useCallback((id: string) => {
-    setState(
-      (prev) => {
-        const targetTask = prev.tasks.find((t) => t.id === id);
-        const subtaskIds = (targetTask?.subtasks || []).map((s) => s.id);
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id, ...subtaskIds].slice(-500);
-        return {
-          ...prev,
-          tasks: prev.tasks.filter((t) => t.id !== id),
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+    return (
+      setState(
+        (prev) => {
+          const targetTask = prev.tasks.find((t) => t.id === id);
+          const subtaskIds = (targetTask?.subtasks || []).map((s) => s.id);
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id, ...subtaskIds].slice(-500);
+          return {
+            ...prev,
+            tasks: prev.tasks.filter((t) => t.id !== id),
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Task deletion', entityId: id }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -5083,25 +5118,27 @@ export function useAppState() {
   }, []);
 
   const deleteSubtask = useCallback((taskId: string, subtaskId: string) => {
-    setState(
-      (prev) => {
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), subtaskId].slice(-500);
-        return {
-          ...prev,
-          tasks: prev.tasks.map((t) => {
-            if (t.id !== taskId) return t;
-            const updatedSubtasks = (t.subtasks || []).filter((st) => st.id !== subtaskId);
-            const allCompleted = updatedSubtasks.length > 0 ? updatedSubtasks.every((st) => st.completed) : t.completed;
-            return {
-              ...t,
-              subtasks: updatedSubtasks,
-              completed: allCompleted,
-            };
-          }),
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+    return (
+      setState(
+        (prev) => {
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), subtaskId].slice(-500);
+          return {
+            ...prev,
+            tasks: prev.tasks.map((t) => {
+              if (t.id !== taskId) return t;
+              const updatedSubtasks = (t.subtasks || []).filter((st) => st.id !== subtaskId);
+              const allCompleted = updatedSubtasks.length > 0 ? updatedSubtasks.every((st) => st.completed) : t.completed;
+              return {
+                ...t,
+                subtasks: updatedSubtasks,
+                completed: allCompleted,
+              };
+            }),
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Subtask deletion', entityId: subtaskId }
+      ) || Promise.resolve()
     );
   }, []);
 
