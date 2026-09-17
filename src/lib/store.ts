@@ -2191,7 +2191,8 @@ export function useAppState() {
         if (alreadyExists) {
           return prev;
         }
-        return { ...prev, habits: [...prev.habits, habit] };
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habit.id])).slice(-500);
+        return { ...prev, habits: [...prev.habits, habit], unsyncedEntityIds: updatedUnsynced };
       },
       { immediate: true }
     );
@@ -2345,9 +2346,11 @@ export function useAppState() {
             );
           }
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habit.id])).slice(-500);
           return {
             ...prev,
             habits: [...prev.habits.filter((h) => h.name.toLowerCase() !== 'reading (books)'), habit],
+            unsyncedEntityIds: updatedUnsynced,
             ...pointsUpdate,
           };
         }
@@ -2487,7 +2490,15 @@ export function useAppState() {
               });
             }
 
-            return { ...prev, habits, sharedChallenges: updatedChallenges, deletedEntityIds: updatedDeletedEntityIds, ...pointsUpdate };
+            const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habitId])).slice(-500);
+            return {
+              ...prev,
+              habits,
+              sharedChallenges: updatedChallenges,
+              deletedEntityIds: updatedDeletedEntityIds,
+              unsyncedEntityIds: updatedUnsynced,
+              ...pointsUpdate,
+            };
           },
           { immediate: true }
         );
@@ -2990,11 +3001,15 @@ export function useAppState() {
         createdAt: now,
       };
 
-      setState((prev) => ({
-        ...prev,
-        libraryBooks: [userBook, ...prev.libraryBooks.filter((lb) => lb.id !== id)],
-        books: [],
-      }));
+      setState((prev) => {
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+        return {
+          ...prev,
+          libraryBooks: [userBook, ...prev.libraryBooks.filter((lb) => lb.id !== id)],
+          books: [],
+          unsyncedEntityIds: updatedUnsynced,
+        };
+      });
 
       return trackerBook;
     },
@@ -3003,15 +3018,19 @@ export function useAppState() {
 
   const updateBookTargetDate = useCallback((bookId: string, targetFinishDate?: string) => {
     const formatted = targetFinishDate?.trim() || undefined;
-    setState((prev) => ({
-      ...prev,
-      libraryBooks: prev.libraryBooks.map((lb) =>
-        lb.id === bookId || lb.linkedBookId === bookId
-          ? { ...lb, targetFinishDate: formatted, updatedAt: new Date().toISOString() }
-          : lb
-      ),
-      books: [],
-    }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), bookId])).slice(-500);
+      return {
+        ...prev,
+        libraryBooks: prev.libraryBooks.map((lb) =>
+          lb.id === bookId || lb.linkedBookId === bookId
+            ? { ...lb, targetFinishDate: formatted, updatedAt: new Date().toISOString() }
+            : lb
+        ),
+        books: [],
+        unsyncedEntityIds: updatedUnsynced,
+      };
+    });
   }, []);
 
   const updateReadingProgress = useCallback((bookId: string, pagesDelta: number, newCurrentPage: number) => {
@@ -3183,6 +3202,7 @@ export function useAppState() {
         }
       }
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), targetUserBook.id])).slice(-500);
       return {
         ...prev,
         libraryBooks: updatedLibraryBooks,
@@ -3190,6 +3210,7 @@ export function useAppState() {
         readingLogs: updatedReadingLogs,
         habits: updatedHabits,
         deletedEntityIds: updatedDeletedEntityIds,
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     },
@@ -3259,11 +3280,13 @@ export function useAppState() {
           pointsUpdate = addPointsInternal(prev, pointsToAward, `Book finished: ${title}`, 'reading_bonus');
         }
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), targetUserBook.id])).slice(-500);
         return {
           ...prev,
           libraryBooks: updatedLibraryBooks,
           readingLogs: updatedReadingLogs,
           books: [],
+          unsyncedEntityIds: updatedUnsynced,
           ...pointsUpdate,
         };
       },
@@ -3494,6 +3517,7 @@ export function useAppState() {
     ) => {
       setState((prev) => {
         const now = new Date().toISOString();
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), bookId])).slice(-500);
         return {
           ...prev,
           libraryBooks: prev.libraryBooks.map((b) => {
@@ -3521,6 +3545,7 @@ export function useAppState() {
             return b;
           }),
           books: [],
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -3550,10 +3575,12 @@ export function useAppState() {
           return lb;
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), bookId])).slice(-500);
         return {
           ...prev,
           libraryBooks: updatedLibraryBooks,
           books: [],
+          unsyncedEntityIds: updatedUnsynced,
         };
       },
       { immediate: true }
@@ -3581,7 +3608,10 @@ export function useAppState() {
       manualLevel,
       createdAt: new Date().toISOString(),
     };
-    setState((prev) => ({ ...prev, skills: [...prev.skills, skill] }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), skill.id])).slice(-500);
+      return { ...prev, skills: [...prev.skills, skill], unsyncedEntityIds: updatedUnsynced };
+    });
     return skill;
   }, []);
 
@@ -3613,19 +3643,25 @@ export function useAppState() {
         pointsUpdate = addPointsInternal(prev, pointsToAward, `Skill practiced: ${targetSkill.name} (${durationMinutes}m)`, 'skill');
       }
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), session.id])).slice(-500);
       return {
         ...prev,
         skillLogs: [session, ...prev.skillLogs],
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     });
   }, []);
 
   const updateSkillLevel = useCallback((skillId: string, manualLevel: SkillLevel) => {
-    setState((prev) => ({
-      ...prev,
-      skills: prev.skills.map((s) => (s.id === skillId ? { ...s, manualLevel } : s)),
-    }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), skillId])).slice(-500);
+      return {
+        ...prev,
+        skills: prev.skills.map((s) => (s.id === skillId ? { ...s, manualLevel } : s)),
+        unsyncedEntityIds: updatedUnsynced,
+      };
+    });
   }, []);
 
   const deleteSkill = useCallback((skillId: string): Promise<void> => {
@@ -3697,7 +3733,10 @@ export function useAppState() {
       isCompleted: false,
       createdAt: new Date().toISOString(),
     };
-    setState((prev) => ({ ...prev, badHabits: [...prev.badHabits, bh] }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), bh.id])).slice(-500);
+      return { ...prev, badHabits: [...prev.badHabits, bh], unsyncedEntityIds: updatedUnsynced };
+    });
     return bh;
   }, []);
 
@@ -3806,10 +3845,12 @@ export function useAppState() {
         ).slice(-500);
 
         const filteredLogs = (baseState.badHabitLogs || []).filter((l) => !(l && l.badHabitId === badHabitId && l.date === date));
+        const updatedUnsynced = Array.from(new Set([...(baseState.unsyncedEntityIds || []), newLog.id])).slice(-500);
         return {
           ...baseState,
           badHabitLogs: [newLog, ...filteredLogs],
           deletedEntityIds: updatedDeletedEntityIds,
+          unsyncedEntityIds: updatedUnsynced,
           ...pointsUpdate,
         };
       } catch (err) {
@@ -3857,10 +3898,12 @@ export function useAppState() {
       ];
       const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), badHabitId])).slice(-500);
       return {
         ...prev,
         badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === today)),
         deletedEntityIds: updatedDeletedEntityIds,
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     });
@@ -3925,6 +3968,7 @@ export function useAppState() {
       const bh = prev.badHabits.find((b) => b.id === badHabitId);
       if (!bh) return prev;
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), badHabitId])).slice(-500);
       return {
         ...prev,
         badHabits: prev.badHabits.map((b) =>
@@ -3932,6 +3976,7 @@ export function useAppState() {
             ? { ...b, isCompleted: true, completedAt: new Date().toISOString() }
             : b
         ),
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -3941,6 +3986,7 @@ export function useAppState() {
       const bh = prev.badHabits.find((b) => b.id === badHabitId);
       if (!bh) return prev;
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), badHabitId])).slice(-500);
       return {
         ...prev,
         badHabits: prev.badHabits.map((b) =>
@@ -3948,6 +3994,7 @@ export function useAppState() {
             ? { ...b, ...updates }
             : b
         ),
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -4006,13 +4053,15 @@ export function useAppState() {
         awardedMilestones: prev.addictionTracker?.awardedMilestones || [],
         createdAt: prev.addictionTracker?.createdAt || new Date().toISOString(),
       };
-      return { ...prev, addictionTracker: tracker };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), tracker.id])).slice(-500);
+      return { ...prev, addictionTracker: tracker, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
   const resetAddictionStreak = useCallback(() => {
     setState((prev) => {
       if (!prev.addictionTracker) return prev;
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.addictionTracker.id])).slice(-500);
       return {
         ...prev,
         addictionTracker: {
@@ -4021,6 +4070,7 @@ export function useAppState() {
           milestonesUnlocked: [],
           awardedMilestones: prev.addictionTracker.awardedMilestones || [],
         },
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -4079,12 +4129,14 @@ export function useAppState() {
 
       if (newlyUnlockedMilestones.length === 0) {
         if (unlocked.length !== prev.addictionTracker.milestonesUnlocked.length) {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.addictionTracker.id])).slice(-500);
           return {
             ...prev,
             addictionTracker: {
               ...prev.addictionTracker,
               milestonesUnlocked: unlocked,
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         }
         return prev;
@@ -4138,7 +4190,11 @@ export function useAppState() {
         };
       }
 
-      return runningState;
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.addictionTracker.id])).slice(-500);
+      return {
+        ...runningState,
+        unsyncedEntityIds: updatedUnsynced,
+      };
     });
   }, []);
 
@@ -4151,7 +4207,10 @@ export function useAppState() {
       copingStrategy: copingStrategy.trim(),
       createdAt: new Date().toISOString(),
     };
-    setState((prev) => ({ ...prev, cravingLogs: [log, ...prev.cravingLogs] }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), log.id])).slice(-500);
+      return { ...prev, cravingLogs: [log, ...prev.cravingLogs], unsyncedEntityIds: updatedUnsynced };
+    });
   }, []);
 
   const deleteAddictionTracker = useCallback(() => {
@@ -4335,9 +4394,11 @@ export function useAppState() {
         createdAt: new Date().toISOString(),
       };
       const pointsUpdate = addPointsInternal(prev, pointsToAward, `Focus session completed (${durationMinutes}m)`, 'focus');
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), focusLog.id])).slice(-500);
       return {
         ...prev,
         focusLogs: [focusLog, ...prev.focusLogs],
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     });
@@ -4356,9 +4417,11 @@ export function useAppState() {
       const updatedLogs = [...prev.focusLogs];
       updatedLogs[idx] = updated;
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), logId])).slice(-500);
       return {
         ...prev,
         focusLogs: updatedLogs,
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -4373,7 +4436,10 @@ export function useAppState() {
       isReflected: false,
       createdAt: new Date().toISOString(),
     };
-    setState((prev) => ({ ...prev, decisionLogs: [decision, ...prev.decisionLogs] }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), decision.id])).slice(-500);
+      return { ...prev, decisionLogs: [decision, ...prev.decisionLogs], unsyncedEntityIds: updatedUnsynced };
+    });
     return decision;
   }, []);
 
@@ -4389,7 +4455,8 @@ export function useAppState() {
       updatedLogs[idx] = updated;
 
       const pointsUpdate = addPointsInternal(prev, PFC_POINTS.decision, `Decision reflection: ${target.title}`, 'decision_reflection');
-      return { ...prev, decisionLogs: updatedLogs, ...pointsUpdate };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), decisionId])).slice(-500);
+      return { ...prev, decisionLogs: updatedLogs, unsyncedEntityIds: updatedUnsynced, ...pointsUpdate };
     });
   }, []);
 
@@ -4405,9 +4472,11 @@ export function useAppState() {
     };
     setState((prev) => {
       const pointsUpdate = addPointsInternal(prev, PFC_POINTS.emotion, `Emotion labeled: ${emotion}`, 'emotion_label');
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), log.id])).slice(-500);
       return {
         ...prev,
         emotionLogs: [log, ...prev.emotionLogs],
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     });
@@ -4516,9 +4585,11 @@ export function useAppState() {
         newWeeklyGoals = [updatedDoc, ...newWeeklyGoals];
       }
 
+      const updatedUnsynced = Array.from(new Set([...(nextState.unsyncedEntityIds || []), newRef.id])).slice(-500);
       return {
         ...nextState,
         weeklyGoals: newWeeklyGoals,
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -4555,9 +4626,11 @@ export function useAppState() {
       const newWeeklyGoals = [...nextState.weeklyGoals];
       newWeeklyGoals[docIdx] = updatedDoc;
 
+      const updatedUnsynced = Array.from(new Set([...(nextState.unsyncedEntityIds || []), reflectionId])).slice(-500);
       return {
         ...nextState,
         weeklyGoals: newWeeklyGoals,
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -4636,7 +4709,8 @@ export function useAppState() {
         newWeeklyGoals.unshift(updatedDoc);
       }
 
-      return { ...prev, weeklyGoals: newWeeklyGoals };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newItem.id])).slice(-500);
+      return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
@@ -4664,7 +4738,8 @@ export function useAppState() {
       const newWeeklyGoals = [...prev.weeklyGoals];
       newWeeklyGoals[docIdx] = updatedDoc;
 
-      return { ...prev, weeklyGoals: newWeeklyGoals };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), goalId])).slice(-500);
+      return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
@@ -4740,7 +4815,8 @@ export function useAppState() {
         newWeeklyGoals.unshift(newDoc);
       }
 
-      return { ...prev, weeklyGoals: newWeeklyGoals };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), carriedItem.id])).slice(-500);
+      return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
@@ -4757,7 +4833,8 @@ export function useAppState() {
         updateProfileNotificationPreferences(prev.currentUser.id, { notifSundayPlanning: nextVal });
       }
 
-      return { ...prev, currentUser: updatedUser };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.currentUser.id])).slice(-500);
+      return { ...prev, currentUser: updatedUser, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
@@ -4802,10 +4879,14 @@ export function useAppState() {
   const updateGoal = useCallback(
     (id: string, updates: Partial<Omit<Goal, 'id' | 'createdAt'>>) => {
       setState(
-        (prev) => ({
-          ...prev,
-          goals: prev.goals.map((g) => (g.id === id ? { ...g, ...updates } : g)),
-        }),
+        (prev) => {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+          return {
+            ...prev,
+            goals: prev.goals.map((g) => (g.id === id ? { ...g, ...updates } : g)),
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        },
         { immediate: true }
       );
     },
@@ -4897,14 +4978,18 @@ export function useAppState() {
   const updateProject = useCallback(
     (id: string, updates: Partial<Omit<Project, 'id' | 'createdAt'>>) => {
       setState(
-        (prev) => ({
-          ...prev,
-          projects: prev.projects.map((p) => {
-            if (p.id !== id) return p;
-            const completedAt = resolveProjectCompletedAt(p.status, updates.status, p.completedAt, updates.completedAt);
-            return { ...p, ...updates, completedAt };
-          }),
-        }),
+        (prev) => {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+          return {
+            ...prev,
+            projects: prev.projects.map((p) => {
+              if (p.id !== id) return p;
+              const completedAt = resolveProjectCompletedAt(p.status, updates.status, p.completedAt, updates.completedAt);
+              return { ...p, ...updates, completedAt };
+            }),
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        },
         { immediate: true }
       );
     },
@@ -4950,6 +5035,7 @@ export function useAppState() {
           orderMap.set(p.id, idx);
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), targetProjectId])).slice(-500);
         return {
           ...prev,
           projects: prev.projects.map((p) => {
@@ -4958,6 +5044,7 @@ export function useAppState() {
             }
             return p;
           }),
+          unsyncedEntityIds: updatedUnsynced,
         };
       },
       { immediate: true }
@@ -4966,14 +5053,18 @@ export function useAppState() {
 
   const moveProjectStatus = useCallback((id: string, newStatus: ProjectStatus) => {
     setState(
-      (prev) => ({
-        ...prev,
-        projects: prev.projects.map((p) => {
-          if (p.id !== id) return p;
-          const completedAt = resolveProjectCompletedAt(p.status, newStatus, p.completedAt);
-          return { ...p, status: newStatus, completedAt };
-        }),
-      }),
+      (prev) => {
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+        return {
+          ...prev,
+          projects: prev.projects.map((p) => {
+            if (p.id !== id) return p;
+            const completedAt = resolveProjectCompletedAt(p.status, newStatus, p.completedAt);
+            return { ...p, status: newStatus, completedAt };
+          }),
+          unsyncedEntityIds: updatedUnsynced,
+        };
+      },
       { immediate: true }
     );
   }, []);
@@ -5023,14 +5114,17 @@ export function useAppState() {
         subtasks,
         createdAt: new Date().toISOString(),
       };
-      setState((prev) => {
-        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newTask.id])).slice(-500);
-        return {
-          ...prev,
-          tasks: [newTask, ...prev.tasks],
-          unsyncedEntityIds: updatedUnsynced,
-        };
-      });
+      setState(
+        (prev) => {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newTask.id])).slice(-500);
+          return {
+            ...prev,
+            tasks: [newTask, ...prev.tasks],
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        },
+        { immediate: true }
+      );
       return newTask;
     },
     []
@@ -5038,33 +5132,41 @@ export function useAppState() {
 
   const updateTask = useCallback(
     (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => {
-      setState((prev) => ({
-        ...prev,
-        tasks: prev.tasks.map((t) => {
-          if (t.id !== id) return t;
-          const updatedSubtasks = updates.subtasks !== undefined ? updates.subtasks : t.subtasks;
-          const updatedCompleted = (updatedSubtasks && updatedSubtasks.length > 0)
-            ? updatedSubtasks.every((st) => st.completed)
-            : updates.completed !== undefined
-            ? updates.completed
-            : t.completed;
-          return { ...t, ...updates, completed: updatedCompleted };
-        }),
-      }));
+      setState((prev) => {
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) => {
+            if (t.id !== id) return t;
+            const updatedSubtasks = updates.subtasks !== undefined ? updates.subtasks : t.subtasks;
+            const updatedCompleted = (updatedSubtasks && updatedSubtasks.length > 0)
+              ? updatedSubtasks.every((st) => st.completed)
+              : updates.completed !== undefined
+              ? updates.completed
+              : t.completed;
+            return { ...t, ...updates, completed: updatedCompleted };
+          }),
+          unsyncedEntityIds: updatedUnsynced,
+        };
+      });
     },
     []
   );
 
   const toggleTaskCompleted = useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => {
-        if (t.id !== id) return t;
-        // If task has subtasks, do not allow manual toggle directly (completion is driven by subtasks)
-        if ((t.subtasks || []).length > 0) return t;
-        return { ...t, completed: !t.completed };
-      }),
-    }));
+    setState((prev) => {
+      const target = prev.tasks.find((t) => t.id === id);
+      if (!target || (target.subtasks || []).length > 0) return prev;
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) => {
+          if (t.id !== id) return t;
+          return { ...t, completed: !t.completed };
+        }),
+        unsyncedEntityIds: updatedUnsynced,
+      };
+    });
   }, []);
 
   const deleteTask = useCallback((id: string) => {
@@ -5086,17 +5188,21 @@ export function useAppState() {
   }, []);
 
   const toggleSubtask = useCallback((taskId: string, subtaskId: string) => {
-    setState((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => {
-        if (t.id !== taskId) return t;
-        const updatedSubtasks = (t.subtasks || []).map((st) =>
-          st.id === subtaskId ? { ...st, completed: !st.completed } : st
-        );
-        const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
-        return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
-      }),
-    }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), taskId, subtaskId])).slice(-500);
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) => {
+          if (t.id !== taskId) return t;
+          const updatedSubtasks = (t.subtasks || []).map((st) =>
+            st.id === subtaskId ? { ...st, completed: !st.completed } : st
+          );
+          const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
+          return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
+        }),
+        unsyncedEntityIds: updatedUnsynced,
+      };
+    });
   }, []);
 
   const addSubtask = useCallback((taskId: string, title: string) => {
@@ -5106,15 +5212,19 @@ export function useAppState() {
       title: title.trim(),
       completed: false,
     };
-    setState((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => {
-        if (t.id !== taskId) return t;
-        const updatedSubtasks = [...(t.subtasks || []), newSubtask];
-        const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
-        return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
-      }),
-    }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), taskId, newSubtask.id])).slice(-500);
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) => {
+          if (t.id !== taskId) return t;
+          const updatedSubtasks = [...(t.subtasks || []), newSubtask];
+          const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
+          return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
+        }),
+        unsyncedEntityIds: updatedUnsynced,
+      };
+    });
   }, []);
 
   const deleteSubtask = useCallback((taskId: string, subtaskId: string) => {
@@ -5224,9 +5334,11 @@ export function useAppState() {
           nextReviewDueAt,
         };
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), (newPlan as ImprovementPlan).id])).slice(-500);
         return {
           ...prev,
           improvementPlans: [newPlan, ...prev.improvementPlans],
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
 
@@ -5255,7 +5367,8 @@ export function useAppState() {
 
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5281,7 +5394,8 @@ export function useAppState() {
 
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5319,7 +5433,8 @@ export function useAppState() {
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
 
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5359,7 +5474,8 @@ export function useAppState() {
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
 
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5385,7 +5501,8 @@ export function useAppState() {
 
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -5421,7 +5538,8 @@ export function useAppState() {
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -5458,7 +5576,8 @@ export function useAppState() {
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -5487,7 +5606,8 @@ export function useAppState() {
 
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId, noteId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5532,7 +5652,8 @@ export function useAppState() {
 
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId, newNote.id])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5651,7 +5772,8 @@ export function useAppState() {
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
 
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5707,7 +5829,8 @@ export function useAppState() {
         };
         const updatedPlans = [...prev.improvementPlans];
         updatedPlans[idx] = updatedPlan;
-        return { ...prev, improvementPlans: updatedPlans };
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+        return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
       });
 
       if (updatedPlan) {
@@ -5739,7 +5862,8 @@ export function useAppState() {
       syncBroadcaster.broadcast('PLAN_UPDATED', { id: planId, copyCount: newCount });
 
       if (!planFound && !cached) return prev;
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
@@ -5817,10 +5941,14 @@ export function useAppState() {
         nextReviewDueAt: originalPlan.nextReviewDueAt || (originalPlan.planType === 'vision' ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null),
       };
 
-      setState((prev) => ({
-        ...prev,
-        followedPlans: [createdFollow, ...prev.followedPlans],
-      }));
+      setState((prev) => {
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), createdFollow.id])).slice(-500);
+        return {
+          ...prev,
+          followedPlans: [createdFollow, ...prev.followedPlans],
+          unsyncedEntityIds: updatedUnsynced,
+        };
+      });
 
       syncFollowedPlanToSupabase(createdFollow);
     } catch (err: any) {
@@ -5856,7 +5984,8 @@ export function useAppState() {
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      nextState = { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId])).slice(-500);
+      nextState = { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
       return nextState;
     });
 
@@ -5883,7 +6012,8 @@ export function useAppState() {
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -5926,7 +6056,8 @@ export function useAppState() {
 
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId, newNote.id])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -5962,7 +6093,8 @@ export function useAppState() {
 
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId, noteId])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -6040,9 +6172,11 @@ export function useAppState() {
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
       nextState = {
         ...prev,
         improvementPlans: updatedPlans,
+        unsyncedEntityIds: updatedUnsynced,
       };
 
       return nextState;
@@ -6956,12 +7090,14 @@ export function useAppState() {
       };
       setState((prev) => {
         const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newActivity.id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
             ...currentTT,
             activities: [...(currentTT.activities || []), newActivity],
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
       return newActivity;
@@ -6973,6 +7109,7 @@ export function useAppState() {
     (id: string, updates: Partial<TimeTrackerActivity>) => {
       setState((prev) => {
         const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -6981,6 +7118,7 @@ export function useAppState() {
               a.id === id ? { ...a, ...updates, id: a.id } : a
             ),
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7072,12 +7210,14 @@ export function useAppState() {
           return t;
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newTemplate.id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
             ...currentTT,
             templates: [...otherTemplates, newTemplate],
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
       return newTemplate;
@@ -7135,12 +7275,14 @@ export function useAppState() {
           return t;
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
             ...currentTT,
             templates: updatedTemplates,
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7189,12 +7331,14 @@ export function useAppState() {
           }
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), templateId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
             ...currentTT,
             templates: updatedTemplates,
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7239,6 +7383,7 @@ export function useAppState() {
               newTemplates = [...newTemplates, defaultTpl];
             }
           }
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7247,6 +7392,7 @@ export function useAppState() {
             },
             deletedEntityIds: updatedDeleted,
             restoredEntityIds: updatedRestored,
+            unsyncedEntityIds: updatedUnsynced,
           };
         },
         { immediate: true }
@@ -7283,6 +7429,7 @@ export function useAppState() {
           const nextBlocks = [...prevDailyBlocks, createdBlock].sort(
             (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
           );
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), createdBlock.id])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7292,6 +7439,7 @@ export function useAppState() {
                 [dateKey]: nextBlocks,
               },
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         });
 
@@ -7338,6 +7486,7 @@ export function useAppState() {
           (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
         );
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), createdPart1.id, createdPart2.id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7348,6 +7497,7 @@ export function useAppState() {
               [nextDayKey]: nextDaySortedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
 
@@ -7388,6 +7538,7 @@ export function useAppState() {
             .map((b) => (b.id === blockId ? updatedSingleBlock : b))
             .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7397,6 +7548,7 @@ export function useAppState() {
                 [dateKey]: nextBlocks,
               },
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         });
         return;
@@ -7446,6 +7598,7 @@ export function useAppState() {
           (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
         );
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId, createdPart2.id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7456,6 +7609,7 @@ export function useAppState() {
               [nextDayKey]: nextDaySortedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7560,6 +7714,7 @@ export function useAppState() {
           // UN-COMPLETING: Use cascade reversion to restore this block and any blocks pulled forward because of it
           const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7569,6 +7724,7 @@ export function useAppState() {
                 [dateKey]: updatedBlocks,
               },
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         }
 
@@ -7607,6 +7763,7 @@ export function useAppState() {
           };
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7616,6 +7773,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7636,6 +7794,7 @@ export function useAppState() {
           // UN-SKIPPING: Use cascade reversion to restore this block and any blocks pulled forward because of it
           const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7645,6 +7804,7 @@ export function useAppState() {
                 [dateKey]: updatedBlocks,
               },
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         }
 
@@ -7683,6 +7843,7 @@ export function useAppState() {
           };
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7692,6 +7853,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7708,6 +7870,7 @@ export function useAppState() {
 
         const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7717,6 +7880,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7817,6 +7981,7 @@ export function useAppState() {
             (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
           );
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7826,6 +7991,7 @@ export function useAppState() {
                 [dateKey]: sortedBlocks,
               },
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         },
         { immediate: true }
@@ -7880,6 +8046,7 @@ export function useAppState() {
           })
           .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7889,6 +8056,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7914,6 +8082,7 @@ export function useAppState() {
           };
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7923,6 +8092,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7953,6 +8123,7 @@ export function useAppState() {
           };
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7962,6 +8133,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7989,6 +8161,7 @@ export function useAppState() {
           };
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7998,6 +8171,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -8072,6 +8246,7 @@ export function useAppState() {
 
           const updatedClearedDates = (prevTT.clearedDates || []).filter((d) => d !== dateKey);
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), ...updatedBlocks.map((b) => b.id)])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -8082,6 +8257,7 @@ export function useAppState() {
               },
               clearedDates: updatedClearedDates,
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         },
         { immediate: true }
