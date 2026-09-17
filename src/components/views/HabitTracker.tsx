@@ -9,8 +9,10 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habitPenalties';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
+import { useToast } from '@/components/ui/Toast';
 
 export function HabitTracker({ store }: { store: AppStore }) {
+  const { showSuccessToast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [addMode, setAddMode] = useState<'choice' | 'preset' | 'custom'>('choice');
   const [name, setName] = useState('');
@@ -278,6 +280,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
           if (confirmDelete) {
             await store.deleteHabit(confirmDelete.id);
             setConfirmDelete(null);
+            showSuccessToast('Habit Deleted', 'Habit removed successfully.', `habit_${confirmDelete.id}`);
           }
         }}
         title="Delete Habit?"

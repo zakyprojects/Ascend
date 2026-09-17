@@ -724,6 +724,7 @@ export interface AppState {
   // Tombstones for offline sync & deletion preservation
   deletedEntityIds?: string[];
   restoredEntityIds?: string[];
+  unsyncedEntityIds?: string[];
 
   // Time Tracker Module
   timeTracker?: TimeTrackerState;
@@ -998,6 +999,7 @@ export const DEFAULT_STATE: AppState = {
   notifications: [],
   deletedEntityIds: [],
   restoredEntityIds: [],
+  unsyncedEntityIds: [],
   timeTracker: DEFAULT_TIME_TRACKER_STATE,
   themePreference: 'dark',
 };

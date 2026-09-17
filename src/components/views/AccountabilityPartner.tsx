@@ -1844,9 +1844,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         onClose={() => setChallengeToDelete(null)}
         onConfirm={async () => {
           if (challengeToDelete) {
+            const challengeId = challengeToDelete.id;
+            const challengeTitle = challengeToDelete.title;
             setChallengeToDelete(null);
-            store.deleteSharedChallenge(challengeToDelete.id);
-            showSuccessToast('Pact Removed', `Deleted joint challenge "${challengeToDelete?.title}".`);
+            store.deleteSharedChallenge(challengeId);
+            showSuccessToast('Pact Removed', `Deleted joint challenge "${challengeTitle}".`, `challenge_${challengeId}`);
           }
         }}
         title="Delete Joint Pact?"
@@ -1861,9 +1863,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         onClose={() => setInviteToCancel(null)}
         onConfirm={async () => {
           if (inviteToCancel) {
+            const inviteId = inviteToCancel.id;
+            const toUser = inviteToCancel.toUsername;
             setInviteToCancel(null);
-            store.cancelPartnerInvite(inviteToCancel.id);
-            showSuccessToast('Invite Cancelled', `Cancelled invite to ${inviteToCancel?.toUsername}.`);
+            store.cancelPartnerInvite(inviteId);
+            showSuccessToast('Invite Cancelled', `Cancelled invite to ${toUser}.`, `invite_${inviteId}`);
           }
         }}
         title="Cancel Partner Invite?"

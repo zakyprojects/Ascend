@@ -599,13 +599,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
           if (deleteModalSkill) {
             const skillId = deleteModalSkill.id;
             await executeWithKey(`delete_skill_${skillId}`, async () => {
-              try {
-                await store.deleteSkill(skillId);
-                setDeleteModalSkill(null);
-                showSuccessToast('Skill Deleted', 'Skill removed successfully.');
-              } catch (err: any) {
-                showErrorToast('Delete Failed', err?.message || 'Failed to delete skill.');
-              }
+              store.deleteSkill(skillId);
+              setDeleteModalSkill(null);
+              showSuccessToast('Skill Deleted', 'Skill removed successfully.', `skill_${skillId}`);
             });
           }
         }}
@@ -630,7 +626,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
               try {
                 await store.deleteSkillLog(logId);
                 setDeleteModalLog(null);
-                showSuccessToast('Log Deleted', 'Practice session log removed.');
+                showSuccessToast('Log Deleted', 'Practice session log removed.', `skill_log_${logId}`);
               } catch (err: any) {
                 showErrorToast('Delete Failed', err?.message || 'Failed to delete practice log.');
               }

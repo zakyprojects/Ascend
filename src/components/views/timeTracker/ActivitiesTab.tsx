@@ -36,9 +36,10 @@ export function ActivitiesTab({
 
   const handleConfirmDeleteActivity = async () => {
     if (!deleteTargetActivity) return;
+    const activityId = deleteTargetActivity.id;
     try {
-      store.deleteTimeTrackerActivity(deleteTargetActivity.id);
-      showSuccessToast('Activity category removed');
+      store.deleteTimeTrackerActivity(activityId);
+      showSuccessToast('Activity Removed', 'Activity category removed.', `activity_${activityId}`);
     } catch (err: any) {
       showErrorToast('Failed to remove activity', err?.message);
     } finally {

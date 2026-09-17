@@ -146,9 +146,10 @@ export function ScheduleTab({
 
   const handleConfirmDeleteBlock = async () => {
     if (!deleteTargetBlock) return;
+    const blockId = deleteTargetBlock.id;
     try {
-      store.deleteDailyTimeBlock(selectedDateKey, deleteTargetBlock.id);
-      showSuccessToast('Time block deleted');
+      store.deleteDailyTimeBlock(selectedDateKey, blockId);
+      showSuccessToast('Time Block Deleted', 'Time block removed.', `time_block_${blockId}`);
     } catch (err: any) {
       showErrorToast('Failed to delete block', err?.message);
     } finally {
@@ -159,7 +160,7 @@ export function ScheduleTab({
   const handleConfirmClearDay = async () => {
     try {
       store.clearDailyTimeBlocks(selectedDateKey);
-      showSuccessToast('Day schedule cleared');
+      showSuccessToast('Day Schedule Cleared', 'Day schedule cleared.', `clear_day_${selectedDateKey}_${Date.now()}`);
     } catch (err: any) {
       showErrorToast('Failed to clear schedule', err?.message);
     } finally {

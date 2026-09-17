@@ -93,9 +93,10 @@ export function TemplatesTab({
 
   const handleConfirmDeleteTemplate = async () => {
     if (!deleteTargetTemplate) return;
+    const templateId = deleteTargetTemplate.id;
     try {
-      store.deleteTimeTrackerTemplate(deleteTargetTemplate.id);
-      showSuccessToast('Template Deleted');
+      store.deleteTimeTrackerTemplate(templateId);
+      showSuccessToast('Template Deleted', 'Template removed.', `template_${templateId}`);
     } catch (err: any) {
       showErrorToast('Failed to delete template', err?.message);
     } finally {

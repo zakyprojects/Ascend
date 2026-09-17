@@ -199,13 +199,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     if (deleteReflectionModal) {
       const reflectionId = deleteReflectionModal.id;
       await executeWithKey(`delete_weekly_reflection_${reflectionId}`, async () => {
-        try {
-          await store.deleteWeeklyReflection(selectedWeekKey, reflectionId);
-          setDeleteReflectionModal(null);
-          showSuccessToast('Reflection Deleted', 'Weekly reflection entry removed.');
-        } catch (err: any) {
-          showErrorToast('Delete Failed', err?.message || 'Failed to delete reflection.');
-        }
+        store.deleteWeeklyReflection(selectedWeekKey, reflectionId);
+        setDeleteReflectionModal(null);
+        showSuccessToast('Reflection Deleted', 'Weekly reflection entry removed.', `weekly_reflection_${reflectionId}`);
       });
     }
   };
@@ -214,13 +210,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     if (deleteGoalModal) {
       const goalId = deleteGoalModal.id;
       await executeWithKey(`delete_weekly_goal_${goalId}`, async () => {
-        try {
-          await store.deleteWeeklyGoalItem(selectedWeekKey, goalId);
-          setDeleteGoalModal(null);
-          showSuccessToast('Goal Deleted', 'Weekly goal removed.');
-        } catch (err: any) {
-          showErrorToast('Delete Failed', err?.message || 'Failed to delete goal.');
-        }
+        store.deleteWeeklyGoalItem(selectedWeekKey, goalId);
+        setDeleteGoalModal(null);
+        showSuccessToast('Goal Deleted', 'Weekly goal removed.', `weekly_goal_${goalId}`);
       });
     }
   };

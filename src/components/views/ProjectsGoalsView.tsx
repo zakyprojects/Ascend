@@ -635,7 +635,7 @@ export function ProjectsGoalsView({
     if (!deleteGoalTarget) return;
     await executeWithKey(`delete_goal_${deleteGoalTarget.id}`, async () => {
       store.deleteGoal(deleteGoalTarget.id);
-      showSuccessToast('Goal Deleted', 'Linked projects were safely unlinked.');
+      showSuccessToast('Goal Deleted', 'Linked projects were safely unlinked.', `goal_${deleteGoalTarget.id}`);
       setDeleteGoalTarget(null);
       if (filterGoalId === deleteGoalTarget.id) {
         setFilterGoalId(null);
@@ -757,7 +757,7 @@ export function ProjectsGoalsView({
     if (!deleteProjectTarget) return;
     await executeWithKey(`delete_project_${deleteProjectTarget.id}`, async () => {
       store.deleteProject(deleteProjectTarget.id);
-      showSuccessToast('Project Deleted', 'Linked tasks were safely unlinked.');
+      showSuccessToast('Project Deleted', 'Linked tasks were safely unlinked.', `project_${deleteProjectTarget.id}`);
       setDeleteProjectTarget(null);
       if (filterProjectId === deleteProjectTarget.id) {
         setFilterProjectId(null);
@@ -872,7 +872,7 @@ export function ProjectsGoalsView({
     if (!deleteTaskTarget) return;
     await executeWithKey(`delete_task_${deleteTaskTarget.id}`, async () => {
       store.deleteTask(deleteTaskTarget.id);
-      showSuccessToast('Task Deleted', 'Task removed.');
+      showSuccessToast('Task Deleted', 'Task removed.', `task_${deleteTaskTarget.id}`);
       setDeleteTaskTarget(null);
     });
   };
@@ -881,7 +881,7 @@ export function ProjectsGoalsView({
     if (!deleteSubtaskTarget) return;
     await executeWithKey(`delete_subtask_${deleteSubtaskTarget.subtask.id}`, async () => {
       store.deleteSubtask(deleteSubtaskTarget.taskId, deleteSubtaskTarget.subtask.id);
-      showSuccessToast('Subtask Deleted', 'Subtask removed.');
+      showSuccessToast('Subtask Deleted', 'Subtask removed.', `subtask_${deleteSubtaskTarget.subtask.id}`);
       setDeleteSubtaskTarget(null);
     });
   };

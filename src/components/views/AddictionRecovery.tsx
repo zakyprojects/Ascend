@@ -423,13 +423,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         onClose={() => setDeleteTrackerConfirmOpen(false)}
         onConfirm={async () => {
           await executeWithKey('delete_addiction_tracker', async () => {
-            try {
-              await store.deleteAddictionTracker();
-              setDeleteTrackerConfirmOpen(false);
-              showSuccessToast('Tracker Deleted', 'Sobriety tracker and history removed.');
-            } catch (err: any) {
-              showErrorToast('Delete Failed', err?.message || 'Failed to delete sobriety tracker.');
-            }
+            store.deleteAddictionTracker();
+            setDeleteTrackerConfirmOpen(false);
+            showSuccessToast('Tracker Deleted', 'Sobriety tracker and history removed.', `tracker_${tracker?.id || 'main'}`);
           });
         }}
         isDeleting={isKeyLoading('delete_addiction_tracker')}
@@ -447,13 +443,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           if (deleteCravingModalLog) {
             const logId = deleteCravingModalLog.id;
             await executeWithKey(`delete_craving_log_${logId}`, async () => {
-              try {
-                await store.deleteCravingLog(logId);
-                setDeleteCravingModalLog(null);
-                showSuccessToast('Log Deleted', 'Craving log removed.');
-              } catch (err: any) {
-                showErrorToast('Delete Failed', err?.message || 'Failed to delete craving log.');
-              }
+              store.deleteCravingLog(logId);
+              setDeleteCravingModalLog(null);
+              showSuccessToast('Log Deleted', 'Craving log removed.', `craving_log_${logId}`);
             });
           }
         }}

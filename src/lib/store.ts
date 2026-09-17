@@ -156,6 +156,7 @@ import {
   markAllNotificationsReadSupabase,
   clearNotificationSupabase,
 } from './supabase';
+import { GuardBlockedError } from './errors';
 import { mergeAppState, deduplicatePresetHabits } from './stateMerger';
 
 // Cross-tab real-time state synchronization channel
@@ -708,6 +709,7 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
       .slice(0, 50),
     deletedEntityIds: sanitizedDeletedEntityIds.slice(-500),
     restoredEntityIds: (st.restoredEntityIds ?? []).slice(-500),
+    unsyncedEntityIds: (st.unsyncedEntityIds ?? []).slice(-500),
     timeTracker: {
       activities: ensureDefaultActivities(
         (st.timeTracker?.activities ?? DEFAULT_TIME_TRACKER_ACTIVITIES).filter(
@@ -1087,8 +1089,45 @@ export function useAppState() {
   const get = useCallback(() => stateRef.current, []);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveTimer = useRef<number | null>(null);
-  const pendingImmediateFlush = useRef(false);
+  const pendingImmediateResolvers = useRef<
+    Array<{
+      resolve: () => void;
+      reject: (err: unknown) => void;
+      actionLabel?: string;
+      entityId?: string;
+    }>
+  >([]);
   const isLoggingOutRef = useRef(false);
+
+  // Write-serialization queue: guarantees sequential execution of persistState calls
+  const writeQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const enqueuePersist = useCallback((stateToPersist: AppState): Promise<void> => {
+    let callResolve!: () => void;
+    let callReject!: (err: unknown) => void;
+    const callerPromise = new Promise<void>((resolve, reject) => {
+      callResolve = resolve;
+      callReject = reject;
+    });
+
+    writeQueueRef.current = writeQueueRef.current
+      .catch(() => {
+        // Isolate queue failures: prior failure does not prevent subsequent writes
+      })
+      .then(async () => {
+        try {
+          await persistState(stateToPersist);
+          callResolve();
+        } catch (err) {
+          callReject(err);
+          // Re-throw so downstream catch catches, but queue next tick remains unblocked
+          throw err;
+        }
+      });
+
+    writeQueueRef.current.catch(() => {}); // Suppress console-level unhandled rejection on stored ref; caller still gets real error via callerPromise
+
+    return callerPromise;
+  }, []);
 
   // Cross-tab synchronization tracking
   const tabId = useRef<string>(Math.random().toString(36).substring(2) + Date.now().toString(36)).current;
@@ -1102,12 +1141,27 @@ export function useAppState() {
   const setState = useCallback(
     (
       updater: AppState | ((prev: AppState) => AppState),
-      options?: { immediate?: boolean }
+      options?: { immediate?: boolean; actionLabel?: string; entityId?: string }
     ) => {
+      let immediatePromise: Promise<void> | undefined;
       if (options?.immediate) {
-        pendingImmediateFlush.current = true;
+        let callResolve!: () => void;
+        let callReject!: (err: unknown) => void;
+        immediatePromise = new Promise<void>((resolve, reject) => {
+          callResolve = resolve;
+          callReject = reject;
+        });
+        pendingImmediateResolvers.current.push({
+          resolve: callResolve,
+          reject: callReject,
+          actionLabel: options.actionLabel,
+          entityId: options.entityId,
+        });
+        // Suppress unhandled rejection on the promise itself so non-awaiting callers never produce console warnings
+        immediatePromise.catch(() => {});
       }
       setStateRaw(updater);
+      return immediatePromise;
     },
     []
   );
@@ -1188,6 +1242,12 @@ export function useAppState() {
         console.error('[SYNC] Error syncing state on reconnection/visibility:', e);
       } finally {
         isSyncing = false;
+        // OUTBOUND RETRY PUSH: If there are unsynced entities created/modified offline, trigger a push
+        // regardless of whether the inbound fetch succeeded, had no data, or failed.
+        if (stateRef.current.unsyncedEntityIds && stateRef.current.unsyncedEntityIds.length > 0) {
+          console.log('[SYNC] Triggering outbound retry-push for unsynced entities:', stateRef.current.unsyncedEntityIds);
+          setState((prev) => ({ ...prev }), { immediate: true, actionLabel: 'Sync pending changes' });
+        }
       }
     };
 
@@ -1221,42 +1281,121 @@ export function useAppState() {
     }
 
     if (isHydrated.current) {
+      // Synchronous, network-independent local-mirror write for resilient offline reload and debounce-window protection
+      if (typeof window !== 'undefined') {
+        try {
+          if (state.currentUser?.id) {
+            localStorage.setItem(`ascend_user_cache_${state.currentUser.id}`, JSON.stringify(state));
+          } else {
+            localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(state));
+          }
+        } catch {
+          /* ignore quota/security error */
+        }
+      }
+
       // Broadcast state to all other tabs immediately
       broadcastStateToTabs(state, tabId);
 
-      if (pendingImmediateFlush.current) {
-        pendingImmediateFlush.current = false;
+      if (pendingImmediateResolvers.current.length > 0) {
+        const resolversToDrain = [...pendingImmediateResolvers.current];
+        pendingImmediateResolvers.current = [];
         if (debounceTimer.current) {
           clearTimeout(debounceTimer.current);
           debounceTimer.current = null;
         }
-        persistState(state).catch((err) => {
-          console.error('[AUTOSAVE IMMEDIATE] Failed to persist state:', err);
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-              new CustomEvent('app-toast-error', {
-                detail: {
-                  title: 'Cloud Sync Failed',
-                  message: 'Could not sync user data to cloud.',
-                },
-              })
-            );
-            window.dispatchEvent(new CustomEvent('app-network-error'));
-          }
-        });
-      } else {
-        if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        debounceTimer.current = setTimeout(async () => {
-          try {
-            await persistState(state);
-          } catch (err) {
-            console.error('[AUTOSAVE DEBOUNCED] Failed to persist state:', err);
+        const justPersistedUnsyncedIds = state.unsyncedEntityIds || [];
+        enqueuePersist(state)
+          .then(() => {
+            resolversToDrain.forEach(({ resolve }) => resolve());
+            if (justPersistedUnsyncedIds.length > 0) {
+              setState((prev) => ({
+                ...prev,
+                unsyncedEntityIds: (prev.unsyncedEntityIds || []).filter(
+                  (id) => !justPersistedUnsyncedIds.includes(id)
+                ),
+              }));
+            }
+          })
+          .catch((err) => {
+            resolversToDrain.forEach(({ reject }) => reject(err));
+            console.error('[AUTOSAVE IMMEDIATE] Failed to persist state:', err);
             if (typeof window !== 'undefined') {
+              const isGuard = err instanceof GuardBlockedError;
+
+              // Collect distinct action labels
+              const distinctLabels = Array.from(
+                new Set(
+                  resolversToDrain
+                    .map((r) => r.actionLabel)
+                    .filter((label): label is string => Boolean(label && label.trim()))
+                )
+              );
+
+              // Distinct entity IDs for dedupKey if known
+              const distinctEntityIds = Array.from(
+                new Set(
+                  resolversToDrain
+                    .map((r) => r.entityId)
+                    .filter((id): id is string => Boolean(id && id.trim()))
+                )
+              );
+
+              let toastTitle: string;
+              if (distinctLabels.length === 1) {
+                toastTitle = isGuard
+                  ? `${distinctLabels[0]} blocked (Data Protection)`
+                  : `${distinctLabels[0]} failed`;
+              } else {
+                toastTitle = isGuard ? 'Data Protection Triggered' : 'Cloud Sync Failed';
+              }
+
+              const toastMessage = isGuard
+                ? (err.message || 'Prevented data loss by blocking abnormal database overwrite.')
+                : 'Could not sync user data to cloud.';
+
+              const dedupKey =
+                distinctEntityIds.length === 1
+                  ? `${distinctLabels[0] || 'immediate'}_${distinctEntityIds[0]}`
+                  : undefined;
+
               window.dispatchEvent(
                 new CustomEvent('app-toast-error', {
                   detail: {
-                    title: 'Cloud Sync Failed',
-                    message: 'Could not sync user data to cloud.',
+                    title: toastTitle,
+                    message: toastMessage,
+                    dedupKey,
+                  },
+                })
+              );
+              window.dispatchEvent(new CustomEvent('app-network-error'));
+            }
+          });
+      } else {
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        const justPersistedUnsyncedIds = state.unsyncedEntityIds || [];
+        debounceTimer.current = setTimeout(async () => {
+          try {
+            await enqueuePersist(state);
+            if (justPersistedUnsyncedIds.length > 0) {
+              setState((prev) => ({
+                ...prev,
+                unsyncedEntityIds: (prev.unsyncedEntityIds || []).filter(
+                  (id) => !justPersistedUnsyncedIds.includes(id)
+                ),
+              }));
+            }
+          } catch (err) {
+            console.error('[AUTOSAVE DEBOUNCED] Failed to persist state:', err);
+            if (typeof window !== 'undefined') {
+              const isGuard = err instanceof GuardBlockedError;
+              window.dispatchEvent(
+                new CustomEvent('app-toast-error', {
+                  detail: {
+                    title: isGuard ? 'Data Protection Triggered' : 'Cloud Sync Failed',
+                    message: isGuard
+                      ? (err.message || 'Prevented data loss by blocking abnormal database overwrite.')
+                      : 'Could not sync user data to cloud.',
                   },
                 })
               );
@@ -1327,7 +1466,7 @@ export function useAppState() {
             clearTimeout(debounceTimer.current);
             debounceTimer.current = null;
           }
-          pendingImmediateFlush.current = false;
+          pendingImmediateResolvers.current = [];
           isHydrated.current = false;
           currentUserRef.current = null;
 
@@ -1957,7 +2096,7 @@ export function useAppState() {
       // 3. Force immediate flush if there is unsaved state
       let persistError: unknown = null;
       try {
-        await Promise.race([persistState(currentState), timeoutPromise]);
+        await Promise.race([enqueuePersist(currentState), timeoutPromise]);
       } catch (persistErr) {
         persistError = persistErr;
         console.error('Failed to flush state before logout:', persistErr);
@@ -2052,7 +2191,8 @@ export function useAppState() {
         if (alreadyExists) {
           return prev;
         }
-        return { ...prev, habits: [...prev.habits, habit] };
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habit.id])).slice(-500);
+        return { ...prev, habits: [...prev.habits, habit], unsyncedEntityIds: updatedUnsynced };
       },
       { immediate: true }
     );
@@ -2074,7 +2214,17 @@ export function useAppState() {
       missedPeriods: [],
       consecutiveMisses: 0,
     };
-    setState((prev) => ({ ...prev, habits: [...prev.habits, habit] }), { immediate: true });
+    setState(
+      (prev) => {
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habit.id])).slice(-500);
+        return {
+          ...prev,
+          habits: [...prev.habits, habit],
+          unsyncedEntityIds: updatedUnsynced,
+        };
+      },
+      { immediate: true }
+    );
     return habit;
   }, []);
 
@@ -2083,6 +2233,8 @@ export function useAppState() {
       (prev) => {
         const habit = prev.habits.find((h) => h.id === habitId);
         if (!habit) return prev;
+
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habitId])).slice(-500);
 
         return {
           ...prev,
@@ -2095,6 +2247,7 @@ export function useAppState() {
                 }
               : h
           ),
+          unsyncedEntityIds: updatedUnsynced,
         };
       },
       { immediate: true }
@@ -2193,9 +2346,11 @@ export function useAppState() {
             );
           }
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habit.id])).slice(-500);
           return {
             ...prev,
             habits: [...prev.habits.filter((h) => h.name.toLowerCase() !== 'reading (books)'), habit],
+            unsyncedEntityIds: updatedUnsynced,
             ...pointsUpdate,
           };
         }
@@ -2335,7 +2490,15 @@ export function useAppState() {
               });
             }
 
-            return { ...prev, habits, sharedChallenges: updatedChallenges, deletedEntityIds: updatedDeletedEntityIds, ...pointsUpdate };
+            const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habitId])).slice(-500);
+            return {
+              ...prev,
+              habits,
+              sharedChallenges: updatedChallenges,
+              deletedEntityIds: updatedDeletedEntityIds,
+              unsyncedEntityIds: updatedUnsynced,
+              ...pointsUpdate,
+            };
           },
           { immediate: true }
         );
@@ -2403,7 +2566,8 @@ export function useAppState() {
             createdAt: new Date().toISOString(),
             pointsAwarded: newPointsAwarded,
           };
-          return { ...prev, journalEntries: updated, ...pointsUpdate };
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), existing.id])).slice(-500);
+          return { ...prev, journalEntries: updated, unsyncedEntityIds: updatedUnsynced, ...pointsUpdate };
         }
 
         const newEntry: JournalEntry = {
@@ -2414,37 +2578,40 @@ export function useAppState() {
           createdAt: new Date().toISOString(),
           pointsAwarded: newPointsAwarded,
         };
-        return { ...prev, journalEntries: [newEntry, ...prev.journalEntries], ...pointsUpdate };
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newEntry.id])).slice(-500);
+        return { ...prev, journalEntries: [newEntry, ...prev.journalEntries], unsyncedEntityIds: updatedUnsynced, ...pointsUpdate };
       });
     },
     []
   );
 
   const deleteJournalEntry = useCallback((entryId: string) => {
-    setState(
-      (prev) => {
-        const entry = prev.journalEntries.find((e) => e.id === entryId);
-        if (!entry) return prev;
+    return (
+      setState(
+        (prev) => {
+          const entry = prev.journalEntries.find((e) => e.id === entryId);
+          if (!entry) return prev;
 
-        let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
-          totalPoints: prev.totalPoints,
-          pointsHistory: prev.pointsHistory,
-        };
+          let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
+            totalPoints: prev.totalPoints,
+            pointsHistory: prev.pointsHistory,
+          };
 
-        if (entry.pointsAwarded) {
-          pointsUpdate = addPointsInternal(prev, JOURNAL_POINTS.entryDeleted, 'Journal entry deleted', 'journal');
-        }
+          if (entry.pointsAwarded) {
+            pointsUpdate = addPointsInternal(prev, JOURNAL_POINTS.entryDeleted, 'Journal entry deleted', 'journal');
+          }
 
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), entryId].slice(-500);
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), entryId].slice(-500);
 
-        return {
-          ...prev,
-          journalEntries: prev.journalEntries.filter((e) => e.id !== entryId),
-          deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
-        };
-      },
-      { immediate: true }
+          return {
+            ...prev,
+            journalEntries: prev.journalEntries.filter((e) => e.id !== entryId),
+            deletedEntityIds: updatedDeletedEntityIds,
+            ...pointsUpdate,
+          };
+        },
+        { immediate: true, actionLabel: 'Journal entry deletion', entityId: entryId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -2687,80 +2854,85 @@ export function useAppState() {
         );
       }
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), workout.id])).slice(-500);
+
       return {
         ...prev,
         workouts: [workout, ...prev.workouts],
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     });
   }, []);
 
   const deleteWorkout = useCallback((workoutId: string) => {
-    setState(
-      (prev) => {
-        const target = prev.workouts.find((w) => w.id === workoutId);
-        if (!target) return prev;
+    return (
+      setState(
+        (prev) => {
+          const target = prev.workouts.find((w) => w.id === workoutId);
+          if (!target) return prev;
 
-        const targetDate = target.date;
-        const remainingWorkouts = prev.workouts.filter((w) => w.id !== workoutId);
+          const targetDate = target.date;
+          const remainingWorkouts = prev.workouts.filter((w) => w.id !== workoutId);
 
-        // Recalculate points awarded for all remaining workouts on the target date in chronological order
-        const dayWorkouts = remainingWorkouts.filter((w) => w.date === targetDate);
-        const chronDayWorkouts = [...dayWorkouts].sort(
-          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-        );
-
-        let dailyCapRemaining: number = WORKOUT_POINTS.dailyCap;
-        const recalculatedMap = new Map<string, number>();
-
-        for (const w of chronDayWorkouts) {
-          const { pointsToAward: awarded } = calculateWorkoutPoints(
-            w.unit,
-            w.amount,
-            w.durationMinutes,
-            dailyCapRemaining
+          // Recalculate points awarded for all remaining workouts on the target date in chronological order
+          const dayWorkouts = remainingWorkouts.filter((w) => w.date === targetDate);
+          const chronDayWorkouts = [...dayWorkouts].sort(
+            (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
           );
-          recalculatedMap.set(w.id, awarded);
-          dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
-        }
 
-        const oldDatePoints = prev.workouts
-          .filter((w) => w.date === targetDate)
-          .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
+          let dailyCapRemaining: number = WORKOUT_POINTS.dailyCap;
+          const recalculatedMap = new Map<string, number>();
 
-        const newDatePoints = chronDayWorkouts.reduce(
-          (sum, w) => sum + (recalculatedMap.get(w.id) ?? 0),
-          0
-        );
-
-        const netPointDelta = newDatePoints - oldDatePoints;
-
-        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-        if (netPointDelta !== 0) {
-          pointsUpdate = addPointsInternal(
-            prev,
-            netPointDelta,
-            `Workout deleted: ${target.type}`,
-            'exercise'
-          );
-        }
-
-        const updatedWorkouts = remainingWorkouts.map((w) => {
-          if (w.date === targetDate && recalculatedMap.has(w.id)) {
-            return { ...w, pointsAwarded: recalculatedMap.get(w.id)! };
+          for (const w of chronDayWorkouts) {
+            const { pointsToAward: awarded } = calculateWorkoutPoints(
+              w.unit,
+              w.amount,
+              w.durationMinutes,
+              dailyCapRemaining
+            );
+            recalculatedMap.set(w.id, awarded);
+            dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
           }
-          return w;
-        });
 
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), workoutId].slice(-500);
-        return {
-          ...prev,
-          workouts: updatedWorkouts,
-          deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
-        };
-      },
-      { immediate: true }
+          const oldDatePoints = prev.workouts
+            .filter((w) => w.date === targetDate)
+            .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
+
+          const newDatePoints = chronDayWorkouts.reduce(
+            (sum, w) => sum + (recalculatedMap.get(w.id) ?? 0),
+            0
+          );
+
+          const netPointDelta = newDatePoints - oldDatePoints;
+
+          let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+          if (netPointDelta !== 0) {
+            pointsUpdate = addPointsInternal(
+              prev,
+              netPointDelta,
+              `Workout deleted: ${target.type}`,
+              'exercise'
+            );
+          }
+
+          const updatedWorkouts = remainingWorkouts.map((w) => {
+            if (w.date === targetDate && recalculatedMap.has(w.id)) {
+              return { ...w, pointsAwarded: recalculatedMap.get(w.id)! };
+            }
+            return w;
+          });
+
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), workoutId].slice(-500);
+          return {
+            ...prev,
+            workouts: updatedWorkouts,
+            deletedEntityIds: updatedDeletedEntityIds,
+            ...pointsUpdate,
+          };
+        },
+        { immediate: true, actionLabel: 'Workout deletion', entityId: workoutId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -2829,11 +3001,15 @@ export function useAppState() {
         createdAt: now,
       };
 
-      setState((prev) => ({
-        ...prev,
-        libraryBooks: [userBook, ...prev.libraryBooks.filter((lb) => lb.id !== id)],
-        books: [],
-      }));
+      setState((prev) => {
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+        return {
+          ...prev,
+          libraryBooks: [userBook, ...prev.libraryBooks.filter((lb) => lb.id !== id)],
+          books: [],
+          unsyncedEntityIds: updatedUnsynced,
+        };
+      });
 
       return trackerBook;
     },
@@ -2842,15 +3018,19 @@ export function useAppState() {
 
   const updateBookTargetDate = useCallback((bookId: string, targetFinishDate?: string) => {
     const formatted = targetFinishDate?.trim() || undefined;
-    setState((prev) => ({
-      ...prev,
-      libraryBooks: prev.libraryBooks.map((lb) =>
-        lb.id === bookId || lb.linkedBookId === bookId
-          ? { ...lb, targetFinishDate: formatted, updatedAt: new Date().toISOString() }
-          : lb
-      ),
-      books: [],
-    }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), bookId])).slice(-500);
+      return {
+        ...prev,
+        libraryBooks: prev.libraryBooks.map((lb) =>
+          lb.id === bookId || lb.linkedBookId === bookId
+            ? { ...lb, targetFinishDate: formatted, updatedAt: new Date().toISOString() }
+            : lb
+        ),
+        books: [],
+        unsyncedEntityIds: updatedUnsynced,
+      };
+    });
   }, []);
 
   const updateReadingProgress = useCallback((bookId: string, pagesDelta: number, newCurrentPage: number) => {
@@ -3022,6 +3202,7 @@ export function useAppState() {
         }
       }
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), targetUserBook.id])).slice(-500);
       return {
         ...prev,
         libraryBooks: updatedLibraryBooks,
@@ -3029,6 +3210,7 @@ export function useAppState() {
         readingLogs: updatedReadingLogs,
         habits: updatedHabits,
         deletedEntityIds: updatedDeletedEntityIds,
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     },
@@ -3098,11 +3280,13 @@ export function useAppState() {
           pointsUpdate = addPointsInternal(prev, pointsToAward, `Book finished: ${title}`, 'reading_bonus');
         }
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), targetUserBook.id])).slice(-500);
         return {
           ...prev,
           libraryBooks: updatedLibraryBooks,
           readingLogs: updatedReadingLogs,
           books: [],
+          unsyncedEntityIds: updatedUnsynced,
           ...pointsUpdate,
         };
       },
@@ -3111,10 +3295,11 @@ export function useAppState() {
   }, []);
 
   const deleteBook = useCallback((bookId: string) => {
-    setState(
-      (prev) => {
-        const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
-        if (!targetUserBook) return prev;
+    return (
+      setState(
+        (prev) => {
+          const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
+          if (!targetUserBook) return prev;
 
         const allMatchingIds = new Set<string>([bookId]);
         if (targetUserBook.id) allMatchingIds.add(targetUserBook.id);
@@ -3206,9 +3391,10 @@ export function useAppState() {
           ...pointsUpdate,
         };
       },
-      { immediate: true }
-    );
-  }, []);
+      { immediate: true, actionLabel: 'Book deletion', entityId: bookId }
+    ) || Promise.resolve()
+  );
+}, []);
 
   // --- SELF IMPROVEMENT BOOKS / CURATED ACTIONS ---
   const addCuratedBookToLibrary = useCallback((
@@ -3252,10 +3438,13 @@ export function useAppState() {
         dateCompleted: initialStatus === 'completed' ? now : undefined,
       };
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newBook.id])).slice(-500);
+
       let newState: AppState = {
         ...prev,
         libraryBooks: [newBook, ...prev.libraryBooks],
         books: [],
+        unsyncedEntityIds: updatedUnsynced,
       };
 
       if (initialStatus === 'completed') {
@@ -3309,10 +3498,13 @@ export function useAppState() {
         startedAt: status === 'reading' ? now : undefined,
       };
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newBook.id])).slice(-500);
+
       return {
         ...prev,
         libraryBooks: [newBook, ...prev.libraryBooks],
         books: [],
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -3325,6 +3517,7 @@ export function useAppState() {
     ) => {
       setState((prev) => {
         const now = new Date().toISOString();
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), bookId])).slice(-500);
         return {
           ...prev,
           libraryBooks: prev.libraryBooks.map((b) => {
@@ -3352,6 +3545,7 @@ export function useAppState() {
             return b;
           }),
           books: [],
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -3381,10 +3575,12 @@ export function useAppState() {
           return lb;
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), bookId])).slice(-500);
         return {
           ...prev,
           libraryBooks: updatedLibraryBooks,
           books: [],
+          unsyncedEntityIds: updatedUnsynced,
         };
       },
       { immediate: true }
@@ -3412,7 +3608,10 @@ export function useAppState() {
       manualLevel,
       createdAt: new Date().toISOString(),
     };
-    setState((prev) => ({ ...prev, skills: [...prev.skills, skill] }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), skill.id])).slice(-500);
+      return { ...prev, skills: [...prev.skills, skill], unsyncedEntityIds: updatedUnsynced };
+    });
     return skill;
   }, []);
 
@@ -3444,55 +3643,63 @@ export function useAppState() {
         pointsUpdate = addPointsInternal(prev, pointsToAward, `Skill practiced: ${targetSkill.name} (${durationMinutes}m)`, 'skill');
       }
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), session.id])).slice(-500);
       return {
         ...prev,
         skillLogs: [session, ...prev.skillLogs],
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     });
   }, []);
 
   const updateSkillLevel = useCallback((skillId: string, manualLevel: SkillLevel) => {
-    setState((prev) => ({
-      ...prev,
-      skills: prev.skills.map((s) => (s.id === skillId ? { ...s, manualLevel } : s)),
-    }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), skillId])).slice(-500);
+      return {
+        ...prev,
+        skills: prev.skills.map((s) => (s.id === skillId ? { ...s, manualLevel } : s)),
+        unsyncedEntityIds: updatedUnsynced,
+      };
+    });
   }, []);
 
-  const deleteSkill = useCallback((skillId: string) => {
-    setState(
-      (prev) => {
-        const skillLogs = prev.skillLogs.filter((l) => l.skillId === skillId);
-        const totalPointsToDeduct = skillLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+  const deleteSkill = useCallback((skillId: string): Promise<void> => {
+    return (
+      setState(
+        (prev) => {
+          const skillLogs = prev.skillLogs.filter((l) => l.skillId === skillId);
+          const totalPointsToDeduct = skillLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
 
-        let pointsUpdate = {};
-        if (totalPointsToDeduct > 0) {
-          const targetSkill = prev.skills.find((s) => s.id === skillId);
-          const skillName = targetSkill ? targetSkill.name : 'Skill';
-          pointsUpdate = addPointsInternal(
-            prev,
-            -totalPointsToDeduct,
-            `Skill deleted (${skillLogs.length} session log(s) removed): ${skillName}`,
-            'skill'
-          );
-        }
+          let pointsUpdate = {};
+          if (totalPointsToDeduct > 0) {
+            const targetSkill = prev.skills.find((s) => s.id === skillId);
+            const skillName = targetSkill ? targetSkill.name : 'Skill';
+            pointsUpdate = addPointsInternal(
+              prev,
+              -totalPointsToDeduct,
+              `Skill deleted (${skillLogs.length} session log(s) removed): ${skillName}`,
+              'skill'
+            );
+          }
 
-        const updatedDeletedEntityIds = [
-          ...(prev.deletedEntityIds || []),
-          skillId,
-          ...skillLogs.map((l) => l.id),
-        ].slice(-500);
+          const updatedDeletedEntityIds = [
+            ...(prev.deletedEntityIds || []),
+            skillId,
+            ...skillLogs.map((l) => l.id),
+          ].slice(-500);
 
-        return {
-          ...prev,
-          skills: prev.skills.filter((s) => s.id !== skillId),
-          skillLogs: prev.skillLogs.filter((l) => l.skillId !== skillId),
-          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId]),
-          deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
-        };
-      },
-      { immediate: true }
+          return {
+            ...prev,
+            skills: prev.skills.filter((s) => s.id !== skillId),
+            skillLogs: prev.skillLogs.filter((l) => l.skillId !== skillId),
+            weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId]),
+            deletedEntityIds: updatedDeletedEntityIds,
+            ...pointsUpdate,
+          };
+        },
+        { immediate: true, actionLabel: 'Skill deletion', entityId: skillId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -3526,7 +3733,10 @@ export function useAppState() {
       isCompleted: false,
       createdAt: new Date().toISOString(),
     };
-    setState((prev) => ({ ...prev, badHabits: [...prev.badHabits, bh] }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), bh.id])).slice(-500);
+      return { ...prev, badHabits: [...prev.badHabits, bh], unsyncedEntityIds: updatedUnsynced };
+    });
     return bh;
   }, []);
 
@@ -3635,10 +3845,12 @@ export function useAppState() {
         ).slice(-500);
 
         const filteredLogs = (baseState.badHabitLogs || []).filter((l) => !(l && l.badHabitId === badHabitId && l.date === date));
+        const updatedUnsynced = Array.from(new Set([...(baseState.unsyncedEntityIds || []), newLog.id])).slice(-500);
         return {
           ...baseState,
           badHabitLogs: [newLog, ...filteredLogs],
           deletedEntityIds: updatedDeletedEntityIds,
+          unsyncedEntityIds: updatedUnsynced,
           ...pointsUpdate,
         };
       } catch (err) {
@@ -3686,64 +3898,68 @@ export function useAppState() {
       ];
       const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), badHabitId])).slice(-500);
       return {
         ...prev,
         badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === today)),
         deletedEntityIds: updatedDeletedEntityIds,
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     });
   }, []);
 
   const deleteBadHabit = useCallback((badHabitId: string) => {
-    setState(
-      (prev) => {
-        const habitLogs = prev.badHabitLogs.filter((l) => l.badHabitId === badHabitId);
-        const bh = prev.badHabits.find((b) => b.id === badHabitId);
+    return (
+      setState(
+        (prev) => {
+          const habitLogs = prev.badHabitLogs.filter((l) => l.badHabitId === badHabitId);
+          const bh = prev.badHabits.find((b) => b.id === badHabitId);
 
-        let pointsUpdate = {};
-        let excisedIds: string[] = [];
-        if (bh && !bh.isCompleted) {
-          const posPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) > 0).reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
-          const negPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) < 0).reduce((s, l) => s + Math.abs(l.pointsAwardedOrDeducted || 0), 0);
+          let pointsUpdate = {};
+          let excisedIds: string[] = [];
+          if (bh && !bh.isCompleted) {
+            const posPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) > 0).reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
+            const negPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) < 0).reduce((s, l) => s + Math.abs(l.pointsAwardedOrDeducted || 0), 0);
 
-          if (posPoints > 0 || negPoints > 0) {
-            const exciseResult = excisePointsEntriesInternal(
-              prev,
-              (entry) => {
-                if (entry.metadata?.badHabitId === badHabitId) return true;
-                if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_resisted' || entry.source === 'bad_habit_no_report') {
-                  if (entry.metadata?.badHabitId === badHabitId || entry.reason.includes(bh.name)) return true;
-                }
-                return false;
-              },
-              { pos: posPoints, neg: negPoints },
-              Infinity,
-              `badhabit_all_${badHabitId}`
-            );
-            const { excisedEntryIds, ...restPoints } = exciseResult;
-            pointsUpdate = restPoints;
-            excisedIds = excisedEntryIds;
+            if (posPoints > 0 || negPoints > 0) {
+              const exciseResult = excisePointsEntriesInternal(
+                prev,
+                (entry) => {
+                  if (entry.metadata?.badHabitId === badHabitId) return true;
+                  if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_resisted' || entry.source === 'bad_habit_no_report') {
+                    if (entry.metadata?.badHabitId === badHabitId || entry.reason.includes(bh.name)) return true;
+                  }
+                  return false;
+                },
+                { pos: posPoints, neg: negPoints },
+                Infinity,
+                `badhabit_all_${badHabitId}`
+              );
+              const { excisedEntryIds, ...restPoints } = exciseResult;
+              pointsUpdate = restPoints;
+              excisedIds = excisedEntryIds;
+            }
           }
-        }
 
-        const toTombstone = [
-          ...(prev.deletedEntityIds || []),
-          badHabitId,
-          ...habitLogs.map((l) => l.id).filter(Boolean),
-          ...excisedIds,
-        ];
-        const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
+          const toTombstone = [
+            ...(prev.deletedEntityIds || []),
+            badHabitId,
+            ...habitLogs.map((l) => l.id).filter(Boolean),
+            ...excisedIds,
+          ];
+          const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
 
-        return {
-          ...prev,
-          badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
-          badHabitLogs: prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId),
-          deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
-        };
-      },
-      { immediate: true }
+          return {
+            ...prev,
+            badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
+            badHabitLogs: prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId),
+            deletedEntityIds: updatedDeletedEntityIds,
+            ...pointsUpdate,
+          };
+        },
+        { immediate: true, actionLabel: 'Bad habit deletion', entityId: badHabitId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -3752,6 +3968,7 @@ export function useAppState() {
       const bh = prev.badHabits.find((b) => b.id === badHabitId);
       if (!bh) return prev;
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), badHabitId])).slice(-500);
       return {
         ...prev,
         badHabits: prev.badHabits.map((b) =>
@@ -3759,6 +3976,7 @@ export function useAppState() {
             ? { ...b, isCompleted: true, completedAt: new Date().toISOString() }
             : b
         ),
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -3768,6 +3986,7 @@ export function useAppState() {
       const bh = prev.badHabits.find((b) => b.id === badHabitId);
       if (!bh) return prev;
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), badHabitId])).slice(-500);
       return {
         ...prev,
         badHabits: prev.badHabits.map((b) =>
@@ -3775,6 +3994,7 @@ export function useAppState() {
             ? { ...b, ...updates }
             : b
         ),
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -3833,13 +4053,15 @@ export function useAppState() {
         awardedMilestones: prev.addictionTracker?.awardedMilestones || [],
         createdAt: prev.addictionTracker?.createdAt || new Date().toISOString(),
       };
-      return { ...prev, addictionTracker: tracker };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), tracker.id])).slice(-500);
+      return { ...prev, addictionTracker: tracker, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
   const resetAddictionStreak = useCallback(() => {
     setState((prev) => {
       if (!prev.addictionTracker) return prev;
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.addictionTracker.id])).slice(-500);
       return {
         ...prev,
         addictionTracker: {
@@ -3848,6 +4070,7 @@ export function useAppState() {
           milestonesUnlocked: [],
           awardedMilestones: prev.addictionTracker.awardedMilestones || [],
         },
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -3906,12 +4129,14 @@ export function useAppState() {
 
       if (newlyUnlockedMilestones.length === 0) {
         if (unlocked.length !== prev.addictionTracker.milestonesUnlocked.length) {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.addictionTracker.id])).slice(-500);
           return {
             ...prev,
             addictionTracker: {
               ...prev.addictionTracker,
               milestonesUnlocked: unlocked,
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         }
         return prev;
@@ -3965,7 +4190,11 @@ export function useAppState() {
         };
       }
 
-      return runningState;
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.addictionTracker.id])).slice(-500);
+      return {
+        ...runningState,
+        unsyncedEntityIds: updatedUnsynced,
+      };
     });
   }, []);
 
@@ -3978,160 +4207,171 @@ export function useAppState() {
       copingStrategy: copingStrategy.trim(),
       createdAt: new Date().toISOString(),
     };
-    setState((prev) => ({ ...prev, cravingLogs: [log, ...prev.cravingLogs] }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), log.id])).slice(-500);
+      return { ...prev, cravingLogs: [log, ...prev.cravingLogs], unsyncedEntityIds: updatedUnsynced };
+    });
   }, []);
 
   const deleteAddictionTracker = useCallback(() => {
-    setState(
-      (prev) => {
-        if (!prev.addictionTracker) return prev;
-        const tracker = prev.addictionTracker;
-        const activeSeasonNum = getSeasonNumber();
+    return (
+      setState(
+        (prev) => {
+          if (!prev.addictionTracker) return prev;
+          const tracker = prev.addictionTracker;
+          const activeSeasonNum = getSeasonNumber();
 
-        // 1. Collect all awarded milestones to deduct (with legacy fallback reconstruction)
-        let awardedList: AddictionMilestoneAward[] = tracker.awardedMilestones ? [...tracker.awardedMilestones] : [];
-        if (awardedList.length === 0 && tracker.milestonesUnlocked && tracker.milestonesUnlocked.length > 0) {
-          for (const mKey of tracker.milestonesUnlocked) {
-            const pts = (mKey in SOBRIETY_MILESTONE_POINTS)
-              ? SOBRIETY_MILESTONE_POINTS[mKey as keyof typeof SOBRIETY_MILESTONE_POINTS]
-              : 0;
-            if (pts > 0) {
-              const histEntry = prev.pointsHistory?.find(
-                (e) => e.source === 'recovery_milestone' && (e.reason?.includes(mKey) || e.metadata?.milestone === mKey)
-              );
-              const ts = histEntry?.timestamp || tracker.startDate || tracker.createdAt || new Date().toISOString();
-              const sNum = getSeasonNumber(new Date(ts));
-              awardedList.push({
-                milestone: mKey,
-                seasonNumber: sNum,
-                timestamp: ts,
-                points: pts,
-              });
+          // 1. Collect all awarded milestones to deduct (with legacy fallback reconstruction)
+          let awardedList: AddictionMilestoneAward[] = tracker.awardedMilestones ? [...tracker.awardedMilestones] : [];
+          if (awardedList.length === 0 && tracker.milestonesUnlocked && tracker.milestonesUnlocked.length > 0) {
+            for (const mKey of tracker.milestonesUnlocked) {
+              const pts = (mKey in SOBRIETY_MILESTONE_POINTS)
+                ? SOBRIETY_MILESTONE_POINTS[mKey as keyof typeof SOBRIETY_MILESTONE_POINTS]
+                : 0;
+              if (pts > 0) {
+                const histEntry = prev.pointsHistory?.find(
+                  (e) => e.source === 'recovery_milestone' && (e.reason?.includes(mKey) || e.metadata?.milestone === mKey)
+                );
+                const ts = histEntry?.timestamp || tracker.startDate || tracker.createdAt || new Date().toISOString();
+                const sNum = getSeasonNumber(new Date(ts));
+                awardedList.push({
+                  milestone: mKey,
+                  seasonNumber: sNum,
+                  timestamp: ts,
+                  points: pts,
+                });
+              }
             }
           }
-        }
 
-        // 2. Partition by season
-        let currentSeasonDeduct = 0;
-        const pastSeasonDeductions: Record<number, { amount: number; timestamp: string }> = {};
+          // 2. Partition by season
+          let currentSeasonDeduct = 0;
+          const pastSeasonDeductions: Record<number, { amount: number; timestamp: string }> = {};
 
-        for (const award of awardedList) {
-          if (award.seasonNumber === activeSeasonNum) {
-            currentSeasonDeduct += award.points;
-          } else if (award.seasonNumber < activeSeasonNum) {
-            if (!pastSeasonDeductions[award.seasonNumber]) {
-              pastSeasonDeductions[award.seasonNumber] = { amount: 0, timestamp: award.timestamp };
+          for (const award of awardedList) {
+            if (award.seasonNumber === activeSeasonNum) {
+              currentSeasonDeduct += award.points;
+            } else if (award.seasonNumber < activeSeasonNum) {
+              if (!pastSeasonDeductions[award.seasonNumber]) {
+                pastSeasonDeductions[award.seasonNumber] = { amount: 0, timestamp: award.timestamp };
+              }
+              pastSeasonDeductions[award.seasonNumber].amount += award.points;
             }
-            pastSeasonDeductions[award.seasonNumber].amount += award.points;
           }
-        }
 
-        let runningState = prev;
+          let runningState = prev;
 
-        // 3. Deduct current season points via addPointsInternal (affects current season only)
-        if (currentSeasonDeduct > 0) {
-          const pointsUpdate = addPointsInternal(
-            runningState,
-            -currentSeasonDeduct,
-            'Sobriety tracker deleted',
-            'addiction_recovery',
-            { trackerId: tracker.id, seasonNumber: activeSeasonNum }
-          );
-          runningState = {
-            ...runningState,
-            ...pointsUpdate,
-          };
-        }
-
-        // 4. Attribute past season deductions (affects past season leagueArchives & history, current season total unaffected)
-        for (const [seasonStr, data] of Object.entries(pastSeasonDeductions)) {
-          const sNum = parseInt(seasonStr, 10);
-
-          // Route audit refund entry through addPointsInternal to ensure 500-cap, sorting, and eviction-ledger synchronization
-          const pointsUpdate = addPointsInternal(
-            runningState,
-            -data.amount,
-            `Sobriety tracker deleted (Season ${sNum} refund)`,
-            'addiction_recovery',
-            { trackerId: tracker.id, seasonNumber: sNum },
-            data.timestamp
-          );
-          runningState = {
-            ...runningState,
-            ...pointsUpdate,
-          };
-
-          // Update or synthesize past season leagueArchive
-          let updatedLeagueArchives = [...(runningState.leagueArchives || [])];
-          const archiveIdx = updatedLeagueArchives.findIndex(
-            (archive) => archive.seasonNumber === sNum || (archive.type === 'ninetyDay' && archive.periodLabel === `Season ${sNum}`)
-          );
-
-          if (archiveIdx >= 0) {
-            updatedLeagueArchives[archiveIdx] = {
-              ...updatedLeagueArchives[archiveIdx],
-              userPoints: Math.max(0, (updatedLeagueArchives[archiveIdx].userPoints || 0) - data.amount),
+          // 3. Deduct current season points via addPointsInternal (affects current season only)
+          if (currentSeasonDeduct > 0) {
+            const pointsUpdate = addPointsInternal(
+              runningState,
+              -currentSeasonDeduct,
+              'Sobriety tracker deleted',
+              'addiction_recovery',
+              { trackerId: tracker.id, seasonNumber: activeSeasonNum }
+            );
+            runningState = {
+              ...runningState,
+              ...pointsUpdate,
             };
-          } else if (sNum === activeSeasonNum - 1) {
-            // Only consider synthesizing if it is the immediately preceding season AND has surviving entries.
-            // For seasons older than 1 cycle (sNum < activeSeasonNum - 1), eviction has purged original activity,
-            // so we strictly skip creating a fabricated archive to prevent falsely recording near-zero historical scores.
-            const pastEntries = (runningState.pointsHistory || []).filter((p) => {
-              return getSeasonNumber(new Date(p.timestamp)) === sNum;
-            });
-            if (pastEntries.length > 0) {
-              const pastArchiveId = createDeterministicArchiveId(sNum);
-              const pastSum = pastEntries.reduce((acc, p) => acc + (p.amount || 0), 0);
-              updatedLeagueArchives.push({
-                id: pastArchiveId,
-                type: 'ninetyDay',
-                periodLabel: `Season ${sNum}`,
-                seasonNumber: sNum,
-                competitors: [],
-                userRank: 1,
-                userPoints: Math.max(0, pastSum),
-                archivedAt: data.timestamp || new Date().toISOString(),
-                completedAt: data.timestamp || new Date().toISOString(),
-                participantCount: 1,
-              });
-            }
           }
 
-          runningState = {
+          // 4. Attribute past season deductions (affects past season leagueArchives & history, current season total unaffected)
+          for (const [seasonStr, data] of Object.entries(pastSeasonDeductions)) {
+            const sNum = parseInt(seasonStr, 10);
+
+            // Route audit refund entry through addPointsInternal to ensure 500-cap, sorting, and eviction-ledger synchronization
+            const pointsUpdate = addPointsInternal(
+              runningState,
+              -data.amount,
+              `Sobriety tracker deleted (Season ${sNum} refund)`,
+              'addiction_recovery',
+              { trackerId: tracker.id, seasonNumber: sNum },
+              data.timestamp
+            );
+            runningState = {
+              ...runningState,
+              ...pointsUpdate,
+            };
+
+            // Update or synthesize past season leagueArchive
+            let updatedLeagueArchives = [...(runningState.leagueArchives || [])];
+            const archiveIdx = updatedLeagueArchives.findIndex(
+              (archive) => archive.seasonNumber === sNum || (archive.type === 'ninetyDay' && archive.periodLabel === `Season ${sNum}`)
+            );
+
+            if (archiveIdx >= 0) {
+              updatedLeagueArchives[archiveIdx] = {
+                ...updatedLeagueArchives[archiveIdx],
+                userPoints: Math.max(0, (updatedLeagueArchives[archiveIdx].userPoints || 0) - data.amount),
+              };
+            } else if (sNum === activeSeasonNum - 1) {
+              // Only consider synthesizing if it is the immediately preceding season AND has surviving entries.
+              // For seasons older than 1 cycle (sNum < activeSeasonNum - 1), eviction has purged original activity,
+              // so we strictly skip creating a fabricated archive to prevent falsely recording near-zero historical scores.
+              const pastEntries = (runningState.pointsHistory || []).filter((p) => {
+                return getSeasonNumber(new Date(p.timestamp)) === sNum;
+              });
+              if (pastEntries.length > 0) {
+                const pastArchiveId = createDeterministicArchiveId(sNum);
+                const pastSum = pastEntries.reduce((acc, p) => acc + (p.amount || 0), 0);
+                updatedLeagueArchives.push({
+                  id: pastArchiveId,
+                  type: 'ninetyDay',
+                  periodLabel: `Season ${sNum}`,
+                  seasonNumber: sNum,
+                  competitors: [],
+                  userRank: 1,
+                  userPoints: Math.max(0, pastSum),
+                  archivedAt: data.timestamp || new Date().toISOString(),
+                  completedAt: data.timestamp || new Date().toISOString(),
+                  participantCount: 1,
+                });
+              }
+            }
+
+            runningState = {
+              ...runningState,
+              leagueArchives: updatedLeagueArchives,
+            };
+          }
+
+          const trackerId = tracker.id;
+          const updatedDeletedEntityIds = [
+            ...(runningState.deletedEntityIds || []),
+            ...(trackerId ? [trackerId] : []),
+            ...runningState.cravingLogs.map((l) => l.id),
+          ].slice(-500);
+
+          return {
             ...runningState,
-            leagueArchives: updatedLeagueArchives,
+            addictionTracker: null,
+            cravingLogs: [],
+            deletedEntityIds: updatedDeletedEntityIds,
           };
+        },
+        {
+          immediate: true,
+          actionLabel: 'Sobriety tracker deletion',
+          entityId: get().addictionTracker?.id || 'sobriety_tracker',
         }
-
-        const trackerId = tracker.id;
-        const updatedDeletedEntityIds = [
-          ...(runningState.deletedEntityIds || []),
-          ...(trackerId ? [trackerId] : []),
-          ...runningState.cravingLogs.map((l) => l.id),
-        ].slice(-500);
-
-        return {
-          ...runningState,
-          addictionTracker: null,
-          cravingLogs: [],
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+      ) || Promise.resolve()
     );
-  }, []);
+  }, [get]);
 
   const deleteCravingLog = useCallback((logId: string) => {
-    setState(
-      (prev) => {
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
-        return {
-          ...prev,
-          cravingLogs: prev.cravingLogs.filter((l) => l.id !== logId),
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+    return (
+      setState(
+        (prev) => {
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
+          return {
+            ...prev,
+            cravingLogs: prev.cravingLogs.filter((l) => l.id !== logId),
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Craving log deletion', entityId: logId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -4154,9 +4394,11 @@ export function useAppState() {
         createdAt: new Date().toISOString(),
       };
       const pointsUpdate = addPointsInternal(prev, pointsToAward, `Focus session completed (${durationMinutes}m)`, 'focus');
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), focusLog.id])).slice(-500);
       return {
         ...prev,
         focusLogs: [focusLog, ...prev.focusLogs],
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     });
@@ -4175,9 +4417,11 @@ export function useAppState() {
       const updatedLogs = [...prev.focusLogs];
       updatedLogs[idx] = updated;
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), logId])).slice(-500);
       return {
         ...prev,
         focusLogs: updatedLogs,
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -4192,7 +4436,10 @@ export function useAppState() {
       isReflected: false,
       createdAt: new Date().toISOString(),
     };
-    setState((prev) => ({ ...prev, decisionLogs: [decision, ...prev.decisionLogs] }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), decision.id])).slice(-500);
+      return { ...prev, decisionLogs: [decision, ...prev.decisionLogs], unsyncedEntityIds: updatedUnsynced };
+    });
     return decision;
   }, []);
 
@@ -4208,7 +4455,8 @@ export function useAppState() {
       updatedLogs[idx] = updated;
 
       const pointsUpdate = addPointsInternal(prev, PFC_POINTS.decision, `Decision reflection: ${target.title}`, 'decision_reflection');
-      return { ...prev, decisionLogs: updatedLogs, ...pointsUpdate };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), decisionId])).slice(-500);
+      return { ...prev, decisionLogs: updatedLogs, unsyncedEntityIds: updatedUnsynced, ...pointsUpdate };
     });
   }, []);
 
@@ -4224,9 +4472,11 @@ export function useAppState() {
     };
     setState((prev) => {
       const pointsUpdate = addPointsInternal(prev, PFC_POINTS.emotion, `Emotion labeled: ${emotion}`, 'emotion_label');
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), log.id])).slice(-500);
       return {
         ...prev,
         emotionLogs: [log, ...prev.emotionLogs],
+        unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
       };
     });
@@ -4335,9 +4585,11 @@ export function useAppState() {
         newWeeklyGoals = [updatedDoc, ...newWeeklyGoals];
       }
 
+      const updatedUnsynced = Array.from(new Set([...(nextState.unsyncedEntityIds || []), newRef.id])).slice(-500);
       return {
         ...nextState,
         weeklyGoals: newWeeklyGoals,
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
@@ -4374,44 +4626,48 @@ export function useAppState() {
       const newWeeklyGoals = [...nextState.weeklyGoals];
       newWeeklyGoals[docIdx] = updatedDoc;
 
+      const updatedUnsynced = Array.from(new Set([...(nextState.unsyncedEntityIds || []), reflectionId])).slice(-500);
       return {
         ...nextState,
         weeklyGoals: newWeeklyGoals,
+        unsyncedEntityIds: updatedUnsynced,
       };
     });
   }, []);
 
   const deleteWeeklyReflection = useCallback((weekKey: string, reflectionId: string) => {
-    setState(
-      (prev) => {
-        const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
-        if (docIdx === -1) return prev;
+    return (
+      setState(
+        (prev) => {
+          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+          if (docIdx === -1) return prev;
 
-        const doc = prev.weeklyGoals[docIdx];
-        const targetRef = (doc.reflections || []).find((r) => r.id === reflectionId);
-        if (!targetRef) return prev;
+          const doc = prev.weeklyGoals[docIdx];
+          const targetRef = (doc.reflections || []).find((r) => r.id === reflectionId);
+          if (!targetRef) return prev;
 
-        const candidateReflections = (doc.reflections || []).filter((r) => r.id !== reflectionId);
+          const candidateReflections = (doc.reflections || []).filter((r) => r.id !== reflectionId);
 
-        const { updatedReflections, nextState } = reconcileReflectionPoints(
-          prev,
-          weekKey,
-          candidateReflections,
-          getNow()
-        );
+          const { updatedReflections, nextState } = reconcileReflectionPoints(
+            prev,
+            weekKey,
+            candidateReflections,
+            getNow()
+          );
 
-        const updatedDoc = { ...doc, reflections: updatedReflections };
-        const newWeeklyGoals = [...nextState.weeklyGoals];
-        newWeeklyGoals[docIdx] = updatedDoc;
-        const updatedDeletedEntityIds = [...(nextState.deletedEntityIds || []), reflectionId].slice(-500);
+          const updatedDoc = { ...doc, reflections: updatedReflections };
+          const newWeeklyGoals = [...nextState.weeklyGoals];
+          newWeeklyGoals[docIdx] = updatedDoc;
+          const updatedDeletedEntityIds = [...(nextState.deletedEntityIds || []), reflectionId].slice(-500);
 
-        return {
-          ...nextState,
-          weeklyGoals: newWeeklyGoals,
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+          return {
+            ...nextState,
+            weeklyGoals: newWeeklyGoals,
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Weekly reflection deletion', entityId: reflectionId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -4453,7 +4709,8 @@ export function useAppState() {
         newWeeklyGoals.unshift(updatedDoc);
       }
 
-      return { ...prev, weeklyGoals: newWeeklyGoals };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newItem.id])).slice(-500);
+      return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
@@ -4481,27 +4738,30 @@ export function useAppState() {
       const newWeeklyGoals = [...prev.weeklyGoals];
       newWeeklyGoals[docIdx] = updatedDoc;
 
-      return { ...prev, weeklyGoals: newWeeklyGoals };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), goalId])).slice(-500);
+      return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
   const deleteWeeklyGoalItem = useCallback((weekKey: string, goalId: string) => {
-    setState(
-      (prev) => {
-        const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
-        if (docIdx === -1) return prev;
+    return (
+      setState(
+        (prev) => {
+          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+          if (docIdx === -1) return prev;
 
-        const doc = prev.weeklyGoals[docIdx];
-        const updatedGoals = doc.goals.filter((g) => g.id !== goalId);
+          const doc = prev.weeklyGoals[docIdx];
+          const updatedGoals = doc.goals.filter((g) => g.id !== goalId);
 
-        const updatedDoc = { ...doc, goals: updatedGoals };
-        const newWeeklyGoals = [...prev.weeklyGoals];
-        newWeeklyGoals[docIdx] = updatedDoc;
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
+          const updatedDoc = { ...doc, goals: updatedGoals };
+          const newWeeklyGoals = [...prev.weeklyGoals];
+          newWeeklyGoals[docIdx] = updatedDoc;
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
 
-        return { ...prev, weeklyGoals: newWeeklyGoals, deletedEntityIds: updatedDeletedEntityIds };
-      },
-      { immediate: true }
+          return { ...prev, weeklyGoals: newWeeklyGoals, deletedEntityIds: updatedDeletedEntityIds };
+        },
+        { immediate: true, actionLabel: 'Weekly goal deletion', entityId: goalId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -4555,7 +4815,8 @@ export function useAppState() {
         newWeeklyGoals.unshift(newDoc);
       }
 
-      return { ...prev, weeklyGoals: newWeeklyGoals };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), carriedItem.id])).slice(-500);
+      return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
@@ -4572,7 +4833,8 @@ export function useAppState() {
         updateProfileNotificationPreferences(prev.currentUser.id, { notifSundayPlanning: nextVal });
       }
 
-      return { ...prev, currentUser: updatedUser };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.currentUser.id])).slice(-500);
+      return { ...prev, currentUser: updatedUser, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
@@ -4599,10 +4861,14 @@ export function useAppState() {
         createdAt: new Date().toISOString(),
       };
       setState(
-        (prev) => ({
-          ...prev,
-          goals: [newGoal, ...prev.goals],
-        }),
+        (prev) => {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newGoal.id])).slice(-500);
+          return {
+            ...prev,
+            goals: [newGoal, ...prev.goals],
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        },
         { immediate: true }
       );
       return newGoal;
@@ -4613,10 +4879,14 @@ export function useAppState() {
   const updateGoal = useCallback(
     (id: string, updates: Partial<Omit<Goal, 'id' | 'createdAt'>>) => {
       setState(
-        (prev) => ({
-          ...prev,
-          goals: prev.goals.map((g) => (g.id === id ? { ...g, ...updates } : g)),
-        }),
+        (prev) => {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+          return {
+            ...prev,
+            goals: prev.goals.map((g) => (g.id === id ? { ...g, ...updates } : g)),
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        },
         { immediate: true }
       );
     },
@@ -4624,19 +4894,21 @@ export function useAppState() {
   );
 
   const deleteGoal = useCallback((id: string) => {
-    setState(
-      (prev) => {
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
-        return {
-          ...prev,
-          // Unlink linked projects by setting their goalId to undefined
-          projects: prev.projects.map((p) => (p.goalId === id ? { ...p, goalId: undefined } : p)),
-          // Remove goal
-          goals: prev.goals.filter((g) => g.id !== id),
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+    return (
+      setState(
+        (prev) => {
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
+          return {
+            ...prev,
+            // Unlink linked projects by setting their goalId to undefined
+            projects: prev.projects.map((p) => (p.goalId === id ? { ...p, goalId: undefined } : p)),
+            // Remove goal
+            goals: prev.goals.filter((g) => g.id !== id),
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Goal deletion', entityId: id }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -4688,10 +4960,14 @@ export function useAppState() {
         createdAt: new Date().toISOString(),
       };
       setState(
-        (prev) => ({
-          ...prev,
-          projects: [newProject, ...prev.projects],
-        }),
+        (prev) => {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newProject.id])).slice(-500);
+          return {
+            ...prev,
+            projects: [newProject, ...prev.projects],
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        },
         { immediate: true }
       );
       return newProject;
@@ -4702,14 +4978,18 @@ export function useAppState() {
   const updateProject = useCallback(
     (id: string, updates: Partial<Omit<Project, 'id' | 'createdAt'>>) => {
       setState(
-        (prev) => ({
-          ...prev,
-          projects: prev.projects.map((p) => {
-            if (p.id !== id) return p;
-            const completedAt = resolveProjectCompletedAt(p.status, updates.status, p.completedAt, updates.completedAt);
-            return { ...p, ...updates, completedAt };
-          }),
-        }),
+        (prev) => {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+          return {
+            ...prev,
+            projects: prev.projects.map((p) => {
+              if (p.id !== id) return p;
+              const completedAt = resolveProjectCompletedAt(p.status, updates.status, p.completedAt, updates.completedAt);
+              return { ...p, ...updates, completedAt };
+            }),
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        },
         { immediate: true }
       );
     },
@@ -4755,6 +5035,7 @@ export function useAppState() {
           orderMap.set(p.id, idx);
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), targetProjectId])).slice(-500);
         return {
           ...prev,
           projects: prev.projects.map((p) => {
@@ -4763,6 +5044,7 @@ export function useAppState() {
             }
             return p;
           }),
+          unsyncedEntityIds: updatedUnsynced,
         };
       },
       { immediate: true }
@@ -4771,32 +5053,38 @@ export function useAppState() {
 
   const moveProjectStatus = useCallback((id: string, newStatus: ProjectStatus) => {
     setState(
-      (prev) => ({
-        ...prev,
-        projects: prev.projects.map((p) => {
-          if (p.id !== id) return p;
-          const completedAt = resolveProjectCompletedAt(p.status, newStatus, p.completedAt);
-          return { ...p, status: newStatus, completedAt };
-        }),
-      }),
+      (prev) => {
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+        return {
+          ...prev,
+          projects: prev.projects.map((p) => {
+            if (p.id !== id) return p;
+            const completedAt = resolveProjectCompletedAt(p.status, newStatus, p.completedAt);
+            return { ...p, status: newStatus, completedAt };
+          }),
+          unsyncedEntityIds: updatedUnsynced,
+        };
+      },
       { immediate: true }
     );
   }, []);
 
   const deleteProject = useCallback((id: string) => {
-    setState(
-      (prev) => {
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
-        return {
-          ...prev,
-          // Unlink linked tasks by setting their projectId to undefined
-          tasks: prev.tasks.map((t) => (t.projectId === id ? { ...t, projectId: undefined } : t)),
-          // Remove project
-          projects: prev.projects.filter((p) => p.id !== id),
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+    return (
+      setState(
+        (prev) => {
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
+          return {
+            ...prev,
+            // Unlink linked tasks by setting their projectId to undefined
+            tasks: prev.tasks.map((t) => (t.projectId === id ? { ...t, projectId: undefined } : t)),
+            // Remove project
+            projects: prev.projects.filter((p) => p.id !== id),
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Project deletion', entityId: id }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -4826,10 +5114,17 @@ export function useAppState() {
         subtasks,
         createdAt: new Date().toISOString(),
       };
-      setState((prev) => ({
-        ...prev,
-        tasks: [newTask, ...prev.tasks],
-      }));
+      setState(
+        (prev) => {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newTask.id])).slice(-500);
+          return {
+            ...prev,
+            tasks: [newTask, ...prev.tasks],
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        },
+        { immediate: true }
+      );
       return newTask;
     },
     []
@@ -4837,63 +5132,77 @@ export function useAppState() {
 
   const updateTask = useCallback(
     (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => {
-      setState((prev) => ({
-        ...prev,
-        tasks: prev.tasks.map((t) => {
-          if (t.id !== id) return t;
-          const updatedSubtasks = updates.subtasks !== undefined ? updates.subtasks : t.subtasks;
-          const updatedCompleted = (updatedSubtasks && updatedSubtasks.length > 0)
-            ? updatedSubtasks.every((st) => st.completed)
-            : updates.completed !== undefined
-            ? updates.completed
-            : t.completed;
-          return { ...t, ...updates, completed: updatedCompleted };
-        }),
-      }));
+      setState((prev) => {
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) => {
+            if (t.id !== id) return t;
+            const updatedSubtasks = updates.subtasks !== undefined ? updates.subtasks : t.subtasks;
+            const updatedCompleted = (updatedSubtasks && updatedSubtasks.length > 0)
+              ? updatedSubtasks.every((st) => st.completed)
+              : updates.completed !== undefined
+              ? updates.completed
+              : t.completed;
+            return { ...t, ...updates, completed: updatedCompleted };
+          }),
+          unsyncedEntityIds: updatedUnsynced,
+        };
+      });
     },
     []
   );
 
   const toggleTaskCompleted = useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => {
-        if (t.id !== id) return t;
-        // If task has subtasks, do not allow manual toggle directly (completion is driven by subtasks)
-        if ((t.subtasks || []).length > 0) return t;
-        return { ...t, completed: !t.completed };
-      }),
-    }));
+    setState((prev) => {
+      const target = prev.tasks.find((t) => t.id === id);
+      if (!target || (target.subtasks || []).length > 0) return prev;
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) => {
+          if (t.id !== id) return t;
+          return { ...t, completed: !t.completed };
+        }),
+        unsyncedEntityIds: updatedUnsynced,
+      };
+    });
   }, []);
 
   const deleteTask = useCallback((id: string) => {
-    setState(
-      (prev) => {
-        const targetTask = prev.tasks.find((t) => t.id === id);
-        const subtaskIds = (targetTask?.subtasks || []).map((s) => s.id);
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id, ...subtaskIds].slice(-500);
-        return {
-          ...prev,
-          tasks: prev.tasks.filter((t) => t.id !== id),
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+    return (
+      setState(
+        (prev) => {
+          const targetTask = prev.tasks.find((t) => t.id === id);
+          const subtaskIds = (targetTask?.subtasks || []).map((s) => s.id);
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id, ...subtaskIds].slice(-500);
+          return {
+            ...prev,
+            tasks: prev.tasks.filter((t) => t.id !== id),
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Task deletion', entityId: id }
+      ) || Promise.resolve()
     );
   }, []);
 
   const toggleSubtask = useCallback((taskId: string, subtaskId: string) => {
-    setState((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => {
-        if (t.id !== taskId) return t;
-        const updatedSubtasks = (t.subtasks || []).map((st) =>
-          st.id === subtaskId ? { ...st, completed: !st.completed } : st
-        );
-        const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
-        return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
-      }),
-    }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), taskId, subtaskId])).slice(-500);
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) => {
+          if (t.id !== taskId) return t;
+          const updatedSubtasks = (t.subtasks || []).map((st) =>
+            st.id === subtaskId ? { ...st, completed: !st.completed } : st
+          );
+          const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
+          return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
+        }),
+        unsyncedEntityIds: updatedUnsynced,
+      };
+    });
   }, []);
 
   const addSubtask = useCallback((taskId: string, title: string) => {
@@ -4903,37 +5212,43 @@ export function useAppState() {
       title: title.trim(),
       completed: false,
     };
-    setState((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) => {
-        if (t.id !== taskId) return t;
-        const updatedSubtasks = [...(t.subtasks || []), newSubtask];
-        const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
-        return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
-      }),
-    }));
+    setState((prev) => {
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), taskId, newSubtask.id])).slice(-500);
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) => {
+          if (t.id !== taskId) return t;
+          const updatedSubtasks = [...(t.subtasks || []), newSubtask];
+          const allCompleted = updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed);
+          return { ...t, subtasks: updatedSubtasks, completed: allCompleted };
+        }),
+        unsyncedEntityIds: updatedUnsynced,
+      };
+    });
   }, []);
 
   const deleteSubtask = useCallback((taskId: string, subtaskId: string) => {
-    setState(
-      (prev) => {
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), subtaskId].slice(-500);
-        return {
-          ...prev,
-          tasks: prev.tasks.map((t) => {
-            if (t.id !== taskId) return t;
-            const updatedSubtasks = (t.subtasks || []).filter((st) => st.id !== subtaskId);
-            const allCompleted = updatedSubtasks.length > 0 ? updatedSubtasks.every((st) => st.completed) : t.completed;
-            return {
-              ...t,
-              subtasks: updatedSubtasks,
-              completed: allCompleted,
-            };
-          }),
-          deletedEntityIds: updatedDeletedEntityIds,
-        };
-      },
-      { immediate: true }
+    return (
+      setState(
+        (prev) => {
+          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), subtaskId].slice(-500);
+          return {
+            ...prev,
+            tasks: prev.tasks.map((t) => {
+              if (t.id !== taskId) return t;
+              const updatedSubtasks = (t.subtasks || []).filter((st) => st.id !== subtaskId);
+              const allCompleted = updatedSubtasks.length > 0 ? updatedSubtasks.every((st) => st.completed) : t.completed;
+              return {
+                ...t,
+                subtasks: updatedSubtasks,
+                completed: allCompleted,
+              };
+            }),
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
+        },
+        { immediate: true, actionLabel: 'Subtask deletion', entityId: subtaskId }
+      ) || Promise.resolve()
     );
   }, []);
 
@@ -5019,9 +5334,11 @@ export function useAppState() {
           nextReviewDueAt,
         };
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), (newPlan as ImprovementPlan).id])).slice(-500);
         return {
           ...prev,
           improvementPlans: [newPlan, ...prev.improvementPlans],
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
 
@@ -5050,7 +5367,8 @@ export function useAppState() {
 
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5076,7 +5394,8 @@ export function useAppState() {
 
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5114,7 +5433,8 @@ export function useAppState() {
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
 
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5154,7 +5474,8 @@ export function useAppState() {
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
 
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5180,7 +5501,8 @@ export function useAppState() {
 
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -5216,7 +5538,8 @@ export function useAppState() {
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -5253,7 +5576,8 @@ export function useAppState() {
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -5282,7 +5606,8 @@ export function useAppState() {
 
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId, noteId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5327,7 +5652,8 @@ export function useAppState() {
 
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId, newNote.id])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5446,7 +5772,8 @@ export function useAppState() {
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
 
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedPlan) {
@@ -5502,7 +5829,8 @@ export function useAppState() {
         };
         const updatedPlans = [...prev.improvementPlans];
         updatedPlans[idx] = updatedPlan;
-        return { ...prev, improvementPlans: updatedPlans };
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+        return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
       });
 
       if (updatedPlan) {
@@ -5534,7 +5862,8 @@ export function useAppState() {
       syncBroadcaster.broadcast('PLAN_UPDATED', { id: planId, copyCount: newCount });
 
       if (!planFound && !cached) return prev;
-      return { ...prev, improvementPlans: updatedPlans };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
+      return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
   }, []);
 
@@ -5612,10 +5941,14 @@ export function useAppState() {
         nextReviewDueAt: originalPlan.nextReviewDueAt || (originalPlan.planType === 'vision' ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null),
       };
 
-      setState((prev) => ({
-        ...prev,
-        followedPlans: [createdFollow, ...prev.followedPlans],
-      }));
+      setState((prev) => {
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), createdFollow.id])).slice(-500);
+        return {
+          ...prev,
+          followedPlans: [createdFollow, ...prev.followedPlans],
+          unsyncedEntityIds: updatedUnsynced,
+        };
+      });
 
       syncFollowedPlanToSupabase(createdFollow);
     } catch (err: any) {
@@ -5651,7 +5984,8 @@ export function useAppState() {
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      nextState = { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId])).slice(-500);
+      nextState = { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
       return nextState;
     });
 
@@ -5678,7 +6012,8 @@ export function useAppState() {
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
 
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -5721,7 +6056,8 @@ export function useAppState() {
 
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId, newNote.id])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -5757,7 +6093,8 @@ export function useAppState() {
 
       const updatedFollows = [...prev.followedPlans];
       updatedFollows[idx] = updatedFollow;
-      return { ...prev, followedPlans: updatedFollows };
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), followId, noteId])).slice(-500);
+      return { ...prev, followedPlans: updatedFollows, unsyncedEntityIds: updatedUnsynced };
     });
 
     if (updatedFollow) {
@@ -5835,9 +6172,11 @@ export function useAppState() {
       const updatedPlans = [...prev.improvementPlans];
       updatedPlans[idx] = updatedPlan;
 
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
       nextState = {
         ...prev,
         improvementPlans: updatedPlans,
+        unsyncedEntityIds: updatedUnsynced,
       };
 
       return nextState;
@@ -6751,12 +7090,14 @@ export function useAppState() {
       };
       setState((prev) => {
         const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newActivity.id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
             ...currentTT,
             activities: [...(currentTT.activities || []), newActivity],
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
       return newActivity;
@@ -6768,6 +7109,7 @@ export function useAppState() {
     (id: string, updates: Partial<TimeTrackerActivity>) => {
       setState((prev) => {
         const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -6776,6 +7118,7 @@ export function useAppState() {
               a.id === id ? { ...a, ...updates, id: a.id } : a
             ),
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -6867,12 +7210,14 @@ export function useAppState() {
           return t;
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newTemplate.id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
             ...currentTT,
             templates: [...otherTemplates, newTemplate],
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
       return newTemplate;
@@ -6930,12 +7275,14 @@ export function useAppState() {
           return t;
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
             ...currentTT,
             templates: updatedTemplates,
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -6984,12 +7331,14 @@ export function useAppState() {
           }
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), templateId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
             ...currentTT,
             templates: updatedTemplates,
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7034,6 +7383,7 @@ export function useAppState() {
               newTemplates = [...newTemplates, defaultTpl];
             }
           }
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), id])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7042,6 +7392,7 @@ export function useAppState() {
             },
             deletedEntityIds: updatedDeleted,
             restoredEntityIds: updatedRestored,
+            unsyncedEntityIds: updatedUnsynced,
           };
         },
         { immediate: true }
@@ -7078,6 +7429,7 @@ export function useAppState() {
           const nextBlocks = [...prevDailyBlocks, createdBlock].sort(
             (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
           );
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), createdBlock.id])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7087,6 +7439,7 @@ export function useAppState() {
                 [dateKey]: nextBlocks,
               },
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         });
 
@@ -7133,6 +7486,7 @@ export function useAppState() {
           (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
         );
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), createdPart1.id, createdPart2.id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7143,6 +7497,7 @@ export function useAppState() {
               [nextDayKey]: nextDaySortedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
 
@@ -7183,6 +7538,7 @@ export function useAppState() {
             .map((b) => (b.id === blockId ? updatedSingleBlock : b))
             .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7192,6 +7548,7 @@ export function useAppState() {
                 [dateKey]: nextBlocks,
               },
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         });
         return;
@@ -7241,6 +7598,7 @@ export function useAppState() {
           (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
         );
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId, createdPart2.id])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7251,6 +7609,7 @@ export function useAppState() {
               [nextDayKey]: nextDaySortedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7355,6 +7714,7 @@ export function useAppState() {
           // UN-COMPLETING: Use cascade reversion to restore this block and any blocks pulled forward because of it
           const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7364,6 +7724,7 @@ export function useAppState() {
                 [dateKey]: updatedBlocks,
               },
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         }
 
@@ -7402,6 +7763,7 @@ export function useAppState() {
           };
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7411,6 +7773,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7431,6 +7794,7 @@ export function useAppState() {
           // UN-SKIPPING: Use cascade reversion to restore this block and any blocks pulled forward because of it
           const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7440,6 +7804,7 @@ export function useAppState() {
                 [dateKey]: updatedBlocks,
               },
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         }
 
@@ -7478,6 +7843,7 @@ export function useAppState() {
           };
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7487,6 +7853,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7503,6 +7870,7 @@ export function useAppState() {
 
         const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7512,6 +7880,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7612,6 +7981,7 @@ export function useAppState() {
             (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
           );
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7621,6 +7991,7 @@ export function useAppState() {
                 [dateKey]: sortedBlocks,
               },
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         },
         { immediate: true }
@@ -7675,6 +8046,7 @@ export function useAppState() {
           })
           .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7684,6 +8056,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7709,6 +8082,7 @@ export function useAppState() {
           };
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7718,6 +8092,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7748,6 +8123,7 @@ export function useAppState() {
           };
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7757,6 +8133,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7784,6 +8161,7 @@ export function useAppState() {
           };
         });
 
+        const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
         return {
           ...prev,
           timeTracker: {
@@ -7793,6 +8171,7 @@ export function useAppState() {
               [dateKey]: updatedBlocks,
             },
           },
+          unsyncedEntityIds: updatedUnsynced,
         };
       });
     },
@@ -7867,6 +8246,7 @@ export function useAppState() {
 
           const updatedClearedDates = (prevTT.clearedDates || []).filter((d) => d !== dateKey);
 
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), ...updatedBlocks.map((b) => b.id)])).slice(-500);
           return {
             ...prev,
             timeTracker: {
@@ -7877,6 +8257,7 @@ export function useAppState() {
               },
               clearedDates: updatedClearedDates,
             },
+            unsyncedEntityIds: updatedUnsynced,
           };
         },
         { immediate: true }
