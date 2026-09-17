@@ -1242,6 +1242,12 @@ export function useAppState() {
         console.error('[SYNC] Error syncing state on reconnection/visibility:', e);
       } finally {
         isSyncing = false;
+        // OUTBOUND RETRY PUSH: If there are unsynced entities created/modified offline, trigger a push
+        // regardless of whether the inbound fetch succeeded, had no data, or failed.
+        if (stateRef.current.unsyncedEntityIds && stateRef.current.unsyncedEntityIds.length > 0) {
+          console.log('[SYNC] Triggering outbound retry-push for unsynced entities:', stateRef.current.unsyncedEntityIds);
+          setState((prev) => ({ ...prev }), { immediate: true, actionLabel: 'Sync pending changes' });
+        }
       }
     };
 
