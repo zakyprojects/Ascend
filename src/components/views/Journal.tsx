@@ -47,7 +47,7 @@ export interface MoodMeta {
   borderLeftClass: string;
 }
 
-export const MOODS: MoodMeta[] = [
+const MOODS: MoodMeta[] = [
   {
     value: 'sad',
     label: 'Sad',
@@ -94,7 +94,7 @@ export const MOODS: MoodMeta[] = [
   },
 ];
 
-export const MOOD_MAP: Record<Mood, MoodMeta> = MOODS.reduce((acc, m) => {
+const MOOD_MAP: Record<Mood, MoodMeta> = MOODS.reduce((acc, m) => {
   acc[m.value] = m;
   return acc;
 }, {} as Record<Mood, MoodMeta>);

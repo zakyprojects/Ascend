@@ -5,6 +5,7 @@ import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import {
   fetchUserDataWithStatusFromSupabase,
   setUserDataWatermark,
+  setUserHydrationComplete,
   computeStateDataWeight,
   fetchPartnerInvitesSupabase,
   fetchPartnershipSupabase,
@@ -481,6 +482,9 @@ export async function hydrateUserSession(
   } catch (e) {
     console.warn('Skipped loading partner social data or plans during hydration:', e);
   }
+
+  // Mark session hydration fully complete (including relational-table enrichment) for floor exemption eligibility
+  setUserHydrationComplete(userId, true);
 
   // Clear stale guest localStorage data upon authenticated user hydration
   if (typeof window !== 'undefined') {

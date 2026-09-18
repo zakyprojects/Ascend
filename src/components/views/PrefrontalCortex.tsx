@@ -61,7 +61,7 @@ import { useAsyncActionKey } from '@/lib/useAsyncAction';
 type PFCTab = 'focus' | 'decision' | 'emotion';
 
 // Tier 1: Exact System-Default Category ID / Name Match
-export const CATEGORY_EXACT_MESSAGES: Record<string, string> = {
+const CATEGORY_EXACT_MESSAGES: Record<string, string> = {
   'act-sleep': 'Rest deeply and recharge for tomorrow.',
   'act-deep-work': 'Zero distractions. Immerse yourself in the zone.',
   'act-praying': 'Find presence, peace, and spiritual grounding.',
@@ -75,7 +75,7 @@ export const CATEGORY_EXACT_MESSAGES: Record<string, string> = {
 };
 
 // Tier 2: Generic Ascend Module Match (For any custom category linked to an Ascend module)
-export const MODULE_CONTEXTUAL_MESSAGES: Record<string, string> = {
+const MODULE_CONTEXTUAL_MESSAGES: Record<string, string> = {
   'Deep Focus': 'Protect your attention and stay in deep flow.',
   'Exercise': 'Channel your energy and stay disciplined.',
   'Reading': 'Absorb insights and cultivate deep reflection.',
@@ -84,7 +84,7 @@ export const MODULE_CONTEXTUAL_MESSAGES: Record<string, string> = {
   'Recovery': 'Relax, restore, and replenish your cognitive energy.',
 };
 
-export function getBlockContextualMessage(activity?: { id?: string; name: string; ascendModule?: string } | null): string {
+function getBlockContextualMessage(activity?: { id?: string; name: string; ascendModule?: string } | null): string {
   if (!activity) return 'Stay focused and intentional with your time.';
 
   // 1. Exact default ID match
@@ -111,7 +111,7 @@ export function getBlockContextualMessage(activity?: { id?: string; name: string
 }
 
 // Early Completion Messages - Tier 1: Exact Default Category ID Match
-export const EARLY_COMPLETION_EXACT_MESSAGES: Record<string, string> = {
+const EARLY_COMPLETION_EXACT_MESSAGES: Record<string, string> = {
   'act-deep-work': "Great focus session! Take a breath or dive into what's next.",
   'act-exercise': 'Workout completed ahead of schedule! Hydrate and recover.',
   'act-reading': 'Insights captured early. Let the ideas settle.',
@@ -125,7 +125,7 @@ export const EARLY_COMPLETION_EXACT_MESSAGES: Record<string, string> = {
 };
 
 // Early Completion Messages - Tier 2: Module Match
-export const EARLY_COMPLETION_MODULE_MESSAGES: Record<string, string> = {
+const EARLY_COMPLETION_MODULE_MESSAGES: Record<string, string> = {
   'Deep Focus': 'Finished in the zone! Enjoy this well-earned buffer.',
   'Exercise': 'Physical training locked in early. Rest up.',
   'Reading': 'Reflection time earned. Absorb what you learned.',
@@ -134,7 +134,7 @@ export const EARLY_COMPLETION_MODULE_MESSAGES: Record<string, string> = {
   'Recovery': 'Recharged early and ready for what is ahead.',
 };
 
-export function getEarlyCompletionContextualMessage(activity?: { id?: string; name: string; ascendModule?: string } | null): string {
+function getEarlyCompletionContextualMessage(activity?: { id?: string; name: string; ascendModule?: string } | null): string {
   if (!activity) return 'Finished early! Enjoy the bonus buffer in your schedule.';
 
   if (activity.id && EARLY_COMPLETION_EXACT_MESSAGES[activity.id]) {
@@ -157,7 +157,7 @@ export function getEarlyCompletionContextualMessage(activity?: { id?: string; na
 }
 
 // Tone-Aware Skip Toast Helper
-export function getSkipToastMessage(activity?: { ascendModule?: string; name?: string } | null): { title: string; subtitle: string } {
+function getSkipToastMessage(activity?: { ascendModule?: string; name?: string } | null): { title: string; subtitle: string } {
   const isHighValue = Boolean(activity?.ascendModule);
   if (isHighValue) {
     return {
@@ -172,7 +172,7 @@ export function getSkipToastMessage(activity?: { ascendModule?: string; name?: s
 }
 
 // Gap State Skip Messages - Tier 1: Exact Default Category ID Match
-export const SKIP_EXACT_MESSAGES: Record<string, string> = {
+const SKIP_EXACT_MESSAGES: Record<string, string> = {
   'act-deep-work': 'Session skipped. Whenever you are ready, the work will be there.',
   'act-exercise': 'Workout skipped this time — your next session is still ahead of you.',
   'act-reading': 'Reading paused. The pages will be waiting when you return.',
@@ -186,7 +186,7 @@ export const SKIP_EXACT_MESSAGES: Record<string, string> = {
 };
 
 // Gap State Skip Messages - Tier 2: Module Match
-export const SKIP_MODULE_MESSAGES: Record<string, string> = {
+const SKIP_MODULE_MESSAGES: Record<string, string> = {
   'Deep Focus': 'Focus session skipped. Regroup and dive back in next round.',
   'Exercise': 'Physical training skipped. Rest up and stay hydrated.',
   'Reading': 'Reading block skipped. Pick up insights on the next pass.',
@@ -195,7 +195,7 @@ export const SKIP_MODULE_MESSAGES: Record<string, string> = {
   'Recovery': 'Recovery skipped. Take care of your energy as you move forward.',
 };
 
-export function getSkipContextualMessage(activity?: { id?: string; name: string; ascendModule?: string } | null): string {
+function getSkipContextualMessage(activity?: { id?: string; name: string; ascendModule?: string } | null): string {
   if (!activity) return 'Block skipped. Regroup and prepare for what is ahead.';
 
   if (activity.id && SKIP_EXACT_MESSAGES[activity.id]) {
@@ -397,6 +397,7 @@ function FocusTimerSubmodule({
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [taskName, setTaskName] = useState('Deep Work');
   const [selectedSkillId, setSelectedSkillId] = useState<string>('');
+  const { logFocusSession } = store;
 
   // Dual Mode Timer & Live Schedule Sync State
   const [timerMode, setTimerMode] = useState<'manual' | 'sync'>(() => {
@@ -790,32 +791,35 @@ function FocusTimerSubmodule({
   }, []);
 
   // Completion trigger handler
-  const handleSessionComplete = (session: PersistedFocusSession) => {
-    void sendCompletionNotification(session.mode, session.taskName, session.totalSessionMinutes);
+  const handleSessionComplete = useCallback(
+    (session: PersistedFocusSession) => {
+      void sendCompletionNotification(session.mode, session.taskName, session.totalSessionMinutes);
 
-    localStorage.removeItem(FOCUS_STORAGE_KEY);
-    sessionStorage.removeItem(FOCUS_SENTINEL_KEY);
-    setActiveSession(null);
-    setIsRunning(false);
+      localStorage.removeItem(FOCUS_STORAGE_KEY);
+      sessionStorage.removeItem(FOCUS_SENTINEL_KEY);
+      setActiveSession(null);
+      setIsRunning(false);
 
-    if (session.mode === 'focus') {
-      store.logFocusSession(session.taskName, session.totalSessionMinutes, session.skillId || undefined);
+      if (session.mode === 'focus') {
+        logFocusSession(session.taskName, session.totalSessionMinutes, session.skillId || undefined);
 
-      setCompletedSessionData({
-        taskName: session.taskName,
-        durationMinutes: session.totalSessionMinutes,
-        skillId: session.skillId,
-      });
-      setReflectionText('');
-      setReflectionModalOpen(true);
+        setCompletedSessionData({
+          taskName: session.taskName,
+          durationMinutes: session.totalSessionMinutes,
+          skillId: session.skillId,
+        });
+        setReflectionText('');
+        setReflectionModalOpen(true);
 
-      setMode('break');
-      setTimeLeft(session.breakMinutes * 60);
-    } else {
-      setMode('focus');
-      setTimeLeft((session.isCustom ? session.focusMinutes : focusMinutes) * 60);
-    }
-  };
+        setMode('break');
+        setTimeLeft(session.breakMinutes * 60);
+      } else {
+        setMode('focus');
+        setTimeLeft((session.isCustom ? session.focusMinutes : focusMinutes) * 60);
+      }
+    },
+    [focusMinutes, logFocusSession]
+  );
 
   // Timer Interval Tick
   useEffect(() => {
@@ -832,7 +836,7 @@ function FocusTimerSubmodule({
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRunning, activeSession]);
+  }, [isRunning, activeSession, handleSessionComplete]);
 
   // Page Visibility Listener (visibilitychange recomputes timestamp immediately)
   useEffect(() => {
@@ -847,7 +851,7 @@ function FocusTimerSubmodule({
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [activeSession]);
+  }, [activeSession, handleSessionComplete]);
 
   // beforeunload Listener (Native browser confirmation prompt on tab close/reload)
   useEffect(() => {

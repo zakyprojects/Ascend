@@ -143,6 +143,24 @@ export function computeStateDataWeight(state: Partial<AppState> | null | undefin
 }
 
 const userWatermarkMap = new Map<string, UserDataWeight>();
+const userHydrationCompleteMap = new Map<string, boolean>();
+
+export function setUserHydrationComplete(userId: string, isComplete: boolean = true) {
+  if (!userId) return;
+  if (isComplete) {
+    userHydrationCompleteMap.set(userId, true);
+  } else {
+    userHydrationCompleteMap.delete(userId);
+  }
+}
+
+export function isUserHydrationComplete(userId: string): boolean {
+  return userHydrationCompleteMap.get(userId) === true;
+}
+
+export function clearUserHydrationComplete(userId: string) {
+  userHydrationCompleteMap.delete(userId);
+}
 
 export function setUserDataWatermark(userId: string, stateOrWeight: AppState | UserDataWeight) {
   if (!userId) return;
@@ -158,12 +176,19 @@ export function setUserDataWatermark(userId: string, stateOrWeight: AppState | U
   }
 }
 
+export function resetUserDataWatermark(userId: string, stateOrWeight: AppState | UserDataWeight) {
+  if (!userId) return;
+  const weight = 'itemCount' in stateOrWeight ? stateOrWeight : computeStateDataWeight(stateOrWeight);
+  userWatermarkMap.set(userId, weight);
+}
+
 export function getUserDataWatermark(userId: string): UserDataWeight | undefined {
   return userWatermarkMap.get(userId);
 }
 
 export function clearUserDataWatermark(userId: string) {
   userWatermarkMap.delete(userId);
+  userHydrationCompleteMap.delete(userId);
 }
 
 export async function fetchUserDataWithStatusFromSupabase(userId: string): Promise<{
@@ -198,7 +223,11 @@ export async function fetchUserDataFromSupabase(userId: string): Promise<AppStat
   return res.state;
 }
 
-export async function saveUserDataToSupabase(userId: string, state: AppState): Promise<AppState | null> {
+export async function saveUserDataToSupabase(
+  userId: string,
+  state: AppState,
+  options?: { allowDestructiveWipe?: boolean }
+): Promise<AppState | null> {
   if (!isSupabaseConfigured) return null;
 
   // SAFETY CHECK 1: Ensure user ID matches the logged-in state user
@@ -224,33 +253,45 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
   // SAFETY CHECK 2: Comprehensive Data-Loss Protection Safeguard
   const incomingWeight = computeStateDataWeight(finalState);
   const watermark = userWatermarkMap.get(userId);
+  const isHydrated = isUserHydrationComplete(userId);
+  const allowDestructive = Boolean(options?.allowDestructiveWipe);
 
   // Check 2A: Active in-memory session watermark guard
-  if (watermark && watermark.itemCount > 0) {
-    // Block total wipe: incoming is empty (0 items)
-    if (incomingWeight.itemCount === 0) {
-      console.error('[CRITICAL GUARD] Blocked catastrophic zero-out wipe to user_data for established account:', {
-        userId,
-        watermark,
-        incomingWeight,
-      });
-      throw new GuardBlockedError(
-        'Blocked catastrophic zero-out wipe to user_data for established account',
-        'ZERO_OUT_WIPE'
-      );
-    }
+  if (!allowDestructive && watermark && watermark.itemCount > 0) {
+    // Floor exemption: If the account has <= 3 items total AND hydration is fully complete,
+    // allow legitimate low-data zero-outs / mass deletions without blocking.
+    const isFloorExempt = watermark.itemCount <= 3 && isHydrated;
 
-    // Block massive catastrophic entity drop (>70% vanished at once on accounts with >= 3 items)
-    if (watermark.itemCount >= 3 && incomingWeight.itemCount < Math.ceil(watermark.itemCount * 0.3)) {
-      console.error('[CRITICAL GUARD] Blocked abnormal massive data drop to user_data:', {
-        userId,
-        watermarkItemCount: watermark.itemCount,
-        incomingItemCount: incomingWeight.itemCount,
-      });
-      throw new GuardBlockedError(
-        'Blocked abnormal massive data drop to user_data (>70% drop)',
-        'ABNORMAL_DROP'
-      );
+    if (!isFloorExempt) {
+      // Block total wipe: incoming is empty (0 items)
+      if (incomingWeight.itemCount === 0) {
+        console.error('[CRITICAL GUARD] Blocked catastrophic zero-out wipe to user_data for established account:', {
+          userId,
+          watermark,
+          incomingWeight,
+          isHydrated,
+        });
+        throw new GuardBlockedError(
+          'Blocked catastrophic zero-out wipe to user_data for established account',
+          'ZERO_OUT_WIPE',
+          true
+        );
+      }
+
+      // Block massive catastrophic entity drop (>70% vanished at once on accounts with >= 3 items)
+      if (watermark.itemCount >= 3 && incomingWeight.itemCount < Math.ceil(watermark.itemCount * 0.3)) {
+        console.error('[CRITICAL GUARD] Blocked abnormal massive data drop to user_data:', {
+          userId,
+          watermarkItemCount: watermark.itemCount,
+          incomingItemCount: incomingWeight.itemCount,
+          isHydrated,
+        });
+        throw new GuardBlockedError(
+          'Blocked abnormal massive data drop to user_data (>70% drop)',
+          'ABNORMAL_DROP',
+          true
+        );
+      }
     }
   }
 
@@ -268,7 +309,8 @@ export async function saveUserDataToSupabase(userId: string, state: AppState): P
         setUserDataWatermark(userId, existingWeight);
         throw new GuardBlockedError(
           'Blocked cold zero-out wipe over existing rich database state',
-          'COLD_ZERO_OUT'
+          'COLD_ZERO_OUT',
+          false
         );
       }
     }

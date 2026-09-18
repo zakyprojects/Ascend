@@ -389,7 +389,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       supabase.removeChannel(followsChannel);
       unsubscribeBroadcast();
     };
-  }, [activeTab]);
+  }, [activeTab, executeLoadPlans]);
 
   // Merge public plans from store and remote database
   const publicDiscoverPlans = (() => {

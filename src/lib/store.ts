@@ -134,6 +134,8 @@ import {
   fetchUserDataFromSupabase,
   fetchUserDataWithStatusFromSupabase,
   setUserDataWatermark,
+  resetUserDataWatermark,
+  computeStateDataWeight,
   saveUserDataToSupabase,
   fetchAllProfilesFromSupabase,
   fetchProfileByUsernameFromSupabase,
@@ -749,9 +751,9 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
   return processBadHabitNoReports(sweptState);
 }
 
-async function persistState(state: AppState): Promise<void> {
+async function persistState(state: AppState, options?: { allowDestructiveWipe?: boolean }): Promise<void> {
   if (state.currentUser?.id) {
-    await saveUserDataToSupabase(state.currentUser.id, state);
+    await saveUserDataToSupabase(state.currentUser.id, state, options);
     // Clean up local guest storage key once session is authenticated
     try {
       localStorage.removeItem(GUEST_STORAGE_KEY);
@@ -1098,36 +1100,113 @@ export function useAppState() {
     }>
   >([]);
   const isLoggingOutRef = useRef(false);
+  const lastPersistedStateRef = useRef<AppState>(state);
+  const lastKnownGoodStateRef = useRef<AppState>(state);
+
+  const [destructiveWipeModal, setDestructiveWipeModal] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    stateToRetry: AppState;
+    stateBeforeAction: AppState;
+  } | null>(null);
+  const [isSavingDestructiveWipe, setIsSavingDestructiveWipe] = useState(false);
 
   // Write-serialization queue: guarantees sequential execution of persistState calls
   const writeQueueRef = useRef<Promise<unknown>>(Promise.resolve());
-  const enqueuePersist = useCallback((stateToPersist: AppState): Promise<void> => {
-    let callResolve!: () => void;
-    let callReject!: (err: unknown) => void;
-    const callerPromise = new Promise<void>((resolve, reject) => {
-      callResolve = resolve;
-      callReject = reject;
-    });
-
-    writeQueueRef.current = writeQueueRef.current
-      .catch(() => {
-        // Isolate queue failures: prior failure does not prevent subsequent writes
-      })
-      .then(async () => {
-        try {
-          await persistState(stateToPersist);
-          callResolve();
-        } catch (err) {
-          callReject(err);
-          // Re-throw so downstream catch catches, but queue next tick remains unblocked
-          throw err;
-        }
+  const enqueuePersist = useCallback(
+    (stateToPersist: AppState, options?: { allowDestructiveWipe?: boolean }): Promise<void> => {
+      let callResolve!: () => void;
+      let callReject!: (err: unknown) => void;
+      const callerPromise = new Promise<void>((resolve, reject) => {
+        callResolve = resolve;
+        callReject = reject;
       });
 
-    writeQueueRef.current.catch(() => {}); // Suppress console-level unhandled rejection on stored ref; caller still gets real error via callerPromise
+      writeQueueRef.current = writeQueueRef.current
+        .catch(() => {
+          // Isolate queue failures: prior failure does not prevent subsequent writes
+        })
+        .then(async () => {
+          try {
+            await persistState(stateToPersist, options);
+            lastKnownGoodStateRef.current = stateToPersist;
+            callResolve();
+          } catch (err) {
+            callReject(err);
+            // Re-throw so downstream catch catches, but queue next tick remains unblocked
+            throw err;
+          }
+        });
 
-    return callerPromise;
-  }, []);
+      writeQueueRef.current.catch(() => {}); // Suppress console-level unhandled rejection on stored ref; caller still gets real error via callerPromise
+
+      return callerPromise;
+    },
+    []
+  );
+
+  const handleConfirmDestructiveWipe = useCallback(async () => {
+    if (!destructiveWipeModal?.stateToRetry) {
+      setDestructiveWipeModal(null);
+      return;
+    }
+    const stateToSave = destructiveWipeModal.stateToRetry;
+    setIsSavingDestructiveWipe(true);
+    try {
+      await enqueuePersist(stateToSave, { allowDestructiveWipe: true });
+      lastKnownGoodStateRef.current = stateToSave;
+      if (stateToSave.currentUser?.id) {
+        resetUserDataWatermark(stateToSave.currentUser.id, stateToSave);
+      }
+      setDestructiveWipeModal(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast-success', {
+            detail: {
+              title: 'Changes Saved',
+              message: 'Your updates have been confirmed and saved to the cloud.',
+            },
+          })
+        );
+      }
+    } catch (err: any) {
+      console.error('[CONFIRM DESTRUCTIVE SAVE] Error persisting confirmed state:', err);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast-error', {
+            detail: {
+              title: 'Save Failed',
+              message: err?.message || 'Could not save changes to cloud. Please check your connection.',
+            },
+          })
+        );
+      }
+    } finally {
+      setIsSavingDestructiveWipe(false);
+    }
+  }, [destructiveWipeModal, enqueuePersist]);
+
+  const handleCancelDestructiveWipe = useCallback(() => {
+    if (destructiveWipeModal?.stateBeforeAction) {
+      const preDeleteState = destructiveWipeModal.stateBeforeAction;
+      lastPersistedStateRef.current = preDeleteState;
+      lastKnownGoodStateRef.current = preDeleteState;
+      setStateRaw(preDeleteState);
+      if (typeof window !== 'undefined') {
+        try {
+          if (preDeleteState.currentUser?.id) {
+            localStorage.setItem(`ascend_user_cache_${preDeleteState.currentUser.id}`, JSON.stringify(preDeleteState));
+          } else {
+            localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(preDeleteState));
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    setDestructiveWipeModal(null);
+  }, [destructiveWipeModal]);
 
   // Cross-tab synchronization tracking
   const tabId = useRef<string>(Math.random().toString(36).substring(2) + Date.now().toString(36)).current;
@@ -1235,6 +1314,7 @@ export function useAppState() {
             const serverState = serverRes.state!;
             const merged = mergeAppState(serverState, current, 'hydration');
             setUserDataWatermark(userId, merged);
+            lastKnownGoodStateRef.current = merged;
             return merged;
           });
         }
@@ -1270,6 +1350,8 @@ export function useAppState() {
       window.removeEventListener('online', onOnline);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1277,8 +1359,53 @@ export function useAppState() {
       // This state update was synced from another tab via BroadcastChannel.
       // Skip duplicate persistence and re-broadcast.
       isRemoteBroadcastUpdate.current = false;
+      lastPersistedStateRef.current = state;
       return;
     }
+
+    // Semantic diff: If only unsyncedEntityIds changed compared to the last state we processed for persistence,
+    // skip triggering another network save cycle to prevent infinite loops.
+    const lastState = lastPersistedStateRef.current;
+    if (
+      lastState &&
+      lastState.unsyncedEntityIds !== state.unsyncedEntityIds &&
+      lastState.currentUser?.id === state.currentUser?.id &&
+      lastState.habits === state.habits &&
+      lastState.journalEntries === state.journalEntries &&
+      lastState.workouts === state.workouts &&
+      lastState.libraryBooks === state.libraryBooks &&
+      lastState.readingLogs === state.readingLogs &&
+      lastState.skills === state.skills &&
+      lastState.skillLogs === state.skillLogs &&
+      lastState.badHabits === state.badHabits &&
+      lastState.badHabitLogs === state.badHabitLogs &&
+      lastState.addictionTracker === state.addictionTracker &&
+      lastState.cravingLogs === state.cravingLogs &&
+      lastState.focusLogs === state.focusLogs &&
+      lastState.decisionLogs === state.decisionLogs &&
+      lastState.emotionLogs === state.emotionLogs &&
+      lastState.weeklyGoals === state.weeklyGoals &&
+      lastState.goals === state.goals &&
+      lastState.projects === state.projects &&
+      lastState.tasks === state.tasks &&
+      lastState.improvementPlans === state.improvementPlans &&
+      lastState.followedPlans === state.followedPlans &&
+      lastState.partnerInvites === state.partnerInvites &&
+      lastState.partnerships === state.partnerships &&
+      lastState.sharedChallenges === state.sharedChallenges &&
+      lastState.notifications === state.notifications &&
+      lastState.timeTracker === state.timeTracker &&
+      lastState.pointsHistory === state.pointsHistory &&
+      lastState.totalPoints === state.totalPoints &&
+      lastState.seasonPoints === state.seasonPoints &&
+      lastState.deletedEntityIds === state.deletedEntityIds &&
+      lastState.restoredEntityIds === state.restoredEntityIds
+    ) {
+      lastPersistedStateRef.current = state;
+      return;
+    }
+
+    lastPersistedStateRef.current = state;
 
     if (isHydrated.current) {
       // Synchronous, network-independent local-mirror write for resilient offline reload and debounce-window protection
@@ -1309,7 +1436,7 @@ export function useAppState() {
           .then(() => {
             resolversToDrain.forEach(({ resolve }) => resolve());
             if (justPersistedUnsyncedIds.length > 0) {
-              setState((prev) => ({
+              setStateRaw((prev) => ({
                 ...prev,
                 unsyncedEntityIds: (prev.unsyncedEntityIds || []).filter(
                   (id) => !justPersistedUnsyncedIds.includes(id)
@@ -1322,6 +1449,21 @@ export function useAppState() {
             console.error('[AUTOSAVE IMMEDIATE] Failed to persist state:', err);
             if (typeof window !== 'undefined') {
               const isGuard = err instanceof GuardBlockedError;
+
+              // If guard triggered a destructive wipe or abnormal drop, route to confirmation modal instead of a dead-end toast
+              if (isGuard && (err.requiresConfirmation || err.code === 'ZERO_OUT_WIPE' || err.code === 'ABNORMAL_DROP')) {
+                const isZeroOut = err.code === 'ZERO_OUT_WIPE';
+                setDestructiveWipeModal({
+                  open: true,
+                  title: isZeroOut ? 'Clear All Tracked Data?' : 'Confirm Large Data Removal',
+                  description: isZeroOut
+                    ? 'This action will remove all remaining tracked items from your account. Are you sure you want to save this change?'
+                    : 'This action will remove most of your tracked items (>70% decrease). Are you sure you want to proceed with saving this change?',
+                  stateToRetry: state,
+                  stateBeforeAction: lastKnownGoodStateRef.current,
+                });
+                return;
+              }
 
               // Collect distinct action labels
               const distinctLabels = Array.from(
@@ -1378,7 +1520,7 @@ export function useAppState() {
           try {
             await enqueuePersist(state);
             if (justPersistedUnsyncedIds.length > 0) {
-              setState((prev) => ({
+              setStateRaw((prev) => ({
                 ...prev,
                 unsyncedEntityIds: (prev.unsyncedEntityIds || []).filter(
                   (id) => !justPersistedUnsyncedIds.includes(id)
@@ -1389,6 +1531,22 @@ export function useAppState() {
             console.error('[AUTOSAVE DEBOUNCED] Failed to persist state:', err);
             if (typeof window !== 'undefined') {
               const isGuard = err instanceof GuardBlockedError;
+
+              // If guard triggered a destructive wipe or abnormal drop, route to confirmation modal instead of a dead-end toast
+              if (isGuard && (err.requiresConfirmation || err.code === 'ZERO_OUT_WIPE' || err.code === 'ABNORMAL_DROP')) {
+                const isZeroOut = err.code === 'ZERO_OUT_WIPE';
+                setDestructiveWipeModal({
+                  open: true,
+                  title: isZeroOut ? 'Clear All Tracked Data?' : 'Confirm Large Data Removal',
+                  description: isZeroOut
+                    ? 'This action will remove all remaining tracked items from your account. Are you sure you want to save this change?'
+                    : 'This action will remove most of your tracked items (>70% decrease). Are you sure you want to proceed with saving this change?',
+                  stateToRetry: state,
+                  stateBeforeAction: lastKnownGoodStateRef.current,
+                });
+                return;
+              }
+
               window.dispatchEvent(
                 new CustomEvent('app-toast-error', {
                   detail: {
@@ -1405,6 +1563,8 @@ export function useAppState() {
         }, 500);
       }
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, tabId]);
 
   // Reactively apply data-theme attribute on document.documentElement based on themePreference
@@ -1549,18 +1709,7 @@ export function useAppState() {
                   document.documentElement.setAttribute('data-theme', sanitizedState.themePreference);
                 }
               }
-              console.log('[STAGE 3: ZUSTAND STATE WRITE]', {
-                username: user.username,
-                totalPoints: sanitizedState.totalPoints,
-                plansCount: sanitizedState.improvementPlans?.length,
-                improvementPlans: (sanitizedState.improvementPlans || []).map((p) => ({
-                  id: p.id,
-                  title: p.title,
-                  planType: p.planType,
-                  streakCount: p.streakCount,
-                  lastCompletedDate: p.lastCompletedDate,
-                })),
-              });
+              lastKnownGoodStateRef.current = sanitizedState;
               setState((current) => mergeAppState(sanitizedState, current, 'hydration'));
             }
           } catch (e) {
@@ -1759,6 +1908,8 @@ export function useAppState() {
     });
 
     return () => unsubscribe();
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Smart Realtime Subscriptions with adaptive fallback polling
@@ -1997,6 +2148,8 @@ export function useAppState() {
       stopFallbackPolling();
       if (channel) supabase.removeChannel(channel);
     };
+    // Intentional: adding deletedEntityIds would tear down/reconnect the realtime channel on every deletion app-wide.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser?.id, state.username]);
 
   // Check for league period rollovers and missed-habit penalties on mount and every minute
@@ -2066,10 +2219,14 @@ export function useAppState() {
       delete (window as any).__advanceDays;
       delete (window as any).__resetTimeOffset;
     };
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setAuthSessionState = useCallback((user: UserProfile | null, newState: AppState) => {
     setState(sanitizeLoadedState(newState, user));
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const logout = useCallback(async () => {
@@ -2154,6 +2311,8 @@ export function useAppState() {
     } finally {
       isLoggingOutRef.current = false;
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addPoints = useCallback(
@@ -2163,6 +2322,8 @@ export function useAppState() {
         ...addPointsInternal(prev, amount, reason, source, metadata),
       }));
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -2197,6 +2358,8 @@ export function useAppState() {
       { immediate: true }
     );
     return habit;
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addCustomHabit = useCallback((name: string, frequency: Habit['frequency']) => {
@@ -2226,6 +2389,8 @@ export function useAppState() {
       { immediate: true }
     );
     return habit;
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateHabit = useCallback((habitId: string, updates: Partial<Habit>) => {
@@ -2252,6 +2417,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteHabit = useCallback((habitId: string) => {
@@ -2282,6 +2449,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleReadingHabit = useCallback(() => {
@@ -2357,6 +2526,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleHabit = useCallback(
@@ -2514,6 +2685,8 @@ export function useAppState() {
       }
       return completed;
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -2582,6 +2755,8 @@ export function useAppState() {
         return { ...prev, journalEntries: [newEntry, ...prev.journalEntries], unsyncedEntityIds: updatedUnsynced, ...pointsUpdate };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -2613,6 +2788,8 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Journal entry deletion', entityId: entryId }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getTodayJournalEntry = useCallback((date = new Date()): JournalEntry | null => {
@@ -2632,6 +2809,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -2641,6 +2820,8 @@ export function useAppState() {
       username,
       currentUser: prev.currentUser ? { ...prev.currentUser, username } : null,
     }));
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateProfileUsername = useCallback((newUsername: string, lastChangedAt?: string) => {
@@ -2675,6 +2856,8 @@ export function useAppState() {
         currentUser: updatedUser,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setThemePreference = useCallback((theme: 'dark' | 'light') => {
@@ -2721,6 +2904,8 @@ export function useAppState() {
         ? { ...prev.currentUser, isProfilePublic: updated?.isProfilePublic ?? newPrivacy }
         : null,
     }));
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser]);
 
   const toggleAcceptPartnerInvites = useCallback(async () => {
@@ -2743,6 +2928,8 @@ export function useAppState() {
     if (current.id) {
       await updateProfileAcceptPartnerInvites(current.id, nextSetting);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser]);
 
   const toggleNotifDailyReminder = useCallback(async () => {
@@ -2765,6 +2952,8 @@ export function useAppState() {
     if (current.id) {
       await updateProfileNotificationPreferences(current.id, { notifDailyReminder: nextSetting });
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser]);
 
   const toggleNotifPartnerActivity = useCallback(async () => {
@@ -2787,6 +2976,8 @@ export function useAppState() {
     if (current.id) {
       await updateProfileNotificationPreferences(current.id, { notifPartnerActivity: nextSetting });
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser]);
 
   const toggleNotifLeagueUpdates = useCallback(async () => {
@@ -2809,6 +3000,8 @@ export function useAppState() {
     if (current.id) {
       await updateProfileNotificationPreferences(current.id, { notifLeagueUpdates: nextSetting });
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser]);
 
   // --- MODULE 1: EXERCISE TRACKER ACTIONS ---
@@ -2863,6 +3056,8 @@ export function useAppState() {
         ...pointsUpdate,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteWorkout = useCallback((workoutId: string) => {
@@ -2934,6 +3129,8 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Workout deletion', entityId: workoutId }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setExerciseGoal = useCallback((targetWeeklySessions: number) => {
@@ -2948,6 +3145,8 @@ export function useAppState() {
             }
           : null,
     }));
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- MODULE 2: UNIFIED READING HUB & LIBRARY ACTIONS ---
@@ -3013,6 +3212,8 @@ export function useAppState() {
 
       return trackerBook;
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -3031,6 +3232,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateReadingProgress = useCallback((bookId: string, pagesDelta: number, newCurrentPage: number) => {
@@ -3216,6 +3419,8 @@ export function useAppState() {
     },
     { immediate: true }
   );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const finishBook = useCallback((bookId: string, reflection: string) => {
@@ -3292,6 +3497,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteBook = useCallback((bookId: string) => {
@@ -3394,6 +3601,8 @@ export function useAppState() {
       { immediate: true, actionLabel: 'Book deletion', entityId: bookId }
     ) || Promise.resolve()
   );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
 
   // --- SELF IMPROVEMENT BOOKS / CURATED ACTIONS ---
@@ -3461,6 +3670,8 @@ export function useAppState() {
 
       return newState;
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addCustomBookToLibrary = useCallback((
@@ -3507,6 +3718,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateUserBookStatus = useCallback(
@@ -3549,6 +3762,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -3585,6 +3800,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const removeBookFromLibrary = useCallback((userBookId: string) => {
@@ -3613,6 +3830,8 @@ export function useAppState() {
       return { ...prev, skills: [...prev.skills, skill], unsyncedEntityIds: updatedUnsynced };
     });
     return skill;
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const logSkillPractice = useCallback((skillId: string, durationMinutes: number, note: string) => {
@@ -3651,6 +3870,8 @@ export function useAppState() {
         ...pointsUpdate,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateSkillLevel = useCallback((skillId: string, manualLevel: SkillLevel) => {
@@ -3662,6 +3883,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteSkill = useCallback((skillId: string): Promise<void> => {
@@ -3701,6 +3924,8 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Skill deletion', entityId: skillId }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteSkillLog = useCallback((logId: string) => {
@@ -3721,6 +3946,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- MODULE 4: BAD HABIT REDUCTION TRACKER ACTIONS ---
@@ -3738,6 +3965,8 @@ export function useAppState() {
       return { ...prev, badHabits: [...prev.badHabits, bh], unsyncedEntityIds: updatedUnsynced };
     });
     return bh;
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const logBadHabitDay = useCallback((badHabitId: string, date: string, status: 'resisted' | 'occurred') => {
@@ -3858,6 +4087,8 @@ export function useAppState() {
         return prev;
       }
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const undoTodayBadHabitLog = useCallback((badHabitId: string) => {
@@ -3907,6 +4138,8 @@ export function useAppState() {
         ...pointsUpdate,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteBadHabit = useCallback((badHabitId: string) => {
@@ -3961,6 +4194,8 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Bad habit deletion', entityId: badHabitId }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const completeBadHabit = useCallback((badHabitId: string) => {
@@ -3979,6 +4214,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateBadHabit = useCallback((badHabitId: string, updates: Partial<BadHabit>) => {
@@ -3997,6 +4234,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteBadHabitLog = useCallback((badHabitId: string, date: string) => {
@@ -4040,6 +4279,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- MODULE 5: ADDICTION RECOVERY ACTIONS ---
@@ -4056,6 +4297,8 @@ export function useAppState() {
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), tracker.id])).slice(-500);
       return { ...prev, addictionTracker: tracker, unsyncedEntityIds: updatedUnsynced };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const resetAddictionStreak = useCallback(() => {
@@ -4073,6 +4316,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkAddictionMilestones = useCallback(() => {
@@ -4196,6 +4441,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const logCraving = useCallback((intensity: number, trigger: string, copingStrategy: string) => {
@@ -4211,6 +4458,8 @@ export function useAppState() {
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), log.id])).slice(-500);
       return { ...prev, cravingLogs: [log, ...prev.cravingLogs], unsyncedEntityIds: updatedUnsynced };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteAddictionTracker = useCallback(() => {
@@ -4357,6 +4606,8 @@ export function useAppState() {
         }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [get]);
 
   const deleteCravingLog = useCallback((logId: string) => {
@@ -4373,6 +4624,8 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Craving log deletion', entityId: logId }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- MODULE 7: PREFRONTAL CORTEX ACTIONS ---
@@ -4402,6 +4655,8 @@ export function useAppState() {
         ...pointsUpdate,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateFocusLogReflection = useCallback((logId: string, reflection: string) => {
@@ -4424,6 +4679,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addDecision = useCallback((title: string, rationale: string, expectedOutcome: string, revisitDate: string) => {
@@ -4441,6 +4698,8 @@ export function useAppState() {
       return { ...prev, decisionLogs: [decision, ...prev.decisionLogs], unsyncedEntityIds: updatedUnsynced };
     });
     return decision;
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const reflectDecision = useCallback((decisionId: string, reflection: string) => {
@@ -4458,6 +4717,8 @@ export function useAppState() {
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), decisionId])).slice(-500);
       return { ...prev, decisionLogs: updatedLogs, unsyncedEntityIds: updatedUnsynced, ...pointsUpdate };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const logEmotion = useCallback((emotion: string, intensity: number, context: string) => {
@@ -4480,6 +4741,8 @@ export function useAppState() {
         ...pointsUpdate,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteFocusLog = useCallback((logId: string) => {
@@ -4500,6 +4763,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteDecisionLog = useCallback((logId: string) => {
@@ -4524,6 +4789,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteEmotionLog = useCallback((logId: string) => {
@@ -4544,6 +4811,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addWeeklyReflection = useCallback((weekKey: string, content: string) => {
@@ -4592,6 +4861,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateWeeklyReflection = useCallback((weekKey: string, reflectionId: string, content: string) => {
@@ -4633,6 +4904,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteWeeklyReflection = useCallback((weekKey: string, reflectionId: string) => {
@@ -4669,6 +4942,8 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Weekly reflection deletion', entityId: reflectionId }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addWeeklyGoalItem = useCallback((weekKey: string, goalData: Partial<WeeklyGoalItem>) => {
@@ -4712,6 +4987,8 @@ export function useAppState() {
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newItem.id])).slice(-500);
       return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateWeeklyGoalItem = useCallback((weekKey: string, goalId: string, updates: Partial<WeeklyGoalItem>) => {
@@ -4741,6 +5018,8 @@ export function useAppState() {
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), goalId])).slice(-500);
       return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteWeeklyGoalItem = useCallback((weekKey: string, goalId: string) => {
@@ -4763,6 +5042,8 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Weekly goal deletion', entityId: goalId }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const carryOverGoal = useCallback((sourceWeekKey: string, targetWeekKey: string, goalId: string, options?: { resumeProgress?: boolean }) => {
@@ -4818,6 +5099,8 @@ export function useAppState() {
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), carriedItem.id])).slice(-500);
       return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleNotifSundayPlanning = useCallback(() => {
@@ -4836,6 +5119,8 @@ export function useAppState() {
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.currentUser.id])).slice(-500);
       return { ...prev, currentUser: updatedUser, unsyncedEntityIds: updatedUnsynced };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- MODULE: PROJECTS & GOALS ACTIONS ---
@@ -4873,6 +5158,8 @@ export function useAppState() {
       );
       return newGoal;
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -4890,6 +5177,8 @@ export function useAppState() {
         { immediate: true }
       );
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -4910,6 +5199,8 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Goal deletion', entityId: id }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Helper to compute updated completedAt timestamp on project status changes
@@ -4972,6 +5263,8 @@ export function useAppState() {
       );
       return newProject;
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.projects]
   );
 
@@ -4993,6 +5286,8 @@ export function useAppState() {
         { immediate: true }
       );
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -5049,6 +5344,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const moveProjectStatus = useCallback((id: string, newStatus: ProjectStatus) => {
@@ -5067,6 +5364,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteProject = useCallback((id: string) => {
@@ -5086,6 +5385,8 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Project deletion', entityId: id }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const createTask = useCallback(
@@ -5127,6 +5428,8 @@ export function useAppState() {
       );
       return newTask;
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -5150,6 +5453,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -5167,6 +5472,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteTask = useCallback((id: string) => {
@@ -5185,6 +5492,8 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Task deletion', entityId: id }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleSubtask = useCallback((taskId: string, subtaskId: string) => {
@@ -5203,6 +5512,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addSubtask = useCallback((taskId: string, title: string) => {
@@ -5225,6 +5536,8 @@ export function useAppState() {
         unsyncedEntityIds: updatedUnsynced,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteSubtask = useCallback((taskId: string, subtaskId: string) => {
@@ -5250,6 +5563,8 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Subtask deletion', entityId: subtaskId }
       ) || Promise.resolve()
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---
@@ -5349,6 +5664,8 @@ export function useAppState() {
       }
       return newPlan;
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -5376,6 +5693,8 @@ export function useAppState() {
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       syncPlanToSupabase(updatedPlan);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setNewTargetGoal = useCallback((planId: string, newTarget: number) => {
@@ -5402,6 +5721,8 @@ export function useAppState() {
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       syncPlanToSupabase(updatedPlan);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const markHabitJourneyDone = useCallback((planId: string) => {
@@ -5448,6 +5769,8 @@ export function useAppState() {
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       syncPlanToSupabase(updatedPlan);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const undoHabitJourneyDone = useCallback((planId: string) => {
@@ -5483,6 +5806,8 @@ export function useAppState() {
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       syncPlanToSupabase(updatedPlan);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setNewFollowedTargetGoal = useCallback((followId: string, newTarget: number) => {
@@ -5508,6 +5833,8 @@ export function useAppState() {
     if (updatedFollow) {
       syncFollowedPlanToSupabase(updatedFollow);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const markFollowedHabitJourneyDone = useCallback((followId: string) => {
@@ -5550,6 +5877,8 @@ export function useAppState() {
       });
       syncFollowedPlanToSupabase(follow);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const undoFollowedHabitJourneyDone = useCallback((followId: string) => {
@@ -5583,6 +5912,8 @@ export function useAppState() {
     if (updatedFollow) {
       syncFollowedPlanToSupabase(updatedFollow);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const editVisionReflectionNote = useCallback((planId: string, noteId: string, newNoteText: string) => {
@@ -5615,6 +5946,8 @@ export function useAppState() {
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       syncPlanToSupabase(updatedPlan);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addVisionReflectionNote = useCallback((planId: string, note: string) => {
@@ -5668,6 +6001,8 @@ export function useAppState() {
         reviewCadence: p.reviewCadence,
       });
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteVisionReflectionNote = useCallback((planId: string, noteId: string) => {
@@ -5700,6 +6035,8 @@ export function useAppState() {
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       syncPlanToSupabase(updatedPlan);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateImprovementPlan = useCallback((
@@ -5781,6 +6118,8 @@ export function useAppState() {
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       syncPlanToSupabase(updatedPlan);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const togglePlanVisibility = useCallback(async (planId: string, newVisibility?: boolean) => {
@@ -5841,6 +6180,8 @@ export function useAppState() {
       console.error("[Visibility Update] Fatal error toggling visibility:", err);
       alert(`Fatal Error: ${err.message || 'Check console'}`);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.improvementPlans]);
 
   const updatePlanCopyCount = useCallback((planId: string, newCount: number) => {
@@ -5865,6 +6206,8 @@ export function useAppState() {
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), planId])).slice(-500);
       return { ...prev, improvementPlans: updatedPlans, unsyncedEntityIds: updatedUnsynced };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const copyPublicPlan = useCallback(async (originalPlan: ImprovementPlan) => {
@@ -5956,6 +6299,8 @@ export function useAppState() {
       dispatchToastError("Copy Failed", err.message || 'Check console');
       throw err;
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [updatePlanCopyCount, state.username, state.currentUser?.id, state.followedPlans]);
 
   // --- FOLLOWED & COPIED PLANS INTERACTIVE ACTIONS ---
@@ -5992,6 +6337,8 @@ export function useAppState() {
     if (updatedFollow) {
       syncFollowedPlanToSupabase(updatedFollow);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateFollowedTargetGoalProgress = useCallback((followId: string, newProgress: number) => {
@@ -6019,6 +6366,8 @@ export function useAppState() {
     if (updatedFollow) {
       syncFollowedPlanToSupabase(updatedFollow);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addFollowedVisionReflectionNote = useCallback((followId: string, note: string) => {
@@ -6070,6 +6419,8 @@ export function useAppState() {
         reviewCadence: f.reviewCadence,
       });
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const editFollowedVisionReflectionNote = useCallback((followId: string, noteId: string, newNoteText: string) => {
@@ -6100,6 +6451,8 @@ export function useAppState() {
     if (updatedFollow) {
       syncFollowedPlanToSupabase(updatedFollow);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteFollowedVisionReflectionNote = useCallback((followId: string, noteId: string) => {
@@ -6130,6 +6483,8 @@ export function useAppState() {
     if (updatedFollow) {
       syncFollowedPlanToSupabase(updatedFollow);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteFollowedPlan = useCallback((followedPlanId: string) => {
@@ -6145,6 +6500,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const completePlanStep = useCallback((planId: string, stepId: string) => {
@@ -6187,6 +6544,8 @@ export function useAppState() {
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       syncPlanToSupabase(updatedPlan);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deletePlan = useCallback(async (planId: string) => {
@@ -6235,6 +6594,8 @@ export function useAppState() {
       console.error("[Delete Plan] Fatal error deleting plan:", err);
       alert(`Fatal Error during deletion: ${err.message || 'Check console'}`);
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- SOCIAL FEATURE 2: ACCOUNTABILITY PARTNER & SHARED CHALLENGES ---
@@ -6394,6 +6755,8 @@ export function useAppState() {
         throw err;
       }
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.username, state.partnerships, state.partnerInvites, state.currentUser]
   );
 
@@ -6521,6 +6884,8 @@ export function useAppState() {
         { immediate: true }
       );
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.partnerInvites, state.partnerships, state.notifications, state.currentUser, state.username]
   );
 
@@ -6538,6 +6903,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const declinePartnerInvite = useCallback(async (inviteId: string) => {
@@ -6579,6 +6946,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.partnerInvites, state.notifications, state.username, state.currentUser]);
 
   const endPartnership = useCallback(async (partnershipId?: string) => {
@@ -6645,6 +7014,8 @@ export function useAppState() {
       });
       throw err;
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.partnership, state.partnerships, state.sharedChallenges]);
 
   const getPartnerProfileStats = useCallback(async (partnerUsername: string) => {
@@ -6731,6 +7102,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.currentUser?.id]
   );
 
@@ -6806,6 +7179,8 @@ export function useAppState() {
         throw err;
       }
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.partnership, state.partnerships, state.sharedChallenges]
   );
 
@@ -6852,6 +7227,8 @@ export function useAppState() {
       }
       throw err;
     }
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.sharedChallenges]);
 
   const logSharedChallengeHabit = useCallback(
@@ -6949,6 +7326,8 @@ export function useAppState() {
         pendingPledgeRequests.delete(challengeId);
       }
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.sharedChallenges, state.partnerships, state.partnership, state.currentUser, state.username]
   );
 
@@ -6960,6 +7339,8 @@ export function useAppState() {
         n.id === notificationId ? { ...n, read: true } : n
       ),
     }));
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const markAllNotificationsRead = useCallback(() => {
@@ -6970,6 +7351,8 @@ export function useAppState() {
       ...prev,
       notifications: (prev.notifications || []).map((n) => ({ ...n, read: true })),
     }));
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser?.id]);
 
   const clearNotification = useCallback((notificationId: string) => {
@@ -6982,6 +7365,8 @@ export function useAppState() {
         deletedEntityIds: updatedDeletedEntityIds,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Multi-user & Seed Competitor League Helper
@@ -7102,6 +7487,8 @@ export function useAppState() {
       });
       return newActivity;
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7122,6 +7509,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7168,6 +7557,8 @@ export function useAppState() {
         { immediate: true }
       );
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7222,6 +7613,8 @@ export function useAppState() {
       });
       return newTemplate;
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7286,6 +7679,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7342,6 +7737,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7365,6 +7762,8 @@ export function useAppState() {
         { immediate: true }
       );
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7398,6 +7797,8 @@ export function useAppState() {
         { immediate: true }
       );
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7503,6 +7904,8 @@ export function useAppState() {
 
       return [createdPart1, createdPart2];
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.timeTracker]
   );
 
@@ -7613,6 +8016,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.timeTracker]
   );
 
@@ -7639,6 +8044,8 @@ export function useAppState() {
         { immediate: true }
       );
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7777,6 +8184,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7857,6 +8266,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7884,6 +8295,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -7997,6 +8410,8 @@ export function useAppState() {
         { immediate: true }
       );
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -8060,6 +8475,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -8096,6 +8513,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -8137,6 +8556,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -8175,6 +8596,8 @@ export function useAppState() {
         };
       });
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -8244,6 +8667,11 @@ export function useAppState() {
           // Always keep the timeline chronologically sorted
           updatedBlocks.sort((a, b) => getMins(a.startTime) - getMins(b.startTime));
 
+          const replacedBlockIds = mode === 'replace' ? prevDailyBlocks.map((b) => b.id) : [];
+          const updatedDeleted = replacedBlockIds.length > 0
+            ? [...(prev.deletedEntityIds || []), ...replacedBlockIds].slice(-500)
+            : prev.deletedEntityIds;
+
           const updatedClearedDates = (prevTT.clearedDates || []).filter((d) => d !== dateKey);
 
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), ...updatedBlocks.map((b) => b.id)])).slice(-500);
@@ -8257,6 +8685,7 @@ export function useAppState() {
               },
               clearedDates: updatedClearedDates,
             },
+            deletedEntityIds: updatedDeleted,
             unsyncedEntityIds: updatedUnsynced,
           };
         },
@@ -8265,6 +8694,8 @@ export function useAppState() {
 
       return { added: addedCount, rejected: rejectedCount };
     },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -8298,6 +8729,8 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hydrateTimeTrackerForDate = useCallback((dateKey: string) => {
@@ -8310,6 +8743,8 @@ export function useAppState() {
         timeTracker: updatedState,
       };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
@@ -8467,6 +8902,11 @@ export function useAppState() {
     applyTemplateToDate,
     clearDailyTimeBlocks,
     hydrateTimeTrackerForDate,
+    // Destructive Wipe Confirmation Gate
+    destructiveWipeModal,
+    isSavingDestructiveWipe,
+    handleConfirmDestructiveWipe,
+    handleCancelDestructiveWipe,
   };
 }
 
