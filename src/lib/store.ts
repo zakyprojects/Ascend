@@ -1129,13 +1129,10 @@ export function useAppState() {
         })
         .then(async () => {
           try {
-            console.log('[WRITE_QUEUE START]', { itemCount: computeStateDataWeight(stateToPersist).itemCount, options });
             await persistState(stateToPersist, options);
-            console.log('[WRITE_QUEUE RESOLVE]', { itemCount: computeStateDataWeight(stateToPersist).itemCount });
             lastKnownGoodStateRef.current = stateToPersist;
             callResolve();
           } catch (err) {
-            console.log('[WRITE_QUEUE REJECT]', { err, itemCount: computeStateDataWeight(stateToPersist).itemCount });
             callReject(err);
             // Re-throw so downstream catch catches, but queue next tick remains unblocked
             throw err;
@@ -1193,9 +1190,6 @@ export function useAppState() {
   const handleCancelDestructiveWipe = useCallback(() => {
     if (destructiveWipeModal?.stateBeforeAction) {
       const preDeleteState = destructiveWipeModal.stateBeforeAction;
-      console.log('[CANCEL DESTRUCTIVE WIPE] Restoring pre-delete local state:', {
-        itemCount: computeStateDataWeight(preDeleteState).itemCount,
-      });
       lastPersistedStateRef.current = preDeleteState;
       lastKnownGoodStateRef.current = preDeleteState;
       setStateRaw(preDeleteState);
@@ -1459,12 +1453,6 @@ export function useAppState() {
               // If guard triggered a destructive wipe or abnormal drop, route to confirmation modal instead of a dead-end toast
               if (isGuard && (err.requiresConfirmation || err.code === 'ZERO_OUT_WIPE' || err.code === 'ABNORMAL_DROP')) {
                 const isZeroOut = err.code === 'ZERO_OUT_WIPE';
-                console.log('[SET_DESTRUCTIVE_WIPE_MODAL]', {
-                  trigger: 'immediate_autosave',
-                  open: true,
-                  guardCode: err.code,
-                  itemCount: computeStateDataWeight(state).itemCount,
-                });
                 setDestructiveWipeModal({
                   open: true,
                   title: isZeroOut ? 'Clear All Tracked Data?' : 'Confirm Large Data Removal',
@@ -1547,12 +1535,6 @@ export function useAppState() {
               // If guard triggered a destructive wipe or abnormal drop, route to confirmation modal instead of a dead-end toast
               if (isGuard && (err.requiresConfirmation || err.code === 'ZERO_OUT_WIPE' || err.code === 'ABNORMAL_DROP')) {
                 const isZeroOut = err.code === 'ZERO_OUT_WIPE';
-                console.log('[SET_DESTRUCTIVE_WIPE_MODAL]', {
-                  trigger: 'debounced_autosave',
-                  open: true,
-                  guardCode: err.code,
-                  itemCount: computeStateDataWeight(state).itemCount,
-                });
                 setDestructiveWipeModal({
                   open: true,
                   title: isZeroOut ? 'Clear All Tracked Data?' : 'Confirm Large Data Removal',
@@ -1727,18 +1709,6 @@ export function useAppState() {
                   document.documentElement.setAttribute('data-theme', sanitizedState.themePreference);
                 }
               }
-              console.log('[STAGE 3: ZUSTAND STATE WRITE]', {
-                username: user.username,
-                totalPoints: sanitizedState.totalPoints,
-                plansCount: sanitizedState.improvementPlans?.length,
-                improvementPlans: (sanitizedState.improvementPlans || []).map((p) => ({
-                  id: p.id,
-                  title: p.title,
-                  planType: p.planType,
-                  streakCount: p.streakCount,
-                  lastCompletedDate: p.lastCompletedDate,
-                })),
-              });
               lastKnownGoodStateRef.current = sanitizedState;
               setState((current) => mergeAppState(sanitizedState, current, 'hydration'));
             }
@@ -8697,6 +8667,11 @@ export function useAppState() {
           // Always keep the timeline chronologically sorted
           updatedBlocks.sort((a, b) => getMins(a.startTime) - getMins(b.startTime));
 
+          const replacedBlockIds = mode === 'replace' ? prevDailyBlocks.map((b) => b.id) : [];
+          const updatedDeleted = replacedBlockIds.length > 0
+            ? [...(prev.deletedEntityIds || []), ...replacedBlockIds].slice(-500)
+            : prev.deletedEntityIds;
+
           const updatedClearedDates = (prevTT.clearedDates || []).filter((d) => d !== dateKey);
 
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), ...updatedBlocks.map((b) => b.id)])).slice(-500);
@@ -8710,6 +8685,7 @@ export function useAppState() {
               },
               clearedDates: updatedClearedDates,
             },
+            deletedEntityIds: updatedDeleted,
             unsyncedEntityIds: updatedUnsynced,
           };
         },

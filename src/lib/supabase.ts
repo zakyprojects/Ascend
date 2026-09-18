@@ -256,14 +256,6 @@ export async function saveUserDataToSupabase(
   const isHydrated = isUserHydrationComplete(userId);
   const allowDestructive = Boolean(options?.allowDestructiveWipe);
 
-  console.log('[SUPABASE SAVE CALL]', {
-    userId,
-    incomingItemCount: incomingWeight.itemCount,
-    watermarkItemCount: watermark?.itemCount,
-    allowDestructive,
-    isHydrated,
-  });
-
   // Check 2A: Active in-memory session watermark guard
   if (!allowDestructive && watermark && watermark.itemCount > 0) {
     // Floor exemption: If the account has <= 3 items total AND hydration is fully complete,
@@ -273,7 +265,6 @@ export async function saveUserDataToSupabase(
     if (!isFloorExempt) {
       // Block total wipe: incoming is empty (0 items)
       if (incomingWeight.itemCount === 0) {
-        console.log('[GUARD TRIPPED]', { guard: 'ZERO_OUT_WIPE', userId, watermark, incomingWeight, isHydrated });
         console.error('[CRITICAL GUARD] Blocked catastrophic zero-out wipe to user_data for established account:', {
           userId,
           watermark,
@@ -289,7 +280,6 @@ export async function saveUserDataToSupabase(
 
       // Block massive catastrophic entity drop (>70% vanished at once on accounts with >= 3 items)
       if (watermark.itemCount >= 3 && incomingWeight.itemCount < Math.ceil(watermark.itemCount * 0.3)) {
-        console.log('[GUARD TRIPPED]', { guard: 'ABNORMAL_DROP', userId, watermarkItemCount: watermark.itemCount, incomingItemCount: incomingWeight.itemCount, isHydrated });
         console.error('[CRITICAL GUARD] Blocked abnormal massive data drop to user_data:', {
           userId,
           watermarkItemCount: watermark.itemCount,
@@ -311,7 +301,6 @@ export async function saveUserDataToSupabase(
     if (existingRes.exists && existingRes.state) {
       const existingWeight = computeStateDataWeight(existingRes.state);
       if (existingWeight.itemCount > 0) {
-        console.log('[GUARD TRIPPED]', { guard: 'COLD_ZERO_OUT', userId, existingWeight, incomingWeight });
         console.error('[CRITICAL GUARD] Blocked cold zero-out wipe over existing rich database state:', {
           userId,
           existingWeight,
@@ -326,8 +315,6 @@ export async function saveUserDataToSupabase(
       }
     }
   }
-
-  console.log('[GUARD PASSED]', { userId, incomingItemCount: incomingWeight.itemCount });
 
   // Update session watermark with valid save
   setUserDataWatermark(userId, incomingWeight);
