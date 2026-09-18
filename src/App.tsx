@@ -21,6 +21,7 @@ import { ImprovementPlans } from '@/components/views/ImprovementPlans';
 import { AccountabilityPartner } from '@/components/views/AccountabilityPartner';
 import { SettingsView } from '@/components/views/SettingsView';
 import { AuthModal } from '@/components/ui/AuthModal';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -88,6 +89,16 @@ function App() {
         open={authModalOpen}
         onClose={() => setUserOpenedAuthModal(false)}
         guestState={store.state}
+      />
+
+      <ConfirmDeleteModal
+        open={Boolean(store.destructiveWipeModal?.open)}
+        onClose={store.handleCancelDestructiveWipe}
+        onConfirm={store.handleConfirmDestructiveWipe}
+        title={store.destructiveWipeModal?.title || 'Confirm Data Removal'}
+        description={store.destructiveWipeModal?.description}
+        confirmText="Yes, Save Changes"
+        isDeleting={store.isSavingDestructiveWipe}
       />
     </ToastProvider>
   );

@@ -134,6 +134,8 @@ import {
   fetchUserDataFromSupabase,
   fetchUserDataWithStatusFromSupabase,
   setUserDataWatermark,
+  resetUserDataWatermark,
+  computeStateDataWeight,
   saveUserDataToSupabase,
   fetchAllProfilesFromSupabase,
   fetchProfileByUsernameFromSupabase,
@@ -749,9 +751,9 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
   return processBadHabitNoReports(sweptState);
 }
 
-async function persistState(state: AppState): Promise<void> {
+async function persistState(state: AppState, options?: { allowDestructiveWipe?: boolean }): Promise<void> {
   if (state.currentUser?.id) {
-    await saveUserDataToSupabase(state.currentUser.id, state);
+    await saveUserDataToSupabase(state.currentUser.id, state, options);
     // Clean up local guest storage key once session is authenticated
     try {
       localStorage.removeItem(GUEST_STORAGE_KEY);
@@ -1098,36 +1100,119 @@ export function useAppState() {
     }>
   >([]);
   const isLoggingOutRef = useRef(false);
+  const lastPersistedStateRef = useRef<AppState>(state);
+  const lastKnownGoodStateRef = useRef<AppState>(state);
+
+  const [destructiveWipeModal, setDestructiveWipeModal] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    stateToRetry: AppState;
+    stateBeforeAction: AppState;
+  } | null>(null);
+  const [isSavingDestructiveWipe, setIsSavingDestructiveWipe] = useState(false);
 
   // Write-serialization queue: guarantees sequential execution of persistState calls
   const writeQueueRef = useRef<Promise<unknown>>(Promise.resolve());
-  const enqueuePersist = useCallback((stateToPersist: AppState): Promise<void> => {
-    let callResolve!: () => void;
-    let callReject!: (err: unknown) => void;
-    const callerPromise = new Promise<void>((resolve, reject) => {
-      callResolve = resolve;
-      callReject = reject;
-    });
-
-    writeQueueRef.current = writeQueueRef.current
-      .catch(() => {
-        // Isolate queue failures: prior failure does not prevent subsequent writes
-      })
-      .then(async () => {
-        try {
-          await persistState(stateToPersist);
-          callResolve();
-        } catch (err) {
-          callReject(err);
-          // Re-throw so downstream catch catches, but queue next tick remains unblocked
-          throw err;
-        }
+  const enqueuePersist = useCallback(
+    (stateToPersist: AppState, options?: { allowDestructiveWipe?: boolean }): Promise<void> => {
+      let callResolve!: () => void;
+      let callReject!: (err: unknown) => void;
+      const callerPromise = new Promise<void>((resolve, reject) => {
+        callResolve = resolve;
+        callReject = reject;
       });
 
-    writeQueueRef.current.catch(() => {}); // Suppress console-level unhandled rejection on stored ref; caller still gets real error via callerPromise
+      writeQueueRef.current = writeQueueRef.current
+        .catch(() => {
+          // Isolate queue failures: prior failure does not prevent subsequent writes
+        })
+        .then(async () => {
+          try {
+            console.log('[WRITE_QUEUE START]', { itemCount: computeStateDataWeight(stateToPersist).itemCount, options });
+            await persistState(stateToPersist, options);
+            console.log('[WRITE_QUEUE RESOLVE]', { itemCount: computeStateDataWeight(stateToPersist).itemCount });
+            lastKnownGoodStateRef.current = stateToPersist;
+            callResolve();
+          } catch (err) {
+            console.log('[WRITE_QUEUE REJECT]', { err, itemCount: computeStateDataWeight(stateToPersist).itemCount });
+            callReject(err);
+            // Re-throw so downstream catch catches, but queue next tick remains unblocked
+            throw err;
+          }
+        });
 
-    return callerPromise;
-  }, []);
+      writeQueueRef.current.catch(() => {}); // Suppress console-level unhandled rejection on stored ref; caller still gets real error via callerPromise
+
+      return callerPromise;
+    },
+    []
+  );
+
+  const handleConfirmDestructiveWipe = useCallback(async () => {
+    if (!destructiveWipeModal?.stateToRetry) {
+      setDestructiveWipeModal(null);
+      return;
+    }
+    const stateToSave = destructiveWipeModal.stateToRetry;
+    setIsSavingDestructiveWipe(true);
+    try {
+      await enqueuePersist(stateToSave, { allowDestructiveWipe: true });
+      lastKnownGoodStateRef.current = stateToSave;
+      if (stateToSave.currentUser?.id) {
+        resetUserDataWatermark(stateToSave.currentUser.id, stateToSave);
+      }
+      setDestructiveWipeModal(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast-success', {
+            detail: {
+              title: 'Changes Saved',
+              message: 'Your updates have been confirmed and saved to the cloud.',
+            },
+          })
+        );
+      }
+    } catch (err: any) {
+      console.error('[CONFIRM DESTRUCTIVE SAVE] Error persisting confirmed state:', err);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast-error', {
+            detail: {
+              title: 'Save Failed',
+              message: err?.message || 'Could not save changes to cloud. Please check your connection.',
+            },
+          })
+        );
+      }
+    } finally {
+      setIsSavingDestructiveWipe(false);
+    }
+  }, [destructiveWipeModal, enqueuePersist]);
+
+  const handleCancelDestructiveWipe = useCallback(() => {
+    if (destructiveWipeModal?.stateBeforeAction) {
+      const preDeleteState = destructiveWipeModal.stateBeforeAction;
+      console.log('[CANCEL DESTRUCTIVE WIPE] Restoring pre-delete local state:', {
+        itemCount: computeStateDataWeight(preDeleteState).itemCount,
+      });
+      lastPersistedStateRef.current = preDeleteState;
+      lastKnownGoodStateRef.current = preDeleteState;
+      setStateRaw(preDeleteState);
+      if (typeof window !== 'undefined') {
+        try {
+          if (preDeleteState.currentUser?.id) {
+            localStorage.setItem(`ascend_user_cache_${preDeleteState.currentUser.id}`, JSON.stringify(preDeleteState));
+          } else {
+            localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(preDeleteState));
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    setDestructiveWipeModal(null);
+  }, [destructiveWipeModal]);
 
   // Cross-tab synchronization tracking
   const tabId = useRef<string>(Math.random().toString(36).substring(2) + Date.now().toString(36)).current;
@@ -1235,6 +1320,7 @@ export function useAppState() {
             const serverState = serverRes.state!;
             const merged = mergeAppState(serverState, current, 'hydration');
             setUserDataWatermark(userId, merged);
+            lastKnownGoodStateRef.current = merged;
             return merged;
           });
         }
@@ -1279,8 +1365,53 @@ export function useAppState() {
       // This state update was synced from another tab via BroadcastChannel.
       // Skip duplicate persistence and re-broadcast.
       isRemoteBroadcastUpdate.current = false;
+      lastPersistedStateRef.current = state;
       return;
     }
+
+    // Semantic diff: If only unsyncedEntityIds changed compared to the last state we processed for persistence,
+    // skip triggering another network save cycle to prevent infinite loops.
+    const lastState = lastPersistedStateRef.current;
+    if (
+      lastState &&
+      lastState.unsyncedEntityIds !== state.unsyncedEntityIds &&
+      lastState.currentUser?.id === state.currentUser?.id &&
+      lastState.habits === state.habits &&
+      lastState.journalEntries === state.journalEntries &&
+      lastState.workouts === state.workouts &&
+      lastState.libraryBooks === state.libraryBooks &&
+      lastState.readingLogs === state.readingLogs &&
+      lastState.skills === state.skills &&
+      lastState.skillLogs === state.skillLogs &&
+      lastState.badHabits === state.badHabits &&
+      lastState.badHabitLogs === state.badHabitLogs &&
+      lastState.addictionTracker === state.addictionTracker &&
+      lastState.cravingLogs === state.cravingLogs &&
+      lastState.focusLogs === state.focusLogs &&
+      lastState.decisionLogs === state.decisionLogs &&
+      lastState.emotionLogs === state.emotionLogs &&
+      lastState.weeklyGoals === state.weeklyGoals &&
+      lastState.goals === state.goals &&
+      lastState.projects === state.projects &&
+      lastState.tasks === state.tasks &&
+      lastState.improvementPlans === state.improvementPlans &&
+      lastState.followedPlans === state.followedPlans &&
+      lastState.partnerInvites === state.partnerInvites &&
+      lastState.partnerships === state.partnerships &&
+      lastState.sharedChallenges === state.sharedChallenges &&
+      lastState.notifications === state.notifications &&
+      lastState.timeTracker === state.timeTracker &&
+      lastState.pointsHistory === state.pointsHistory &&
+      lastState.totalPoints === state.totalPoints &&
+      lastState.seasonPoints === state.seasonPoints &&
+      lastState.deletedEntityIds === state.deletedEntityIds &&
+      lastState.restoredEntityIds === state.restoredEntityIds
+    ) {
+      lastPersistedStateRef.current = state;
+      return;
+    }
+
+    lastPersistedStateRef.current = state;
 
     if (isHydrated.current) {
       // Synchronous, network-independent local-mirror write for resilient offline reload and debounce-window protection
@@ -1311,7 +1442,7 @@ export function useAppState() {
           .then(() => {
             resolversToDrain.forEach(({ resolve }) => resolve());
             if (justPersistedUnsyncedIds.length > 0) {
-              setState((prev) => ({
+              setStateRaw((prev) => ({
                 ...prev,
                 unsyncedEntityIds: (prev.unsyncedEntityIds || []).filter(
                   (id) => !justPersistedUnsyncedIds.includes(id)
@@ -1324,6 +1455,27 @@ export function useAppState() {
             console.error('[AUTOSAVE IMMEDIATE] Failed to persist state:', err);
             if (typeof window !== 'undefined') {
               const isGuard = err instanceof GuardBlockedError;
+
+              // If guard triggered a destructive wipe or abnormal drop, route to confirmation modal instead of a dead-end toast
+              if (isGuard && (err.requiresConfirmation || err.code === 'ZERO_OUT_WIPE' || err.code === 'ABNORMAL_DROP')) {
+                const isZeroOut = err.code === 'ZERO_OUT_WIPE';
+                console.log('[SET_DESTRUCTIVE_WIPE_MODAL]', {
+                  trigger: 'immediate_autosave',
+                  open: true,
+                  guardCode: err.code,
+                  itemCount: computeStateDataWeight(state).itemCount,
+                });
+                setDestructiveWipeModal({
+                  open: true,
+                  title: isZeroOut ? 'Clear All Tracked Data?' : 'Confirm Large Data Removal',
+                  description: isZeroOut
+                    ? 'This action will remove all remaining tracked items from your account. Are you sure you want to save this change?'
+                    : 'This action will remove most of your tracked items (>70% decrease). Are you sure you want to proceed with saving this change?',
+                  stateToRetry: state,
+                  stateBeforeAction: lastKnownGoodStateRef.current,
+                });
+                return;
+              }
 
               // Collect distinct action labels
               const distinctLabels = Array.from(
@@ -1380,7 +1532,7 @@ export function useAppState() {
           try {
             await enqueuePersist(state);
             if (justPersistedUnsyncedIds.length > 0) {
-              setState((prev) => ({
+              setStateRaw((prev) => ({
                 ...prev,
                 unsyncedEntityIds: (prev.unsyncedEntityIds || []).filter(
                   (id) => !justPersistedUnsyncedIds.includes(id)
@@ -1391,6 +1543,28 @@ export function useAppState() {
             console.error('[AUTOSAVE DEBOUNCED] Failed to persist state:', err);
             if (typeof window !== 'undefined') {
               const isGuard = err instanceof GuardBlockedError;
+
+              // If guard triggered a destructive wipe or abnormal drop, route to confirmation modal instead of a dead-end toast
+              if (isGuard && (err.requiresConfirmation || err.code === 'ZERO_OUT_WIPE' || err.code === 'ABNORMAL_DROP')) {
+                const isZeroOut = err.code === 'ZERO_OUT_WIPE';
+                console.log('[SET_DESTRUCTIVE_WIPE_MODAL]', {
+                  trigger: 'debounced_autosave',
+                  open: true,
+                  guardCode: err.code,
+                  itemCount: computeStateDataWeight(state).itemCount,
+                });
+                setDestructiveWipeModal({
+                  open: true,
+                  title: isZeroOut ? 'Clear All Tracked Data?' : 'Confirm Large Data Removal',
+                  description: isZeroOut
+                    ? 'This action will remove all remaining tracked items from your account. Are you sure you want to save this change?'
+                    : 'This action will remove most of your tracked items (>70% decrease). Are you sure you want to proceed with saving this change?',
+                  stateToRetry: state,
+                  stateBeforeAction: lastKnownGoodStateRef.current,
+                });
+                return;
+              }
+
               window.dispatchEvent(
                 new CustomEvent('app-toast-error', {
                   detail: {
@@ -1565,6 +1739,7 @@ export function useAppState() {
                   lastCompletedDate: p.lastCompletedDate,
                 })),
               });
+              lastKnownGoodStateRef.current = sanitizedState;
               setState((current) => mergeAppState(sanitizedState, current, 'hydration'));
             }
           } catch (e) {
@@ -8751,6 +8926,11 @@ export function useAppState() {
     applyTemplateToDate,
     clearDailyTimeBlocks,
     hydrateTimeTrackerForDate,
+    // Destructive Wipe Confirmation Gate
+    destructiveWipeModal,
+    isSavingDestructiveWipe,
+    handleConfirmDestructiveWipe,
+    handleCancelDestructiveWipe,
   };
 }
 
