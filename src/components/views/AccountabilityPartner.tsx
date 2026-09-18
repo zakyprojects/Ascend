@@ -563,7 +563,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     }
 
     return days;
-  }, [activePartnership, isolatedChallenges]);
+  }, [activePartnership, isolatedChallenges, activePacts]);
 
   const heatmapData = useMemo(() => {
     if (!activePartnership || matrixTimeline.length === 0) return [];

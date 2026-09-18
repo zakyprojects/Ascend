@@ -47,8 +47,10 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
 
   // Read TimeTracker State
   const timeTrackerState = store.state.timeTracker;
-  const rawActivities = timeTrackerState?.activities || [];
-  const activities = useMemo(() => ensureDefaultActivities(rawActivities), [rawActivities]);
+  const activities = useMemo(
+    () => ensureDefaultActivities(timeTrackerState?.activities || []),
+    [timeTrackerState?.activities]
+  );
   const templates = timeTrackerState?.templates || [];
 
   const currentDailyBlocks = useMemo(() => {

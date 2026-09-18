@@ -149,9 +149,9 @@ export function ProjectsGoalsView({
     subtask: TaskSubtask;
   } | null>(null);
 
-  const goals = store.state.goals || [];
-  const projects = store.state.projects || [];
-  const tasks = store.state.tasks || [];
+  const goals = useMemo(() => store.state.goals || [], [store.state.goals]);
+  const projects = useMemo(() => store.state.projects || [], [store.state.projects]);
+  const tasks = useMemo(() => store.state.tasks || [], [store.state.tasks]);
 
   const currentToday = todayKey();
   const currentWeek = weekKey();

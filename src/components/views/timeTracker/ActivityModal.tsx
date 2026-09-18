@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { TimeTrackerActivity } from '@/types';
+import { ActivityIcon } from './ActivityIcon';
 import {
-  ActivityIcon,
+  getActivityThemeColor,
   AVAILABLE_ACTIVITY_ICONS,
   AVAILABLE_ACTIVITY_COLORS,
-} from './ActivityIcon';
-import { getActivityThemeColor } from '@/lib/timeTracker';
+} from '@/lib/timeTracker';
 import { getLocalThemePreference } from '@/lib/store';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Sparkles, AlertTriangle, Link as LinkIcon, Check } from 'lucide-react';

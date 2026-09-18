@@ -115,7 +115,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       });
     });
     return count;
-  }, [deleteModalBook, store.state.libraryBooks, store.state.weeklyGoals]);
+  }, [deleteModalBook, store.state.weeklyGoals]);
 
   // Categorized Library Lists
   const inProgressBooks = useMemo(() => {

@@ -19,6 +19,52 @@ export const DAYS_OF_WEEK = [
 
 export type DayOfWeek = typeof DAYS_OF_WEEK[number];
 
+export const AVAILABLE_ACTIVITY_ICONS = [
+  'Moon',
+  'BrainCircuit',
+  'HeartHandshake',
+  'Activity',
+  'BookOpen',
+  'Coffee',
+  'Utensils',
+  'Dumbbell',
+  'Clock',
+  'Sun',
+  'Briefcase',
+  'Code',
+  'Sparkles',
+  'Zap',
+  'Music',
+  'Tv',
+  'Flame',
+  'Gamepad2',
+  'Footprints',
+  'Smile',
+  'Shield',
+  'Target',
+  'Compass',
+  'GraduationCap',
+  'Calendar',
+  'Layers',
+];
+
+export const AVAILABLE_ACTIVITY_COLORS = [
+  { name: 'Indigo', value: '#6366f1' },
+  { name: 'Cyan', value: '#06b6d4' },
+  { name: 'Amber', value: '#eab308' },
+  { name: 'Red', value: '#ef4444' },
+  { name: 'Blue', value: '#3b82f6' },
+  { name: 'Emerald', value: '#10b981' },
+  { name: 'Orange', value: '#f97316' },
+  { name: 'Purple', value: '#a855f7' },
+  { name: 'Rose', value: '#f43f5e' },
+  { name: 'Lime', value: '#84cc16' },
+  { name: 'Sky', value: '#0ea5e9' },
+  { name: 'Pink', value: '#ec4899' },
+  { name: 'Teal', value: '#14b8a6' },
+  { name: 'Yellow', value: '#facc15' },
+];
+
 /**
  * Converts "HH:mm" 24h time string into minutes from midnight (0 - 1439).
  */
