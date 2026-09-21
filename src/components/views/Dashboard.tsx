@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Flame, TrendingUp, Star, BookOpen, Check, ArrowRight, Sparkles, Trophy, Brain, Calendar, CalendarDays, Activity, BookMarked, Zap, ShieldAlert, HeartPulse, Timer, Clock } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
@@ -6,6 +7,7 @@ import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { getCurrentTier, getNextTier } from '@/lib/tiers';
 import { TierBadge, TierProgress } from '@/components/ui/TierBadge';
 import { LEAGUE_CONFIG, formatCountdown, getTimeUntilReset, getSeasonLabel } from '@/lib/leagues';
+import { leagueNow } from '@/lib/leagueTime';
 import { LeagueType } from '@/types';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
@@ -42,16 +44,22 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
   const completionRate = habits.length > 0 ? Math.round((completedToday.length / habits.length) * 100) : 0;
 
-  // League data
+  // Tick every second for live league countdowns
+  const [leagueNowTick, setLeagueNowTick] = useState(leagueNow());
+  useEffect(() => {
+    const timer = setInterval(() => setLeagueNowTick(leagueNow()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const weeklyData = store.getLeagueData('weekly');
   const monthlyData = store.getLeagueData('monthly');
 
-  // Summary Metrics from new modules
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  const dayOfWeek = now.getDay();
+  // Summary Metrics from new modules (personal features use plain local Date)
+  const personalNow = new Date();
+  const startOfWeek = new Date(personalNow);
+  const dayOfWeek = personalNow.getDay();
   const diffToMon = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
-  startOfWeek.setDate(now.getDate() + diffToMon);
+  startOfWeek.setDate(personalNow.getDate() + diffToMon);
   startOfWeek.setHours(0, 0, 0, 0);
 
   const weeklyWorkouts = store.state.workouts.filter((w) => (parseDate(w.date) || new Date(0)) >= startOfWeek);
@@ -149,19 +157,22 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           type="weekly"
           rank={weeklyData.userRank}
           points={weeklyData.userPoints}
-          countdown={formatCountdown(getTimeUntilReset('weekly'))}
+          countdown={formatCountdown(getTimeUntilReset('weekly', leagueNowTick))}
+          now={leagueNowTick}
         />
         <LeagueRankCard
           type="monthly"
           rank={monthlyData.userRank}
           points={monthlyData.userPoints}
-          countdown={formatCountdown(getTimeUntilReset('monthly'))}
+          countdown={formatCountdown(getTimeUntilReset('monthly', leagueNowTick))}
+          now={leagueNowTick}
         />
         <LeagueRankCard
           type="ninetyDay"
           rank={ninetyDayData.userRank}
           points={ninetyDayData.userPoints}
-          countdown={formatCountdown(getTimeUntilReset('ninetyDay'))}
+          countdown={formatCountdown(getTimeUntilReset('ninetyDay', leagueNowTick))}
+          now={leagueNowTick}
         />
       </div>
 
@@ -417,10 +428,22 @@ function moodColor(mood: string): string {
   return colors[mood] ?? '#94a3b8';
 }
 
-function LeagueRankCard({ type, rank, points, countdown }: { type: LeagueType; rank: number; points: number; countdown: string }) {
+function LeagueRankCard({
+  type,
+  rank,
+  points,
+  countdown,
+  now,
+}: {
+  type: LeagueType;
+  rank: number;
+  points: number;
+  countdown: string;
+  now: Date;
+}) {
   const config = LEAGUE_CONFIG[type];
   const Icon = LEAGUE_ICONS[config.icon] ?? Calendar;
-  const label = type === 'weekly' ? 'Weekly' : type === 'monthly' ? 'Monthly' : `${getSeasonLabel()} (90-Day)`;
+  const label = type === 'weekly' ? 'Weekly' : type === 'monthly' ? 'Monthly' : `${getSeasonLabel(now)} (90-Day)`;
 
   return (
     <div className="card p-3 text-center relative">

@@ -1,21 +1,40 @@
-import { defineConfig } from 'vite';
+import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'));
+const buildVersion = `${pkg.version}-${Date.now()}`;
+const buildTimeIso = new Date().toISOString();
 
-const now = new Date();
-const year = now.getFullYear();
-const month = String(now.getMonth() + 1).padStart(2, '0');
-const buildDate = `${year}.${month}`;
+function versionGeneratorPlugin(): Plugin {
+  return {
+    name: 'version-generator',
+    buildStart() {
+      const versionData = JSON.stringify({ version: buildVersion, buildTime: buildTimeIso });
+      try {
+        writeFileSync(fileURLToPath(new URL('./public/version.json', import.meta.url)), versionData);
+      } catch (err) {
+        console.error('Failed to write public/version.json', err);
+      }
+    },
+    writeBundle() {
+      const versionData = JSON.stringify({ version: buildVersion, buildTime: buildTimeIso });
+      try {
+        writeFileSync(fileURLToPath(new URL('./dist/version.json', import.meta.url)), versionData);
+      } catch (err) {
+        // dist might not exist yet if not in build mode
+      }
+    }
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), versionGeneratorPlugin()],
   define: {
-    __APP_VERSION__: JSON.stringify(pkg.version),
-    __APP_BUILD__: JSON.stringify(buildDate),
+    __APP_VERSION__: JSON.stringify(buildVersion),
+    __APP_BUILD__: JSON.stringify(pkg.version),
   },
   server: {
     port: 3000,

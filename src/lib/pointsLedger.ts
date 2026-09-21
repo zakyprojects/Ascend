@@ -1,11 +1,9 @@
 import { AppState, LeagueArchive, PointsEntry, EvictedEntryRecord } from '@/types';
 import { uid } from './dates';
 import {
-  getSeasonNumber,
-  startOfNinetyDayCycle,
-  createDeterministicArchiveId,
   calculateSeasonalTotal,
 } from './leagues';
+import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
 
 /**
  * Pure reducer function to add points (or apply point deductions) to AppState.
@@ -35,8 +33,9 @@ export function addPointsInternal(
   | 'pointsHistory'
   | 'leagueArchives'
 > {
-  const activeSeasonNumber = getSeasonNumber();
-  const activeSeasonStart = startOfNinetyDayCycle();
+  const now = leagueNow();
+  const activeSeasonNumber = getSeasonNumber(now);
+  const activeSeasonStart = getSeasonStart(now);
 
   let seasonId = typeof prev.seasonId === 'number' ? prev.seasonId : 1;
   let prevSeasonPos = typeof prev.seasonEvictedPos === 'number' && prev.seasonEvictedPos >= 0 ? prev.seasonEvictedPos : 0;
@@ -45,23 +44,6 @@ export function addPointsInternal(
 
   // Season Rollover Check
   if (seasonId < activeSeasonNumber) {
-    const pastSeasonNum = seasonId;
-    const pastArchiveId = createDeterministicArchiveId(pastSeasonNum);
-    if (!leagueArchives.some((a) => a.id === pastArchiveId || (a.type === 'ninetyDay' && a.seasonNumber === pastSeasonNum))) {
-      const pastPoints = typeof prev.seasonPoints === 'number' ? prev.seasonPoints : (prev.totalPoints || 0);
-      leagueArchives.push({
-        id: pastArchiveId,
-        type: 'ninetyDay',
-        periodLabel: `Season ${pastSeasonNum}`,
-        seasonNumber: pastSeasonNum,
-        competitors: [],
-        userRank: 1,
-        userPoints: pastPoints,
-        archivedAt: new Date().toISOString(),
-        completedAt: new Date().toISOString(),
-        participantCount: 1,
-      });
-    }
     seasonId = activeSeasonNumber;
     prevSeasonPos = 0;
     prevSeasonNeg = 0;
@@ -83,7 +65,7 @@ export function addPointsInternal(
     amount,
     reason,
     source,
-    timestamp: customTimestamp || new Date().toISOString(),
+    timestamp: customTimestamp || leagueNow().toISOString(),
     ...(metadata ? { metadata } : {}),
   };
 

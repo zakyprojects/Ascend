@@ -39,6 +39,7 @@ import { todayKey } from '@/lib/dates';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { fetchPublicPlansFromSupabase, mapRowToImprovementPlan, supabase, syncBroadcaster } from '@/lib/supabase';
 import { getProfilePointsByUsername, getProfileSeasonPointsByUsername } from '@/lib/auth';
+import { leagueNow } from '@/lib/leagueTime';
 import { isTodayLocal, calculateActivePlanStreak } from '@/lib/dates';
 import { STARTER_TEMPLATES } from '@/data/planTemplates';
 
@@ -1344,7 +1345,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {remotePublicPlans.map((plan) => {
                 const creatorLifetimePts = plan.creatorPoints || getProfilePointsByUsername(plan.creatorUsername) || 0;
-                const creatorSeasonPts = getProfileSeasonPointsByUsername(plan.creatorUsername) || 0;
+                const creatorSeasonPts = getProfileSeasonPointsByUsername(plan.creatorUsername, 'ninetyDay', leagueNow()) || 0;
                 const isOwnPlan = (plan.creatorUsername || '').toLowerCase() === (currentUsername || '').toLowerCase();
                 const isAlreadyCopied = followedPlans.some((f) => f.originalPlanId === plan.id);
 

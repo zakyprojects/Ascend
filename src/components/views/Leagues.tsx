@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Trophy, Clock, Crown, Brain, Calendar, CalendarDays, ChevronDown, Archive, Sparkles, UserCheck, ChevronRight } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LeagueType, LeagueCompetitor } from '@/types';
-import { LEAGUE_CONFIG, formatCountdown, getTimeUntilReset, getLeaguePeriodLabel, getSeasonLabel, getSeasonNumber } from '@/lib/leagues';
+import { LEAGUE_CONFIG, formatCountdown, getTimeUntilReset, getLeaguePeriodLabel, getSeasonLabel, getLocalResetDetail } from '@/lib/leagues';
+import { leagueNow } from '@/lib/leagueTime';
 import { Modal } from '@/components/ui/Modal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { CompetitorProfileModal } from '@/components/ui/CompetitorProfileModal';
@@ -28,10 +29,11 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
     return () => clearInterval(interval);
   }, []);
 
+  const now = leagueNow();
   const leagueData = store.getLeagueData(activeLeague);
   const config = LEAGUE_CONFIG[activeLeague];
-  const countdown = formatCountdown(getTimeUntilReset(activeLeague));
-  const periodLabel = getLeaguePeriodLabel(activeLeague);
+  const countdown = formatCountdown(getTimeUntilReset(activeLeague, now));
+  const periodLabel = getLeaguePeriodLabel(activeLeague, now);
   const archives = store.state.leagueArchives.filter((a) => a.type === activeLeague);
 
   const currentUser = store.state.currentUser;
@@ -109,7 +111,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                 className="text-xs font-display font-bold"
                 style={{ color: active ? cfg.color : '#94a3b8' }}
               >
-                {type === 'ninetyDay' ? `90-Day (${getSeasonLabel()})` : type === 'monthly' ? 'Monthly' : 'Weekly'}
+                {type === 'ninetyDay' ? `90-Day (${getSeasonLabel(now)})` : type === 'monthly' ? 'Monthly' : 'Weekly'}
               </span>
               <span className="text-[10px] text-content-disabled">Rank #{data.userRank}</span>
             </button>
@@ -133,7 +135,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="section-title">
-                  {activeLeague === 'ninetyDay' ? `${getSeasonLabel()} — 90-Day League` : config.name}
+                  {activeLeague === 'ninetyDay' ? `${getSeasonLabel(now)} — 90-Day League` : config.name}
                 </h2>
                 {activeLeague === 'ninetyDay' && (
                   <span className="text-[10px] badge-purple px-2 py-0.5 rounded-full font-bold">
@@ -141,7 +143,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-content-muted">{config.resetDetail}</p>
+              <p className="text-[11px] text-content-muted">{getLocalResetDetail(activeLeague, now)}</p>
             </div>
           </div>
 

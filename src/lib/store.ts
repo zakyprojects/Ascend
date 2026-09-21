@@ -75,21 +75,32 @@ import {
   getLeaguePeriodLabel,
   calculatePeriodPoints,
   calculateSeasonalTotal,
-  createDeterministicArchiveId,
-  startOfNinetyDayCycle,
-  getSeasonNumber,
   getEffectiveSeasonPoints,
   generateCompetitors,
   getUserRank,
   createArchive,
 } from './leagues';
 import {
+  leagueNow,
+  getSeasonNumber,
+  getSeasonStart,
+  getWeekStart,
+  getWeekEnd,
+  getMonthStart,
+  getMonthEnd,
+  getSeasonEnd,
+  getWeekPeriodId,
+  getMonthPeriodId,
+  getSeasonPeriodId,
+  EPOCH_UTC,
+  SEASON_LENGTH_MS,
+} from './leagueTime';
+import {
   logoutUser,
   updateProfilePrivacy,
   updateProfileAcceptPartnerInvites,
   updateProfileNotificationPreferences,
   getAllPublicImprovementPlans,
-  getRegisteredCompetitors,
   setCachedProfiles,
   setCachedPublicPlans,
   updateCachedPublicPlan,
@@ -330,35 +341,17 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
 
   const currentHistorySum = pointsHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
   
-  const activeSeasonNumber = getSeasonNumber();
-  const activeSeasonStart = startOfNinetyDayCycle();
+  const currentLeagueNow = leagueNow();
+  const activeSeasonNumber = getSeasonNumber(currentLeagueNow);
+  const activeSeasonStart = getSeasonStart(currentLeagueNow);
 
   let seasonId = typeof st.seasonId === 'number' ? st.seasonId : 1;
   let seasonEvictedPos = typeof st.seasonEvictedPos === 'number' && st.seasonEvictedPos >= 0 ? st.seasonEvictedPos : 0;
   let seasonEvictedNeg = typeof st.seasonEvictedNeg === 'number' && st.seasonEvictedNeg >= 0 ? st.seasonEvictedNeg : 0;
-  let leagueArchives: LeagueArchive[] = st.leagueArchives ? [...st.leagueArchives] : [];
+  let leagueArchives: LeagueArchive[] = (st.leagueArchives || []).filter((a) => !!a.id);
 
   // Check if loaded state belongs to an older season (Rollover Check)
   if (st.seasonId === undefined || st.seasonId < activeSeasonNumber) {
-    if (typeof st.seasonId === 'number' && st.seasonId > 0) {
-      const pastSeasonNum = st.seasonId;
-      const pastArchiveId = createDeterministicArchiveId(pastSeasonNum);
-      if (!leagueArchives.some((a) => a.id === pastArchiveId || (a.type === 'ninetyDay' && a.seasonNumber === pastSeasonNum))) {
-        const pastPoints = typeof st.seasonPoints === 'number' ? st.seasonPoints : (st.totalPoints || 0);
-        leagueArchives.push({
-          id: pastArchiveId,
-          type: 'ninetyDay',
-          periodLabel: `Season ${pastSeasonNum}`,
-          seasonNumber: pastSeasonNum,
-          competitors: [],
-          userRank: 1,
-          userPoints: pastPoints,
-          archivedAt: new Date().toISOString(),
-          completedAt: new Date().toISOString(),
-          participantCount: 1,
-        });
-      }
-    }
     seasonId = activeSeasonNumber;
     seasonEvictedPos = 0;
     seasonEvictedNeg = 0;
@@ -774,8 +767,9 @@ export function excisePointsEntriesInternal(
 ): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'seasonEvictedPos' | 'seasonEvictedNeg' | 'evictedExcisionRecords' | 'evictedEntryIds' | 'pointsHistory' | 'leagueArchives'> & {
   excisedEntryIds: string[];
 } {
-  const activeSeasonNumber = getSeasonNumber();
-  const activeSeasonStart = startOfNinetyDayCycle();
+  const now = leagueNow();
+  const activeSeasonNumber = getSeasonNumber(now);
+  const activeSeasonStart = getSeasonStart(now);
 
   let seasonId = typeof prev.seasonId === 'number' ? prev.seasonId : 1;
   let prevSeasonPos = typeof prev.seasonEvictedPos === 'number' && prev.seasonEvictedPos >= 0 ? prev.seasonEvictedPos : 0;
@@ -784,23 +778,6 @@ export function excisePointsEntriesInternal(
 
   // Season Rollover Check
   if (seasonId < activeSeasonNumber) {
-    const pastSeasonNum = seasonId;
-    const pastArchiveId = createDeterministicArchiveId(pastSeasonNum);
-    if (!leagueArchives.some((a) => a.id === pastArchiveId || (a.type === 'ninetyDay' && a.seasonNumber === pastSeasonNum))) {
-      const pastPoints = typeof prev.seasonPoints === 'number' ? prev.seasonPoints : (prev.totalPoints || 0);
-      leagueArchives.push({
-        id: pastArchiveId,
-        type: 'ninetyDay',
-        periodLabel: `Season ${pastSeasonNum}`,
-        seasonNumber: pastSeasonNum,
-        competitors: [],
-        userRank: 1,
-        userPoints: pastPoints,
-        archivedAt: new Date().toISOString(),
-        completedAt: new Date().toISOString(),
-        participantCount: 1,
-      });
-    }
     seasonId = activeSeasonNumber;
     prevSeasonPos = 0;
     prevSeasonNeg = 0;
@@ -960,7 +937,7 @@ export function isWeeklyReflectionAwarded(
   // Past season check: if weekKey belongs to a completed past season
   try {
     const { start } = getWeekDates(weekKey);
-    const activeSeasonStart = startOfNinetyDayCycle();
+    const activeSeasonStart = getSeasonStart(leagueNow());
     if (start < activeSeasonStart) {
       return new Date(latestReflection.createdAt) <= getWeekReflectionCutoff(weekKey);
     }
@@ -2155,7 +2132,7 @@ export function useAppState() {
   // Check for league period rollovers and missed-habit penalties on mount and every minute
   useEffect(() => {
     const checkUpdates = (simulatedNow?: Date) => {
-      const targetNow = simulatedNow || new Date();
+      const targetNow = simulatedNow || leagueNow();
       const challengesToSync: SharedChallenge[] = [];
 
       setState((prev) => {
@@ -2187,8 +2164,8 @@ export function useAppState() {
         syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
       }
     };
-    checkUpdates(getNow());
-    archiveTimer.current = window.setInterval(() => checkUpdates(getNow()), 60000);
+    checkUpdates(leagueNow());
+    archiveTimer.current = window.setInterval(() => checkUpdates(leagueNow()), 60000);
 
     (window as any).__triggerPenaltyCheck = (simulatedDateIso?: string) => {
       const simDate = simulatedDateIso ? new Date(simulatedDateIso) : getNow();
@@ -4034,8 +4011,9 @@ export function useAppState() {
             }
           }
 
-          const seasonStart = getLeaguePeriodStart('ninetyDay', new Date());
-          const seasonPts = calculatePeriodPoints(baseState.pointsHistory || [], seasonStart, new Date(), baseState.totalPoints);
+          const now = leagueNow();
+          const seasonStart = getLeaguePeriodStart('ninetyDay', now);
+          const seasonPts = calculatePeriodPoints(baseState.pointsHistory || [], seasonStart, now, baseState.totalPoints);
           const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
           const penaltyAmount = isPointEligible ? Math.round(BAD_HABIT_POINTS.occurBase * multiplier) : 0;
           pointsChange = -penaltyAmount;
@@ -4401,7 +4379,7 @@ export function useAppState() {
         });
       }
 
-      const activeSeasonNum = getSeasonNumber();
+      const activeSeasonNum = getSeasonNumber(leagueNow());
       const nowIso = new Date().toISOString();
       for (const m of newlyUnlockedMilestones) {
         awarded.push({
@@ -4468,7 +4446,7 @@ export function useAppState() {
         (prev) => {
           if (!prev.addictionTracker) return prev;
           const tracker = prev.addictionTracker;
-          const activeSeasonNum = getSeasonNumber();
+          const activeSeasonNum = getSeasonNumber(leagueNow());
 
           // 1. Collect all awarded milestones to deduct (with legacy fallback reconstruction)
           let awardedList: AddictionMilestoneAward[] = tracker.awardedMilestones ? [...tracker.awardedMilestones] : [];
@@ -4562,7 +4540,7 @@ export function useAppState() {
                 return getSeasonNumber(new Date(p.timestamp)) === sNum;
               });
               if (pastEntries.length > 0) {
-                const pastArchiveId = createDeterministicArchiveId(sNum);
+                const pastArchiveId = `S:${sNum}`;
                 const pastSum = pastEntries.reduce((acc, p) => acc + (p.amount || 0), 0);
                 updatedLeagueArchives.push({
                   id: pastArchiveId,
@@ -7045,10 +7023,11 @@ export function useAppState() {
     const bestStreakDays = rawStats.bestStreakDays ?? rawStats.streakDays ?? 0;
     const bestStreakCategory = rawStats.bestStreakCategory ?? rawStats.streakSource ?? '';
 
-    const start = getLeaguePeriodStart('ninetyDay', new Date());
-    const seasonPoints = calculatePeriodPoints(profile.points_history || [], start, new Date(), profile.total_points);
+    const now = leagueNow();
+    const start = getLeaguePeriodStart('ninetyDay', now);
+    const seasonPoints = calculatePeriodPoints(profile.points_history || [], start, now, profile.total_points);
 
-    const activeSeasonNumber = getSeasonNumber();
+    const activeSeasonNumber = getSeasonNumber(now);
     const profileSeasonId = typeof profile.season_id === 'number' ? profile.season_id : 1;
     const computedSeasonPts = profileSeasonId === activeSeasonNumber
       ? (typeof profile.season_points === 'number' ? profile.season_points : seasonPoints)
@@ -7372,12 +7351,13 @@ export function useAppState() {
   // Multi-user & Seed Competitor League Helper
   const getLeagueData = useCallback(
     (type: LeagueType) => {
+      const now = leagueNow();
       let userPoints: number;
       if (type === 'ninetyDay') {
-        userPoints = getEffectiveSeasonPoints(state);
+        userPoints = getEffectiveSeasonPoints(state, now);
       } else {
-        const start = getLeaguePeriodStart(type);
-        userPoints = calculatePeriodPoints(state.pointsHistory, start, new Date(), state.totalPoints);
+        const start = getLeaguePeriodStart(type, now);
+        userPoints = calculatePeriodPoints(state.pointsHistory, start, now, state.totalPoints);
       }
 
       const unified = calculateUnifiedStreak(state);
@@ -7422,7 +7402,8 @@ export function useAppState() {
         state.username,
         state.totalPoints,
         userStats,
-        activeHabitsList
+        activeHabitsList,
+        now
       );
       const userRank = getUserRank(competitors);
       return { competitors, userRank, userPoints };
@@ -8912,64 +8893,159 @@ export function useAppState() {
 
 export type AppStore = ReturnType<typeof useAppState>;
 
-function checkAndArchiveLeagues(state: AppState, now: Date = new Date()): AppState {
-  const types: LeagueType[] = ['weekly', 'monthly', 'ninetyDay'];
+function getArchivePeriodStart(a: LeagueArchive): number {
+  if (a.id) {
+    if (a.id.startsWith('W:')) {
+      const parts = a.id.slice(2).split('-W');
+      if (parts.length === 2) {
+        const year = parseInt(parts[0], 10);
+        const week = parseInt(parts[1], 10);
+        const jan4 = new Date(Date.UTC(year, 0, 4, 0, 0, 0, 0));
+        const jan4DayNr = (jan4.getUTCDay() + 6) % 7;
+        const firstMon = new Date(Date.UTC(year, 0, 4 - jan4DayNr, 0, 0, 0, 0));
+        const mon = new Date(firstMon.getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000);
+        return mon.getTime();
+      }
+    } else if (a.id.startsWith('M:')) {
+      const parts = a.id.slice(2).split('-');
+      if (parts.length === 2) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        return Date.UTC(year, month, 1, 0, 0, 0, 0);
+      }
+    } else if (a.id.startsWith('S:')) {
+      const sNum = parseInt(a.id.slice(2), 10);
+      if (!isNaN(sNum)) {
+        return EPOCH_UTC.getTime() + (sNum - 1) * SEASON_LENGTH_MS;
+      }
+    }
+  }
+  if (a.archivedAt) {
+    return new Date(a.archivedAt).getTime();
+  }
+  return 0;
+}
+
+function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
   const newArchives: LeagueArchive[] = [];
 
-  for (const type of types) {
-    const currentPeriodLabel = getLeaguePeriodLabel(type, now);
+  // 1. Weekly catch-up loop
+  const currWeekStart = getWeekStart(now);
+  let weekRefDate = new Date(currWeekStart.getTime() - 1);
+  for (let step = 0; step < 12; step++) {
+    const periodStart = getWeekStart(weekRefDate);
+    const periodEnd = getWeekEnd(weekRefDate);
+    const periodId = getWeekPeriodId(weekRefDate);
 
-    const hasCurrentArchive = state.leagueArchives.some(
-      (a) => a.type === type && a.periodLabel === currentPeriodLabel
-    );
+    if (state.leagueArchives.some((a) => a.id === periodId)) {
+      break;
+    }
 
-    const currentStart = getLeaguePeriodStart(type, now);
-    const prevDate = new Date(currentStart.getTime() - 1);
-    const prevPeriodStart = getLeaguePeriodStart(type, prevDate);
+    const prevPoints = calculatePeriodPoints(state.pointsHistory, periodStart, periodEnd, state.totalPoints);
+    if (prevPoints > 0) {
+      const rawCompetitors = generateCompetitors(
+        'weekly',
+        prevPoints,
+        state.currentUser,
+        state.username,
+        state.totalPoints,
+        undefined,
+        undefined,
+        weekRefDate
+      );
+      const competitors = rawCompetitors.filter((c) => !c.isSeed);
+      const userRank = getUserRank(competitors);
+      const periodLabel = getLeaguePeriodLabel('weekly', weekRefDate);
+      newArchives.push(createArchive('weekly', competitors, userRank, prevPoints, periodLabel, periodId));
+    }
 
-    const previousPeriodPoints = state.pointsHistory.filter((entry) => {
-      const ts = new Date(entry.timestamp);
-      return ts >= prevPeriodStart && ts < currentStart;
-    });
+    weekRefDate = new Date(periodStart.getTime() - 1);
+  }
 
-    if (previousPeriodPoints.length === 0) continue;
+  // 2. Monthly catch-up loop
+  const currMonthStart = getMonthStart(now);
+  let monthRefDate = new Date(currMonthStart.getTime() - 1);
+  for (let step = 0; step < 12; step++) {
+    const periodStart = getMonthStart(monthRefDate);
+    const periodEnd = getMonthEnd(monthRefDate);
+    const periodId = getMonthPeriodId(monthRefDate);
 
-    const typeArchives = state.leagueArchives.filter((a) => a.type === type);
-    if (typeArchives.length >= 12) continue;
+    if (state.leagueArchives.some((a) => a.id === periodId)) {
+      break;
+    }
 
-    if (hasCurrentArchive) continue;
+    const prevPoints = calculatePeriodPoints(state.pointsHistory, periodStart, periodEnd, state.totalPoints);
+    if (prevPoints > 0) {
+      const rawCompetitors = generateCompetitors(
+        'monthly',
+        prevPoints,
+        state.currentUser,
+        state.username,
+        state.totalPoints,
+        undefined,
+        undefined,
+        monthRefDate
+      );
+      const competitors = rawCompetitors.filter((c) => !c.isSeed);
+      const userRank = getUserRank(competitors);
+      const periodLabel = getLeaguePeriodLabel('monthly', monthRefDate);
+      newArchives.push(createArchive('monthly', competitors, userRank, prevPoints, periodLabel, periodId));
+    }
 
-    const prevPoints = calculatePeriodPoints(
-      state.pointsHistory,
-      prevPeriodStart,
-      prevDate,
-      state.totalPoints
-    );
-    if (prevPoints === 0) continue;
+    monthRefDate = new Date(periodStart.getTime() - 1);
+  }
 
-    const competitors = generateCompetitors(
-      type,
-      prevPoints,
-      state.currentUser,
-      state.username,
-      state.totalPoints,
-      undefined,
-      undefined,
-      prevDate
-    );
-    const userRank = getUserRank(competitors);
+  // 3. NinetyDay (Season) catch-up loop
+  const currSeasonNum = getSeasonNumber(now);
+  let targetSeason = currSeasonNum - 1;
+  for (let step = 0; step < 12 && targetSeason >= 1; step++) {
+    const periodId = getSeasonPeriodId(new Date(EPOCH_UTC.getTime() + (targetSeason - 1) * SEASON_LENGTH_MS));
 
-    const prevLabel = getLeaguePeriodLabel(type, prevDate);
+    if (state.leagueArchives.some((a) => a.id === periodId)) {
+      break;
+    }
 
-    if (state.leagueArchives.some((a) => a.type === type && a.periodLabel === prevLabel)) continue;
+    const seasonRefDate = new Date(EPOCH_UTC.getTime() + (targetSeason - 1) * SEASON_LENGTH_MS);
+    const periodStart = getSeasonStart(seasonRefDate);
+    const periodEnd = getSeasonEnd(seasonRefDate);
 
-    newArchives.push(createArchive(type, competitors, userRank, prevPoints, prevLabel));
+    const prevPoints = calculatePeriodPoints(state.pointsHistory, periodStart, periodEnd, state.totalPoints);
+    if (prevPoints > 0) {
+      const rawCompetitors = generateCompetitors(
+        'ninetyDay',
+        prevPoints,
+        state.currentUser,
+        state.username,
+        state.totalPoints,
+        undefined,
+        undefined,
+        seasonRefDate
+      );
+      const competitors = rawCompetitors.filter((c) => !c.isSeed);
+      const userRank = getUserRank(competitors);
+      const periodLabel = getLeaguePeriodLabel('ninetyDay', seasonRefDate);
+      const archive = createArchive('ninetyDay', competitors, userRank, prevPoints, periodLabel, periodId);
+      archive.seasonNumber = targetSeason;
+      newArchives.push(archive);
+    }
+
+    targetSeason--;
   }
 
   if (newArchives.length === 0) return state;
 
+  const allArchives = [...newArchives, ...state.leagueArchives];
+  const finalArchives: LeagueArchive[] = [];
+  const types: LeagueType[] = ['weekly', 'monthly', 'ninetyDay'];
+
+  for (const type of types) {
+    const typeArchives = allArchives.filter((a) => a.type === type);
+    typeArchives.sort((a, b) => getArchivePeriodStart(b) - getArchivePeriodStart(a));
+    finalArchives.push(...typeArchives.slice(0, 12));
+  }
+
   return {
     ...state,
-    leagueArchives: [...newArchives, ...state.leagueArchives].slice(0, 36),
+    leagueArchives: finalArchives,
   };
 }

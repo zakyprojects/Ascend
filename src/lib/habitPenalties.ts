@@ -9,7 +9,7 @@ export { applyPenaltyDeductionInternal };
 
 export const MAX_RETROACTIVE_PENALTY_DAYS = 90;
 
-export function getAppStateSeasonPoints(state: AppState, now: Date = new Date()): number {
+export function getAppStateSeasonPoints(state: AppState, now: Date): number {
   return getEffectiveSeasonPoints(state, now);
 }
 
