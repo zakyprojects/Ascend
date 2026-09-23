@@ -31,7 +31,7 @@ export async function fetchProfileForUser(userId: string): Promise<Record<string
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, uid, username, avatar, created_at, is_profile_public, accept_partner_invites, notif_daily_reminder, notif_partner_activity, notif_league_updates, notif_sunday_planning, last_username_change_at')
       .eq('id', userId)
       .maybeSingle();
 

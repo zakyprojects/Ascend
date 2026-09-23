@@ -465,7 +465,9 @@ export async function saveUserDataToSupabase(
 export async function fetchAllProfilesFromSupabase() {
   if (!isSupabaseConfigured) return [];
   try {
-    const { data, error } = await supabase.from('profiles').select('*');
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, uid, username, avatar, total_points, season_points, season_id, points_history, stats, active_habits, is_profile_public, season_history, created_at, accept_partner_invites');
     if (error || !data) return [];
     return data;
   } catch (e) {
@@ -479,7 +481,7 @@ export async function fetchProfileByUsernameFromSupabase(username: string) {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, uid, username, avatar, total_points, season_points, season_id, points_history, stats, active_habits, is_profile_public, season_history, created_at, accept_partner_invites')
       .ilike('username', username.trim())
       .maybeSingle();
 

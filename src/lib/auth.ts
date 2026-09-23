@@ -543,7 +543,7 @@ export async function updateProfilePrivacy(
       .from('profiles')
       .update({ is_profile_public: isProfilePublic })
       .eq('id', userId)
-      .select('*')
+      .select('id, uid, username, avatar, created_at, is_profile_public, accept_partner_invites')
       .maybeSingle();
 
     if (error || !data) return null;
@@ -551,7 +551,7 @@ export async function updateProfilePrivacy(
     return {
       id: data.id,
       uid: data.uid || generateNumericUID(),
-      email: data.email || '',
+      email: '',
       username: data.username,
       avatar: data.avatar || '🧑',
       createdAt: data.created_at,
