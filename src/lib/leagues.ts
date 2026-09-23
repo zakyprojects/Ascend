@@ -1,104 +1,58 @@
 import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile, EvictedExcisionRecord, AppState } from '@/types';
 import { getSeedCompetitors } from './seedAccounts';
 import { getRegisteredCompetitors } from './auth';
-
-/** Start of the current week (Monday at 00:00:00) */
-export function startOfWeek(date = new Date()): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  // day: 0 = Sun, 1 = Mon, ..., 6 = Sat
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-/** End of the current week (Sunday 23:59:59.999) */
-export function endOfWeek(date = new Date()): Date {
-  const start = startOfWeek(date);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return end;
-}
-
-/** Start of the current month (1st at 00:00:00) */
-export function startOfMonth(date = new Date()): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
-}
-
-/** End of the current month (last day at 23:59:59.999) */
-export function endOfMonth(date = new Date()): Date {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
-}
-
-/** Start of the current 90-day cycle */
-export function startOfNinetyDayCycle(date = new Date()): Date {
-  // Anchored epoch: August 1, 2026
-  const epoch = new Date(2026, 7, 1, 0, 0, 0, 0);
-  const msPerCycle = 90 * 24 * 60 * 60 * 1000;
-  const elapsed = date.getTime() - epoch.getTime();
-  const cyclesPassed = elapsed < 0 ? 0 : Math.floor(elapsed / msPerCycle);
-  return new Date(epoch.getTime() + cyclesPassed * msPerCycle);
-}
-
-/** End of the current 90-day cycle */
-export function endOfNinetyDayCycle(date = new Date()): Date {
-  const start = startOfNinetyDayCycle(date);
-  return new Date(start.getTime() + 90 * 24 * 60 * 60 * 1000 - 1);
-}
-
-/** Returns the current Season number (Season 1 starts August 1, 2026 and increments every 90 days) */
-export function getSeasonNumber(date = new Date()): number {
-  const epoch = new Date(2026, 7, 1, 0, 0, 0, 0);
-  const msPerCycle = 90 * 24 * 60 * 60 * 1000;
-  const elapsed = date.getTime() - epoch.getTime();
-  if (elapsed < 0) return 1;
-  return 1 + Math.floor(elapsed / msPerCycle);
-}
+import {
+  getWeekStart,
+  getWeekEnd,
+  getMonthStart,
+  getMonthEnd,
+  getSeasonStart,
+  getSeasonEnd,
+  getSeasonNumber,
+} from './leagueTime';
 
 /** Returns formatted Season label (e.g. "Season 1") */
-export function getSeasonLabel(date = new Date()): string {
-  return `Season ${getSeasonNumber(date)}`;
+export function getSeasonLabel(now: Date): string {
+  return `Season ${getSeasonNumber(now)}`;
 }
 
-export function getLeaguePeriodStart(type: LeagueType, date = new Date()): Date {
+export function getLeaguePeriodStart(type: LeagueType, now: Date): Date {
   switch (type) {
-    case 'weekly': return startOfWeek(date);
-    case 'monthly': return startOfMonth(date);
-    case 'ninetyDay': return startOfNinetyDayCycle(date);
+    case 'weekly': return getWeekStart(now);
+    case 'monthly': return getMonthStart(now);
+    case 'ninetyDay': return getSeasonStart(now);
   }
 }
 
-export function getLeaguePeriodEnd(type: LeagueType, date = new Date()): Date {
+export function getLeaguePeriodEnd(type: LeagueType, now: Date): Date {
   switch (type) {
-    case 'weekly': return endOfWeek(date);
-    case 'monthly': return endOfMonth(date);
-    case 'ninetyDay': return endOfNinetyDayCycle(date);
+    case 'weekly': return getWeekEnd(now);
+    case 'monthly': return getMonthEnd(now);
+    case 'ninetyDay': return getSeasonEnd(now);
   }
 }
 
-export function getLeaguePeriodLabel(type: LeagueType, date = new Date()): string {
+export function getLeaguePeriodLabel(type: LeagueType, now: Date): string {
   switch (type) {
     case 'weekly': {
-      const start = startOfWeek(date);
-      const end = endOfWeek(date);
-      return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      const start = getWeekStart(now);
+      const end = getWeekEnd(now);
+      return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}`;
     }
     case 'monthly': {
-      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
     }
     case 'ninetyDay': {
-      const seasonLabel = getSeasonLabel(date);
-      const start = startOfNinetyDayCycle(date);
-      const end = endOfNinetyDayCycle(date);
-      return `${seasonLabel} (${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`;
+      const seasonLabel = getSeasonLabel(now);
+      const start = getSeasonStart(now);
+      const end = getSeasonEnd(now);
+      return `${seasonLabel} (${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })})`;
     }
   }
 }
 
 /** Returns milliseconds until the current period ends */
-export function getTimeUntilReset(type: LeagueType, now = new Date()): number {
+export function getTimeUntilReset(type: LeagueType, now: Date): number {
   const end = getLeaguePeriodEnd(type, now);
   return Math.max(0, end.getTime() - now.getTime());
 }
@@ -127,7 +81,7 @@ export function formatCountdown(ms: number): string {
 export function calculatePeriodPoints(
   pointsHistory: PointsEntry[],
   start: Date,
-  end: Date = new Date(),
+  end: Date,
   currentTotalPoints?: number, // Kept for signature compatibility
   evictedPointsOffset: number = 0 // Kept for signature compatibility
 ): number {
@@ -205,9 +159,9 @@ export function generateCompetitors(
   currentUser: UserProfile | null,
   usernameFallback: string,
   totalPoints: number = 0,
-  userStats?: any,
-  activeHabits?: any[],
-  date = new Date()
+  userStats: any | undefined,
+  activeHabits: any[] | undefined,
+  now: Date
 ): LeagueCompetitor[] {
   const currentUserId = currentUser?.id;
   const activeUsername = currentUser?.username || usernameFallback || 'Guest User';
@@ -231,10 +185,10 @@ export function generateCompetitors(
   };
 
   // 2. All other registered real users
-  const otherRealCompetitors = getRegisteredCompetitors(type, currentUserId, date);
+  const otherRealCompetitors = getRegisteredCompetitors(type, currentUserId, now);
 
   // 3. Seed accounts (realistic filler accounts)
-  const seedCompetitors = getSeedCompetitors(type, date);
+  const seedCompetitors = getSeedCompetitors(type, now);
 
   // Merge all competitors
   const allCompetitors: LeagueCompetitor[] = [
@@ -262,9 +216,11 @@ export function createArchive(
   competitors: LeagueCompetitor[],
   userRank: number,
   userPoints: number,
-  periodLabel: string
+  periodLabel: string,
+  id?: string
 ): LeagueArchive {
   return {
+    id,
     type,
     periodLabel,
     competitors,
@@ -274,39 +230,43 @@ export function createArchive(
   };
 }
 
-export const LEAGUE_CONFIG: Record<LeagueType, { name: string; description: string; resetDetail: string; icon: string; color: string }> = {
+export function getLocalResetDetail(type: LeagueType, now: Date): string {
+  const end = getLeaguePeriodEnd(type, now);
+  const dayName = end.toLocaleDateString(undefined, { weekday: 'long' });
+  const timeStr = end.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return `Resets ${dayName} at ${timeStr} (your local time)`;
+}
+
+export const LEAGUE_CONFIG: Record<LeagueType, { name: string; description: string; icon: string; color: string }> = {
   weekly: {
     name: 'Weekly League',
     description: 'Compete every week based on points earned.',
-    resetDetail: 'Resets every Monday at midnight',
     icon: 'Calendar',
     color: '#34d399',
   },
   monthly: {
     name: 'Monthly League',
     description: 'Monthly competition tracking consistency.',
-    resetDetail: 'Resets on the 1st of every calendar month',
     icon: 'CalendarDays',
     color: '#0ea5e9',
   },
   ninetyDay: {
     name: '90-Day League',
     description: 'The neuroplasticity league. 90 days of sustained effort rewires your brain.',
-    resetDetail: 'Resets every 90 days from cycle start',
     icon: 'Brain',
     color: '#a855f7',
   },
 };
 
 export function calculateSeasonalTotal(
-  seasonEvictedPos: number = 0,
-  seasonEvictedNeg: number = 0,
-  history: PointsEntry[] = [],
-  seasonStart: Date = startOfNinetyDayCycle(),
-  evictedExcisionRecords: EvictedExcisionRecord[] = [],
-  activeSeasonNumber?: number
+  seasonEvictedPos: number,
+  seasonEvictedNeg: number,
+  history: PointsEntry[],
+  seasonStart: Date,
+  evictedExcisionRecords: EvictedExcisionRecord[],
+  activeSeasonNumber: number
 ): number {
-  const targetSeason = typeof activeSeasonNumber === 'number' ? activeSeasonNumber : getSeasonNumber();
+  const targetSeason = activeSeasonNumber;
   let seasonExcisedPosOffset = 0;
   let seasonExcisedNegOffset = 0;
 
@@ -321,8 +281,8 @@ export function calculateSeasonalTotal(
     }
   }
 
-  const effectivePos = Math.max(0, seasonEvictedPos - seasonExcisedPosOffset);
-  const effectiveNeg = Math.max(0, seasonEvictedNeg - seasonExcisedNegOffset);
+  const effectivePos = Math.max(0, (seasonEvictedPos || 0) - seasonExcisedPosOffset);
+  const effectiveNeg = Math.max(0, (seasonEvictedNeg || 0) - seasonExcisedNegOffset);
 
   if (!history || history.length === 0) {
     return Math.max(0, effectivePos - effectiveNeg);
@@ -354,9 +314,9 @@ export function calculateSeasonalTotal(
 /**
  * Computes the live effective season points for the currently active season.
  * If state.seasonId is behind the live season, stale evicted scalar baselines and excision records
- * are ignored (treated as 0/empty), falling back cleanly to pointsHistory filtered from startOfNinetyDayCycle().
+ * are ignored (treated as 0/empty), falling back cleanly to pointsHistory filtered from getSeasonStart(now).
  */
-export function getEffectiveSeasonPoints(state: AppState, now: Date = new Date()): number {
+export function getEffectiveSeasonPoints(state: AppState, now: Date): number {
   const liveSeason = getSeasonNumber(now);
   const evictedValid = state.seasonId === liveSeason;
 
@@ -370,13 +330,9 @@ export function getEffectiveSeasonPoints(state: AppState, now: Date = new Date()
     effectivePos,
     effectiveNeg,
     state.pointsHistory || [],
-    startOfNinetyDayCycle(now),
+    getSeasonStart(now),
     effectiveExcisionRecords,
     liveSeason
   );
-}
-
-export function createDeterministicArchiveId(seasonNumber: number): string {
-  return `archive-ninetyDay-season-${seasonNumber}`;
 }
 

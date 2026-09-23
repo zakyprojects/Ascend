@@ -41,11 +41,8 @@ import {
 } from '@/types';
 import { mergeSharedChallenge } from './pactLifecycle';
 import { ensureDefaultActivities } from './timeTracker';
-import {
-  calculateSeasonalTotal,
-  getSeasonNumber,
-  startOfNinetyDayCycle,
-} from './leagues';
+import { calculateSeasonalTotal } from './leagues';
+import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
 
 function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string; timestamp?: string }>(
   baseArr: T[] = [],
@@ -373,16 +370,14 @@ function mergeLeagueArchives(
   const map = new Map<string, LeagueArchive>();
 
   for (const item of baseList) {
-    if (!item) continue;
-    const key = `${item.type}_${item.periodLabel}_${item.archivedAt}`;
-    map.set(key, item);
+    if (!item || !item.id) continue;
+    map.set(item.id, item);
   }
 
   for (const item of incomingList) {
-    if (!item) continue;
-    const key = `${item.type}_${item.periodLabel}_${item.archivedAt}`;
-    if (!map.has(key)) {
-      map.set(key, item);
+    if (!item || !item.id) continue;
+    if (!map.has(item.id)) {
+      map.set(item.id, item);
     }
   }
 
@@ -484,10 +479,11 @@ export function mergeAppState(
   );
 
   // 4. Points history & Total points (Epoch-Gated Seasonal Resolution)
-  const currentWallClockSeason = getSeasonNumber();
+  const currentSeason = getSeasonNumber(leagueNow());
   const baseSeason = baseState.seasonId || 1;
   const incSeason = incomingState.seasonId || 1;
-  const maxSeason = Math.max(baseSeason, incSeason, currentWallClockSeason);
+  // Clamped to currentSeason — a corrupted/future seasonId from any device must never advance the account beyond the real season. Fixes the wrong-clock vulnerability identified in Phase 4 Mode A (2026-09-20).
+  const maxSeason = Math.min(Math.max(baseSeason, incSeason, currentSeason), currentSeason);
 
   const mergedEvictedEntryIds = mergeEntityArrays(
     baseState.evictedEntryIds || [],
@@ -676,7 +672,7 @@ export function mergeAppState(
   const newEvictedFromMerge: EvictedEntryRecord[] = [];
 
   if (droppedHistory.length > 0) {
-    const activeSeasonStart = startOfNinetyDayCycle();
+    const activeSeasonStart = getSeasonStart(leagueNow());
     let additionalEvictedPos = 0;
     let additionalEvictedNeg = 0;
 
@@ -718,12 +714,13 @@ export function mergeAppState(
     mergedSeasonPos,
     mergedSeasonNeg,
     finalHistory,
-    startOfNinetyDayCycle(),
+    getSeasonStart(leagueNow()),
     mergedEvictedExcisionRecords,
     maxSeason
   );
 
-  const seasonId = maxSeason;
+  // Clamped to currentSeason — a corrupted/future seasonId from any device must never advance the account beyond the real season. Fixes the wrong-clock vulnerability identified in Phase 4 Mode A (2026-09-20).
+  const seasonId = Math.min(maxSeason, currentSeason);
   const seasonPoints = computedSeasonPoints;
   const seasonEvictedPos = mergedSeasonPos;
   const seasonEvictedNeg = mergedSeasonNeg;

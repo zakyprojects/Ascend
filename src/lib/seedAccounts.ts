@@ -250,7 +250,7 @@ export function calculateSeedAccountPoints(
 /**
   * Get all seed account competitors formatted for a league leaderboard.
   */
-export function getSeedCompetitors(type: LeagueType, date: Date = new Date()): LeagueCompetitor[] {
+export function getSeedCompetitors(type: LeagueType, date: Date): LeagueCompetitor[] {
   return SEED_ACCOUNTS.map((seed) => {
     const periodPoints = calculateSeedAccountPoints(seed, type, date);
     return {

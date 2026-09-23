@@ -26,6 +26,7 @@ import { AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
+import { UpdateBanner } from '@/components/ui/UpdateBanner';
 
 function App() {
   const store = useAppState();
@@ -47,6 +48,7 @@ function App() {
 
   return (
     <ToastProvider>
+      <UpdateBanner />
       <OfflineBanner />
       <AppShell
         currentView={view}

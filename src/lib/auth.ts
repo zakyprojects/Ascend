@@ -1,6 +1,7 @@
 import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, PartnerInvite, Partnership } from '@/types';
 import { SEED_ACCOUNTS, calculateSeedAccountPoints } from './seedAccounts';
-import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory, getSeasonNumber } from './leagues';
+import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory } from './leagues';
+import { leagueNow, getSeasonNumber } from './leagueTime';
 import { generateNumericUID, todayKey } from './dates';
 import { getHighestUserStreak } from './habitPenalties';
 import {
@@ -59,7 +60,7 @@ export function getProfilePointsByUsername(username: string): number {
 export function computeCompetitorLeaguePoints(
   profile: any,
   type: LeagueType,
-  now: Date = new Date()
+  now: Date
 ): number {
   const pointsHistory = profile.points_history || [];
   const start = getLeaguePeriodStart(type, now);
@@ -83,8 +84,8 @@ export function computeCompetitorLeaguePoints(
 
 export function getProfileSeasonPointsByUsername(
   username: string,
-  type: LeagueType = 'ninetyDay',
-  now: Date = new Date()
+  type: LeagueType,
+  now: Date
 ): number {
   if (!username) return 0;
   const lower = username.toLowerCase();
@@ -715,8 +716,8 @@ export function reconstructStateFromProfile(p: any): AppState {
  */
 export function getRegisteredCompetitors(
   type: LeagueType,
-  currentUserId?: string,
-  now: Date = new Date(),
+  currentUserId: string | undefined,
+  now: Date,
   profilesOverride?: any[]
 ): LeagueCompetitor[] {
   const profiles = profilesOverride || cachedProfiles;

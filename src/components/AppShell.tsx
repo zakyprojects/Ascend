@@ -1,5 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { getSeasonLabel } from '@/lib/leagues';
+import { leagueNow } from '@/lib/leagueTime';
 import {
   LayoutDashboard,
   CheckSquare,
@@ -157,7 +158,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
               <div className="flex items-center gap-1.5 flex-wrap">
                 <div className="font-display font-bold text-content-primary text-lg leading-none">Ascend</div>
                 <span className="whitespace-nowrap shrink-0 text-[10px] badge-season px-1.5 py-0.5 rounded-full font-bold">
-                  {getSeasonLabel()}
+                  {getSeasonLabel(leagueNow())}
                 </span>
                 <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md badge-beta text-[9px] font-bold uppercase tracking-wider">
                   Beta

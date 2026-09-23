@@ -35,7 +35,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
 import { getCurrentTier } from '@/lib/tiers';
-import { getSeasonNumber } from '@/lib/leagues';
+import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { todayKey, formatDateShort, parseDate, calculateElapsedDays, addDays } from '@/lib/dates';
 import { createNotificationSupabase, checkRecentPartnerNudgeSent } from '@/lib/supabase';
@@ -258,7 +258,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   }, [activePartnerUsername, bothStatsAllowed, getPartnerProfileStats, executeStatsFetch]);
 
   // Current Season & Lazy Client-Side Evaluation
-  const currentSeason = getSeasonNumber();
+  const currentSeason = getSeasonNumber(leagueNow());
 
   // Current User Stats
   const mySeasonPoints = store.getLeagueData('ninetyDay').userPoints;
@@ -284,7 +284,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   // Partner Stats (Lazy Client-Side Evaluation)
   const partnerSeason = (partnerStatsData as any)?.season_id ?? (partnerStatsData as any)?.seasonId ?? 1;
   const partnerPoints = (partnerSeason === currentSeason)
-    ? (partnerStatsData?.seasonPoints ?? (partnerStatsData as any)?.season_points ?? partnerStatsData?.totalPoints ?? (activePartnerUsername ? getProfileSeasonPointsByUsername(activePartnerUsername) : 0))
+    ? (partnerStatsData?.seasonPoints ?? (partnerStatsData as any)?.season_points ?? partnerStatsData?.totalPoints ?? (activePartnerUsername ? getProfileSeasonPointsByUsername(activePartnerUsername, 'ninetyDay', leagueNow()) : 0))
     : 0;
   const partnerTotalPoints = partnerPoints;
   const partnerSeasonPoints = partnerPoints;
