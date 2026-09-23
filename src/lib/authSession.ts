@@ -395,9 +395,27 @@ export async function hydrateUserSession(
         return merged;
       });
 
-      // CLEANUP STALE DELETED PLANS IN USER_DATA
+      // Preserve unconfirmed plans from savedState (syncStatus === 'pending' | 'failed') that are not yet in dbPlans
       if (savedState?.improvementPlans) {
-        const cleanedPlans = savedState.improvementPlans.filter((p: any) => dbPlanIds.has(p.id));
+        const unconfirmedPlans = savedState.improvementPlans.filter((p: any) => {
+          if (dbPlanIds.has(p.id)) return false;
+          const status = p.syncStatus || 'synced';
+          return status === 'pending' || status === 'failed';
+        });
+        if (unconfirmedPlans.length > 0) {
+          state.improvementPlans = [...state.improvementPlans, ...unconfirmedPlans];
+        }
+      }
+
+      // CLEANUP STALE DELETED PLANS IN USER_DATA
+      // Only prune plans that are missing from dbPlanIds AND are marked 'synced' (or undefined for backward compatibility).
+      // Plans with syncStatus 'pending' or 'failed' are not yet confirmed in DB and must never be pruned.
+      if (savedState?.improvementPlans) {
+        const cleanedPlans = savedState.improvementPlans.filter((p: any) => {
+          if (dbPlanIds.has(p.id)) return true;
+          const status = p.syncStatus || 'synced';
+          return status !== 'synced';
+        });
         if (cleanedPlans.length !== savedState.improvementPlans.length) {
           console.log('[HYDRATION CLEANUP] Cleaning deleted plans out of user_data');
           saveUserDataToSupabase(userId, { ...savedState, improvementPlans: cleanedPlans }).catch((err) => {

@@ -514,6 +514,9 @@ export interface ImprovementPlan {
   // Phase C Review Loop Cadence
   reviewCadence?: 'weekly' | 'monthly' | null;
   nextReviewDueAt?: string | null;
+
+  // Synchronization status (client-side/user_data JSONB only)
+  syncStatus?: 'pending' | 'synced' | 'failed';
 }
 
 export interface UserPlanFollow {

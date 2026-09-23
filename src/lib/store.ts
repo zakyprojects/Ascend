@@ -2162,6 +2162,64 @@ export function useAppState() {
         });
         syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
       }
+
+      // RETRY PENDING OR FAILED IMPROVEMENT PLANS (Outside setState)
+      const currentState = stateRef.current;
+      if (currentState?.improvementPlans && isSupabaseConfigured) {
+        const unconfirmedPlans = currentState.improvementPlans.filter(
+          (p) => p.syncStatus === 'pending' || p.syncStatus === 'failed'
+        );
+        for (const plan of unconfirmedPlans) {
+          syncPlanToSupabase(plan)
+            .then((res) => {
+              if (res) {
+                setState((prev) => ({
+                  ...prev,
+                  improvementPlans: prev.improvementPlans.map((p) =>
+                    p.id === plan.id ? { ...p, syncStatus: 'synced' } : p
+                  ),
+                }));
+              } else {
+                setState((prev) => ({
+                  ...prev,
+                  improvementPlans: prev.improvementPlans.map((p) =>
+                    p.id === plan.id ? { ...p, syncStatus: 'failed' } : p
+                  ),
+                }));
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(
+                    new CustomEvent('app-toast-error', {
+                      detail: {
+                        title: 'Plan Sync Failed',
+                        message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                        dedupKey: `plan_sync_failed_${plan.id}`,
+                      },
+                    })
+                  );
+                }
+              }
+            })
+            .catch((_err) => {
+              setState((prev) => ({
+                ...prev,
+                improvementPlans: prev.improvementPlans.map((p) =>
+                  p.id === plan.id ? { ...p, syncStatus: 'failed' } : p
+                ),
+              }));
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(
+                  new CustomEvent('app-toast-error', {
+                    detail: {
+                      title: 'Plan Sync Failed',
+                      message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                      dedupKey: `plan_sync_failed_${plan.id}`,
+                    },
+                  })
+                );
+              }
+            });
+        }
+      }
     };
     checkUpdates(leagueNow());
     archiveTimer.current = window.setInterval(() => checkUpdates(leagueNow()), 60000);
@@ -5545,6 +5603,59 @@ export function useAppState() {
   }, []);
 
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---
+  const handlePlanSyncExecution = useCallback((planToSync: ImprovementPlan) => {
+    syncPlanToSupabase(planToSync)
+      .then((res) => {
+        if (res) {
+          setState((prev) => ({
+            ...prev,
+            improvementPlans: prev.improvementPlans.map((p) =>
+              p.id === planToSync.id ? { ...p, syncStatus: 'synced' } : p
+            ),
+          }));
+        } else {
+          setState((prev) => ({
+            ...prev,
+            improvementPlans: prev.improvementPlans.map((p) =>
+              p.id === planToSync.id ? { ...p, syncStatus: 'failed' } : p
+            ),
+          }));
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('app-toast-error', {
+                detail: {
+                  title: 'Plan Sync Failed',
+                  message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                  dedupKey: `plan_sync_failed_${planToSync.id}`,
+                },
+              })
+            );
+          }
+        }
+      })
+      .catch((_err) => {
+        setState((prev) => ({
+          ...prev,
+          improvementPlans: prev.improvementPlans.map((p) =>
+            p.id === planToSync.id ? { ...p, syncStatus: 'failed' } : p
+          ),
+        }));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('app-toast-error', {
+              detail: {
+                title: 'Plan Sync Failed',
+                message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                dedupKey: `plan_sync_failed_${planToSync.id}`,
+              },
+            })
+          );
+        }
+      });
+    // False positive: setState is stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const createImprovementPlan = useCallback(
     (
       title: string,
@@ -5624,6 +5735,9 @@ export function useAppState() {
           // Phase C Review Loop
           reviewCadence,
           nextReviewDueAt,
+
+          // Client-side/user_data sync tracking
+          syncStatus: 'pending',
         };
 
         const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), (newPlan as ImprovementPlan).id])).slice(-500);
@@ -5635,9 +5749,10 @@ export function useAppState() {
       });
 
       if (newPlan) {
-        updateCachedPublicPlan(newPlan);
-        syncBroadcaster.broadcast('PLAN_CREATED', newPlan);
-        syncPlanToSupabase(newPlan);
+        const planToSync = newPlan as ImprovementPlan;
+        updateCachedPublicPlan(planToSync);
+        syncBroadcaster.broadcast('PLAN_CREATED', planToSync);
+        handlePlanSyncExecution(planToSync);
       }
       return newPlan;
     },
@@ -5997,6 +6112,7 @@ export function useAppState() {
         updatedPlan = {
           ...target,
           reflectionNotes: updatedNotes,
+          syncStatus: 'pending',
         };
 
         const updatedPlans = [...prev.improvementPlans];
@@ -6008,9 +6124,10 @@ export function useAppState() {
     );
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      const planToSync = updatedPlan as ImprovementPlan;
+      updateCachedPublicPlan(planToSync);
+      syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
+      handlePlanSyncExecution(planToSync);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6081,6 +6198,7 @@ export function useAppState() {
         targetReviewDate: typeParams?.targetReviewDate !== undefined ? typeParams.targetReviewDate : target.targetReviewDate,
         reviewCadence: newReviewCadence,
         nextReviewDueAt: newNextReviewDueAt,
+        syncStatus: 'pending',
       };
 
       const updatedPlans = [...prev.improvementPlans];
@@ -6091,9 +6209,10 @@ export function useAppState() {
     });
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      const planToSync = updatedPlan as ImprovementPlan;
+      updateCachedPublicPlan(planToSync);
+      syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
+      handlePlanSyncExecution(planToSync);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6501,6 +6620,7 @@ export function useAppState() {
       updatedPlan = {
         ...target,
         steps: updatedSteps,
+        syncStatus: 'pending',
       };
 
       const updatedPlans = [...prev.improvementPlans];
@@ -6517,9 +6637,10 @@ export function useAppState() {
     });
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      const planToSync = updatedPlan as ImprovementPlan;
+      updateCachedPublicPlan(planToSync);
+      syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
+      handlePlanSyncExecution(planToSync);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps

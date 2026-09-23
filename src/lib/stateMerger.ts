@@ -938,9 +938,22 @@ export function mergeAppState(
     incomingState.improvementPlans || [],
     tombstoneSet,
     (baseP: ImprovementPlan, incP: ImprovementPlan) => {
-      const baseTime = baseP.createdAt || '';
-      const incTime = incP.createdAt || '';
-      const primary = incTime >= baseTime ? incP : baseP;
+      const baseStatus = baseP.syncStatus || 'synced';
+      const incStatus = incP.syncStatus || 'synced';
+
+      let primary: ImprovementPlan;
+      // Precedence: 'synced' always wins over 'pending' or 'failed'
+      if (incStatus === 'synced' && baseStatus !== 'synced') {
+        primary = incP;
+      } else if (baseStatus === 'synced' && incStatus !== 'synced') {
+        primary = baseP;
+      } else {
+        // Both are 'synced' or both are unconfirmed ('pending'/'failed'): fall back to timestamp
+        const baseTime = baseP.createdAt || '';
+        const incTime = incP.createdAt || '';
+        primary = incTime >= baseTime ? incP : baseP;
+      }
+
       const notes = (primary.reflectionNotes || []).filter((n) => !n.id || !tombstoneSet.has(n.id));
       return {
         ...primary,

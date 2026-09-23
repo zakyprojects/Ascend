@@ -810,6 +810,7 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
     reviewCadence: row?.review_cadence || stepsMeta.reviewCadence || null,
     nextReviewDueAt: row?.next_review_due_at || stepsMeta.nextReviewDueAt || null,
     reflectionNotes,
+    syncStatus: 'synced',
   };
 }
 

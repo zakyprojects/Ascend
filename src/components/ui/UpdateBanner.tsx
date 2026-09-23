@@ -60,7 +60,7 @@ export function UpdateBanner() {
       </div>
       <button
         onClick={() => window.location.reload()}
-        className="px-3 py-1 bg-white text-brand-primary font-semibold rounded text-xs hover:bg-slate-100 transition-colors cursor-pointer"
+        className="px-3 py-1 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded text-xs transition-colors cursor-pointer"
       >
         Reload
       </button>
