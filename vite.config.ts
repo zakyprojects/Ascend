@@ -37,8 +37,8 @@ export default defineConfig({
     __APP_BUILD__: JSON.stringify(pkg.version),
   },
   server: {
-    port: 3000,
-    host: '0.0.0.0',
+    port: 5173,
+    host: true
   },
   resolve: {
     alias: {
