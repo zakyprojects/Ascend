@@ -1170,17 +1170,6 @@ export async function acceptPartnerInviteAtomicSupabase(
       // Always ensure all pending invites between these 2 users are deleted
       await cleanupPendingInvitesBetweenUsersSupabase(user1Id, user1Username, user2Id, user2Username);
 
-      // Guarantee user1_allow_stats and user2_allow_stats are set to true in Supabase
-      if (data?.partnership_id) {
-        await supabase
-          .from('partnerships')
-          .update({
-            user1_allow_stats: true,
-            user2_allow_stats: true,
-          })
-          .eq('id', data.partnership_id);
-      }
-
       return { success: true, partnershipId: data?.partnership_id };
     }
 
@@ -1203,8 +1192,6 @@ export async function acceptPartnerInviteAtomicSupabase(
       user1Username,
       user2Id,
       user2Username,
-      user1AllowStats: true,
-      user2AllowStats: true,
       pairedAt: new Date().toISOString(),
     });
     await supabase.from('partner_invites').delete().eq('id', inviteId);
@@ -1239,8 +1226,6 @@ export async function savePartnershipSupabase(partnership: Partnership) {
       user1_username: partnership.user1Username,
       user2_id: partnership.user2Id,
       user2_username: partnership.user2Username,
-      user1_allow_stats: partnership.user1AllowStats ?? true,
-      user2_allow_stats: partnership.user2AllowStats ?? true,
       paired_at: partnership.pairedAt,
     });
     if (pErr) {
@@ -1257,38 +1242,6 @@ export async function savePartnershipSupabase(partnership: Partnership) {
     );
   } catch (e) {
     console.error('Error saving partnership in Supabase:', e);
-    throw e;
-  }
-}
-
-export async function togglePartnerStatsVisibilitySupabase(
-  partnershipId: string,
-  currentUserId: string,
-  allow: boolean
-) {
-  if (!isSupabaseConfigured || !partnershipId) return;
-  try {
-    const { data: existing } = await supabase
-      .from('partnerships')
-      .select('user1_id, user2_id')
-      .eq('id', partnershipId)
-      .maybeSingle();
-
-    if (!existing) return;
-
-    const isUser1 = existing.user1_id === currentUserId;
-    const updatePayload = isUser1 ? { user1_allow_stats: allow } : { user2_allow_stats: allow };
-
-    const { error } = await supabase.from('partnerships').update(updatePayload).eq('id', partnershipId);
-    if (error) {
-      console.warn('Supabase stats visibility update warning:', error.message);
-      if (error.message.includes('column') || error.message.includes('schema cache')) {
-        throw new Error('Database migration pending: Please run the SQL migration script in your Supabase Dashboard to enable stats sharing.');
-      }
-      throw new Error(error.message || 'Failed to toggle stats visibility in database');
-    }
-  } catch (e) {
-    console.warn('togglePartnerStatsVisibilitySupabase warning:', e);
     throw e;
   }
 }
@@ -1335,8 +1288,6 @@ export async function fetchPartnershipSupabase(userId: string, username?: string
       user1Username: data.user1_username,
       user2Id: data.user2_id,
       user2Username: data.user2_username,
-      user1AllowStats: data.user1_allow_stats ?? true,
-      user2AllowStats: data.user2_allow_stats ?? true,
       pairedAt: data.paired_at,
     };
   } catch (e) {
@@ -1372,8 +1323,6 @@ export async function fetchPartnershipsSupabase(userId: string, username?: strin
       user1Username: row.from_username || row.user1_username,
       user2Id: row.user2_id,
       user2Username: row.user2_username,
-      user1AllowStats: row.user1_allow_stats ?? true,
-      user2AllowStats: row.user2_allow_stats ?? true,
       pairedAt: row.paired_at,
     }));
 
@@ -1669,7 +1618,7 @@ export async function createNotificationSupabase(
     const { data: authData } = await supabase.auth.getUser();
     const actorId = authData?.user?.id || notif.actorId || null;
 
-    // 1. Try SECURITY DEFINER RPC first (executes atomic check-and-insert in 1 database transaction)
+    // 1. Execute SECURITY DEFINER RPC (executes atomic check, auth validation, and insert)
     const { data: rpcData, error: rpcErr } = await supabase.rpc('create_notification_atomic', {
       p_recipient_id: notif.recipientId,
       p_actor_id: actorId,
@@ -1681,89 +1630,33 @@ export async function createNotificationSupabase(
       p_payload: notif.payload || {},
     });
 
-    if (!rpcErr) {
-      if (!rpcData) return null; // Deduplicated by atomic Postgres RPC
-      return {
-        id: rpcData.id,
-        recipientId: rpcData.recipient_id,
-        actorId: rpcData.actor_id || undefined,
-        actorUsername: rpcData.actor_username || undefined,
-        actorAvatar: rpcData.actor_avatar || undefined,
-        type: rpcData.type,
-        title: rpcData.title || undefined,
-        message: rpcData.message,
-        payload: rpcData.payload || {},
-        read: rpcData.read ?? false,
-        createdAt: rpcData.created_at,
-      };
-    } else {
-      console.warn('[createNotificationSupabase] RPC create_notification_atomic failed:', rpcErr.message, 'Code:', rpcErr.code);
+    if (rpcErr) {
+      console.error('[createNotificationSupabase] RPC create_notification_atomic failed:', rpcErr.message, 'Code:', rpcErr.code);
+      return null;
     }
 
-    // 2. Direct table SELECT/INSERT fallback
-    const { data: recipientProfile } = await supabase
-      .from('profiles')
-      .select('notif_partner_activity, notif_league_updates, notif_daily_reminder')
-      .eq('id', notif.recipientId)
-      .maybeSingle();
+    if (!rpcData) return null; // Deduplicated or preference-suppressed by atomic Postgres RPC
 
-    if (recipientProfile) {
-      if (['partner_nudge', 'partner_pledge_done', 'challenge_completed', 'partner_missed_habit'].includes(notif.type) && recipientProfile.notif_partner_activity === false) {
-        console.info(`[createNotificationSupabase] Notification type '${notif.type}' suppressed for user ${notif.recipientId} (notif_partner_activity is false)`);
-        return null;
-      }
-      if (['league_reset', 'league_promotion', 'league_demotion', 'league_update'].includes(notif.type) && recipientProfile.notif_league_updates === false) {
-        console.info(`[createNotificationSupabase] Notification type '${notif.type}' suppressed for user ${notif.recipientId} (notif_league_updates is false)`);
-        return null;
-      }
-      if (['daily_reminder'].includes(notif.type) && recipientProfile.notif_daily_reminder === false) {
-        console.info(`[createNotificationSupabase] Notification type '${notif.type}' suppressed for user ${notif.recipientId} (notif_daily_reminder is false)`);
-        return null;
-      }
-    }
-
-    const payloadRow = {
-      recipient_id: notif.recipientId,
-      actor_id: actorId,
-      actor_username: notif.actorUsername || null,
-      actor_avatar: notif.actorAvatar || null,
-      type: notif.type,
-      title: notif.title || null,
-      message: notif.message,
-      payload: notif.payload || {},
-      read: false,
-    };
-
-    const { data, error } = await supabase
-      .from('notifications')
-      .insert(payloadRow)
-      .select()
-      .single();
-
-    if (error || !data) {
-      if (error?.code === '23505' || error?.message?.includes('unique constraint') || error?.message?.includes('idx_notifications_dedup')) {
-        console.info('[createNotificationSupabase] Notification deduplicated via idx_notifications_dedup constraint');
-        return null;
-      }
-      console.warn('Supabase notification insertion warning:', error?.message);
+    if (typeof rpcData !== 'string') {
+      console.error('[createNotificationSupabase] Unexpected rpcData return shape, expected string UUID:', rpcData);
       return null;
     }
 
     return {
-      id: data.id,
-      recipientId: data.recipient_id,
-      actorId: data.actor_id || undefined,
-      actorUsername: data.actor_username || undefined,
-      actorAvatar: data.actor_avatar || undefined,
-      type: data.type,
-      title: data.title || undefined,
-      message: data.message,
-      payload: data.payload || {},
-      read: data.read ?? false,
-      createdAt: data.created_at,
+      id: rpcData,
+      recipientId: notif.recipientId,
+      actorId: actorId || undefined,
+      actorUsername: notif.actorUsername || undefined,
+      actorAvatar: notif.actorAvatar || undefined,
+      type: notif.type,
+      title: notif.title || undefined,
+      message: notif.message,
+      payload: notif.payload || {},
+      read: false,
+      createdAt: new Date().toISOString(),
     };
   } catch (e) {
-    console.warn('createNotificationSupabase skipped:', e);
+    console.error('createNotificationSupabase error:', e);
     return null;
   }
 }

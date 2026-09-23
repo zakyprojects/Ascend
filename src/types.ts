@@ -576,8 +576,6 @@ export interface Partnership {
   user1Username: string;
   user2Id: string;
   user2Username: string;
-  user1AllowStats?: boolean;
-  user2AllowStats?: boolean;
   pairedAt: string;
 }
 

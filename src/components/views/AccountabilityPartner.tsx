@@ -11,9 +11,6 @@ import {
   X,
   Clock,
   CheckCircle2,
-  Shield,
-  Eye,
-  EyeOff,
   BookOpen,
   Dumbbell,
   AlertTriangle,
@@ -200,14 +197,6 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       : activePartnership.user1Id
     : null;
 
-  // Stats visibility logic (Mutual reciprocal check - default to true on creation)
-  const user1AllowStats = activePartnership?.user1AllowStats ?? true;
-  const user2AllowStats = activePartnership?.user2AllowStats ?? true;
-
-  const currentUserAllowStats = isUser1InActive ? user1AllowStats : user2AllowStats;
-  const partnerAllowStats = isUser1InActive ? user2AllowStats : user1AllowStats;
-  const bothStatsAllowed = Boolean(currentUserAllowStats && partnerAllowStats);
-
   // Real Partner high-level stats state loaded from Supabase
   const [partnerStatsData, setPartnerStatsData] = useState<{
     totalPoints: number;
@@ -234,7 +223,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
   useEffect(() => {
     let mounted = true;
-    if (activePartnerUsername && bothStatsAllowed) {
+    if (activePartnerUsername) {
       executeStatsFetch(async () => {
         try {
           const res = await getPartnerProfileStats(activePartnerUsername);
@@ -255,7 +244,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     return () => {
       mounted = false;
     };
-  }, [activePartnerUsername, bothStatsAllowed, getPartnerProfileStats, executeStatsFetch]);
+  }, [activePartnerUsername, getPartnerProfileStats, executeStatsFetch]);
 
   // Current Season & Lazy Client-Side Evaluation
   const currentSeason = getSeasonNumber(leagueNow());
@@ -404,12 +393,6 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         setInviteError(err.message || 'Failed to accept invite.');
       }
     });
-  };
-
-  const handleToggleStats = async () => {
-    if (!activePartnership) return;
-    const newSetting = !currentUserAllowStats;
-    await store.togglePartnerStatsVisibility(activePartnership.id, newSetting);
   };
 
   // Challenges specific to the currently selected partner relationship
@@ -808,163 +791,122 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               </div>
             </div>
 
-            {/* STATS VISIBILITY PRIVACY CARD */}
-            <div className="p-3.5 bg-bg-700/50 rounded-xl border border-overlay-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Shield size={16} className={currentUserAllowStats ? 'text-success-text' : 'text-content-muted'} />
-                  <span className="text-xs font-bold text-content-secondary">Share Profile Stats with {activePartnerUsername}</span>
-                  {bothStatsAllowed ? (
-                    <span className="text-[10px] font-bold text-success-text bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
-                      <CheckCircle2 size={11} /> Mutual Stats Active
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-bold text-warning-text bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
-                      Mutual Opt-In Required
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-content-muted">
-                  When both you and {activePartnerUsername} enable stats sharing, you unlock side-by-side rank, streaks, and head-to-head comparison metrics.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleToggleStats}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 hover:scale-[1.02] cursor-pointer select-none flex items-center gap-1.5 shrink-0 ${
-                  currentUserAllowStats
-                    ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40 hover:bg-emerald-500/30'
-                    : 'bg-bg-800 text-content-tertiary border border-overlay-default hover:bg-bg-700'
-                }`}
-              >
-                {currentUserAllowStats ? <Eye size={14} /> : <EyeOff size={14} />}
-                <span>{currentUserAllowStats ? 'Sharing Enabled ✓' : 'Sharing Off'}</span>
-              </button>
-            </div>
-
             {/* ITEM 4: "YOU VS PARTNER" SIDE-BY-SIDE HEAD-TO-HEAD COMPARISON CARD */}
-            {bothStatsAllowed ? (
-              isStatsLoading && !partnerStatsData ? (
-                <div className="p-8 bg-bg-800/80 rounded-2xl border border-overlay-default flex items-center justify-center gap-3 text-content-muted text-xs min-h-[220px]">
-                  <AscendLoadingIndicator size="md" />
-                  <span>Loading {activePartnerUsername}'s Stats...</span>
-                </div>
-              ) : (
-                <div className="p-5 bg-gradient-to-b from-bg-800 to-bg-900 rounded-2xl border border-overlay-default space-y-4 relative">
-                  {isStatsLoading && (
-                    <div className="absolute top-3 right-4 flex items-center gap-1.5 text-[11px] text-content-muted bg-bg-900/80 px-2 py-1 rounded-md border border-overlay-default">
-                      <AscendLoadingIndicator size="sm" />
-                      <span>Updating...</span>
-                    </div>
-                  )}
-                  {/* Versus Header */}
-                  <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
-                    <div className="flex items-center gap-2">
-                      <Trophy size={16} className="text-warning-text" />
-                      <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">Head-to-Head Comparison</span>
-                    </div>
-
-                    <div className="text-xs font-semibold">
-                      {mySeasonPoints > partnerSeasonPoints ? (
-                        <span className="text-success-text flex items-center gap-1">
-                          <TrendingUp size={13} /> You lead by {(mySeasonPoints - partnerSeasonPoints).toLocaleString()} pts
-                        </span>
-                      ) : partnerSeasonPoints > mySeasonPoints ? (
-                        <span className="text-warning-text flex items-center gap-1">
-                          <TrendingUp size={13} /> {activePartnerUsername} leads by {(partnerSeasonPoints - mySeasonPoints).toLocaleString()} pts
-                        </span>
-                      ) : (
-                        <span className="text-content-muted">Tied in points</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Dual Column Head-to-Head */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* You Column */}
-                    <div
-                      className={`p-4 rounded-xl border transition-all ${
-                        mySeasonPoints >= partnerSeasonPoints
-                          ? 'bg-emerald-500/5 border-emerald-500/30 shadow-sm ring-1 ring-emerald-500/20'
-                          : 'bg-bg-800/60 border-overlay-subtle'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">{currentUser?.avatar || '🧑'}</span>
-                          <div>
-                            <span className="text-sm font-bold text-content-primary">You ({currentUsername})</span>
-                            <span className="block text-[10px] text-success-text font-semibold">{myTier.name} Tier</span>
-                          </div>
-                        </div>
-                        <TierBadge totalPoints={mySeasonPoints} size="sm" />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
-                          <span className="text-[10px] text-content-muted block">Points</span>
-                          <span className="text-sm font-display font-bold text-warning-text">{mySeasonPoints.toLocaleString()}</span>
-                        </div>
-                        <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
-                          <span className="text-[10px] text-content-muted block">Current Streak</span>
-                          <span className="text-sm font-display font-bold text-orange-400">{myCurrentStreakDays}d</span>
-                        </div>
-                        <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
-                          <span className="text-[10px] text-content-muted block">Habits Done Today</span>
-                          <span className="text-sm font-display font-bold text-sky-theme">{myHabitsCompletedToday}</span>
-                        </div>
-                        <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
-                          <span className="text-[10px] text-content-muted block">Total Habits</span>
-                          <span className="text-sm font-display font-bold text-success-text">{myHabitsCompletedTotal}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Partner Column */}
-                    <div
-                      className={`p-4 rounded-xl border transition-all ${
-                        partnerSeasonPoints > mySeasonPoints
-                          ? 'bg-emerald-500/5 border-emerald-500/30 shadow-sm ring-1 ring-emerald-500/20'
-                          : 'bg-bg-800/60 border-overlay-subtle'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">{partnerStatsData?.avatar || '🧑'}</span>
-                          <div>
-                            <span className="text-sm font-bold text-content-primary">{activePartnerUsername}</span>
-                            <span className="block text-[10px] text-success-text font-semibold">{partnerTier.name} Tier</span>
-                          </div>
-                        </div>
-                        <TierBadge totalPoints={partnerSeasonPoints} size="sm" />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
-                          <span className="text-[10px] text-content-muted block">Points</span>
-                          <span className="text-sm font-display font-bold text-warning-text">{partnerSeasonPoints.toLocaleString()}</span>
-                        </div>
-                        <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
-                          <span className="text-[10px] text-content-muted block">Current Streak</span>
-                          <span className="text-sm font-display font-bold text-orange-400">{partnerCurrentStreakDays}d</span>
-                        </div>
-                        <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
-                          <span className="text-[10px] text-content-muted block">Habits Done Today</span>
-                          <span className="text-sm font-display font-bold text-sky-theme">{partnerHabitsCompletedToday}</span>
-                        </div>
-                        <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
-                          <span className="text-[10px] text-content-muted block">Total Habits</span>
-                          <span className="text-sm font-display font-bold text-success-text">{partnerHabitsCompleted}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
+            {isStatsLoading && !partnerStatsData ? (
+              <div className="p-8 bg-bg-800/80 rounded-2xl border border-overlay-default flex items-center justify-center gap-3 text-content-muted text-xs min-h-[220px]">
+                <AscendLoadingIndicator size="md" />
+                <span>Loading {activePartnerUsername}'s Stats...</span>
+              </div>
             ) : (
-              <div className="p-3.5 bg-bg-800/40 rounded-xl border border-overlay-subtle text-center text-xs text-content-muted">
-                <span>Broader profile comparison hidden. Enable stats sharing above (requires mutual opt-in) to unlock side-by-side metrics.</span>
+              <div className="p-5 bg-gradient-to-b from-bg-800 to-bg-900 rounded-2xl border border-overlay-default space-y-4 relative">
+                {isStatsLoading && (
+                  <div className="absolute top-3 right-4 flex items-center gap-1.5 text-[11px] text-content-muted bg-bg-900/80 px-2 py-1 rounded-md border border-overlay-default">
+                    <AscendLoadingIndicator size="sm" />
+                    <span>Updating...</span>
+                  </div>
+                )}
+                {/* Versus Header */}
+                <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
+                  <div className="flex items-center gap-2">
+                    <Trophy size={16} className="text-warning-text" />
+                    <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">Head-to-Head Comparison</span>
+                  </div>
+
+                  <div className="text-xs font-semibold">
+                    {mySeasonPoints > partnerSeasonPoints ? (
+                      <span className="text-success-text flex items-center gap-1">
+                        <TrendingUp size={13} /> You lead by {(mySeasonPoints - partnerSeasonPoints).toLocaleString()} pts
+                      </span>
+                    ) : partnerSeasonPoints > mySeasonPoints ? (
+                      <span className="text-warning-text flex items-center gap-1">
+                        <TrendingUp size={13} /> {activePartnerUsername} leads by {(partnerSeasonPoints - mySeasonPoints).toLocaleString()} pts
+                      </span>
+                    ) : (
+                      <span className="text-content-muted">Tied in points</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dual Column Head-to-Head */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* You Column */}
+                  <div
+                    className={`p-4 rounded-xl border transition-all ${
+                      mySeasonPoints >= partnerSeasonPoints
+                        ? 'bg-emerald-500/5 border-emerald-500/30 shadow-sm ring-1 ring-emerald-500/20'
+                        : 'bg-bg-800/60 border-overlay-subtle'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{currentUser?.avatar || '🧑'}</span>
+                        <div>
+                          <span className="text-sm font-bold text-content-primary">You ({currentUsername})</span>
+                          <span className="block text-[10px] text-success-text font-semibold">{myTier.name} Tier</span>
+                        </div>
+                      </div>
+                      <TierBadge totalPoints={mySeasonPoints} size="sm" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
+                        <span className="text-[10px] text-content-muted block">Points</span>
+                        <span className="text-sm font-display font-bold text-warning-text">{mySeasonPoints.toLocaleString()}</span>
+                      </div>
+                      <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
+                        <span className="text-[10px] text-content-muted block">Current Streak</span>
+                        <span className="text-sm font-display font-bold text-orange-400">{myCurrentStreakDays}d</span>
+                      </div>
+                      <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
+                        <span className="text-[10px] text-content-muted block">Habits Done Today</span>
+                        <span className="text-sm font-display font-bold text-sky-theme">{myHabitsCompletedToday}</span>
+                      </div>
+                      <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
+                        <span className="text-[10px] text-content-muted block">Total Habits</span>
+                        <span className="text-sm font-display font-bold text-success-text">{myHabitsCompletedTotal}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Partner Column */}
+                  <div
+                    className={`p-4 rounded-xl border transition-all ${
+                      partnerSeasonPoints > mySeasonPoints
+                        ? 'bg-emerald-500/5 border-emerald-500/30 shadow-sm ring-1 ring-emerald-500/20'
+                        : 'bg-bg-800/60 border-overlay-subtle'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{partnerStatsData?.avatar || '🧑'}</span>
+                        <div>
+                          <span className="text-sm font-bold text-content-primary">{activePartnerUsername}</span>
+                          <span className="block text-[10px] text-success-text font-semibold">{partnerTier.name} Tier</span>
+                        </div>
+                      </div>
+                      <TierBadge totalPoints={partnerSeasonPoints} size="sm" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
+                        <span className="text-[10px] text-content-muted block">Points</span>
+                        <span className="text-sm font-display font-bold text-warning-text">{partnerSeasonPoints.toLocaleString()}</span>
+                      </div>
+                      <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
+                        <span className="text-[10px] text-content-muted block">Current Streak</span>
+                        <span className="text-sm font-display font-bold text-orange-400">{partnerCurrentStreakDays}d</span>
+                      </div>
+                      <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
+                        <span className="text-[10px] text-content-muted block">Habits Done Today</span>
+                        <span className="text-sm font-display font-bold text-sky-theme">{partnerHabitsCompletedToday}</span>
+                      </div>
+                      <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
+                        <span className="text-[10px] text-content-muted block">Total Habits</span>
+                        <span className="text-sm font-display font-bold text-success-text">{partnerHabitsCompleted}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
