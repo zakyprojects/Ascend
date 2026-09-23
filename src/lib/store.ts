@@ -162,7 +162,6 @@ import {
   deleteSharedChallengeSupabase,
   acceptPartnerInviteAtomicSupabase,
   cleanupPendingInvitesBetweenUsersSupabase,
-  togglePartnerStatsVisibilitySupabase,
   fetchNotificationsSupabase,
   createNotificationSupabase,
   markNotificationReadSupabase,
@@ -6719,10 +6718,7 @@ export function useAppState() {
       );
 
       try {
-        await Promise.all([
-          sendPartnerInviteSupabase(invite),
-          createNotificationSupabase(notifData).catch((e) => console.warn('Supabase notif send non-fatal:', e)),
-        ]);
+        await sendPartnerInviteSupabase(invite);
         return invite;
       } catch (err: any) {
         console.error('Failed to send partner invite to Supabase:', err);
@@ -6786,8 +6782,6 @@ export function useAppState() {
         user1Username: fromUsername,
         user2Id: toId,
         user2Username: toUsername,
-        user1AllowStats: true,
-        user2AllowStats: true,
         pairedAt: new Date().toISOString(),
       };
 
@@ -7055,36 +7049,6 @@ export function useAppState() {
       isProfilePublic: profile.is_profile_public ?? true,
     };
   }, []);
-
-  const togglePartnerStatsVisibility = useCallback(
-    async (partnershipId: string, allow: boolean) => {
-      const currentUserId = state.currentUser?.id || '';
-      try {
-        await togglePartnerStatsVisibilitySupabase(partnershipId, currentUserId, allow);
-      } catch (err: any) {
-        console.warn('Persisting stats visibility to Supabase skipped:', err?.message);
-      }
-      setState((prev) => {
-        const updated = (prev.partnerships || []).map((p) => {
-          if (p.id !== partnershipId) return p;
-          const isUser1 = p.user1Id === currentUserId;
-          return {
-            ...p,
-            user1AllowStats: isUser1 ? allow : p.user1AllowStats,
-            user2AllowStats: isUser1 ? p.user2AllowStats : allow,
-          };
-        });
-        return {
-          ...prev,
-          partnerships: updated,
-          partnership: updated[0] || null,
-        };
-      });
-    },
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.currentUser?.id]
-  );
 
   const createSharedChallenge = useCallback(
     async (
@@ -8837,7 +8801,6 @@ export function useAppState() {
     declinePartnerInvite,
     endPartnership,
     getPartnerProfileStats,
-    togglePartnerStatsVisibility,
     createSharedChallenge,
     logSharedChallengeHabit,
     deleteSharedChallenge,
