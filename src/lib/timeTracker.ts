@@ -5,7 +5,7 @@ import {
   TimeTrackerState,
   DEFAULT_TIME_TRACKER_ACTIVITIES,
 } from '@/types';
-import { uid, todayKey, getNow } from './dates';
+import { uid, todayKey, getNow, parseDate } from './dates';
 
 export const DAYS_OF_WEEK = [
   'Monday',
@@ -239,12 +239,7 @@ export function checkTimeCollision(
 export function getDayOfWeekName(dateKeyOrDate: string | Date): DayOfWeek {
   let d: Date;
   if (typeof dateKeyOrDate === 'string') {
-    const parts = dateKeyOrDate.split('-').map(Number);
-    if (parts.length === 3) {
-      d = new Date(parts[0], parts[1] - 1, parts[2]);
-    } else {
-      d = new Date(dateKeyOrDate);
-    }
+    d = parseDate(dateKeyOrDate) || new Date();
   } else {
     d = dateKeyOrDate;
   }

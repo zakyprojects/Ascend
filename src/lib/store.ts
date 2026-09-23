@@ -2224,34 +2224,8 @@ export function useAppState() {
     checkUpdates(leagueNow());
     archiveTimer.current = window.setInterval(() => checkUpdates(leagueNow()), 60000);
 
-    (window as any).__triggerPenaltyCheck = (simulatedDateIso?: string) => {
-      const simDate = simulatedDateIso ? new Date(simulatedDateIso) : getNow();
-      console.log('Manually triggering penalty check for:', simDate.toISOString());
-      checkUpdates(simDate);
-    };
-
-    (window as any).__advanceDays = (daysToAdvance: number = 1) => {
-      const currentOffset = (window as any).__SIMULATED_OFFSET_MS || 0;
-      const newOffset = currentOffset + daysToAdvance * 86400000;
-      (window as any).__SIMULATED_OFFSET_MS = newOffset;
-      const simDate = new Date(Date.now() + newOffset);
-      console.log(`Advancing simulated time by ${daysToAdvance} day(s) to:`, simDate.toISOString(), 'Date Key:', todayKey(simDate));
-      checkUpdates(simDate);
-      setState((prev) => ({ ...prev }));
-    };
-
-    (window as any).__resetTimeOffset = () => {
-      (window as any).__SIMULATED_OFFSET_MS = 0;
-      console.log('Reset simulated time offset to real time.');
-      checkUpdates(new Date());
-      setState((prev) => ({ ...prev }));
-    };
-
     return () => {
       if (archiveTimer.current) window.clearInterval(archiveTimer.current);
-      delete (window as any).__triggerPenaltyCheck;
-      delete (window as any).__advanceDays;
-      delete (window as any).__resetTimeOffset;
     };
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2348,18 +2322,6 @@ export function useAppState() {
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const addPoints = useCallback(
-    (amount: number, reason: string, source: string, metadata?: Record<string, any>) => {
-      setState((prev) => ({
-        ...prev,
-        ...addPointsInternal(prev, amount, reason, source, metadata),
-      }));
-    },
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
 
   const addPresetHabit = useCallback((preset: PresetHabit) => {
     const normalizedName = preset.name.trim().toLowerCase();
@@ -8818,7 +8780,6 @@ export function useAppState() {
     isAuthChecking,
     setAuthSessionState,
     logout,
-    addPoints,
     addPresetHabit,
     addCustomHabit,
     updateHabit,

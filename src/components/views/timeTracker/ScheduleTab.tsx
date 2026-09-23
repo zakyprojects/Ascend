@@ -16,7 +16,7 @@ import {
   getAscendViewForModule,
   getActivityThemeColor,
 } from '@/lib/timeTracker';
-import { todayKey, formatDateKeyHuman } from '@/lib/dates';
+import { todayKey, formatDateKeyHuman, addDays } from '@/lib/dates';
 import { ActivityIcon } from './ActivityIcon';
 import { LiveCountdown } from './LiveCountdown';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -109,19 +109,11 @@ export function ScheduleTab({
 
   // Date Navigation Handlers
   const handlePrevDay = () => {
-    const parts = selectedDateKey.split('-');
-    if (parts.length === 3) {
-      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]) - 1);
-      onSelectDateKey(todayKey(d));
-    }
+    onSelectDateKey(addDays(selectedDateKey, -1));
   };
 
   const handleNextDay = () => {
-    const parts = selectedDateKey.split('-');
-    if (parts.length === 3) {
-      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]) + 1);
-      onSelectDateKey(todayKey(d));
-    }
+    onSelectDateKey(addDays(selectedDateKey, 1));
   };
 
   const handleJumpToToday = () => {

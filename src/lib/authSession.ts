@@ -1,6 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { AppState, DEFAULT_STATE, UserProfile, PlanStep, Partnership } from '@/types';
-import { generateNumericUID } from './dates';
+import { generateNumericUID, parseDate } from './dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import {
   fetchUserDataWithStatusFromSupabase,
@@ -363,7 +363,9 @@ export async function hydrateUserSession(
             needsSyncBack = true;
           }
           if (savedPlan.lastCompletedDate) {
-            if (!lastCompletedDate || new Date(savedPlan.lastCompletedDate) > new Date(lastCompletedDate)) {
+            const savedDate = parseDate(savedPlan.lastCompletedDate);
+            const currentDate = parseDate(lastCompletedDate);
+            if (!lastCompletedDate || (savedDate && currentDate && savedDate.getTime() > currentDate.getTime())) {
               lastCompletedDate = savedPlan.lastCompletedDate;
               needsSyncBack = true;
             }
@@ -456,7 +458,9 @@ export async function hydrateUserSession(
             needsSyncBack = true;
           }
           if (savedFollow.lastCompletedDate) {
-            if (!lastCompletedDate || new Date(savedFollow.lastCompletedDate) > new Date(lastCompletedDate)) {
+            const savedDate = parseDate(savedFollow.lastCompletedDate);
+            const currentDate = parseDate(lastCompletedDate);
+            if (!lastCompletedDate || (savedDate && currentDate && savedDate.getTime() > currentDate.getTime())) {
               lastCompletedDate = savedFollow.lastCompletedDate;
               needsSyncBack = true;
             }

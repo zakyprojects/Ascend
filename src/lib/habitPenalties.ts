@@ -47,9 +47,9 @@ function getBestStreakFromSortedDates(sortedDates: string[]): number {
     if (i === 0) {
       running = 1;
     } else {
-      const prev = new Date(sortedDates[i - 1]);
-      const curr = new Date(sortedDates[i]);
-      const diff = Math.round((curr.getTime() - prev.getTime()) / (1000 * 3600 * 24));
+      const prev = parseDate(sortedDates[i - 1]);
+      const curr = parseDate(sortedDates[i]);
+      const diff = prev && curr ? Math.round((curr.getTime() - prev.getTime()) / (1000 * 3600 * 24)) : 0;
       if (diff === 1) {
         running++;
       } else {
@@ -75,9 +75,9 @@ function getCurrentStreakFromSortedDates(sortedDates: string[], now: Date): numb
 
   let streak = 1;
   for (let i = sortedDates.length - 2; i >= 0; i--) {
-    const prev = new Date(sortedDates[i]);
-    const curr = new Date(sortedDates[i + 1]);
-    const diff = Math.round((curr.getTime() - prev.getTime()) / (1000 * 3600 * 24));
+    const prev = parseDate(sortedDates[i]);
+    const curr = parseDate(sortedDates[i + 1]);
+    const diff = prev && curr ? Math.round((curr.getTime() - prev.getTime()) / (1000 * 3600 * 24)) : 0;
     if (diff === 1) {
       streak++;
     } else {
@@ -233,7 +233,7 @@ export function getPastDuePeriods(habit: Habit, now: Date = new Date()): string[
   const freq = habit.frequency;
 
   if (freq === 'daily') {
-    const createdDate = habit.createdAt ? new Date(habit.createdAt) : new Date();
+    const createdDate = parseDate(habit.createdAt) || new Date();
     const start = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
     const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
 
@@ -252,11 +252,12 @@ export function getPastDuePeriods(habit: Habit, now: Date = new Date()): string[
   } else {
     const currentWeekKey = periodKey('weekly', now);
     const lastWeekKey = previousPeriodKey('weekly', 1, now);
-    const createdWeekKey = habit.createdAtPeriod || periodKey('weekly', habit.createdAt ? new Date(habit.createdAt) : now);
+    const parsedCreated = parseDate(habit.createdAt);
+    const createdWeekKey = habit.createdAtPeriod || periodKey('weekly', parsedCreated || now);
 
     if (createdWeekKey === currentWeekKey) return [];
 
-    let cursor = habit.createdAt ? new Date(habit.createdAt) : new Date();
+    let cursor = parsedCreated ? new Date(parsedCreated) : new Date();
     for (let i = 0; i < 52; i++) {
       const key = periodKey('weekly', cursor);
       if (key !== currentWeekKey) {
@@ -406,7 +407,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
     const habit = activeHabits[idx];
     const isPointEligible = idx < 2;
 
-    const createdDate = habit.createdAt ? new Date(habit.createdAt) : now;
+    const createdDate = parseDate(habit.createdAt) || now;
     const start = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
     const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
 

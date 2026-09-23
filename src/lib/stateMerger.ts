@@ -41,6 +41,7 @@ import {
 } from '@/types';
 import { mergeSharedChallenge } from './pactLifecycle';
 import { ensureDefaultActivities } from './timeTracker';
+import { parseDate } from './dates';
 import { calculateSeasonalTotal } from './leagues';
 import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
 
@@ -339,16 +340,10 @@ function mergeBadHabitLogs(
     if (!existing) {
       map.set(key, log);
     } else {
-      const existingTime = existing.updatedAt
-        ? new Date(existing.updatedAt).getTime()
-        : existing.createdAt
-        ? new Date(existing.createdAt).getTime()
-        : 0;
-      const incomingTime = log.updatedAt
-        ? new Date(log.updatedAt).getTime()
-        : log.createdAt
-        ? new Date(log.createdAt).getTime()
-        : 0;
+      const existingParsed = parseDate(existing.updatedAt) || parseDate(existing.createdAt);
+      const existingTime = existingParsed ? existingParsed.getTime() : 0;
+      const incomingParsed = parseDate(log.updatedAt) || parseDate(log.createdAt);
+      const incomingTime = incomingParsed ? incomingParsed.getTime() : 0;
       if (incomingTime >= existingTime) {
         map.set(key, log);
       }
@@ -358,9 +353,17 @@ function mergeBadHabitLogs(
   baseList.forEach(processLog);
   incomingList.forEach(processLog);
 
-  return Array.from(map.values()).sort(
-    (a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
-  );
+  return Array.from(map.values()).sort((a, b) => {
+    // BadHabitLog.date is always 'YYYY-MM-DD', createdAt is ISO timestamp.
+    // Try parseDate on date first, then fallback to createdAt.
+    const timeB = (parseDate(b.date) || parseDate(b.createdAt))?.getTime() ?? 0;
+    const timeA = (parseDate(a.date) || parseDate(a.createdAt))?.getTime() ?? 0;
+    if (timeB !== timeA) {
+      return timeB - timeA;
+    }
+    // Safe deterministic fallback
+    return (b.id || '').localeCompare(a.id || '');
+  });
 }
 
 function mergeLeagueArchives(
