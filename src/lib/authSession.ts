@@ -2,11 +2,11 @@ import { User } from '@supabase/supabase-js';
 import { AppState, DEFAULT_STATE, UserProfile, PlanStep, Partnership } from '@/types';
 import { generateNumericUID, parseDate } from './dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
+import { computeStateDataWeight } from './dataWeight';
 import {
   fetchUserDataWithStatusFromSupabase,
   setUserDataWatermark,
   setUserHydrationComplete,
-  computeStateDataWeight,
   fetchPartnerInvitesSupabase,
   fetchPartnershipSupabase,
   fetchPartnershipsSupabase,

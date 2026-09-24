@@ -130,6 +130,7 @@ import {
   calculateWorkoutPoints,
 } from './pointsConfig';
 import { calculateUnifiedStreak } from './streakLogic';
+import { computeStateDataWeight } from './dataWeight';
 import {
   supabase,
   isSupabaseConfigured,
@@ -144,9 +145,9 @@ import {
   sendPartnerInviteSupabase,
   fetchUserDataFromSupabase,
   fetchUserDataWithStatusFromSupabase,
+  getUserDataWatermark,
   setUserDataWatermark,
   resetUserDataWatermark,
-  computeStateDataWeight,
   saveUserDataToSupabase,
   fetchAllProfilesFromSupabase,
   fetchProfileByUsernameFromSupabase,
@@ -169,7 +170,7 @@ import {
   clearNotificationSupabase,
 } from './supabase';
 import { GuardBlockedError } from './errors';
-import { mergeAppState, deduplicatePresetHabits } from './stateMerger';
+import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult } from './stateMerger';
 
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
@@ -1388,7 +1389,11 @@ export function useAppState() {
       if (typeof window !== 'undefined') {
         try {
           if (state.currentUser?.id) {
-            localStorage.setItem(`ascend_user_cache_${state.currentUser.id}`, JSON.stringify(state));
+            const uid = state.currentUser.id;
+            localStorage.setItem(`ascend_user_cache_${uid}`, JSON.stringify(state));
+            if (computeStateDataWeight(state).itemCount > 0) {
+              localStorage.setItem(`ascend_dirty_${uid}`, '1');
+            }
           } else {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(state));
           }
@@ -1410,6 +1415,9 @@ export function useAppState() {
         const justPersistedUnsyncedIds = state.unsyncedEntityIds || [];
         enqueuePersist(state)
           .then(() => {
+            if (typeof window !== 'undefined' && state.currentUser?.id) {
+              localStorage.removeItem(`ascend_dirty_${state.currentUser.id}`);
+            }
             resolversToDrain.forEach(({ resolve }) => resolve());
             if (justPersistedUnsyncedIds.length > 0) {
               setStateRaw((prev) => ({
@@ -1495,6 +1503,9 @@ export function useAppState() {
         debounceTimer.current = setTimeout(async () => {
           try {
             await enqueuePersist(state);
+            if (typeof window !== 'undefined' && state.currentUser?.id) {
+              localStorage.removeItem(`ascend_dirty_${state.currentUser.id}`);
+            }
             if (justPersistedUnsyncedIds.length > 0) {
               setStateRaw((prev) => ({
                 ...prev,
@@ -1685,8 +1696,50 @@ export function useAppState() {
                   document.documentElement.setAttribute('data-theme', sanitizedState.themePreference);
                 }
               }
-              lastKnownGoodStateRef.current = sanitizedState;
-              setState((current) => mergeAppState(sanitizedState, current, 'hydration'));
+
+              let baseCurrentState = stateRef.current;
+              if (typeof window !== 'undefined' && userId) {
+                try {
+                  const isDirty = Boolean(localStorage.getItem(`ascend_dirty_${userId}`));
+                  if (isDirty) {
+                    const cachedRaw = localStorage.getItem(`ascend_user_cache_${userId}`);
+                    if (cachedRaw) {
+                      const parsed = JSON.parse(cachedRaw);
+                      if (parsed && typeof parsed === 'object') {
+                        baseCurrentState = sanitizeLoadedState(parsed, user);
+                      } else {
+                        localStorage.removeItem(`ascend_dirty_${userId}`);
+                      }
+                    } else {
+                      localStorage.removeItem(`ascend_dirty_${userId}`);
+                    }
+                  }
+                } catch {
+                  localStorage.removeItem(`ascend_dirty_${userId}`);
+                }
+              }
+
+              const watermark = userId ? getUserDataWatermark(userId) : undefined;
+              const guardResult = mergeAppStateWithGuardResult(sanitizedState, baseCurrentState, watermark);
+
+              lastKnownGoodStateRef.current = guardResult.hasSuspiciousDrop
+                ? guardResult.retainedState
+                : guardResult.mergedState;
+
+              setState(guardResult.hasSuspiciousDrop ? guardResult.retainedState : guardResult.mergedState);
+
+              if (guardResult.hasSuspiciousDrop) {
+                const isZeroOut = guardResult.mergedCount === 0;
+                setDestructiveWipeModal({
+                  open: true,
+                  title: isZeroOut ? 'Clear All Tracked Data?' : 'Confirm Large Data Removal',
+                  description: isZeroOut
+                    ? 'This action will remove all remaining tracked items from your account. Are you sure you want to proceed?'
+                    : `A large reduction in data was detected (${guardResult.droppedCount} items removed compared to your last saved cloud state). Would you like to confirm saving these removals to the cloud, or keep your existing data?`,
+                  stateToRetry: guardResult.mergedState,
+                  stateBeforeAction: guardResult.retainedState,
+                });
+              }
             }
           } catch (e) {
             console.error('Error hydrating auth session:', e);
