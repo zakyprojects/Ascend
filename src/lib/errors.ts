@@ -14,3 +14,13 @@ export class GuardBlockedError extends Error {
     Object.setPrototypeOf(this, GuardBlockedError.prototype);
   }
 }
+
+export class PreFetchSyncError extends Error {
+  readonly isRetryable: boolean = true;
+
+  constructor(message: string, readonly originalError?: unknown) {
+    super(message);
+    this.name = 'PreFetchSyncError';
+    Object.setPrototypeOf(this, PreFetchSyncError.prototype);
+  }
+}

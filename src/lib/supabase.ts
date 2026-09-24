@@ -5,7 +5,7 @@ import { calculateUnifiedStreak } from './streakLogic';
 import { mergeAppState } from './stateMerger';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { todayKey } from './dates';
-import { GuardBlockedError } from './errors';
+import { GuardBlockedError, PreFetchSyncError } from './errors';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -241,13 +241,24 @@ export async function saveUserDataToSupabase(
 
   // Write-time merge: Reconcile server state with incoming state using tombstone-aware merger
   let finalState: AppState = state;
-  try {
-    const existingRes = await fetchUserDataWithStatusFromSupabase(userId);
-    if (existingRes.exists && existingRes.state) {
+  const existingRes = await fetchUserDataWithStatusFromSupabase(userId);
+  if (existingRes.error) {
+    console.error(
+      '[SAVE MERGE] Pre-fetch check failed with network/database error, aborting unmerged write to prevent data loss:',
+      existingRes.error
+    );
+    throw new PreFetchSyncError(
+      'Could not verify existing remote database state before saving.',
+      existingRes.error
+    );
+  }
+  if (existingRes.exists && existingRes.state) {
+    try {
       finalState = mergeAppState(existingRes.state, state, 'writeSync');
+    } catch (mergeErr) {
+      console.error('[SAVE MERGE] mergeAppState threw, aborting write (fail-closed):', mergeErr);
+      throw mergeErr;
     }
-  } catch (e) {
-    console.warn('[SAVE MERGE] Pre-fetch merge non-fatal exception, persisting local state:', e);
   }
 
   // SAFETY CHECK 2: Comprehensive Data-Loss Protection Safeguard
