@@ -1137,7 +1137,21 @@ export function useAppState() {
     setIsSavingDestructiveWipe(true);
     try {
       await enqueuePersist(stateToSave, { allowDestructiveWipe: true });
+      lastPersistedStateRef.current = stateToSave;
       lastKnownGoodStateRef.current = stateToSave;
+      setStateRaw(stateToSave);
+      if (typeof window !== 'undefined') {
+        try {
+          if (stateToSave.currentUser?.id) {
+            localStorage.setItem(`ascend_user_cache_${stateToSave.currentUser.id}`, JSON.stringify(stateToSave));
+            localStorage.removeItem(`ascend_dirty_${stateToSave.currentUser.id}`);
+          } else {
+            localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(stateToSave));
+          }
+        } catch {
+          /* ignore */
+        }
+      }
       if (stateToSave.currentUser?.id) {
         resetUserDataWatermark(stateToSave.currentUser.id, stateToSave);
         console.log('[DIAG] handleConfirmDestructiveWipe watermark reset', {
