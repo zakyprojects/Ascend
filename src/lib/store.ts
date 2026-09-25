@@ -1124,6 +1124,11 @@ export function useAppState() {
   );
 
   const handleConfirmDestructiveWipe = useCallback(async () => {
+    console.log('[DIAG] handleConfirmDestructiveWipe called', {
+      hasStateToRetry: Boolean(destructiveWipeModal?.stateToRetry),
+      userId: destructiveWipeModal?.stateToRetry?.currentUser?.id,
+      timestamp: Date.now(),
+    });
     if (!destructiveWipeModal?.stateToRetry) {
       setDestructiveWipeModal(null);
       return;
@@ -1135,6 +1140,11 @@ export function useAppState() {
       lastKnownGoodStateRef.current = stateToSave;
       if (stateToSave.currentUser?.id) {
         resetUserDataWatermark(stateToSave.currentUser.id, stateToSave);
+        console.log('[DIAG] handleConfirmDestructiveWipe watermark reset', {
+          userId: stateToSave.currentUser.id,
+          newWatermark: getUserDataWatermark(stateToSave.currentUser.id),
+          timestamp: Date.now(),
+        });
       }
       setDestructiveWipeModal(null);
       if (typeof window !== 'undefined') {
@@ -1165,6 +1175,14 @@ export function useAppState() {
   }, [destructiveWipeModal, enqueuePersist]);
 
   const handleCancelDestructiveWipe = useCallback(() => {
+    console.log('[DIAG] handleCancelDestructiveWipe called', {
+      hasStateBeforeAction: Boolean(destructiveWipeModal?.stateBeforeAction),
+      userId: destructiveWipeModal?.stateBeforeAction?.currentUser?.id,
+      currentWatermark: destructiveWipeModal?.stateBeforeAction?.currentUser?.id
+        ? getUserDataWatermark(destructiveWipeModal.stateBeforeAction.currentUser.id)
+        : undefined,
+      timestamp: Date.now(),
+    });
     if (destructiveWipeModal?.stateBeforeAction) {
       const preDeleteState = destructiveWipeModal.stateBeforeAction;
       lastPersistedStateRef.current = preDeleteState;
@@ -1174,6 +1192,7 @@ export function useAppState() {
         try {
           if (preDeleteState.currentUser?.id) {
             localStorage.setItem(`ascend_user_cache_${preDeleteState.currentUser.id}`, JSON.stringify(preDeleteState));
+            localStorage.removeItem(`ascend_dirty_${preDeleteState.currentUser.id}`);
           } else {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(preDeleteState));
           }
@@ -1659,6 +1678,14 @@ export function useAppState() {
           }
 
           const myGeneration = ++authGenerationRef.current;
+          console.log('[DIAG] hydration effect started', {
+            event,
+            myGeneration,
+            isHydrated: isHydrated.current,
+            currentUserId: currentUserRef.current?.id,
+            sessionUserId: session.user.id,
+            timestamp: Date.now(),
+          });
 
           const userId = session.user.id;
           const email = session.user.email || '';
@@ -1721,6 +1748,15 @@ export function useAppState() {
 
               const watermark = userId ? getUserDataWatermark(userId) : undefined;
               const guardResult = mergeAppStateWithGuardResult(sanitizedState, baseCurrentState, watermark);
+
+              console.log('[DIAG] hydration guard fired', {
+                mergedCount: guardResult.mergedCount,
+                watermarkCount: guardResult.watermarkCount,
+                droppedCount: guardResult.droppedCount,
+                hasSuspiciousDrop: guardResult.hasSuspiciousDrop,
+                isDirtyMarkerPresent: userId ? Boolean(localStorage.getItem(`ascend_dirty_${userId}`)) : null,
+                timestamp: Date.now(),
+              });
 
               lastKnownGoodStateRef.current = guardResult.hasSuspiciousDrop
                 ? guardResult.retainedState
