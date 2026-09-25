@@ -207,6 +207,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     let mounted = true;
 
     const performSilentReconcile = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return;
+      }
       try {
         const filters = discoverFiltersRef.current;
         const plans = await fetchPublicPlansFromSupabase({
@@ -269,11 +272,40 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       }
     };
 
-    const pollInterval = window.setInterval(performSilentReconcile, 25000);
+    let pollInterval: number | null = null;
+
+    const startPolling = () => {
+      if (!pollInterval && (typeof navigator === 'undefined' || navigator.onLine)) {
+        pollInterval = window.setInterval(performSilentReconcile, 25000);
+      }
+    };
+
+    const stopPolling = () => {
+      if (pollInterval) {
+        window.clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    };
+
+    startPolling();
+
+    const handleOnline = () => {
+      startPolling();
+      performSilentReconcile();
+    };
+
+    const handleOffline = () => {
+      stopPolling();
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     return () => {
       mounted = false;
-      window.clearInterval(pollInterval);
+      stopPolling();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, [activeTab]);
 

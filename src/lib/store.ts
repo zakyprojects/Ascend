@@ -1977,6 +1977,9 @@ export function useAppState() {
     const username = state.username;
 
     const syncPartnerDataLive = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return;
+      }
       try {
         const fetchedInvites = await fetchPartnerInvitesSupabase(userId, username);
         const activePartnerships = await fetchPartnershipsSupabase(userId, username);
@@ -2081,7 +2084,7 @@ export function useAppState() {
     let pollInterval: any = null;
 
     const startFallbackPolling = () => {
-      if (!pollInterval) {
+      if (!pollInterval && (typeof navigator === 'undefined' || navigator.onLine)) {
         pollInterval = setInterval(syncPartnerDataLive, 10000);
       }
     };
@@ -2093,6 +2096,7 @@ export function useAppState() {
       }
     };
 
+    let isSubscribed = false;
     let channel: any = null;
     if (isSupabaseConfigured) {
       channel = supabase
@@ -2192,9 +2196,11 @@ export function useAppState() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => syncPartnerDataLive())
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
+            isSubscribed = true;
             stopFallbackPolling();
             syncPartnerDataLive();
           } else {
+            isSubscribed = false;
             startFallbackPolling();
           }
         });
@@ -2202,8 +2208,24 @@ export function useAppState() {
       startFallbackPolling();
     }
 
+    const handleOnline = () => {
+      if (!isSubscribed) {
+        startFallbackPolling();
+      }
+      syncPartnerDataLive();
+    };
+
+    const handleOffline = () => {
+      stopFallbackPolling();
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     return () => {
       stopFallbackPolling();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       if (channel) supabase.removeChannel(channel);
     };
     // Intentional: adding deletedEntityIds would tear down/reconnect the realtime channel on every deletion app-wide.
@@ -2212,40 +2234,8 @@ export function useAppState() {
 
   // Check for league period rollovers and missed-habit penalties on mount and every minute
   useEffect(() => {
-    const checkUpdates = (simulatedNow?: Date) => {
-      const targetNow = simulatedNow || leagueNow();
-      const challengesToSync: SharedChallenge[] = [];
-
-      setState((prev) => {
-        challengesToSync.length = 0;
-        const archivedState = checkAndArchiveLeagues(prev, targetNow);
-        const habitPenalized = processHabitPenalties(archivedState, targetNow);
-        const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
-        const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
-        const reflectionReconciledState = reconcileAllWeeklyReflections(exercisePenalized, targetNow);
-
-        const reconciledChallenges = (reflectionReconciledState.sharedChallenges || []).map((c) => {
-          const updated = reconcileSharedChallengeLifecycle(c, targetNow);
-          if (updated.status !== c.status || updated.jointStreak !== c.jointStreak) {
-            challengesToSync.push(updated);
-          }
-          return updated;
-        });
-
-        return {
-          ...reflectionReconciledState,
-          sharedChallenges: reconciledChallenges,
-        };
-      });
-
-      for (const updated of challengesToSync) {
-        saveSharedChallengeSupabase(updated).catch((err) => {
-          console.error('Failed to sync shared challenge from checkUpdates:', err);
-        });
-        syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
-      }
-
-      // RETRY PENDING OR FAILED IMPROVEMENT PLANS (Outside setState)
+    const retryUnconfirmedPlans = () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
       const currentState = stateRef.current;
       if (currentState?.improvementPlans && isSupabaseConfigured) {
         const unconfirmedPlans = currentState.improvementPlans.filter(
@@ -2303,11 +2293,54 @@ export function useAppState() {
         }
       }
     };
+
+    const checkUpdates = (simulatedNow?: Date) => {
+      const targetNow = simulatedNow || leagueNow();
+      const challengesToSync: SharedChallenge[] = [];
+
+      setState((prev) => {
+        challengesToSync.length = 0;
+        const archivedState = checkAndArchiveLeagues(prev, targetNow);
+        const habitPenalized = processHabitPenalties(archivedState, targetNow);
+        const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
+        const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
+        const reflectionReconciledState = reconcileAllWeeklyReflections(exercisePenalized, targetNow);
+
+        const reconciledChallenges = (reflectionReconciledState.sharedChallenges || []).map((c) => {
+          const updated = reconcileSharedChallengeLifecycle(c, targetNow);
+          if (updated.status !== c.status || updated.jointStreak !== c.jointStreak) {
+            challengesToSync.push(updated);
+          }
+          return updated;
+        });
+
+        return {
+          ...reflectionReconciledState,
+          sharedChallenges: reconciledChallenges,
+        };
+      });
+
+      for (const updated of challengesToSync) {
+        saveSharedChallengeSupabase(updated).catch((err) => {
+          console.error('Failed to sync shared challenge from checkUpdates:', err);
+        });
+        syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+      }
+
+      // RETRY PENDING OR FAILED IMPROVEMENT PLANS (Outside setState)
+      retryUnconfirmedPlans();
+    };
     checkUpdates(leagueNow());
     archiveTimer.current = window.setInterval(() => checkUpdates(leagueNow()), 60000);
 
+    const handleOnline = () => {
+      retryUnconfirmedPlans();
+    };
+    window.addEventListener('online', handleOnline);
+
     return () => {
       if (archiveTimer.current) window.clearInterval(archiveTimer.current);
+      window.removeEventListener('online', handleOnline);
     };
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps

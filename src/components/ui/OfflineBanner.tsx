@@ -12,7 +12,7 @@ export function OfflineBanner() {
     if (typeof window === 'undefined') return;
 
     // Fast check: if browser explicitly says offline, set false immediately
-    if (navigator.onLine === false) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       setIsOnline((prev) => {
         if (prev) wasOfflineRef.current = true;
         return false;
@@ -60,18 +60,37 @@ export function OfflineBanner() {
   }, []);
 
   useEffect(() => {
+    let heartbeatInterval: any = null;
+
+    const startHeartbeat = () => {
+      if (!heartbeatInterval && (typeof navigator === 'undefined' || navigator.onLine)) {
+        heartbeatInterval = setInterval(performHeartbeatCheck, 12000);
+      }
+    };
+
+    const stopHeartbeat = () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
+    };
+
     const handleOnline = () => {
+      startHeartbeat();
       performHeartbeatCheck();
     };
 
     const handleOffline = () => {
+      stopHeartbeat();
       setIsOnline(false);
       wasOfflineRef.current = true;
       setShowRestored(false);
     };
 
     const handleNetworkErrorEvent = () => {
-      performHeartbeatCheck();
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        performHeartbeatCheck();
+      }
     };
 
     window.addEventListener('online', handleOnline);
@@ -79,16 +98,20 @@ export function OfflineBanner() {
     window.addEventListener('app-network-error', handleNetworkErrorEvent);
 
     // Initial check on mount
-    performHeartbeatCheck();
-
-    // Active heartbeat check every 12 seconds
-    const heartbeatInterval = setInterval(performHeartbeatCheck, 12000);
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      startHeartbeat();
+      performHeartbeatCheck();
+    } else {
+      setIsOnline(false);
+      wasOfflineRef.current = true;
+      setShowRestored(false);
+    }
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('app-network-error', handleNetworkErrorEvent);
-      clearInterval(heartbeatInterval);
+      stopHeartbeat();
     };
   }, [performHeartbeatCheck]);
 
