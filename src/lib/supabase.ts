@@ -5,7 +5,8 @@ import { calculateUnifiedStreak } from './streakLogic';
 import { mergeAppState } from './stateMerger';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { todayKey } from './dates';
-import { GuardBlockedError } from './errors';
+import { GuardBlockedError, PreFetchSyncError } from './errors';
+import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -95,52 +96,6 @@ class SyncBroadcaster {
 export const syncBroadcaster = new SyncBroadcaster();
 
 // --- SUPABASE DATABASE SYNC HELPERS ---
-
-export interface UserDataWeight {
-  itemCount: number;
-  arrayBreakdown: Record<string, number>;
-}
-
-export function computeStateDataWeight(state: Partial<AppState> | null | undefined): UserDataWeight {
-  if (!state) return { itemCount: 0, arrayBreakdown: {} };
-
-  const arrayBreakdown: Record<string, number> = {
-    habits: state.habits?.length || 0,
-    journalEntries: state.journalEntries?.length || 0,
-    pointsHistory: state.pointsHistory?.length || 0,
-    leagueArchives: state.leagueArchives?.length || 0,
-    readLessonIds: state.readLessonIds?.length || 0,
-    workouts: state.workouts?.length || 0,
-    books: 0,
-    readingLogs: state.readingLogs?.length || 0,
-    skills: state.skills?.length || 0,
-    skillLogs: state.skillLogs?.length || 0,
-    badHabits: state.badHabits?.length || 0,
-    badHabitLogs: state.badHabitLogs?.length || 0,
-    cravingLogs: state.cravingLogs?.length || 0,
-    focusLogs: state.focusLogs?.length || 0,
-    decisionLogs: state.decisionLogs?.length || 0,
-    emotionLogs: state.emotionLogs?.length || 0,
-    weeklyGoals: state.weeklyGoals?.length || 0,
-    goals: state.goals?.length || 0,
-    projects: state.projects?.length || 0,
-    tasks: state.tasks?.length || 0,
-    libraryBooks: state.libraryBooks?.length || 0,
-    improvementPlans: state.improvementPlans?.length || 0,
-    followedPlans: state.followedPlans?.length || 0,
-    sharedChallenges: state.sharedChallenges?.length || 0,
-    partnerInvites: state.partnerInvites?.length || 0,
-    partnerships: state.partnerships?.length || 0,
-    notifications: state.notifications?.length || 0,
-  };
-
-  const itemCount =
-    Object.values(arrayBreakdown).reduce((sum, c) => sum + c, 0) +
-    (state.addictionTracker ? 1 : 0) +
-    (state.exerciseGoal ? 1 : 0);
-
-  return { itemCount, arrayBreakdown };
-}
 
 const userWatermarkMap = new Map<string, UserDataWeight>();
 const userHydrationCompleteMap = new Map<string, boolean>();
@@ -241,13 +196,24 @@ export async function saveUserDataToSupabase(
 
   // Write-time merge: Reconcile server state with incoming state using tombstone-aware merger
   let finalState: AppState = state;
-  try {
-    const existingRes = await fetchUserDataWithStatusFromSupabase(userId);
-    if (existingRes.exists && existingRes.state) {
+  const existingRes = await fetchUserDataWithStatusFromSupabase(userId);
+  if (existingRes.error) {
+    console.error(
+      '[SAVE MERGE] Pre-fetch check failed with network/database error, aborting unmerged write to prevent data loss:',
+      existingRes.error
+    );
+    throw new PreFetchSyncError(
+      'Could not verify existing remote database state before saving.',
+      existingRes.error
+    );
+  }
+  if (existingRes.exists && existingRes.state) {
+    try {
       finalState = mergeAppState(existingRes.state, state, 'writeSync');
+    } catch (mergeErr) {
+      console.error('[SAVE MERGE] mergeAppState threw, aborting write (fail-closed):', mergeErr);
+      throw mergeErr;
     }
-  } catch (e) {
-    console.warn('[SAVE MERGE] Pre-fetch merge non-fatal exception, persisting local state:', e);
   }
 
   // SAFETY CHECK 2: Comprehensive Data-Loss Protection Safeguard
@@ -810,6 +776,7 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
     reviewCadence: row?.review_cadence || stepsMeta.reviewCadence || null,
     nextReviewDueAt: row?.next_review_due_at || stepsMeta.nextReviewDueAt || null,
     reflectionNotes,
+    syncStatus: 'synced',
   };
 }
 

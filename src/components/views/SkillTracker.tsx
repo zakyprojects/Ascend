@@ -6,7 +6,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { Skill, SkillLevel, SkillSessionLog } from '@/types';
-import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak } from '@/lib/dates';
+import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate } from '@/lib/dates';
 import { SKILLS_POINTS } from '@/lib/pointsConfig';
 
 export function SkillTracker({ store }: { store: AppStore }) {
@@ -137,11 +137,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
     if (latestLog.date === today) return 'Today';
     if (isYesterdayLocal(latestLog.date)) return 'Yesterday';
 
-    const [tY, tM, tD] = today.split('-').map(Number);
-    const todayMidnight = new Date(tY, tM - 1, tD).getTime();
-    const [lY, lM, lD] = latestLog.date.split('-').map(Number);
-    const logMidnight = new Date(lY, lM - 1, lD).getTime();
-    const diffDays = Math.round((todayMidnight - logMidnight) / 86400000);
+    const todayDate = parseDate(today);
+    const logDate = parseDate(latestLog.date);
+    const diffDays = todayDate && logDate ? Math.round((todayDate.getTime() - logDate.getTime()) / 86400000) : 0;
 
     if (diffDays > 1 && diffDays < 30) return `${diffDays} days ago`;
     if (diffDays >= 30 && diffDays < 365) {

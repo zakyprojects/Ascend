@@ -2,7 +2,7 @@ import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, P
 import { SEED_ACCOUNTS, calculateSeedAccountPoints } from './seedAccounts';
 import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory } from './leagues';
 import { leagueNow, getSeasonNumber } from './leagueTime';
-import { generateNumericUID, todayKey } from './dates';
+import { generateNumericUID, todayKey, parseDate } from './dates';
 import { getHighestUserStreak } from './habitPenalties';
 import {
   supabase,
@@ -626,7 +626,9 @@ export function reconstructStateFromProfile(p: any): AppState {
   const habitCompletionsMap: Record<string, string[]> = {};
   pointsHistory.forEach((e: any) => {
     if (!e || e.amount <= 0 || !e.timestamp) return;
-    const dateStr = todayKey(new Date(e.timestamp));
+    const parsedDate = parseDate(e.timestamp);
+    if (!parsedDate) return;
+    const dateStr = todayKey(parsedDate);
     if (e.source === 'habit_completed' || (e.reason && e.reason.startsWith('Habit completed:'))) {
       const habitName = e.reason ? e.reason.replace('Habit completed: ', '').trim() : 'Habit';
       if (!habitCompletionsMap[habitName]) habitCompletionsMap[habitName] = [];
@@ -656,7 +658,9 @@ export function reconstructStateFromProfile(p: any): AppState {
   const workoutDates: string[] = [];
   pointsHistory.forEach((e: any) => {
     if (!e || e.amount <= 0 || !e.timestamp) return;
-    const dateStr = todayKey(new Date(e.timestamp));
+    const parsedDate = parseDate(e.timestamp);
+    if (!parsedDate) return;
+    const dateStr = todayKey(parsedDate);
     if (e.source === 'workout_logged' || (e.reason && e.reason.toLowerCase().includes('workout'))) {
       if (!workoutDates.includes(dateStr)) workoutDates.push(dateStr);
     }
@@ -675,7 +679,9 @@ export function reconstructStateFromProfile(p: any): AppState {
   const readingDates: string[] = [];
   pointsHistory.forEach((e: any) => {
     if (!e || e.amount <= 0 || !e.timestamp) return;
-    const dateStr = todayKey(new Date(e.timestamp));
+    const parsedDate = parseDate(e.timestamp);
+    if (!parsedDate) return;
+    const dateStr = todayKey(parsedDate);
     if (e.source === 'book_read' || (e.reason && e.reason.toLowerCase().includes('book'))) {
       if (!readingDates.includes(dateStr)) readingDates.push(dateStr);
     }

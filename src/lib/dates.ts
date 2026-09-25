@@ -1,15 +1,6 @@
-/** Returns simulated time offset in milliseconds if set (for testing time shifts) */
-export function getSimulatedOffsetMs(): number {
-  if (typeof window !== 'undefined' && typeof (window as any).__SIMULATED_OFFSET_MS === 'number') {
-    return (window as any).__SIMULATED_OFFSET_MS;
-  }
-  return 0;
-}
-
-/** Returns the current Date, adjusted by any active simulated time offset */
+/** Returns the current Date */
 export function getNow(): Date {
-  const offset = getSimulatedOffsetMs();
-  return offset !== 0 ? new Date(Date.now() + offset) : new Date();
+  return new Date();
 }
 
 /** Returns local date as YYYY-MM-DD (no timezone surprises) */

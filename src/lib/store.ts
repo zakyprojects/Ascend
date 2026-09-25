@@ -130,6 +130,7 @@ import {
   calculateWorkoutPoints,
 } from './pointsConfig';
 import { calculateUnifiedStreak } from './streakLogic';
+import { computeStateDataWeight } from './dataWeight';
 import {
   supabase,
   isSupabaseConfigured,
@@ -144,9 +145,9 @@ import {
   sendPartnerInviteSupabase,
   fetchUserDataFromSupabase,
   fetchUserDataWithStatusFromSupabase,
+  getUserDataWatermark,
   setUserDataWatermark,
   resetUserDataWatermark,
-  computeStateDataWeight,
   saveUserDataToSupabase,
   fetchAllProfilesFromSupabase,
   fetchProfileByUsernameFromSupabase,
@@ -169,7 +170,7 @@ import {
   clearNotificationSupabase,
 } from './supabase';
 import { GuardBlockedError } from './errors';
-import { mergeAppState, deduplicatePresetHabits } from './stateMerger';
+import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult } from './stateMerger';
 
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
@@ -1123,6 +1124,11 @@ export function useAppState() {
   );
 
   const handleConfirmDestructiveWipe = useCallback(async () => {
+    console.log('[DIAG] handleConfirmDestructiveWipe called', {
+      hasStateToRetry: Boolean(destructiveWipeModal?.stateToRetry),
+      userId: destructiveWipeModal?.stateToRetry?.currentUser?.id,
+      timestamp: Date.now(),
+    });
     if (!destructiveWipeModal?.stateToRetry) {
       setDestructiveWipeModal(null);
       return;
@@ -1131,9 +1137,28 @@ export function useAppState() {
     setIsSavingDestructiveWipe(true);
     try {
       await enqueuePersist(stateToSave, { allowDestructiveWipe: true });
+      lastPersistedStateRef.current = stateToSave;
       lastKnownGoodStateRef.current = stateToSave;
+      setStateRaw(stateToSave);
+      if (typeof window !== 'undefined') {
+        try {
+          if (stateToSave.currentUser?.id) {
+            localStorage.setItem(`ascend_user_cache_${stateToSave.currentUser.id}`, JSON.stringify(stateToSave));
+            localStorage.removeItem(`ascend_dirty_${stateToSave.currentUser.id}`);
+          } else {
+            localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(stateToSave));
+          }
+        } catch {
+          /* ignore */
+        }
+      }
       if (stateToSave.currentUser?.id) {
         resetUserDataWatermark(stateToSave.currentUser.id, stateToSave);
+        console.log('[DIAG] handleConfirmDestructiveWipe watermark reset', {
+          userId: stateToSave.currentUser.id,
+          newWatermark: getUserDataWatermark(stateToSave.currentUser.id),
+          timestamp: Date.now(),
+        });
       }
       setDestructiveWipeModal(null);
       if (typeof window !== 'undefined') {
@@ -1164,6 +1189,14 @@ export function useAppState() {
   }, [destructiveWipeModal, enqueuePersist]);
 
   const handleCancelDestructiveWipe = useCallback(() => {
+    console.log('[DIAG] handleCancelDestructiveWipe called', {
+      hasStateBeforeAction: Boolean(destructiveWipeModal?.stateBeforeAction),
+      userId: destructiveWipeModal?.stateBeforeAction?.currentUser?.id,
+      currentWatermark: destructiveWipeModal?.stateBeforeAction?.currentUser?.id
+        ? getUserDataWatermark(destructiveWipeModal.stateBeforeAction.currentUser.id)
+        : undefined,
+      timestamp: Date.now(),
+    });
     if (destructiveWipeModal?.stateBeforeAction) {
       const preDeleteState = destructiveWipeModal.stateBeforeAction;
       lastPersistedStateRef.current = preDeleteState;
@@ -1173,6 +1206,7 @@ export function useAppState() {
         try {
           if (preDeleteState.currentUser?.id) {
             localStorage.setItem(`ascend_user_cache_${preDeleteState.currentUser.id}`, JSON.stringify(preDeleteState));
+            localStorage.removeItem(`ascend_dirty_${preDeleteState.currentUser.id}`);
           } else {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(preDeleteState));
           }
@@ -1388,7 +1422,11 @@ export function useAppState() {
       if (typeof window !== 'undefined') {
         try {
           if (state.currentUser?.id) {
-            localStorage.setItem(`ascend_user_cache_${state.currentUser.id}`, JSON.stringify(state));
+            const uid = state.currentUser.id;
+            localStorage.setItem(`ascend_user_cache_${uid}`, JSON.stringify(state));
+            if (computeStateDataWeight(state).itemCount > 0) {
+              localStorage.setItem(`ascend_dirty_${uid}`, '1');
+            }
           } else {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(state));
           }
@@ -1410,6 +1448,9 @@ export function useAppState() {
         const justPersistedUnsyncedIds = state.unsyncedEntityIds || [];
         enqueuePersist(state)
           .then(() => {
+            if (typeof window !== 'undefined' && state.currentUser?.id) {
+              localStorage.removeItem(`ascend_dirty_${state.currentUser.id}`);
+            }
             resolversToDrain.forEach(({ resolve }) => resolve());
             if (justPersistedUnsyncedIds.length > 0) {
               setStateRaw((prev) => ({
@@ -1495,6 +1536,9 @@ export function useAppState() {
         debounceTimer.current = setTimeout(async () => {
           try {
             await enqueuePersist(state);
+            if (typeof window !== 'undefined' && state.currentUser?.id) {
+              localStorage.removeItem(`ascend_dirty_${state.currentUser.id}`);
+            }
             if (justPersistedUnsyncedIds.length > 0) {
               setStateRaw((prev) => ({
                 ...prev,
@@ -1648,6 +1692,14 @@ export function useAppState() {
           }
 
           const myGeneration = ++authGenerationRef.current;
+          console.log('[DIAG] hydration effect started', {
+            event,
+            myGeneration,
+            isHydrated: isHydrated.current,
+            currentUserId: currentUserRef.current?.id,
+            sessionUserId: session.user.id,
+            timestamp: Date.now(),
+          });
 
           const userId = session.user.id;
           const email = session.user.email || '';
@@ -1685,8 +1737,59 @@ export function useAppState() {
                   document.documentElement.setAttribute('data-theme', sanitizedState.themePreference);
                 }
               }
-              lastKnownGoodStateRef.current = sanitizedState;
-              setState((current) => mergeAppState(sanitizedState, current, 'hydration'));
+
+              let baseCurrentState = stateRef.current;
+              if (typeof window !== 'undefined' && userId) {
+                try {
+                  const isDirty = Boolean(localStorage.getItem(`ascend_dirty_${userId}`));
+                  if (isDirty) {
+                    const cachedRaw = localStorage.getItem(`ascend_user_cache_${userId}`);
+                    if (cachedRaw) {
+                      const parsed = JSON.parse(cachedRaw);
+                      if (parsed && typeof parsed === 'object') {
+                        baseCurrentState = sanitizeLoadedState(parsed, user);
+                      } else {
+                        localStorage.removeItem(`ascend_dirty_${userId}`);
+                      }
+                    } else {
+                      localStorage.removeItem(`ascend_dirty_${userId}`);
+                    }
+                  }
+                } catch {
+                  localStorage.removeItem(`ascend_dirty_${userId}`);
+                }
+              }
+
+              const watermark = userId ? getUserDataWatermark(userId) : undefined;
+              const guardResult = mergeAppStateWithGuardResult(sanitizedState, baseCurrentState, watermark);
+
+              console.log('[DIAG] hydration guard fired', {
+                mergedCount: guardResult.mergedCount,
+                watermarkCount: guardResult.watermarkCount,
+                droppedCount: guardResult.droppedCount,
+                hasSuspiciousDrop: guardResult.hasSuspiciousDrop,
+                isDirtyMarkerPresent: userId ? Boolean(localStorage.getItem(`ascend_dirty_${userId}`)) : null,
+                timestamp: Date.now(),
+              });
+
+              lastKnownGoodStateRef.current = guardResult.hasSuspiciousDrop
+                ? guardResult.retainedState
+                : guardResult.mergedState;
+
+              setState(guardResult.hasSuspiciousDrop ? guardResult.retainedState : guardResult.mergedState);
+
+              if (guardResult.hasSuspiciousDrop) {
+                const isZeroOut = guardResult.mergedCount === 0;
+                setDestructiveWipeModal({
+                  open: true,
+                  title: isZeroOut ? 'Clear All Tracked Data?' : 'Confirm Large Data Removal',
+                  description: isZeroOut
+                    ? 'This action will remove all remaining tracked items from your account. Are you sure you want to proceed?'
+                    : `A large reduction in data was detected (${guardResult.droppedCount} items removed compared to your last saved cloud state). Would you like to confirm saving these removals to the cloud, or keep your existing data?`,
+                  stateToRetry: guardResult.mergedState,
+                  stateBeforeAction: guardResult.retainedState,
+                });
+              }
             }
           } catch (e) {
             console.error('Error hydrating auth session:', e);
@@ -2162,38 +2265,70 @@ export function useAppState() {
         });
         syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
       }
+
+      // RETRY PENDING OR FAILED IMPROVEMENT PLANS (Outside setState)
+      const currentState = stateRef.current;
+      if (currentState?.improvementPlans && isSupabaseConfigured) {
+        const unconfirmedPlans = currentState.improvementPlans.filter(
+          (p) => p.syncStatus === 'pending' || p.syncStatus === 'failed'
+        );
+        for (const plan of unconfirmedPlans) {
+          syncPlanToSupabase(plan)
+            .then((res) => {
+              if (res) {
+                setState((prev) => ({
+                  ...prev,
+                  improvementPlans: prev.improvementPlans.map((p) =>
+                    p.id === plan.id ? { ...p, syncStatus: 'synced' } : p
+                  ),
+                }));
+              } else {
+                setState((prev) => ({
+                  ...prev,
+                  improvementPlans: prev.improvementPlans.map((p) =>
+                    p.id === plan.id ? { ...p, syncStatus: 'failed' } : p
+                  ),
+                }));
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(
+                    new CustomEvent('app-toast-error', {
+                      detail: {
+                        title: 'Plan Sync Failed',
+                        message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                        dedupKey: `plan_sync_failed_${plan.id}`,
+                      },
+                    })
+                  );
+                }
+              }
+            })
+            .catch((_err) => {
+              setState((prev) => ({
+                ...prev,
+                improvementPlans: prev.improvementPlans.map((p) =>
+                  p.id === plan.id ? { ...p, syncStatus: 'failed' } : p
+                ),
+              }));
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(
+                  new CustomEvent('app-toast-error', {
+                    detail: {
+                      title: 'Plan Sync Failed',
+                      message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                      dedupKey: `plan_sync_failed_${plan.id}`,
+                    },
+                  })
+                );
+              }
+            });
+        }
+      }
     };
     checkUpdates(leagueNow());
     archiveTimer.current = window.setInterval(() => checkUpdates(leagueNow()), 60000);
 
-    (window as any).__triggerPenaltyCheck = (simulatedDateIso?: string) => {
-      const simDate = simulatedDateIso ? new Date(simulatedDateIso) : getNow();
-      console.log('Manually triggering penalty check for:', simDate.toISOString());
-      checkUpdates(simDate);
-    };
-
-    (window as any).__advanceDays = (daysToAdvance: number = 1) => {
-      const currentOffset = (window as any).__SIMULATED_OFFSET_MS || 0;
-      const newOffset = currentOffset + daysToAdvance * 86400000;
-      (window as any).__SIMULATED_OFFSET_MS = newOffset;
-      const simDate = new Date(Date.now() + newOffset);
-      console.log(`Advancing simulated time by ${daysToAdvance} day(s) to:`, simDate.toISOString(), 'Date Key:', todayKey(simDate));
-      checkUpdates(simDate);
-      setState((prev) => ({ ...prev }));
-    };
-
-    (window as any).__resetTimeOffset = () => {
-      (window as any).__SIMULATED_OFFSET_MS = 0;
-      console.log('Reset simulated time offset to real time.');
-      checkUpdates(new Date());
-      setState((prev) => ({ ...prev }));
-    };
-
     return () => {
       if (archiveTimer.current) window.clearInterval(archiveTimer.current);
-      delete (window as any).__triggerPenaltyCheck;
-      delete (window as any).__advanceDays;
-      delete (window as any).__resetTimeOffset;
     };
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2290,18 +2425,6 @@ export function useAppState() {
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const addPoints = useCallback(
-    (amount: number, reason: string, source: string, metadata?: Record<string, any>) => {
-      setState((prev) => ({
-        ...prev,
-        ...addPointsInternal(prev, amount, reason, source, metadata),
-      }));
-    },
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
 
   const addPresetHabit = useCallback((preset: PresetHabit) => {
     const normalizedName = preset.name.trim().toLowerCase();
@@ -5545,6 +5668,59 @@ export function useAppState() {
   }, []);
 
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---
+  const handlePlanSyncExecution = useCallback((planToSync: ImprovementPlan) => {
+    syncPlanToSupabase(planToSync)
+      .then((res) => {
+        if (res) {
+          setState((prev) => ({
+            ...prev,
+            improvementPlans: prev.improvementPlans.map((p) =>
+              p.id === planToSync.id ? { ...p, syncStatus: 'synced' } : p
+            ),
+          }));
+        } else {
+          setState((prev) => ({
+            ...prev,
+            improvementPlans: prev.improvementPlans.map((p) =>
+              p.id === planToSync.id ? { ...p, syncStatus: 'failed' } : p
+            ),
+          }));
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('app-toast-error', {
+                detail: {
+                  title: 'Plan Sync Failed',
+                  message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                  dedupKey: `plan_sync_failed_${planToSync.id}`,
+                },
+              })
+            );
+          }
+        }
+      })
+      .catch((_err) => {
+        setState((prev) => ({
+          ...prev,
+          improvementPlans: prev.improvementPlans.map((p) =>
+            p.id === planToSync.id ? { ...p, syncStatus: 'failed' } : p
+          ),
+        }));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('app-toast-error', {
+              detail: {
+                title: 'Plan Sync Failed',
+                message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                dedupKey: `plan_sync_failed_${planToSync.id}`,
+              },
+            })
+          );
+        }
+      });
+    // False positive: setState is stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const createImprovementPlan = useCallback(
     (
       title: string,
@@ -5624,6 +5800,9 @@ export function useAppState() {
           // Phase C Review Loop
           reviewCadence,
           nextReviewDueAt,
+
+          // Client-side/user_data sync tracking
+          syncStatus: 'pending',
         };
 
         const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), (newPlan as ImprovementPlan).id])).slice(-500);
@@ -5635,9 +5814,10 @@ export function useAppState() {
       });
 
       if (newPlan) {
-        updateCachedPublicPlan(newPlan);
-        syncBroadcaster.broadcast('PLAN_CREATED', newPlan);
-        syncPlanToSupabase(newPlan);
+        const planToSync = newPlan as ImprovementPlan;
+        updateCachedPublicPlan(planToSync);
+        syncBroadcaster.broadcast('PLAN_CREATED', planToSync);
+        handlePlanSyncExecution(planToSync);
       }
       return newPlan;
     },
@@ -5997,6 +6177,7 @@ export function useAppState() {
         updatedPlan = {
           ...target,
           reflectionNotes: updatedNotes,
+          syncStatus: 'pending',
         };
 
         const updatedPlans = [...prev.improvementPlans];
@@ -6008,9 +6189,10 @@ export function useAppState() {
     );
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      const planToSync = updatedPlan as ImprovementPlan;
+      updateCachedPublicPlan(planToSync);
+      syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
+      handlePlanSyncExecution(planToSync);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6081,6 +6263,7 @@ export function useAppState() {
         targetReviewDate: typeParams?.targetReviewDate !== undefined ? typeParams.targetReviewDate : target.targetReviewDate,
         reviewCadence: newReviewCadence,
         nextReviewDueAt: newNextReviewDueAt,
+        syncStatus: 'pending',
       };
 
       const updatedPlans = [...prev.improvementPlans];
@@ -6091,9 +6274,10 @@ export function useAppState() {
     });
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      const planToSync = updatedPlan as ImprovementPlan;
+      updateCachedPublicPlan(planToSync);
+      syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
+      handlePlanSyncExecution(planToSync);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6501,6 +6685,7 @@ export function useAppState() {
       updatedPlan = {
         ...target,
         steps: updatedSteps,
+        syncStatus: 'pending',
       };
 
       const updatedPlans = [...prev.improvementPlans];
@@ -6517,9 +6702,10 @@ export function useAppState() {
     });
 
     if (updatedPlan) {
-      updateCachedPublicPlan(updatedPlan);
-      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      const planToSync = updatedPlan as ImprovementPlan;
+      updateCachedPublicPlan(planToSync);
+      syncBroadcaster.broadcast('PLAN_UPDATED', planToSync);
+      handlePlanSyncExecution(planToSync);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -8697,7 +8883,6 @@ export function useAppState() {
     isAuthChecking,
     setAuthSessionState,
     logout,
-    addPoints,
     addPresetHabit,
     addCustomHabit,
     updateHabit,

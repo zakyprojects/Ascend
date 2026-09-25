@@ -41,8 +41,10 @@ import {
 } from '@/types';
 import { mergeSharedChallenge } from './pactLifecycle';
 import { ensureDefaultActivities } from './timeTracker';
+import { parseDate } from './dates';
 import { calculateSeasonalTotal } from './leagues';
 import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
+import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 
 function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string; timestamp?: string }>(
   baseArr: T[] = [],
@@ -339,16 +341,10 @@ function mergeBadHabitLogs(
     if (!existing) {
       map.set(key, log);
     } else {
-      const existingTime = existing.updatedAt
-        ? new Date(existing.updatedAt).getTime()
-        : existing.createdAt
-        ? new Date(existing.createdAt).getTime()
-        : 0;
-      const incomingTime = log.updatedAt
-        ? new Date(log.updatedAt).getTime()
-        : log.createdAt
-        ? new Date(log.createdAt).getTime()
-        : 0;
+      const existingParsed = parseDate(existing.updatedAt) || parseDate(existing.createdAt);
+      const existingTime = existingParsed ? existingParsed.getTime() : 0;
+      const incomingParsed = parseDate(log.updatedAt) || parseDate(log.createdAt);
+      const incomingTime = incomingParsed ? incomingParsed.getTime() : 0;
       if (incomingTime >= existingTime) {
         map.set(key, log);
       }
@@ -358,9 +354,17 @@ function mergeBadHabitLogs(
   baseList.forEach(processLog);
   incomingList.forEach(processLog);
 
-  return Array.from(map.values()).sort(
-    (a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
-  );
+  return Array.from(map.values()).sort((a, b) => {
+    // BadHabitLog.date is always 'YYYY-MM-DD', createdAt is ISO timestamp.
+    // Try parseDate on date first, then fallback to createdAt.
+    const timeB = (parseDate(b.date) || parseDate(b.createdAt))?.getTime() ?? 0;
+    const timeA = (parseDate(a.date) || parseDate(a.createdAt))?.getTime() ?? 0;
+    if (timeB !== timeA) {
+      return timeB - timeA;
+    }
+    // Safe deterministic fallback
+    return (b.id || '').localeCompare(a.id || '');
+  });
 }
 
 function mergeLeagueArchives(
@@ -407,10 +411,15 @@ export function isLegitimateTombstoneId(id: unknown): id is string {
 
 export type MergeContext = 'hydration' | 'writeSync';
 
-export function mergeAppState(
+interface MergeInternalOptions {
+  tombstoneSetOverride?: Set<string>;
+}
+
+function mergeAppStateInternal(
   baseState: AppState,
   incomingState: AppState,
-  mergeContext: MergeContext = 'hydration'
+  mergeContext: MergeContext = 'hydration',
+  options?: MergeInternalOptions
 ): AppState {
   if (!baseState) return incomingState || DEFAULT_STATE;
   if (!incomingState) return baseState || DEFAULT_STATE;
@@ -422,14 +431,15 @@ export function mergeAppState(
   ];
 
   const sanitizedTombstones = rawTombstones.filter(isLegitimateTombstoneId);
-  const tombstoneSet = new Set<string>(sanitizedTombstones);
+  const historicalTombstoneSet = new Set<string>(sanitizedTombstones);
 
   // Un-tombstone IDs that were explicitly restored in incomingState
   for (const restoredId of incomingState.restoredEntityIds || []) {
-    tombstoneSet.delete(restoredId);
+    historicalTombstoneSet.delete(restoredId);
   }
 
-  const mergedDeletedEntityIds = Array.from(tombstoneSet).slice(-500);
+  const mergedDeletedEntityIds = Array.from(historicalTombstoneSet).slice(-500);
+  const tombstoneSet = options?.tombstoneSetOverride ?? historicalTombstoneSet;
 
   // Union restoredEntityIds so restoration signals persist across syncs
   const mergedRestoredEntityIds = Array.from(
@@ -938,9 +948,22 @@ export function mergeAppState(
     incomingState.improvementPlans || [],
     tombstoneSet,
     (baseP: ImprovementPlan, incP: ImprovementPlan) => {
-      const baseTime = baseP.createdAt || '';
-      const incTime = incP.createdAt || '';
-      const primary = incTime >= baseTime ? incP : baseP;
+      const baseStatus = baseP.syncStatus || 'synced';
+      const incStatus = incP.syncStatus || 'synced';
+
+      let primary: ImprovementPlan;
+      // Precedence: 'synced' always wins over 'pending' or 'failed'
+      if (incStatus === 'synced' && baseStatus !== 'synced') {
+        primary = incP;
+      } else if (baseStatus === 'synced' && incStatus !== 'synced') {
+        primary = baseP;
+      } else {
+        // Both are 'synced' or both are unconfirmed ('pending'/'failed'): fall back to timestamp
+        const baseTime = baseP.createdAt || '';
+        const incTime = incP.createdAt || '';
+        primary = incTime >= baseTime ? incP : baseP;
+      }
+
       const notes = (primary.reflectionNotes || []).filter((n) => !n.id || !tombstoneSet.has(n.id));
       return {
         ...primary,
@@ -1269,5 +1292,69 @@ export function mergeAppState(
     unsyncedEntityIds: Array.from(new Set([...(baseState.unsyncedEntityIds || []), ...(incomingState.unsyncedEntityIds || [])])).slice(-500),
     timeTracker: mergedTimeTracker,
     themePreference: incomingState.themePreference || baseState.themePreference || 'dark',
+  };
+}
+
+export function mergeAppState(
+  baseState: AppState,
+  incomingState: AppState,
+  mergeContext: MergeContext = 'hydration'
+): AppState {
+  return mergeAppStateInternal(baseState, incomingState, mergeContext);
+}
+
+export interface MergeGuardResult {
+  mergedState: AppState;
+  retainedState: AppState;
+  hasSuspiciousDrop: boolean;
+  watermarkCount: number;
+  droppedCount: number;
+  mergedCount: number;
+}
+
+export function mergeAppStateWithGuardResult(
+  baseState: AppState,
+  incomingState: AppState,
+  watermark: UserDataWeight | undefined,
+  isHydrated: boolean = true
+): MergeGuardResult {
+  // Pass 1: standard hydration merge
+  const mergedState = mergeAppStateInternal(baseState, incomingState, 'hydration');
+
+  const mergedWeight = computeStateDataWeight(mergedState);
+  const mergedCount = mergedWeight.itemCount;
+  const watermarkCount = watermark?.itemCount ?? 0;
+  const droppedCount = Math.max(0, watermarkCount - mergedCount);
+
+  let hasSuspiciousDrop = false;
+
+  // Guard check: strictly matching supabase.ts Check 2A logic
+  if (watermark && watermark.itemCount > 0) {
+    const isFloorExempt = watermark.itemCount <= 3 && isHydrated;
+
+    if (!isFloorExempt) {
+      // Zero-out wipe: incoming merged is empty (0 items)
+      if (mergedCount === 0) {
+        hasSuspiciousDrop = true;
+      }
+      // Abnormal massive drop (>70% vanished at once on accounts with >= 3 items)
+      else if (watermark.itemCount >= 3 && mergedCount < Math.ceil(watermark.itemCount * 0.3)) {
+        hasSuspiciousDrop = true;
+      }
+    }
+  }
+
+  // Pass 2: only if suspicious drop detected, compute retainedState bypassing tombstones
+  const retainedState = hasSuspiciousDrop
+    ? mergeAppStateInternal(baseState, incomingState, 'hydration', { tombstoneSetOverride: new Set<string>() })
+    : mergedState;
+
+  return {
+    mergedState,
+    retainedState,
+    hasSuspiciousDrop,
+    watermarkCount,
+    droppedCount,
+    mergedCount,
   };
 }

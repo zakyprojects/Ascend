@@ -40,7 +40,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { fetchPublicPlansFromSupabase, mapRowToImprovementPlan, supabase, syncBroadcaster } from '@/lib/supabase';
 import { getProfilePointsByUsername, getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { leagueNow } from '@/lib/leagueTime';
-import { isTodayLocal, calculateActivePlanStreak } from '@/lib/dates';
+import { isTodayLocal, calculateActivePlanStreak, formatDateShort, parseDate } from '@/lib/dates';
 import { STARTER_TEMPLATES } from '@/data/planTemplates';
 
 function ExpandableDescription({ text }: { text: string }) {
@@ -409,9 +409,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           ...local,
           streakCount: Math.max(remote.streakCount || 0, local.streakCount || 0),
           currentProgress: Math.max(remote.currentProgress || 0, local.currentProgress || 0),
-          lastCompletedDate: (remote.lastCompletedDate && local.lastCompletedDate)
-            ? (new Date(remote.lastCompletedDate) > new Date(local.lastCompletedDate) ? remote.lastCompletedDate : local.lastCompletedDate)
-            : (remote.lastCompletedDate || local.lastCompletedDate || ''),
+          lastCompletedDate: (() => {
+            const remoteDate = parseDate(remote.lastCompletedDate);
+            const localDate = parseDate(local.lastCompletedDate);
+            if (remoteDate && localDate) {
+              return remoteDate.getTime() > localDate.getTime() ? remote.lastCompletedDate : local.lastCompletedDate;
+            }
+            return remote.lastCompletedDate || local.lastCompletedDate || '';
+          })(),
           copyCount: Math.max(remote.copyCount || 0, local.copyCount || 0),
         });
       } else {
@@ -908,7 +913,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             {mode === 'read_only' ? (
               plan.lastCompletedDate && (
                 <div className="text-[10px] text-content-disabled pt-1">
-                  Last completed: {new Date(plan.lastCompletedDate).toLocaleDateString()}
+                  Last completed: {formatDateShort(plan.lastCompletedDate)}
                 </div>
               )
             ) : (
@@ -951,7 +956,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 </div>
                 {plan.lastCompletedDate && (
                   <span className="text-[10px] text-content-disabled">
-                    Last completed: {new Date(plan.lastCompletedDate).toLocaleDateString()}
+                    Last completed: {formatDateShort(plan.lastCompletedDate)}
                   </span>
                 )}
               </div>
