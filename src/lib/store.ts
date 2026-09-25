@@ -1061,6 +1061,7 @@ export function useAppState() {
   const [state, setStateRaw] = useState<AppState>(loadInitialState);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const isHydrated = useRef(false);
+  const canPersistLocally = useRef(false);
   const authGenerationRef = useRef(0);
   const currentUserRef = useRef<UserProfile | null>(state.currentUser);
   const stateRef = useRef<AppState>(state);
@@ -1124,11 +1125,6 @@ export function useAppState() {
   );
 
   const handleConfirmDestructiveWipe = useCallback(async () => {
-    console.log('[DIAG] handleConfirmDestructiveWipe called', {
-      hasStateToRetry: Boolean(destructiveWipeModal?.stateToRetry),
-      userId: destructiveWipeModal?.stateToRetry?.currentUser?.id,
-      timestamp: Date.now(),
-    });
     if (!destructiveWipeModal?.stateToRetry) {
       setDestructiveWipeModal(null);
       return;
@@ -1154,11 +1150,6 @@ export function useAppState() {
       }
       if (stateToSave.currentUser?.id) {
         resetUserDataWatermark(stateToSave.currentUser.id, stateToSave);
-        console.log('[DIAG] handleConfirmDestructiveWipe watermark reset', {
-          userId: stateToSave.currentUser.id,
-          newWatermark: getUserDataWatermark(stateToSave.currentUser.id),
-          timestamp: Date.now(),
-        });
       }
       setDestructiveWipeModal(null);
       if (typeof window !== 'undefined') {
@@ -1189,14 +1180,6 @@ export function useAppState() {
   }, [destructiveWipeModal, enqueuePersist]);
 
   const handleCancelDestructiveWipe = useCallback(() => {
-    console.log('[DIAG] handleCancelDestructiveWipe called', {
-      hasStateBeforeAction: Boolean(destructiveWipeModal?.stateBeforeAction),
-      userId: destructiveWipeModal?.stateBeforeAction?.currentUser?.id,
-      currentWatermark: destructiveWipeModal?.stateBeforeAction?.currentUser?.id
-        ? getUserDataWatermark(destructiveWipeModal.stateBeforeAction.currentUser.id)
-        : undefined,
-      timestamp: Date.now(),
-    });
     if (destructiveWipeModal?.stateBeforeAction) {
       const preDeleteState = destructiveWipeModal.stateBeforeAction;
       lastPersistedStateRef.current = preDeleteState;
@@ -1417,7 +1400,7 @@ export function useAppState() {
 
     lastPersistedStateRef.current = state;
 
-    if (isHydrated.current) {
+    if (canPersistLocally.current) {
       // Synchronous, network-independent local-mirror write for resilient offline reload and debounce-window protection
       if (typeof window !== 'undefined') {
         try {
@@ -1437,7 +1420,9 @@ export function useAppState() {
 
       // Broadcast state to all other tabs immediately
       broadcastStateToTabs(state, tabId);
+    }
 
+    if (isHydrated.current) {
       if (pendingImmediateResolvers.current.length > 0) {
         const resolversToDrain = [...pendingImmediateResolvers.current];
         pendingImmediateResolvers.current = [];
@@ -1648,6 +1633,7 @@ export function useAppState() {
           }
           pendingImmediateResolvers.current = [];
           isHydrated.current = false;
+          canPersistLocally.current = false;
           currentUserRef.current = null;
 
           if (typeof window !== 'undefined') {
@@ -1692,14 +1678,6 @@ export function useAppState() {
           }
 
           const myGeneration = ++authGenerationRef.current;
-          console.log('[DIAG] hydration effect started', {
-            event,
-            myGeneration,
-            isHydrated: isHydrated.current,
-            currentUserId: currentUserRef.current?.id,
-            sessionUserId: session.user.id,
-            timestamp: Date.now(),
-          });
 
           const userId = session.user.id;
           const email = session.user.email || '';
@@ -1730,6 +1708,7 @@ export function useAppState() {
             if (mounted) {
               if (myGeneration !== authGenerationRef.current) return;
               isHydrated.current = true;
+              canPersistLocally.current = true;
               const sanitizedState = sanitizeLoadedState(hydratedState, user);
               if (sanitizedState.themePreference) {
                 setLocalThemePreference(sanitizedState.themePreference);
@@ -1762,15 +1741,6 @@ export function useAppState() {
 
               const watermark = userId ? getUserDataWatermark(userId) : undefined;
               const guardResult = mergeAppStateWithGuardResult(sanitizedState, baseCurrentState, watermark);
-
-              console.log('[DIAG] hydration guard fired', {
-                mergedCount: guardResult.mergedCount,
-                watermarkCount: guardResult.watermarkCount,
-                droppedCount: guardResult.droppedCount,
-                hasSuspiciousDrop: guardResult.hasSuspiciousDrop,
-                isDirtyMarkerPresent: userId ? Boolean(localStorage.getItem(`ascend_dirty_${userId}`)) : null,
-                timestamp: Date.now(),
-              });
 
               lastKnownGoodStateRef.current = guardResult.hasSuspiciousDrop
                 ? guardResult.retainedState
@@ -1824,15 +1794,24 @@ export function useAppState() {
               if (cachedState) {
                 const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
                 setState((current) => mergeAppState(sanitizedCached, current, 'hydration'));
+                canPersistLocally.current = true;
               } else {
+                let resultingState: AppState = stateRef.current;
                 setState((prev) => {
-                  if (prev.currentUser?.id === userId) return prev;
-                  return {
+                  if (prev.currentUser?.id === userId) {
+                    resultingState = prev;
+                    return prev;
+                  }
+                  resultingState = {
                     ...prev,
                     currentUser: fallbackUser,
                     username: fallbackUser.username,
                   };
+                  return resultingState;
                 });
+                if (computeStateDataWeight(resultingState).itemCount === 0) {
+                  canPersistLocally.current = true;
+                }
               }
             }
           } finally {
