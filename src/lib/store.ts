@@ -1061,6 +1061,7 @@ export function useAppState() {
   const [state, setStateRaw] = useState<AppState>(loadInitialState);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const isHydrated = useRef(false);
+  const canPersistLocally = useRef(false);
   const authGenerationRef = useRef(0);
   const currentUserRef = useRef<UserProfile | null>(state.currentUser);
   const stateRef = useRef<AppState>(state);
@@ -1124,11 +1125,6 @@ export function useAppState() {
   );
 
   const handleConfirmDestructiveWipe = useCallback(async () => {
-    console.log('[DIAG] handleConfirmDestructiveWipe called', {
-      hasStateToRetry: Boolean(destructiveWipeModal?.stateToRetry),
-      userId: destructiveWipeModal?.stateToRetry?.currentUser?.id,
-      timestamp: Date.now(),
-    });
     if (!destructiveWipeModal?.stateToRetry) {
       setDestructiveWipeModal(null);
       return;
@@ -1154,11 +1150,6 @@ export function useAppState() {
       }
       if (stateToSave.currentUser?.id) {
         resetUserDataWatermark(stateToSave.currentUser.id, stateToSave);
-        console.log('[DIAG] handleConfirmDestructiveWipe watermark reset', {
-          userId: stateToSave.currentUser.id,
-          newWatermark: getUserDataWatermark(stateToSave.currentUser.id),
-          timestamp: Date.now(),
-        });
       }
       setDestructiveWipeModal(null);
       if (typeof window !== 'undefined') {
@@ -1189,14 +1180,6 @@ export function useAppState() {
   }, [destructiveWipeModal, enqueuePersist]);
 
   const handleCancelDestructiveWipe = useCallback(() => {
-    console.log('[DIAG] handleCancelDestructiveWipe called', {
-      hasStateBeforeAction: Boolean(destructiveWipeModal?.stateBeforeAction),
-      userId: destructiveWipeModal?.stateBeforeAction?.currentUser?.id,
-      currentWatermark: destructiveWipeModal?.stateBeforeAction?.currentUser?.id
-        ? getUserDataWatermark(destructiveWipeModal.stateBeforeAction.currentUser.id)
-        : undefined,
-      timestamp: Date.now(),
-    });
     if (destructiveWipeModal?.stateBeforeAction) {
       const preDeleteState = destructiveWipeModal.stateBeforeAction;
       lastPersistedStateRef.current = preDeleteState;
@@ -1417,7 +1400,7 @@ export function useAppState() {
 
     lastPersistedStateRef.current = state;
 
-    if (isHydrated.current) {
+    if (canPersistLocally.current) {
       // Synchronous, network-independent local-mirror write for resilient offline reload and debounce-window protection
       if (typeof window !== 'undefined') {
         try {
@@ -1437,7 +1420,9 @@ export function useAppState() {
 
       // Broadcast state to all other tabs immediately
       broadcastStateToTabs(state, tabId);
+    }
 
+    if (isHydrated.current) {
       if (pendingImmediateResolvers.current.length > 0) {
         const resolversToDrain = [...pendingImmediateResolvers.current];
         pendingImmediateResolvers.current = [];
@@ -1648,6 +1633,7 @@ export function useAppState() {
           }
           pendingImmediateResolvers.current = [];
           isHydrated.current = false;
+          canPersistLocally.current = false;
           currentUserRef.current = null;
 
           if (typeof window !== 'undefined') {
@@ -1692,14 +1678,6 @@ export function useAppState() {
           }
 
           const myGeneration = ++authGenerationRef.current;
-          console.log('[DIAG] hydration effect started', {
-            event,
-            myGeneration,
-            isHydrated: isHydrated.current,
-            currentUserId: currentUserRef.current?.id,
-            sessionUserId: session.user.id,
-            timestamp: Date.now(),
-          });
 
           const userId = session.user.id;
           const email = session.user.email || '';
@@ -1730,6 +1708,7 @@ export function useAppState() {
             if (mounted) {
               if (myGeneration !== authGenerationRef.current) return;
               isHydrated.current = true;
+              canPersistLocally.current = true;
               const sanitizedState = sanitizeLoadedState(hydratedState, user);
               if (sanitizedState.themePreference) {
                 setLocalThemePreference(sanitizedState.themePreference);
@@ -1762,15 +1741,6 @@ export function useAppState() {
 
               const watermark = userId ? getUserDataWatermark(userId) : undefined;
               const guardResult = mergeAppStateWithGuardResult(sanitizedState, baseCurrentState, watermark);
-
-              console.log('[DIAG] hydration guard fired', {
-                mergedCount: guardResult.mergedCount,
-                watermarkCount: guardResult.watermarkCount,
-                droppedCount: guardResult.droppedCount,
-                hasSuspiciousDrop: guardResult.hasSuspiciousDrop,
-                isDirtyMarkerPresent: userId ? Boolean(localStorage.getItem(`ascend_dirty_${userId}`)) : null,
-                timestamp: Date.now(),
-              });
 
               lastKnownGoodStateRef.current = guardResult.hasSuspiciousDrop
                 ? guardResult.retainedState
@@ -1824,15 +1794,24 @@ export function useAppState() {
               if (cachedState) {
                 const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
                 setState((current) => mergeAppState(sanitizedCached, current, 'hydration'));
+                canPersistLocally.current = true;
               } else {
+                let resultingState: AppState = stateRef.current;
                 setState((prev) => {
-                  if (prev.currentUser?.id === userId) return prev;
-                  return {
+                  if (prev.currentUser?.id === userId) {
+                    resultingState = prev;
+                    return prev;
+                  }
+                  resultingState = {
                     ...prev,
                     currentUser: fallbackUser,
                     username: fallbackUser.username,
                   };
+                  return resultingState;
                 });
+                if (computeStateDataWeight(resultingState).itemCount === 0) {
+                  canPersistLocally.current = true;
+                }
               }
             }
           } finally {
@@ -1998,6 +1977,9 @@ export function useAppState() {
     const username = state.username;
 
     const syncPartnerDataLive = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return;
+      }
       try {
         const fetchedInvites = await fetchPartnerInvitesSupabase(userId, username);
         const activePartnerships = await fetchPartnershipsSupabase(userId, username);
@@ -2102,7 +2084,7 @@ export function useAppState() {
     let pollInterval: any = null;
 
     const startFallbackPolling = () => {
-      if (!pollInterval) {
+      if (!pollInterval && (typeof navigator === 'undefined' || navigator.onLine)) {
         pollInterval = setInterval(syncPartnerDataLive, 10000);
       }
     };
@@ -2114,6 +2096,7 @@ export function useAppState() {
       }
     };
 
+    let isSubscribed = false;
     let channel: any = null;
     if (isSupabaseConfigured) {
       channel = supabase
@@ -2213,9 +2196,11 @@ export function useAppState() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => syncPartnerDataLive())
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
+            isSubscribed = true;
             stopFallbackPolling();
             syncPartnerDataLive();
           } else {
+            isSubscribed = false;
             startFallbackPolling();
           }
         });
@@ -2223,8 +2208,24 @@ export function useAppState() {
       startFallbackPolling();
     }
 
+    const handleOnline = () => {
+      if (!isSubscribed) {
+        startFallbackPolling();
+      }
+      syncPartnerDataLive();
+    };
+
+    const handleOffline = () => {
+      stopFallbackPolling();
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     return () => {
       stopFallbackPolling();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       if (channel) supabase.removeChannel(channel);
     };
     // Intentional: adding deletedEntityIds would tear down/reconnect the realtime channel on every deletion app-wide.
@@ -2233,40 +2234,8 @@ export function useAppState() {
 
   // Check for league period rollovers and missed-habit penalties on mount and every minute
   useEffect(() => {
-    const checkUpdates = (simulatedNow?: Date) => {
-      const targetNow = simulatedNow || leagueNow();
-      const challengesToSync: SharedChallenge[] = [];
-
-      setState((prev) => {
-        challengesToSync.length = 0;
-        const archivedState = checkAndArchiveLeagues(prev, targetNow);
-        const habitPenalized = processHabitPenalties(archivedState, targetNow);
-        const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
-        const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
-        const reflectionReconciledState = reconcileAllWeeklyReflections(exercisePenalized, targetNow);
-
-        const reconciledChallenges = (reflectionReconciledState.sharedChallenges || []).map((c) => {
-          const updated = reconcileSharedChallengeLifecycle(c, targetNow);
-          if (updated.status !== c.status || updated.jointStreak !== c.jointStreak) {
-            challengesToSync.push(updated);
-          }
-          return updated;
-        });
-
-        return {
-          ...reflectionReconciledState,
-          sharedChallenges: reconciledChallenges,
-        };
-      });
-
-      for (const updated of challengesToSync) {
-        saveSharedChallengeSupabase(updated).catch((err) => {
-          console.error('Failed to sync shared challenge from checkUpdates:', err);
-        });
-        syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
-      }
-
-      // RETRY PENDING OR FAILED IMPROVEMENT PLANS (Outside setState)
+    const retryUnconfirmedPlans = () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
       const currentState = stateRef.current;
       if (currentState?.improvementPlans && isSupabaseConfigured) {
         const unconfirmedPlans = currentState.improvementPlans.filter(
@@ -2324,11 +2293,54 @@ export function useAppState() {
         }
       }
     };
+
+    const checkUpdates = (simulatedNow?: Date) => {
+      const targetNow = simulatedNow || leagueNow();
+      const challengesToSync: SharedChallenge[] = [];
+
+      setState((prev) => {
+        challengesToSync.length = 0;
+        const archivedState = checkAndArchiveLeagues(prev, targetNow);
+        const habitPenalized = processHabitPenalties(archivedState, targetNow);
+        const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
+        const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
+        const reflectionReconciledState = reconcileAllWeeklyReflections(exercisePenalized, targetNow);
+
+        const reconciledChallenges = (reflectionReconciledState.sharedChallenges || []).map((c) => {
+          const updated = reconcileSharedChallengeLifecycle(c, targetNow);
+          if (updated.status !== c.status || updated.jointStreak !== c.jointStreak) {
+            challengesToSync.push(updated);
+          }
+          return updated;
+        });
+
+        return {
+          ...reflectionReconciledState,
+          sharedChallenges: reconciledChallenges,
+        };
+      });
+
+      for (const updated of challengesToSync) {
+        saveSharedChallengeSupabase(updated).catch((err) => {
+          console.error('Failed to sync shared challenge from checkUpdates:', err);
+        });
+        syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
+      }
+
+      // RETRY PENDING OR FAILED IMPROVEMENT PLANS (Outside setState)
+      retryUnconfirmedPlans();
+    };
     checkUpdates(leagueNow());
     archiveTimer.current = window.setInterval(() => checkUpdates(leagueNow()), 60000);
 
+    const handleOnline = () => {
+      retryUnconfirmedPlans();
+    };
+    window.addEventListener('online', handleOnline);
+
     return () => {
       if (archiveTimer.current) window.clearInterval(archiveTimer.current);
+      window.removeEventListener('online', handleOnline);
     };
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps

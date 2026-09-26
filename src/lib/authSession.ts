@@ -27,7 +27,7 @@ export type SignUpDefaults = {
   guestState?: AppState;
 };
 
-export async function fetchProfileForUser(userId: string): Promise<Record<string, unknown> | null> {
+export async function fetchProfileForUser(userId: string): Promise<{ data: Record<string, unknown> | null; error: any | null }> {
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -37,12 +37,12 @@ export async function fetchProfileForUser(userId: string): Promise<Record<string
 
     if (error) {
       console.warn('Failed to fetch user profile:', error.message);
-      return null;
+      return { data: null, error };
     }
-    return data as Record<string, unknown> | null;
+    return { data: (data as Record<string, unknown> | null) ?? null, error: null };
   } catch (e) {
     console.error('Error fetching profile from Supabase:', e);
-    return null;
+    return { data: null, error: e };
   }
 }
 
@@ -165,15 +165,16 @@ export async function hydrateUserSession(
   signupDefaults?: SignUpDefaults
 ): Promise<{ user: UserProfile; state: AppState }> {
   // Fetch profile and saved user_data in parallel
-  const [profileData, userDataRes] = await Promise.all([
+  const [profileRes, userDataRes] = await Promise.all([
     fetchProfileForUser(userId),
     fetchUserDataWithStatusFromSupabase(userId),
   ]);
+  const profileData = profileRes.data;
 
   // If user_data fetch encountered a network/query error, try recovering from local cache
   let savedState = userDataRes.state;
-  if (userDataRes.error && !savedState) {
-    console.warn('Network error fetching user_data, attempting to restore from local cache:', userDataRes.error);
+  if ((userDataRes.error || profileRes.error) && !savedState) {
+    console.warn('Network error fetching user_data, attempting to restore from local cache:', userDataRes.error || profileRes.error);
     if (typeof window !== 'undefined') {
       try {
         const cached = localStorage.getItem(`ascend_user_cache_${userId}`);
@@ -185,19 +186,23 @@ export async function hydrateUserSession(
         console.error('Failed reading user cache from localStorage:', e);
       }
     }
-    // If there is still no savedState AND userDataRes had a network error on an existing account with profileData,
-    // THROW hydration error so we do NOT initialize an empty state and mark as hydrated!
-    if (!savedState && profileData) {
-      throw new Error(
-        `Failed to fetch user_data for established user ${userId}: ${userDataRes.error?.message || 'Network error'}`
-      );
-    }
+  }
+
+  // If there is still no savedState AND either fetch had a network error on an existing account,
+  // THROW hydration error so we do NOT initialize an empty state and mark as hydrated!
+  const hadFetchError = Boolean(profileRes.error) || Boolean(userDataRes.error);
+  if (!savedState && hadFetchError) {
+    throw new Error(
+      `Failed to fetch user data for established user ${userId}: ${
+        userDataRes.error?.message || profileRes.error?.message || 'Network error'
+      }`
+    );
   }
 
   const user = buildUserProfile(userId, email, profileData, authUser, signupDefaults);
 
   // If DB profile row does not exist yet, insert it ONCE with permanent uid
-  if (!profileData) {
+  if (!profileData && !profileRes.error) {
     try {
       await supabase.from('profiles').insert({
         id: userId,
@@ -210,7 +215,7 @@ export async function hydrateUserSession(
     } catch (e) {
       console.warn('Initial profile row creation skipped:', e);
     }
-  } else if (!profileData.uid) {
+  } else if (profileData && !profileData.uid) {
     // DB profile exists but lacks uid (created prior to migration) — backfill it once
     try {
       await supabase.from('profiles').update({ uid: user.uid }).eq('id', userId);
