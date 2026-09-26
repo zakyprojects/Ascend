@@ -45,12 +45,12 @@ export function recomputeTodayPresetPoints(
 }
 
 export const JOURNAL_POINTS = {
-  // store.ts:2378
-  entryCompleted: 5,
-  // store.ts:2382
-  entryCleared: -5,
-  // store.ts:2424
-  entryDeleted: -5,
+  // store.ts:3204
+  entryCompleted: 2,
+  // store.ts:3208
+  entryCleared: -2,
+  // store.ts:3255
+  entryDeleted: -2,
 } as const;
 
 export const WEEKLY_REFLECTION_POINTS = {
@@ -61,44 +61,41 @@ export const WEEKLY_REFLECTION_POINTS = {
 } as const;
 
 export const WORKOUT_POINTS = {
-  // store.ts:2647-2655, duplicated at 2719-2723
-  multipliers: {
-    sets: 10,
-    km: 10,
-    sessions: 30,
-    minsOrReps: 1,
+  // 6 min = 1pt, 10 reps = 1pt, 1 set = 1pt, 1 km = 1pt
+  units: {
+    minsPerPoint: 6,
+    repsPerPoint: 10,
+    pointsPerSet: 1,
+    pointsPerKm: 1,
   },
-  // store.ts:2663, 2715
-  dailyCap: 60,
+  dailyCap: 10,
 } as const;
 
 export const SKILLS_POINTS = {
-  // store.ts:3437
-  pointsPerMinute: 1,
-  // store.ts:3438
-  dailyCap: 60,
+  // 1hr (60m) = 5pts, 2hr (120m) = 10pts -> 1pt per 12 mins
+  minutesPerPoint: 12,
+  dailyCap: 10,
 } as const;
 
 export const PFC_POINTS = {
-  // store.ts:4147
+  // 25m = 2pts, 50m = 5pts, 90m = 10pts (tiered)
   focus: {
-    minuteRate: 0.6,
-    floorPoints: 5,
+    tiers: [
+      { minMinutes: 90, points: 10 },
+      { minMinutes: 50, points: 5 },
+      { minMinutes: 25, points: 2 },
+    ] as const,
+    dailyCap: 10,
   },
-  // store.ts:4213
   decision: 15,
-  // store.ts:4229
   emotion: 5,
 } as const;
 
 export const READING_POINTS = {
-  // store.ts:2887
-  unlinkedDailyLog: 5,
-  // store.ts:2961
-  presetHabitFallback: 12,
-  // store.ts:3058, 3135
+  // 2 pages = 1pt, cap 10pts/day (reached at 20 pages/day)
+  pagesPerPoint: 2,
+  dailyCap: 10,
   customBookBonus: 30,
-  // store.ts:3270
   curatedBookFallback: 40,
 } as const;
 
@@ -121,21 +118,8 @@ export const SOBRIETY_MILESTONE_POINTS = {
 } as const;
 
 /**
- * Resolves the unit multiplier for workout point calculations.
- */
-export function getWorkoutMultiplier(unit?: string): number {
-  const normalized = (unit || 'mins').trim().toLowerCase();
-  if (normalized === 'sets' || normalized === 'km') {
-    return WORKOUT_POINTS.multipliers.sets;
-  }
-  if (normalized === 'sessions') {
-    return WORKOUT_POINTS.multipliers.sessions;
-  }
-  return WORKOUT_POINTS.multipliers.minsOrReps;
-}
-
-/**
  * Calculates raw points and capped awarded points for a workout.
+ * Rounding rule: Math.floor for mins and reps divisions.
  */
 export function calculateWorkoutPoints(
   unit?: string,
@@ -143,13 +127,74 @@ export function calculateWorkoutPoints(
   durationMinutes?: number,
   dailyCapRemaining: number = WORKOUT_POINTS.dailyCap
 ): { rawPoints: number; pointsToAward: number; multiplier: number } {
-  const mult = getWorkoutMultiplier(unit);
+  const normalized = (unit || 'mins').trim().toLowerCase();
   const safeAmount = typeof amount === 'number' && !isNaN(amount) ? Math.max(0, Number(amount)) : undefined;
   const safeDuration = Math.max(0, Number(durationMinutes) || 0);
-  const effectiveAmount = safeAmount !== undefined ? safeAmount : safeDuration;
 
-  const rawPoints = Math.round(effectiveAmount * mult);
+  let rawPoints = 0;
+  if (normalized === 'sets') {
+    const val = safeAmount !== undefined ? safeAmount : safeDuration;
+    rawPoints = Math.floor(val * WORKOUT_POINTS.units.pointsPerSet);
+  } else if (normalized === 'km') {
+    const val = safeAmount !== undefined ? safeAmount : safeDuration;
+    rawPoints = Math.floor(val * WORKOUT_POINTS.units.pointsPerKm);
+  } else if (normalized === 'reps') {
+    const val = safeAmount !== undefined ? safeAmount : 0;
+    rawPoints = Math.floor(val / WORKOUT_POINTS.units.repsPerPoint);
+  } else {
+    // default 'mins' or sessions
+    const val = safeAmount !== undefined && safeAmount > 0 ? safeAmount : safeDuration;
+    rawPoints = Math.floor(val / WORKOUT_POINTS.units.minsPerPoint);
+  }
+
   const pointsToAward = Math.min(rawPoints, Math.max(0, dailyCapRemaining));
+  return { rawPoints, pointsToAward, multiplier: 1 };
+}
 
-  return { rawPoints, pointsToAward, multiplier: mult };
+/**
+ * Calculates raw points for a skill practice session.
+ * 12 minutes = 1 point (Math.floor).
+ */
+export function calculateSkillPoints(
+  durationMinutes: number,
+  dailyCapRemaining: number = SKILLS_POINTS.dailyCap
+): { rawPoints: number; pointsToAward: number } {
+  const safeDuration = Math.max(0, Number(durationMinutes) || 0);
+  const rawPoints = Math.floor(safeDuration / SKILLS_POINTS.minutesPerPoint);
+  const pointsToAward = Math.min(rawPoints, Math.max(0, dailyCapRemaining));
+  return { rawPoints, pointsToAward };
+}
+
+/**
+ * Calculates raw points for a PFC focus session using tiered lookup.
+ * 25m = 2pts, 50m = 5pts, 90m = 10pts.
+ */
+export function calculateFocusPoints(
+  durationMinutes: number,
+  dailyCapRemaining: number = PFC_POINTS.focus.dailyCap
+): { rawPoints: number; pointsToAward: number } {
+  const safeDuration = Math.max(0, Number(durationMinutes) || 0);
+  let rawPoints = 0;
+  for (const tier of PFC_POINTS.focus.tiers) {
+    if (safeDuration >= tier.minMinutes) {
+      rawPoints = tier.points;
+      break;
+    }
+  }
+  const pointsToAward = Math.min(rawPoints, Math.max(0, dailyCapRemaining));
+  return { rawPoints, pointsToAward };
+}
+
+/**
+ * Calculates raw points for reading pages.
+ * 2 pages = 1 point (Math.floor).
+ */
+export function calculateReadingPoints(
+  pagesRead: number,
+  dailyCapRemaining: number = READING_POINTS.dailyCap
+): { rawPoints: number; pointsToAward: number } {
+  const safePages = Math.max(0, Number(pagesRead) || 0);
+  const rawPoints = Math.floor(safePages / READING_POINTS.pagesPerPoint);
+  const pointsToAward = Math.min(rawPoints, Math.max(0, dailyCapRemaining));
+  return { rawPoints, pointsToAward };
 }

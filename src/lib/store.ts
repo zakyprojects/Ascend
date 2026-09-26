@@ -131,6 +131,9 @@ import {
   BAD_HABIT_POINTS,
   SOBRIETY_MILESTONE_POINTS,
   calculateWorkoutPoints,
+  calculateSkillPoints,
+  calculateFocusPoints,
+  calculateReadingPoints,
 } from './pointsConfig';
 export { recomputeTodayPresetPoints };
 export type { PresetHabitCapItem };
@@ -2844,7 +2847,7 @@ export function useAppState() {
             id: uid(),
             name: 'Reading (Books)',
             frequency: 'daily',
-            points: 12,
+            points: 0,
             isPreset: true,
             category: 'Learning & Growth',
             createdAt: nowIso,
@@ -2857,23 +2860,11 @@ export function useAppState() {
             linkedModule: 'reading',
           };
 
-          let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-          if (hasReadToday) {
-            pointsUpdate = addPointsInternal(
-              prev,
-              habit.points,
-              `Habit completed: ${habit.name}`,
-              'habit_completed',
-              { category: habit.category, habitId: habit.id, habitName: habit.name }
-            );
-          }
-
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habit.id])).slice(-500);
           return {
             ...prev,
             habits: [...prev.habits.filter((h) => h.name.toLowerCase() !== 'reading (books)'), habit],
             unsyncedEntityIds: updatedUnsynced,
-            ...pointsUpdate,
           };
         }
       },
@@ -3730,16 +3721,14 @@ export function useAppState() {
 
       const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
 
-      const alreadyLoggedToday = (prev.readingLogs || []).some(
-        (l) => l.date === date && [targetUserBook.id, bookId, targetUserBook.linkedBookId, targetUserBook.curatedBookId]
-          .filter(Boolean).includes(l.bookId)
-      );
+      const readingPointsToday = (prev.readingLogs || [])
+        .filter((l) => l.date === date)
+        .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
 
-      // Points balancing: If reading habit is linked, do NOT award +5 reading hub points (habit completion awards points)
-      let pointsToAward = 0;
-      if (!readingHabit && !alreadyLoggedToday && pageDelta > 0) {
-        pointsToAward = READING_POINTS.unlinkedDailyLog;
-      }
+      const remainingCap = Math.max(0, READING_POINTS.dailyCap - readingPointsToday);
+      const { pointsToAward } = pageDelta > 0
+        ? calculateReadingPoints(pageDelta, remainingCap)
+        : { pointsToAward: 0 };
 
       let updatedReadingLogs = prev.readingLogs || [];
       let removedLogIds: string[] = [];
@@ -3805,24 +3794,17 @@ export function useAppState() {
         updatedDeletedEntityIds = Array.from(new Set([...updatedDeletedEntityIds, ...removedLogIds])).slice(-500);
       }
 
-      // Auto-Check / Un-Check linked reading habit
+      // Auto-Check / Un-Check linked reading habit (presence tracking)
       if (readingHabit) {
         const key = periodKey(readingHabit.frequency || 'daily');
         const currentCompletions = Array.isArray(readingHabit.completions)
           ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || new Date().toISOString() }]))
           : (readingHabit.completions || {});
         const isCheckedToday = currentCompletions[key]?.done === true;
-        const habitPts = (readingHabit.isPreset && readingHabit.points > 0) ? readingHabit.points : READING_POINTS.presetHabitFallback;
-        const habitMeta = {
-          category: readingHabit.category,
-          habitId: readingHabit.id,
-          habitName: readingHabit.name,
-          periodKey: key,
-        };
 
         const nowIso = new Date().toISOString();
         if (totalPagesToday > 0 && !isCheckedToday) {
-          // Auto-check habit
+          // Auto-check habit (linked reading habit is zero-point system indicator or tracks completions)
           updatedHabits = prev.habits.map((h) =>
             h.id === readingHabit.id
               ? {
@@ -3837,21 +3819,8 @@ export function useAppState() {
                 }
               : h
           );
-          pointsUpdate = {
-            ...pointsUpdate,
-            ...addPointsInternal(
-              { ...prev, ...pointsUpdate },
-              habitPts,
-              `Habit completed: ${readingHabit.name}`,
-              'habit_completed',
-              habitMeta
-            ),
-          };
         } else if (totalPagesToday <= 0 && isCheckedToday) {
-          // Auto-uncheck habit (negative corrections)
-          const currentPeriodKey = key;
-          const targetCompletion = currentCompletions[currentPeriodKey];
-          const completionInstanceTimestamp = targetCompletion?.updatedAt || readingHabit.createdAt || currentPeriodKey;
+          // Auto-uncheck habit
           updatedHabits = prev.habits.map((h) =>
             h.id === readingHabit.id
               ? {
@@ -3866,21 +3835,6 @@ export function useAppState() {
                 }
               : h
           );
-          const prevToExcise = { ...prev, ...pointsUpdate };
-          const exciseResult = excisePointsEntriesInternal(
-            prevToExcise,
-            (entry) => entry.source === 'habit_completed'
-              && entry.metadata?.habitId === readingHabit.id
-              && entry.metadata?.periodKey === currentPeriodKey,
-            { pos: habitPts },
-            Infinity,
-            `habit_${readingHabit.id}_${currentPeriodKey}_${completionInstanceTimestamp}`
-          );
-          const { excisedEntryIds, ...restPoints } = exciseResult;
-          pointsUpdate = { ...pointsUpdate, ...restPoints };
-          if (excisedEntryIds?.length) {
-            updatedDeletedEntityIds = Array.from(new Set([...updatedDeletedEntityIds, ...excisedEntryIds])).slice(-500);
-          }
         }
       }
 
@@ -4021,10 +3975,6 @@ export function useAppState() {
 
           if (remainingPagesToday <= 0 && isCheckedToday) {
             const nowIso = new Date().toISOString();
-            const habitPts = (readingHabit.isPreset && readingHabit.points > 0) ? readingHabit.points : READING_POINTS.presetHabitFallback;
-            const targetCompletion = currentCompletions[key];
-            const completionInstanceTimestamp = targetCompletion?.updatedAt || readingHabit.createdAt || key;
-
             updatedHabits = prev.habits.map((h) =>
               h.id === readingHabit.id
                 ? {
@@ -4039,20 +3989,6 @@ export function useAppState() {
                   }
                 : h
             );
-
-            const stateAfterBookPoints = { ...prev, ...pointsUpdate };
-            const exciseResult = excisePointsEntriesInternal(
-              stateAfterBookPoints,
-              (entry) => entry.source === 'habit_completed'
-                && entry.metadata?.habitId === readingHabit.id
-                && entry.metadata?.periodKey === key,
-              { pos: habitPts },
-              Infinity,
-              `habit_${readingHabit.id}_${key}_${completionInstanceTimestamp}`
-            );
-            const { excisedEntryIds, ...restPoints } = exciseResult;
-            pointsUpdate = { ...pointsUpdate, ...restPoints };
-            habitExcisedIds = excisedEntryIds || [];
           }
         }
 
@@ -4321,10 +4257,10 @@ export function useAppState() {
 
       const pointsEarnedToday = prev.skillLogs
         .filter((l) => l.date === date)
-        .reduce((sum, l) => sum + l.pointsAwarded, 0);
+        .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
 
-      const maxAllowed = Math.max(0, SKILLS_POINTS.dailyCap - pointsEarnedToday);
-      const pointsToAward = Math.min(durationMinutes * SKILLS_POINTS.pointsPerMinute, maxAllowed);
+      const remainingCap = Math.max(0, SKILLS_POINTS.dailyCap - pointsEarnedToday);
+      const { pointsToAward } = calculateSkillPoints(durationMinutes, remainingCap);
 
       const session: SkillSessionLog = {
         id: uid(),
@@ -4370,31 +4306,68 @@ export function useAppState() {
     return (
       setState(
         (prev) => {
-          const skillLogs = prev.skillLogs.filter((l) => l.skillId === skillId);
-          const totalPointsToDeduct = skillLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+          const target = prev.skills.find((s) => s.id === skillId);
+          if (!target) return prev;
 
-          let pointsUpdate = {};
-          if (totalPointsToDeduct > 0) {
-            const targetSkill = prev.skills.find((s) => s.id === skillId);
-            const skillName = targetSkill ? targetSkill.name : 'Skill';
+          const remainingSkills = prev.skills.filter((s) => s.id !== skillId);
+          const skillLogsToRemove = prev.skillLogs.filter((l) => l.skillId === skillId);
+          const remainingSkillLogs = prev.skillLogs.filter((l) => l.skillId !== skillId);
+
+          // Get unique affected dates
+          const affectedDates = Array.from(new Set(skillLogsToRemove.map((l) => l.date)));
+
+          const recalculatedMap = new Map<string, number>();
+          for (const affectedDate of affectedDates) {
+            const dayLogs = remainingSkillLogs.filter((l) => l.date === affectedDate);
+            const chronDayLogs = [...dayLogs].sort(
+              (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+            );
+
+            let dailyCapRemaining: number = SKILLS_POINTS.dailyCap;
+            for (const log of chronDayLogs) {
+              const { pointsToAward: awarded } = calculateSkillPoints(log.durationMinutes, dailyCapRemaining);
+              recalculatedMap.set(log.id, awarded);
+              dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
+            }
+          }
+
+          const oldPointsOnAffectedDates = prev.skillLogs
+            .filter((l) => affectedDates.includes(l.date))
+            .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+          const newPointsOnAffectedDates = remainingSkillLogs
+            .filter((l) => affectedDates.includes(l.date))
+            .reduce((sum, l) => sum + (recalculatedMap.get(l.id) ?? l.pointsAwarded ?? 0), 0);
+
+          const netPointDelta = newPointsOnAffectedDates - oldPointsOnAffectedDates;
+
+          let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+          if (netPointDelta !== 0) {
             pointsUpdate = addPointsInternal(
               prev,
-              -totalPointsToDeduct,
-              `Skill deleted (${skillLogs.length} session log(s) removed): ${skillName}`,
+              netPointDelta,
+              `Skill deleted (${skillLogsToRemove.length} session log(s) removed): ${target.name}`,
               'skill'
             );
           }
 
+          const updatedSkillLogs = remainingSkillLogs.map((l) => {
+            if (recalculatedMap.has(l.id)) {
+              return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
+            }
+            return l;
+          });
+
           const updatedDeletedEntityIds = [
             ...(prev.deletedEntityIds || []),
             skillId,
-            ...skillLogs.map((l) => l.id),
+            ...skillLogsToRemove.map((l) => l.id),
           ].slice(-500);
 
           return {
             ...prev,
-            skills: prev.skills.filter((s) => s.id !== skillId),
-            skillLogs: prev.skillLogs.filter((l) => l.skillId !== skillId),
+            skills: remainingSkills,
+            skillLogs: updatedSkillLogs,
             weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId]),
             deletedEntityIds: updatedDeletedEntityIds,
             ...pointsUpdate,
@@ -4411,14 +4384,58 @@ export function useAppState() {
     setState(
       (prev) => {
         const target = prev.skillLogs.find((s) => s.id === logId);
-        let pointsUpdate = {};
-        if (target && target.pointsAwarded > 0) {
-          pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Skill practice log deleted`, 'skill');
+        if (!target) return prev;
+
+        const targetDate = target.date;
+        const remainingSkillLogs = prev.skillLogs.filter((s) => s.id !== logId);
+
+        // Recalculate points awarded for all remaining same-date skill logs across all skills in chronological order
+        const dayLogs = remainingSkillLogs.filter((l) => l.date === targetDate);
+        const chronDayLogs = [...dayLogs].sort(
+          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+
+        let dailyCapRemaining: number = SKILLS_POINTS.dailyCap;
+        const recalculatedMap = new Map<string, number>();
+
+        for (const log of chronDayLogs) {
+          const { pointsToAward: awarded } = calculateSkillPoints(log.durationMinutes, dailyCapRemaining);
+          recalculatedMap.set(log.id, awarded);
+          dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
         }
+
+        const oldDatePoints = prev.skillLogs
+          .filter((l) => l.date === targetDate)
+          .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+        const newDatePoints = chronDayLogs.reduce(
+          (sum, l) => sum + (recalculatedMap.get(l.id) ?? 0),
+          0
+        );
+
+        const netPointDelta = newDatePoints - oldDatePoints;
+
+        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        if (netPointDelta !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            netPointDelta,
+            `Skill practice log deleted`,
+            'skill'
+          );
+        }
+
+        const updatedSkillLogs = remainingSkillLogs.map((l) => {
+          if (l.date === targetDate && recalculatedMap.has(l.id)) {
+            return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
+          }
+          return l;
+        });
+
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {
           ...prev,
-          skillLogs: prev.skillLogs.filter((s) => s.id !== logId),
+          skillLogs: updatedSkillLogs,
           deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
@@ -5111,11 +5128,14 @@ export function useAppState() {
   // --- MODULE 7: PREFRONTAL CORTEX ACTIONS ---
   const logFocusSession = useCallback((taskName: string, durationMinutes: number, skillId?: string, reflection?: string) => {
     const date = todayKey();
-    const pointsToAward = Math.max(
-      PFC_POINTS.focus.floorPoints,
-      Math.round(durationMinutes * PFC_POINTS.focus.minuteRate)
-    );
     setState((prev) => {
+      const pointsEarnedToday = (prev.focusLogs || [])
+        .filter((l) => l.date === date)
+        .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+      const remainingCap = Math.max(0, PFC_POINTS.focus.dailyCap - pointsEarnedToday);
+      const { pointsToAward } = calculateFocusPoints(durationMinutes, remainingCap);
+
       const focusLog: FocusSessionLog = {
         id: uid(),
         date,
@@ -5126,7 +5146,10 @@ export function useAppState() {
         reflection: reflection?.trim() || undefined,
         createdAt: new Date().toISOString(),
       };
-      const pointsUpdate = addPointsInternal(prev, pointsToAward, `Focus session completed (${durationMinutes}m)`, 'focus');
+      let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+      if (pointsToAward > 0) {
+        pointsUpdate = addPointsInternal(prev, pointsToAward, `Focus session completed (${durationMinutes}m)`, 'focus');
+      }
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), focusLog.id])).slice(-500);
       return {
         ...prev,
@@ -5229,14 +5252,58 @@ export function useAppState() {
     setState(
       (prev) => {
         const target = prev.focusLogs.find((f) => f.id === logId);
-        let pointsUpdate = {};
-        if (target && target.pointsAwarded > 0) {
-          pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Focus session deleted: ${target.taskName}`, 'focus');
+        if (!target) return prev;
+
+        const targetDate = target.date;
+        const remainingFocusLogs = prev.focusLogs.filter((f) => f.id !== logId);
+
+        // Recalculate points awarded for all remaining same-date focus logs in chronological order
+        const dayLogs = remainingFocusLogs.filter((l) => l.date === targetDate);
+        const chronDayLogs = [...dayLogs].sort(
+          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+
+        let dailyCapRemaining: number = PFC_POINTS.focus.dailyCap;
+        const recalculatedMap = new Map<string, number>();
+
+        for (const log of chronDayLogs) {
+          const { pointsToAward: awarded } = calculateFocusPoints(log.durationMinutes, dailyCapRemaining);
+          recalculatedMap.set(log.id, awarded);
+          dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
         }
+
+        const oldDatePoints = prev.focusLogs
+          .filter((l) => l.date === targetDate)
+          .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+        const newDatePoints = chronDayLogs.reduce(
+          (sum, l) => sum + (recalculatedMap.get(l.id) ?? 0),
+          0
+        );
+
+        const netPointDelta = newDatePoints - oldDatePoints;
+
+        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        if (netPointDelta !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            netPointDelta,
+            `Focus session deleted: ${target.taskName}`,
+            'focus'
+          );
+        }
+
+        const updatedFocusLogs = remainingFocusLogs.map((l) => {
+          if (l.date === targetDate && recalculatedMap.has(l.id)) {
+            return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
+          }
+          return l;
+        });
+
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {
           ...prev,
-          focusLogs: prev.focusLogs.filter((f) => f.id !== logId),
+          focusLogs: updatedFocusLogs,
           deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };

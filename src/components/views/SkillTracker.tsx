@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { Skill, SkillLevel, SkillSessionLog } from '@/types';
 import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate } from '@/lib/dates';
-import { SKILLS_POINTS } from '@/lib/pointsConfig';
+import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 
 export function SkillTracker({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -207,8 +207,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
   }, [skillLogs, today]);
 
   const remainingSkillCap = Math.max(0, SKILLS_POINTS.dailyCap - skillPointsToday);
-  const skillPreviewPoints = Math.min(
-    Math.max(0, duration) * SKILLS_POINTS.pointsPerMinute,
+  const { pointsToAward: skillPreviewPoints } = calculateSkillPoints(
+    Math.max(0, Number(duration) || 0),
     remainingSkillCap
   );
 
