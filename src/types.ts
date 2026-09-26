@@ -64,8 +64,8 @@ export interface Habit {
   category?: string;
   createdAt: string;
   updatedAt?: string;
-  /** Map of period/date keys to completion status with ISO timestamp */
-  completions: Record<string, { done: boolean; updatedAt: string }>;
+  /** Map of period/date keys to completion status with ISO timestamp and actual awarded points */
+  completions: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }>;
   createdAtPeriod: string;
   /** Periods that were missed and penalized */
   missedPeriods?: string[];

@@ -1,5 +1,49 @@
 // src/lib/pointsConfig.ts
 
+export const PRESET_HABIT_POINTS = {
+  dailyCap: 10,
+} as const;
+
+export interface PresetHabitCapItem {
+  id: string;
+  nominalPoints: number;
+  updatedAt: string;
+}
+
+/**
+ * Pure allocation function for today's preset habits cap.
+ * Allocates nominal points to each habit in ascending updatedAt order
+ * until PRESET_HABIT_POINTS.dailyCap is reached.
+ * Returns a map of habitId -> allocatedPoints.
+ */
+export function recomputeTodayPresetPoints(
+  items: PresetHabitCapItem[],
+  cap: number = PRESET_HABIT_POINTS.dailyCap
+): Record<string, number> {
+  const sorted = [...items].sort((a, b) => {
+    const timeA = new Date(a.updatedAt).getTime();
+    const timeB = new Date(b.updatedAt).getTime();
+    if (isNaN(timeA) && isNaN(timeB)) return 0;
+    if (isNaN(timeA)) return 1;
+    if (isNaN(timeB)) return -1;
+    if (timeA !== timeB) return timeA - timeB;
+    return a.id.localeCompare(b.id);
+  });
+
+  const allocation: Record<string, number> = {};
+  let accumulated = 0;
+
+  for (const item of sorted) {
+    const nominal = Math.max(0, item.nominalPoints);
+    const remaining = Math.max(0, cap - accumulated);
+    const allocated = Math.min(nominal, remaining);
+    allocation[item.id] = allocated;
+    accumulated += allocated;
+  }
+
+  return allocation;
+}
+
 export const JOURNAL_POINTS = {
   // store.ts:2378
   entryCompleted: 5,

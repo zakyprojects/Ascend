@@ -41,10 +41,11 @@ import {
 } from '@/types';
 import { mergeSharedChallenge } from './pactLifecycle';
 import { ensureDefaultActivities } from './timeTracker';
-import { parseDate } from './dates';
+import { parseDate, todayKey } from './dates';
 import { calculateSeasonalTotal } from './leagues';
 import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
+import { PRESET_HABIT_POINTS, PresetHabitCapItem, recomputeTodayPresetPoints } from './pointsConfig';
 
 function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string; timestamp?: string }>(
   baseArr: T[] = [],
@@ -476,10 +477,76 @@ function mergeAppStateInternal(
     completions: normalizeHabitCompletions(h.completions, h.updatedAt || h.createdAt || new Date().toISOString()),
   }));
 
-  const { habits, deletedEntityIds: postHabitDeletedEntityIds } = deduplicatePresetHabits(
+  const { habits: deduplicatedHabits, deletedEntityIds: postHabitDeletedEntityIds } = deduplicatePresetHabits(
     normalizedHabits,
     mergedDeletedEntityIds
   );
+
+  // 2b. Post-Merge Cap Reconciliation for Today's Daily Preset Habits
+  const today = todayKey();
+  const capItems: PresetHabitCapItem[] = [];
+  for (const h of deduplicatedHabits) {
+    if (!h || !h.isPreset || h.frequency !== 'daily' || h.points <= 0) continue;
+    const comps = h.completions as Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> | undefined;
+    const comp = comps?.[today];
+    if (comp && comp.done) {
+      capItems.push({
+        id: h.id,
+        nominalPoints: h.points,
+        updatedAt: comp.updatedAt || h.updatedAt || h.createdAt || new Date().toISOString(),
+      });
+    }
+  }
+
+  const mergeCorrectionEntries: PointsEntry[] = [];
+  let habits = deduplicatedHabits;
+
+  if (capItems.length > 0) {
+    const newAllocation = recomputeTodayPresetPoints(capItems, PRESET_HABIT_POINTS.dailyCap);
+    const nowIso = new Date().toISOString();
+
+    habits = deduplicatedHabits.map((h) => {
+      if (!h || !h.isPreset || h.frequency !== 'daily' || !(h.id in newAllocation)) return h;
+      const newAlloc = newAllocation[h.id];
+      const comps = (h.completions || {}) as Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }>;
+      const comp = comps[today];
+      const oldAwarded = typeof comp?.pointsAwarded === 'number' ? comp.pointsAwarded : h.points;
+      const delta = newAlloc - oldAwarded;
+
+      if (delta !== 0) {
+        const corrId = `habit_cap_redistribution_${h.id}_${today}_merge_${oldAwarded}to${newAlloc}`;
+        mergeCorrectionEntries.push({
+          id: corrId,
+          amount: delta,
+          reason: delta > 0
+            ? `Habit daily cap top-up (merge): ${h.name} (+${delta} pts)`
+            : `Habit daily cap reduction (merge): ${h.name} (${delta} pts)`,
+          source: 'habit_cap_redistribution',
+          timestamp: nowIso,
+          metadata: {
+            habitId: h.id,
+            habitName: h.name,
+            periodKey: today,
+            delta,
+            allocatedPoints: newAlloc,
+            triggerAction: 'merge',
+          },
+        });
+      }
+
+      return {
+        ...h,
+        completions: {
+          ...comps,
+          [today]: {
+            ...(comp || { done: true }),
+            pointsAwarded: newAlloc,
+            updatedAt: comp?.updatedAt || nowIso,
+          },
+        },
+      };
+    });
+  }
 
   // 3. Journal entries
   const journalEntries = mergeEntityArrays(
@@ -565,9 +632,13 @@ function mergeAppStateInternal(
   let mergedSeasonPos = ledgerSeasonPos + resolvedLegacyGapPos;
   let mergedSeasonNeg = ledgerSeasonNeg + resolvedLegacyGapNeg;
 
+  const incomingPointsWithCorrections = mergeCorrectionEntries.length > 0
+    ? [...(incomingState.pointsHistory || []), ...mergeCorrectionEntries]
+    : incomingState.pointsHistory || [];
+
   const mergedHistoryFull = mergeEntityArrays(
     baseState.pointsHistory || [],
-    incomingState.pointsHistory || [],
+    incomingPointsWithCorrections,
     tombstoneSet
   ).sort((a: PointsEntry, b: PointsEntry) => {
     const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
