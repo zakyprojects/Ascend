@@ -3721,15 +3721,6 @@ export function useAppState() {
 
       const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
 
-      const readingPointsToday = (prev.readingLogs || [])
-        .filter((l) => l.date === date)
-        .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-
-      const remainingCap = Math.max(0, READING_POINTS.dailyCap - readingPointsToday);
-      const { pointsToAward } = pageDelta > 0
-        ? calculateReadingPoints(pageDelta, remainingCap)
-        : { pointsToAward: 0 };
-
       let updatedReadingLogs = prev.readingLogs || [];
       let removedLogIds: string[] = [];
       if (pageDelta > 0) {
@@ -3738,7 +3729,7 @@ export function useAppState() {
           bookId: targetUserBook.id,
           date,
           pagesRead: pageDelta,
-          pointsAwarded: pointsToAward,
+          pointsAwarded: 0,
           createdAt: new Date().toISOString(),
         };
         updatedReadingLogs = [readingLog, ...updatedReadingLogs];
@@ -3765,6 +3756,53 @@ export function useAppState() {
         }).filter((l): l is ReadingLog => l !== null);
       }
 
+      // Recompute chronological points across all reading logs for this date
+      const dayLogs = updatedReadingLogs.filter((l) => l.date === date);
+      const chronDayLogs = [...dayLogs].sort(
+        (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+      );
+
+      let cumulativePages = 0;
+      let cumulativePointsAllocated = 0;
+      const recalculatedMap = new Map<string, number>();
+
+      for (const log of chronDayLogs) {
+        cumulativePages += (log.pagesRead || 0);
+        const totalPointsEarnedSoFar = Math.min(
+          Math.floor(cumulativePages / READING_POINTS.pagesPerPoint),
+          READING_POINTS.dailyCap
+        );
+        const logAward = Math.max(0, totalPointsEarnedSoFar - cumulativePointsAllocated);
+        recalculatedMap.set(log.id, logAward);
+        cumulativePointsAllocated += logAward;
+      }
+
+      const oldDatePoints = (prev.readingLogs || [])
+        .filter((l) => l.date === date)
+        .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+      const newDatePoints = cumulativePointsAllocated;
+      const netPointDelta = newDatePoints - oldDatePoints;
+
+      let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+      if (netPointDelta !== 0) {
+        pointsUpdate = addPointsInternal(
+          prev,
+          netPointDelta,
+          netPointDelta > 0
+            ? `Read ${pageDelta} ${targetUserBook.unit || 'pages'} of ${title}`
+            : `Reading progress adjusted on ${title}`,
+          'reading'
+        );
+      }
+
+      updatedReadingLogs = updatedReadingLogs.map((l) => {
+        if (l.date === date && recalculatedMap.has(l.id)) {
+          return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
+        }
+        return l;
+      });
+
       // Calculate total pages read today across ALL books
       const totalPagesToday = updatedReadingLogs
         .filter((l) => l.date === date)
@@ -3782,11 +3820,6 @@ export function useAppState() {
         }
         return lb;
       });
-
-      let pointsUpdate = {};
-      if (pointsToAward > 0) {
-        pointsUpdate = addPointsInternal(prev, pointsToAward, `Read ${pageDelta} ${targetUserBook.unit || 'pages'} of ${title}`, 'reading');
-      }
 
       let updatedHabits = prev.habits;
       let updatedDeletedEntityIds = prev.deletedEntityIds || [];
@@ -3948,16 +3981,62 @@ export function useAppState() {
 
         const targetTitleLower = (targetUserBook.title || '').toLowerCase();
         const bookLogs = prev.readingLogs.filter((l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)));
-        const logPointsTotal = bookLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
         const completionPoints = targetUserBook.pointsAwarded || (targetUserBook.status === 'completed' ? READING_POINTS.customBookBonus : 0);
-        const totalBookPoints = logPointsTotal + completionPoints;
-
-        let pointsUpdate = {};
-        if (totalBookPoints > 0) {
-          pointsUpdate = addPointsInternal(prev, -totalBookPoints, `Book deleted: ${targetUserBook.title}`, 'reading');
-        }
 
         const remainingReadingLogs = prev.readingLogs.filter((l) => !l.bookId || !allMatchingIds.has(l.bookId));
+
+        // Get unique affected dates from the deleted book's logs
+        const affectedDates = Array.from(new Set(bookLogs.map((l) => l.date)));
+
+        const recalculatedMap = new Map<string, number>();
+        for (const affectedDate of affectedDates) {
+          const dayLogs = remainingReadingLogs.filter((l) => l.date === affectedDate);
+          const chronDayLogs = [...dayLogs].sort(
+            (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+          );
+
+          let cumulativePages = 0;
+          let cumulativePointsAllocated = 0;
+          for (const log of chronDayLogs) {
+            cumulativePages += (log.pagesRead || 0);
+            const totalPointsEarnedSoFar = Math.min(
+              Math.floor(cumulativePages / READING_POINTS.pagesPerPoint),
+              READING_POINTS.dailyCap
+            );
+            const logAward = Math.max(0, totalPointsEarnedSoFar - cumulativePointsAllocated);
+            recalculatedMap.set(log.id, logAward);
+            cumulativePointsAllocated += logAward;
+          }
+        }
+
+        const oldPointsOnAffectedDates = prev.readingLogs
+          .filter((l) => affectedDates.includes(l.date))
+          .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+        const newPointsOnAffectedDates = remainingReadingLogs
+          .filter((l) => affectedDates.includes(l.date))
+          .reduce((sum, l) => sum + (recalculatedMap.get(l.id) ?? l.pointsAwarded ?? 0), 0);
+
+        const logPointDelta = newPointsOnAffectedDates - oldPointsOnAffectedDates;
+        const totalNetPointDelta = logPointDelta - completionPoints;
+
+        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        if (totalNetPointDelta !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            totalNetPointDelta,
+            `Book deleted: ${targetUserBook.title}`,
+            'reading'
+          );
+        }
+
+        const updatedReadingLogs = remainingReadingLogs.map((l) => {
+          if (recalculatedMap.has(l.id)) {
+            return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
+          }
+          return l;
+        });
+
         const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
         let updatedHabits = prev.habits;
         let habitExcisedIds: string[] = [];
@@ -3969,7 +4048,7 @@ export function useAppState() {
             ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || new Date().toISOString() }]))
             : (readingHabit.completions || {});
           const isCheckedToday = currentCompletions[key]?.done === true;
-          const remainingPagesToday = remainingReadingLogs
+          const remainingPagesToday = updatedReadingLogs
             .filter((l) => l.date === today)
             .reduce((sum, l) => sum + (l.pagesRead || 0), 0);
 
@@ -4006,7 +4085,7 @@ export function useAppState() {
           libraryBooks: prev.libraryBooks.filter(
             (lb) => !allMatchingIds.has(lb.id) && lb.title.toLowerCase() !== targetTitleLower
           ),
-          readingLogs: remainingReadingLogs,
+          readingLogs: updatedReadingLogs,
           habits: updatedHabits,
           weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsArray),
           deletedEntityIds: updatedDeletedEntityIds,
@@ -4503,25 +4582,92 @@ export function useAppState() {
           };
         }
 
-        const activeHabits = baseState.badHabits
-          .filter((h) => !h.isCompleted)
-          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-        const activeIndex = activeHabits.findIndex((h) => h.id === badHabitId);
-        const isPointEligible = activeIndex >= 0 && activeIndex < 2;
-
-        let pointsChange = 0;
-        let reason = '';
-        let consecutiveOccurrences = 0;
+        const nowIso = new Date().toISOString();
+        const logId = existingLog?.id || uid();
 
         if (status === 'resisted') {
-          pointsChange = isPointEligible ? BAD_HABIT_POINTS.resistBase : 0;
-          reason = `Bad habit resisted: ${bh.name}`;
+          // Prepare the proposed new log
+          const newLog: BadHabitLog = {
+            id: logId,
+            badHabitId,
+            date,
+            status: 'resisted',
+            consecutiveOccurrences: 0,
+            pointsAwardedOrDeducted: 0,
+            createdAt: existingLog?.createdAt || nowIso,
+            updatedAt: nowIso,
+          };
+
+          const survivingOtherLogs = (baseState.badHabitLogs || []).filter(
+            (l) => !(l && l.badHabitId === badHabitId && l.date === date)
+          );
+          const combinedLogs = [newLog, ...survivingOtherLogs];
+
+          // Dynamic chronological recompute across all same-day resist logs
+          const sameDayResists = combinedLogs
+            .filter((l) => l.date === date && l.status === 'resisted')
+            .sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+
+          let cumulativePoints = 0;
+          const recalculatedMap = new Map<string, number>();
+
+          for (let i = 0; i < sameDayResists.length; i++) {
+            const rLog = sameDayResists[i];
+            let logPts = 0;
+            if (i < BAD_HABIT_POINTS.maxDailyResists && cumulativePoints + BAD_HABIT_POINTS.resistBase <= BAD_HABIT_POINTS.dailyCap) {
+              logPts = BAD_HABIT_POINTS.resistBase;
+              cumulativePoints += logPts;
+            }
+            recalculatedMap.set(rLog.id, logPts);
+          }
+
+          const oldResistPointsToday = (baseState.badHabitLogs || [])
+            .filter((l) => l.date === date && l.status === 'resisted')
+            .reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
+
+          const newResistPointsToday = cumulativePoints;
+          const netPointDelta = newResistPointsToday - oldResistPointsToday;
+
+          let pointsUpdate = {};
+          if (netPointDelta !== 0) {
+            pointsUpdate = addPointsInternal(
+              baseState,
+              netPointDelta,
+              netPointDelta > 0 ? `Bad habit resisted: ${bh.name}` : `Bad habit resist points adjusted`,
+              'bad_habit_resisted',
+              { badHabitId, date, status: 'resisted' }
+            );
+          }
+
+          const updatedLogs = combinedLogs.map((l) => {
+            if (l.date === date && l.status === 'resisted' && recalculatedMap.has(l.id)) {
+              return { ...l, pointsAwardedOrDeducted: recalculatedMap.get(l.id)! };
+            }
+            return l;
+          });
+
+          const sanitizedDeletedEntityIds = (baseState.deletedEntityIds || []).filter(
+            (id) => id !== `${badHabitId}_${date}`
+          );
+          const updatedDeletedEntityIds = Array.from(
+            new Set([...sanitizedDeletedEntityIds, ...excisedIds])
+          ).slice(-500);
+          const updatedUnsynced = Array.from(new Set([...(baseState.unsyncedEntityIds || []), logId])).slice(-500);
+
+          return {
+            ...baseState,
+            badHabitLogs: updatedLogs,
+            deletedEntityIds: updatedDeletedEntityIds,
+            unsyncedEntityIds: updatedUnsynced,
+            ...pointsUpdate,
+          };
         } else {
+          // Occurred status path
           const pastLogs = (baseState.badHabitLogs || [])
             .filter((l) => l && l.badHabitId === badHabitId && l.date < date)
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-          consecutiveOccurrences = 1;
+          let consecutiveOccurrences = 1;
           for (const log of pastLogs) {
             if (log && (log.status === 'occurred' || log.status === 'no_report')) {
               consecutiveOccurrences++;
@@ -4534,51 +4680,49 @@ export function useAppState() {
           const seasonStart = getLeaguePeriodStart('ninetyDay', now);
           const seasonPts = calculatePeriodPoints(baseState.pointsHistory || [], seasonStart, now, baseState.totalPoints);
           const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
-          const penaltyAmount = isPointEligible ? Math.round(BAD_HABIT_POINTS.occurBase * multiplier) : 0;
-          pointsChange = -penaltyAmount;
-          reason = `Bad habit occurred (${multiplier}x penalty): ${bh.name}`;
-        }
+          const penaltyAmount = Math.round(BAD_HABIT_POINTS.occurBase * multiplier);
+          const pointsChange = -penaltyAmount;
+          const reason = `Bad habit occurred (${multiplier}x penalty): ${bh.name}`;
 
-        let pointsUpdate = {};
-        if (pointsChange !== 0) {
-          pointsUpdate = addPointsInternal(
-            baseState,
-            pointsChange,
-            reason,
-            status === 'resisted' ? 'bad_habit_resisted' : 'bad_habit_occurred',
-            { badHabitId, date, status }
+          let pointsUpdate = {};
+          if (pointsChange !== 0) {
+            pointsUpdate = addPointsInternal(
+              baseState,
+              pointsChange,
+              reason,
+              'bad_habit_occurred',
+              { badHabitId, date, status }
+            );
+          }
+
+          const newLog: BadHabitLog = {
+            id: logId,
+            badHabitId,
+            date,
+            status,
+            consecutiveOccurrences,
+            pointsAwardedOrDeducted: pointsChange,
+            createdAt: existingLog?.createdAt || nowIso,
+            updatedAt: nowIso,
+          };
+
+          const sanitizedDeletedEntityIds = (baseState.deletedEntityIds || []).filter(
+            (id) => id !== `${badHabitId}_${date}`
           );
+          const updatedDeletedEntityIds = Array.from(
+            new Set([...sanitizedDeletedEntityIds, ...excisedIds])
+          ).slice(-500);
+
+          const filteredLogs = (baseState.badHabitLogs || []).filter((l) => !(l && l.badHabitId === badHabitId && l.date === date));
+          const updatedUnsynced = Array.from(new Set([...(baseState.unsyncedEntityIds || []), newLog.id])).slice(-500);
+          return {
+            ...baseState,
+            badHabitLogs: [newLog, ...filteredLogs],
+            deletedEntityIds: updatedDeletedEntityIds,
+            unsyncedEntityIds: updatedUnsynced,
+            ...pointsUpdate,
+          };
         }
-
-        const nowIso = new Date().toISOString();
-        const logId = existingLog?.id || uid();
-        const newLog: BadHabitLog = {
-          id: logId,
-          badHabitId,
-          date,
-          status,
-          consecutiveOccurrences: status === 'occurred' ? consecutiveOccurrences : 0,
-          pointsAwardedOrDeducted: pointsChange,
-          createdAt: existingLog?.createdAt || nowIso,
-          updatedAt: nowIso,
-        };
-
-        const sanitizedDeletedEntityIds = (baseState.deletedEntityIds || []).filter(
-          (id) => id !== `${badHabitId}_${date}`
-        );
-        const updatedDeletedEntityIds = Array.from(
-          new Set([...sanitizedDeletedEntityIds, ...excisedIds])
-        ).slice(-500);
-
-        const filteredLogs = (baseState.badHabitLogs || []).filter((l) => !(l && l.badHabitId === badHabitId && l.date === date));
-        const updatedUnsynced = Array.from(new Set([...(baseState.unsyncedEntityIds || []), newLog.id])).slice(-500);
-        return {
-          ...baseState,
-          badHabitLogs: [newLog, ...filteredLogs],
-          deletedEntityIds: updatedDeletedEntityIds,
-          unsyncedEntityIds: updatedUnsynced,
-          ...pointsUpdate,
-        };
       } catch (err) {
         console.error(`[ERROR IN logBadHabitDay FOR STATUS ${status}]:`, err);
         return prev;
@@ -4597,7 +4741,53 @@ export function useAppState() {
 
       let pointsUpdate = {};
       let excisedIds: string[] = [];
-      if (target.pointsAwardedOrDeducted !== 0) {
+      const remainingLogs = prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === today));
+      let updatedLogs = remainingLogs;
+
+      if (target.status === 'resisted') {
+        // Dynamic chronological recompute across all surviving same-day resist logs
+        const sameDayResists = remainingLogs
+          .filter((l) => l.date === today && l.status === 'resisted')
+          .sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+
+        let cumulativePoints = 0;
+        const recalculatedMap = new Map<string, number>();
+
+        for (let i = 0; i < sameDayResists.length; i++) {
+          const rLog = sameDayResists[i];
+          let logPts = 0;
+          if (i < BAD_HABIT_POINTS.maxDailyResists && cumulativePoints + BAD_HABIT_POINTS.resistBase <= BAD_HABIT_POINTS.dailyCap) {
+            logPts = BAD_HABIT_POINTS.resistBase;
+            cumulativePoints += logPts;
+          }
+          recalculatedMap.set(rLog.id, logPts);
+        }
+
+        const oldResistPointsToday = (prev.badHabitLogs || [])
+          .filter((l) => l.date === today && l.status === 'resisted')
+          .reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
+
+        const newResistPointsToday = cumulativePoints;
+        const netPointDelta = newResistPointsToday - oldResistPointsToday;
+
+        if (netPointDelta !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            netPointDelta,
+            `Bad habit resist undone / adjusted`,
+            'bad_habit_resisted',
+            { badHabitId, date: today }
+          );
+        }
+
+        updatedLogs = remainingLogs.map((l) => {
+          if (l.date === today && l.status === 'resisted' && recalculatedMap.has(l.id)) {
+            return { ...l, pointsAwardedOrDeducted: recalculatedMap.get(l.id)! };
+          }
+          return l;
+        });
+      } else if (target.pointsAwardedOrDeducted !== 0) {
+        // Occurred status reversal via static excision
         const isDeduction = target.pointsAwardedOrDeducted < 0;
         const ptsAmt = Math.abs(target.pointsAwardedOrDeducted);
         const logInstance = target.id || target.createdAt || target.updatedAt || today;
@@ -4629,7 +4819,7 @@ export function useAppState() {
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), badHabitId])).slice(-500);
       return {
         ...prev,
-        badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === today)),
+        badHabitLogs: updatedLogs,
         deletedEntityIds: updatedDeletedEntityIds,
         unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
@@ -4648,28 +4838,85 @@ export function useAppState() {
 
           let pointsUpdate = {};
           let excisedIds: string[] = [];
-          if (bh && !bh.isCompleted) {
-            const posPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) > 0).reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
-            const negPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) < 0).reduce((s, l) => s + Math.abs(l.pointsAwardedOrDeducted || 0), 0);
+          const remainingLogs = prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId);
+          let updatedLogs = remainingLogs;
 
-            if (posPoints > 0 || negPoints > 0) {
+          if (bh && !bh.isCompleted) {
+            // Find all unique dates where this deleted habit had a resist log
+            const affectedResistDates = Array.from(
+              new Set(habitLogs.filter((l) => l.status === 'resisted').map((l) => l.date))
+            );
+
+            const recalculatedMap = new Map<string, number>();
+            for (const rDate of affectedResistDates) {
+              const sameDayResists = remainingLogs
+                .filter((l) => l.date === rDate && l.status === 'resisted')
+                .sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+
+              let cumulativePoints = 0;
+              for (let i = 0; i < sameDayResists.length; i++) {
+                const rLog = sameDayResists[i];
+                let logPts = 0;
+                if (i < BAD_HABIT_POINTS.maxDailyResists && cumulativePoints + BAD_HABIT_POINTS.resistBase <= BAD_HABIT_POINTS.dailyCap) {
+                  logPts = BAD_HABIT_POINTS.resistBase;
+                  cumulativePoints += logPts;
+                }
+                recalculatedMap.set(rLog.id, logPts);
+              }
+            }
+
+            // Calculate resist points delta on affected dates
+            const oldResistPoints = prev.badHabitLogs
+              .filter((l) => affectedResistDates.includes(l.date) && l.status === 'resisted')
+              .reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
+            const newResistPoints = remainingLogs
+              .filter((l) => affectedResistDates.includes(l.date) && l.status === 'resisted')
+              .reduce((s, l) => s + (recalculatedMap.get(l.id) ?? l.pointsAwardedOrDeducted ?? 0), 0);
+            const netResistDelta = newResistPoints - oldResistPoints;
+
+            // Excise non-resist (occurred / no_report) points for this habit
+            const negPoints = habitLogs.filter((l) => l.status !== 'resisted' && (l.pointsAwardedOrDeducted || 0) < 0).reduce((s, l) => s + Math.abs(l.pointsAwardedOrDeducted || 0), 0);
+
+            let basePointsState = prev;
+            if (negPoints > 0) {
               const exciseResult = excisePointsEntriesInternal(
-                prev,
+                basePointsState,
                 (entry) => {
-                  if (entry.metadata?.badHabitId === badHabitId) return true;
-                  if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_resisted' || entry.source === 'bad_habit_no_report') {
+                  if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_no_report') {
                     if (entry.metadata?.badHabitId === badHabitId || entry.reason.includes(bh.name)) return true;
                   }
                   return false;
                 },
-                { pos: posPoints, neg: negPoints },
+                { neg: negPoints },
                 Infinity,
-                `badhabit_all_${badHabitId}`
+                `badhabit_neg_${badHabitId}`
               );
               const { excisedEntryIds, ...restPoints } = exciseResult;
-              pointsUpdate = restPoints;
+              basePointsState = { ...basePointsState, ...restPoints };
               excisedIds = excisedEntryIds;
             }
+
+            if (netResistDelta !== 0) {
+              const deltaPoints = addPointsInternal(
+                basePointsState,
+                netResistDelta,
+                `Bad habit deleted: ${bh.name}`,
+                'bad_habit_resisted'
+              );
+              basePointsState = { ...basePointsState, ...deltaPoints };
+            }
+
+            pointsUpdate = {
+              totalPoints: basePointsState.totalPoints,
+              pointsHistory: basePointsState.pointsHistory,
+            };
+
+            updatedLogs = remainingLogs.map((l) => {
+              if (recalculatedMap.has(l.id)) {
+                return { ...l, pointsAwardedOrDeducted: recalculatedMap.get(l.id)! };
+              }
+              return l;
+            });
           }
 
           const toTombstone = [
@@ -4683,7 +4930,7 @@ export function useAppState() {
           return {
             ...prev,
             badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
-            badHabitLogs: prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId),
+            badHabitLogs: updatedLogs,
             deletedEntityIds: updatedDeletedEntityIds,
             ...pointsUpdate,
           };

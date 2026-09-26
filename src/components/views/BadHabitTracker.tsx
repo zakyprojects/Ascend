@@ -47,6 +47,10 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
     .filter((h) => h.isCompleted)
     .sort((a, b) => new Date(b.completedAt || b.createdAt).getTime() - new Date(a.completedAt || a.createdAt).getTime());
 
+  const todayResistLogs = badHabitLogs.filter((l) => l.date === today && l.status === 'resisted');
+  const todayResistCount = todayResistLogs.length;
+  const isDailyResistCapReached = todayResistCount >= BAD_HABIT_POINTS.maxDailyResists;
+
   // Generate last 14 days dates array
   const last14Days: string[] = [];
   for (let i = 13; i >= 0; i--) {
@@ -171,14 +175,13 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           <div>
             <div className="text-xs text-content-disabled">Active Bad Habits</div>
             <div className="text-xl font-display font-bold text-content-primary">
-              {activeHabits.length} <span className="text-xs font-normal text-content-muted">({Math.min(activeHabits.length, 2)} point-eligible)</span>
+              {activeHabits.length}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Rules & System Banner Callout */}
-      <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-500/5 flex items-start gap-3">
+        <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-500/5 flex items-start gap-3">
         <AlertTriangle size={20} className="text-warning-text shrink-0 mt-0.5" />
         <div className="text-xs text-content-tertiary leading-relaxed space-y-1">
           <div>
@@ -186,13 +189,10 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           </div>
           <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
             <li>
-              <span className="text-content-secondary">Point Eligibility:</span> Only the <span className="text-success-text font-semibold">first 2 habits</span> (by creation order) earn/lose points. Slot reassigns automatically upon deletion or completion.
+              <span className="text-content-secondary">Daily Resists & Cap:</span> The <span className="text-success-text font-semibold">first 2 resist logs per day</span> earn <span className="text-success-text font-semibold">+{BAD_HABIT_POINTS.resistBase} pts each</span> (max +{BAD_HABIT_POINTS.dailyCap} pts/day). Additional resists log towards streak with 0 pts.
             </li>
             <li>
-              <span className="text-content-secondary">Daily Actions:</span> Resisted awards <span className="text-success-text font-semibold">+{BAD_HABIT_POINTS.resistBase} pts</span>. Logging Occurred deducts points using rank-tiered escalation (capped at <span className="text-warning-text font-bold">1.5x</span> for Bronze–Platinum, <span className="text-rose-theme font-bold">2.5x</span> for Diamond+). Once logged, action locks for today. Undo is available for today's action.
-            </li>
-            <li>
-              <span className="text-content-secondary">No-Report Auto-Penalty:</span> Missing a day applies an automatic <span className="text-rose-theme font-semibold">-{BAD_HABIT_POINTS.noReportBase} pts base</span> penalty at local midnight/hydration (scaled by your tier multiplier), breaks streak, and escalates future penalties. Cannot be undone.
+              <span className="text-content-secondary">Occurred & Miss Penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-rose-theme font-semibold">all active bad habits</span> (no habit-count limit). Undo is available for today's action.
             </li>
             <li>
               <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="text-brand-text font-semibold">75%</span> of commitment duration. Completing preserves points earned!
@@ -216,8 +216,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           </div>
         ) : (
           <div className="space-y-4">
-            {activeHabits.map((bh, idx) => {
-              const isPointEligible = idx < 2;
+            {activeHabits.map((bh) => {
               const todayLog = badHabitLogs
                 .filter((l) => l.badHabitId === bh.id && l.date === today)
                 .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
@@ -257,15 +256,6 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-content-primary text-base">{bh.name}</h3>
-                        {isPointEligible ? (
-                          <span className="badge bg-emerald-500/15 text-success-text text-[10px] font-bold border border-emerald-500/30">
-                            Point-Eligible (Slot {idx + 1}/2)
-                          </span>
-                        ) : (
-                          <span className="badge bg-bg-600/60 text-content-muted text-[10px] font-medium border border-overlay-default" title="Only first 2 habits earn/lose points">
-                            Tracking Only (Point Cap Reached)
-                          </span>
-                        )}
                       </div>
                       <p className="text-xs text-content-disabled mt-0.5">
                         Commitment: <span className="text-content-tertiary font-semibold">{commitmentDays} days</span> • Created: {new Date(bh.createdAt).toLocaleDateString()}
@@ -353,7 +343,9 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         }`}
                       >
                         <CheckCircle2 size={16} className={status === 'resisted' ? 'text-success-text' : 'text-content-muted'} />
-                        <span>Resisted Today {isPointEligible ? `(+${BAD_HABIT_POINTS.resistBase} pts)` : '(0 pts)'}</span>
+                        <span>
+                          Resisted Today {status === 'resisted' ? `(${todayLog?.pointsAwardedOrDeducted && todayLog.pointsAwardedOrDeducted > 0 ? `+${todayLog.pointsAwardedOrDeducted} pts` : '0 pts'})` : isDailyResistCapReached ? '(0 pts, Cap Reached)' : `(+${BAD_HABIT_POINTS.resistBase} pts)`}
+                        </span>
                       </button>
 
                       <button
@@ -368,7 +360,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         }`}
                       >
                         <XCircle size={16} className={status === 'occurred' ? 'text-rose-theme' : 'text-content-muted'} />
-                        <span>Occurred Today {isPointEligible ? '(Deduct Pts)' : '(0 pts)'}</span>
+                        <span>Occurred Today (Deduct Pts)</span>
                       </button>
                     </div>
 

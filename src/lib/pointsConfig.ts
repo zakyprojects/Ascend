@@ -100,11 +100,13 @@ export const READING_POINTS = {
 } as const;
 
 export const BAD_HABIT_POINTS = {
-  // store.ts:3590
-  resistBase: 10,
-  // store.ts:3609 (multiplied by escalation)
+  // store.ts:4596
+  resistBase: 3,
+  dailyCap: 6,
+  maxDailyResists: 2,
+  // store.ts:4616 (multiplied by escalation)
   occurBase: 10,
-  // habitPenalties.ts:436 (multiplied by escalation)
+  // habitPenalties.ts:438 (multiplied by escalation)
   noReportBase: 5,
 } as const;
 

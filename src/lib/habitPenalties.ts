@@ -403,10 +403,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
   let newLogs = [...(updatedState.badHabitLogs || [])];
   let logsAdded = false;
 
-  for (let idx = 0; idx < activeHabits.length; idx++) {
-    const habit = activeHabits[idx];
-    const isPointEligible = idx < 2;
-
+  for (const habit of activeHabits) {
     const createdDate = parseDate(habit.createdAt) || now;
     const start = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
     const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
@@ -435,7 +432,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
 
         const seasonPts = getAppStateSeasonPoints(updatedState, now);
         const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
-        const penaltyAmount = isPointEligible ? Math.round(BAD_HABIT_POINTS.noReportBase * multiplier) : 0;
+        const penaltyAmount = Math.round(BAD_HABIT_POINTS.noReportBase * multiplier);
 
         const newLog: BadHabitLog = {
           id: uid(),
