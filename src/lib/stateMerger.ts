@@ -723,9 +723,63 @@ function mergeAppStateInternal(
     }
   }
 
+  // Deduplicate weekly_goal_achieved entries by weekKey, keeping latest timestamp (with deterministic id tie-breaker)
+  const weeklyGoalsBest = new Map<string, PointsEntry>();
+  const duplicateWeeklyGoalEntryIds = new Set<string>();
+
+  for (const entry of mergedHistoryFull) {
+    if (
+      entry &&
+      (entry.source === 'weekly_goal_achieved' ||
+        (typeof entry.id === 'string' && entry.id.startsWith('weekly_goal_')))
+    ) {
+      let weekKey: string | null = null;
+      if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
+        weekKey = entry.metadata.weekKey;
+      } else if (typeof entry.id === 'string') {
+        const match = entry.id.match(/\b\d{4}-W\d{2}\b/);
+        if (match) weekKey = match[0];
+      } else if (entry.reason) {
+        const match = entry.reason.match(/\b\d{4}-W\d{2}\b/);
+        if (match) weekKey = match[0];
+      }
+
+      if (weekKey) {
+        const isCanonicalId = entry.id === `weekly_goal_${weekKey}`;
+        const existing = weeklyGoalsBest.get(weekKey);
+        if (!existing) {
+          weeklyGoalsBest.set(weekKey, entry);
+        } else {
+          const existingIsCanonical = existing.id === `weekly_goal_${weekKey}`;
+          const timeCand = entry.timestamp ? new Date(entry.timestamp).getTime() : 0;
+          const timeExist = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+          let replace = false;
+          // Prefer canonical static ID over legacy transition-based IDs
+          if (isCanonicalId && !existingIsCanonical) {
+            replace = true;
+          } else if (!isCanonicalId && existingIsCanonical) {
+            replace = false;
+          } else if (timeCand !== timeExist) {
+            replace = timeCand > timeExist; // latest timestamp wins for snapshot entries
+          } else {
+            replace = (entry.id || '') > (existing.id || '');
+          }
+
+          if (replace) {
+            if (existing.id) duplicateWeeklyGoalEntryIds.add(existing.id);
+            weeklyGoalsBest.set(weekKey, entry);
+          } else {
+            if (entry.id) duplicateWeeklyGoalEntryIds.add(entry.id);
+          }
+        }
+      }
+    }
+  }
+
   const allDuplicatePointIds = new Set<string>([
     ...duplicateHabitEntryIds,
     ...duplicateWeeklyReviewEntryIds,
+    ...duplicateWeeklyGoalEntryIds,
   ]);
 
   const dedupedHistoryFull = allDuplicatePointIds.size > 0

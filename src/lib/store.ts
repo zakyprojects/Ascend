@@ -400,11 +400,56 @@ function loadInitialState(): AppState {
   }
 }
 
+export function extractWeekKeyFromWeeklyGoalEntry(entry: PointsEntry | null | undefined): string | null {
+  if (!entry) return null;
+  const isWeeklyGoalEntry =
+    entry.source === 'weekly_goal_achieved' ||
+    (typeof entry.id === 'string' && entry.id.startsWith('weekly_goal_'));
+  if (!isWeeklyGoalEntry) return null;
+
+  if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
+    return entry.metadata.weekKey;
+  }
+  if (typeof entry.id === 'string') {
+    const match = entry.id.match(/\b\d{4}-W\d{2}\b/);
+    if (match) return match[0];
+  }
+  if (entry.reason) {
+    const match = entry.reason.match(/\b\d{4}-W\d{2}\b/);
+    if (match) return match[0];
+  }
+  return null;
+}
+
+export function groupWeeklyGoalEntriesByWeekKey(
+  history: PointsEntry[]
+): {
+  weeklyGoalsMap: Map<string, PointsEntry[]>;
+  otherHistory: PointsEntry[];
+} {
+  const weeklyGoalsMap = new Map<string, PointsEntry[]>();
+  const otherHistory: PointsEntry[] = [];
+
+  for (const entry of history) {
+    if (!entry) continue;
+    const weekKey = extractWeekKeyFromWeeklyGoalEntry(entry);
+    if (weekKey) {
+      const group = weeklyGoalsMap.get(weekKey) || [];
+      group.push(entry);
+      weeklyGoalsMap.set(weekKey, group);
+    } else {
+      otherHistory.push(entry);
+    }
+  }
+
+  return { weeklyGoalsMap, otherHistory };
+}
+
 export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null): AppState {
   // Weekly Review Points Consolidation Migration (Idempotent)
   const rawHistory = st.pointsHistory ?? [];
   const weeklyReviewMap = new Map<string, PointsEntry[]>();
-  const otherHistory: PointsEntry[] = [];
+  const nonReviewHistory: PointsEntry[] = [];
 
   for (const entry of rawHistory) {
     if (entry && entry.source === 'weekly_review') {
@@ -423,12 +468,14 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
         group.push(entry);
         weeklyReviewMap.set(weekKey, group);
       } else {
-        otherHistory.push(entry);
+        nonReviewHistory.push(entry);
       }
     } else if (entry) {
-      otherHistory.push(entry);
+      nonReviewHistory.push(entry);
     }
   }
+
+  const { weeklyGoalsMap, otherHistory } = groupWeeklyGoalEntriesByWeekKey(nonReviewHistory);
 
   const consolidatedWeeklyEntries: PointsEntry[] = [];
   for (const [weekKey, entries] of weeklyReviewMap.entries()) {
@@ -452,16 +499,85 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
     });
   }
 
-  const pointsHistory = [...otherHistory, ...consolidatedWeeklyEntries].sort(
+  const currentLeagueNow = leagueNow();
+  const activeSeasonNumber = getSeasonNumber(currentLeagueNow);
+  const activeSeasonStart = getSeasonStart(currentLeagueNow);
+
+  // Weekly Goals Points Consolidation Migration (Narrowed Scope)
+  // Only handles what reconcileWeeklyGoalsPointsForAllWeeks explicitly does NOT cover:
+  // 1. Closed/frozen season weeks (start < activeSeasonStart)
+  // 2. Orphaned weeks with no matching weeklyGoals doc
+  // Active-season weeks with a matching doc pass their raw entries through to pointsHistory
+  // and are consolidated canonically via reconcileWeeklyGoalsPointsForAllWeeks.
+  const allWeeklyGoalWeekKeys = new Set<string>([
+    ...weeklyGoalsMap.keys(),
+    ...(st.weeklyGoals || []).map((w) => w?.weekKey).filter((k): k is string => Boolean(k)),
+  ]);
+
+  const consolidatedWeeklyGoalEntries: PointsEntry[] = [];
+  const passthroughActiveGoalEntries: PointsEntry[] = [];
+
+  for (const weekKey of allWeeklyGoalWeekKeys) {
+    const doc = (st.weeklyGoals || []).find((w) => w && w.weekKey === weekKey);
+    let isClosedSeason = false;
+    try {
+      const { start } = getWeekDates(weekKey);
+      isClosedSeason = start < activeSeasonStart;
+    } catch {
+      isClosedSeason = true;
+    }
+
+    // Active season week with a matching doc: skip manual consolidation here.
+    // Pass raw entries through so reconcileWeeklyGoalsPointsForAllWeeks can canonically
+    // reconcile via addPointsInternal / excisePointsEntriesInternal later in sweep.
+    if (!isClosedSeason && doc) {
+      const activeEntries = weeklyGoalsMap.get(weekKey) || [];
+      passthroughActiveGoalEntries.push(...activeEntries);
+      continue;
+    }
+
+    // Closed-season week OR orphaned week with no matching doc:
+    // If no matching doc exists, targetAmount is 0 (orphaned -> drop previous entries)
+    const goals = doc?.goals || [];
+    const score = calculateWeeklyGoalsPoints(goals);
+    const targetAmount = score.pointsAwarded;
+
+    if (targetAmount <= 0) {
+      // 0 completed goals or orphaned doc -> drop all previous weekly goal entries for this week
+      continue;
+    }
+
+    const previousEntries = weeklyGoalsMap.get(weekKey) || [];
+    const sorted = [...previousEntries].sort(
+      (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
+    );
+    const earliestTimestamp = sorted[0]?.timestamp || doc?.createdAt || new Date().toISOString();
+
+    consolidatedWeeklyGoalEntries.push({
+      id: `weekly_goal_${weekKey}`,
+      amount: targetAmount,
+      reason: `Weekly goals achieved for ${weekKey} (${targetAmount} pts)`,
+      source: 'weekly_goal_achieved',
+      timestamp: earliestTimestamp,
+      metadata: {
+        weekKey,
+        countedGoalsCount: score.countedGoalsCount,
+        completedGoalsCount: score.completedGoalsCount,
+      },
+    });
+  }
+
+  const pointsHistory = [
+    ...otherHistory,
+    ...consolidatedWeeklyEntries,
+    ...consolidatedWeeklyGoalEntries,
+    ...passthroughActiveGoalEntries,
+  ].sort(
     (a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
   ).slice(0, 500);
 
   const currentHistorySum = pointsHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
   
-  const currentLeagueNow = leagueNow();
-  const activeSeasonNumber = getSeasonNumber(currentLeagueNow);
-  const activeSeasonStart = getSeasonStart(currentLeagueNow);
-
   let seasonId = typeof st.seasonId === 'number' ? st.seasonId : 1;
   let seasonEvictedPos = typeof st.seasonEvictedPos === 'number' && st.seasonEvictedPos >= 0 ? st.seasonEvictedPos : 0;
   let seasonEvictedNeg = typeof st.seasonEvictedNeg === 'number' && st.seasonEvictedNeg >= 0 ? st.seasonEvictedNeg : 0;
@@ -859,7 +975,10 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
   }
 
   sweptState = reconcileAllWeeklyReflections(sweptState, now);
-  sweptState = reconcileLinkedWeeklyGoals(sweptState, now);
+  sweptState = reconcileWeeklyGoalsPointsForAllWeeks(
+    reconcileLinkedWeeklyGoals(sweptState, now),
+    now
+  );
 
   // Preset Habit Retirement Migration: Cleanse retired presets & retroactively claw back season points
   sweptState = applyPresetHabitRemovalMigration(sweptState);
@@ -1049,47 +1168,98 @@ export const recomputeWeeklyGoalsPointsForState = (
   newGoals: WeeklyGoalItem[],
   triggerGoalId?: string
 ): Partial<AppState> => {
-  const oldPoints = getWeeklyGoalsNetPoints(baseState, targetWeekKey);
   const score = calculateWeeklyGoalsPoints(newGoals);
   const newPoints = score.pointsAwarded;
-  const netPointDelta = newPoints - oldPoints;
+  const entryId = `weekly_goal_${targetWeekKey}`;
 
-  if (netPointDelta === 0) {
+  const currentHistory = baseState.pointsHistory || [];
+  const allWeekEntries = currentHistory.filter(
+    (e) => e && (e.id === entryId || extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey)
+  );
+  const existing = allWeekEntries.find((e) => e.id === entryId) || allWeekEntries[0];
+
+  // True no-op: exactly one canonical entry already matching current target points
+  if (allWeekEntries.length === 1 && allWeekEntries[0].id === entryId && allWeekEntries[0].amount === newPoints) {
+    return {};
+  }
+  // No entries exist and new points are 0 -> nothing to add or remove
+  if (allWeekEntries.length === 0 && newPoints === 0) {
     return {};
   }
 
-  const entryId = `weekly_goal_${targetWeekKey}_${oldPoints}to${newPoints}`;
+  if (newPoints === 0) {
+    return excisePointsEntriesInternal(
+      baseState,
+      (e) => Boolean(e && (e.id === entryId || extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey))
+    );
+  }
 
-  const pointsUpdate = addPointsInternal(
-    baseState,
-    netPointDelta,
-    netPointDelta > 0
-      ? `Weekly goal achieved for ${targetWeekKey} (+${netPointDelta} pts)`
-      : `Weekly goal adjusted for ${targetWeekKey} (${netPointDelta} pts)`,
+  // When newPoints > 0:
+  // If there are legacy transition-based entries, excise them first so only the canonical entry will remain
+  const hasLegacyEntries = allWeekEntries.some((e) => e.id !== entryId);
+  const stateToUpdate = hasLegacyEntries
+    ? {
+        ...baseState,
+        ...excisePointsEntriesInternal(
+          baseState,
+          (e) => Boolean(e && e.id !== entryId && extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey)
+        ),
+      }
+    : baseState;
+
+  // Preserve earliest timestamp across any legacy entries for this week
+  const sortedWeekEntries = [...allWeekEntries].sort(
+    (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
+  );
+  const canonicalTimestamp = existing?.id === entryId
+    ? existing.timestamp
+    : (sortedWeekEntries[0]?.timestamp || leagueNow().toISOString());
+
+  return addPointsInternal(
+    stateToUpdate,
+    newPoints,
+    `Weekly goals achieved for ${targetWeekKey} (${newPoints} pts)`,
     'weekly_goal_achieved',
     {
       weekKey: targetWeekKey,
-      goalId: triggerGoalId,
-      newTotal: newPoints,
-      oldTotal: oldPoints,
-      completedGoalsCount: score.completedGoalsCount,
+      ...(triggerGoalId ? { goalId: triggerGoalId } : {}),
       countedGoalsCount: score.countedGoalsCount,
+      completedGoalsCount: score.completedGoalsCount,
     },
-    undefined,
+    canonicalTimestamp,
     entryId
   );
-
-  return {
-    pointsHistory: pointsUpdate.pointsHistory,
-    totalPoints: pointsUpdate.totalPoints,
-    seasonPoints: pointsUpdate.seasonPoints,
-    ...(pointsUpdate.seasonEvictedPos !== undefined ? { seasonEvictedPos: pointsUpdate.seasonEvictedPos } : {}),
-    ...(pointsUpdate.seasonEvictedNeg !== undefined ? { seasonEvictedNeg: pointsUpdate.seasonEvictedNeg } : {}),
-    ...(pointsUpdate.evictedEntryIds !== undefined ? { evictedEntryIds: pointsUpdate.evictedEntryIds } : {}),
-    ...(pointsUpdate.evictedExcisionRecords !== undefined ? { evictedExcisionRecords: pointsUpdate.evictedExcisionRecords } : {}),
-    ...(pointsUpdate.leagueArchives !== undefined ? { leagueArchives: pointsUpdate.leagueArchives } : {}),
-  };
 };
+
+export function reconcileWeeklyGoalsPointsForAllWeeks(
+  state: AppState,
+  now: Date = leagueNow()
+): AppState {
+  const activeSeasonStart = getSeasonStart(now);
+  let currentState = state;
+
+  for (const doc of currentState.weeklyGoals || []) {
+    if (!doc || !doc.weekKey) continue;
+    try {
+      const { start } = getWeekDates(doc.weekKey);
+      if (start < activeSeasonStart) {
+        continue; // Closed-season weeks are frozen
+      }
+    } catch {
+      continue;
+    }
+
+    const pointsUpdate = recomputeWeeklyGoalsPointsForState(currentState, doc.weekKey, doc.goals || []);
+    if (Object.keys(pointsUpdate).length > 0) {
+      currentState = {
+        ...currentState,
+        ...pointsUpdate,
+      };
+    }
+  }
+
+  return currentState;
+}
 
 export function getLinkedGoalCompletionTimestamp(
   goal: WeeklyGoalItem,
@@ -1684,8 +1854,11 @@ export function useAppState() {
             // Reconcile and union-merge server state with current state using mergeAppState
             // Tombstones (deletedEntityIds) prevent resurrecting deleted items while preserving offline progress
             const serverState = serverRes.state!;
-            const merged = reconcileLinkedWeeklyGoals(
-              mergeAppState(serverState, current, 'hydration'),
+            const merged = reconcileWeeklyGoalsPointsForAllWeeks(
+              reconcileLinkedWeeklyGoals(
+                mergeAppState(serverState, current, 'hydration'),
+                leagueNow()
+              ),
               leagueNow()
             );
             setUserDataWatermark(userId, merged);
@@ -2127,7 +2300,10 @@ export function useAppState() {
               const rawMergedState = guardResult.hasSuspiciousDrop
                 ? guardResult.retainedState
                 : guardResult.mergedState;
-              const reconciledMergedState = reconcileLinkedWeeklyGoals(rawMergedState, leagueNow());
+              const reconciledMergedState = reconcileWeeklyGoalsPointsForAllWeeks(
+                reconcileLinkedWeeklyGoals(rawMergedState, leagueNow()),
+                leagueNow()
+              );
 
               lastKnownGoodStateRef.current = reconciledMergedState;
 
@@ -2178,7 +2354,12 @@ export function useAppState() {
 
               if (cachedState) {
                 const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
-                setState((current) => reconcileLinkedWeeklyGoals(mergeAppState(sanitizedCached, current, 'hydration'), leagueNow()));
+                setState((current) =>
+                  reconcileWeeklyGoalsPointsForAllWeeks(
+                    reconcileLinkedWeeklyGoals(mergeAppState(sanitizedCached, current, 'hydration'), leagueNow()),
+                    leagueNow()
+                  )
+                );
                 canPersistLocally.current = true;
               } else {
                 let resultingState: AppState = stateRef.current;
@@ -2691,7 +2872,10 @@ export function useAppState() {
         const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
         const timeTrackerProcessed = processTimeTrackerDailyPoints(exercisePenalized, targetNow);
         const reflectionReconciledState = reconcileAllWeeklyReflections(timeTrackerProcessed, targetNow);
-        const weeklyGoalsReconciledState = reconcileLinkedWeeklyGoals(reflectionReconciledState, targetNow);
+        const weeklyGoalsReconciledState = reconcileWeeklyGoalsPointsForAllWeeks(
+          reconcileLinkedWeeklyGoals(reflectionReconciledState, targetNow),
+          targetNow
+        );
 
         const reconciledChallenges = (weeklyGoalsReconciledState.sharedChallenges || []).map((c) => {
           const updated = reconcileSharedChallengeLifecycle(c, targetNow);
@@ -2734,7 +2918,12 @@ export function useAppState() {
   }, []);
 
   const setAuthSessionState = useCallback((user: UserProfile | null, newState: AppState) => {
-    setState(reconcileLinkedWeeklyGoals(sanitizeLoadedState(newState, user), leagueNow()));
+    setState(
+      reconcileWeeklyGoalsPointsForAllWeeks(
+        reconcileLinkedWeeklyGoals(sanitizeLoadedState(newState, user), leagueNow()),
+        leagueNow()
+      )
+    );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -6272,7 +6461,12 @@ export function useAppState() {
   }, []);
 
   const syncLinkedWeeklyGoals = useCallback(() => {
-    setState((prev) => reconcileLinkedWeeklyGoals(prev, leagueNow()));
+    setState((prev) =>
+      reconcileWeeklyGoalsPointsForAllWeeks(
+        reconcileLinkedWeeklyGoals(prev, leagueNow()),
+        leagueNow()
+      )
+    );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
