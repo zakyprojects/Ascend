@@ -88,9 +88,9 @@ function getCurrentStreakFromSortedDates(sortedDates: string[], now: Date): numb
 }
 
 export function getMissPenaltyMultiplier(consecutiveMisses: number, seasonPoints: number = 0): number {
-  const isDiamondOrAbove = seasonPoints >= 1000;
+  const isPerformerOrAbove = seasonPoints >= 2000;
 
-  if (!isDiamondOrAbove) {
+  if (!isPerformerOrAbove) {
     if (consecutiveMisses <= 1) return 1.0;
     return 1.5;
   } else {

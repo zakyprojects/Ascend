@@ -19,7 +19,7 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     username: 'Maya_L',
     avatar: '🦊',
     consistencyFactor: 1.1,
-    totalPoints: 1250, // Diamond tier
+    totalPoints: 1250, // Trainer tier
     stats: {
       streakDays: 14,
       currentStreakDays: 14,
@@ -46,7 +46,7 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     username: 'Marcus_V',
     avatar: '🐺',
     consistencyFactor: 0.9,
-    totalPoints: 780, // Platinum tier
+    totalPoints: 780, // Learner tier
     stats: {
       streakDays: 8,
       currentStreakDays: 8,
@@ -72,7 +72,7 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     username: 'Elena_R',
     avatar: '🦅',
     consistencyFactor: 1.2,
-    totalPoints: 2450, // Ace tier
+    totalPoints: 2450, // Performer tier
     stats: {
       streakDays: 28,
       currentStreakDays: 28,
@@ -99,7 +99,7 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     username: 'David_K',
     avatar: '🦁',
     consistencyFactor: 0.8,
-    totalPoints: 420, // Gold tier
+    totalPoints: 420, // Starter tier
     stats: {
       streakDays: 4,
       currentStreakDays: 4,
@@ -124,7 +124,7 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     username: 'Sophia_C',
     avatar: '🐻',
     consistencyFactor: 1.0,
-    totalPoints: 1680, // Crown tier
+    totalPoints: 1680, // Achiever tier
     stats: {
       streakDays: 19,
       currentStreakDays: 19,
@@ -150,7 +150,7 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     username: 'Liam_O',
     avatar: '⚡',
     consistencyFactor: 0.85,
-    totalPoints: 520, // Gold tier
+    totalPoints: 520, // Learner tier
     stats: {
       streakDays: 6,
       currentStreakDays: 6,
@@ -175,7 +175,7 @@ export const SEED_ACCOUNTS: SeedAccountConfig[] = [
     username: 'Nathan_P',
     avatar: '🎯',
     consistencyFactor: 1.05,
-    totalPoints: 1120, // Diamond tier
+    totalPoints: 1120, // Trainer tier
     stats: {
       streakDays: 12,
       currentStreakDays: 12,

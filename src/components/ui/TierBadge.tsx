@@ -1,16 +1,17 @@
 import { getCurrentTier, getProgressToNextTier, getNextTier } from '@/lib/tiers';
 import { LucideIcon } from 'lucide-react';
-import { Medal, Award, Crown, Gem, Diamond, Star, Swords, Trophy } from 'lucide-react';
+import { Compass, Rocket, BookOpen, Dumbbell, Trophy, Star, Gem, Shield, Crown } from 'lucide-react';
 
 const TIER_ICONS: Record<string, LucideIcon> = {
-  Medal,
-  Award,
-  Crown,
-  Gem,
-  Diamond,
-  Star,
-  Swords,
+  Compass,
+  Rocket,
+  BookOpen,
+  Dumbbell,
   Trophy,
+  Star,
+  Gem,
+  Shield,
+  Crown,
 };
 
 interface TierBadgeProps {
@@ -21,7 +22,7 @@ interface TierBadgeProps {
 
 export function TierBadge({ totalPoints, size = 'md', showName = false }: TierBadgeProps) {
   const tier = getCurrentTier(totalPoints);
-  const Icon = TIER_ICONS[tier.icon] ?? Medal;
+  const Icon = TIER_ICONS[tier.icon] ?? Compass;
   const tierKey = tier.name.toLowerCase();
 
   const sizes = {

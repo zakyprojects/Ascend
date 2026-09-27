@@ -1,10 +1,18 @@
 import { getCurrentTier, getProgressToNextTier, getNextTier, TIERS, Tier } from '@/lib/tiers';
 import { AppStore } from '@/lib/store';
-import { LucideIcon, Medal, Award, Crown, Gem, Diamond, Star, Swords, Trophy, Check, Lock } from 'lucide-react';
+import { LucideIcon, Compass, Rocket, BookOpen, Dumbbell, Trophy, Star, Gem, Shield, Crown, Check, Lock } from 'lucide-react';
 
 const TIER_ICONS: Record<string, LucideIcon> = {
-  Medal, Award, Crown, Gem, Diamond, Star, Swords, Trophy,
+  Compass, Rocket, BookOpen, Dumbbell, Trophy, Star, Gem, Shield, Crown,
 };
+
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 export function TierView({ store }: { store: AppStore }) {
   const seasonPoints = store.getLeagueData('ninetyDay').userPoints;
@@ -17,25 +25,40 @@ export function TierView({ store }: { store: AppStore }) {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-display font-bold text-content-primary">Ranks</h1>
-        <p className="text-sm text-content-disabled mt-1">Climb the ladder from Bronze to Legend</p>
+        <p className="text-sm text-content-disabled mt-1">Climb the ladder from Beginner to Master</p>
       </div>
 
       {/* Current tier showcase */}
       <div className="card p-6 text-center relative overflow-hidden">
+        <style>{`
+          @keyframes pulseGlowTier {
+            0%, 100% {
+              box-shadow: var(--tier-pulse-min);
+            }
+            50% {
+              box-shadow: var(--tier-pulse-max);
+            }
+          }
+          .animate-pulse-glow-tier {
+            animation: pulseGlowTier 2s ease-in-out infinite;
+          }
+        `}</style>
         <div
           className="absolute inset-0 opacity-10"
           style={{ background: `radial-gradient(circle at center, var(--rank-${currentTier.name.toLowerCase()}-glow), transparent 70%)` }}
         />
         <div className="relative">
           <div
-            className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-4 animate-pulse-glow"
+            className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-4 animate-pulse-glow-tier"
             style={{
               backgroundColor: `var(--rank-${currentTier.name.toLowerCase()}-bg)`,
               border: `2px solid var(--rank-${currentTier.name.toLowerCase()}-border)`,
-            }}
+              '--tier-pulse-min': `0 0 20px ${hexToRgba(currentTier.color, 0.35)}`,
+              '--tier-pulse-max': `0 0 30px ${hexToRgba(currentTier.color, 0.60)}`,
+            } as React.CSSProperties}
           >
             {(() => {
-              const Icon = TIER_ICONS[currentTier.icon] ?? Medal;
+              const Icon = TIER_ICONS[currentTier.icon] ?? Compass;
               return <Icon size={44} style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }} />;
             })()}
           </div>
@@ -77,7 +100,7 @@ export function TierView({ store }: { store: AppStore }) {
           {TIERS.map((tier, idx) => {
             const isUnlocked = seasonPoints >= tier.minPoints;
             const isCurrent = tier.name === currentTier.name;
-            const Icon = TIER_ICONS[tier.icon] ?? Medal;
+            const Icon = TIER_ICONS[tier.icon] ?? Compass;
             const tierKey = tier.name.toLowerCase();
 
             return (
@@ -132,6 +155,11 @@ export function TierView({ store }: { store: AppStore }) {
                   <p className="text-xs text-content-muted mt-0.5">
                     {tier.minPoints.toLocaleString()} points
                   </p>
+                  {tier.description && (
+                    <p className="text-xs text-content-disabled mt-1 leading-snug">
+                      {tier.description}
+                    </p>
+                  )}
                 </div>
 
                 {/* Checkmark if unlocked */}

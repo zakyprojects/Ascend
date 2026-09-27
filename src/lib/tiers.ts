@@ -3,18 +3,73 @@ export interface Tier {
   minPoints: number;
   color: string;
   icon: string; // lucide icon name
+  description: string;
 }
 
 export const TIERS: Tier[] = [
-  { name: 'Bronze', minPoints: 0, color: '#cd7f32', icon: 'Medal' },
-  { name: 'Silver', minPoints: 100, color: '#c0c0c0', icon: 'Award' },
-  { name: 'Gold', minPoints: 300, color: '#fbbf24', icon: 'Crown' },
-  { name: 'Platinum', minPoints: 600, color: '#e5e7eb', icon: 'Gem' },
-  { name: 'Diamond', minPoints: 1000, color: '#60a5fa', icon: 'Diamond' },
-  { name: 'Crown', minPoints: 1500, color: '#f472b6', icon: 'Crown' },
-  { name: 'Ace', minPoints: 2200, color: '#34d399', icon: 'Star' },
-  { name: 'Conqueror', minPoints: 3000, color: '#f97316', icon: 'Swords' },
-  { name: 'Legend', minPoints: 5000, color: '#a855f7', icon: 'Trophy' },
+  {
+    name: 'Beginner',
+    minPoints: 0,
+    color: '#94a3b8',
+    icon: 'Compass',
+    description: 'Taking the first conscious step toward personal discipline and growth.',
+  },
+  {
+    name: 'Starter',
+    minPoints: 200,
+    color: '#38bdf8',
+    icon: 'Rocket',
+    description: 'Establishing baseline consistency across daily habits and routines.',
+  },
+  {
+    name: 'Learner',
+    minPoints: 500,
+    color: '#34d399',
+    icon: 'BookOpen',
+    description: 'Actively absorbing lessons, refining systems, and stacking momentum.',
+  },
+  {
+    name: 'Trainer',
+    minPoints: 900,
+    color: '#fb923c',
+    icon: 'Dumbbell',
+    description: 'Conditioning daily execution through deliberate practice and grit.',
+  },
+  {
+    name: 'Achiever',
+    minPoints: 1400,
+    color: '#f59e0b',
+    icon: 'Trophy',
+    description: 'Consistently hitting weekly targets and resisting bad habit triggers.',
+  },
+  {
+    name: 'Performer',
+    minPoints: 2000,
+    color: '#a78bfa',
+    icon: 'Star',
+    description: 'High-stakes execution where discipline is non-negotiable and accountable.',
+  },
+  {
+    name: 'Expert',
+    minPoints: 2700,
+    color: '#14b8a6',
+    icon: 'Gem',
+    description: 'Deep mastery over focus, reading volume, and mental fortitude.',
+  },
+  {
+    name: 'Leader',
+    minPoints: 3500,
+    color: '#ef4444',
+    icon: 'Shield',
+    description: 'Setting the standard in the arena with unshakeable season momentum.',
+  },
+  {
+    name: 'Master',
+    minPoints: 5000,
+    color: '#eab308',
+    icon: 'Crown',
+    description: 'The pinnacle of daily mastery and relentless self-actualization.',
+  },
 ];
 
 export function getCurrentTier(totalPoints: number): Tier {

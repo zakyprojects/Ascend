@@ -90,8 +90,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
           <p className="font-bold text-content-secondary">Tier-Scaled Missed Habit Penalties:</p>
           <p className="leading-relaxed">
             Missing a preset habit deducts points equal to its value (1st miss = -1x).
-            For <span className="text-content-secondary font-semibold">Below Diamond tier</span> (Bronze to Platinum), penalty escalation caps at <span className="text-warning-text font-semibold">1.5x</span>.
-            For <span className="text-brand-text font-semibold">Diamond tier and above</span>, escalation caps at <span className="text-rose-theme font-semibold">2.5x</span>.
+            For <span className="text-content-secondary font-semibold">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="text-warning-text font-semibold">1.5x</span>.
+            For <span className="text-brand-text font-semibold">Performer tier and above</span>, escalation caps at <span className="text-rose-theme font-semibold">2.5x</span>.
             Completing the habit breaks the miss streak and resets the penalty to 1x!
           </p>
         </div>
