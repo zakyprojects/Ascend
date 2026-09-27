@@ -1188,10 +1188,24 @@ export const recomputeWeeklyGoalsPointsForState = (
   }
 
   if (newPoints === 0) {
-    return excisePointsEntriesInternal(
+    const exciseResult = excisePointsEntriesInternal(
       baseState,
       (e) => Boolean(e && (e.id === entryId || extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey))
     );
+    const updatedDeletedEntityIds = Array.from(
+      new Set([
+        ...(baseState.deletedEntityIds || []),
+        entryId,
+        ...(exciseResult.excisedEntryIds || []),
+      ])
+    ).slice(-500);
+    const updatedRestoredEntityIds = (baseState.restoredEntityIds || []).filter((id) => id !== entryId);
+
+    return {
+      ...exciseResult,
+      deletedEntityIds: updatedDeletedEntityIds,
+      restoredEntityIds: updatedRestoredEntityIds,
+    };
   }
 
   // When newPoints > 0:
@@ -1215,7 +1229,7 @@ export const recomputeWeeklyGoalsPointsForState = (
     ? existing.timestamp
     : (sortedWeekEntries[0]?.timestamp || leagueNow().toISOString());
 
-  return addPointsInternal(
+  const pointsUpdate = addPointsInternal(
     stateToUpdate,
     newPoints,
     `Weekly goals achieved for ${targetWeekKey} (${newPoints} pts)`,
@@ -1229,6 +1243,20 @@ export const recomputeWeeklyGoalsPointsForState = (
     canonicalTimestamp,
     entryId
   );
+
+  const updatedDeletedEntityIds = (baseState.deletedEntityIds || [])
+    .filter((id) => id !== entryId)
+    .slice(-500);
+
+  const updatedRestoredEntityIds = Array.from(
+    new Set([...(baseState.restoredEntityIds || []), entryId])
+  ).slice(-500);
+
+  return {
+    ...pointsUpdate,
+    deletedEntityIds: updatedDeletedEntityIds,
+    restoredEntityIds: updatedRestoredEntityIds,
+  };
 };
 
 export function reconcileWeeklyGoalsPointsForAllWeeks(
@@ -6381,11 +6409,15 @@ export function useAppState() {
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
           const pointsUpdate = recomputeWeeklyGoalsPointsForState(prev, weekKey, updatedGoals, goalId);
 
+          const mergedDeletedEntityIds = Array.from(
+            new Set([...updatedDeletedEntityIds, ...(pointsUpdate.deletedEntityIds || [])])
+          ).slice(-500);
+
           return {
             ...prev,
             weeklyGoals: newWeeklyGoals,
-            deletedEntityIds: updatedDeletedEntityIds,
             ...pointsUpdate,
+            deletedEntityIds: mergedDeletedEntityIds,
           };
         },
         { immediate: true, actionLabel: 'Weekly goal deletion', entityId: goalId }
