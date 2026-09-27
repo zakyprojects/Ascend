@@ -2,8 +2,8 @@ import { AppState, Habit, BadHabitLog, ExerciseGoal, WorkoutLog } from '@/types'
 import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, uid, addDays, addWeeks, getNow } from './dates';
 import { createNotificationSupabase } from './supabase';
 import { getEffectiveSeasonPoints } from './leagues';
-import { applyPenaltyDeductionInternal } from './pointsLedger';
-import { BAD_HABIT_POINTS } from './pointsConfig';
+import { applyPenaltyDeductionInternal, addPointsInternal } from './pointsLedger';
+import { BAD_HABIT_POINTS, calculateTimeTrackerDailyPoints } from './pointsConfig';
 
 export { applyPenaltyDeductionInternal };
 
@@ -567,4 +567,51 @@ export function processExerciseTargetPenalties(state: AppState, now: Date = new 
       lastEvaluatedWeek: lastWeekKey,
     },
   };
+}
+
+/**
+ * Evaluates Time Tracker routine completion points for past unfinalized days.
+ * For any past day present in dailyLogs, calculates percentage and awards points
+ * (0, 3, or 5 pts) idempotently via the deterministic entry ID time_tracker_${dateKey}.
+ */
+export function processTimeTrackerDailyPoints(state: AppState, now: Date = new Date()): AppState {
+  if (!state.timeTracker?.dailyLogs) return state;
+
+  const todayStr = todayKey(now);
+  const dailyLogs = state.timeTracker.dailyLogs;
+  const pastDateKeys = Object.keys(dailyLogs).filter((dateKey) => dateKey < todayStr);
+
+  if (pastDateKeys.length === 0) return state;
+
+  let updatedState = state;
+  const historyEntries = updatedState.pointsHistory || [];
+
+  for (const dateKey of pastDateKeys) {
+    const entryId = `time_tracker_${dateKey}`;
+    const alreadyEvaluated = historyEntries.some((e) => e && e.id === entryId);
+
+    if (!alreadyEvaluated) {
+      const blocks = dailyLogs[dateKey] || [];
+      const { percentage, pointsAwarded } = calculateTimeTrackerDailyPoints(blocks);
+
+      if (pointsAwarded > 0) {
+        const pointsUpdate = addPointsInternal(
+          updatedState,
+          pointsAwarded,
+          `Time Tracker daily routine completed (${Math.round(percentage)}%): ${pointsAwarded} pts`,
+          'time_tracker',
+          { date: dateKey, percentage, pointsAwarded },
+          `${dateKey}T23:59:59.000Z`,
+          entryId
+        );
+
+        updatedState = {
+          ...updatedState,
+          ...pointsUpdate,
+        };
+      }
+    }
+  }
+
+  return updatedState;
 }

@@ -412,6 +412,7 @@ export interface WeeklyGoalItem {
   linkedMetricKey?: string;
   manualProgress?: number;
   completed: boolean;
+  completedAt?: string;
   archived?: boolean;
   carriedOverFromWeekKey?: string;
   carriedOverFromGoalId?: string;

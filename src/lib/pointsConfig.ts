@@ -1,4 +1,5 @@
 // src/lib/pointsConfig.ts
+import { WeeklyGoalItem } from '@/types';
 
 export const PRESET_HABIT_POINTS = {
   dailyCap: 10,
@@ -55,9 +56,15 @@ export const JOURNAL_POINTS = {
 
 export const WEEKLY_REFLECTION_POINTS = {
   // store.ts:1006
-  awarded: 20,
+  awarded: 5,
   // store.ts:1017
-  reversed: -20,
+  reversed: -5,
+} as const;
+
+export const WEEKLY_GOALS_POINTS = {
+  pointsPerGoal: 5,
+  maxGoalsCounted: 3,
+  maxWeeklyPoints: 15,
 } as const;
 
 export const WORKOUT_POINTS = {
@@ -187,6 +194,15 @@ export function calculateFocusPoints(
   return { rawPoints, pointsToAward };
 }
 
+export const TIME_TRACKER_POINTS = {
+  dailyCap: 5,
+  tiers: {
+    high: { minPercent: 80, points: 5 },
+    medium: { minPercent: 50, points: 3 },
+    low: { minPercent: 0, points: 0 },
+  },
+} as const;
+
 /**
  * Calculates raw points for reading pages.
  * 2 pages = 1 point (Math.floor).
@@ -199,4 +215,84 @@ export function calculateReadingPoints(
   const rawPoints = Math.floor(safePages / READING_POINTS.pagesPerPoint);
   const pointsToAward = Math.min(rawPoints, Math.max(0, dailyCapRemaining));
   return { rawPoints, pointsToAward };
+}
+
+/**
+ * Calculates the percentage of routine completed and the corresponding points awarded.
+ * Formula:
+ * totalBlocks = count of all blocks in today's dailyLogs[date]
+ * actualSkippedCount = count of blocks where skipped === true
+ * skipExclusionCap = totalBlocks <= 3 ? 0 : Math.floor(0.3 * totalBlocks)
+ * skipExclusionCap = Math.min(skipExclusionCap, 3)
+ * excludedSkips = Math.min(actualSkippedCount, skipExclusionCap)
+ * effectiveDenominator = totalBlocks - excludedSkips
+ * completedCount = count of blocks where completed === true
+ * percentage = effectiveDenominator > 0 ? (completedCount / effectiveDenominator) * 100 : 0
+ *
+ * Points tiers:
+ * percentage >= 80 -> 5pts
+ * percentage >= 50 -> 3pts
+ * percentage < 50 -> 0pts
+ * totalBlocks === 0 (no routine) -> 0pts
+ */
+export function calculateTimeTrackerDailyPoints(blocks: Array<{ completed?: boolean; skipped?: boolean }>): {
+  percentage: number;
+  pointsAwarded: number;
+} {
+  const totalBlocks = (blocks || []).length;
+  if (totalBlocks === 0) {
+    return { percentage: 0, pointsAwarded: 0 };
+  }
+
+  const actualSkippedCount = blocks.filter((b) => b && b.skipped === true).length;
+  const rawCap = totalBlocks <= 3 ? 0 : Math.floor(0.3 * totalBlocks);
+  const skipExclusionCap = Math.min(rawCap, 3);
+  const excludedSkips = Math.min(actualSkippedCount, skipExclusionCap);
+  const effectiveDenominator = totalBlocks - excludedSkips;
+
+  const completedCount = blocks.filter((b) => b && b.completed === true).length;
+  const percentage = effectiveDenominator > 0 ? (completedCount / effectiveDenominator) * 100 : 0;
+
+  let pointsAwarded = 0;
+  if (percentage >= TIME_TRACKER_POINTS.tiers.high.minPercent) {
+    pointsAwarded = TIME_TRACKER_POINTS.tiers.high.points;
+  } else if (percentage >= TIME_TRACKER_POINTS.tiers.medium.minPercent) {
+    pointsAwarded = TIME_TRACKER_POINTS.tiers.medium.points;
+  } else {
+    pointsAwarded = TIME_TRACKER_POINTS.tiers.low.points;
+  }
+
+  return { percentage, pointsAwarded };
+}
+
+/**
+ * Calculates points awarded for achieved weekly goals.
+ * Formula:
+ * - Filter goals in the target week that are completed === true (or done === true).
+ * - Sort chronologically by completion timestamp (completedAt -> createdAt fallback).
+ * - Award 5pts per goal, capped at 3 goals max (15pts max).
+ */
+export function calculateWeeklyGoalsPoints(goals: WeeklyGoalItem[]): {
+  pointsAwarded: number;
+  completedGoalsCount: number;
+  countedGoalsCount: number;
+} {
+  const activeGoals = (goals || []).filter((g) => !g.archived);
+  const completedGoals = activeGoals.filter((g) => g && (g.completed === true || g.done === true));
+
+  completedGoals.sort((a, b) => {
+    const timeA = a.completedAt ? new Date(a.completedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+    const timeB = b.completedAt ? new Date(b.completedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+    return timeA - timeB;
+  });
+
+  const completedGoalsCount = completedGoals.length;
+  const countedGoalsCount = Math.min(completedGoalsCount, WEEKLY_GOALS_POINTS.maxGoalsCounted);
+  const pointsAwarded = countedGoalsCount * WEEKLY_GOALS_POINTS.pointsPerGoal;
+
+  return {
+    pointsAwarded,
+    completedGoalsCount,
+    countedGoalsCount,
+  };
 }

@@ -16,7 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { AppStore, isWeeklyReflectionAwarded } from '@/lib/store';
-import { WEEKLY_REFLECTION_POINTS } from '@/lib/pointsConfig';
+import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoints } from '@/lib/pointsConfig';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -37,6 +37,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const currentWeekKey = weekKey();
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(currentWeekKey);
+
+  useEffect(() => {
+    store.syncLinkedWeeklyGoals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const weeklyGoals = store.state.weeklyGoals;
 
@@ -474,6 +479,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             <h3 className="text-sm font-bold text-content-secondary">
               Target Priorities for {selectedWeekKey}
             </h3>
+            <span className="badge badge-primary text-[10px] font-bold">
+              {calculateWeeklyGoalsPoints(activeGoalDoc.goals).pointsAwarded}/{WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts
+            </span>
           </div>
 
           <button
@@ -514,30 +522,50 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 flex-1">
-                      <button
-                        onClick={() => {
-                          const isFreeformWithStepper = (!item.linkedModule || item.linkedModule === 'none') && prog.target > 1;
-                          const nextCompleted = !isDone;
+                      {item.linkedModule && item.linkedModule !== 'none' ? (
+                        <div
+                          title="Auto-synced from linked activity"
+                          className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border cursor-default select-none pointer-events-none ${
+                            isDone
+                              ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
+                              : 'bg-bg-800 border-overlay-strong text-content-disabled'
+                          }`}
+                        >
+                          {isDone ? <Check size={14} /> : <Circle size={14} />}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            const isFreeformWithStepper = prog.target > 1;
+                            const nextCompleted = !isDone;
 
-                          if (isFreeformWithStepper) {
-                            store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
-                              completed: nextCompleted,
-                            });
-                          } else {
-                            store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
-                              completed: nextCompleted,
-                              manualProgress: nextCompleted ? (item.targetValue || 1) : 0,
-                            });
-                          }
-                        }}
-                        className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border ${
-                          isDone
-                            ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
-                            : 'bg-bg-800 border-overlay-strong text-content-disabled hover:border-overlay-heavy'
-                        }`}
-                      >
-                        {isDone ? <Check size={14} /> : <Circle size={14} />}
-                      </button>
+                            if (isFreeformWithStepper) {
+                              if (nextCompleted) {
+                                store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
+                                  completed: true,
+                                  manualProgress: Math.max(item.manualProgress || 0, item.targetValue || 1),
+                                });
+                              } else {
+                                store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
+                                  completed: false,
+                                });
+                              }
+                            } else {
+                              store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
+                                completed: nextCompleted,
+                                manualProgress: nextCompleted ? (item.targetValue || 1) : 0,
+                              });
+                            }
+                          }}
+                          className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border ${
+                            isDone
+                              ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
+                              : 'bg-bg-800 border-overlay-strong text-content-disabled hover:border-overlay-heavy'
+                          }`}
+                        >
+                          {isDone ? <Check size={14} /> : <Circle size={14} />}
+                        </button>
+                      )}
 
                       <div className="space-y-1 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
