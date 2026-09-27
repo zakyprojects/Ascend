@@ -71,9 +71,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   }, [tracker?.startDate]);
 
   const milestones = [
-    { key: '24h', label: '24 Hours Clean', requiredHours: 24, points: 20, icon: '🎉' },
-    { key: '1w', label: '1 Week Clean', requiredHours: 168, points: 50, icon: '🏅' },
-    { key: '1m', label: '1 Month Clean', requiredHours: 720, points: 150, icon: '🏆' },
+    { key: '1w', label: '1 Week Clean', requiredHours: 168, points: 10, icon: '🏅' },
+    { key: '1m', label: '1 Month Clean', requiredHours: 720, points: 25, icon: '🏆' },
+    { key: '90d', label: '90 Days Clean', requiredHours: 2160, points: 50, icon: '👑' },
   ];
 
   const handleStartTracker = (e: React.FormEvent) => {

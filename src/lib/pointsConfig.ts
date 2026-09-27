@@ -102,8 +102,7 @@ export const READING_POINTS = {
   // 2 pages = 1pt, cap 10pts/day (reached at 20 pages/day)
   pagesPerPoint: 2,
   dailyCap: 10,
-  customBookBonus: 30,
-  curatedBookFallback: 40,
+  completionBonus: 15,
 } as const;
 
 export const BAD_HABIT_POINTS = {
@@ -118,12 +117,9 @@ export const BAD_HABIT_POINTS = {
 } as const;
 
 export const SOBRIETY_MILESTONE_POINTS = {
-  // store.ts:3882
-  '24h': 20,
-  // store.ts:3895
-  '1w': 50,
-  // store.ts:3908
-  '1m': 150,
+  '1w': 10,
+  '1m': 25,
+  '90d': 50,
 } as const;
 
 /**

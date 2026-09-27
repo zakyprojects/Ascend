@@ -3758,11 +3758,23 @@ export function useAppState() {
   const markLessonRead = useCallback(
     (lessonId: string, lessonTitle: string, points: number) => {
       setState((prev) => {
-        if (prev.readLessonIds.includes(lessonId)) return prev;
-        const pointsUpdate = addPointsInternal(prev, points, `Lesson read: ${lessonTitle}`, 'lesson');
+        const activeSeasonNum = getSeasonNumber(leagueNow());
+        const seasonKey = `${lessonId}_s${activeSeasonNum}`;
+        const isAlreadyReadThisSeason =
+          prev.readLessonIds.includes(seasonKey) ||
+          (activeSeasonNum === 1 && prev.readLessonIds.includes(lessonId));
+        if (isAlreadyReadThisSeason) return prev;
+
+        const pointsUpdate = addPointsInternal(
+          prev,
+          points,
+          `Lesson read: ${lessonTitle}`,
+          'lesson',
+          { lessonId, seasonNumber: activeSeasonNum }
+        );
         return {
           ...prev,
-          readLessonIds: [...prev.readLessonIds, lessonId],
+          readLessonIds: [...prev.readLessonIds, seasonKey],
           ...pointsUpdate,
         };
       });
@@ -4387,21 +4399,43 @@ export function useAppState() {
         const now = new Date().toISOString();
         const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
 
-        // Determine points: if curated, award curated points; if custom, award 30 pts completion bonus
-        let bonusPoints: number = READING_POINTS.customBookBonus;
-        if (targetUserBook && !targetUserBook.isCustom && targetUserBook.curatedBookId) {
-          const curated = findCuratedBook(targetUserBook.curatedBookId);
-          if (curated) {
-            bonusPoints = curated.pointsOnCompletion;
-          }
-        }
-
         // Check if bonus already awarded
         const alreadyAwarded = (targetUserBook?.pointsAwarded ?? 0) > 0;
-        const pointsToAward = alreadyAwarded ? 0 : bonusPoints;
+
+        // Eligibility Gate:
+        // 1. Book logged & read inside Ascend across >= 7 days span
+        const startStr = targetUserBook.dateStarted || targetUserBook.startedAt || targetUserBook.addedAt;
+        const startParsed = parseDate(startStr);
+        let meetsSpanGate = false;
+        if (startParsed) {
+          const startKeyStr = todayKey(startParsed);
+          const nowKeyStr = todayKey(new Date());
+          const [sY, sM, sD] = startKeyStr.split('-').map(Number);
+          const [nY, nM, nD] = nowKeyStr.split('-').map(Number);
+          const startMidnight = new Date(sY, sM - 1, sD).getTime();
+          const nowMidnight = new Date(nY, nM - 1, nD).getTime();
+          const spanDays = Math.floor((nowMidnight - startMidnight) / 86400000);
+          meetsSpanGate = spanDays >= 7;
+        }
+
+        // 2. >= 5 distinct days with page logs
+        const allMatchingIds = new Set<string>([targetUserBook.id]);
+        if (targetUserBook.linkedBookId) allMatchingIds.add(targetUserBook.linkedBookId);
 
         const currentPage = targetUserBook.currentAmount ?? targetUserBook.currentPage ?? 0;
         const unreadDelta = Math.max(0, maxPages - currentPage);
+
+        const bookLogs = (prev.readingLogs || []).filter(
+          (l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)) && (l.pagesRead || 0) > 0
+        );
+        const logDates = new Set(bookLogs.map((l) => l.date));
+        if (unreadDelta > 0) {
+          logDates.add(todayKey(new Date()));
+        }
+        const meetsDistinctDaysGate = logDates.size >= 5;
+
+        const isEligibleForBonus = !alreadyAwarded && meetsSpanGate && meetsDistinctDaysGate;
+        const pointsToAward = isEligibleForBonus ? READING_POINTS.completionBonus : 0;
 
         let updatedReadingLogs = prev.readingLogs || [];
         if (unreadDelta > 0) {
@@ -4465,11 +4499,10 @@ export function useAppState() {
         const allMatchingIds = new Set<string>([bookId]);
         if (targetUserBook.id) allMatchingIds.add(targetUserBook.id);
         if (targetUserBook.linkedBookId) allMatchingIds.add(targetUserBook.linkedBookId);
-        if (targetUserBook.curatedBookId) allMatchingIds.add(targetUserBook.curatedBookId);
 
         const targetTitleLower = (targetUserBook.title || '').toLowerCase();
         const bookLogs = prev.readingLogs.filter((l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)));
-        const completionPoints = targetUserBook.pointsAwarded || (targetUserBook.status === 'completed' ? READING_POINTS.customBookBonus : 0);
+        const completionPoints = targetUserBook.pointsAwarded ?? 0;
 
         const remainingReadingLogs = prev.readingLogs.filter((l) => !l.bookId || !allMatchingIds.has(l.bookId));
 
@@ -4612,7 +4645,7 @@ export function useAppState() {
         coverImageUrl: curatedBook.coverImageUrl,
         isCurated: true,
         isCustom: false,
-        pointsReward: curatedBook.pointsOnCompletion || curatedBook.pointsReward || READING_POINTS.curatedBookFallback,
+        pointsReward: READING_POINTS.completionBonus,
         pointsAwarded: 0,
         status: initialStatus,
         totalAmount: numPages,
@@ -4631,26 +4664,12 @@ export function useAppState() {
 
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newBook.id])).slice(-500);
 
-      let newState: AppState = {
+      return {
         ...prev,
         libraryBooks: [newBook, ...prev.libraryBooks],
         books: [],
         unsyncedEntityIds: updatedUnsynced,
       };
-
-      if (initialStatus === 'completed') {
-        const reward = curatedBook.pointsOnCompletion || curatedBook.pointsReward || READING_POINTS.curatedBookFallback;
-        const pointsUpdate = addPointsInternal(
-          newState,
-          reward,
-          `Curated book completed: ${curatedBook.title}`,
-          'library_book_bonus'
-        );
-        newBook.pointsAwarded = reward;
-        newState = { ...newState, ...pointsUpdate };
-      }
-
-      return newState;
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5558,25 +5577,24 @@ export function useAppState() {
       const start = new Date(prev.addictionTracker.startDate).getTime();
       const now = new Date().getTime();
       const hoursElapsed = (now - start) / (1000 * 60 * 60);
+      const activeSeasonNum = getSeasonNumber(leagueNow());
+      const trackerStartMs = start;
 
       const unlocked = [...prev.addictionTracker.milestonesUnlocked];
       const awarded = [...(prev.addictionTracker.awardedMilestones || [])];
-      const isAlreadyAwarded = (key: string) => awarded.some((a) => a.milestone === key);
+      const isAlreadyAwarded = (key: string) => {
+        if (key === '1w' || key === '90d') {
+          return awarded.some((a) => a.milestone === key && a.seasonNumber === activeSeasonNum);
+        }
+        if (key === '1m') {
+          return awarded.some(
+            (a) => a.milestone === '1m' && new Date(a.timestamp).getTime() >= trackerStartMs
+          );
+        }
+        return false;
+      };
 
       const newlyUnlockedMilestones: { key: string; amount: number; reason: string; label: string }[] = [];
-      if (hoursElapsed >= 24) {
-        if (!unlocked.includes('24h')) {
-          unlocked.push('24h');
-        }
-        if (!isAlreadyAwarded('24h')) {
-          newlyUnlockedMilestones.push({
-            key: '24h',
-            amount: SOBRIETY_MILESTONE_POINTS['24h'],
-            reason: 'Sobriety Milestone: 24 Hours Clean! 🎉',
-            label: '24 Hours Clean',
-          });
-        }
-      }
       if (hoursElapsed >= 168) {
         if (!unlocked.includes('1w')) {
           unlocked.push('1w');
@@ -5600,6 +5618,19 @@ export function useAppState() {
             amount: SOBRIETY_MILESTONE_POINTS['1m'],
             reason: 'Sobriety Milestone: 1 Month Clean! 🏆',
             label: '1 Month Clean',
+          });
+        }
+      }
+      if (hoursElapsed >= 2160) {
+        if (!unlocked.includes('90d')) {
+          unlocked.push('90d');
+        }
+        if (!isAlreadyAwarded('90d')) {
+          newlyUnlockedMilestones.push({
+            key: '90d',
+            amount: SOBRIETY_MILESTONE_POINTS['90d'],
+            reason: 'Sobriety Milestone: 90 Days Clean! 👑',
+            label: '90 Days Clean',
           });
         }
       }
@@ -5633,7 +5664,6 @@ export function useAppState() {
         });
       }
 
-      const activeSeasonNum = getSeasonNumber(leagueNow());
       const nowIso = new Date().toISOString();
       for (const m of newlyUnlockedMilestones) {
         awarded.push({

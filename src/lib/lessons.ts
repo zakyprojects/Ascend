@@ -6,7 +6,7 @@ export const LESSONS: Lesson[] = [
     title: 'The Science of Building Discipline',
     category: 'Discipline',
     readTime: 3,
-    points: 5,
+    points: 1,
     content: `Discipline isn't something you're born with — it's a skill you build through repetition, just like a muscle.
 
 \`\`\`
@@ -27,7 +27,7 @@ The most disciplined people aren't the ones with the most willpower — they're 
     title: 'The 2-Minute Rule for Procrastination',
     category: 'Discipline',
     readTime: 2,
-    points: 5,
+    points: 1,
     content: `Procrastination isn't laziness — it's your brain avoiding discomfort. The task feels big, uncertain, or unpleasant, so your brain redirects you to something easier (like scrolling).
 
 **The 2-Minute Rule:** When you catch yourself procrastinating, commit to doing just 2 minutes of the task. Not the whole thing — just 2 minutes.
@@ -48,7 +48,7 @@ Try it: next time you're avoiding something, set a timer for 2 minutes and just 
     title: 'Breaking Bad Habits: The Cue-Routine-Reward Loop',
     category: 'Bad Habits',
     readTime: 4,
-    points: 5,
+    points: 1,
     content: `Every habit — good or bad — follows the same three-step loop:
 
 1. **Cue** — a trigger that starts the behavior (a time, a place, an emotion, or other people)
@@ -74,7 +74,7 @@ The old cue and reward stay — only the routine changes. That's why this approa
     title: 'Why Streaks Work (and How to Recover When They Break)',
     category: 'Bad Habits',
     readTime: 3,
-    points: 5,
+    points: 1,
     content: `Streaks are powerful because they tap into two psychological principles: loss aversion and identity reinforcement.
 
 **Loss aversion:** Once you have a 30-day streak, you don't want to lose it. The streak itself becomes a reward — breaking it feels like losing something you own.
@@ -96,7 +96,7 @@ This is why the app tracks your "best streak" alongside your current one. Your p
     title: 'SMART Goals vs. System Goals',
     category: 'Goal Setting',
     readTime: 3,
-    points: 5,
+    points: 1,
     content: `Most goal-setting advice focuses on SMART goals (Specific, Measurable, Achievable, Relevant, Time-bound). These work — but they have a flaw: they're binary. You either hit the goal or you don't.
 
 **System goals** are different. Instead of "lose 10 pounds by June," a system goal is "exercise 4 times per week, every week." The system is the goal — the outcome follows.
@@ -117,7 +117,7 @@ Why systems beat goals:
     title: 'The Weekly Review: 30 Minutes That Change Your Year',
     category: 'Goal Setting',
     readTime: 2,
-    points: 5,
+    points: 1,
     content: `The weekly review is the single highest-leverage habit you can build. It takes 30 minutes and compounds over time.
 
 **How to do it (every Sunday evening):**
@@ -137,7 +137,7 @@ Most people skip this because it feels like "extra work." But the 30 minutes you
     title: 'Growth Mindset: What Neuroscience Actually Says',
     category: 'Mindset',
     readTime: 4,
-    points: 5,
+    points: 1,
     content: `A "growth mindset" — the belief that abilities can be developed through effort — isn't just a motivational slogan. It's backed by neuroscience.
 
 **The science:** Every time you practice a skill, your brain strengthens the neural pathways involved. Neurons that fire together wire together (Hebb's Law). Over time, these pathways become faster and more efficient — this is physical, measurable change in the brain called neuroplasticity.
@@ -162,7 +162,7 @@ Your brain is physically changing right now, with every habit you complete on th
     title: 'The Dichotomy of Control: What Stoicism Teaches Us',
     category: 'Mindset',
     readTime: 3,
-    points: 5,
+    points: 1,
     content: `The Stoic philosopher Epictetus taught a principle that's remarkably practical today: the dichotomy of control.
 
 **Some things are within your control. Others are not.**
@@ -188,7 +188,7 @@ The habits in this app are all things within your control. That's the point.`,
     title: 'Neuroplasticity: Your Brain Is Not Fixed',
     category: 'Neuroplasticity',
     readTime: 5,
-    points: 10,
+    points: 2,
     content: `For decades, scientists believed the adult brain was fixed — that after childhood, your neural wiring was set for life. We now know this is completely wrong.
 
 **Neuroplasticity** is the brain's ability to reorganize itself by forming new neural connections throughout life. This happens in two ways:
@@ -217,7 +217,7 @@ This is why doing 5 minutes of meditation daily for 90 days is far more powerful
     title: 'Why Consistency Beats Intensity',
     category: 'Neuroplasticity',
     readTime: 3,
-    points: 10,
+    points: 2,
     content: `Most people approach self-improvement with intensity: "I'm going to work out for 2 hours every day!" They last a week. Then they feel guilty and quit entirely.
 
 **Neuroscience explains why consistency wins:**
@@ -240,7 +240,7 @@ This is why the app rewards daily habit completion rather than time spent. The r
     title: 'Sleep: Where Memory Consolidation Happens',
     category: 'Neuroplasticity',
     readTime: 3,
-    points: 10,
+    points: 2,
     content: `You might think learning happens while you practice. In reality, a huge part of it happens while you sleep.
 
 **During sleep, your brain:**
@@ -265,7 +265,7 @@ This is why "Sleep 7-8 hours" is a preset habit in this app. It's not just a hea
     title: 'Novelty: The Brain\'s Growth Trigger',
     category: 'Neuroplasticity',
     readTime: 3,
-    points: 10,
+    points: 2,
     content: `Your brain is an efficiency machine. It automates repeated behaviors to save energy. This is great for building habits — but it means your brain can get "stuck" in established patterns.
 
 **Novelty is what triggers new neural growth.** When you encounter something new, your brain releases dopamine and activates neuroplasticity mechanisms. It's literally telling itself: "Pay attention — this is new, we might need to learn this."
@@ -288,7 +288,7 @@ This is why the app includes a "Learn something new" habit and encourages you to
     title: 'The Prefrontal Cortex: Command Center of Willpower & Decision Making',
     category: 'Prefrontal Cortex',
     readTime: 4,
-    points: 10,
+    points: 2,
     content: `The Prefrontal Cortex (PFC) is the front section of your brain responsible for executive functions: planning, decision making, impulse control, focus, and long-term goal setting.
 
 \`\`\`
@@ -310,7 +310,7 @@ The PFC is like a CEO. It manages impulses from lower brain regions (like the am
     title: 'Affect Labeling: Why Naming Your Feelings Dampens Reactivity',
     category: 'Prefrontal Cortex',
     readTime: 3,
-    points: 10,
+    points: 2,
     content: `Neuroimaging studies at UCLA showed something counterintuitive: putting feelings into words physically calms the emotional brain.
 
 When subjects saw an angry or fearful face, their amygdala (the brain's alarm bell) lit up. But when asked to label the emotion ("angry", "fearful"), amygdala activity decreased significantly while right ventrolateral prefrontal cortex activity increased.
