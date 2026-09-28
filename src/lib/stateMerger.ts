@@ -12,6 +12,7 @@ import {
   BadHabit,
   BadHabitLog,
   CravingLog,
+  getAwardKey,
   FocusSessionLog,
   DecisionLog,
   EmotionLog,
@@ -1353,20 +1354,72 @@ function mergeAppStateInternal(
     : baseState.addictionTracker;
 
   if (baseState.addictionTracker && incomingState.addictionTracker && baseState.addictionTracker.id === incomingState.addictionTracker.id) {
-    const baseAwards = baseState.addictionTracker.awardedMilestones || [];
-    const incAwards = incomingState.addictionTracker.awardedMilestones || [];
+    const baseT = baseState.addictionTracker;
+    const incT = incomingState.addictionTracker;
+
+    const baseStartMs = new Date(baseT.startDate).getTime();
+    const incStartMs = new Date(incT.startDate).getTime();
+
+    // Pick winning side based on later startDate (tie -> incoming)
+    let winningSide = incT;
+    let resolvedStartDate = incT.startDate;
+    let resolvedMilestonesUnlocked: string[] = [];
+
+    if (!isNaN(baseStartMs) && !isNaN(incStartMs)) {
+      if (incStartMs > baseStartMs) {
+        winningSide = incT;
+        resolvedStartDate = incT.startDate;
+        resolvedMilestonesUnlocked = Array.isArray(incT.milestonesUnlocked) ? incT.milestonesUnlocked : [];
+      } else if (baseStartMs > incStartMs) {
+        winningSide = baseT;
+        resolvedStartDate = baseT.startDate;
+        resolvedMilestonesUnlocked = Array.isArray(baseT.milestonesUnlocked) ? baseT.milestonesUnlocked : [];
+      } else {
+        // Equal startDates (same streak): union milestonesUnlocked
+        winningSide = incT;
+        resolvedStartDate = incT.startDate;
+        resolvedMilestonesUnlocked = Array.from(
+          new Set([...(baseT.milestonesUnlocked || []), ...(incT.milestonesUnlocked || [])])
+        );
+      }
+    } else {
+      resolvedMilestonesUnlocked = Array.isArray(incT.milestonesUnlocked) ? incT.milestonesUnlocked : (baseT.milestonesUnlocked || []);
+    }
+
+    // 1. Union revokedAwardIds
+    const baseRevoked = baseT.revokedAwardIds || [];
+    const incRevoked = incT.revokedAwardIds || [];
+    const mergedRevokedIds = Array.from(new Set([...baseRevoked, ...incRevoked]));
+    const revokedSet = new Set(mergedRevokedIds);
+
+    // 2. Union awardedMilestones keyed by getAwardKey
+    const baseAwards = baseT.awardedMilestones || [];
+    const incAwards = incT.awardedMilestones || [];
     const awardsMap = new Map<string, any>();
+
     for (const a of [...baseAwards, ...incAwards]) {
-      if (a && a.milestone && !awardsMap.has(a.milestone)) {
-        awardsMap.set(a.milestone, a);
+      if (a && a.milestone) {
+        const key = getAwardKey(a);
+        if (!awardsMap.has(key)) {
+          awardsMap.set(key, a);
+        }
       }
     }
-    if (addictionTracker) {
-      addictionTracker = {
-        ...addictionTracker,
-        awardedMilestones: Array.from(awardsMap.values()),
-      };
-    }
+
+    // Exclude any awards whose key is in revokedSet (no !a.id bypass)
+    const finalAwards = Array.from(awardsMap.values()).filter(
+      (a) => !revokedSet.has(getAwardKey(a))
+    );
+
+    addictionTracker = {
+      id: winningSide.id,
+      title: winningSide.title || baseT.title || 'Sobriety',
+      createdAt: winningSide.createdAt || baseT.createdAt || new Date().toISOString(),
+      startDate: resolvedStartDate,
+      milestonesUnlocked: resolvedMilestonesUnlocked,
+      awardedMilestones: finalAwards,
+      revokedAwardIds: mergedRevokedIds,
+    };
   }
 
   return {

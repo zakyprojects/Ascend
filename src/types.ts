@@ -340,10 +340,16 @@ export interface BadHabitLog {
 
 // Module 5: Addiction Recovery Tracker
 export interface AddictionMilestoneAward {
+  id?: string;
   milestone: string; // '1w' | '1m' | '90d'
   seasonNumber: number;
   timestamp: string; // ISO timestamp
+  streakStart?: string;
   points: number;
+}
+
+export function getAwardKey(a: AddictionMilestoneAward): string {
+  return a.id ?? `${a.milestone}_${a.timestamp}`;
 }
 
 export interface AddictionTracker {
@@ -351,7 +357,8 @@ export interface AddictionTracker {
   title: string;
   startDate: string; // ISO timestamp
   milestonesUnlocked: string[]; // ['1w', '1m', '90d'] - active streak milestones
-  awardedMilestones?: AddictionMilestoneAward[]; // lifetime awarded milestones ledger (immune to resets)
+  awardedMilestones?: AddictionMilestoneAward[]; // lifetime awarded milestones ledger
+  revokedAwardIds?: string[]; // grow-only set of revoked milestone award IDs
   createdAt: string;
 }
 

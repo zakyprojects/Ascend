@@ -19,6 +19,7 @@ import {
   BadHabitLog,
   AddictionTracker,
   AddictionMilestoneAward,
+  getAwardKey,
   CravingLog,
   FocusSessionLog,
   DecisionLog,
@@ -900,6 +901,9 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
             : [],
           awardedMilestones: Array.isArray(st.addictionTracker.awardedMilestones)
             ? st.addictionTracker.awardedMilestones
+            : [],
+          revokedAwardIds: Array.isArray(st.addictionTracker.revokedAwardIds)
+            ? st.addictionTracker.revokedAwardIds
             : [],
         }
       : null,
@@ -5555,14 +5559,69 @@ export function useAppState() {
   const resetAddictionStreak = useCallback(() => {
     setState((prev) => {
       if (!prev.addictionTracker) return prev;
-      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.addictionTracker.id])).slice(-500);
+      const tracker = prev.addictionTracker;
+      const activeSeasonNum = getSeasonNumber(leagueNow());
+      const currentStart = tracker.startDate;
+      const currentStartMs = new Date(currentStart).getTime();
+
+      // Find the dying streak's awards:
+      // records whose streakStart equals current startDate, or legacy records timestamp >= current startDate,
+      // and strictly awards from current season.
+      const dyingAwards: AddictionMilestoneAward[] = [];
+      const remainingAwards: AddictionMilestoneAward[] = [];
+
+      for (const a of tracker.awardedMilestones || []) {
+        const isCurrentStreak = a.streakStart
+          ? a.streakStart === currentStart
+          : new Date(a.timestamp).getTime() >= currentStartMs;
+
+        if (isCurrentStreak && a.seasonNumber === activeSeasonNum) {
+          dyingAwards.push(a);
+        } else {
+          remainingAwards.push(a);
+        }
+      }
+
+      let runningState = prev;
+      const newlyRevokedIds: string[] = [];
+
+      for (const a of dyingAwards) {
+        const awardKey = getAwardKey(a);
+        const revokeEntryId = `recovery_revoke_${awardKey}`;
+        const awardAmt = typeof a.points === 'number' ? a.points : (SOBRIETY_MILESTONE_POINTS[a.milestone as keyof typeof SOBRIETY_MILESTONE_POINTS] || 0);
+
+        newlyRevokedIds.push(awardKey);
+
+        if (awardAmt > 0) {
+          const pointsUpdate = addPointsInternal(
+            runningState,
+            -awardAmt,
+            `Sobriety Milestone Revoked: ${a.milestone} (Streak Reset)`,
+            'addiction_recovery',
+            { trackerId: tracker.id, milestone: a.milestone, seasonNumber: activeSeasonNum, revokedAwardId: awardKey },
+            undefined,
+            revokeEntryId
+          );
+          runningState = {
+            ...runningState,
+            ...pointsUpdate,
+          };
+        }
+      }
+
+      const updatedRevokedAwardIds = Array.from(
+        new Set([...(tracker.revokedAwardIds || []), ...newlyRevokedIds])
+      );
+
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), tracker.id])).slice(-500);
       return {
-        ...prev,
+        ...runningState,
         addictionTracker: {
-          ...prev.addictionTracker,
+          ...tracker,
           startDate: new Date().toISOString(),
           milestonesUnlocked: [],
-          awardedMilestones: prev.addictionTracker.awardedMilestones || [],
+          awardedMilestones: remainingAwards,
+          revokedAwardIds: updatedRevokedAwardIds,
         },
         unsyncedEntityIds: updatedUnsynced,
       };
@@ -5582,12 +5641,17 @@ export function useAppState() {
 
       const unlocked = [...prev.addictionTracker.milestonesUnlocked];
       const awarded = [...(prev.addictionTracker.awardedMilestones || [])];
+      const revokedIds = new Set(prev.addictionTracker.revokedAwardIds || []);
+
+      // Filter out any awards whose key was revoked - no !a.id bypass
+      const nonRevokedAwarded = awarded.filter((a) => !revokedIds.has(getAwardKey(a)));
+
       const isAlreadyAwarded = (key: string) => {
         if (key === '1w' || key === '90d') {
-          return awarded.some((a) => a.milestone === key && a.seasonNumber === activeSeasonNum);
+          return nonRevokedAwarded.some((a) => a.milestone === key && a.seasonNumber === activeSeasonNum);
         }
         if (key === '1m') {
-          return awarded.some(
+          return nonRevokedAwarded.some(
             (a) => a.milestone === '1m' && new Date(a.timestamp).getTime() >= trackerStartMs
           );
         }
@@ -5650,7 +5714,37 @@ export function useAppState() {
         return prev;
       }
 
-      const newlyUnlockedLabels = newlyUnlockedMilestones.map((m) => m.label);
+      // Hard cap 85 check:
+      // Compute total season-held recovery points (non-revoked awards in current season)
+      let currentHeldSeasonPoints = nonRevokedAwarded
+        .filter((a) => a.seasonNumber === activeSeasonNum)
+        .reduce((sum, a) => sum + (a.points || 0), 0);
+
+      const qualifyingMilestones: typeof newlyUnlockedMilestones = [];
+      for (const m of newlyUnlockedMilestones) {
+        if (currentHeldSeasonPoints + m.amount <= 85) {
+          qualifyingMilestones.push(m);
+          currentHeldSeasonPoints += m.amount;
+        }
+        // If exceeds 85, deny fully (no partial award)
+      }
+
+      if (qualifyingMilestones.length === 0) {
+        if (unlocked.length !== prev.addictionTracker.milestonesUnlocked.length) {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.addictionTracker.id])).slice(-500);
+          return {
+            ...prev,
+            addictionTracker: {
+              ...prev.addictionTracker,
+              milestonesUnlocked: unlocked,
+            },
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        }
+        return prev;
+      }
+
+      const newlyUnlockedLabels = qualifyingMilestones.map((m) => m.label);
 
       if (prev.currentUser?.id && newlyUnlockedLabels.length > 0) {
         const substance = prev.addictionTracker.title || 'Sobriety';
@@ -5665,13 +5759,19 @@ export function useAppState() {
       }
 
       const nowIso = new Date().toISOString();
-      for (const m of newlyUnlockedMilestones) {
-        awarded.push({
+      const newlyAwardedRecords: AddictionMilestoneAward[] = [];
+
+      for (const m of qualifyingMilestones) {
+        const deterministicId = `recovery_${prev.addictionTracker.id}_${m.key}_${trackerStartMs}`;
+        const record: AddictionMilestoneAward = {
+          id: deterministicId,
           milestone: m.key,
           seasonNumber: activeSeasonNum,
           timestamp: nowIso,
+          streakStart: prev.addictionTracker.startDate,
           points: m.amount,
-        });
+        };
+        newlyAwardedRecords.push(record);
       }
 
       let runningState = {
@@ -5679,17 +5779,20 @@ export function useAppState() {
         addictionTracker: {
           ...prev.addictionTracker,
           milestonesUnlocked: unlocked,
-          awardedMilestones: awarded,
+          awardedMilestones: [...awarded, ...newlyAwardedRecords],
         },
       };
 
-      for (const m of newlyUnlockedMilestones) {
+      for (const record of newlyAwardedRecords) {
+        const m = qualifyingMilestones.find((item) => item.key === record.milestone)!;
         const pointsUpdate = addPointsInternal(
           runningState,
           m.amount,
           m.reason,
           'recovery_milestone',
-          { trackerId: prev.addictionTracker.id, milestone: m.key, seasonNumber: activeSeasonNum }
+          { trackerId: prev.addictionTracker.id, milestone: m.key, seasonNumber: activeSeasonNum },
+          undefined,
+          record.id
         );
         runningState = {
           ...runningState,
@@ -5732,24 +5835,47 @@ export function useAppState() {
           const tracker = prev.addictionTracker;
           const activeSeasonNum = getSeasonNumber(leagueNow());
 
-          // 1. Collect all awarded milestones to deduct (with legacy fallback reconstruction)
+          // 1. Collect all awarded milestones to deduct (with legacy fallback reconstruction from ledger net)
           let awardedList: AddictionMilestoneAward[] = tracker.awardedMilestones ? [...tracker.awardedMilestones] : [];
-          if (awardedList.length === 0 && tracker.milestonesUnlocked && tracker.milestonesUnlocked.length > 0) {
-            for (const mKey of tracker.milestonesUnlocked) {
-              const pts = (mKey in SOBRIETY_MILESTONE_POINTS)
-                ? SOBRIETY_MILESTONE_POINTS[mKey as keyof typeof SOBRIETY_MILESTONE_POINTS]
-                : 0;
-              if (pts > 0) {
-                const histEntry = prev.pointsHistory?.find(
-                  (e) => e.source === 'recovery_milestone' && (e.reason?.includes(mKey) || e.metadata?.milestone === mKey)
-                );
-                const ts = histEntry?.timestamp || tracker.startDate || tracker.createdAt || new Date().toISOString();
-                const sNum = getSeasonNumber(new Date(ts));
+          if (awardedList.length === 0) {
+            const history = prev.pointsHistory || [];
+            // Group relevant entries by milestone for the current season and tracker
+            const milestoneData: Record<string, { net: number; latestTimestamp: string }> = {};
+
+            for (const e of history) {
+              if (e.metadata?.trackerId === tracker.id) {
+                const sNum = getSeasonNumber(new Date(e.timestamp));
+                if (sNum === activeSeasonNum) {
+                  const mKey = (e.metadata?.milestone as string) || 'legacy';
+                  const isPositiveAward = e.source === 'recovery_milestone' && e.amount > 0;
+                  const isRevoke =
+                    (e.source === 'addiction_recovery' && (e.id?.startsWith('recovery_revoke_') || !!e.metadata?.revokedAwardId)) &&
+                    e.amount < 0;
+
+                  if (isPositiveAward || isRevoke) {
+                    if (!milestoneData[mKey]) {
+                      milestoneData[mKey] = { net: 0, latestTimestamp: e.timestamp };
+                    }
+                    milestoneData[mKey].net += e.amount;
+                    if (isPositiveAward) {
+                      const currentLatest = new Date(milestoneData[mKey].latestTimestamp).getTime();
+                      const entryTs = new Date(e.timestamp).getTime();
+                      if (isNaN(currentLatest) || entryTs >= currentLatest) {
+                        milestoneData[mKey].latestTimestamp = e.timestamp;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            for (const [mKey, data] of Object.entries(milestoneData)) {
+              if (data.net > 0) {
                 awardedList.push({
                   milestone: mKey,
-                  seasonNumber: sNum,
-                  timestamp: ts,
-                  points: pts,
+                  seasonNumber: activeSeasonNum,
+                  timestamp: data.latestTimestamp,
+                  points: data.net,
                 });
               }
             }
