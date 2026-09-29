@@ -9,6 +9,7 @@ import { todayKey, formatDateLong, parseDate, startOfWeek } from '@/lib/dates';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
+import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 
 const DEFAULT_WORKOUT_TYPES = [
   'Running',
@@ -213,6 +214,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           </div>
         </div>
       </div>
+
+      <CapMeterConnected state={store.state} capId="exercise" />
 
       {/* Weekly Activity Chart */}
       <div className="card p-5">

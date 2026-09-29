@@ -28,6 +28,8 @@ import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
 import { todayKey, formatDateLong, parseDate } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
+import { CapMeter } from '@/components/ui/CapMeter';
+import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
@@ -448,6 +450,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
         </div>
       </div>
+
+      <CapMeterConnected state={store.state} capId="reading" />
 
       {/* Tabs & Filters */}
       <div className="space-y-3">
@@ -1234,16 +1238,35 @@ export function ReadingHub({ store }: { store: AppStore }) {
               </div>
             </div>
           ) : (
-            <div className="p-3.5 bg-bg-700/60 border border-overlay-medium rounded-xl flex items-center gap-3 text-content-secondary">
-              <CheckCircle2 size={24} className="shrink-0 text-content-disabled" />
-              <div className="text-xs space-y-0.5">
-                <span className="font-bold block text-content-primary">Finishing Book (+0 bonus points)</span>
-                <p className="text-content-muted leading-relaxed">
-                  {finishEligibility?.alreadyAwarded
-                    ? 'Completion bonus was already awarded for this book.'
-                    : `The 15pt bonus requires reading inside Ascend across ≥7 days (current: ${finishEligibility?.spanDays ?? 0}d) and ≥5 distinct logged reading days (current: ${finishEligibility?.loggedDays ?? 0}d). Daily page points already earned remain intact.`}
-                </p>
+            <div className="p-3.5 bg-bg-700/60 border border-overlay-medium rounded-xl flex flex-col gap-3 text-content-secondary">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 size={24} className="shrink-0 text-content-disabled" />
+                <div className="text-xs space-y-0.5">
+                  <span className="font-bold block text-content-primary">Finishing Book (+0 bonus points)</span>
+                  <p className="text-content-muted leading-relaxed">
+                    {finishEligibility?.alreadyAwarded
+                      ? 'Completion bonus was already awarded for this book.'
+                      : `The 15pt bonus requires reading inside Ascend across ≥7 days (current: ${finishEligibility?.spanDays ?? 0}d) and ≥5 distinct logged reading days (current: ${finishEligibility?.loggedDays ?? 0}d). Daily page points already earned remain intact.`}
+                  </p>
+                </div>
               </div>
+
+              {!finishEligibility?.alreadyAwarded && finishEligibility && (
+                <div className="space-y-2 pt-2 border-t border-overlay-subtle">
+                  <CapMeter
+                    variant="bar"
+                    label={`Days since start (${finishEligibility.spanDays}/7)`}
+                    earned={finishEligibility.spanDays}
+                    cap={7}
+                  />
+                  <CapMeter
+                    variant="bar"
+                    label={`Reading days logged (${finishEligibility.loggedDays}/5)`}
+                    earned={finishEligibility.loggedDays}
+                    cap={5}
+                  />
+                </div>
+              )}
             </div>
           )}
 

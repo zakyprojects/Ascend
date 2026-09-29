@@ -21,6 +21,7 @@ import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { BadHabit } from '@/types';
 import { todayKey, formatDateLong } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
+import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 
 export function BadHabitTracker({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -181,6 +182,8 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         </div>
       </div>
 
+      <CapMeterConnected state={store.state} capId="badHabitsResisted" />
+
         <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-500/5 flex items-start gap-3">
         <AlertTriangle size={20} className="text-warning-text shrink-0 mt-0.5" />
         <div className="text-xs text-content-tertiary leading-relaxed space-y-1">
@@ -189,7 +192,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           </div>
           <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
             <li>
-              <span className="text-content-secondary">Daily Resists & Cap:</span> The <span className="text-success-text font-semibold">first 2 resist logs per day</span> earn <span className="text-success-text font-semibold">+{BAD_HABIT_POINTS.resistBase} pts each</span> (max +{BAD_HABIT_POINTS.dailyCap} pts/day). Additional resists log towards streak with 0 pts.
+              <span className="text-content-secondary">Daily Resists & Cap:</span> The <span className="text-success-text font-semibold">first {BAD_HABIT_POINTS.maxDailyResists} resist logs per day</span> earn <span className="text-success-text font-semibold">+{BAD_HABIT_POINTS.resistBase} pts each</span> (max +{BAD_HABIT_POINTS.dailyCap} pts/day). Additional resists log towards streak with 0 pts.
             </li>
             <li>
               <span className="text-content-secondary">Occurred & Miss Penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-rose-theme font-semibold">all active bad habits</span> (no habit-count limit). Undo is available for today's action.

@@ -141,6 +141,8 @@ import {
   calculateReadingPoints,
   calculateTimeTrackerDailyPoints,
   calculateWeeklyGoalsPoints,
+  wouldExceedRecoverySeasonCap,
+  allocateResistPoints,
 } from './pointsConfig';
 export { recomputeTodayPresetPoints, calculateWeeklyGoalsPoints, WEEKLY_GOALS_POINTS };
 export type { PresetHabitCapItem };
@@ -5116,27 +5118,14 @@ export function useAppState() {
 
           // Dynamic chronological recompute across all same-day resist logs
           const sameDayResists = combinedLogs
-            .filter((l) => l.date === date && l.status === 'resisted')
-            .sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
-
-          let cumulativePoints = 0;
-          const recalculatedMap = new Map<string, number>();
-
-          for (let i = 0; i < sameDayResists.length; i++) {
-            const rLog = sameDayResists[i];
-            let logPts = 0;
-            if (i < BAD_HABIT_POINTS.maxDailyResists && cumulativePoints + BAD_HABIT_POINTS.resistBase <= BAD_HABIT_POINTS.dailyCap) {
-              logPts = BAD_HABIT_POINTS.resistBase;
-              cumulativePoints += logPts;
-            }
-            recalculatedMap.set(rLog.id, logPts);
-          }
+            .filter((l) => l.date === date && l.status === 'resisted');
+          const recalculatedMap = allocateResistPoints(sameDayResists);
 
           const oldResistPointsToday = (baseState.badHabitLogs || [])
             .filter((l) => l.date === date && l.status === 'resisted')
             .reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
 
-          const newResistPointsToday = cumulativePoints;
+          const newResistPointsToday = Array.from(recalculatedMap.values()).reduce((sum, pts) => sum + pts, 0);
           const netPointDelta = newResistPointsToday - oldResistPointsToday;
 
           let pointsUpdate = {};
@@ -5258,27 +5247,14 @@ export function useAppState() {
       if (target.status === 'resisted') {
         // Dynamic chronological recompute across all surviving same-day resist logs
         const sameDayResists = remainingLogs
-          .filter((l) => l.date === today && l.status === 'resisted')
-          .sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
-
-        let cumulativePoints = 0;
-        const recalculatedMap = new Map<string, number>();
-
-        for (let i = 0; i < sameDayResists.length; i++) {
-          const rLog = sameDayResists[i];
-          let logPts = 0;
-          if (i < BAD_HABIT_POINTS.maxDailyResists && cumulativePoints + BAD_HABIT_POINTS.resistBase <= BAD_HABIT_POINTS.dailyCap) {
-            logPts = BAD_HABIT_POINTS.resistBase;
-            cumulativePoints += logPts;
-          }
-          recalculatedMap.set(rLog.id, logPts);
-        }
+          .filter((l) => l.date === today && l.status === 'resisted');
+        const recalculatedMap = allocateResistPoints(sameDayResists);
 
         const oldResistPointsToday = (prev.badHabitLogs || [])
           .filter((l) => l.date === today && l.status === 'resisted')
           .reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
 
-        const newResistPointsToday = cumulativePoints;
+        const newResistPointsToday = Array.from(recalculatedMap.values()).reduce((sum, pts) => sum + pts, 0);
         const netPointDelta = newResistPointsToday - oldResistPointsToday;
 
         if (netPointDelta !== 0) {
@@ -5361,18 +5337,10 @@ export function useAppState() {
             const recalculatedMap = new Map<string, number>();
             for (const rDate of affectedResistDates) {
               const sameDayResists = remainingLogs
-                .filter((l) => l.date === rDate && l.status === 'resisted')
-                .sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
-
-              let cumulativePoints = 0;
-              for (let i = 0; i < sameDayResists.length; i++) {
-                const rLog = sameDayResists[i];
-                let logPts = 0;
-                if (i < BAD_HABIT_POINTS.maxDailyResists && cumulativePoints + BAD_HABIT_POINTS.resistBase <= BAD_HABIT_POINTS.dailyCap) {
-                  logPts = BAD_HABIT_POINTS.resistBase;
-                  cumulativePoints += logPts;
-                }
-                recalculatedMap.set(rLog.id, logPts);
+                .filter((l) => l.date === rDate && l.status === 'resisted');
+              const dateMap = allocateResistPoints(sameDayResists);
+              for (const [id, pts] of dateMap) {
+                recalculatedMap.set(id, pts);
               }
             }
 
@@ -5722,7 +5690,7 @@ export function useAppState() {
 
       const qualifyingMilestones: typeof newlyUnlockedMilestones = [];
       for (const m of newlyUnlockedMilestones) {
-        if (currentHeldSeasonPoints + m.amount <= 85) {
+        if (!wouldExceedRecoverySeasonCap(currentHeldSeasonPoints, m.amount)) {
           qualifyingMilestones.push(m);
           currentHeldSeasonPoints += m.amount;
         }
@@ -6253,10 +6221,14 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addWeeklyReflection = useCallback((weekKey: string, content: string) => {
+  const addWeeklyReflection = useCallback((targetWeekKey: string, content: string) => {
     if (!content.trim()) return;
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey !== currentWeek) {
+      throw new Error('Reflections can only be written for the current week.');
+    }
     setState((prev) => {
-      const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
       const existingDoc = idx >= 0 ? prev.weeklyGoals[idx] : null;
 
       const existingReflections = existingDoc?.reflections || [];
@@ -6272,14 +6244,14 @@ export function useAppState() {
 
       const { updatedReflections, nextState } = reconcileReflectionPoints(
         prev,
-        weekKey,
+        targetWeekKey,
         candidateReflections,
         getNow()
       );
 
       const updatedDoc: WeeklyGoal = {
         id: existingDoc ? existingDoc.id : uid(),
-        weekKey,
+        weekKey: targetWeekKey,
         goals: existingDoc ? existingDoc.goals : [],
         reflections: updatedReflections,
         createdAt: existingDoc ? existingDoc.createdAt : new Date().toISOString(),
@@ -6303,10 +6275,14 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const updateWeeklyReflection = useCallback((weekKey: string, reflectionId: string, content: string) => {
+  const updateWeeklyReflection = useCallback((targetWeekKey: string, reflectionId: string, content: string) => {
     if (!content.trim()) return;
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey !== currentWeek) {
+      throw new Error('Reflections can only be written for the current week.');
+    }
     setState((prev) => {
-      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
       if (docIdx === -1) return prev;
 
       const doc = prev.weeklyGoals[docIdx];
@@ -6326,7 +6302,7 @@ export function useAppState() {
 
       const { updatedReflections, nextState } = reconcileReflectionPoints(
         prev,
-        weekKey,
+        targetWeekKey,
         candidateReflections,
         getNow()
       );
@@ -6346,11 +6322,15 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const deleteWeeklyReflection = useCallback((weekKey: string, reflectionId: string) => {
+  const deleteWeeklyReflection = useCallback((targetWeekKey: string, reflectionId: string) => {
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey !== currentWeek) {
+      throw new Error('Reflections can only be written for the current week.');
+    }
     return (
       setState(
         (prev) => {
-          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
           if (docIdx === -1) return prev;
 
           const doc = prev.weeklyGoals[docIdx];
@@ -6361,7 +6341,7 @@ export function useAppState() {
 
           const { updatedReflections, nextState } = reconcileReflectionPoints(
             prev,
-            weekKey,
+            targetWeekKey,
             candidateReflections,
             getNow()
           );
@@ -6384,9 +6364,13 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addWeeklyGoalItem = useCallback((weekKey: string, goalData: Partial<WeeklyGoalItem>) => {
+  const addWeeklyGoalItem = useCallback((targetWeekKey: string, goalData: Partial<WeeklyGoalItem>) => {
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey < currentWeek) {
+      throw new Error('Past weeks are read-only.');
+    }
     setState((prev) => {
-      const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
       const existingDoc = idx >= 0 ? prev.weeklyGoals[idx] : null;
 
       const isLinked = Boolean(goalData.linkedModule && goalData.linkedModule !== 'none');
@@ -6406,6 +6390,12 @@ export function useAppState() {
           ? Boolean(goalData.completed)
           : (manualProgress >= targetVal);
         completedAt = isCompleted ? (goalData.completedAt || new Date().toISOString()) : undefined;
+      }
+
+      if (targetWeekKey > currentWeek) {
+        isCompleted = false;
+        completedAt = undefined;
+        manualProgress = 0;
       }
 
       const newItem: WeeklyGoalItem = {
@@ -6430,7 +6420,7 @@ export function useAppState() {
       const updatedGoals = existingDoc ? [...existingDoc.goals, newItem] : [newItem];
       const updatedDoc: WeeklyGoal = {
         id: existingDoc ? existingDoc.id : uid(),
-        weekKey,
+        weekKey: targetWeekKey,
         goals: updatedGoals,
         reflections: existingDoc?.reflections || [],
         createdAt: existingDoc ? existingDoc.createdAt : new Date().toISOString(),
@@ -6444,7 +6434,7 @@ export function useAppState() {
       }
 
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newItem.id])).slice(-500);
-      const pointsUpdate = recomputeWeeklyGoalsPointsForState(prev, weekKey, updatedGoals, newItem.id);
+      const pointsUpdate = recomputeWeeklyGoalsPointsForState(prev, targetWeekKey, updatedGoals, newItem.id);
 
       return {
         ...prev,
@@ -6457,9 +6447,16 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const updateWeeklyGoalItem = useCallback((weekKey: string, goalId: string, updates: Partial<WeeklyGoalItem>) => {
+  const updateWeeklyGoalItem = useCallback((targetWeekKey: string, goalId: string, updates: Partial<WeeklyGoalItem>) => {
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey < currentWeek) {
+      const keys = Object.keys(updates);
+      if (keys.length !== 1 || keys[0] !== 'carryOverDismissed') {
+        throw new Error('Past weeks are read-only.');
+      }
+    }
     setState((prev) => {
-      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
       if (docIdx === -1) return prev;
 
       const doc = prev.weeklyGoals[docIdx];
@@ -6468,12 +6465,18 @@ export function useAppState() {
 
       const existingGoal = doc.goals[goalIdx];
 
+      let effectiveUpdates = updates;
+      if (targetWeekKey > currentWeek) {
+        const { completed, completedAt, manualProgress, done, ...rest } = updates as any;
+        effectiveUpdates = rest;
+      }
+
       // Check if re-linked (converting between freeform/linked, or pointing to a different habit/workout/book/skill/metric)
-      const targetLinkedModule = updates.linkedModule !== undefined ? updates.linkedModule : existingGoal.linkedModule;
+      const targetLinkedModule = effectiveUpdates.linkedModule !== undefined ? effectiveUpdates.linkedModule : existingGoal.linkedModule;
       const isReLinked =
-        (updates.linkedModule !== undefined && updates.linkedModule !== existingGoal.linkedModule) ||
-        (updates.linkedItemId !== undefined && updates.linkedItemId !== existingGoal.linkedItemId) ||
-        (updates.linkedMetricKey !== undefined && updates.linkedMetricKey !== existingGoal.linkedMetricKey);
+        (effectiveUpdates.linkedModule !== undefined && effectiveUpdates.linkedModule !== existingGoal.linkedModule) ||
+        (effectiveUpdates.linkedItemId !== undefined && effectiveUpdates.linkedItemId !== existingGoal.linkedItemId) ||
+        (effectiveUpdates.linkedMetricKey !== undefined && effectiveUpdates.linkedMetricKey !== existingGoal.linkedMetricKey);
 
       const isLinkedGoal = Boolean(targetLinkedModule && targetLinkedModule !== 'none');
 
@@ -6491,22 +6494,22 @@ export function useAppState() {
         nextManualProgress = 0;
       } else {
         // Freeform goal: calculate completion from updates.completed or manualProgress vs targetValue
-        const targetVal = updates.targetValue !== undefined && updates.targetValue > 0
-          ? updates.targetValue
+        const targetVal = effectiveUpdates.targetValue !== undefined && effectiveUpdates.targetValue > 0
+          ? effectiveUpdates.targetValue
           : (existingGoal.targetValue && existingGoal.targetValue > 0 ? existingGoal.targetValue : 1);
 
-        nextManualProgress = updates.manualProgress !== undefined
-          ? updates.manualProgress
+        nextManualProgress = effectiveUpdates.manualProgress !== undefined
+          ? effectiveUpdates.manualProgress
           : existingGoal.manualProgress;
 
-        if (updates.completed !== undefined) {
-          nextCompleted = Boolean(updates.completed);
+        if (effectiveUpdates.completed !== undefined) {
+          nextCompleted = Boolean(effectiveUpdates.completed);
           if (nextCompleted) {
-            nextCompletedAt = updates.completedAt || existingGoal.completedAt || new Date().toISOString();
+            nextCompletedAt = effectiveUpdates.completedAt || existingGoal.completedAt || new Date().toISOString();
           } else {
             nextCompletedAt = undefined;
           }
-        } else if (updates.manualProgress !== undefined || updates.targetValue !== undefined) {
+        } else if (effectiveUpdates.manualProgress !== undefined || effectiveUpdates.targetValue !== undefined) {
           if (nextManualProgress !== undefined && nextManualProgress >= targetVal) {
             nextCompleted = true;
             nextCompletedAt = existingGoal.completedAt || new Date().toISOString();
@@ -6517,15 +6520,21 @@ export function useAppState() {
         }
       }
 
+      if (targetWeekKey > currentWeek) {
+        nextCompleted = false;
+        nextCompletedAt = undefined;
+        nextManualProgress = 0;
+      }
+
       const updatedGoal: WeeklyGoalItem = {
         ...existingGoal,
-        ...updates,
+        ...effectiveUpdates,
         completed: nextCompleted,
         done: nextCompleted,
         completedAt: nextCompletedAt,
         manualProgress: isLinkedGoal ? 0 : nextManualProgress,
-        title: updates.title !== undefined ? updates.title.trim() : existingGoal.title,
-        targetDescription: updates.targetDescription !== undefined ? updates.targetDescription.trim() : existingGoal.targetDescription,
+        title: effectiveUpdates.title !== undefined ? effectiveUpdates.title.trim() : existingGoal.title,
+        targetDescription: effectiveUpdates.targetDescription !== undefined ? effectiveUpdates.targetDescription.trim() : existingGoal.targetDescription,
       };
 
       const updatedGoals = [...doc.goals];
@@ -6536,7 +6545,7 @@ export function useAppState() {
       newWeeklyGoals[docIdx] = updatedDoc;
 
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), goalId])).slice(-500);
-      const pointsUpdate = recomputeWeeklyGoalsPointsForState(prev, weekKey, updatedGoals, goalId);
+      const pointsUpdate = targetWeekKey < currentWeek ? {} : recomputeWeeklyGoalsPointsForState(prev, targetWeekKey, updatedGoals, goalId);
 
       return {
         ...prev,
@@ -6549,11 +6558,15 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const deleteWeeklyGoalItem = useCallback((weekKey: string, goalId: string) => {
+  const deleteWeeklyGoalItem = useCallback((targetWeekKey: string, goalId: string) => {
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey < currentWeek) {
+      throw new Error('Past weeks are read-only.');
+    }
     return (
       setState(
         (prev) => {
-          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
           if (docIdx === -1) return prev;
 
           const doc = prev.weeklyGoals[docIdx];
@@ -6563,7 +6576,7 @@ export function useAppState() {
           const newWeeklyGoals = [...prev.weeklyGoals];
           newWeeklyGoals[docIdx] = updatedDoc;
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
-          const pointsUpdate = recomputeWeeklyGoalsPointsForState(prev, weekKey, updatedGoals, goalId);
+          const pointsUpdate = recomputeWeeklyGoalsPointsForState(prev, targetWeekKey, updatedGoals, goalId);
 
           const mergedDeletedEntityIds = Array.from(
             new Set([...updatedDeletedEntityIds, ...(pointsUpdate.deletedEntityIds || [])])
@@ -6584,6 +6597,10 @@ export function useAppState() {
   }, []);
 
   const carryOverGoal = useCallback((sourceWeekKey: string, targetWeekKey: string, goalId: string, options?: { resumeProgress?: boolean }) => {
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey !== currentWeek) {
+      return;
+    }
     setState((prev) => {
       const sourceDoc = prev.weeklyGoals.find((w) => w.weekKey === sourceWeekKey);
       if (!sourceDoc) return prev;
@@ -9459,6 +9476,9 @@ export function useAppState() {
 
   const addDailyTimeBlock = useCallback(
     (dateKey: string, block: Omit<TimeTrackerBlock, 'id'>) => {
+      if (dateKey < todayKey()) {
+        throw new Error('Past days are read-only.');
+      }
       const currentTT = state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
       const existingDateBlocks = currentTT.dailyLogs?.[dateKey] || [];
 
@@ -9572,6 +9592,9 @@ export function useAppState() {
 
   const updateDailyTimeBlock = useCallback(
     (dateKey: string, blockId: string, updates: Partial<TimeTrackerBlock>) => {
+      if (dateKey < todayKey()) {
+        throw new Error('Past days are read-only.');
+      }
       const currentTT = state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
       const existingBlocks = currentTT.dailyLogs?.[dateKey] || [];
       const targetBlock = existingBlocks.find((b) => b.id === blockId);
@@ -9692,6 +9715,7 @@ export function useAppState() {
     (dateKey: string, blockId: string) => {
       setState(
         (prev) => {
+          if (dateKey < todayKey()) return prev;
           const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
           const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
           const updatedDeleted = [...(prev.deletedEntityIds || []), blockId].slice(-500);
@@ -9780,6 +9804,7 @@ export function useAppState() {
   const toggleDailyTimeBlockCompleted = useCallback(
     (dateKey: string, blockId: string, passedTimeStr?: string) => {
       setState((prev) => {
+        if (dateKey !== todayKey()) return prev;
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
         const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
         const target = prevDailyBlocks.find((b) => b.id === blockId);
@@ -9868,6 +9893,7 @@ export function useAppState() {
   const markDailyTimeBlockSkipped = useCallback(
     (dateKey: string, blockId: string, passedTimeStr?: string) => {
       setState((prev) => {
+        if (dateKey !== todayKey()) return prev;
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
         const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
         const target = prevDailyBlocks.find((b) => b.id === blockId);
@@ -9956,6 +9982,7 @@ export function useAppState() {
   const undoDailyTimeBlockResolution = useCallback(
     (dateKey: string, blockId: string) => {
       setState((prev) => {
+        if (dateKey !== todayKey()) return prev;
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
         const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
         const target = prevDailyBlocks.find((b) => b.id === blockId);
@@ -10056,6 +10083,7 @@ export function useAppState() {
 
       setState(
         (prev) => {
+          if (dateKey !== todayKey()) return prev;
           const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
           const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
 
@@ -10296,6 +10324,7 @@ export function useAppState() {
 
       setState(
         (prev) => {
+          if (dateKey < todayKey()) return prev;
           const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
           const template = prevTT.templates?.find((t) => t.id === templateId);
           if (!template) return prev;
@@ -10363,6 +10392,12 @@ export function useAppState() {
           const updatedClearedDates = (prevTT.clearedDates || []).filter((d) => d !== dateKey);
 
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), ...updatedBlocks.map((b) => b.id)])).slice(-500);
+
+          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, updatedBlocks);
+          const finalDeleted = pointsUpdate.deletedEntityIds
+            ? Array.from(new Set([...(updatedDeleted || []), ...pointsUpdate.deletedEntityIds])).slice(-500)
+            : updatedDeleted;
+
           return {
             ...prev,
             timeTracker: {
@@ -10373,8 +10408,9 @@ export function useAppState() {
               },
               clearedDates: updatedClearedDates,
             },
-            deletedEntityIds: updatedDeleted,
             unsyncedEntityIds: updatedUnsynced,
+            ...pointsUpdate,
+            ...(finalDeleted !== undefined ? { deletedEntityIds: finalDeleted } : {}),
           };
         },
         { immediate: true }
@@ -10390,6 +10426,7 @@ export function useAppState() {
   const clearDailyTimeBlocks = useCallback((dateKey: string) => {
     setState(
       (prev) => {
+        if (dateKey < todayKey()) return prev;
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
         const existingBlocks = prevTT.dailyLogs?.[dateKey] || [];
         const deletedIds = existingBlocks.map((b) => b.id);
@@ -10405,6 +10442,11 @@ export function useAppState() {
           ? existingCleared
           : [...existingCleared, dateKey];
 
+        const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, []);
+        const finalDeleted = pointsUpdate.deletedEntityIds
+          ? Array.from(new Set([...updatedDeleted, ...pointsUpdate.deletedEntityIds])).slice(-500)
+          : updatedDeleted;
+
         return {
           ...prev,
           timeTracker: {
@@ -10412,7 +10454,8 @@ export function useAppState() {
             dailyLogs: nextLogs,
             clearedDates: nextCleared,
           },
-          deletedEntityIds: updatedDeleted,
+          ...pointsUpdate,
+          deletedEntityIds: finalDeleted,
         };
       },
       { immediate: true }

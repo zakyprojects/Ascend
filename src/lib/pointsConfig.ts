@@ -116,11 +116,36 @@ export const BAD_HABIT_POINTS = {
   noReportBase: 5,
 } as const;
 
+export function allocateResistPoints(
+  sameDayResistLogs: ReadonlyArray<{ id: string; createdAt?: string }>
+): Map<string, number> {
+  const sorted = [...sameDayResistLogs].sort(
+    (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+  );
+  let cumulativePoints = 0;
+  const result = new Map<string, number>();
+  for (let i = 0; i < sorted.length; i++) {
+    let logPts = 0;
+    if (i < BAD_HABIT_POINTS.maxDailyResists && cumulativePoints + BAD_HABIT_POINTS.resistBase <= BAD_HABIT_POINTS.dailyCap) {
+      logPts = BAD_HABIT_POINTS.resistBase;
+      cumulativePoints += logPts;
+    }
+    result.set(sorted[i].id, logPts);
+  }
+  return result;
+}
+
 export const SOBRIETY_MILESTONE_POINTS = {
   '1w': 10,
   '1m': 25,
   '90d': 50,
 } as const;
+
+export const RECOVERY_POINTS = { seasonCap: 85 } as const;
+
+export function wouldExceedRecoverySeasonCap(heldSeasonPoints: number, milestonePoints: number): boolean {
+  return heldSeasonPoints + milestonePoints > RECOVERY_POINTS.seasonCap;
+}
 
 /**
  * Calculates raw points and capped awarded points for a workout.
@@ -197,6 +222,9 @@ export const TIME_TRACKER_POINTS = {
     medium: { minPercent: 50, points: 3 },
     low: { minPercent: 0, points: 0 },
   },
+  skipExclusionRatio: 0.3,
+  maxExcludedSkips: 3,
+  smallRoutineThreshold: 3,
 } as const;
 
 /**
@@ -241,8 +269,11 @@ export function calculateTimeTrackerDailyPoints(blocks: Array<{ completed?: bool
   }
 
   const actualSkippedCount = blocks.filter((b) => b && b.skipped === true).length;
-  const rawCap = totalBlocks <= 3 ? 0 : Math.floor(0.3 * totalBlocks);
-  const skipExclusionCap = Math.min(rawCap, 3);
+  const rawCap =
+    totalBlocks <= TIME_TRACKER_POINTS.smallRoutineThreshold
+      ? 0
+      : Math.floor(TIME_TRACKER_POINTS.skipExclusionRatio * totalBlocks);
+  const skipExclusionCap = Math.min(rawCap, TIME_TRACKER_POINTS.maxExcludedSkips);
   const excludedSkips = Math.min(actualSkippedCount, skipExclusionCap);
   const effectiveDenominator = totalBlocks - excludedSkips;
 

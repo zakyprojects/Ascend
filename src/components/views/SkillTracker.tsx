@@ -8,6 +8,7 @@ import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { Skill, SkillLevel, SkillSessionLog } from '@/types';
 import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate } from '@/lib/dates';
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
+import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 
 export function SkillTracker({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -282,6 +283,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
           </div>
         </div>
       </div>
+
+      <CapMeterConnected state={store.state} capId="skills" />
 
       {/* Skills Grid */}
       <div>

@@ -17,6 +17,9 @@ import {
   getActivityThemeColor,
 } from '@/lib/timeTracker';
 import { todayKey, formatDateKeyHuman, addDays } from '@/lib/dates';
+import { CapMeter } from '@/components/ui/CapMeter';
+import { capNote } from '@/lib/capCopy';
+import { TIME_TRACKER_POINTS, calculateTimeTrackerDailyPoints } from '@/lib/pointsConfig';
 import { ActivityIcon } from './ActivityIcon';
 import { LiveCountdown } from './LiveCountdown';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -77,7 +80,11 @@ export function ScheduleTab({
 
   const today = todayKey();
   const isSelectedDateToday = selectedDateKey === today;
+  const isPastDate = selectedDateKey < today;
   const theme = store.state.themePreference || 'dark';
+
+  const todayDailyLogs = store.state.timeTracker?.dailyLogs?.[today] || [];
+  const timeTrackerDailyScore = calculateTimeTrackerDailyPoints(todayDailyLogs);
 
   // Auto-hydrate on date load if needed
   useEffect(() => {
@@ -247,7 +254,8 @@ export function ScheduleTab({
           {templates.length > 0 && (
             <button
               onClick={onOpenApplyTemplateModal}
-              className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-content-secondary bg-overlay-subtle hover:bg-overlay-default border border-overlay-default rounded-xl transition-all shadow-sm cursor-pointer"
+              disabled={isPastDate}
+              className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-content-secondary bg-overlay-subtle hover:bg-overlay-default border border-overlay-default rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               title="Apply Blueprint Template"
             >
               <Layers size={14} className="text-success-text shrink-0" />
@@ -258,7 +266,8 @@ export function ScheduleTab({
           {dailyBlocks.length > 0 && (
             <button
               onClick={() => setShowClearDayModal(true)}
-              className="p-2 text-xs text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer shrink-0"
+              disabled={isPastDate}
+              className="p-2 text-xs text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Clear Schedule for this Day"
             >
               <RotateCcw size={15} />
@@ -267,7 +276,8 @@ export function ScheduleTab({
 
           <button
             onClick={() => onOpenAddBlockModal()}
-            className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+            disabled={isPastDate}
+            className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={15} className="shrink-0" />
             <span className="whitespace-nowrap">Schedule Block</span>
@@ -477,6 +487,19 @@ export function ScheduleTab({
         </div>
       </div>
 
+      {/* Time Tracker Daily Points Cap Meter */}
+      {isSelectedDateToday && (
+        <div className="card p-4">
+          <CapMeter
+            variant="bar"
+            label={`Time Tracker points today (${Math.floor(timeTrackerDailyScore.percentage)}% of blocks)`}
+            earned={timeTrackerDailyScore.pointsAwarded}
+            cap={TIME_TRACKER_POINTS.dailyCap}
+            note={capNote('timeTracker')}
+          />
+        </div>
+      )}
+
       {/* 4. Professional Gantt-Style 24-Hour Distribution Bar */}
       {dailyBlocks.length > 0 && (
         <div className="p-4 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-3">
@@ -622,13 +645,18 @@ export function ScheduleTab({
           {dailyBlocks.length > 0 && (
             <button
               onClick={() => onOpenAddBlockModal()}
-              className="text-xs font-semibold text-success-text hover:opacity-80 flex items-center gap-1 cursor-pointer"
+              disabled={isPastDate}
+              className="text-xs font-semibold text-success-text hover:opacity-80 flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus size={13} />
               <span>Add Block</span>
             </button>
           )}
         </div>
+
+        {isPastDate && (
+          <p className="text-[11px] text-content-muted">Past days are read-only.</p>
+        )}
 
         {dailyBlocks.length === 0 ? (
           <div className="p-8 rounded-2xl bg-bg-800/30 border border-overlay-subtle text-center space-y-4">
@@ -645,7 +673,8 @@ export function ScheduleTab({
               {templates.length > 0 && (
                 <button
                   onClick={onOpenApplyTemplateModal}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default border border-overlay-default text-xs font-semibold text-content-secondary transition-all cursor-pointer"
+                  disabled={isPastDate}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default border border-overlay-default text-xs font-semibold text-content-secondary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Layers size={14} className="text-success-text" />
                   <span>Apply Template</span>
@@ -653,7 +682,8 @@ export function ScheduleTab({
               )}
               <button
                 onClick={() => onOpenAddBlockModal()}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+                disabled={isPastDate}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus size={14} />
                 <span>Add Time Block</span>
@@ -718,14 +748,23 @@ export function ScheduleTab({
                     <div className="flex items-start gap-3 min-w-0 flex-1">
                       <button
                         onClick={() => handleToggleComplete(block)}
-                        className={`mt-1 p-1 rounded-lg transition-colors shrink-0 cursor-pointer ${
+                        disabled={!isSelectedDateToday}
+                        className={`mt-1 p-1 rounded-lg transition-colors shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                           block.completed
                             ? 'text-success-text hover:opacity-80'
                             : block.skipped
                             ? 'text-content-subtle hover:text-content-muted'
                             : 'text-content-disabled hover:text-content-tertiary'
                         }`}
-                        title={block.completed ? 'Mark uncompleted' : block.skipped ? 'Undo skipped' : 'Mark completed'}
+                        title={
+                          !isSelectedDateToday
+                            ? "Only today's blocks can be completed"
+                            : block.completed
+                            ? 'Mark uncompleted'
+                            : block.skipped
+                            ? 'Undo skipped'
+                            : 'Mark completed'
+                        }
                       >
                         {block.completed ? (
                           <CheckCircle2 size={20} />
@@ -855,14 +894,16 @@ export function ScheduleTab({
                     <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => onOpenEditBlockModal(block)}
-                        className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer"
+                        disabled={isPastDate}
+                        className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Edit Block"
                       >
                         <Edit2 size={15} />
                       </button>
                       <button
                         onClick={() => setDeleteTargetBlock(block)}
-                        className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                        disabled={isPastDate}
+                        className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Delete Block"
                       >
                         <Trash2 size={15} />

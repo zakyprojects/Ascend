@@ -10,6 +10,7 @@ import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habit
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
+import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 
 export function HabitTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
@@ -82,6 +83,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
           <div className="stat-value mt-1 text-brand-text">{completedToday.length}</div>
         </div>
       </div>
+
+      <CapMeterConnected state={store.state} capId="presetHabits" />
 
       {/* Missed Habit Penalty Info Banner */}
       <div className="card p-3.5 flex items-start gap-2.5 text-xs text-content-muted">

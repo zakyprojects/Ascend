@@ -8,6 +8,9 @@ import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { CravingLog, getAwardKey } from '@/types';
 import { formatDateLong } from '@/lib/dates';
 import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
+import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS } from '@/lib/pointsConfig';
+import { CapMeter } from '@/components/ui/CapMeter';
+import { recoverySeasonCapNote } from '@/lib/capCopy';
 
 const DISTRACTION_ACTIVITIES = [
   'Drink a cold glass of water slowly',
@@ -188,7 +191,15 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           </div>
 
           {/* Milestones Celebrations */}
-          <div>
+          <div className="space-y-3">
+            <CapMeter
+              variant="bar"
+              label="Recovery points this season"
+              earned={heldSeasonPoints}
+              cap={RECOVERY_POINTS.seasonCap}
+              note={recoverySeasonCapNote()}
+            />
+
             <div className="text-xs font-bold text-content-tertiary mb-3 flex items-center gap-2">
               <Award size={16} className="text-warning-text" />
               Milestone Celebrations & Badges
@@ -199,7 +210,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                 const isAwarded = (tracker.awardedMilestones || []).some(
                   (a) => !revokedSet.has(getAwardKey(a)) && a.milestone === m.key && a.seasonNumber === activeSeasonNum
                 );
-                const isCapped = !isAwarded && heldSeasonPoints + m.points > 85;
+                const isCapped = !isAwarded && wouldExceedRecoverySeasonCap(heldSeasonPoints, m.points);
 
                 return (
                   <button
