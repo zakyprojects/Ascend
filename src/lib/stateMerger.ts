@@ -1349,9 +1349,25 @@ function mergeAppStateInternal(
       }
   }
 
+  const isBaseTrackerTombstoned = Boolean(
+    baseState.addictionTracker?.id &&
+      (tombstoneSet.has(baseState.addictionTracker.id) ||
+        ((baseState.deletedEntityIds || []).includes(baseState.addictionTracker.id) &&
+          !(incomingState.restoredEntityIds || []).includes(baseState.addictionTracker.id) &&
+          !(baseState.restoredEntityIds || []).includes(baseState.addictionTracker.id)))
+  );
+
   let addictionTracker = incomingState.addictionTracker !== undefined
     ? incomingState.addictionTracker
     : baseState.addictionTracker;
+
+  if (
+    !incomingState.addictionTracker &&
+    baseState.addictionTracker &&
+    !isBaseTrackerTombstoned
+  ) {
+    addictionTracker = baseState.addictionTracker;
+  }
 
   if (baseState.addictionTracker && incomingState.addictionTracker && baseState.addictionTracker.id === incomingState.addictionTracker.id) {
     const baseT = baseState.addictionTracker;
