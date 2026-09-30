@@ -5333,12 +5333,38 @@ export function useAppState() {
           const bh = prev.badHabits.find((b) => b.id === badHabitId);
 
           let pointsUpdate = {};
+          let excisedIds: string[] = [];
           const remainingLogs = prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId);
           let updatedLogs = remainingLogs;
           const changedLogIds: string[] = [];
 
           if (bh && !bh.isCompleted) {
             const nowIso = new Date().toISOString();
+            const today = todayKey();
+
+            let baseState = prev;
+            const todayOccurredLog = habitLogs.find(
+              (l) => l.date === today && l.status === 'occurred' && (l.pointsAwardedOrDeducted || 0) < 0
+            );
+
+            if (todayOccurredLog) {
+              const storedAmount = todayOccurredLog.pointsAwardedOrDeducted || 0;
+              const logInstance = todayOccurredLog.id || todayOccurredLog.createdAt || today;
+              const exciseResult = excisePointsEntriesInternal(
+                prev,
+                (entry) =>
+                  entry.source === 'bad_habit_occurred' &&
+                  entry.metadata?.badHabitId === badHabitId &&
+                  entry.metadata?.date === today,
+                { neg: Math.abs(storedAmount) },
+                1,
+                `badhabit_${badHabitId}_${today}_${logInstance}`
+              );
+              const { excisedEntryIds: newlyExcisedIds, ...pointsStateWithoutExcisedEntryIds } = exciseResult;
+              baseState = { ...prev, ...pointsStateWithoutExcisedEntryIds };
+              excisedIds = newlyExcisedIds;
+              pointsUpdate = pointsStateWithoutExcisedEntryIds;
+            }
 
             // a) Refund positive points awarded over the deleted habit's resisted logs (all dates)
             const refund = habitLogs
@@ -5347,7 +5373,6 @@ export function useAppState() {
 
             // b) Next active habits and promotion recompute on today's remaining resist logs
             const nextHabits = prev.badHabits.filter((b) => b.id !== badHabitId);
-            const today = todayKey();
             const todayResists = remainingLogs.filter(
               (l) => l.date === today && l.status === 'resisted'
             );
@@ -5361,7 +5386,7 @@ export function useAppState() {
             const netDelta = -refund + promotionDelta;
             if (netDelta !== 0) {
               pointsUpdate = addPointsInternal(
-                prev,
+                baseState,
                 netDelta,
                 `Bad habit deleted: ${bh.name}`,
                 'bad_habit_resisted'
@@ -5385,6 +5410,7 @@ export function useAppState() {
             ...(prev.deletedEntityIds || []),
             badHabitId,
             ...habitLogs.map((l) => l.id).filter(Boolean),
+            ...excisedIds,
           ];
           const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
 

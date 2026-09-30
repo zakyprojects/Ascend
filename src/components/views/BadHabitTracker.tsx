@@ -196,7 +196,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               <span className="text-content-secondary">Daily Resists & Cap:</span> Only the first <span className="text-success-text font-semibold">{BAD_HABIT_POINTS.eligibleSlots} active habits</span> (oldest first) are point-eligible. Each eligible resist earns <span className="text-success-text font-semibold">+{BAD_HABIT_POINTS.resistBase} pts</span> (max +{BAD_HABIT_POINTS.dailyCap} pts/day). Other habits are tracking-only (streak only, 0 pts for resist, occurred, and missed days).
             </li>
             <li>
-              <span className="text-content-secondary">Occurred & Miss Penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-rose-theme font-semibold">point-eligible habits only</span>. Deleting or completing an eligible habit promotes the next one; penalties already charged stay. Undo is available for today's action.
+              <span className="text-content-secondary">Occurred & Miss Penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-rose-theme font-semibold">point-eligible habits only</span>. Deleting an eligible habit refunds its resist points and today's Occurred penalty (earlier penalties stay); completing keeps everything. Promoting the next eligible habit recalculates today's resists. Undo is available for today's action.
             </li>
             <li>
               <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="text-brand-text font-semibold">75%</span> of commitment duration. Completing preserves points earned!
@@ -296,7 +296,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                       <button
                         onClick={() => setDeleteModalHabit(bh)}
                         className="p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all"
-                        title="Delete Bad Habit (resist points from this habit are reversed; penalties already applied stay)"
+                        title="Delete Bad Habit (resist points and today's Occurred penalty are reversed; earlier penalties stay)"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -613,13 +613,13 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-content-secondary space-y-2">
                 <p className="font-bold text-rose-theme flex items-center gap-1.5">
                   <AlertTriangle size={16} />
-                  Warning: Penalties Stay
+                  Warning: Earlier Penalties Stay
                 </p>
                 <p>
                   Deleting <strong className="text-content-primary">"{deleteModalHabit.name}"</strong> will permanently remove all logs and streak history.
                 </p>
                 <p>
-                  Resist points earned by this habit are reversed. Occurred and missed-day penalties already applied stay on your score.
+                  Resist points earned by this habit are reversed and today's Occurred penalty (if any) is refunded. Earlier Occurred and missed-day penalties stay on your score.
                 </p>
               </div>
             )}
