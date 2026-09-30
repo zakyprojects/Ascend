@@ -4,6 +4,7 @@ import { createNotificationSupabase } from './supabase';
 import { getEffectiveSeasonPoints } from './leagues';
 import { applyPenaltyDeductionInternal, addPointsInternal } from './pointsLedger';
 import { BAD_HABIT_POINTS, calculateTimeTrackerDailyPoints } from './pointsConfig';
+import { getPointEligibleHabitIds } from './badHabitEligibility';
 
 export { applyPenaltyDeductionInternal };
 
@@ -396,6 +397,8 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
   const badHabits = updatedState.badHabits || [];
   if (badHabits.length === 0) return updatedState;
 
+  const eligibleIds = getPointEligibleHabitIds(badHabits);
+
   const activeHabits = badHabits
     .filter((h) => !h.isCompleted)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -430,9 +433,10 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
           }
         }
 
-        const seasonPts = getAppStateSeasonPoints(updatedState, now);
-        const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
-        const penaltyAmount = Math.round(BAD_HABIT_POINTS.noReportBase * multiplier);
+        const isEligible = eligibleIds.has(habit.id);
+        const seasonPts = isEligible ? getAppStateSeasonPoints(updatedState, now) : 0;
+        const multiplier = isEligible ? getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts) : 1;
+        const penaltyAmount = isEligible ? Math.round(BAD_HABIT_POINTS.noReportBase * multiplier) : 0;
 
         const newLog: BadHabitLog = {
           id: uid(),

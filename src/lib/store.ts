@@ -118,6 +118,7 @@ import {
   processTimeTrackerDailyPoints,
   getMissPenaltyMultiplier,
   getHighestUserStreak,
+  getAppStateSeasonPoints,
 } from './habitPenalties';
 import { addPointsInternal } from './pointsLedger';
 export { addPointsInternal };
@@ -142,8 +143,11 @@ import {
   calculateTimeTrackerDailyPoints,
   calculateWeeklyGoalsPoints,
   wouldExceedRecoverySeasonCap,
-  allocateResistPoints,
 } from './pointsConfig';
+import {
+  allocateEligibleResistPoints,
+  isBadHabitPointEligible,
+} from './badHabitEligibility';
 export { recomputeTodayPresetPoints, calculateWeeklyGoalsPoints, WEEKLY_GOALS_POINTS };
 export type { PresetHabitCapItem };
 import { calculateUnifiedStreak } from './streakLogic';
@@ -5119,7 +5123,7 @@ export function useAppState() {
           // Dynamic chronological recompute across all same-day resist logs
           const sameDayResists = combinedLogs
             .filter((l) => l.date === date && l.status === 'resisted');
-          const recalculatedMap = allocateResistPoints(sameDayResists);
+          const recalculatedMap = allocateEligibleResistPoints(sameDayResists, baseState.badHabits);
 
           const oldResistPointsToday = (baseState.badHabitLogs || [])
             .filter((l) => l.date === date && l.status === 'resisted')
@@ -5176,23 +5180,28 @@ export function useAppState() {
             }
           }
 
-          const now = leagueNow();
-          const seasonStart = getLeaguePeriodStart('ninetyDay', now);
-          const seasonPts = calculatePeriodPoints(baseState.pointsHistory || [], seasonStart, now, baseState.totalPoints);
-          const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
-          const penaltyAmount = Math.round(BAD_HABIT_POINTS.occurBase * multiplier);
-          const pointsChange = -penaltyAmount;
-          const reason = `Bad habit occurred (${multiplier}x penalty): ${bh.name}`;
-
+          const eligible = isBadHabitPointEligible(baseState.badHabits, badHabitId);
+          let penaltyAmount = 0;
+          let pointsChange = 0;
           let pointsUpdate = {};
-          if (pointsChange !== 0) {
-            pointsUpdate = addPointsInternal(
-              baseState,
-              pointsChange,
-              reason,
-              'bad_habit_occurred',
-              { badHabitId, date, status }
-            );
+
+          if (eligible) {
+            const now = leagueNow();
+            const seasonPts = getAppStateSeasonPoints(baseState, now);
+            const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
+            penaltyAmount = Math.round(BAD_HABIT_POINTS.occurBase * multiplier);
+            pointsChange = -penaltyAmount;
+            const reason = `Bad habit occurred (${multiplier}x penalty): ${bh.name}`;
+
+            if (pointsChange !== 0) {
+              pointsUpdate = addPointsInternal(
+                baseState,
+                pointsChange,
+                reason,
+                'bad_habit_occurred',
+                { badHabitId, date, status }
+              );
+            }
           }
 
           const newLog: BadHabitLog = {
@@ -5248,7 +5257,7 @@ export function useAppState() {
         // Dynamic chronological recompute across all surviving same-day resist logs
         const sameDayResists = remainingLogs
           .filter((l) => l.date === today && l.status === 'resisted');
-        const recalculatedMap = allocateResistPoints(sameDayResists);
+        const recalculatedMap = allocateEligibleResistPoints(sameDayResists, prev.badHabits);
 
         const oldResistPointsToday = (prev.badHabitLogs || [])
           .filter((l) => l.date === today && l.status === 'resisted')
@@ -5324,75 +5333,49 @@ export function useAppState() {
           const bh = prev.badHabits.find((b) => b.id === badHabitId);
 
           let pointsUpdate = {};
-          let excisedIds: string[] = [];
           const remainingLogs = prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId);
           let updatedLogs = remainingLogs;
+          const changedLogIds: string[] = [];
 
           if (bh && !bh.isCompleted) {
-            // Find all unique dates where this deleted habit had a resist log
-            const affectedResistDates = Array.from(
-              new Set(habitLogs.filter((l) => l.status === 'resisted').map((l) => l.date))
-            );
+            const nowIso = new Date().toISOString();
 
-            const recalculatedMap = new Map<string, number>();
-            for (const rDate of affectedResistDates) {
-              const sameDayResists = remainingLogs
-                .filter((l) => l.date === rDate && l.status === 'resisted');
-              const dateMap = allocateResistPoints(sameDayResists);
-              for (const [id, pts] of dateMap) {
-                recalculatedMap.set(id, pts);
-              }
-            }
-
-            // Calculate resist points delta on affected dates
-            const oldResistPoints = prev.badHabitLogs
-              .filter((l) => affectedResistDates.includes(l.date) && l.status === 'resisted')
+            // a) Refund positive points awarded over the deleted habit's resisted logs (all dates)
+            const refund = habitLogs
+              .filter((l) => l.status === 'resisted' && (l.pointsAwardedOrDeducted || 0) > 0)
               .reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
-            const newResistPoints = remainingLogs
-              .filter((l) => affectedResistDates.includes(l.date) && l.status === 'resisted')
-              .reduce((s, l) => s + (recalculatedMap.get(l.id) ?? l.pointsAwardedOrDeducted ?? 0), 0);
-            const netResistDelta = newResistPoints - oldResistPoints;
 
-            // Excise non-resist (occurred / no_report) points for this habit
-            const negPoints = habitLogs.filter((l) => l.status !== 'resisted' && (l.pointsAwardedOrDeducted || 0) < 0).reduce((s, l) => s + Math.abs(l.pointsAwardedOrDeducted || 0), 0);
+            // b) Next active habits and promotion recompute on today's remaining resist logs
+            const nextHabits = prev.badHabits.filter((b) => b.id !== badHabitId);
+            const today = todayKey();
+            const todayResists = remainingLogs.filter(
+              (l) => l.date === today && l.status === 'resisted'
+            );
+            const map = allocateEligibleResistPoints(todayResists, nextHabits);
 
-            let basePointsState = prev;
-            if (negPoints > 0) {
-              const exciseResult = excisePointsEntriesInternal(
-                basePointsState,
-                (entry) => {
-                  if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_no_report') {
-                    if (entry.metadata?.badHabitId === badHabitId || entry.reason.includes(bh.name)) return true;
-                  }
-                  return false;
-                },
-                { neg: negPoints },
-                Infinity,
-                `badhabit_neg_${badHabitId}`
-              );
-              const { excisedEntryIds, ...restPoints } = exciseResult;
-              basePointsState = { ...basePointsState, ...restPoints };
-              excisedIds = excisedEntryIds;
-            }
+            const oldToday = todayResists.reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
+            const newToday = Array.from(map.values()).reduce((s, pts) => s + pts, 0);
+            const promotionDelta = newToday - oldToday;
 
-            if (netResistDelta !== 0) {
-              const deltaPoints = addPointsInternal(
-                basePointsState,
-                netResistDelta,
+            // c) Net points delta (refund is negative, promotion is positive)
+            const netDelta = -refund + promotionDelta;
+            if (netDelta !== 0) {
+              pointsUpdate = addPointsInternal(
+                prev,
+                netDelta,
                 `Bad habit deleted: ${bh.name}`,
                 'bad_habit_resisted'
               );
-              basePointsState = { ...basePointsState, ...deltaPoints };
             }
 
-            pointsUpdate = {
-              totalPoints: basePointsState.totalPoints,
-              pointsHistory: basePointsState.pointsHistory,
-            };
-
+            // d) Updated logs with today's resisted logs' stored points replaced from map
             updatedLogs = remainingLogs.map((l) => {
-              if (recalculatedMap.has(l.id)) {
-                return { ...l, pointsAwardedOrDeducted: recalculatedMap.get(l.id)! };
+              if (l.date === today && l.status === 'resisted' && map.has(l.id)) {
+                const newValue = map.get(l.id)!;
+                if (newValue !== (l.pointsAwardedOrDeducted || 0)) {
+                  changedLogIds.push(l.id);
+                  return { ...l, pointsAwardedOrDeducted: newValue, updatedAt: nowIso };
+                }
               }
               return l;
             });
@@ -5402,15 +5385,19 @@ export function useAppState() {
             ...(prev.deletedEntityIds || []),
             badHabitId,
             ...habitLogs.map((l) => l.id).filter(Boolean),
-            ...excisedIds,
           ];
           const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
+
+          const updatedUnsynced = Array.from(
+            new Set([...(prev.unsyncedEntityIds || []), badHabitId, ...changedLogIds])
+          ).slice(-500);
 
           return {
             ...prev,
             badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
             badHabitLogs: updatedLogs,
             deletedEntityIds: updatedDeletedEntityIds,
+            unsyncedEntityIds: updatedUnsynced,
             ...pointsUpdate,
           };
         },
@@ -5424,17 +5411,57 @@ export function useAppState() {
   const completeBadHabit = useCallback((badHabitId: string) => {
     setState((prev) => {
       const bh = prev.badHabits.find((b) => b.id === badHabitId);
-      if (!bh) return prev;
+      if (!bh || bh.isCompleted) return prev;
 
-      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), badHabitId])).slice(-500);
+      const nowIso = new Date().toISOString();
+      const nextBadHabits = prev.badHabits.map((b) =>
+        b.id === badHabitId
+          ? { ...b, isCompleted: true, completedAt: nowIso }
+          : b
+      );
+
+      const today = todayKey();
+      const todayResists = (prev.badHabitLogs || []).filter(
+        (l) => l.date === today && l.status === 'resisted'
+      );
+      const map = allocateEligibleResistPoints(todayResists, nextBadHabits);
+
+      const oldToday = todayResists.reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
+      const newToday = Array.from(map.values()).reduce((s, pts) => s + pts, 0);
+      const delta = newToday - oldToday;
+
+      let pointsUpdate = {};
+      if (delta !== 0) {
+        pointsUpdate = addPointsInternal(
+          prev,
+          delta,
+          `Bad habit promotion: ${bh.name} completed`,
+          'bad_habit_resisted'
+        );
+      }
+
+      const changedLogIds: string[] = [];
+      const updatedLogs = (prev.badHabitLogs || []).map((l) => {
+        if (l.date === today && l.status === 'resisted' && map.has(l.id)) {
+          const newPts = map.get(l.id)!;
+          if (newPts !== (l.pointsAwardedOrDeducted || 0)) {
+            changedLogIds.push(l.id);
+            return { ...l, pointsAwardedOrDeducted: newPts, updatedAt: nowIso };
+          }
+        }
+        return l;
+      });
+
+      const updatedUnsynced = Array.from(
+        new Set([...(prev.unsyncedEntityIds || []), badHabitId, ...changedLogIds])
+      ).slice(-500);
+
       return {
         ...prev,
-        badHabits: prev.badHabits.map((b) =>
-          b.id === badHabitId
-            ? { ...b, isCompleted: true, completedAt: new Date().toISOString() }
-            : b
-        ),
+        badHabits: nextBadHabits,
+        badHabitLogs: updatedLogs,
         unsyncedEntityIds: updatedUnsynced,
+        ...pointsUpdate,
       };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)

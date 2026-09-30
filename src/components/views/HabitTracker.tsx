@@ -378,7 +378,11 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
             {isLinked ? (
               <div className="text-xs text-warning-text font-medium flex items-center gap-1">
                 <span>Auto-synced</span>
-                <span className="text-brand-text font-medium">+{habit.points} pts</span>
+                {habit.points === 0 ? (
+                  <span className="text-content-subtle">For habit tracking, no points</span>
+                ) : (
+                  <span className="text-brand-text font-medium">+{habit.points} pts</span>
+                )}
               </div>
             ) : habit.isPreset ? (
               <div className="text-xs text-brand-text font-medium">+{habit.points} pts</div>

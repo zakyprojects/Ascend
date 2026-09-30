@@ -82,7 +82,7 @@ export function capNote(capId: CapId | 'timeTracker'): string {
   }
 
   if (capId === 'badHabitsResisted') {
-    return `Only your first ${BAD_HABIT_POINTS.maxDailyResists} resist logs each day (all bad habits combined) earn +${BAD_HABIT_POINTS.resistBase}. Later ones earn 0. Occurred and unreported habits always cost points. Resets at midnight.`;
+    return `Only your first ${BAD_HABIT_POINTS.eligibleSlots} active bad habits are point-eligible (first ${BAD_HABIT_POINTS.maxDailyResists} resists each day earn +${BAD_HABIT_POINTS.resistBase}, max +${BAD_HABIT_POINTS.dailyCap} pts/day). Other habits are tracking-only (0 pts). Occurred and missed days apply penalties to point-eligible habits only. Resets at midnight.`;
   }
 
   const _exhaustive: never = capId;

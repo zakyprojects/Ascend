@@ -106,6 +106,7 @@ export const READING_POINTS = {
 } as const;
 
 export const BAD_HABIT_POINTS = {
+  eligibleSlots: 2,
   // store.ts:4596
   resistBase: 3,
   dailyCap: 6,

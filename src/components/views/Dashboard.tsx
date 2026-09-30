@@ -346,7 +346,9 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                       {isLinked && <BookOpen size={13} className="text-warning-text shrink-0" />}
                       <span>{habit.name}</span>
                     </span>
-                    {habit.isPreset ? (
+                    {isLinked && habit.points === 0 ? (
+                      <span className="text-xs text-content-subtle">For habit tracking</span>
+                    ) : habit.isPreset ? (
                       <span className="text-xs text-brand-text font-medium">+{habit.points} pts</span>
                     ) : (
                       <span className="text-xs text-content-subtle">No pts</span>
