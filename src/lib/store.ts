@@ -6132,9 +6132,8 @@ export function useAppState() {
       const updatedLogs = [...prev.decisionLogs];
       updatedLogs[idx] = updated;
 
-      const pointsUpdate = addPointsInternal(prev, PFC_POINTS.decision, `Decision reflection: ${target.title}`, 'decision_reflection');
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), decisionId])).slice(-500);
-      return { ...prev, decisionLogs: updatedLogs, unsyncedEntityIds: updatedUnsynced, ...pointsUpdate };
+      return { ...prev, decisionLogs: updatedLogs, unsyncedEntityIds: updatedUnsynced };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6147,17 +6146,15 @@ export function useAppState() {
       emotion: emotion.trim(),
       intensity,
       context: context.trim(),
-      pointsAwarded: PFC_POINTS.emotion,
+      pointsAwarded: 0,
       createdAt: new Date().toISOString(),
     };
     setState((prev) => {
-      const pointsUpdate = addPointsInternal(prev, PFC_POINTS.emotion, `Emotion labeled: ${emotion}`, 'emotion_label');
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), log.id])).slice(-500);
       return {
         ...prev,
         emotionLogs: [log, ...prev.emotionLogs],
         unsyncedEntityIds: updatedUnsynced,
-        ...pointsUpdate,
       };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -6233,21 +6230,11 @@ export function useAppState() {
   const deleteDecisionLog = useCallback((logId: string) => {
     setState(
       (prev) => {
-        const target = prev.decisionLogs.find((d) => d.id === logId);
-        let ptsToDeduct = 0;
-        if (target) {
-          ptsToDeduct = target.isReflected ? PFC_POINTS.decision : 0;
-        }
-        let pointsUpdate = {};
-        if (ptsToDeduct > 0 && target) {
-          pointsUpdate = addPointsInternal(prev, -ptsToDeduct, `Decision log deleted: ${target.title}`, 'decision_journal');
-        }
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {
           ...prev,
           decisionLogs: prev.decisionLogs.filter((d) => d.id !== logId),
           deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
         };
       },
       { immediate: true }
@@ -6259,17 +6246,11 @@ export function useAppState() {
   const deleteEmotionLog = useCallback((logId: string) => {
     setState(
       (prev) => {
-        const target = prev.emotionLogs.find((e) => e.id === logId);
-        let pointsUpdate = {};
-        if (target) {
-          pointsUpdate = addPointsInternal(prev, -PFC_POINTS.emotion, `Emotion label deleted: ${target.emotion}`, 'emotion_label');
-        }
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {
           ...prev,
           emotionLogs: prev.emotionLogs.filter((e) => e.id !== logId),
           deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
         };
       },
       { immediate: true }

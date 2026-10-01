@@ -101,8 +101,6 @@ export const PFC_POINTS = {
     ] as const,
     dailyCap: 10,
   },
-  decision: 15,
-  emotion: 5,
 } as const;
 
 export const READING_POINTS = {
