@@ -3154,38 +3154,6 @@ export function useAppState() {
         const today = todayKey();
         const nowIso = new Date().toISOString();
 
-        if (target && target.isPreset && target.points > 0) {
-          let histPtsToDeduct = 0;
-          let histCompletedCount = 0;
-
-          if (Array.isArray(target.completions)) {
-            // Legacy string array completions
-            for (const c of target.completions) {
-              if (c !== today) {
-                histCompletedCount++;
-                histPtsToDeduct += target.points;
-              }
-            }
-          } else if (target.completions && typeof target.completions === 'object') {
-            for (const [dateKey, c] of Object.entries(target.completions)) {
-              if (c && c.done && dateKey !== today) {
-                histCompletedCount++;
-                histPtsToDeduct += typeof c.pointsAwarded === 'number' ? c.pointsAwarded : target.points;
-              }
-            }
-          }
-
-          if (histCompletedCount > 0 && histPtsToDeduct > 0) {
-            const histDeduct = addPointsInternal(
-              runningState,
-              -histPtsToDeduct,
-              `Habit deleted: ${target.name} (${histCompletedCount} completion(s) removed)`,
-              'habit'
-            );
-            runningState = { ...runningState, ...histDeduct };
-          }
-        }
-
         const remainingHabits = prev.habits.filter((h) => h.id !== habitId);
 
         // If target had a completion today, recalculate cap allocation for remaining preset habits
@@ -3222,6 +3190,42 @@ export function useAppState() {
                 new Set([...(runningState.deletedEntityIds || []), ...excisedEntryIds])
               ).slice(-500),
             };
+          }
+        }
+
+        if (target && target.frequency === 'weekly') {
+          const currentWeek = periodKey(target.frequency);
+          let targetHadCurrentWeekDone = false;
+          if (Array.isArray(target.completions)) {
+            targetHadCurrentWeekDone = target.completions.includes(currentWeek);
+          } else if (target.completions && typeof target.completions === 'object') {
+            const weekRecord = target.completions[currentWeek];
+            if (weekRecord?.done) {
+              targetHadCurrentWeekDone = true;
+            }
+          }
+
+          if (targetHadCurrentWeekDone) {
+            const exciseResult = excisePointsEntriesInternal(
+              runningState,
+              (entry) =>
+                (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
+                entry.metadata?.habitId === target.id &&
+                entry.metadata?.periodKey === currentWeek,
+              undefined,
+              Infinity,
+              `habit_${target.id}_${currentWeek}`
+            );
+            const { excisedEntryIds, ...restPoints } = exciseResult;
+            runningState = { ...runningState, ...restPoints };
+            if (excisedEntryIds && excisedEntryIds.length > 0) {
+              runningState = {
+                ...runningState,
+                deletedEntityIds: Array.from(
+                  new Set([...(runningState.deletedEntityIds || []), ...excisedEntryIds])
+                ).slice(-500),
+              };
+            }
           }
         }
 
