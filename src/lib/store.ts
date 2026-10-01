@@ -67,7 +67,7 @@ import {
   calculateBlockDurationMinutes,
 } from './timeTracker';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, getWeekDates, previousPeriodKey, parseDate, getNow, getNextDateKey, weekKey } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, getWeekDates, previousPeriodKey, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
 import { computeLinkedGoalProgress } from './linkedGoalMetrics';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { PresetHabit } from './presets';
@@ -143,6 +143,7 @@ import {
   calculateTimeTrackerDailyPoints,
   calculateWeeklyGoalsPoints,
   wouldExceedRecoverySeasonCap,
+  POINTS_V2_START_DATE_KEY,
 } from './pointsConfig';
 import {
   allocateEligibleResistPoints,
@@ -1274,14 +1275,25 @@ export function reconcileWeeklyGoalsPointsForAllWeeks(
   now: Date = leagueNow()
 ): AppState {
   const activeSeasonStart = getSeasonStart(now);
+  const currentWeek = weekKey(now);
+  const currentWeekStart = getWeekDates(currentWeek).start;
+  const prevWeekDateKey = addDays(todayKey(currentWeekStart), -7);
+  const prevWeek = weekKey(parseDate(prevWeekDateKey) ?? undefined);
   let currentState = state;
 
   for (const doc of currentState.weeklyGoals || []) {
     if (!doc || !doc.weekKey) continue;
+    if (doc.weekKey !== currentWeek && doc.weekKey !== prevWeek) {
+      continue;
+    }
     try {
       const { start } = getWeekDates(doc.weekKey);
       if (start < activeSeasonStart) {
         continue; // Closed-season weeks are frozen
+      }
+      const weekStartKey = todayKey(start);
+      if (weekStartKey < POINTS_V2_START_DATE_KEY) {
+        continue;
       }
     } catch {
       continue;

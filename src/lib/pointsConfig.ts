@@ -1,6 +1,13 @@
 // src/lib/pointsConfig.ts
 import { WeeklyGoalItem } from '@/types';
 
+/**
+ * Set to the production push date (YYYY-MM-DD, local date key) BEFORE pushing.
+ * Days/weeks before this date are never scored retroactively.
+ */
+export const POINTS_V2_START_DATE_KEY = '2026-10-01';
+export const RETRO_SCORING_WINDOW_DAYS = 7;
+
 export const PRESET_HABIT_POINTS = {
   dailyCap: 10,
 } as const;

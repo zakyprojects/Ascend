@@ -3,7 +3,7 @@ import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, uid, addDay
 import { createNotificationSupabase } from './supabase';
 import { getEffectiveSeasonPoints } from './leagues';
 import { applyPenaltyDeductionInternal, addPointsInternal } from './pointsLedger';
-import { BAD_HABIT_POINTS, calculateTimeTrackerDailyPoints } from './pointsConfig';
+import { BAD_HABIT_POINTS, calculateTimeTrackerDailyPoints, POINTS_V2_START_DATE_KEY, RETRO_SCORING_WINDOW_DAYS } from './pointsConfig';
 import { getPointEligibleHabitIds } from './badHabitEligibility';
 
 export { applyPenaltyDeductionInternal };
@@ -582,17 +582,25 @@ export function processTimeTrackerDailyPoints(state: AppState, now: Date = new D
   if (!state.timeTracker?.dailyLogs) return state;
 
   const todayStr = todayKey(now);
+  const windowStartKey = addDays(todayStr, -RETRO_SCORING_WINDOW_DAYS);
+  const minKey = windowStartKey > POINTS_V2_START_DATE_KEY ? windowStartKey : POINTS_V2_START_DATE_KEY;
+
   const dailyLogs = state.timeTracker.dailyLogs;
-  const pastDateKeys = Object.keys(dailyLogs).filter((dateKey) => dateKey < todayStr);
+  const pastDateKeys = Object.keys(dailyLogs).filter((dateKey) => dateKey >= minKey && dateKey < todayStr);
 
   if (pastDateKeys.length === 0) return state;
 
   let updatedState = state;
   const historyEntries = updatedState.pointsHistory || [];
+  const currentSeason = typeof state.seasonId === 'number' ? state.seasonId : 1;
+  const evictedIds = (state.evictedEntryIds || [])
+    .filter((r) => r && (r.seasonNumber === undefined || r.seasonNumber === currentSeason))
+    .map((r) => r.id);
+  const evictedSet = new Set(evictedIds);
 
   for (const dateKey of pastDateKeys) {
     const entryId = `time_tracker_${dateKey}`;
-    const alreadyEvaluated = historyEntries.some((e) => e && e.id === entryId);
+    const alreadyEvaluated = historyEntries.some((e) => e && e.id === entryId) || evictedSet.has(entryId);
 
     if (!alreadyEvaluated) {
       const blocks = dailyLogs[dateKey] || [];
