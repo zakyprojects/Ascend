@@ -611,18 +611,6 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
     }))
     .slice(-1000);
 
-  if (evictedEntryIds.length > 0) {
-    let ledgerPos = 0;
-    let ledgerNeg = 0;
-    for (const r of evictedEntryIds) {
-      const amt = r.amount || 0;
-      if (amt > 0) ledgerPos += amt;
-      else if (amt < 0) ledgerNeg += Math.abs(amt);
-    }
-    seasonEvictedPos = ledgerPos;
-    seasonEvictedNeg = ledgerNeg;
-  }
-
   const computedSeasonPoints = calculateSeasonalTotal(
     seasonEvictedPos,
     seasonEvictedNeg,
