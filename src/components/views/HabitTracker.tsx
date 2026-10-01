@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Plus, Flame, Trash2, Check, Calendar, Repeat, BookMarked, Pencil, Info, AlertTriangle, BookOpen, Lock } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Habit, HabitFrequency } from '@/types';
-import { calculateStreak, calculateBestStreak, periodKey } from '@/lib/dates';
+import { calculateStreak, calculateBestStreak, periodKey, getNow, weekKey } from '@/lib/dates';
 import { PRESET_CATEGORIES, PresetHabit } from '@/lib/presets';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -29,8 +29,10 @@ export function HabitTracker({ store }: { store: AppStore }) {
 
   const linkedGoalsCount = useMemo(() => {
     if (!confirmDelete) return 0;
+    const currentWeekKey = weekKey(getNow());
     let count = 0;
     store.state.weeklyGoals.forEach((doc) => {
+      if (doc.weekKey < currentWeekKey) return;
       doc.goals.forEach((g) => {
         if (g.linkedModule === 'habit' && g.linkedItemId === confirmDelete.id) {
           count++;
@@ -290,7 +292,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
         itemName={confirmDelete?.name}
         description={`Are you sure you want to delete this habit? This will permanently remove its completion history and streak count.${
           linkedGoalsCount > 0
-            ? ` Deleting this habit will also delete ${linkedGoalsCount} linked Weekly Goal${linkedGoalsCount > 1 ? 's' : ''}.`
+            ? ` Deleting this habit will also delete ${linkedGoalsCount} linked Weekly Goal${linkedGoalsCount > 1 ? 's' : ''} from this week and upcoming weeks (past weeks are kept).`
             : ''
         }`}
       />

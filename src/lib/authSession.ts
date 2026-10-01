@@ -1,6 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { AppState, DEFAULT_STATE, UserProfile, PlanStep, Partnership } from '@/types';
-import { generateNumericUID, parseDate } from './dates';
+import { generateNumericUID, parseDate, getNow, weekKey } from './dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { computeStateDataWeight } from './dataWeight';
 import { applyPresetHabitRemovalMigration } from './store';
@@ -233,7 +233,7 @@ export async function hydrateUserSession(
       currentUser: user,
       username: user.username,
     };
-    state = applyPresetHabitRemovalMigration(state);
+    state = applyPresetHabitRemovalMigration(state, weekKey(getNow()));
     setUserDataWatermark(userId, state);
   } else if (signupDefaults?.guestState) {
     state = {
@@ -242,7 +242,7 @@ export async function hydrateUserSession(
       currentUser: user,
       username: user.username,
     };
-    state = applyPresetHabitRemovalMigration(state);
+    state = applyPresetHabitRemovalMigration(state, weekKey(getNow()));
     setUserDataWatermark(userId, state);
   } else {
     // Check if there is pre-existing guest state in localStorage to preserve
@@ -263,7 +263,7 @@ export async function hydrateUserSession(
         currentUser: user,
         username: user.username,
       };
-      state = applyPresetHabitRemovalMigration(state);
+      state = applyPresetHabitRemovalMigration(state, weekKey(getNow()));
       setUserDataWatermark(userId, state);
     } else {
       state = {
