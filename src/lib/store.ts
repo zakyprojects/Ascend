@@ -239,12 +239,14 @@ function dispatchToastError(title: string, message?: string) {
 function removeLinkedWeeklyGoals(
   weeklyGoals: WeeklyGoal[],
   linkedModule: 'habit' | 'skill' | 'reading',
-  itemIds: (string | undefined)[]
+  itemIds: (string | undefined)[],
+  currentWeekKey: string
 ): WeeklyGoal[] {
   const validIds = new Set(itemIds.filter((id): id is string => Boolean(id)));
   if (validIds.size === 0) return weeklyGoals;
 
   return weeklyGoals.map((w) => {
+    if (w.weekKey < currentWeekKey) return w;
     const hasLinked = w.goals.some(
       (g) => g.linkedModule === linkedModule && g.linkedItemId && validIds.has(g.linkedItemId)
     );
@@ -273,7 +275,7 @@ export const RETIRED_PRESET_HABIT_NAMES = new Set<string>([
  * points earned during the active season, tombstones removed IDs, detaches linked weekly goals,
  * and updates data-loss watermarks.
  */
-export function applyPresetHabitRemovalMigration(state: AppState): AppState {
+export function applyPresetHabitRemovalMigration(state: AppState, currentWeekKey: string): AppState {
   const habitsToRetire = (state.habits || []).filter(
     (h) => h && h.isPreset === true && RETIRED_PRESET_HABIT_NAMES.has(h.name)
   );
@@ -349,7 +351,7 @@ export function applyPresetHabitRemovalMigration(state: AppState): AppState {
   const updatedDeletedEntityIds = Array.from(
     new Set([...(runningState.deletedEntityIds || []), ...retiredHabitIds])
   ).slice(-500);
-  const updatedWeeklyGoals = removeLinkedWeeklyGoals(runningState.weeklyGoals || [], 'habit', retiredHabitIds);
+  const updatedWeeklyGoals = removeLinkedWeeklyGoals(runningState.weeklyGoals || [], 'habit', retiredHabitIds, currentWeekKey);
 
   runningState = {
     ...runningState,
@@ -980,7 +982,7 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
   );
 
   // Preset Habit Retirement Migration: Cleanse retired presets & retroactively claw back season points
-  sweptState = applyPresetHabitRemovalMigration(sweptState);
+  sweptState = applyPresetHabitRemovalMigration(sweptState, weekKey(getNow()));
 
   const habitPenalized = processBadHabitNoReports(sweptState);
   return processTimeTrackerDailyPoints(habitPenalized, now);
@@ -3147,6 +3149,7 @@ export function useAppState() {
   }, []);
 
   const deleteHabit = useCallback((habitId: string) => {
+    const currentWeekKey = weekKey(getNow());
     setState(
       (prev) => {
         const target = prev.habits.find((h) => h.id === habitId);
@@ -3301,7 +3304,7 @@ export function useAppState() {
         return {
           ...runningState,
           habits: updatedHabits,
-          weeklyGoals: removeLinkedWeeklyGoals(runningState.weeklyGoals, 'habit', [habitId]),
+          weeklyGoals: removeLinkedWeeklyGoals(runningState.weeklyGoals, 'habit', [habitId], currentWeekKey),
           deletedEntityIds: updatedDeletedEntityIds,
         };
       },
@@ -3312,6 +3315,7 @@ export function useAppState() {
   }, []);
 
   const toggleReadingHabit = useCallback(() => {
+    const currentWeekKey = weekKey(getNow());
     setState(
       (prev) => {
         const existing = prev.habits.find((h) => h.linkedModule === 'reading');
@@ -3333,7 +3337,7 @@ export function useAppState() {
           return {
             ...prev,
             habits: prev.habits.filter((h) => h.id !== existing.id),
-            weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'habit', [existing.id]),
+            weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'habit', [existing.id], currentWeekKey),
             deletedEntityIds: updatedDeletedEntityIds,
             ...pointsUpdate,
           };
@@ -4504,6 +4508,7 @@ export function useAppState() {
   }, []);
 
   const deleteBook = useCallback((bookId: string) => {
+    const currentWeekKey = weekKey(getNow());
     return (
       setState(
         (prev) => {
@@ -4622,7 +4627,7 @@ export function useAppState() {
           ),
           readingLogs: updatedReadingLogs,
           habits: updatedHabits,
-          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsArray),
+          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsArray, currentWeekKey),
           deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
@@ -4903,6 +4908,7 @@ export function useAppState() {
   }, []);
 
   const deleteSkill = useCallback((skillId: string): Promise<void> => {
+    const currentWeekKey = weekKey(getNow());
     return (
       setState(
         (prev) => {
@@ -4968,7 +4974,7 @@ export function useAppState() {
             ...prev,
             skills: remainingSkills,
             skillLogs: updatedSkillLogs,
-            weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId]),
+            weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId], currentWeekKey),
             deletedEntityIds: updatedDeletedEntityIds,
             ...pointsUpdate,
           };

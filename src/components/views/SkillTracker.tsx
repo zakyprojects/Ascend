@@ -6,7 +6,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { Skill, SkillLevel, SkillSessionLog } from '@/types';
-import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate } from '@/lib/dates';
+import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate, weekKey } from '@/lib/dates';
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 
@@ -54,8 +54,10 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
   const linkedSkillGoalsCount = useMemo(() => {
     if (!deleteModalSkill) return 0;
+    const currentWeekKey = weekKey(getNow());
     let count = 0;
     store.state.weeklyGoals.forEach((doc) => {
+      if (doc.weekKey < currentWeekKey) return;
       doc.goals.forEach((g) => {
         if (g.linkedModule === 'skill' && g.linkedItemId === deleteModalSkill.id) {
           count++;
@@ -611,7 +613,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
         itemName={deleteModalSkill?.name}
         description={`Are you sure you want to delete "${deleteModalSkill?.name}"? This will remove the skill and its recorded practice history.${
           linkedSkillGoalsCount > 0
-            ? ` Deleting this skill will also delete ${linkedSkillGoalsCount} linked Weekly Goal${linkedSkillGoalsCount > 1 ? 's' : ''}.`
+            ? ` Deleting this skill will also delete ${linkedSkillGoalsCount} linked Weekly Goal${linkedSkillGoalsCount > 1 ? 's' : ''} from this week and upcoming weeks (past weeks are kept).`
             : ''
         }`}
       />

@@ -26,7 +26,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
-import { todayKey, formatDateLong, parseDate } from '@/lib/dates';
+import { todayKey, formatDateLong, parseDate, getNow, weekKey } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
@@ -145,11 +145,13 @@ export function ReadingHub({ store }: { store: AppStore }) {
   // Count linked weekly goals for delete modal
   const linkedBookGoalsCount = useMemo(() => {
     if (!deleteModalBook) return 0;
+    const currentWeekKey = weekKey(getNow());
     let count = 0;
     const matchingIds = new Set<string>([deleteModalBook.id]);
     if (deleteModalBook.linkedBookId) matchingIds.add(deleteModalBook.linkedBookId);
 
     store.state.weeklyGoals.forEach((doc) => {
+      if (doc.weekKey < currentWeekKey) return;
       doc.goals.forEach((g) => {
         if (g.linkedModule === 'reading' && g.linkedItemId && matchingIds.has(g.linkedItemId)) {
           count++;
@@ -1351,7 +1353,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         itemName={deleteModalBook?.title}
         description={`Are you sure you want to remove "${deleteModalBook?.title}" from your library?${
           linkedBookGoalsCount > 0
-            ? ` Removing this book will also delete ${linkedBookGoalsCount} linked Weekly Goal${linkedBookGoalsCount > 1 ? 's' : ''}.`
+            ? ` Removing this book will also delete ${linkedBookGoalsCount} linked Weekly Goal${linkedBookGoalsCount > 1 ? 's' : ''} from this week and upcoming weeks (past weeks are kept).`
             : ''
         }`}
         confirmText="Remove Book"
