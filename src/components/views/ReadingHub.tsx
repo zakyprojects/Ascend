@@ -26,8 +26,10 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
-import { todayKey, formatDateLong } from '@/lib/dates';
+import { todayKey, formatDateLong, parseDate } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
+import { CapMeter } from '@/components/ui/CapMeter';
+import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
@@ -99,6 +101,46 @@ export function ReadingHub({ store }: { store: AppStore }) {
     }
     return count;
   }, [uniqueDates]);
+
+  // Derived finish bonus eligibility for the finish modal
+  const finishEligibility = useMemo(() => {
+    if (!finishModalBook) return null;
+    const alreadyAwarded = (finishModalBook.pointsAwarded ?? 0) > 0;
+    const startStr = finishModalBook.dateStarted || finishModalBook.startedAt || finishModalBook.addedAt;
+    const startParsed = parseDate(startStr);
+    let spanDays = 0;
+    let meetsSpan = false;
+    if (startParsed) {
+      const startKeyStr = todayKey(startParsed);
+      const nowKeyStr = todayKey(new Date());
+      const [sY, sM, sD] = startKeyStr.split('-').map(Number);
+      const [nY, nM, nD] = nowKeyStr.split('-').map(Number);
+      const startMidnight = new Date(sY, sM - 1, sD).getTime();
+      const nowMidnight = new Date(nY, nM - 1, nD).getTime();
+      spanDays = Math.floor((nowMidnight - startMidnight) / 86400000);
+      meetsSpan = spanDays >= 7;
+    }
+
+    const allMatchingIds = new Set<string>([finishModalBook.id]);
+    if (finishModalBook.linkedBookId) allMatchingIds.add(finishModalBook.linkedBookId);
+
+    const maxPages = finishModalBook.totalAmount ?? finishModalBook.totalPages ?? 250;
+    const currentPage = finishModalBook.currentAmount ?? finishModalBook.currentPage ?? 0;
+    const unreadDelta = Math.max(0, maxPages - currentPage);
+
+    const bookLogs = readingLogs.filter(
+      (l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)) && (l.pagesRead || 0) > 0
+    );
+    const logDates = new Set(bookLogs.map((l) => l.date));
+    if (unreadDelta > 0) {
+      logDates.add(todayKey(new Date()));
+    }
+    const loggedDays = logDates.size;
+    const meetsDays = loggedDays >= 5;
+    const isEligible = !alreadyAwarded && meetsSpan && meetsDays;
+
+    return { isEligible, spanDays, loggedDays, meetsSpan, meetsDays, alreadyAwarded };
+  }, [finishModalBook, readingLogs]);
 
   // Count linked weekly goals for delete modal
   const linkedBookGoalsCount = useMemo(() => {
@@ -408,6 +450,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
         </div>
       </div>
+
+      <CapMeterConnected state={store.state} capId="reading" />
 
       {/* Tabs & Filters */}
       <div className="space-y-3">
@@ -745,8 +789,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
                       {renderCategoryBadge(curated.category, true)}
-                      <span className="badge badge-amber text-[10px] flex items-center gap-1">
-                        <Sparkles size={10} /> +{curated.pointsOnCompletion} pts on finish
+                      <span
+                        className="badge badge-amber text-[10px] flex items-center gap-1"
+                        title="Requires reading inside Ascend across ≥7 days span and ≥5 logged reading days"
+                      >
+                        <Sparkles size={10} /> +{READING_POINTS.completionBonus} pts on finish
                       </span>
                     </div>
 
@@ -829,9 +876,16 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         </span>
                         {book.pointsAwarded ? (
                           <span className="badge badge-amber text-[10px] flex items-center gap-1">
-                            <Sparkles size={10} /> +{book.pointsAwarded} pts
+                            <Sparkles size={10} /> +{book.pointsAwarded} pts bonus
                           </span>
-                        ) : null}
+                        ) : (
+                          <span
+                            className="badge bg-bg-700 text-content-disabled text-[10px] flex items-center gap-1"
+                            title="Completion bonus requires reading inside Ascend across ≥7 days span and ≥5 distinct logged reading days"
+                          >
+                            Completed without bonus
+                          </span>
+                        )}
                       </div>
                       <h3 className="text-base font-bold text-content-primary mt-1">{book.title}</h3>
                       <p className="text-xs text-content-muted">by {book.author}</p>
@@ -1170,17 +1224,51 @@ export function ReadingHub({ store }: { store: AppStore }) {
         title={finishModalBook ? `Celebrate: ${finishModalBook.title}` : 'Book Finished'}
       >
         <form onSubmit={handleFinishSubmit} className="space-y-4">
-          <div className="p-3.5 bg-amber-500/15 border border-amber-500/30 rounded-xl flex items-center gap-3 text-warning-text">
-            <Sparkles size={24} className="shrink-0 text-warning-text" />
-            <div className="text-xs">
-              <span className="font-bold block">Congratulations on finishing!</span>
-              <span>
-                {finishModalBook?.isCurated
-                  ? `Earned +${finishModalBook.pointsReward || READING_POINTS.curatedBookFallback} points bonus!`
-                  : `Earned +${READING_POINTS.customBookBonus} points completion bonus!`}
-              </span>
+          {finishEligibility?.isEligible ? (
+            <div className="p-3.5 bg-amber-500/15 border border-amber-500/30 rounded-xl flex items-center gap-3 text-warning-text">
+              <Sparkles size={24} className="shrink-0 text-warning-text" />
+              <div className="text-xs space-y-0.5">
+                <span className="font-bold block">Congratulations on finishing!</span>
+                <span>
+                  Eligible for +{READING_POINTS.completionBonus} points completion bonus!
+                </span>
+                <p className="text-[11px] text-content-muted">
+                  Span: {finishEligibility.spanDays} days (req. ≥7) • Reading days logged: {finishEligibility.loggedDays} (req. ≥5)
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-3.5 bg-bg-700/60 border border-overlay-medium rounded-xl flex flex-col gap-3 text-content-secondary">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 size={24} className="shrink-0 text-content-disabled" />
+                <div className="text-xs space-y-0.5">
+                  <span className="font-bold block text-content-primary">Finishing Book (+0 bonus points)</span>
+                  <p className="text-content-muted leading-relaxed">
+                    {finishEligibility?.alreadyAwarded
+                      ? 'Completion bonus was already awarded for this book.'
+                      : `The 15pt bonus requires reading inside Ascend across ≥7 days (current: ${finishEligibility?.spanDays ?? 0}d) and ≥5 distinct logged reading days (current: ${finishEligibility?.loggedDays ?? 0}d). Daily page points already earned remain intact.`}
+                  </p>
+                </div>
+              </div>
+
+              {!finishEligibility?.alreadyAwarded && finishEligibility && (
+                <div className="space-y-2 pt-2 border-t border-overlay-subtle">
+                  <CapMeter
+                    variant="bar"
+                    label={`Days since start (${finishEligibility.spanDays}/7)`}
+                    earned={finishEligibility.spanDays}
+                    cap={7}
+                  />
+                  <CapMeter
+                    variant="bar"
+                    label={`Reading days logged (${finishEligibility.loggedDays}/5)`}
+                    earned={finishEligibility.loggedDays}
+                    cap={5}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-content-tertiary mb-1">

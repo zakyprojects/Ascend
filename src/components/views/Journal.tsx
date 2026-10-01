@@ -28,6 +28,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
+import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { useToast } from '@/components/ui/Toast';
 import { getDailyPrompt, JournalPrompt } from '@/data/journalPrompts';
 
@@ -312,6 +313,8 @@ export function Journal({ store }: { store: AppStore }) {
           Reflect daily, build emotional awareness, and track your mood trends
         </p>
       </div>
+
+      <CapMeterConnected state={store.state} capId="journal" />
 
       {/* TODAY'S ENTRY CARD (TWO-STATE FLOW) */}
       <div className="card p-5 border border-overlay-subtle relative overflow-hidden">

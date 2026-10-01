@@ -16,9 +16,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { AppStore, isWeeklyReflectionAwarded } from '@/lib/store';
-import { WEEKLY_REFLECTION_POINTS } from '@/lib/pointsConfig';
+import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoints } from '@/lib/pointsConfig';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { CapMeter } from '@/components/ui/CapMeter';
+import { weeklyGoalsCapNote } from '@/lib/capCopy';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import {
@@ -37,6 +39,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const currentWeekKey = weekKey();
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(currentWeekKey);
+
+  const isPastWeek = selectedWeekKey < currentWeekKey;
+  const isFutureWeek = selectedWeekKey > currentWeekKey;
+
+  useEffect(() => {
+    store.syncLinkedWeeklyGoals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const weeklyGoals = store.state.weeklyGoals;
 
@@ -183,25 +193,37 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
   const handleCreateReflection = () => {
     if (!newReflectionContent.trim()) return;
-    store.addWeeklyReflection(selectedWeekKey, newReflectionContent);
-    setNewReflectionContent('');
-    setShowAddReflection(false);
+    try {
+      store.addWeeklyReflection(selectedWeekKey, newReflectionContent);
+      setNewReflectionContent('');
+      setShowAddReflection(false);
+    } catch (err: any) {
+      showErrorToast('Failed to add reflection', err?.message);
+    }
   };
 
   const handleUpdateReflection = () => {
     if (!editingReflection || !editReflectionContent.trim()) return;
-    store.updateWeeklyReflection(selectedWeekKey, editingReflection.id, editReflectionContent);
-    setEditingReflection(null);
-    setEditReflectionContent('');
+    try {
+      store.updateWeeklyReflection(selectedWeekKey, editingReflection.id, editReflectionContent);
+      setEditingReflection(null);
+      setEditReflectionContent('');
+    } catch (err: any) {
+      showErrorToast('Failed to update reflection', err?.message);
+    }
   };
 
   const handleDeleteReflectionConfirm = async () => {
     if (deleteReflectionModal) {
       const reflectionId = deleteReflectionModal.id;
       await executeWithKey(`delete_weekly_reflection_${reflectionId}`, async () => {
-        store.deleteWeeklyReflection(selectedWeekKey, reflectionId);
-        setDeleteReflectionModal(null);
-        showSuccessToast('Reflection Deleted', 'Weekly reflection entry removed.', `weekly_reflection_${reflectionId}`);
+        try {
+          store.deleteWeeklyReflection(selectedWeekKey, reflectionId);
+          setDeleteReflectionModal(null);
+          showSuccessToast('Reflection Deleted', 'Weekly reflection entry removed.', `weekly_reflection_${reflectionId}`);
+        } catch (err: any) {
+          showErrorToast('Failed to delete reflection', err?.message);
+        }
       });
     }
   };
@@ -210,9 +232,13 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     if (deleteGoalModal) {
       const goalId = deleteGoalModal.id;
       await executeWithKey(`delete_weekly_goal_${goalId}`, async () => {
-        store.deleteWeeklyGoalItem(selectedWeekKey, goalId);
-        setDeleteGoalModal(null);
-        showSuccessToast('Goal Deleted', 'Weekly goal removed.', `weekly_goal_${goalId}`);
+        try {
+          store.deleteWeeklyGoalItem(selectedWeekKey, goalId);
+          setDeleteGoalModal(null);
+          showSuccessToast('Goal Deleted', 'Weekly goal removed.', `weekly_goal_${goalId}`);
+        } catch (err: any) {
+          showErrorToast('Failed to delete goal', err?.message);
+        }
       });
     }
   };
@@ -284,13 +310,16 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       unit: linkedModule === 'none' ? (unit.trim() ? unit.trim() : 'times') : undefined,
     };
 
-    if (editingGoal) {
-      store.updateWeeklyGoalItem(selectedWeekKey, editingGoal.id, payload);
-    } else {
-      store.addWeeklyGoalItem(selectedWeekKey, payload);
+    try {
+      if (editingGoal) {
+        store.updateWeeklyGoalItem(selectedWeekKey, editingGoal.id, payload);
+      } else {
+        store.addWeeklyGoalItem(selectedWeekKey, payload);
+      }
+      setModalOpen(false);
+    } catch (err: any) {
+      showErrorToast(editingGoal ? 'Failed to update goal' : 'Failed to add goal', err?.message);
     }
-
-    setModalOpen(false);
   };
 
   // Overall Week Completion Summary Stats
@@ -474,15 +503,41 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             <h3 className="text-sm font-bold text-content-secondary">
               Target Priorities for {selectedWeekKey}
             </h3>
+            <span className="badge badge-primary text-[10px] font-bold">
+              {calculateWeeklyGoalsPoints(activeGoalDoc.goals).pointsAwarded}/{WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts
+            </span>
           </div>
 
           <button
             onClick={openCreateModal}
-            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
+            disabled={isPastWeek}
+            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={14} /> Add Weekly Goal
           </button>
         </div>
+
+        {isPastWeek && (
+          <p className="text-[11px] text-content-muted">Past weeks are read-only.</p>
+        )}
+        {isFutureWeek && (
+          <p className="text-[11px] text-content-muted">
+            Future weeks are for planning: goals can't be completed and reflections can't be written yet.
+          </p>
+        )}
+
+        {selectedWeekKey === currentWeekKey && (() => {
+          const weeklyGoalsScore = calculateWeeklyGoalsPoints(activeGoalDoc.goals);
+          return (
+            <CapMeter
+              variant="bar"
+              label={`Weekly goals points (${weeklyGoalsScore.completedGoalsCount} achieved, ${weeklyGoalsScore.countedGoalsCount} counted)`}
+              earned={weeklyGoalsScore.pointsAwarded}
+              cap={WEEKLY_GOALS_POINTS.maxWeeklyPoints}
+              note={weeklyGoalsCapNote(getWeekReflectionCutoff(selectedWeekKey))}
+            />
+          );
+        })()}
 
         {activeGoalDoc.goals.filter((g) => !g.archived).length === 0 ? (
           <div className="text-center py-8 space-y-3 bg-bg-900/30 rounded-xl border border-dashed border-overlay-default">
@@ -493,7 +548,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 Define 1-3 measurable, high-leverage priorities to align your effort this week.
               </p>
             </div>
-            <button onClick={openCreateModal} className="btn-secondary text-xs inline-flex items-center gap-1.5">
+            <button
+              onClick={openCreateModal}
+              disabled={isPastWeek}
+              className="btn-secondary text-xs inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Plus size={14} /> Set First Goal
             </button>
           </div>
@@ -514,30 +573,55 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 flex-1">
-                      <button
-                        onClick={() => {
-                          const isFreeformWithStepper = (!item.linkedModule || item.linkedModule === 'none') && prog.target > 1;
-                          const nextCompleted = !isDone;
+                      {item.linkedModule && item.linkedModule !== 'none' ? (
+                        <div
+                          title="Auto-synced from linked activity"
+                          className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border cursor-default select-none pointer-events-none ${
+                            isDone
+                              ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
+                              : 'bg-bg-800 border-overlay-strong text-content-disabled'
+                          }`}
+                        >
+                          {isDone ? <Check size={14} /> : <Circle size={14} />}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            const isFreeformWithStepper = prog.target > 1;
+                            const nextCompleted = !isDone;
 
-                          if (isFreeformWithStepper) {
-                            store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
-                              completed: nextCompleted,
-                            });
-                          } else {
-                            store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
-                              completed: nextCompleted,
-                              manualProgress: nextCompleted ? (item.targetValue || 1) : 0,
-                            });
-                          }
-                        }}
-                        className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border ${
-                          isDone
-                            ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
-                            : 'bg-bg-800 border-overlay-strong text-content-disabled hover:border-overlay-heavy'
-                        }`}
-                      >
-                        {isDone ? <Check size={14} /> : <Circle size={14} />}
-                      </button>
+                            try {
+                              if (isFreeformWithStepper) {
+                                if (nextCompleted) {
+                                  store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
+                                    completed: true,
+                                    manualProgress: Math.max(item.manualProgress || 0, item.targetValue || 1),
+                                  });
+                                } else {
+                                  store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
+                                    completed: false,
+                                  });
+                                }
+                              } else {
+                                store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
+                                  completed: nextCompleted,
+                                  manualProgress: nextCompleted ? (item.targetValue || 1) : 0,
+                                });
+                              }
+                            } catch (err: any) {
+                              showErrorToast('Failed to update goal', err?.message);
+                            }
+                          }}
+                          disabled={isPastWeek || isFutureWeek}
+                          className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isDone
+                              ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
+                              : 'bg-bg-800 border-overlay-strong text-content-disabled hover:border-overlay-heavy'
+                          }`}
+                        >
+                          {isDone ? <Check size={14} /> : <Circle size={14} />}
+                        </button>
+                      )}
 
                       <div className="space-y-1 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -575,14 +659,16 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => openEditModal(item)}
-                        className="p-1.5 text-content-muted hover:text-content-secondary transition-colors"
+                        disabled={isPastWeek}
+                        className="p-1.5 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
                         title="Edit Goal"
                       >
                         <Edit3 size={15} />
                       </button>
                       <button
                         onClick={() => setDeleteGoalModal(item)}
-                        className="p-1.5 text-content-muted hover:text-rose-theme transition-colors"
+                        disabled={isPastWeek}
+                        className="p-1.5 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
                         title="Delete Goal"
                       >
                         <Trash2 size={15} />
@@ -616,10 +702,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                                   onClick={() => {
                                     const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
                                     const newVal = Math.max(0, currentVal - 1);
-                                    store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
+                                    try {
+                                      store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
+                                    } catch (err: any) {
+                                      showErrorToast('Failed to update goal', err?.message);
+                                    }
                                   }}
-                                  disabled={prog.current <= 0}
-                                  className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:hover:text-content-muted transition-colors"
+                                  disabled={isPastWeek || isFutureWeek || prog.current <= 0}
+                                  className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors"
                                   title="Decrement progress"
                                 >
                                   <Minus size={12} />
@@ -629,10 +719,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                                   onClick={() => {
                                     const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
                                     const newVal = Math.min(prog.target, currentVal + 1);
-                                    store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
+                                    try {
+                                      store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
+                                    } catch (err: any) {
+                                      showErrorToast('Failed to update goal', err?.message);
+                                    }
                                   }}
-                                  disabled={prog.current >= prog.target}
-                                  className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:hover:text-content-muted transition-colors"
+                                  disabled={isPastWeek || isFutureWeek || prog.current >= prog.target}
+                                  className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors"
                                   title="Increment progress"
                                 >
                                   <Plus size={12} />
@@ -684,7 +778,8 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 setShowAddReflection(true);
                 setNewReflectionContent('');
               }}
-              className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
+              disabled={isPastWeek || isFutureWeek}
+              className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus size={14} />
               <span>Add Reflection</span>
@@ -714,7 +809,8 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               </button>
               <button
                 onClick={handleCreateReflection}
-                className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                disabled={isPastWeek || isFutureWeek}
+                className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Sparkles size={14} />
                 <span>Save Reflection</span>
@@ -740,7 +836,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               <>
                 {reflections.length === 0 && !showAddReflection && (
                   <div className="text-center py-6 border border-dashed border-overlay-subtle rounded-xl text-content-disabled text-xs">
-                    No reflections added for {selectedWeekKey} yet. Click "+ Add Reflection" above to add your insights.
+                    {selectedWeekKey === currentWeekKey
+                      ? `No reflections added for ${selectedWeekKey} yet. Click "+ Add Reflection" above to add your insights.`
+                      : `No reflections added for ${selectedWeekKey}.`}
                   </div>
                 )}
 
@@ -768,7 +866,8 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                           </button>
                           <button
                             onClick={handleUpdateReflection}
-                            className="btn-primary text-xs py-1.5 px-3"
+                            disabled={isPastWeek || isFutureWeek}
+                            className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Save Changes
                           </button>
@@ -806,14 +905,16 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                         setEditingReflection(ref);
                         setEditReflectionContent(ref.content);
                       }}
-                      className="p-1 text-content-muted hover:text-content-secondary transition-colors"
+                      disabled={isPastWeek || isFutureWeek}
+                      className="p-1 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
                       title="Edit reflection"
                     >
                       <Edit3 size={14} />
                     </button>
                     <button
                       onClick={() => setDeleteReflectionModal(ref)}
-                      className="p-1 text-content-muted hover:text-rose-theme transition-colors"
+                      disabled={isPastWeek || isFutureWeek}
+                      className="p-1 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
                       title="Delete reflection"
                     >
                       <Trash2 size={14} />
@@ -1069,10 +1170,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         onClose={() => setDismissPastGoalModal(null)}
         onConfirm={() => {
           if (dismissPastGoalModal) {
-            store.updateWeeklyGoalItem(dismissPastGoalModal.pastWeek, dismissPastGoalModal.goal.id, {
-              carryOverDismissed: true,
-            });
-            setDismissPastGoalModal(null);
+            try {
+              store.updateWeeklyGoalItem(dismissPastGoalModal.pastWeek, dismissPastGoalModal.goal.id, {
+                carryOverDismissed: true,
+              });
+              setDismissPastGoalModal(null);
+            } catch (err: any) {
+              showErrorToast('Failed to dismiss goal', err?.message);
+            }
           }
         }}
         title="Dismiss Carry-Over Goal?"

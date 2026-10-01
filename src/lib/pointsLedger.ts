@@ -55,6 +55,31 @@ export function addPointsInternal(
   const currentEvictedEntryIds = (prev.evictedEntryIds || []).filter(
     (r) => r && r.seasonNumber === seasonId
   );
+
+  // If this deterministic ID was already evicted into the season ledger,
+  // return state unchanged to prevent unbounded re-award and re-eviction loops.
+  if (idOverride && currentEvictedEntryIds.some((r) => r && r.id === idOverride)) {
+    const currentSeasonPoints = calculateSeasonalTotal(
+      prevSeasonPos,
+      prevSeasonNeg,
+      prev.pointsHistory || [],
+      activeSeasonStart,
+      currentEvictedExcisionRecords,
+      seasonId
+    );
+    return {
+      seasonId,
+      seasonPoints: currentSeasonPoints,
+      seasonEvictedPos: prevSeasonPos,
+      seasonEvictedNeg: prevSeasonNeg,
+      evictedExcisionRecords: currentEvictedExcisionRecords,
+      evictedEntryIds: currentEvictedEntryIds,
+      totalPoints: currentSeasonPoints,
+      pointsHistory: prev.pointsHistory || [],
+      leagueArchives,
+    };
+  }
+
   const prevHistory = prev.pointsHistory || [];
   const filteredPrevHistory = idOverride
     ? prevHistory.filter((e) => e && e.id !== idOverride)
@@ -84,11 +109,16 @@ export function addPointsInternal(
   for (const p of droppedHistory) {
     const amt = p.amount || 0;
     if (new Date(p.timestamp) >= activeSeasonStart) {
-      if (amt > 0) seasonPosDrop += amt;
-      else seasonNegDrop += Math.abs(amt);
-      if (p.id && !existingEvictedIdSet.has(p.id)) {
-        newEvictedEntries.push({ id: p.id, seasonNumber: seasonId, amount: amt });
-        existingEvictedIdSet.add(p.id);
+      if (p.id) {
+        if (!existingEvictedIdSet.has(p.id)) {
+          if (amt > 0) seasonPosDrop += amt;
+          else seasonNegDrop += Math.abs(amt);
+          newEvictedEntries.push({ id: p.id, seasonNumber: seasonId, amount: amt });
+          existingEvictedIdSet.add(p.id);
+        }
+      } else {
+        if (amt > 0) seasonPosDrop += amt;
+        else seasonNegDrop += Math.abs(amt);
       }
     }
   }

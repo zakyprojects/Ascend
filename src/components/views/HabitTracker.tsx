@@ -10,6 +10,7 @@ import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habit
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
+import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 
 export function HabitTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
@@ -83,6 +84,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
         </div>
       </div>
 
+      <CapMeterConnected state={store.state} capId="presetHabits" />
+
       {/* Missed Habit Penalty Info Banner */}
       <div className="card p-3.5 flex items-start gap-2.5 text-xs text-content-muted">
         <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
@@ -90,8 +93,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
           <p className="font-bold text-content-secondary">Tier-Scaled Missed Habit Penalties:</p>
           <p className="leading-relaxed">
             Missing a preset habit deducts points equal to its value (1st miss = -1x).
-            For <span className="text-content-secondary font-semibold">Below Diamond tier</span> (Bronze to Platinum), penalty escalation caps at <span className="text-warning-text font-semibold">1.5x</span>.
-            For <span className="text-brand-text font-semibold">Diamond tier and above</span>, escalation caps at <span className="text-rose-theme font-semibold">2.5x</span>.
+            For <span className="text-content-secondary font-semibold">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="text-warning-text font-semibold">1.5x</span>.
+            For <span className="text-brand-text font-semibold">Performer tier and above</span>, escalation caps at <span className="text-rose-theme font-semibold">2.5x</span>.
             Completing the habit breaks the miss streak and resets the penalty to 1x!
           </p>
         </div>
@@ -375,7 +378,11 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
             {isLinked ? (
               <div className="text-xs text-warning-text font-medium flex items-center gap-1">
                 <span>Auto-synced</span>
-                <span className="text-brand-text font-medium">+{habit.points} pts</span>
+                {habit.points === 0 ? (
+                  <span className="text-content-subtle">For habit tracking, no points</span>
+                ) : (
+                  <span className="text-brand-text font-medium">+{habit.points} pts</span>
+                )}
               </div>
             ) : habit.isPreset ? (
               <div className="text-xs text-brand-text font-medium">+{habit.points} pts</div>

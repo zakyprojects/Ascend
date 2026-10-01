@@ -19,6 +19,7 @@ import {
   BadHabitLog,
   AddictionTracker,
   AddictionMilestoneAward,
+  getAwardKey,
   CravingLog,
   FocusSessionLog,
   DecisionLog,
@@ -66,7 +67,8 @@ import {
   calculateBlockDurationMinutes,
 } from './timeTracker';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, getWeekDates, previousPeriodKey, parseDate, getNow, getNextDateKey } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, getWeekDates, previousPeriodKey, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
+import { computeLinkedGoalProgress } from './linkedGoalMetrics';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { PresetHabit } from './presets';
 import { SEED_ACCOUNTS, calculateSeedAccountPoints } from './seedAccounts';
@@ -113,12 +115,17 @@ import {
   processHabitPenalties,
   processBadHabitNoReports,
   processExerciseTargetPenalties,
+  processTimeTrackerDailyPoints,
   getMissPenaltyMultiplier,
   getHighestUserStreak,
+  getAppStateSeasonPoints,
 } from './habitPenalties';
 import { addPointsInternal } from './pointsLedger';
 export { addPointsInternal };
 import {
+  PRESET_HABIT_POINTS,
+  PresetHabitCapItem,
+  recomputeTodayPresetPoints,
   JOURNAL_POINTS,
   WEEKLY_REFLECTION_POINTS,
   PFC_POINTS,
@@ -127,8 +134,23 @@ import {
   READING_POINTS,
   BAD_HABIT_POINTS,
   SOBRIETY_MILESTONE_POINTS,
+  TIME_TRACKER_POINTS,
+  WEEKLY_GOALS_POINTS,
   calculateWorkoutPoints,
+  calculateSkillPoints,
+  calculateFocusPoints,
+  calculateReadingPoints,
+  calculateTimeTrackerDailyPoints,
+  calculateWeeklyGoalsPoints,
+  wouldExceedRecoverySeasonCap,
+  POINTS_V2_START_DATE_KEY,
 } from './pointsConfig';
+import {
+  allocateEligibleResistPoints,
+  isBadHabitPointEligible,
+} from './badHabitEligibility';
+export { recomputeTodayPresetPoints, calculateWeeklyGoalsPoints, WEEKLY_GOALS_POINTS };
+export type { PresetHabitCapItem };
 import { calculateUnifiedStreak } from './streakLogic';
 import { computeStateDataWeight } from './dataWeight';
 import {
@@ -236,6 +258,109 @@ function removeLinkedWeeklyGoals(
   });
 }
 
+export const RETIRED_PRESET_HABIT_NAMES = new Set<string>([
+  'Exercise / workout',
+  'Deep work session',
+  'Practice a skill',
+  'No porn',
+  'No social media before bed',
+  'No junk food',
+  'Journaling',
+]);
+
+/**
+ * Migration: Retires 7 preset habits from user state, retroactively claws back
+ * points earned during the active season, tombstones removed IDs, detaches linked weekly goals,
+ * and updates data-loss watermarks.
+ */
+export function applyPresetHabitRemovalMigration(state: AppState): AppState {
+  const habitsToRetire = (state.habits || []).filter(
+    (h) => h && h.isPreset === true && RETIRED_PRESET_HABIT_NAMES.has(h.name)
+  );
+
+  if (habitsToRetire.length === 0) {
+    return state;
+  }
+
+  const now = leagueNow();
+  const activeSeasonStart = getSeasonStart(now);
+  const activeSeasonStartMs = activeSeasonStart.getTime();
+
+  let runningState = state;
+  const legacyArrayHabitIds: string[] = [];
+
+  for (const habit of habitsToRetire) {
+    const idOverride = `migration_preset_habit_removal_${habit.id}`;
+    const alreadyDeducted = (runningState.pointsHistory || []).some((e) => e && e.id === idOverride);
+
+    if (!alreadyDeducted) {
+      let seasonCompletions = 0;
+      if (Array.isArray(habit.completions)) {
+        // Guard for pre-v7.1.0 string[] shape:
+        // Season-filtering is unavailable on legacy string[] completions.
+        // Explicitly reported and not silently defaulted to 0 or full lifetime count.
+        legacyArrayHabitIds.push(habit.id);
+        console.warn(
+          `[applyPresetHabitRemovalMigration] Legacy string[] completions detected on habit "${habit.name}" (${habit.id}). Season-filtered point deduction unavailable.`
+        );
+      } else if (habit.completions && typeof habit.completions === 'object') {
+        for (const [dateKey, val] of Object.entries(habit.completions)) {
+          if (!val || typeof val !== 'object') continue;
+          if (val.done !== true) continue;
+
+          const timeFromUpdate = val.updatedAt ? new Date(val.updatedAt).getTime() : NaN;
+          const completionMs = !isNaN(timeFromUpdate) && timeFromUpdate > 0
+            ? timeFromUpdate
+            : new Date(`${dateKey}T12:00:00.000Z`).getTime();
+
+          if (!isNaN(completionMs) && completionMs >= activeSeasonStartMs) {
+            seasonCompletions++;
+          }
+        }
+      }
+
+      if (seasonCompletions > 0 && habit.points > 0) {
+        const ptsToDeduct = seasonCompletions * habit.points;
+        const pointsUpdate = addPointsInternal(
+          runningState,
+          -ptsToDeduct,
+          `Preset habit retired: ${habit.name} (${seasonCompletions} completion(s) reversed)`,
+          'habit',
+          {
+            habitId: habit.id,
+            habitName: habit.name,
+            seasonCompletions,
+            migration: 'preset_habit_removal',
+          },
+          undefined,
+          idOverride
+        );
+        runningState = { ...runningState, ...pointsUpdate };
+      }
+    }
+  }
+
+  const retiredHabitIds = habitsToRetire.map((h) => h.id).filter(Boolean);
+  const retiredIdSet = new Set(retiredHabitIds);
+
+  const updatedHabits = (runningState.habits || []).filter(
+    (h) => !h || !retiredIdSet.has(h.id)
+  );
+  const updatedDeletedEntityIds = Array.from(
+    new Set([...(runningState.deletedEntityIds || []), ...retiredHabitIds])
+  ).slice(-500);
+  const updatedWeeklyGoals = removeLinkedWeeklyGoals(runningState.weeklyGoals || [], 'habit', retiredHabitIds);
+
+  runningState = {
+    ...runningState,
+    habits: updatedHabits,
+    weeklyGoals: updatedWeeklyGoals,
+    deletedEntityIds: updatedDeletedEntityIds,
+  };
+
+  return runningState;
+}
+
 const GUEST_STORAGE_KEY = 'ascend_guest_state_v2';
 export const LOCAL_THEME_STORAGE_KEY = 'ascend_theme_preference';
 
@@ -283,11 +408,56 @@ function loadInitialState(): AppState {
   }
 }
 
+export function extractWeekKeyFromWeeklyGoalEntry(entry: PointsEntry | null | undefined): string | null {
+  if (!entry) return null;
+  const isWeeklyGoalEntry =
+    entry.source === 'weekly_goal_achieved' ||
+    (typeof entry.id === 'string' && entry.id.startsWith('weekly_goal_'));
+  if (!isWeeklyGoalEntry) return null;
+
+  if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
+    return entry.metadata.weekKey;
+  }
+  if (typeof entry.id === 'string') {
+    const match = entry.id.match(/\b\d{4}-W\d{2}\b/);
+    if (match) return match[0];
+  }
+  if (entry.reason) {
+    const match = entry.reason.match(/\b\d{4}-W\d{2}\b/);
+    if (match) return match[0];
+  }
+  return null;
+}
+
+export function groupWeeklyGoalEntriesByWeekKey(
+  history: PointsEntry[]
+): {
+  weeklyGoalsMap: Map<string, PointsEntry[]>;
+  otherHistory: PointsEntry[];
+} {
+  const weeklyGoalsMap = new Map<string, PointsEntry[]>();
+  const otherHistory: PointsEntry[] = [];
+
+  for (const entry of history) {
+    if (!entry) continue;
+    const weekKey = extractWeekKeyFromWeeklyGoalEntry(entry);
+    if (weekKey) {
+      const group = weeklyGoalsMap.get(weekKey) || [];
+      group.push(entry);
+      weeklyGoalsMap.set(weekKey, group);
+    } else {
+      otherHistory.push(entry);
+    }
+  }
+
+  return { weeklyGoalsMap, otherHistory };
+}
+
 export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null): AppState {
   // Weekly Review Points Consolidation Migration (Idempotent)
   const rawHistory = st.pointsHistory ?? [];
   const weeklyReviewMap = new Map<string, PointsEntry[]>();
-  const otherHistory: PointsEntry[] = [];
+  const nonReviewHistory: PointsEntry[] = [];
 
   for (const entry of rawHistory) {
     if (entry && entry.source === 'weekly_review') {
@@ -306,12 +476,14 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
         group.push(entry);
         weeklyReviewMap.set(weekKey, group);
       } else {
-        otherHistory.push(entry);
+        nonReviewHistory.push(entry);
       }
     } else if (entry) {
-      otherHistory.push(entry);
+      nonReviewHistory.push(entry);
     }
   }
+
+  const { weeklyGoalsMap, otherHistory } = groupWeeklyGoalEntriesByWeekKey(nonReviewHistory);
 
   const consolidatedWeeklyEntries: PointsEntry[] = [];
   for (const [weekKey, entries] of weeklyReviewMap.entries()) {
@@ -335,16 +507,85 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
     });
   }
 
-  const pointsHistory = [...otherHistory, ...consolidatedWeeklyEntries].sort(
+  const currentLeagueNow = leagueNow();
+  const activeSeasonNumber = getSeasonNumber(currentLeagueNow);
+  const activeSeasonStart = getSeasonStart(currentLeagueNow);
+
+  // Weekly Goals Points Consolidation Migration (Narrowed Scope)
+  // Only handles what reconcileWeeklyGoalsPointsForAllWeeks explicitly does NOT cover:
+  // 1. Closed/frozen season weeks (start < activeSeasonStart)
+  // 2. Orphaned weeks with no matching weeklyGoals doc
+  // Active-season weeks with a matching doc pass their raw entries through to pointsHistory
+  // and are consolidated canonically via reconcileWeeklyGoalsPointsForAllWeeks.
+  const allWeeklyGoalWeekKeys = new Set<string>([
+    ...weeklyGoalsMap.keys(),
+    ...(st.weeklyGoals || []).map((w) => w?.weekKey).filter((k): k is string => Boolean(k)),
+  ]);
+
+  const consolidatedWeeklyGoalEntries: PointsEntry[] = [];
+  const passthroughActiveGoalEntries: PointsEntry[] = [];
+
+  for (const weekKey of allWeeklyGoalWeekKeys) {
+    const doc = (st.weeklyGoals || []).find((w) => w && w.weekKey === weekKey);
+    let isClosedSeason = false;
+    try {
+      const { start } = getWeekDates(weekKey);
+      isClosedSeason = start < activeSeasonStart;
+    } catch {
+      isClosedSeason = true;
+    }
+
+    // Active season week with a matching doc: skip manual consolidation here.
+    // Pass raw entries through so reconcileWeeklyGoalsPointsForAllWeeks can canonically
+    // reconcile via addPointsInternal / excisePointsEntriesInternal later in sweep.
+    if (!isClosedSeason && doc) {
+      const activeEntries = weeklyGoalsMap.get(weekKey) || [];
+      passthroughActiveGoalEntries.push(...activeEntries);
+      continue;
+    }
+
+    // Closed-season week OR orphaned week with no matching doc:
+    // If no matching doc exists, targetAmount is 0 (orphaned -> drop previous entries)
+    const goals = doc?.goals || [];
+    const score = calculateWeeklyGoalsPoints(goals);
+    const targetAmount = score.pointsAwarded;
+
+    if (targetAmount <= 0) {
+      // 0 completed goals or orphaned doc -> drop all previous weekly goal entries for this week
+      continue;
+    }
+
+    const previousEntries = weeklyGoalsMap.get(weekKey) || [];
+    const sorted = [...previousEntries].sort(
+      (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
+    );
+    const earliestTimestamp = sorted[0]?.timestamp || doc?.createdAt || new Date().toISOString();
+
+    consolidatedWeeklyGoalEntries.push({
+      id: `weekly_goal_${weekKey}`,
+      amount: targetAmount,
+      reason: `Weekly goals achieved for ${weekKey} (${targetAmount} pts)`,
+      source: 'weekly_goal_achieved',
+      timestamp: earliestTimestamp,
+      metadata: {
+        weekKey,
+        countedGoalsCount: score.countedGoalsCount,
+        completedGoalsCount: score.completedGoalsCount,
+      },
+    });
+  }
+
+  const pointsHistory = [
+    ...otherHistory,
+    ...consolidatedWeeklyEntries,
+    ...consolidatedWeeklyGoalEntries,
+    ...passthroughActiveGoalEntries,
+  ].sort(
     (a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
   ).slice(0, 500);
 
   const currentHistorySum = pointsHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
   
-  const currentLeagueNow = leagueNow();
-  const activeSeasonNumber = getSeasonNumber(currentLeagueNow);
-  const activeSeasonStart = getSeasonStart(currentLeagueNow);
-
   let seasonId = typeof st.seasonId === 'number' ? st.seasonId : 1;
   let seasonEvictedPos = typeof st.seasonEvictedPos === 'number' && st.seasonEvictedPos >= 0 ? st.seasonEvictedPos : 0;
   let seasonEvictedNeg = typeof st.seasonEvictedNeg === 'number' && st.seasonEvictedNeg >= 0 ? st.seasonEvictedNeg : 0;
@@ -369,18 +610,6 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
       amount: typeof r.amount === 'number' ? r.amount : 0,
     }))
     .slice(-1000);
-
-  if (evictedEntryIds.length > 0) {
-    let ledgerPos = 0;
-    let ledgerNeg = 0;
-    for (const r of evictedEntryIds) {
-      const amt = r.amount || 0;
-      if (amt > 0) ledgerPos += amt;
-      else if (amt < 0) ledgerNeg += Math.abs(amt);
-    }
-    seasonEvictedPos = ledgerPos;
-    seasonEvictedNeg = ledgerNeg;
-  }
 
   const computedSeasonPoints = calculateSeasonalTotal(
     seasonEvictedPos,
@@ -523,7 +752,7 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
   const resolvedTheme = st.themePreference || (getLocalThemePreference() || 'dark');
 
   const rawSanitizedHabits = (st.habits ?? []).map((h) => {
-    let normalizedCompletions: Record<string, { done: boolean; updatedAt: string }> = {};
+    let normalizedCompletions: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> = {};
     if (Array.isArray(h.completions)) {
       const defaultTime = h.updatedAt || h.createdAt || `init_${h.id}`;
       for (const d of h.completions) {
@@ -535,9 +764,11 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
       const defaultTime = h.updatedAt || h.createdAt || `init_${h.id}`;
       for (const [key, val] of Object.entries(h.completions)) {
         if (val && typeof val === 'object') {
+          const entryObj = val as { done?: boolean; updatedAt?: string; pointsAwarded?: number };
           normalizedCompletions[key] = {
-            done: Boolean((val as { done?: boolean }).done ?? true),
-            updatedAt: (val as { updatedAt?: string }).updatedAt || defaultTime,
+            done: Boolean(entryObj.done ?? true),
+            updatedAt: entryObj.updatedAt || defaultTime,
+            ...(typeof entryObj.pointsAwarded === 'number' ? { pointsAwarded: entryObj.pointsAwarded } : {}),
           };
         } else if (typeof val === 'boolean') {
           normalizedCompletions[key] = { done: val, updatedAt: defaultTime };
@@ -666,6 +897,9 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
           awardedMilestones: Array.isArray(st.addictionTracker.awardedMilestones)
             ? st.addictionTracker.awardedMilestones
             : [],
+          revokedAwardIds: Array.isArray(st.addictionTracker.revokedAwardIds)
+            ? st.addictionTracker.revokedAwardIds
+            : [],
         }
       : null,
     cravingLogs: filterActiveTombstones(st.cravingLogs),
@@ -740,8 +974,16 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
   }
 
   sweptState = reconcileAllWeeklyReflections(sweptState, now);
+  sweptState = reconcileWeeklyGoalsPointsForAllWeeks(
+    reconcileLinkedWeeklyGoals(sweptState, now),
+    now
+  );
 
-  return processBadHabitNoReports(sweptState);
+  // Preset Habit Retirement Migration: Cleanse retired presets & retroactively claw back season points
+  sweptState = applyPresetHabitRemovalMigration(sweptState);
+
+  const habitPenalized = processBadHabitNoReports(sweptState);
+  return processTimeTrackerDailyPoints(habitPenalized, now);
 }
 
 async function persistState(state: AppState, options?: { allowDestructiveWipe?: boolean }): Promise<void> {
@@ -907,6 +1149,351 @@ export function getWeeklyReflectionNetPoints(state: AppState, weekKey: string): 
   }
 
   return total;
+}
+
+export function getWeeklyGoalsNetPoints(state: AppState, weekKey: string): number {
+  let total = 0;
+  for (const e of state.pointsHistory || []) {
+    if (e && e.source === 'weekly_goal_achieved' && e.metadata?.weekKey === weekKey) {
+      total += e.amount || 0;
+    }
+  }
+  return total;
+}
+
+export const recomputeWeeklyGoalsPointsForState = (
+  baseState: AppState,
+  targetWeekKey: string,
+  newGoals: WeeklyGoalItem[],
+  triggerGoalId?: string
+): Partial<AppState> => {
+  const score = calculateWeeklyGoalsPoints(newGoals);
+  const newPoints = score.pointsAwarded;
+  const entryId = `weekly_goal_${targetWeekKey}`;
+
+  const currentHistory = baseState.pointsHistory || [];
+  const allWeekEntries = currentHistory.filter(
+    (e) => e && (e.id === entryId || extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey)
+  );
+  const existing = allWeekEntries.find((e) => e.id === entryId) || allWeekEntries[0];
+
+  // True no-op: exactly one canonical entry already matching current target points
+  if (allWeekEntries.length === 1 && allWeekEntries[0].id === entryId && allWeekEntries[0].amount === newPoints) {
+    return {};
+  }
+  // No entries exist and new points are 0 -> nothing to add or remove
+  if (allWeekEntries.length === 0 && newPoints === 0) {
+    return {};
+  }
+
+  if (newPoints === 0) {
+    const exciseResult = excisePointsEntriesInternal(
+      baseState,
+      (e) => Boolean(e && (e.id === entryId || extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey))
+    );
+    const updatedDeletedEntityIds = Array.from(
+      new Set([
+        ...(baseState.deletedEntityIds || []),
+        entryId,
+        ...(exciseResult.excisedEntryIds || []),
+      ])
+    ).slice(-500);
+    const updatedRestoredEntityIds = (baseState.restoredEntityIds || []).filter((id) => id !== entryId);
+
+    return {
+      ...exciseResult,
+      deletedEntityIds: updatedDeletedEntityIds,
+      restoredEntityIds: updatedRestoredEntityIds,
+    };
+  }
+
+  // When newPoints > 0:
+  // If there are legacy transition-based entries, excise them first so only the canonical entry will remain
+  const hasLegacyEntries = allWeekEntries.some((e) => e.id !== entryId);
+  const stateToUpdate = hasLegacyEntries
+    ? {
+        ...baseState,
+        ...excisePointsEntriesInternal(
+          baseState,
+          (e) => Boolean(e && e.id !== entryId && extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey)
+        ),
+      }
+    : baseState;
+
+  // Preserve earliest timestamp across any legacy entries for this week
+  const sortedWeekEntries = [...allWeekEntries].sort(
+    (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
+  );
+  const canonicalTimestamp = existing?.id === entryId
+    ? existing.timestamp
+    : (sortedWeekEntries[0]?.timestamp || leagueNow().toISOString());
+
+  const pointsUpdate = addPointsInternal(
+    stateToUpdate,
+    newPoints,
+    `Weekly goals achieved for ${targetWeekKey} (${newPoints} pts)`,
+    'weekly_goal_achieved',
+    {
+      weekKey: targetWeekKey,
+      ...(triggerGoalId ? { goalId: triggerGoalId } : {}),
+      countedGoalsCount: score.countedGoalsCount,
+      completedGoalsCount: score.completedGoalsCount,
+    },
+    canonicalTimestamp,
+    entryId
+  );
+
+  const updatedDeletedEntityIds = (baseState.deletedEntityIds || [])
+    .filter((id) => id !== entryId)
+    .slice(-500);
+
+  const updatedRestoredEntityIds = Array.from(
+    new Set([...(baseState.restoredEntityIds || []), entryId])
+  ).slice(-500);
+
+  return {
+    ...pointsUpdate,
+    deletedEntityIds: updatedDeletedEntityIds,
+    restoredEntityIds: updatedRestoredEntityIds,
+  };
+};
+
+export function reconcileWeeklyGoalsPointsForAllWeeks(
+  state: AppState,
+  now: Date = leagueNow()
+): AppState {
+  const activeSeasonStart = getSeasonStart(now);
+  const currentWeek = weekKey(now);
+  const currentWeekStart = getWeekDates(currentWeek).start;
+  const prevWeekDateKey = addDays(todayKey(currentWeekStart), -7);
+  const prevWeek = weekKey(parseDate(prevWeekDateKey) ?? undefined);
+  let currentState = state;
+
+  for (const doc of currentState.weeklyGoals || []) {
+    if (!doc || !doc.weekKey) continue;
+    if (doc.weekKey !== currentWeek && doc.weekKey !== prevWeek) {
+      continue;
+    }
+    try {
+      const { start } = getWeekDates(doc.weekKey);
+      if (start < activeSeasonStart) {
+        continue; // Closed-season weeks are frozen
+      }
+      const weekStartKey = todayKey(start);
+      if (weekStartKey < POINTS_V2_START_DATE_KEY) {
+        continue;
+      }
+    } catch {
+      continue;
+    }
+
+    const pointsUpdate = recomputeWeeklyGoalsPointsForState(currentState, doc.weekKey, doc.goals || []);
+    if (Object.keys(pointsUpdate).length > 0) {
+      currentState = {
+        ...currentState,
+        ...pointsUpdate,
+      };
+    }
+  }
+
+  return currentState;
+}
+
+export function getLinkedGoalCompletionTimestamp(
+  goal: WeeklyGoalItem,
+  state: AppState,
+  dateStrings: string[]
+): string | undefined {
+  if (!goal.linkedModule || goal.linkedModule === 'none') {
+    return undefined;
+  }
+
+  const targetVal = goal.targetValue && goal.targetValue > 0 ? goal.targetValue : 1;
+
+  if (goal.linkedModule === 'habit') {
+    const habit = (state.habits || []).find((h) => h.id === goal.linkedItemId);
+    if (!habit || !habit.completions) return undefined;
+
+    const entries: { timestamp: string }[] = [];
+    if (Array.isArray(habit.completions)) {
+      for (const d of habit.completions) {
+        if (typeof d === 'string' && dateStrings.includes(d)) {
+          const parsed = parseDate(d);
+          entries.push({ timestamp: parsed ? parsed.toISOString() : `${d}T12:00:00.000Z` });
+        }
+      }
+    } else {
+      for (const [date, c] of Object.entries(habit.completions)) {
+        if (c && c.done && dateStrings.includes(date)) {
+          const fallbackTime = parseDate(date)?.toISOString() || `${date}T12:00:00.000Z`;
+          entries.push({ timestamp: c.updatedAt || fallbackTime });
+        }
+      }
+    }
+
+    entries.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
+    if (entries.length >= targetVal && targetVal > 0) {
+      return entries[targetVal - 1].timestamp;
+    }
+    return undefined;
+  }
+
+  if (goal.linkedModule === 'exercise') {
+    let weekWorkouts = (state.workouts || []).filter((w) => dateStrings.includes(w.date));
+    const targetWorkoutName = (goal.linkedItemId || '').trim().toLowerCase();
+    if (targetWorkoutName) {
+      weekWorkouts = weekWorkouts.filter(
+        (w) => (w.type || '').trim().toLowerCase() === targetWorkoutName
+      );
+    }
+
+    const metric = goal.linkedMetricKey || 'workouts_logged';
+    const entries = weekWorkouts.map((w) => {
+      const fallbackTime = parseDate(w.date)?.toISOString() || `${w.date}T12:00:00.000Z`;
+      const timestamp = w.createdAt || fallbackTime;
+      let val = 0;
+      if (metric === 'workouts_logged') {
+        val = 1;
+      } else if (metric === 'minutes_exercised') {
+        val = w.durationMinutes || 0;
+      } else if (metric === 'reps_logged' && (w.unit || '').trim().toLowerCase() === 'reps') {
+        val = typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0;
+      } else if (metric === 'sets_logged' && (w.unit || '').trim().toLowerCase() === 'sets') {
+        val = typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0;
+      } else if (metric === 'distance_km' && (w.unit || '').trim().toLowerCase() === 'km') {
+        val = typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0;
+      }
+      return { timestamp, val };
+    });
+
+    entries.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
+    let runningSum = 0;
+    for (const entry of entries) {
+      runningSum += entry.val;
+      if (runningSum >= targetVal) {
+        return entry.timestamp;
+      }
+    }
+    return undefined;
+  }
+
+  if (goal.linkedModule === 'reading') {
+    const logs = (state.readingLogs || []).filter((l) => dateStrings.includes(l.date));
+    const matchingBook = (state.libraryBooks || []).find(
+      (lb) => lb.id === goal.linkedItemId || lb.linkedBookId === goal.linkedItemId
+    );
+    const matchingIds = new Set<string>();
+    if (goal.linkedItemId) matchingIds.add(goal.linkedItemId);
+    if (matchingBook?.id) matchingIds.add(matchingBook.id);
+    if (matchingBook?.linkedBookId) matchingIds.add(matchingBook.linkedBookId);
+
+    const filtered = matchingIds.size > 0
+      ? logs.filter((l) => Boolean(l.bookId && matchingIds.has(l.bookId)))
+      : logs;
+
+    const entries = filtered.map((l) => {
+      const fallbackTime = parseDate(l.date)?.toISOString() || `${l.date}T12:00:00.000Z`;
+      return {
+        timestamp: l.createdAt || fallbackTime,
+        val: l.pagesRead || 0,
+      };
+    });
+
+    entries.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
+    let runningSum = 0;
+    for (const entry of entries) {
+      runningSum += entry.val;
+      if (runningSum >= targetVal) {
+        return entry.timestamp;
+      }
+    }
+    return undefined;
+  }
+
+  if (goal.linkedModule === 'skill') {
+    const logs = (state.skillLogs || []).filter((l) => dateStrings.includes(l.date));
+    const filtered = goal.linkedItemId ? logs.filter((l) => l.skillId === goal.linkedItemId) : logs;
+    const metric = goal.linkedMetricKey || 'sessions_logged';
+
+    const entries = filtered.map((l) => {
+      const fallbackTime = parseDate(l.date)?.toISOString() || `${l.date}T12:00:00.000Z`;
+      const val = metric === 'minutes_practiced' ? (l.durationMinutes || 0) : 1;
+      return {
+        timestamp: l.createdAt || fallbackTime,
+        val,
+      };
+    });
+
+    entries.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
+    let runningSum = 0;
+    for (const entry of entries) {
+      runningSum += entry.val;
+      if (runningSum >= targetVal) {
+        return entry.timestamp;
+      }
+    }
+    return undefined;
+  }
+
+  return undefined;
+}
+
+export function reconcileLinkedWeeklyGoals(state: AppState, now: Date = leagueNow()): AppState {
+  const currentKey = weekKey(now);
+  const docIdx = (state.weeklyGoals || []).findIndex((w) => w.weekKey === currentKey);
+  if (docIdx === -1) return state;
+
+  const doc = state.weeklyGoals[docIdx];
+  const { dateStrings } = getWeekDates(currentKey);
+
+  let hasChanges = false;
+  const updatedGoals = (doc.goals || []).map((goal) => {
+    // Only process active linked-module goals
+    if (goal.archived || !goal.linkedModule || goal.linkedModule === 'none') {
+      return goal;
+    }
+
+    const prog = computeLinkedGoalProgress(goal, state, dateStrings);
+    if (prog.needsMetricSelection) {
+      return goal;
+    }
+
+    const isDone = prog.percent >= 100;
+    if (isDone && (!goal.completed && !goal.done)) {
+      hasChanges = true;
+      const computedCompletedAt = getLinkedGoalCompletionTimestamp(goal, state, dateStrings) || now.toISOString();
+      return {
+        ...goal,
+        completed: true,
+        done: true,
+        completedAt: goal.completedAt || computedCompletedAt,
+      };
+    } else if (!isDone && (goal.completed || goal.done)) {
+      hasChanges = true;
+      return {
+        ...goal,
+        completed: false,
+        done: false,
+        completedAt: undefined,
+      };
+    }
+
+    return goal;
+  });
+
+  if (!hasChanges) return state;
+
+  const updatedDoc = { ...doc, goals: updatedGoals };
+  const newWeeklyGoals = [...state.weeklyGoals];
+  newWeeklyGoals[docIdx] = updatedDoc;
+
+  const pointsUpdate = recomputeWeeklyGoalsPointsForState(state, currentKey, updatedGoals);
+
+  return {
+    ...state,
+    weeklyGoals: newWeeklyGoals,
+    ...pointsUpdate,
+  };
 }
 
 export function isWeeklyReflectionAwarded(
@@ -1305,7 +1892,13 @@ export function useAppState() {
             // Reconcile and union-merge server state with current state using mergeAppState
             // Tombstones (deletedEntityIds) prevent resurrecting deleted items while preserving offline progress
             const serverState = serverRes.state!;
-            const merged = mergeAppState(serverState, current, 'hydration');
+            const merged = reconcileWeeklyGoalsPointsForAllWeeks(
+              reconcileLinkedWeeklyGoals(
+                mergeAppState(serverState, current, 'hydration'),
+                leagueNow()
+              ),
+              leagueNow()
+            );
             setUserDataWatermark(userId, merged);
             lastKnownGoodStateRef.current = merged;
             return merged;
@@ -1742,11 +2335,17 @@ export function useAppState() {
               const watermark = userId ? getUserDataWatermark(userId) : undefined;
               const guardResult = mergeAppStateWithGuardResult(sanitizedState, baseCurrentState, watermark);
 
-              lastKnownGoodStateRef.current = guardResult.hasSuspiciousDrop
+              const rawMergedState = guardResult.hasSuspiciousDrop
                 ? guardResult.retainedState
                 : guardResult.mergedState;
+              const reconciledMergedState = reconcileWeeklyGoalsPointsForAllWeeks(
+                reconcileLinkedWeeklyGoals(rawMergedState, leagueNow()),
+                leagueNow()
+              );
 
-              setState(guardResult.hasSuspiciousDrop ? guardResult.retainedState : guardResult.mergedState);
+              lastKnownGoodStateRef.current = reconciledMergedState;
+
+              setState(reconciledMergedState);
 
               if (guardResult.hasSuspiciousDrop) {
                 const isZeroOut = guardResult.mergedCount === 0;
@@ -1793,7 +2392,12 @@ export function useAppState() {
 
               if (cachedState) {
                 const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
-                setState((current) => mergeAppState(sanitizedCached, current, 'hydration'));
+                setState((current) =>
+                  reconcileWeeklyGoalsPointsForAllWeeks(
+                    reconcileLinkedWeeklyGoals(mergeAppState(sanitizedCached, current, 'hydration'), leagueNow()),
+                    leagueNow()
+                  )
+                );
                 canPersistLocally.current = true;
               } else {
                 let resultingState: AppState = stateRef.current;
@@ -2304,9 +2908,14 @@ export function useAppState() {
         const habitPenalized = processHabitPenalties(archivedState, targetNow);
         const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
         const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
-        const reflectionReconciledState = reconcileAllWeeklyReflections(exercisePenalized, targetNow);
+        const timeTrackerProcessed = processTimeTrackerDailyPoints(exercisePenalized, targetNow);
+        const reflectionReconciledState = reconcileAllWeeklyReflections(timeTrackerProcessed, targetNow);
+        const weeklyGoalsReconciledState = reconcileWeeklyGoalsPointsForAllWeeks(
+          reconcileLinkedWeeklyGoals(reflectionReconciledState, targetNow),
+          targetNow
+        );
 
-        const reconciledChallenges = (reflectionReconciledState.sharedChallenges || []).map((c) => {
+        const reconciledChallenges = (weeklyGoalsReconciledState.sharedChallenges || []).map((c) => {
           const updated = reconcileSharedChallengeLifecycle(c, targetNow);
           if (updated.status !== c.status || updated.jointStreak !== c.jointStreak) {
             challengesToSync.push(updated);
@@ -2315,7 +2924,7 @@ export function useAppState() {
         });
 
         return {
-          ...reflectionReconciledState,
+          ...weeklyGoalsReconciledState,
           sharedChallenges: reconciledChallenges,
         };
       });
@@ -2347,7 +2956,12 @@ export function useAppState() {
   }, []);
 
   const setAuthSessionState = useCallback((user: UserProfile | null, newState: AppState) => {
-    setState(sanitizeLoadedState(newState, user));
+    setState(
+      reconcileWeeklyGoalsPointsForAllWeeks(
+        reconcileLinkedWeeklyGoals(sanitizeLoadedState(newState, user), leagueNow()),
+        leagueNow()
+      )
+    );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -2536,26 +3150,155 @@ export function useAppState() {
     setState(
       (prev) => {
         const target = prev.habits.find((h) => h.id === habitId);
-        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-        const completedCount = Array.isArray(target?.completions)
-          ? target.completions.length
-          : Object.values(target?.completions || {}).filter((c) => c && c.done).length;
-        if (target && target.isPreset && target.points > 0 && completedCount > 0) {
-          const ptsToDeduct = completedCount * target.points;
-          pointsUpdate = addPointsInternal(
-            prev,
-            -ptsToDeduct,
-            `Habit deleted: ${target.name} (${completedCount} completion(s) removed)`,
-            'habit'
-          );
+        let runningState = prev;
+        const today = todayKey();
+        const nowIso = new Date().toISOString();
+
+        if (target && target.isPreset && target.points > 0) {
+          let histPtsToDeduct = 0;
+          let histCompletedCount = 0;
+
+          if (Array.isArray(target.completions)) {
+            // Legacy string array completions
+            for (const c of target.completions) {
+              if (c !== today) {
+                histCompletedCount++;
+                histPtsToDeduct += target.points;
+              }
+            }
+          } else if (target.completions && typeof target.completions === 'object') {
+            for (const [dateKey, c] of Object.entries(target.completions)) {
+              if (c && c.done && dateKey !== today) {
+                histCompletedCount++;
+                histPtsToDeduct += typeof c.pointsAwarded === 'number' ? c.pointsAwarded : target.points;
+              }
+            }
+          }
+
+          if (histCompletedCount > 0 && histPtsToDeduct > 0) {
+            const histDeduct = addPointsInternal(
+              runningState,
+              -histPtsToDeduct,
+              `Habit deleted: ${target.name} (${histCompletedCount} completion(s) removed)`,
+              'habit'
+            );
+            runningState = { ...runningState, ...histDeduct };
+          }
         }
-        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), habitId].slice(-500);
+
+        const remainingHabits = prev.habits.filter((h) => h.id !== habitId);
+
+        // If target had a completion today, recalculate cap allocation for remaining preset habits
+        let targetHadTodayDone = false;
+        if (target && target.isPreset && target.frequency === 'daily') {
+          if (Array.isArray(target.completions)) {
+            targetHadTodayDone = target.completions.includes(today);
+          } else if (target.completions && typeof target.completions === 'object') {
+            const todayRecord = target.completions[today];
+            if (todayRecord?.done) {
+              targetHadTodayDone = true;
+            }
+          }
+        }
+
+        if (target && targetHadTodayDone) {
+          // Excise the deleted habit's own completion & redistribution entries for today
+          const exciseResult = excisePointsEntriesInternal(
+            runningState,
+            (entry) =>
+              (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
+              entry.metadata?.habitId === target.id &&
+              entry.metadata?.periodKey === today,
+            undefined,
+            Infinity,
+            `habit_${target.id}_${today}`
+          );
+          const { excisedEntryIds, ...restPoints } = exciseResult;
+          runningState = { ...runningState, ...restPoints };
+          if (excisedEntryIds && excisedEntryIds.length > 0) {
+            runningState = {
+              ...runningState,
+              deletedEntityIds: Array.from(
+                new Set([...(runningState.deletedEntityIds || []), ...excisedEntryIds])
+              ).slice(-500),
+            };
+          }
+        }
+
+        let updatedHabits = remainingHabits;
+        if (targetHadTodayDone) {
+          const capItems: PresetHabitCapItem[] = [];
+          for (const h of remainingHabits) {
+            if (!h || !h.isPreset || h.frequency !== 'daily' || h.points <= 0) continue;
+            const comps = Array.isArray(h.completions)
+              ? Object.fromEntries(h.completions.map((c) => [c, { done: true, updatedAt: h.updatedAt || nowIso }]))
+              : (h.completions || {});
+            const comp = comps[today];
+            if (comp?.done) {
+              capItems.push({
+                id: h.id,
+                nominalPoints: h.points,
+                updatedAt: comp.updatedAt || h.updatedAt || h.createdAt || nowIso,
+              });
+            }
+          }
+
+          const newAllocation = recomputeTodayPresetPoints(capItems, PRESET_HABIT_POINTS.dailyCap);
+
+          updatedHabits = remainingHabits.map((h) => {
+            if (!h || !h.isPreset || h.frequency !== 'daily' || !(h.id in newAllocation)) return h;
+            const newAlloc = newAllocation[h.id];
+            const comps = Array.isArray(h.completions)
+              ? Object.fromEntries(h.completions.map((c) => [c, { done: true, updatedAt: h.updatedAt || nowIso }]))
+              : { ...(h.completions || {}) };
+            const comp = comps[today];
+            const oldAwarded = typeof comp?.pointsAwarded === 'number' ? comp.pointsAwarded : h.points;
+            const delta = newAlloc - oldAwarded;
+
+            if (delta !== 0) {
+              const corrId = `habit_cap_redistribution_${h.id}_${today}_from_${habitId}_delete_${oldAwarded}to${newAlloc}`;
+              const corrUpdate = addPointsInternal(
+                runningState,
+                delta,
+                delta > 0
+                  ? `Habit daily cap top-up: ${h.name} (+${delta} pts)`
+                  : `Habit daily cap reduction: ${h.name} (${delta} pts)`,
+                'habit_cap_redistribution',
+                {
+                  habitId: h.id,
+                  habitName: h.name,
+                  periodKey: today,
+                  delta,
+                  allocatedPoints: newAlloc,
+                  triggerHabitId: habitId,
+                  triggerAction: 'delete',
+                },
+                undefined,
+                corrId
+              );
+              runningState = { ...runningState, ...corrUpdate };
+            }
+
+            return {
+              ...h,
+              completions: {
+                ...comps,
+                [today]: {
+                  ...(comp || { done: true }),
+                  pointsAwarded: newAlloc,
+                  updatedAt: comp?.updatedAt || nowIso,
+                },
+              },
+            };
+          });
+        }
+
+        const updatedDeletedEntityIds = [...(runningState.deletedEntityIds || []), habitId].slice(-500);
         return {
-          ...prev,
-          habits: prev.habits.filter((h) => h.id !== habitId),
-          weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'habit', [habitId]),
+          ...runningState,
+          habits: updatedHabits,
+          weeklyGoals: removeLinkedWeeklyGoals(runningState.weeklyGoals, 'habit', [habitId]),
           deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
         };
       },
       { immediate: true }
@@ -2602,7 +3345,7 @@ export function useAppState() {
             id: uid(),
             name: 'Reading (Books)',
             frequency: 'daily',
-            points: 12,
+            points: 0,
             isPreset: true,
             category: 'Learning & Growth',
             createdAt: nowIso,
@@ -2615,23 +3358,11 @@ export function useAppState() {
             linkedModule: 'reading',
           };
 
-          let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-          if (hasReadToday) {
-            pointsUpdate = addPointsInternal(
-              prev,
-              habit.points,
-              `Habit completed: ${habit.name}`,
-              'habit_completed',
-              { category: habit.category, habitId: habit.id, habitName: habit.name }
-            );
-          }
-
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habit.id])).slice(-500);
           return {
             ...prev,
             habits: [...prev.habits.filter((h) => h.name.toLowerCase() !== 'reading (books)'), habit],
             unsyncedEntityIds: updatedUnsynced,
-            ...pointsUpdate,
           };
         }
       },
@@ -2661,41 +3392,44 @@ export function useAppState() {
             }
 
             const nowIso = new Date().toISOString();
-            const habits = prev.habits.map((h) => {
+
+            const currentKey = habit ? periodKey(habit.frequency) : todayKey();
+            const prevCompletions = habit
+              ? (Array.isArray(habit.completions)
+                  ? Object.fromEntries(habit.completions.map((c) => [c, { done: true, updatedAt: habit.updatedAt || nowIso }]))
+                  : (habit.completions || {}))
+              : {};
+            const isCurrentlyDone = prevCompletions[currentKey]?.done === true;
+            completed = !isCurrentlyDone;
+
+            let habits = prev.habits.map((h) => {
               if (h.id !== habitId) return h;
               const key = periodKey(h.frequency);
               const currentCompletions = Array.isArray(h.completions)
                 ? Object.fromEntries(h.completions.map((c) => [c, { done: true, updatedAt: h.updatedAt || nowIso }]))
                 : (h.completions || {});
-              const isDone = currentCompletions[key]?.done === true;
-              if (isDone) {
-                completed = false;
+              if (!completed) {
                 return {
                   ...h,
                   completions: {
                     ...currentCompletions,
-                    [key]: { done: false, updatedAt: nowIso },
+                    [key]: { done: false, updatedAt: nowIso, pointsAwarded: 0 },
                   },
                   updatedAt: nowIso,
                 };
               } else {
-                completed = true;
                 return {
                   ...h,
                   completions: {
                     ...currentCompletions,
-                    [key]: { done: true, updatedAt: nowIso },
+                    [key]: { done: true, updatedAt: nowIso, pointsAwarded: h.isPreset && h.frequency === 'daily' ? 0 : h.points },
                   },
                   updatedAt: nowIso,
                 };
               }
             });
 
-            let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
-              totalPoints: prev.totalPoints,
-              pointsHistory: prev.pointsHistory,
-            };
-            let updatedDeletedEntityIds = prev.deletedEntityIds;
+            let runningState = prev;
 
             if (habit) {
               const currentPeriodKey = periodKey(habit.frequency);
@@ -2705,44 +3439,169 @@ export function useAppState() {
                 habitName: habit.name,
                 periodKey: currentPeriodKey,
               };
-              const pts = (habit.isPreset && habit.points > 0) ? habit.points : 0;
-              if (completed) {
-                pointsUpdate = addPointsInternal(
-                  prev,
-                  pts,
-                  `Habit completed: ${habit.name}`,
-                  'habit_completed',
-                  habitMeta
-                );
+
+              const isDailyPreset = habit.isPreset && habit.frequency === 'daily';
+
+              if (!isDailyPreset) {
+                // Non-daily or non-preset habits follow standard check/uncheck point handling
+                if (completed) {
+                  if (habit.points > 0) {
+                    const checkPointsUpdate = addPointsInternal(
+                      runningState,
+                      habit.points,
+                      `Habit completed: ${habit.name}`,
+                      'habit_completed',
+                      habitMeta
+                    );
+                    runningState = { ...runningState, ...checkPointsUpdate };
+                  }
+                } else {
+                  const targetCompletion = prevCompletions[currentPeriodKey];
+                  const completionInstanceTimestamp = targetCompletion?.updatedAt || habit.createdAt || currentPeriodKey;
+                  const exciseResult = excisePointsEntriesInternal(
+                    runningState,
+                    (entry) =>
+                      (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
+                      entry.metadata?.habitId === habit.id &&
+                      entry.metadata?.periodKey === currentPeriodKey,
+                    undefined,
+                    Infinity,
+                    `habit_${habit.id}_${currentPeriodKey}_${completionInstanceTimestamp}`
+                  );
+                  const { excisedEntryIds, ...restPoints } = exciseResult;
+                  runningState = { ...runningState, ...restPoints };
+                  if (excisedEntryIds && excisedEntryIds.length > 0) {
+                    runningState = {
+                      ...runningState,
+                      deletedEntityIds: Array.from(
+                        new Set([...(runningState.deletedEntityIds || []), ...excisedEntryIds])
+                      ).slice(-500),
+                    };
+                  }
+                }
               } else {
-                const prevCompletions = Array.isArray(habit.completions)
-                  ? Object.fromEntries(habit.completions.map((c) => [c, { done: true, updatedAt: habit.updatedAt || nowIso }]))
-                  : (habit.completions || {});
-                const targetCompletion = prevCompletions[currentPeriodKey];
-                const completionInstanceTimestamp = targetCompletion?.updatedAt || habit.createdAt || currentPeriodKey;
-                const exciseResult = excisePointsEntriesInternal(
-                  prev,
-                  (entry) => {
-                    if (entry.source === 'habit_completed') {
-                      if (entry.metadata?.habitId === habit.id) {
-                        if (entry.metadata?.periodKey && entry.metadata.periodKey === currentPeriodKey) return true;
-                        return true;
-                      }
-                    }
-                    return false;
-                  },
-                  { pos: pts },
-                  1,
-                  `habit_${habit.id}_${currentPeriodKey}_${completionInstanceTimestamp}`
-                );
-                const { excisedEntryIds, ...restPoints } = exciseResult;
-                pointsUpdate = restPoints;
-                if (excisedEntryIds && excisedEntryIds.length > 0) {
-                  updatedDeletedEntityIds = Array.from(
-                    new Set([...(prev.deletedEntityIds || []), ...excisedEntryIds])
-                  ).slice(-500);
+                // Daily preset habits:
+                // If unchecking, excise the habit's own previous completion and redistribution entries
+                if (!completed) {
+                  const targetCompletion = prevCompletions[currentPeriodKey];
+                  const completionInstanceTimestamp = targetCompletion?.updatedAt || habit.createdAt || currentPeriodKey;
+                  const exciseResult = excisePointsEntriesInternal(
+                    runningState,
+                    (entry) =>
+                      (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
+                      entry.metadata?.habitId === habit.id &&
+                      entry.metadata?.periodKey === currentPeriodKey,
+                    undefined,
+                    Infinity,
+                    `habit_${habit.id}_${currentPeriodKey}_${completionInstanceTimestamp}`
+                  );
+                  const { excisedEntryIds, ...restPoints } = exciseResult;
+                  runningState = { ...runningState, ...restPoints };
+                  if (excisedEntryIds && excisedEntryIds.length > 0) {
+                    runningState = {
+                      ...runningState,
+                      deletedEntityIds: Array.from(
+                        new Set([...(runningState.deletedEntityIds || []), ...excisedEntryIds])
+                      ).slice(-500),
+                    };
+                  }
                 }
               }
+            }
+
+            // Live recompute: On check OR uncheck of daily preset habits,
+            // evaluate cap allocation across all currently-checked preset habits today
+            // from the single recomputeTodayPresetPoints pass.
+            if (habit && habit.isPreset && habit.frequency === 'daily') {
+              const today = todayKey();
+              const capItems: PresetHabitCapItem[] = [];
+
+              for (const h of habits) {
+                if (!h || !h.isPreset || h.frequency !== 'daily' || h.points <= 0) continue;
+                const comps = Array.isArray(h.completions)
+                  ? Object.fromEntries(h.completions.map((c) => [c, { done: true, updatedAt: h.updatedAt || nowIso }]))
+                  : (h.completions || {});
+                const comp = comps[today];
+                if (comp?.done) {
+                  capItems.push({
+                    id: h.id,
+                    nominalPoints: h.points,
+                    updatedAt: comp.updatedAt || h.updatedAt || h.createdAt || nowIso,
+                  });
+                }
+              }
+
+              const newAllocation = recomputeTodayPresetPoints(capItems, PRESET_HABIT_POINTS.dailyCap);
+
+              habits = habits.map((h) => {
+                if (!h || !h.isPreset || h.frequency !== 'daily' || !(h.id in newAllocation)) return h;
+                const newAlloc = newAllocation[h.id];
+                const comps = Array.isArray(h.completions)
+                  ? Object.fromEntries(h.completions.map((c) => [c, { done: true, updatedAt: h.updatedAt || nowIso }]))
+                  : { ...(h.completions || {}) };
+                const comp = comps[today];
+
+                if (h.id === habitId) {
+                  // For the toggled habit itself on check:
+                  // Its primary habit_completed entry is written with its newly computed allocation directly
+                  if (completed && newAlloc > 0) {
+                    const checkPointsUpdate = addPointsInternal(
+                      runningState,
+                      newAlloc,
+                      `Habit completed: ${h.name}`,
+                      'habit_completed',
+                      {
+                        category: h.category,
+                        habitId: h.id,
+                        habitName: h.name,
+                        periodKey: today,
+                      }
+                    );
+                    runningState = { ...runningState, ...checkPointsUpdate };
+                  }
+                } else {
+                  // For ANY OTHER habit whose allocation changed:
+                  const oldAwarded = typeof comp?.pointsAwarded === 'number' ? comp.pointsAwarded : h.points;
+                  const delta = newAlloc - oldAwarded;
+
+                  if (delta !== 0) {
+                    const action = completed ? 'check' : 'uncheck';
+                    const corrId = `habit_cap_redistribution_${h.id}_${today}_from_${habitId}_${action}_${oldAwarded}to${newAlloc}`;
+                    const corrUpdate = addPointsInternal(
+                      runningState,
+                      delta,
+                      delta > 0
+                        ? `Habit daily cap top-up: ${h.name} (+${delta} pts)`
+                        : `Habit daily cap reduction: ${h.name} (${delta} pts)`,
+                      'habit_cap_redistribution',
+                      {
+                        habitId: h.id,
+                        habitName: h.name,
+                        periodKey: today,
+                        delta,
+                        allocatedPoints: newAlloc,
+                        triggerHabitId: habitId,
+                        triggerAction: action,
+                      },
+                      undefined,
+                      corrId
+                    );
+                    runningState = { ...runningState, ...corrUpdate };
+                  }
+                }
+
+                return {
+                  ...h,
+                  completions: {
+                    ...comps,
+                    [today]: {
+                      ...(comp || { done: true }),
+                      pointsAwarded: newAlloc,
+                      updatedAt: comp?.updatedAt || nowIso,
+                    },
+                  },
+                };
+              });
             }
 
             let updatedChallenges = prev.sharedChallenges;
@@ -2772,14 +3631,12 @@ export function useAppState() {
               });
             }
 
-            const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habitId])).slice(-500);
+            const updatedUnsynced = Array.from(new Set([...(runningState.unsyncedEntityIds || []), habitId])).slice(-500);
             return {
-              ...prev,
+              ...runningState,
               habits,
               sharedChallenges: updatedChallenges,
-              deletedEntityIds: updatedDeletedEntityIds,
               unsyncedEntityIds: updatedUnsynced,
-              ...pointsUpdate,
             };
           },
           { immediate: true }
@@ -2911,11 +3768,23 @@ export function useAppState() {
   const markLessonRead = useCallback(
     (lessonId: string, lessonTitle: string, points: number) => {
       setState((prev) => {
-        if (prev.readLessonIds.includes(lessonId)) return prev;
-        const pointsUpdate = addPointsInternal(prev, points, `Lesson read: ${lessonTitle}`, 'lesson');
+        const activeSeasonNum = getSeasonNumber(leagueNow());
+        const seasonKey = `${lessonId}_s${activeSeasonNum}`;
+        const isAlreadyReadThisSeason =
+          prev.readLessonIds.includes(seasonKey) ||
+          (activeSeasonNum === 1 && prev.readLessonIds.includes(lessonId));
+        if (isAlreadyReadThisSeason) return prev;
+
+        const pointsUpdate = addPointsInternal(
+          prev,
+          points,
+          `Lesson read: ${lessonTitle}`,
+          'lesson',
+          { lessonId, seasonNumber: activeSeasonNum }
+        );
         return {
           ...prev,
-          readLessonIds: [...prev.readLessonIds, lessonId],
+          readLessonIds: [...prev.readLessonIds, seasonKey],
           ...pointsUpdate,
         };
       });
@@ -3362,17 +4231,6 @@ export function useAppState() {
 
       const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
 
-      const alreadyLoggedToday = (prev.readingLogs || []).some(
-        (l) => l.date === date && [targetUserBook.id, bookId, targetUserBook.linkedBookId, targetUserBook.curatedBookId]
-          .filter(Boolean).includes(l.bookId)
-      );
-
-      // Points balancing: If reading habit is linked, do NOT award +5 reading hub points (habit completion awards points)
-      let pointsToAward = 0;
-      if (!readingHabit && !alreadyLoggedToday && pageDelta > 0) {
-        pointsToAward = READING_POINTS.unlinkedDailyLog;
-      }
-
       let updatedReadingLogs = prev.readingLogs || [];
       let removedLogIds: string[] = [];
       if (pageDelta > 0) {
@@ -3381,7 +4239,7 @@ export function useAppState() {
           bookId: targetUserBook.id,
           date,
           pagesRead: pageDelta,
-          pointsAwarded: pointsToAward,
+          pointsAwarded: 0,
           createdAt: new Date().toISOString(),
         };
         updatedReadingLogs = [readingLog, ...updatedReadingLogs];
@@ -3408,6 +4266,53 @@ export function useAppState() {
         }).filter((l): l is ReadingLog => l !== null);
       }
 
+      // Recompute chronological points across all reading logs for this date
+      const dayLogs = updatedReadingLogs.filter((l) => l.date === date);
+      const chronDayLogs = [...dayLogs].sort(
+        (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+      );
+
+      let cumulativePages = 0;
+      let cumulativePointsAllocated = 0;
+      const recalculatedMap = new Map<string, number>();
+
+      for (const log of chronDayLogs) {
+        cumulativePages += (log.pagesRead || 0);
+        const totalPointsEarnedSoFar = Math.min(
+          Math.floor(cumulativePages / READING_POINTS.pagesPerPoint),
+          READING_POINTS.dailyCap
+        );
+        const logAward = Math.max(0, totalPointsEarnedSoFar - cumulativePointsAllocated);
+        recalculatedMap.set(log.id, logAward);
+        cumulativePointsAllocated += logAward;
+      }
+
+      const oldDatePoints = (prev.readingLogs || [])
+        .filter((l) => l.date === date)
+        .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+      const newDatePoints = cumulativePointsAllocated;
+      const netPointDelta = newDatePoints - oldDatePoints;
+
+      let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+      if (netPointDelta !== 0) {
+        pointsUpdate = addPointsInternal(
+          prev,
+          netPointDelta,
+          netPointDelta > 0
+            ? `Read ${pageDelta} ${targetUserBook.unit || 'pages'} of ${title}`
+            : `Reading progress adjusted on ${title}`,
+          'reading'
+        );
+      }
+
+      updatedReadingLogs = updatedReadingLogs.map((l) => {
+        if (l.date === date && recalculatedMap.has(l.id)) {
+          return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
+        }
+        return l;
+      });
+
       // Calculate total pages read today across ALL books
       const totalPagesToday = updatedReadingLogs
         .filter((l) => l.date === date)
@@ -3426,35 +4331,23 @@ export function useAppState() {
         return lb;
       });
 
-      let pointsUpdate = {};
-      if (pointsToAward > 0) {
-        pointsUpdate = addPointsInternal(prev, pointsToAward, `Read ${pageDelta} ${targetUserBook.unit || 'pages'} of ${title}`, 'reading');
-      }
-
       let updatedHabits = prev.habits;
       let updatedDeletedEntityIds = prev.deletedEntityIds || [];
       if (removedLogIds.length > 0) {
         updatedDeletedEntityIds = Array.from(new Set([...updatedDeletedEntityIds, ...removedLogIds])).slice(-500);
       }
 
-      // Auto-Check / Un-Check linked reading habit
+      // Auto-Check / Un-Check linked reading habit (presence tracking)
       if (readingHabit) {
         const key = periodKey(readingHabit.frequency || 'daily');
         const currentCompletions = Array.isArray(readingHabit.completions)
           ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || new Date().toISOString() }]))
           : (readingHabit.completions || {});
         const isCheckedToday = currentCompletions[key]?.done === true;
-        const habitPts = (readingHabit.isPreset && readingHabit.points > 0) ? readingHabit.points : READING_POINTS.presetHabitFallback;
-        const habitMeta = {
-          category: readingHabit.category,
-          habitId: readingHabit.id,
-          habitName: readingHabit.name,
-          periodKey: key,
-        };
 
         const nowIso = new Date().toISOString();
         if (totalPagesToday > 0 && !isCheckedToday) {
-          // Auto-check habit
+          // Auto-check habit (linked reading habit is zero-point system indicator or tracks completions)
           updatedHabits = prev.habits.map((h) =>
             h.id === readingHabit.id
               ? {
@@ -3469,21 +4362,8 @@ export function useAppState() {
                 }
               : h
           );
-          pointsUpdate = {
-            ...pointsUpdate,
-            ...addPointsInternal(
-              { ...prev, ...pointsUpdate },
-              habitPts,
-              `Habit completed: ${readingHabit.name}`,
-              'habit_completed',
-              habitMeta
-            ),
-          };
         } else if (totalPagesToday <= 0 && isCheckedToday) {
-          // Auto-uncheck habit (negative corrections)
-          const currentPeriodKey = key;
-          const targetCompletion = currentCompletions[currentPeriodKey];
-          const completionInstanceTimestamp = targetCompletion?.updatedAt || readingHabit.createdAt || currentPeriodKey;
+          // Auto-uncheck habit
           updatedHabits = prev.habits.map((h) =>
             h.id === readingHabit.id
               ? {
@@ -3498,21 +4378,6 @@ export function useAppState() {
                 }
               : h
           );
-          const prevToExcise = { ...prev, ...pointsUpdate };
-          const exciseResult = excisePointsEntriesInternal(
-            prevToExcise,
-            (entry) => entry.source === 'habit_completed'
-              && entry.metadata?.habitId === readingHabit.id
-              && entry.metadata?.periodKey === currentPeriodKey,
-            { pos: habitPts },
-            Infinity,
-            `habit_${readingHabit.id}_${currentPeriodKey}_${completionInstanceTimestamp}`
-          );
-          const { excisedEntryIds, ...restPoints } = exciseResult;
-          pointsUpdate = { ...pointsUpdate, ...restPoints };
-          if (excisedEntryIds?.length) {
-            updatedDeletedEntityIds = Array.from(new Set([...updatedDeletedEntityIds, ...excisedEntryIds])).slice(-500);
-          }
         }
       }
 
@@ -3544,21 +4409,43 @@ export function useAppState() {
         const now = new Date().toISOString();
         const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
 
-        // Determine points: if curated, award curated points; if custom, award 30 pts completion bonus
-        let bonusPoints: number = READING_POINTS.customBookBonus;
-        if (targetUserBook && !targetUserBook.isCustom && targetUserBook.curatedBookId) {
-          const curated = findCuratedBook(targetUserBook.curatedBookId);
-          if (curated) {
-            bonusPoints = curated.pointsOnCompletion;
-          }
-        }
-
         // Check if bonus already awarded
         const alreadyAwarded = (targetUserBook?.pointsAwarded ?? 0) > 0;
-        const pointsToAward = alreadyAwarded ? 0 : bonusPoints;
+
+        // Eligibility Gate:
+        // 1. Book logged & read inside Ascend across >= 7 days span
+        const startStr = targetUserBook.dateStarted || targetUserBook.startedAt || targetUserBook.addedAt;
+        const startParsed = parseDate(startStr);
+        let meetsSpanGate = false;
+        if (startParsed) {
+          const startKeyStr = todayKey(startParsed);
+          const nowKeyStr = todayKey(new Date());
+          const [sY, sM, sD] = startKeyStr.split('-').map(Number);
+          const [nY, nM, nD] = nowKeyStr.split('-').map(Number);
+          const startMidnight = new Date(sY, sM - 1, sD).getTime();
+          const nowMidnight = new Date(nY, nM - 1, nD).getTime();
+          const spanDays = Math.floor((nowMidnight - startMidnight) / 86400000);
+          meetsSpanGate = spanDays >= 7;
+        }
+
+        // 2. >= 5 distinct days with page logs
+        const allMatchingIds = new Set<string>([targetUserBook.id]);
+        if (targetUserBook.linkedBookId) allMatchingIds.add(targetUserBook.linkedBookId);
 
         const currentPage = targetUserBook.currentAmount ?? targetUserBook.currentPage ?? 0;
         const unreadDelta = Math.max(0, maxPages - currentPage);
+
+        const bookLogs = (prev.readingLogs || []).filter(
+          (l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)) && (l.pagesRead || 0) > 0
+        );
+        const logDates = new Set(bookLogs.map((l) => l.date));
+        if (unreadDelta > 0) {
+          logDates.add(todayKey(new Date()));
+        }
+        const meetsDistinctDaysGate = logDates.size >= 5;
+
+        const isEligibleForBonus = !alreadyAwarded && meetsSpanGate && meetsDistinctDaysGate;
+        const pointsToAward = isEligibleForBonus ? READING_POINTS.completionBonus : 0;
 
         let updatedReadingLogs = prev.readingLogs || [];
         if (unreadDelta > 0) {
@@ -3622,20 +4509,65 @@ export function useAppState() {
         const allMatchingIds = new Set<string>([bookId]);
         if (targetUserBook.id) allMatchingIds.add(targetUserBook.id);
         if (targetUserBook.linkedBookId) allMatchingIds.add(targetUserBook.linkedBookId);
-        if (targetUserBook.curatedBookId) allMatchingIds.add(targetUserBook.curatedBookId);
 
         const targetTitleLower = (targetUserBook.title || '').toLowerCase();
         const bookLogs = prev.readingLogs.filter((l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)));
-        const logPointsTotal = bookLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-        const completionPoints = targetUserBook.pointsAwarded || (targetUserBook.status === 'completed' ? READING_POINTS.customBookBonus : 0);
-        const totalBookPoints = logPointsTotal + completionPoints;
-
-        let pointsUpdate = {};
-        if (totalBookPoints > 0) {
-          pointsUpdate = addPointsInternal(prev, -totalBookPoints, `Book deleted: ${targetUserBook.title}`, 'reading');
-        }
+        const completionPoints = targetUserBook.pointsAwarded ?? 0;
 
         const remainingReadingLogs = prev.readingLogs.filter((l) => !l.bookId || !allMatchingIds.has(l.bookId));
+
+        // Get unique affected dates from the deleted book's logs
+        const affectedDates = Array.from(new Set(bookLogs.map((l) => l.date)));
+
+        const recalculatedMap = new Map<string, number>();
+        for (const affectedDate of affectedDates) {
+          const dayLogs = remainingReadingLogs.filter((l) => l.date === affectedDate);
+          const chronDayLogs = [...dayLogs].sort(
+            (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+          );
+
+          let cumulativePages = 0;
+          let cumulativePointsAllocated = 0;
+          for (const log of chronDayLogs) {
+            cumulativePages += (log.pagesRead || 0);
+            const totalPointsEarnedSoFar = Math.min(
+              Math.floor(cumulativePages / READING_POINTS.pagesPerPoint),
+              READING_POINTS.dailyCap
+            );
+            const logAward = Math.max(0, totalPointsEarnedSoFar - cumulativePointsAllocated);
+            recalculatedMap.set(log.id, logAward);
+            cumulativePointsAllocated += logAward;
+          }
+        }
+
+        const oldPointsOnAffectedDates = prev.readingLogs
+          .filter((l) => affectedDates.includes(l.date))
+          .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+        const newPointsOnAffectedDates = remainingReadingLogs
+          .filter((l) => affectedDates.includes(l.date))
+          .reduce((sum, l) => sum + (recalculatedMap.get(l.id) ?? l.pointsAwarded ?? 0), 0);
+
+        const logPointDelta = newPointsOnAffectedDates - oldPointsOnAffectedDates;
+        const totalNetPointDelta = logPointDelta - completionPoints;
+
+        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        if (totalNetPointDelta !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            totalNetPointDelta,
+            `Book deleted: ${targetUserBook.title}`,
+            'reading'
+          );
+        }
+
+        const updatedReadingLogs = remainingReadingLogs.map((l) => {
+          if (recalculatedMap.has(l.id)) {
+            return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
+          }
+          return l;
+        });
+
         const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
         let updatedHabits = prev.habits;
         let habitExcisedIds: string[] = [];
@@ -3647,16 +4579,12 @@ export function useAppState() {
             ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || new Date().toISOString() }]))
             : (readingHabit.completions || {});
           const isCheckedToday = currentCompletions[key]?.done === true;
-          const remainingPagesToday = remainingReadingLogs
+          const remainingPagesToday = updatedReadingLogs
             .filter((l) => l.date === today)
             .reduce((sum, l) => sum + (l.pagesRead || 0), 0);
 
           if (remainingPagesToday <= 0 && isCheckedToday) {
             const nowIso = new Date().toISOString();
-            const habitPts = (readingHabit.isPreset && readingHabit.points > 0) ? readingHabit.points : READING_POINTS.presetHabitFallback;
-            const targetCompletion = currentCompletions[key];
-            const completionInstanceTimestamp = targetCompletion?.updatedAt || readingHabit.createdAt || key;
-
             updatedHabits = prev.habits.map((h) =>
               h.id === readingHabit.id
                 ? {
@@ -3671,20 +4599,6 @@ export function useAppState() {
                   }
                 : h
             );
-
-            const stateAfterBookPoints = { ...prev, ...pointsUpdate };
-            const exciseResult = excisePointsEntriesInternal(
-              stateAfterBookPoints,
-              (entry) => entry.source === 'habit_completed'
-                && entry.metadata?.habitId === readingHabit.id
-                && entry.metadata?.periodKey === key,
-              { pos: habitPts },
-              Infinity,
-              `habit_${readingHabit.id}_${key}_${completionInstanceTimestamp}`
-            );
-            const { excisedEntryIds, ...restPoints } = exciseResult;
-            pointsUpdate = { ...pointsUpdate, ...restPoints };
-            habitExcisedIds = excisedEntryIds || [];
           }
         }
 
@@ -3702,7 +4616,7 @@ export function useAppState() {
           libraryBooks: prev.libraryBooks.filter(
             (lb) => !allMatchingIds.has(lb.id) && lb.title.toLowerCase() !== targetTitleLower
           ),
-          readingLogs: remainingReadingLogs,
+          readingLogs: updatedReadingLogs,
           habits: updatedHabits,
           weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsArray),
           deletedEntityIds: updatedDeletedEntityIds,
@@ -3741,7 +4655,7 @@ export function useAppState() {
         coverImageUrl: curatedBook.coverImageUrl,
         isCurated: true,
         isCustom: false,
-        pointsReward: curatedBook.pointsOnCompletion || curatedBook.pointsReward || READING_POINTS.curatedBookFallback,
+        pointsReward: READING_POINTS.completionBonus,
         pointsAwarded: 0,
         status: initialStatus,
         totalAmount: numPages,
@@ -3760,26 +4674,12 @@ export function useAppState() {
 
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newBook.id])).slice(-500);
 
-      let newState: AppState = {
+      return {
         ...prev,
         libraryBooks: [newBook, ...prev.libraryBooks],
         books: [],
         unsyncedEntityIds: updatedUnsynced,
       };
-
-      if (initialStatus === 'completed') {
-        const reward = curatedBook.pointsOnCompletion || curatedBook.pointsReward || READING_POINTS.curatedBookFallback;
-        const pointsUpdate = addPointsInternal(
-          newState,
-          reward,
-          `Curated book completed: ${curatedBook.title}`,
-          'library_book_bonus'
-        );
-        newBook.pointsAwarded = reward;
-        newState = { ...newState, ...pointsUpdate };
-      }
-
-      return newState;
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3953,10 +4853,10 @@ export function useAppState() {
 
       const pointsEarnedToday = prev.skillLogs
         .filter((l) => l.date === date)
-        .reduce((sum, l) => sum + l.pointsAwarded, 0);
+        .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
 
-      const maxAllowed = Math.max(0, SKILLS_POINTS.dailyCap - pointsEarnedToday);
-      const pointsToAward = Math.min(durationMinutes * SKILLS_POINTS.pointsPerMinute, maxAllowed);
+      const remainingCap = Math.max(0, SKILLS_POINTS.dailyCap - pointsEarnedToday);
+      const { pointsToAward } = calculateSkillPoints(durationMinutes, remainingCap);
 
       const session: SkillSessionLog = {
         id: uid(),
@@ -4002,31 +4902,68 @@ export function useAppState() {
     return (
       setState(
         (prev) => {
-          const skillLogs = prev.skillLogs.filter((l) => l.skillId === skillId);
-          const totalPointsToDeduct = skillLogs.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+          const target = prev.skills.find((s) => s.id === skillId);
+          if (!target) return prev;
 
-          let pointsUpdate = {};
-          if (totalPointsToDeduct > 0) {
-            const targetSkill = prev.skills.find((s) => s.id === skillId);
-            const skillName = targetSkill ? targetSkill.name : 'Skill';
+          const remainingSkills = prev.skills.filter((s) => s.id !== skillId);
+          const skillLogsToRemove = prev.skillLogs.filter((l) => l.skillId === skillId);
+          const remainingSkillLogs = prev.skillLogs.filter((l) => l.skillId !== skillId);
+
+          // Get unique affected dates
+          const affectedDates = Array.from(new Set(skillLogsToRemove.map((l) => l.date)));
+
+          const recalculatedMap = new Map<string, number>();
+          for (const affectedDate of affectedDates) {
+            const dayLogs = remainingSkillLogs.filter((l) => l.date === affectedDate);
+            const chronDayLogs = [...dayLogs].sort(
+              (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+            );
+
+            let dailyCapRemaining: number = SKILLS_POINTS.dailyCap;
+            for (const log of chronDayLogs) {
+              const { pointsToAward: awarded } = calculateSkillPoints(log.durationMinutes, dailyCapRemaining);
+              recalculatedMap.set(log.id, awarded);
+              dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
+            }
+          }
+
+          const oldPointsOnAffectedDates = prev.skillLogs
+            .filter((l) => affectedDates.includes(l.date))
+            .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+          const newPointsOnAffectedDates = remainingSkillLogs
+            .filter((l) => affectedDates.includes(l.date))
+            .reduce((sum, l) => sum + (recalculatedMap.get(l.id) ?? l.pointsAwarded ?? 0), 0);
+
+          const netPointDelta = newPointsOnAffectedDates - oldPointsOnAffectedDates;
+
+          let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+          if (netPointDelta !== 0) {
             pointsUpdate = addPointsInternal(
               prev,
-              -totalPointsToDeduct,
-              `Skill deleted (${skillLogs.length} session log(s) removed): ${skillName}`,
+              netPointDelta,
+              `Skill deleted (${skillLogsToRemove.length} session log(s) removed): ${target.name}`,
               'skill'
             );
           }
 
+          const updatedSkillLogs = remainingSkillLogs.map((l) => {
+            if (recalculatedMap.has(l.id)) {
+              return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
+            }
+            return l;
+          });
+
           const updatedDeletedEntityIds = [
             ...(prev.deletedEntityIds || []),
             skillId,
-            ...skillLogs.map((l) => l.id),
+            ...skillLogsToRemove.map((l) => l.id),
           ].slice(-500);
 
           return {
             ...prev,
-            skills: prev.skills.filter((s) => s.id !== skillId),
-            skillLogs: prev.skillLogs.filter((l) => l.skillId !== skillId),
+            skills: remainingSkills,
+            skillLogs: updatedSkillLogs,
             weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId]),
             deletedEntityIds: updatedDeletedEntityIds,
             ...pointsUpdate,
@@ -4043,14 +4980,58 @@ export function useAppState() {
     setState(
       (prev) => {
         const target = prev.skillLogs.find((s) => s.id === logId);
-        let pointsUpdate = {};
-        if (target && target.pointsAwarded > 0) {
-          pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Skill practice log deleted`, 'skill');
+        if (!target) return prev;
+
+        const targetDate = target.date;
+        const remainingSkillLogs = prev.skillLogs.filter((s) => s.id !== logId);
+
+        // Recalculate points awarded for all remaining same-date skill logs across all skills in chronological order
+        const dayLogs = remainingSkillLogs.filter((l) => l.date === targetDate);
+        const chronDayLogs = [...dayLogs].sort(
+          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+
+        let dailyCapRemaining: number = SKILLS_POINTS.dailyCap;
+        const recalculatedMap = new Map<string, number>();
+
+        for (const log of chronDayLogs) {
+          const { pointsToAward: awarded } = calculateSkillPoints(log.durationMinutes, dailyCapRemaining);
+          recalculatedMap.set(log.id, awarded);
+          dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
         }
+
+        const oldDatePoints = prev.skillLogs
+          .filter((l) => l.date === targetDate)
+          .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+        const newDatePoints = chronDayLogs.reduce(
+          (sum, l) => sum + (recalculatedMap.get(l.id) ?? 0),
+          0
+        );
+
+        const netPointDelta = newDatePoints - oldDatePoints;
+
+        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        if (netPointDelta !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            netPointDelta,
+            `Skill practice log deleted`,
+            'skill'
+          );
+        }
+
+        const updatedSkillLogs = remainingSkillLogs.map((l) => {
+          if (l.date === targetDate && recalculatedMap.has(l.id)) {
+            return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
+          }
+          return l;
+        });
+
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {
           ...prev,
-          skillLogs: prev.skillLogs.filter((s) => s.id !== logId),
+          skillLogs: updatedSkillLogs,
           deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
@@ -4118,25 +5099,79 @@ export function useAppState() {
           };
         }
 
-        const activeHabits = baseState.badHabits
-          .filter((h) => !h.isCompleted)
-          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-        const activeIndex = activeHabits.findIndex((h) => h.id === badHabitId);
-        const isPointEligible = activeIndex >= 0 && activeIndex < 2;
-
-        let pointsChange = 0;
-        let reason = '';
-        let consecutiveOccurrences = 0;
+        const nowIso = new Date().toISOString();
+        const logId = existingLog?.id || uid();
 
         if (status === 'resisted') {
-          pointsChange = isPointEligible ? BAD_HABIT_POINTS.resistBase : 0;
-          reason = `Bad habit resisted: ${bh.name}`;
+          // Prepare the proposed new log
+          const newLog: BadHabitLog = {
+            id: logId,
+            badHabitId,
+            date,
+            status: 'resisted',
+            consecutiveOccurrences: 0,
+            pointsAwardedOrDeducted: 0,
+            createdAt: existingLog?.createdAt || nowIso,
+            updatedAt: nowIso,
+          };
+
+          const survivingOtherLogs = (baseState.badHabitLogs || []).filter(
+            (l) => !(l && l.badHabitId === badHabitId && l.date === date)
+          );
+          const combinedLogs = [newLog, ...survivingOtherLogs];
+
+          // Dynamic chronological recompute across all same-day resist logs
+          const sameDayResists = combinedLogs
+            .filter((l) => l.date === date && l.status === 'resisted');
+          const recalculatedMap = allocateEligibleResistPoints(sameDayResists, baseState.badHabits);
+
+          const oldResistPointsToday = (baseState.badHabitLogs || [])
+            .filter((l) => l.date === date && l.status === 'resisted')
+            .reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
+
+          const newResistPointsToday = Array.from(recalculatedMap.values()).reduce((sum, pts) => sum + pts, 0);
+          const netPointDelta = newResistPointsToday - oldResistPointsToday;
+
+          let pointsUpdate = {};
+          if (netPointDelta !== 0) {
+            pointsUpdate = addPointsInternal(
+              baseState,
+              netPointDelta,
+              netPointDelta > 0 ? `Bad habit resisted: ${bh.name}` : `Bad habit resist points adjusted`,
+              'bad_habit_resisted',
+              { badHabitId, date, status: 'resisted' }
+            );
+          }
+
+          const updatedLogs = combinedLogs.map((l) => {
+            if (l.date === date && l.status === 'resisted' && recalculatedMap.has(l.id)) {
+              return { ...l, pointsAwardedOrDeducted: recalculatedMap.get(l.id)! };
+            }
+            return l;
+          });
+
+          const sanitizedDeletedEntityIds = (baseState.deletedEntityIds || []).filter(
+            (id) => id !== `${badHabitId}_${date}`
+          );
+          const updatedDeletedEntityIds = Array.from(
+            new Set([...sanitizedDeletedEntityIds, ...excisedIds])
+          ).slice(-500);
+          const updatedUnsynced = Array.from(new Set([...(baseState.unsyncedEntityIds || []), logId])).slice(-500);
+
+          return {
+            ...baseState,
+            badHabitLogs: updatedLogs,
+            deletedEntityIds: updatedDeletedEntityIds,
+            unsyncedEntityIds: updatedUnsynced,
+            ...pointsUpdate,
+          };
         } else {
+          // Occurred status path
           const pastLogs = (baseState.badHabitLogs || [])
             .filter((l) => l && l.badHabitId === badHabitId && l.date < date)
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-          consecutiveOccurrences = 1;
+          let consecutiveOccurrences = 1;
           for (const log of pastLogs) {
             if (log && (log.status === 'occurred' || log.status === 'no_report')) {
               consecutiveOccurrences++;
@@ -4145,55 +5180,58 @@ export function useAppState() {
             }
           }
 
-          const now = leagueNow();
-          const seasonStart = getLeaguePeriodStart('ninetyDay', now);
-          const seasonPts = calculatePeriodPoints(baseState.pointsHistory || [], seasonStart, now, baseState.totalPoints);
-          const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
-          const penaltyAmount = isPointEligible ? Math.round(BAD_HABIT_POINTS.occurBase * multiplier) : 0;
-          pointsChange = -penaltyAmount;
-          reason = `Bad habit occurred (${multiplier}x penalty): ${bh.name}`;
-        }
+          const eligible = isBadHabitPointEligible(baseState.badHabits, badHabitId);
+          let penaltyAmount = 0;
+          let pointsChange = 0;
+          let pointsUpdate = {};
 
-        let pointsUpdate = {};
-        if (pointsChange !== 0) {
-          pointsUpdate = addPointsInternal(
-            baseState,
-            pointsChange,
-            reason,
-            status === 'resisted' ? 'bad_habit_resisted' : 'bad_habit_occurred',
-            { badHabitId, date, status }
+          if (eligible) {
+            const now = leagueNow();
+            const seasonPts = getAppStateSeasonPoints(baseState, now);
+            const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
+            penaltyAmount = Math.round(BAD_HABIT_POINTS.occurBase * multiplier);
+            pointsChange = -penaltyAmount;
+            const reason = `Bad habit occurred (${multiplier}x penalty): ${bh.name}`;
+
+            if (pointsChange !== 0) {
+              pointsUpdate = addPointsInternal(
+                baseState,
+                pointsChange,
+                reason,
+                'bad_habit_occurred',
+                { badHabitId, date, status }
+              );
+            }
+          }
+
+          const newLog: BadHabitLog = {
+            id: logId,
+            badHabitId,
+            date,
+            status,
+            consecutiveOccurrences,
+            pointsAwardedOrDeducted: pointsChange,
+            createdAt: existingLog?.createdAt || nowIso,
+            updatedAt: nowIso,
+          };
+
+          const sanitizedDeletedEntityIds = (baseState.deletedEntityIds || []).filter(
+            (id) => id !== `${badHabitId}_${date}`
           );
+          const updatedDeletedEntityIds = Array.from(
+            new Set([...sanitizedDeletedEntityIds, ...excisedIds])
+          ).slice(-500);
+
+          const filteredLogs = (baseState.badHabitLogs || []).filter((l) => !(l && l.badHabitId === badHabitId && l.date === date));
+          const updatedUnsynced = Array.from(new Set([...(baseState.unsyncedEntityIds || []), newLog.id])).slice(-500);
+          return {
+            ...baseState,
+            badHabitLogs: [newLog, ...filteredLogs],
+            deletedEntityIds: updatedDeletedEntityIds,
+            unsyncedEntityIds: updatedUnsynced,
+            ...pointsUpdate,
+          };
         }
-
-        const nowIso = new Date().toISOString();
-        const logId = existingLog?.id || uid();
-        const newLog: BadHabitLog = {
-          id: logId,
-          badHabitId,
-          date,
-          status,
-          consecutiveOccurrences: status === 'occurred' ? consecutiveOccurrences : 0,
-          pointsAwardedOrDeducted: pointsChange,
-          createdAt: existingLog?.createdAt || nowIso,
-          updatedAt: nowIso,
-        };
-
-        const sanitizedDeletedEntityIds = (baseState.deletedEntityIds || []).filter(
-          (id) => id !== `${badHabitId}_${date}`
-        );
-        const updatedDeletedEntityIds = Array.from(
-          new Set([...sanitizedDeletedEntityIds, ...excisedIds])
-        ).slice(-500);
-
-        const filteredLogs = (baseState.badHabitLogs || []).filter((l) => !(l && l.badHabitId === badHabitId && l.date === date));
-        const updatedUnsynced = Array.from(new Set([...(baseState.unsyncedEntityIds || []), newLog.id])).slice(-500);
-        return {
-          ...baseState,
-          badHabitLogs: [newLog, ...filteredLogs],
-          deletedEntityIds: updatedDeletedEntityIds,
-          unsyncedEntityIds: updatedUnsynced,
-          ...pointsUpdate,
-        };
       } catch (err) {
         console.error(`[ERROR IN logBadHabitDay FOR STATUS ${status}]:`, err);
         return prev;
@@ -4212,7 +5250,40 @@ export function useAppState() {
 
       let pointsUpdate = {};
       let excisedIds: string[] = [];
-      if (target.pointsAwardedOrDeducted !== 0) {
+      const remainingLogs = prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === today));
+      let updatedLogs = remainingLogs;
+
+      if (target.status === 'resisted') {
+        // Dynamic chronological recompute across all surviving same-day resist logs
+        const sameDayResists = remainingLogs
+          .filter((l) => l.date === today && l.status === 'resisted');
+        const recalculatedMap = allocateEligibleResistPoints(sameDayResists, prev.badHabits);
+
+        const oldResistPointsToday = (prev.badHabitLogs || [])
+          .filter((l) => l.date === today && l.status === 'resisted')
+          .reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
+
+        const newResistPointsToday = Array.from(recalculatedMap.values()).reduce((sum, pts) => sum + pts, 0);
+        const netPointDelta = newResistPointsToday - oldResistPointsToday;
+
+        if (netPointDelta !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            netPointDelta,
+            `Bad habit resist undone / adjusted`,
+            'bad_habit_resisted',
+            { badHabitId, date: today }
+          );
+        }
+
+        updatedLogs = remainingLogs.map((l) => {
+          if (l.date === today && l.status === 'resisted' && recalculatedMap.has(l.id)) {
+            return { ...l, pointsAwardedOrDeducted: recalculatedMap.get(l.id)! };
+          }
+          return l;
+        });
+      } else if (target.pointsAwardedOrDeducted !== 0) {
+        // Occurred status reversal via static excision
         const isDeduction = target.pointsAwardedOrDeducted < 0;
         const ptsAmt = Math.abs(target.pointsAwardedOrDeducted);
         const logInstance = target.id || target.createdAt || target.updatedAt || today;
@@ -4244,7 +5315,7 @@ export function useAppState() {
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), badHabitId])).slice(-500);
       return {
         ...prev,
-        badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === today)),
+        badHabitLogs: updatedLogs,
         deletedEntityIds: updatedDeletedEntityIds,
         unsyncedEntityIds: updatedUnsynced,
         ...pointsUpdate,
@@ -4263,28 +5334,76 @@ export function useAppState() {
 
           let pointsUpdate = {};
           let excisedIds: string[] = [];
-          if (bh && !bh.isCompleted) {
-            const posPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) > 0).reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
-            const negPoints = habitLogs.filter((l) => (l.pointsAwardedOrDeducted || 0) < 0).reduce((s, l) => s + Math.abs(l.pointsAwardedOrDeducted || 0), 0);
+          const remainingLogs = prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId);
+          let updatedLogs = remainingLogs;
+          const changedLogIds: string[] = [];
 
-            if (posPoints > 0 || negPoints > 0) {
+          if (bh && !bh.isCompleted) {
+            const nowIso = new Date().toISOString();
+            const today = todayKey();
+
+            let baseState = prev;
+            const todayOccurredLog = habitLogs.find(
+              (l) => l.date === today && l.status === 'occurred' && (l.pointsAwardedOrDeducted || 0) < 0
+            );
+
+            if (todayOccurredLog) {
+              const storedAmount = todayOccurredLog.pointsAwardedOrDeducted || 0;
+              const logInstance = todayOccurredLog.id || todayOccurredLog.createdAt || today;
               const exciseResult = excisePointsEntriesInternal(
                 prev,
-                (entry) => {
-                  if (entry.metadata?.badHabitId === badHabitId) return true;
-                  if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_resisted' || entry.source === 'bad_habit_no_report') {
-                    if (entry.metadata?.badHabitId === badHabitId || entry.reason.includes(bh.name)) return true;
-                  }
-                  return false;
-                },
-                { pos: posPoints, neg: negPoints },
-                Infinity,
-                `badhabit_all_${badHabitId}`
+                (entry) =>
+                  entry.source === 'bad_habit_occurred' &&
+                  entry.metadata?.badHabitId === badHabitId &&
+                  entry.metadata?.date === today,
+                { neg: Math.abs(storedAmount) },
+                1,
+                `badhabit_${badHabitId}_${today}_${logInstance}`
               );
-              const { excisedEntryIds, ...restPoints } = exciseResult;
-              pointsUpdate = restPoints;
-              excisedIds = excisedEntryIds;
+              const { excisedEntryIds: newlyExcisedIds, ...pointsStateWithoutExcisedEntryIds } = exciseResult;
+              baseState = { ...prev, ...pointsStateWithoutExcisedEntryIds };
+              excisedIds = newlyExcisedIds;
+              pointsUpdate = pointsStateWithoutExcisedEntryIds;
             }
+
+            // a) Refund positive points awarded over the deleted habit's resisted logs (all dates)
+            const refund = habitLogs
+              .filter((l) => l.status === 'resisted' && (l.pointsAwardedOrDeducted || 0) > 0)
+              .reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
+
+            // b) Next active habits and promotion recompute on today's remaining resist logs
+            const nextHabits = prev.badHabits.filter((b) => b.id !== badHabitId);
+            const todayResists = remainingLogs.filter(
+              (l) => l.date === today && l.status === 'resisted'
+            );
+            const map = allocateEligibleResistPoints(todayResists, nextHabits);
+
+            const oldToday = todayResists.reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
+            const newToday = Array.from(map.values()).reduce((s, pts) => s + pts, 0);
+            const promotionDelta = newToday - oldToday;
+
+            // c) Net points delta (refund is negative, promotion is positive)
+            const netDelta = -refund + promotionDelta;
+            if (netDelta !== 0) {
+              pointsUpdate = addPointsInternal(
+                baseState,
+                netDelta,
+                `Bad habit deleted: ${bh.name}`,
+                'bad_habit_resisted'
+              );
+            }
+
+            // d) Updated logs with today's resisted logs' stored points replaced from map
+            updatedLogs = remainingLogs.map((l) => {
+              if (l.date === today && l.status === 'resisted' && map.has(l.id)) {
+                const newValue = map.get(l.id)!;
+                if (newValue !== (l.pointsAwardedOrDeducted || 0)) {
+                  changedLogIds.push(l.id);
+                  return { ...l, pointsAwardedOrDeducted: newValue, updatedAt: nowIso };
+                }
+              }
+              return l;
+            });
           }
 
           const toTombstone = [
@@ -4295,11 +5414,16 @@ export function useAppState() {
           ];
           const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
 
+          const updatedUnsynced = Array.from(
+            new Set([...(prev.unsyncedEntityIds || []), badHabitId, ...changedLogIds])
+          ).slice(-500);
+
           return {
             ...prev,
             badHabits: prev.badHabits.filter((b) => b.id !== badHabitId),
-            badHabitLogs: prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId),
+            badHabitLogs: updatedLogs,
             deletedEntityIds: updatedDeletedEntityIds,
+            unsyncedEntityIds: updatedUnsynced,
             ...pointsUpdate,
           };
         },
@@ -4313,17 +5437,57 @@ export function useAppState() {
   const completeBadHabit = useCallback((badHabitId: string) => {
     setState((prev) => {
       const bh = prev.badHabits.find((b) => b.id === badHabitId);
-      if (!bh) return prev;
+      if (!bh || bh.isCompleted) return prev;
 
-      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), badHabitId])).slice(-500);
+      const nowIso = new Date().toISOString();
+      const nextBadHabits = prev.badHabits.map((b) =>
+        b.id === badHabitId
+          ? { ...b, isCompleted: true, completedAt: nowIso }
+          : b
+      );
+
+      const today = todayKey();
+      const todayResists = (prev.badHabitLogs || []).filter(
+        (l) => l.date === today && l.status === 'resisted'
+      );
+      const map = allocateEligibleResistPoints(todayResists, nextBadHabits);
+
+      const oldToday = todayResists.reduce((s, l) => s + (l.pointsAwardedOrDeducted || 0), 0);
+      const newToday = Array.from(map.values()).reduce((s, pts) => s + pts, 0);
+      const delta = newToday - oldToday;
+
+      let pointsUpdate = {};
+      if (delta !== 0) {
+        pointsUpdate = addPointsInternal(
+          prev,
+          delta,
+          `Bad habit promotion: ${bh.name} completed`,
+          'bad_habit_resisted'
+        );
+      }
+
+      const changedLogIds: string[] = [];
+      const updatedLogs = (prev.badHabitLogs || []).map((l) => {
+        if (l.date === today && l.status === 'resisted' && map.has(l.id)) {
+          const newPts = map.get(l.id)!;
+          if (newPts !== (l.pointsAwardedOrDeducted || 0)) {
+            changedLogIds.push(l.id);
+            return { ...l, pointsAwardedOrDeducted: newPts, updatedAt: nowIso };
+          }
+        }
+        return l;
+      });
+
+      const updatedUnsynced = Array.from(
+        new Set([...(prev.unsyncedEntityIds || []), badHabitId, ...changedLogIds])
+      ).slice(-500);
+
       return {
         ...prev,
-        badHabits: prev.badHabits.map((b) =>
-          b.id === badHabitId
-            ? { ...b, isCompleted: true, completedAt: new Date().toISOString() }
-            : b
-        ),
+        badHabits: nextBadHabits,
+        badHabitLogs: updatedLogs,
         unsyncedEntityIds: updatedUnsynced,
+        ...pointsUpdate,
       };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -4416,14 +5580,69 @@ export function useAppState() {
   const resetAddictionStreak = useCallback(() => {
     setState((prev) => {
       if (!prev.addictionTracker) return prev;
-      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.addictionTracker.id])).slice(-500);
+      const tracker = prev.addictionTracker;
+      const activeSeasonNum = getSeasonNumber(leagueNow());
+      const currentStart = tracker.startDate;
+      const currentStartMs = new Date(currentStart).getTime();
+
+      // Find the dying streak's awards:
+      // records whose streakStart equals current startDate, or legacy records timestamp >= current startDate,
+      // and strictly awards from current season.
+      const dyingAwards: AddictionMilestoneAward[] = [];
+      const remainingAwards: AddictionMilestoneAward[] = [];
+
+      for (const a of tracker.awardedMilestones || []) {
+        const isCurrentStreak = a.streakStart
+          ? a.streakStart === currentStart
+          : new Date(a.timestamp).getTime() >= currentStartMs;
+
+        if (isCurrentStreak && a.seasonNumber === activeSeasonNum) {
+          dyingAwards.push(a);
+        } else {
+          remainingAwards.push(a);
+        }
+      }
+
+      let runningState = prev;
+      const newlyRevokedIds: string[] = [];
+
+      for (const a of dyingAwards) {
+        const awardKey = getAwardKey(a);
+        const revokeEntryId = `recovery_revoke_${awardKey}`;
+        const awardAmt = typeof a.points === 'number' ? a.points : (SOBRIETY_MILESTONE_POINTS[a.milestone as keyof typeof SOBRIETY_MILESTONE_POINTS] || 0);
+
+        newlyRevokedIds.push(awardKey);
+
+        if (awardAmt > 0) {
+          const pointsUpdate = addPointsInternal(
+            runningState,
+            -awardAmt,
+            `Sobriety Milestone Revoked: ${a.milestone} (Streak Reset)`,
+            'addiction_recovery',
+            { trackerId: tracker.id, milestone: a.milestone, seasonNumber: activeSeasonNum, revokedAwardId: awardKey },
+            undefined,
+            revokeEntryId
+          );
+          runningState = {
+            ...runningState,
+            ...pointsUpdate,
+          };
+        }
+      }
+
+      const updatedRevokedAwardIds = Array.from(
+        new Set([...(tracker.revokedAwardIds || []), ...newlyRevokedIds])
+      );
+
+      const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), tracker.id])).slice(-500);
       return {
-        ...prev,
+        ...runningState,
         addictionTracker: {
-          ...prev.addictionTracker,
+          ...tracker,
           startDate: new Date().toISOString(),
           milestonesUnlocked: [],
-          awardedMilestones: prev.addictionTracker.awardedMilestones || [],
+          awardedMilestones: remainingAwards,
+          revokedAwardIds: updatedRevokedAwardIds,
         },
         unsyncedEntityIds: updatedUnsynced,
       };
@@ -4438,25 +5657,29 @@ export function useAppState() {
       const start = new Date(prev.addictionTracker.startDate).getTime();
       const now = new Date().getTime();
       const hoursElapsed = (now - start) / (1000 * 60 * 60);
+      const activeSeasonNum = getSeasonNumber(leagueNow());
+      const trackerStartMs = start;
 
       const unlocked = [...prev.addictionTracker.milestonesUnlocked];
       const awarded = [...(prev.addictionTracker.awardedMilestones || [])];
-      const isAlreadyAwarded = (key: string) => awarded.some((a) => a.milestone === key);
+      const revokedIds = new Set(prev.addictionTracker.revokedAwardIds || []);
+
+      // Filter out any awards whose key was revoked - no !a.id bypass
+      const nonRevokedAwarded = awarded.filter((a) => !revokedIds.has(getAwardKey(a)));
+
+      const isAlreadyAwarded = (key: string) => {
+        if (key === '1w' || key === '90d') {
+          return nonRevokedAwarded.some((a) => a.milestone === key && a.seasonNumber === activeSeasonNum);
+        }
+        if (key === '1m') {
+          return nonRevokedAwarded.some(
+            (a) => a.milestone === '1m' && new Date(a.timestamp).getTime() >= trackerStartMs
+          );
+        }
+        return false;
+      };
 
       const newlyUnlockedMilestones: { key: string; amount: number; reason: string; label: string }[] = [];
-      if (hoursElapsed >= 24) {
-        if (!unlocked.includes('24h')) {
-          unlocked.push('24h');
-        }
-        if (!isAlreadyAwarded('24h')) {
-          newlyUnlockedMilestones.push({
-            key: '24h',
-            amount: SOBRIETY_MILESTONE_POINTS['24h'],
-            reason: 'Sobriety Milestone: 24 Hours Clean! 🎉',
-            label: '24 Hours Clean',
-          });
-        }
-      }
       if (hoursElapsed >= 168) {
         if (!unlocked.includes('1w')) {
           unlocked.push('1w');
@@ -4483,6 +5706,19 @@ export function useAppState() {
           });
         }
       }
+      if (hoursElapsed >= 2160) {
+        if (!unlocked.includes('90d')) {
+          unlocked.push('90d');
+        }
+        if (!isAlreadyAwarded('90d')) {
+          newlyUnlockedMilestones.push({
+            key: '90d',
+            amount: SOBRIETY_MILESTONE_POINTS['90d'],
+            reason: 'Sobriety Milestone: 90 Days Clean! 👑',
+            label: '90 Days Clean',
+          });
+        }
+      }
 
       if (newlyUnlockedMilestones.length === 0) {
         if (unlocked.length !== prev.addictionTracker.milestonesUnlocked.length) {
@@ -4499,7 +5735,37 @@ export function useAppState() {
         return prev;
       }
 
-      const newlyUnlockedLabels = newlyUnlockedMilestones.map((m) => m.label);
+      // Hard cap 85 check:
+      // Compute total season-held recovery points (non-revoked awards in current season)
+      let currentHeldSeasonPoints = nonRevokedAwarded
+        .filter((a) => a.seasonNumber === activeSeasonNum)
+        .reduce((sum, a) => sum + (a.points || 0), 0);
+
+      const qualifyingMilestones: typeof newlyUnlockedMilestones = [];
+      for (const m of newlyUnlockedMilestones) {
+        if (!wouldExceedRecoverySeasonCap(currentHeldSeasonPoints, m.amount)) {
+          qualifyingMilestones.push(m);
+          currentHeldSeasonPoints += m.amount;
+        }
+        // If exceeds 85, deny fully (no partial award)
+      }
+
+      if (qualifyingMilestones.length === 0) {
+        if (unlocked.length !== prev.addictionTracker.milestonesUnlocked.length) {
+          const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), prev.addictionTracker.id])).slice(-500);
+          return {
+            ...prev,
+            addictionTracker: {
+              ...prev.addictionTracker,
+              milestonesUnlocked: unlocked,
+            },
+            unsyncedEntityIds: updatedUnsynced,
+          };
+        }
+        return prev;
+      }
+
+      const newlyUnlockedLabels = qualifyingMilestones.map((m) => m.label);
 
       if (prev.currentUser?.id && newlyUnlockedLabels.length > 0) {
         const substance = prev.addictionTracker.title || 'Sobriety';
@@ -4513,15 +5779,20 @@ export function useAppState() {
         });
       }
 
-      const activeSeasonNum = getSeasonNumber(leagueNow());
       const nowIso = new Date().toISOString();
-      for (const m of newlyUnlockedMilestones) {
-        awarded.push({
+      const newlyAwardedRecords: AddictionMilestoneAward[] = [];
+
+      for (const m of qualifyingMilestones) {
+        const deterministicId = `recovery_${prev.addictionTracker.id}_${m.key}_${trackerStartMs}`;
+        const record: AddictionMilestoneAward = {
+          id: deterministicId,
           milestone: m.key,
           seasonNumber: activeSeasonNum,
           timestamp: nowIso,
+          streakStart: prev.addictionTracker.startDate,
           points: m.amount,
-        });
+        };
+        newlyAwardedRecords.push(record);
       }
 
       let runningState = {
@@ -4529,17 +5800,20 @@ export function useAppState() {
         addictionTracker: {
           ...prev.addictionTracker,
           milestonesUnlocked: unlocked,
-          awardedMilestones: awarded,
+          awardedMilestones: [...awarded, ...newlyAwardedRecords],
         },
       };
 
-      for (const m of newlyUnlockedMilestones) {
+      for (const record of newlyAwardedRecords) {
+        const m = qualifyingMilestones.find((item) => item.key === record.milestone)!;
         const pointsUpdate = addPointsInternal(
           runningState,
           m.amount,
           m.reason,
           'recovery_milestone',
-          { trackerId: prev.addictionTracker.id, milestone: m.key, seasonNumber: activeSeasonNum }
+          { trackerId: prev.addictionTracker.id, milestone: m.key, seasonNumber: activeSeasonNum },
+          undefined,
+          record.id
         );
         runningState = {
           ...runningState,
@@ -4582,24 +5856,47 @@ export function useAppState() {
           const tracker = prev.addictionTracker;
           const activeSeasonNum = getSeasonNumber(leagueNow());
 
-          // 1. Collect all awarded milestones to deduct (with legacy fallback reconstruction)
+          // 1. Collect all awarded milestones to deduct (with legacy fallback reconstruction from ledger net)
           let awardedList: AddictionMilestoneAward[] = tracker.awardedMilestones ? [...tracker.awardedMilestones] : [];
-          if (awardedList.length === 0 && tracker.milestonesUnlocked && tracker.milestonesUnlocked.length > 0) {
-            for (const mKey of tracker.milestonesUnlocked) {
-              const pts = (mKey in SOBRIETY_MILESTONE_POINTS)
-                ? SOBRIETY_MILESTONE_POINTS[mKey as keyof typeof SOBRIETY_MILESTONE_POINTS]
-                : 0;
-              if (pts > 0) {
-                const histEntry = prev.pointsHistory?.find(
-                  (e) => e.source === 'recovery_milestone' && (e.reason?.includes(mKey) || e.metadata?.milestone === mKey)
-                );
-                const ts = histEntry?.timestamp || tracker.startDate || tracker.createdAt || new Date().toISOString();
-                const sNum = getSeasonNumber(new Date(ts));
+          if (awardedList.length === 0) {
+            const history = prev.pointsHistory || [];
+            // Group relevant entries by milestone for the current season and tracker
+            const milestoneData: Record<string, { net: number; latestTimestamp: string }> = {};
+
+            for (const e of history) {
+              if (e.metadata?.trackerId === tracker.id) {
+                const sNum = getSeasonNumber(new Date(e.timestamp));
+                if (sNum === activeSeasonNum) {
+                  const mKey = (e.metadata?.milestone as string) || 'legacy';
+                  const isPositiveAward = e.source === 'recovery_milestone' && e.amount > 0;
+                  const isRevoke =
+                    (e.source === 'addiction_recovery' && (e.id?.startsWith('recovery_revoke_') || !!e.metadata?.revokedAwardId)) &&
+                    e.amount < 0;
+
+                  if (isPositiveAward || isRevoke) {
+                    if (!milestoneData[mKey]) {
+                      milestoneData[mKey] = { net: 0, latestTimestamp: e.timestamp };
+                    }
+                    milestoneData[mKey].net += e.amount;
+                    if (isPositiveAward) {
+                      const currentLatest = new Date(milestoneData[mKey].latestTimestamp).getTime();
+                      const entryTs = new Date(e.timestamp).getTime();
+                      if (isNaN(currentLatest) || entryTs >= currentLatest) {
+                        milestoneData[mKey].latestTimestamp = e.timestamp;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            for (const [mKey, data] of Object.entries(milestoneData)) {
+              if (data.net > 0) {
                 awardedList.push({
                   milestone: mKey,
-                  seasonNumber: sNum,
-                  timestamp: ts,
-                  points: pts,
+                  seasonNumber: activeSeasonNum,
+                  timestamp: data.latestTimestamp,
+                  points: data.net,
                 });
               }
             }
@@ -4743,11 +6040,14 @@ export function useAppState() {
   // --- MODULE 7: PREFRONTAL CORTEX ACTIONS ---
   const logFocusSession = useCallback((taskName: string, durationMinutes: number, skillId?: string, reflection?: string) => {
     const date = todayKey();
-    const pointsToAward = Math.max(
-      PFC_POINTS.focus.floorPoints,
-      Math.round(durationMinutes * PFC_POINTS.focus.minuteRate)
-    );
     setState((prev) => {
+      const pointsEarnedToday = (prev.focusLogs || [])
+        .filter((l) => l.date === date)
+        .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+      const remainingCap = Math.max(0, PFC_POINTS.focus.dailyCap - pointsEarnedToday);
+      const { pointsToAward } = calculateFocusPoints(durationMinutes, remainingCap);
+
       const focusLog: FocusSessionLog = {
         id: uid(),
         date,
@@ -4758,7 +6058,10 @@ export function useAppState() {
         reflection: reflection?.trim() || undefined,
         createdAt: new Date().toISOString(),
       };
-      const pointsUpdate = addPointsInternal(prev, pointsToAward, `Focus session completed (${durationMinutes}m)`, 'focus');
+      let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+      if (pointsToAward > 0) {
+        pointsUpdate = addPointsInternal(prev, pointsToAward, `Focus session completed (${durationMinutes}m)`, 'focus');
+      }
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), focusLog.id])).slice(-500);
       return {
         ...prev,
@@ -4861,14 +6164,58 @@ export function useAppState() {
     setState(
       (prev) => {
         const target = prev.focusLogs.find((f) => f.id === logId);
-        let pointsUpdate = {};
-        if (target && target.pointsAwarded > 0) {
-          pointsUpdate = addPointsInternal(prev, -target.pointsAwarded, `Focus session deleted: ${target.taskName}`, 'focus');
+        if (!target) return prev;
+
+        const targetDate = target.date;
+        const remainingFocusLogs = prev.focusLogs.filter((f) => f.id !== logId);
+
+        // Recalculate points awarded for all remaining same-date focus logs in chronological order
+        const dayLogs = remainingFocusLogs.filter((l) => l.date === targetDate);
+        const chronDayLogs = [...dayLogs].sort(
+          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+
+        let dailyCapRemaining: number = PFC_POINTS.focus.dailyCap;
+        const recalculatedMap = new Map<string, number>();
+
+        for (const log of chronDayLogs) {
+          const { pointsToAward: awarded } = calculateFocusPoints(log.durationMinutes, dailyCapRemaining);
+          recalculatedMap.set(log.id, awarded);
+          dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
         }
+
+        const oldDatePoints = prev.focusLogs
+          .filter((l) => l.date === targetDate)
+          .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+
+        const newDatePoints = chronDayLogs.reduce(
+          (sum, l) => sum + (recalculatedMap.get(l.id) ?? 0),
+          0
+        );
+
+        const netPointDelta = newDatePoints - oldDatePoints;
+
+        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
+        if (netPointDelta !== 0) {
+          pointsUpdate = addPointsInternal(
+            prev,
+            netPointDelta,
+            `Focus session deleted: ${target.taskName}`,
+            'focus'
+          );
+        }
+
+        const updatedFocusLogs = remainingFocusLogs.map((l) => {
+          if (l.date === targetDate && recalculatedMap.has(l.id)) {
+            return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
+          }
+          return l;
+        });
+
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {
           ...prev,
-          focusLogs: prev.focusLogs.filter((f) => f.id !== logId),
+          focusLogs: updatedFocusLogs,
           deletedEntityIds: updatedDeletedEntityIds,
           ...pointsUpdate,
         };
@@ -4927,10 +6274,14 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addWeeklyReflection = useCallback((weekKey: string, content: string) => {
+  const addWeeklyReflection = useCallback((targetWeekKey: string, content: string) => {
     if (!content.trim()) return;
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey !== currentWeek) {
+      throw new Error('Reflections can only be written for the current week.');
+    }
     setState((prev) => {
-      const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
       const existingDoc = idx >= 0 ? prev.weeklyGoals[idx] : null;
 
       const existingReflections = existingDoc?.reflections || [];
@@ -4946,14 +6297,14 @@ export function useAppState() {
 
       const { updatedReflections, nextState } = reconcileReflectionPoints(
         prev,
-        weekKey,
+        targetWeekKey,
         candidateReflections,
         getNow()
       );
 
       const updatedDoc: WeeklyGoal = {
         id: existingDoc ? existingDoc.id : uid(),
-        weekKey,
+        weekKey: targetWeekKey,
         goals: existingDoc ? existingDoc.goals : [],
         reflections: updatedReflections,
         createdAt: existingDoc ? existingDoc.createdAt : new Date().toISOString(),
@@ -4977,10 +6328,14 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const updateWeeklyReflection = useCallback((weekKey: string, reflectionId: string, content: string) => {
+  const updateWeeklyReflection = useCallback((targetWeekKey: string, reflectionId: string, content: string) => {
     if (!content.trim()) return;
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey !== currentWeek) {
+      throw new Error('Reflections can only be written for the current week.');
+    }
     setState((prev) => {
-      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
       if (docIdx === -1) return prev;
 
       const doc = prev.weeklyGoals[docIdx];
@@ -5000,7 +6355,7 @@ export function useAppState() {
 
       const { updatedReflections, nextState } = reconcileReflectionPoints(
         prev,
-        weekKey,
+        targetWeekKey,
         candidateReflections,
         getNow()
       );
@@ -5020,11 +6375,15 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const deleteWeeklyReflection = useCallback((weekKey: string, reflectionId: string) => {
+  const deleteWeeklyReflection = useCallback((targetWeekKey: string, reflectionId: string) => {
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey !== currentWeek) {
+      throw new Error('Reflections can only be written for the current week.');
+    }
     return (
       setState(
         (prev) => {
-          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
           if (docIdx === -1) return prev;
 
           const doc = prev.weeklyGoals[docIdx];
@@ -5035,7 +6394,7 @@ export function useAppState() {
 
           const { updatedReflections, nextState } = reconcileReflectionPoints(
             prev,
-            weekKey,
+            targetWeekKey,
             candidateReflections,
             getNow()
           );
@@ -5058,10 +6417,39 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addWeeklyGoalItem = useCallback((weekKey: string, goalData: Partial<WeeklyGoalItem>) => {
+  const addWeeklyGoalItem = useCallback((targetWeekKey: string, goalData: Partial<WeeklyGoalItem>) => {
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey < currentWeek) {
+      throw new Error('Past weeks are read-only.');
+    }
     setState((prev) => {
-      const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
       const existingDoc = idx >= 0 ? prev.weeklyGoals[idx] : null;
+
+      const isLinked = Boolean(goalData.linkedModule && goalData.linkedModule !== 'none');
+
+      let isCompleted = false;
+      let manualProgress: number | undefined = undefined;
+      let completedAt: string | undefined = undefined;
+
+      if (isLinked) {
+        isCompleted = false;
+        manualProgress = 0;
+        completedAt = undefined;
+      } else {
+        const targetVal = typeof goalData.targetValue === 'number' && goalData.targetValue > 0 ? goalData.targetValue : 1;
+        manualProgress = typeof goalData.manualProgress === 'number' ? goalData.manualProgress : 0;
+        isCompleted = goalData.completed !== undefined
+          ? Boolean(goalData.completed)
+          : (manualProgress >= targetVal);
+        completedAt = isCompleted ? (goalData.completedAt || new Date().toISOString()) : undefined;
+      }
+
+      if (targetWeekKey > currentWeek) {
+        isCompleted = false;
+        completedAt = undefined;
+        manualProgress = 0;
+      }
 
       const newItem: WeeklyGoalItem = {
         id: uid(),
@@ -5073,8 +6461,10 @@ export function useAppState() {
         linkedMetricKey: goalData.linkedMetricKey || undefined,
         targetValue: typeof goalData.targetValue === 'number' && goalData.targetValue > 0 ? goalData.targetValue : undefined,
         unit: goalData.unit?.trim() || undefined,
-        manualProgress: typeof goalData.manualProgress === 'number' ? goalData.manualProgress : 0,
-        completed: Boolean(goalData.completed),
+        manualProgress,
+        completed: isCompleted,
+        done: isCompleted,
+        completedAt,
         carriedOverFromWeekKey: goalData.carriedOverFromWeekKey,
         carriedOverFromGoalId: goalData.carriedOverFromGoalId || undefined,
         createdAt: new Date().toISOString(),
@@ -5083,7 +6473,7 @@ export function useAppState() {
       const updatedGoals = existingDoc ? [...existingDoc.goals, newItem] : [newItem];
       const updatedDoc: WeeklyGoal = {
         id: existingDoc ? existingDoc.id : uid(),
-        weekKey,
+        weekKey: targetWeekKey,
         goals: updatedGoals,
         reflections: existingDoc?.reflections || [],
         createdAt: existingDoc ? existingDoc.createdAt : new Date().toISOString(),
@@ -5097,15 +6487,29 @@ export function useAppState() {
       }
 
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), newItem.id])).slice(-500);
-      return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
+      const pointsUpdate = recomputeWeeklyGoalsPointsForState(prev, targetWeekKey, updatedGoals, newItem.id);
+
+      return {
+        ...prev,
+        weeklyGoals: newWeeklyGoals,
+        unsyncedEntityIds: updatedUnsynced,
+        ...pointsUpdate,
+      };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const updateWeeklyGoalItem = useCallback((weekKey: string, goalId: string, updates: Partial<WeeklyGoalItem>) => {
+  const updateWeeklyGoalItem = useCallback((targetWeekKey: string, goalId: string, updates: Partial<WeeklyGoalItem>) => {
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey < currentWeek) {
+      const keys = Object.keys(updates);
+      if (keys.length !== 1 || keys[0] !== 'carryOverDismissed') {
+        throw new Error('Past weeks are read-only.');
+      }
+    }
     setState((prev) => {
-      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+      const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
       if (docIdx === -1) return prev;
 
       const doc = prev.weeklyGoals[docIdx];
@@ -5113,11 +6517,77 @@ export function useAppState() {
       if (goalIdx === -1) return prev;
 
       const existingGoal = doc.goals[goalIdx];
+
+      let effectiveUpdates = updates;
+      if (targetWeekKey > currentWeek) {
+        const { completed, completedAt, manualProgress, done, ...rest } = updates as any;
+        effectiveUpdates = rest;
+      }
+
+      // Check if re-linked (converting between freeform/linked, or pointing to a different habit/workout/book/skill/metric)
+      const targetLinkedModule = effectiveUpdates.linkedModule !== undefined ? effectiveUpdates.linkedModule : existingGoal.linkedModule;
+      const isReLinked =
+        (effectiveUpdates.linkedModule !== undefined && effectiveUpdates.linkedModule !== existingGoal.linkedModule) ||
+        (effectiveUpdates.linkedItemId !== undefined && effectiveUpdates.linkedItemId !== existingGoal.linkedItemId) ||
+        (effectiveUpdates.linkedMetricKey !== undefined && effectiveUpdates.linkedMetricKey !== existingGoal.linkedMetricKey);
+
+      const isLinkedGoal = Boolean(targetLinkedModule && targetLinkedModule !== 'none');
+
+      let nextCompleted = existingGoal.completed;
+      let nextCompletedAt = existingGoal.completedAt;
+      let nextManualProgress = existingGoal.manualProgress;
+
+      if (isReLinked) {
+        // If re-linked, reset completion state so it can be cleanly re-evaluated
+        nextCompleted = false;
+        nextCompletedAt = undefined;
+        nextManualProgress = 0;
+      } else if (isLinkedGoal) {
+        // For linked goals, manual completion overrides are ignored; completed/completedAt are managed by reconcileLinkedWeeklyGoals
+        nextManualProgress = 0;
+      } else {
+        // Freeform goal: calculate completion from updates.completed or manualProgress vs targetValue
+        const targetVal = effectiveUpdates.targetValue !== undefined && effectiveUpdates.targetValue > 0
+          ? effectiveUpdates.targetValue
+          : (existingGoal.targetValue && existingGoal.targetValue > 0 ? existingGoal.targetValue : 1);
+
+        nextManualProgress = effectiveUpdates.manualProgress !== undefined
+          ? effectiveUpdates.manualProgress
+          : existingGoal.manualProgress;
+
+        if (effectiveUpdates.completed !== undefined) {
+          nextCompleted = Boolean(effectiveUpdates.completed);
+          if (nextCompleted) {
+            nextCompletedAt = effectiveUpdates.completedAt || existingGoal.completedAt || new Date().toISOString();
+          } else {
+            nextCompletedAt = undefined;
+          }
+        } else if (effectiveUpdates.manualProgress !== undefined || effectiveUpdates.targetValue !== undefined) {
+          if (nextManualProgress !== undefined && nextManualProgress >= targetVal) {
+            nextCompleted = true;
+            nextCompletedAt = existingGoal.completedAt || new Date().toISOString();
+          } else if (nextManualProgress !== undefined && nextManualProgress < targetVal) {
+            nextCompleted = false;
+            nextCompletedAt = undefined;
+          }
+        }
+      }
+
+      if (targetWeekKey > currentWeek) {
+        nextCompleted = false;
+        nextCompletedAt = undefined;
+        nextManualProgress = 0;
+      }
+
       const updatedGoal: WeeklyGoalItem = {
         ...existingGoal,
-        ...updates,
-        title: updates.title !== undefined ? updates.title.trim() : existingGoal.title,
-        targetDescription: updates.targetDescription !== undefined ? updates.targetDescription.trim() : existingGoal.targetDescription,
+        ...effectiveUpdates,
+        completed: nextCompleted,
+        done: nextCompleted,
+        completedAt: nextCompletedAt,
+        manualProgress: isLinkedGoal ? 0 : nextManualProgress,
+        title: effectiveUpdates.title !== undefined ? effectiveUpdates.title.trim() : existingGoal.title,
+        targetDescription: effectiveUpdates.targetDescription !== undefined ? effectiveUpdates.targetDescription.trim() : existingGoal.targetDescription,
       };
 
       const updatedGoals = [...doc.goals];
@@ -5128,17 +6598,28 @@ export function useAppState() {
       newWeeklyGoals[docIdx] = updatedDoc;
 
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), goalId])).slice(-500);
-      return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
+      const pointsUpdate = targetWeekKey < currentWeek ? {} : recomputeWeeklyGoalsPointsForState(prev, targetWeekKey, updatedGoals, goalId);
+
+      return {
+        ...prev,
+        weeklyGoals: newWeeklyGoals,
+        unsyncedEntityIds: updatedUnsynced,
+        ...pointsUpdate,
+      };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const deleteWeeklyGoalItem = useCallback((weekKey: string, goalId: string) => {
+  const deleteWeeklyGoalItem = useCallback((targetWeekKey: string, goalId: string) => {
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey < currentWeek) {
+      throw new Error('Past weeks are read-only.');
+    }
     return (
       setState(
         (prev) => {
-          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === weekKey);
+          const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
           if (docIdx === -1) return prev;
 
           const doc = prev.weeklyGoals[docIdx];
@@ -5148,8 +6629,18 @@ export function useAppState() {
           const newWeeklyGoals = [...prev.weeklyGoals];
           newWeeklyGoals[docIdx] = updatedDoc;
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
+          const pointsUpdate = recomputeWeeklyGoalsPointsForState(prev, targetWeekKey, updatedGoals, goalId);
 
-          return { ...prev, weeklyGoals: newWeeklyGoals, deletedEntityIds: updatedDeletedEntityIds };
+          const mergedDeletedEntityIds = Array.from(
+            new Set([...updatedDeletedEntityIds, ...(pointsUpdate.deletedEntityIds || [])])
+          ).slice(-500);
+
+          return {
+            ...prev,
+            weeklyGoals: newWeeklyGoals,
+            ...pointsUpdate,
+            deletedEntityIds: mergedDeletedEntityIds,
+          };
         },
         { immediate: true, actionLabel: 'Weekly goal deletion', entityId: goalId }
       ) || Promise.resolve()
@@ -5159,6 +6650,10 @@ export function useAppState() {
   }, []);
 
   const carryOverGoal = useCallback((sourceWeekKey: string, targetWeekKey: string, goalId: string, options?: { resumeProgress?: boolean }) => {
+    const currentWeek = weekKey(getNow());
+    if (targetWeekKey !== currentWeek) {
+      return;
+    }
     setState((prev) => {
       const sourceDoc = prev.weeklyGoals.find((w) => w.weekKey === sourceWeekKey);
       if (!sourceDoc) return prev;
@@ -5186,6 +6681,7 @@ export function useAppState() {
         ...targetGoal,
         id: uid(),
         completed: false,
+        completedAt: undefined,
         manualProgress: options?.resumeProgress ? (targetGoal.manualProgress || 0) : 0,
         carriedOverFromWeekKey: sourceWeekKey,
         carriedOverFromGoalId: targetGoal.id,
@@ -5209,8 +6705,26 @@ export function useAppState() {
       }
 
       const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), carriedItem.id])).slice(-500);
-      return { ...prev, weeklyGoals: newWeeklyGoals, unsyncedEntityIds: updatedUnsynced };
+      const pointsUpdate = recomputeWeeklyGoalsPointsForState(prev, targetWeekKey, newGoals, carriedItem.id);
+
+      return {
+        ...prev,
+        weeklyGoals: newWeeklyGoals,
+        unsyncedEntityIds: updatedUnsynced,
+        ...pointsUpdate,
+      };
     });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const syncLinkedWeeklyGoals = useCallback(() => {
+    setState((prev) =>
+      reconcileWeeklyGoalsPointsForAllWeeks(
+        reconcileLinkedWeeklyGoals(prev, leagueNow()),
+        leagueNow()
+      )
+    );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -7945,8 +9459,79 @@ export function useAppState() {
     []
   );
 
+  // Pure helper to recompute today's Time Tracker routine points live on block modifications
+  const recomputeTimeTrackerDailyPointsForState = (
+    baseState: AppState,
+    targetDateKey: string,
+    newBlocks: TimeTrackerBlock[]
+  ): Partial<AppState> => {
+    const todayStr = todayKey();
+    if (targetDateKey !== todayStr) {
+      return {};
+    }
+
+    const prevBlocks = baseState.timeTracker?.dailyLogs?.[targetDateKey] || [];
+    const oldScore = calculateTimeTrackerDailyPoints(prevBlocks);
+    const newScore = calculateTimeTrackerDailyPoints(newBlocks);
+
+    const oldPoints = oldScore.pointsAwarded;
+    const newPoints = newScore.pointsAwarded;
+    const netPointDelta = newPoints - oldPoints;
+
+    const entryId = `time_tracker_${targetDateKey}`;
+
+    if (newPoints === 0 && oldPoints === 0) {
+      return {};
+    }
+
+    if (newPoints === 0 && oldPoints > 0) {
+      // Revert/excise existing entry if points dropped to 0
+      const exciseResult = excisePointsEntriesInternal(
+        baseState,
+        (entry) => entry.id === entryId,
+        { pos: oldPoints },
+        1,
+        `time_tracker_${targetDateKey}`
+      );
+      const { excisedEntryIds, ...restPoints } = exciseResult;
+      const updatedDeleted = Array.from(
+        new Set([...(baseState.deletedEntityIds || []), ...excisedEntryIds])
+      ).slice(-500);
+
+      return {
+        ...restPoints,
+        deletedEntityIds: updatedDeleted,
+      };
+    }
+
+    // Upsert entry with newPoints (deterministic single entry per day)
+    const pointsUpdate = addPointsInternal(
+      baseState,
+      newPoints,
+      `Time Tracker daily routine completed (${Math.round(newScore.percentage)}%): ${newPoints} pts`,
+      'time_tracker',
+      { date: targetDateKey, percentage: newScore.percentage, pointsAwarded: newPoints },
+      undefined,
+      entryId
+    );
+
+    return {
+      pointsHistory: pointsUpdate.pointsHistory,
+      totalPoints: pointsUpdate.totalPoints,
+      seasonPoints: pointsUpdate.seasonPoints,
+      ...(pointsUpdate.seasonEvictedPos !== undefined ? { seasonEvictedPos: pointsUpdate.seasonEvictedPos } : {}),
+      ...(pointsUpdate.seasonEvictedNeg !== undefined ? { seasonEvictedNeg: pointsUpdate.seasonEvictedNeg } : {}),
+      ...(pointsUpdate.evictedEntryIds !== undefined ? { evictedEntryIds: pointsUpdate.evictedEntryIds } : {}),
+      ...(pointsUpdate.evictedExcisionRecords !== undefined ? { evictedExcisionRecords: pointsUpdate.evictedExcisionRecords } : {}),
+      ...(pointsUpdate.leagueArchives !== undefined ? { leagueArchives: pointsUpdate.leagueArchives } : {}),
+    };
+  };
+
   const addDailyTimeBlock = useCallback(
     (dateKey: string, block: Omit<TimeTrackerBlock, 'id'>) => {
+      if (dateKey < todayKey()) {
+        throw new Error('Past days are read-only.');
+      }
       const currentTT = state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
       const existingDateBlocks = currentTT.dailyLogs?.[dateKey] || [];
 
@@ -7974,6 +9559,8 @@ export function useAppState() {
             (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
           );
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), createdBlock.id])).slice(-500);
+          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextBlocks);
+
           return {
             ...prev,
             timeTracker: {
@@ -7984,6 +9571,7 @@ export function useAppState() {
               },
             },
             unsyncedEntityIds: updatedUnsynced,
+            ...pointsUpdate,
           };
         });
 
@@ -8031,6 +9619,8 @@ export function useAppState() {
         );
 
         const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), createdPart1.id, createdPart2.id])).slice(-500);
+        const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextDateBlocks);
+
         return {
           ...prev,
           timeTracker: {
@@ -8042,6 +9632,7 @@ export function useAppState() {
             },
           },
           unsyncedEntityIds: updatedUnsynced,
+          ...pointsUpdate,
         };
       });
 
@@ -8054,6 +9645,9 @@ export function useAppState() {
 
   const updateDailyTimeBlock = useCallback(
     (dateKey: string, blockId: string, updates: Partial<TimeTrackerBlock>) => {
+      if (dateKey < todayKey()) {
+        throw new Error('Past days are read-only.');
+      }
       const currentTT = state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
       const existingBlocks = currentTT.dailyLogs?.[dateKey] || [];
       const targetBlock = existingBlocks.find((b) => b.id === blockId);
@@ -8085,6 +9679,8 @@ export function useAppState() {
             .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
 
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
+          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextBlocks);
+
           return {
             ...prev,
             timeTracker: {
@@ -8095,6 +9691,7 @@ export function useAppState() {
               },
             },
             unsyncedEntityIds: updatedUnsynced,
+            ...pointsUpdate,
           };
         });
         return;
@@ -8145,6 +9742,8 @@ export function useAppState() {
         );
 
         const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId, createdPart2.id])).slice(-500);
+        const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextDateBlocks);
+
         return {
           ...prev,
           timeTracker: {
@@ -8156,6 +9755,7 @@ export function useAppState() {
             },
           },
           unsyncedEntityIds: updatedUnsynced,
+          ...pointsUpdate,
         };
       });
     },
@@ -8168,9 +9768,12 @@ export function useAppState() {
     (dateKey: string, blockId: string) => {
       setState(
         (prev) => {
+          if (dateKey < todayKey()) return prev;
           const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
           const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
           const updatedDeleted = [...(prev.deletedEntityIds || []), blockId].slice(-500);
+          const nextBlocks = prevDailyBlocks.filter((b) => b.id !== blockId);
+          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextBlocks);
 
           return {
             ...prev,
@@ -8178,10 +9781,11 @@ export function useAppState() {
               ...prevTT,
               dailyLogs: {
                 ...(prevTT.dailyLogs || {}),
-                [dateKey]: prevDailyBlocks.filter((b) => b.id !== blockId),
+                [dateKey]: nextBlocks,
               },
             },
             deletedEntityIds: updatedDeleted,
+            ...pointsUpdate,
           };
         },
         { immediate: true }
@@ -8253,6 +9857,7 @@ export function useAppState() {
   const toggleDailyTimeBlockCompleted = useCallback(
     (dateKey: string, blockId: string, passedTimeStr?: string) => {
       setState((prev) => {
+        if (dateKey !== todayKey()) return prev;
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
         const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
         const target = prevDailyBlocks.find((b) => b.id === blockId);
@@ -8265,6 +9870,8 @@ export function useAppState() {
           const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
 
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
+          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, updatedBlocks);
+
           return {
             ...prev,
             timeTracker: {
@@ -8275,6 +9882,7 @@ export function useAppState() {
               },
             },
             unsyncedEntityIds: updatedUnsynced,
+            ...pointsUpdate,
           };
         }
 
@@ -8314,6 +9922,8 @@ export function useAppState() {
         });
 
         const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
+        const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, updatedBlocks);
+
         return {
           ...prev,
           timeTracker: {
@@ -8324,6 +9934,7 @@ export function useAppState() {
             },
           },
           unsyncedEntityIds: updatedUnsynced,
+          ...pointsUpdate,
         };
       });
     },
@@ -8335,6 +9946,7 @@ export function useAppState() {
   const markDailyTimeBlockSkipped = useCallback(
     (dateKey: string, blockId: string, passedTimeStr?: string) => {
       setState((prev) => {
+        if (dateKey !== todayKey()) return prev;
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
         const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
         const target = prevDailyBlocks.find((b) => b.id === blockId);
@@ -8347,6 +9959,8 @@ export function useAppState() {
           const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
 
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
+          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, updatedBlocks);
+
           return {
             ...prev,
             timeTracker: {
@@ -8357,6 +9971,7 @@ export function useAppState() {
               },
             },
             unsyncedEntityIds: updatedUnsynced,
+            ...pointsUpdate,
           };
         }
 
@@ -8396,6 +10011,8 @@ export function useAppState() {
         });
 
         const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
+        const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, updatedBlocks);
+
         return {
           ...prev,
           timeTracker: {
@@ -8406,6 +10023,7 @@ export function useAppState() {
             },
           },
           unsyncedEntityIds: updatedUnsynced,
+          ...pointsUpdate,
         };
       });
     },
@@ -8417,6 +10035,7 @@ export function useAppState() {
   const undoDailyTimeBlockResolution = useCallback(
     (dateKey: string, blockId: string) => {
       setState((prev) => {
+        if (dateKey !== todayKey()) return prev;
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
         const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
         const target = prevDailyBlocks.find((b) => b.id === blockId);
@@ -8425,6 +10044,8 @@ export function useAppState() {
         const updatedBlocks = revertBlockAndCascadingPulls(prevDailyBlocks, blockId);
 
         const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
+        const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, updatedBlocks);
+
         return {
           ...prev,
           timeTracker: {
@@ -8435,6 +10056,7 @@ export function useAppState() {
             },
           },
           unsyncedEntityIds: updatedUnsynced,
+          ...pointsUpdate,
         };
       });
     },
@@ -8514,6 +10136,7 @@ export function useAppState() {
 
       setState(
         (prev) => {
+          if (dateKey !== todayKey()) return prev;
           const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
           const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
 
@@ -8538,6 +10161,8 @@ export function useAppState() {
           );
 
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), blockId])).slice(-500);
+          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, sortedBlocks);
+
           return {
             ...prev,
             timeTracker: {
@@ -8548,6 +10173,7 @@ export function useAppState() {
               },
             },
             unsyncedEntityIds: updatedUnsynced,
+            ...pointsUpdate,
           };
         },
         { immediate: true }
@@ -8751,6 +10377,7 @@ export function useAppState() {
 
       setState(
         (prev) => {
+          if (dateKey < todayKey()) return prev;
           const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
           const template = prevTT.templates?.find((t) => t.id === templateId);
           if (!template) return prev;
@@ -8818,6 +10445,12 @@ export function useAppState() {
           const updatedClearedDates = (prevTT.clearedDates || []).filter((d) => d !== dateKey);
 
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), ...updatedBlocks.map((b) => b.id)])).slice(-500);
+
+          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, updatedBlocks);
+          const finalDeleted = pointsUpdate.deletedEntityIds
+            ? Array.from(new Set([...(updatedDeleted || []), ...pointsUpdate.deletedEntityIds])).slice(-500)
+            : updatedDeleted;
+
           return {
             ...prev,
             timeTracker: {
@@ -8828,8 +10461,9 @@ export function useAppState() {
               },
               clearedDates: updatedClearedDates,
             },
-            deletedEntityIds: updatedDeleted,
             unsyncedEntityIds: updatedUnsynced,
+            ...pointsUpdate,
+            ...(finalDeleted !== undefined ? { deletedEntityIds: finalDeleted } : {}),
           };
         },
         { immediate: true }
@@ -8845,6 +10479,7 @@ export function useAppState() {
   const clearDailyTimeBlocks = useCallback((dateKey: string) => {
     setState(
       (prev) => {
+        if (dateKey < todayKey()) return prev;
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
         const existingBlocks = prevTT.dailyLogs?.[dateKey] || [];
         const deletedIds = existingBlocks.map((b) => b.id);
@@ -8860,6 +10495,11 @@ export function useAppState() {
           ? existingCleared
           : [...existingCleared, dateKey];
 
+        const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, []);
+        const finalDeleted = pointsUpdate.deletedEntityIds
+          ? Array.from(new Set([...updatedDeleted, ...pointsUpdate.deletedEntityIds])).slice(-500)
+          : updatedDeleted;
+
         return {
           ...prev,
           timeTracker: {
@@ -8867,7 +10507,8 @@ export function useAppState() {
             dailyLogs: nextLogs,
             clearedDates: nextCleared,
           },
-          deletedEntityIds: updatedDeleted,
+          ...pointsUpdate,
+          deletedEntityIds: finalDeleted,
         };
       },
       { immediate: true }
@@ -8960,6 +10601,7 @@ export function useAppState() {
     updateWeeklyGoalItem,
     deleteWeeklyGoalItem,
     carryOverGoal,
+    syncLinkedWeeklyGoals,
     toggleNotifSundayPlanning,
     // Self Improvement Books Library Actions
     addCuratedBookToLibrary,

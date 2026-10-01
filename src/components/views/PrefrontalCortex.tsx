@@ -57,6 +57,7 @@ import {
 import { ActivityIcon } from './timeTracker/ActivityIcon';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
+import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 
 type PFCTab = 'focus' | 'decision' | 'emotion';
 
@@ -1157,6 +1158,8 @@ function FocusTimerSubmodule({
           </div>
         </div>
       </div>
+
+      <CapMeterConnected state={store.state} capId="pfc" />
 
       {/* Timer Mode Switcher (Manual Focus Timer vs Live Schedule Sync) */}
       <div className="flex justify-center pt-1">

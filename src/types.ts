@@ -64,8 +64,8 @@ export interface Habit {
   category?: string;
   createdAt: string;
   updatedAt?: string;
-  /** Map of period/date keys to completion status with ISO timestamp */
-  completions: Record<string, { done: boolean; updatedAt: string }>;
+  /** Map of period/date keys to completion status with ISO timestamp and actual awarded points */
+  completions: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }>;
   createdAtPeriod: string;
   /** Periods that were missed and penalized */
   missedPeriods?: string[];
@@ -340,18 +340,25 @@ export interface BadHabitLog {
 
 // Module 5: Addiction Recovery Tracker
 export interface AddictionMilestoneAward {
-  milestone: string; // '24h' | '1w' | '1m'
+  id?: string;
+  milestone: string; // '1w' | '1m' | '90d'
   seasonNumber: number;
   timestamp: string; // ISO timestamp
+  streakStart?: string;
   points: number;
+}
+
+export function getAwardKey(a: AddictionMilestoneAward): string {
+  return a.id ?? `${a.milestone}_${a.timestamp}`;
 }
 
 export interface AddictionTracker {
   id: string;
   title: string;
   startDate: string; // ISO timestamp
-  milestonesUnlocked: string[]; // ['24h', '1w', '1m'] - active streak milestones
-  awardedMilestones?: AddictionMilestoneAward[]; // lifetime awarded milestones ledger (immune to resets)
+  milestonesUnlocked: string[]; // ['1w', '1m', '90d'] - active streak milestones
+  awardedMilestones?: AddictionMilestoneAward[]; // lifetime awarded milestones ledger
+  revokedAwardIds?: string[]; // grow-only set of revoked milestone award IDs
   createdAt: string;
 }
 
@@ -412,6 +419,7 @@ export interface WeeklyGoalItem {
   linkedMetricKey?: string;
   manualProgress?: number;
   completed: boolean;
+  completedAt?: string;
   archived?: boolean;
   carriedOverFromWeekKey?: string;
   carriedOverFromGoalId?: string;

@@ -2,8 +2,9 @@ import { AppState, Habit, BadHabitLog, ExerciseGoal, WorkoutLog } from '@/types'
 import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, uid, addDays, addWeeks, getNow } from './dates';
 import { createNotificationSupabase } from './supabase';
 import { getEffectiveSeasonPoints } from './leagues';
-import { applyPenaltyDeductionInternal } from './pointsLedger';
-import { BAD_HABIT_POINTS } from './pointsConfig';
+import { applyPenaltyDeductionInternal, addPointsInternal } from './pointsLedger';
+import { BAD_HABIT_POINTS, calculateTimeTrackerDailyPoints, POINTS_V2_START_DATE_KEY, RETRO_SCORING_WINDOW_DAYS } from './pointsConfig';
+import { getPointEligibleHabitIds } from './badHabitEligibility';
 
 export { applyPenaltyDeductionInternal };
 
@@ -88,9 +89,9 @@ function getCurrentStreakFromSortedDates(sortedDates: string[], now: Date): numb
 }
 
 export function getMissPenaltyMultiplier(consecutiveMisses: number, seasonPoints: number = 0): number {
-  const isDiamondOrAbove = seasonPoints >= 1000;
+  const isPerformerOrAbove = seasonPoints >= 2000;
 
-  if (!isDiamondOrAbove) {
+  if (!isPerformerOrAbove) {
     if (consecutiveMisses <= 1) return 1.0;
     return 1.5;
   } else {
@@ -396,6 +397,8 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
   const badHabits = updatedState.badHabits || [];
   if (badHabits.length === 0) return updatedState;
 
+  const eligibleIds = getPointEligibleHabitIds(badHabits);
+
   const activeHabits = badHabits
     .filter((h) => !h.isCompleted)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -403,10 +406,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
   let newLogs = [...(updatedState.badHabitLogs || [])];
   let logsAdded = false;
 
-  for (let idx = 0; idx < activeHabits.length; idx++) {
-    const habit = activeHabits[idx];
-    const isPointEligible = idx < 2;
-
+  for (const habit of activeHabits) {
     const createdDate = parseDate(habit.createdAt) || now;
     const start = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
     const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
@@ -433,9 +433,10 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
           }
         }
 
-        const seasonPts = getAppStateSeasonPoints(updatedState, now);
-        const multiplier = getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts);
-        const penaltyAmount = isPointEligible ? Math.round(BAD_HABIT_POINTS.noReportBase * multiplier) : 0;
+        const isEligible = eligibleIds.has(habit.id);
+        const seasonPts = isEligible ? getAppStateSeasonPoints(updatedState, now) : 0;
+        const multiplier = isEligible ? getMissPenaltyMultiplier(consecutiveOccurrences, seasonPts) : 1;
+        const penaltyAmount = isEligible ? Math.round(BAD_HABIT_POINTS.noReportBase * multiplier) : 0;
 
         const newLog: BadHabitLog = {
           id: uid(),
@@ -570,4 +571,59 @@ export function processExerciseTargetPenalties(state: AppState, now: Date = new 
       lastEvaluatedWeek: lastWeekKey,
     },
   };
+}
+
+/**
+ * Evaluates Time Tracker routine completion points for past unfinalized days.
+ * For any past day present in dailyLogs, calculates percentage and awards points
+ * (0, 3, or 5 pts) idempotently via the deterministic entry ID time_tracker_${dateKey}.
+ */
+export function processTimeTrackerDailyPoints(state: AppState, now: Date = new Date()): AppState {
+  if (!state.timeTracker?.dailyLogs) return state;
+
+  const todayStr = todayKey(now);
+  const windowStartKey = addDays(todayStr, -RETRO_SCORING_WINDOW_DAYS);
+  const minKey = windowStartKey > POINTS_V2_START_DATE_KEY ? windowStartKey : POINTS_V2_START_DATE_KEY;
+
+  const dailyLogs = state.timeTracker.dailyLogs;
+  const pastDateKeys = Object.keys(dailyLogs).filter((dateKey) => dateKey >= minKey && dateKey < todayStr);
+
+  if (pastDateKeys.length === 0) return state;
+
+  let updatedState = state;
+  const historyEntries = updatedState.pointsHistory || [];
+  const currentSeason = typeof state.seasonId === 'number' ? state.seasonId : 1;
+  const evictedIds = (state.evictedEntryIds || [])
+    .filter((r) => r && (r.seasonNumber === undefined || r.seasonNumber === currentSeason))
+    .map((r) => r.id);
+  const evictedSet = new Set(evictedIds);
+
+  for (const dateKey of pastDateKeys) {
+    const entryId = `time_tracker_${dateKey}`;
+    const alreadyEvaluated = historyEntries.some((e) => e && e.id === entryId) || evictedSet.has(entryId);
+
+    if (!alreadyEvaluated) {
+      const blocks = dailyLogs[dateKey] || [];
+      const { percentage, pointsAwarded } = calculateTimeTrackerDailyPoints(blocks);
+
+      if (pointsAwarded > 0) {
+        const pointsUpdate = addPointsInternal(
+          updatedState,
+          pointsAwarded,
+          `Time Tracker daily routine completed (${Math.round(percentage)}%): ${pointsAwarded} pts`,
+          'time_tracker',
+          { date: dateKey, percentage, pointsAwarded },
+          `${dateKey}T23:59:59.000Z`,
+          entryId
+        );
+
+        updatedState = {
+          ...updatedState,
+          ...pointsUpdate,
+        };
+      }
+    }
+  }
+
+  return updatedState;
 }

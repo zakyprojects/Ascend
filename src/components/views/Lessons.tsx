@@ -4,6 +4,7 @@ import { AppStore } from '@/lib/store';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import { Lesson } from '@/types';
 import { Modal } from '@/components/ui/Modal';
+import { getSeasonNumber, leagueNow } from '@/lib/leagueTime';
 
 export function Lessons({ store }: { store: AppStore }) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -11,9 +12,15 @@ export function Lessons({ store }: { store: AppStore }) {
   const [search, setSearch] = useState('');
 
   const readIds = store.state.readLessonIds;
-  const readCount = readIds.length;
+  const activeSeasonNum = getSeasonNumber(leagueNow());
+  const isLessonReadThisSeason = (lessonId: string) => {
+    const seasonKey = `${lessonId}_s${activeSeasonNum}`;
+    return readIds.includes(seasonKey) || (activeSeasonNum === 1 && readIds.includes(lessonId));
+  };
+
+  const readCount = LESSONS.filter((l) => isLessonReadThisSeason(l.id)).length;
   const totalPoints = LESSONS.reduce((sum, l) => sum + l.points, 0);
-  const earnedPoints = LESSONS.filter((l) => readIds.includes(l.id)).reduce((sum, l) => sum + l.points, 0);
+  const earnedPoints = LESSONS.filter((l) => isLessonReadThisSeason(l.id)).reduce((sum, l) => sum + l.points, 0);
 
   const filtered = LESSONS.filter((lesson) => {
     if (search && !lesson.title.toLowerCase().includes(search.toLowerCase())) return false;
@@ -31,7 +38,7 @@ export function Lessons({ store }: { store: AppStore }) {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
         <div className="card p-4">
-          <div className="stat-label">Lessons Read</div>
+          <div className="stat-label">Lessons Read (Season {activeSeasonNum})</div>
           <div className="stat-value mt-1">
             {readCount}
             <span className="text-base text-content-disabled">/{LESSONS.length}</span>
@@ -88,7 +95,7 @@ export function Lessons({ store }: { store: AppStore }) {
       {/* Lesson list */}
       <div className="space-y-2.5">
         {filtered.map((lesson) => {
-          const isRead = readIds.includes(lesson.id);
+          const isRead = isLessonReadThisSeason(lesson.id);
           return (
             <button
               key={lesson.id}
@@ -147,7 +154,7 @@ export function Lessons({ store }: { store: AppStore }) {
               {renderLessonContent(openLesson.content)}
             </div>
             <div className="mt-6 pt-4 border-t border-overlay-subtle">
-              {readIds.includes(openLesson.id) ? (
+              {isLessonReadThisSeason(openLesson.id) ? (
                 <div className="flex items-center gap-2 text-sm text-brand-text">
                   <Check size={16} />
                   Lesson completed

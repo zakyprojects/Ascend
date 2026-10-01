@@ -12,6 +12,7 @@ import {
   BadHabit,
   BadHabitLog,
   CravingLog,
+  getAwardKey,
   FocusSessionLog,
   DecisionLog,
   EmotionLog,
@@ -87,10 +88,10 @@ function mergeEntityArrays<T extends { id?: string; createdAt?: string | number;
 function normalizeHabitCompletions(
   completions: Habit['completions'] | string[] | undefined,
   fallbackTime: string
-): Record<string, { done: boolean; updatedAt: string }> {
+): Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> {
   if (!completions) return {};
   if (Array.isArray(completions)) {
-    const res: Record<string, { done: boolean; updatedAt: string }> = {};
+    const res: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> = {};
     for (const d of completions) {
       if (typeof d === 'string' && d) {
         res[d] = { done: true, updatedAt: fallbackTime };
@@ -98,12 +99,15 @@ function normalizeHabitCompletions(
     }
     return res;
   }
-  const res: Record<string, { done: boolean; updatedAt: string }> = {};
+  const res: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> = {};
   for (const [key, val] of Object.entries(completions)) {
     if (val && typeof val === 'object') {
       res[key] = {
         done: Boolean((val as { done?: boolean }).done ?? true),
         updatedAt: (val as { updatedAt?: string }).updatedAt || fallbackTime,
+        ...(typeof (val as { pointsAwarded?: number }).pointsAwarded === 'number'
+          ? { pointsAwarded: (val as { pointsAwarded?: number }).pointsAwarded }
+          : {}),
       };
     } else if (typeof val === 'boolean') {
       res[key] = { done: val, updatedAt: fallbackTime };
@@ -113,10 +117,10 @@ function normalizeHabitCompletions(
 }
 
 function mergeHabitCompletions(
-  baseCompletions: Record<string, { done: boolean; updatedAt: string }>,
-  incomingCompletions: Record<string, { done: boolean; updatedAt: string }>
-): Record<string, { done: boolean; updatedAt: string }> {
-  const merged: Record<string, { done: boolean; updatedAt: string }> = { ...baseCompletions };
+  baseCompletions: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }>,
+  incomingCompletions: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }>
+): Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> {
+  const merged: Record<string, { done: boolean; updatedAt: string; pointsAwarded?: number }> = { ...baseCompletions };
   for (const [dateKey, incEntry] of Object.entries(incomingCompletions || {})) {
     const baseEntry = merged[dateKey];
     if (!baseEntry) {
@@ -476,10 +480,12 @@ function mergeAppStateInternal(
     completions: normalizeHabitCompletions(h.completions, h.updatedAt || h.createdAt || new Date().toISOString()),
   }));
 
-  const { habits, deletedEntityIds: postHabitDeletedEntityIds } = deduplicatePresetHabits(
+  const { habits: deduplicatedHabits, deletedEntityIds: postHabitDeletedEntityIds } = deduplicatePresetHabits(
     normalizedHabits,
     mergedDeletedEntityIds
   );
+
+  const habits = deduplicatedHabits;
 
   // 3. Journal entries
   const journalEntries = mergeEntityArrays(
@@ -499,7 +505,16 @@ function mergeAppStateInternal(
     baseState.evictedEntryIds || [],
     incomingState.evictedEntryIds || [],
     tombstoneSet,
-    (a, b) => ({ ...a, ...b, amount: typeof b.amount === 'number' ? b.amount : (a.amount || 0) })
+    (a, b) => ({
+      ...a,
+      ...b,
+      amount:
+        typeof b.amount === 'number' && b.amount !== 0
+          ? b.amount
+          : typeof a.amount === 'number'
+          ? a.amount
+          : 0,
+    })
   )
     .filter((r) => r && r.seasonNumber === maxSeason)
     .slice(-1000);
@@ -652,9 +667,63 @@ function mergeAppStateInternal(
     }
   }
 
+  // Deduplicate weekly_goal_achieved entries by weekKey, keeping latest timestamp (with deterministic id tie-breaker)
+  const weeklyGoalsBest = new Map<string, PointsEntry>();
+  const duplicateWeeklyGoalEntryIds = new Set<string>();
+
+  for (const entry of mergedHistoryFull) {
+    if (
+      entry &&
+      (entry.source === 'weekly_goal_achieved' ||
+        (typeof entry.id === 'string' && entry.id.startsWith('weekly_goal_')))
+    ) {
+      let weekKey: string | null = null;
+      if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
+        weekKey = entry.metadata.weekKey;
+      } else if (typeof entry.id === 'string') {
+        const match = entry.id.match(/\b\d{4}-W\d{2}\b/);
+        if (match) weekKey = match[0];
+      } else if (entry.reason) {
+        const match = entry.reason.match(/\b\d{4}-W\d{2}\b/);
+        if (match) weekKey = match[0];
+      }
+
+      if (weekKey) {
+        const isCanonicalId = entry.id === `weekly_goal_${weekKey}`;
+        const existing = weeklyGoalsBest.get(weekKey);
+        if (!existing) {
+          weeklyGoalsBest.set(weekKey, entry);
+        } else {
+          const existingIsCanonical = existing.id === `weekly_goal_${weekKey}`;
+          const timeCand = entry.timestamp ? new Date(entry.timestamp).getTime() : 0;
+          const timeExist = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+          let replace = false;
+          // Prefer canonical static ID over legacy transition-based IDs
+          if (isCanonicalId && !existingIsCanonical) {
+            replace = true;
+          } else if (!isCanonicalId && existingIsCanonical) {
+            replace = false;
+          } else if (timeCand !== timeExist) {
+            replace = timeCand > timeExist; // latest timestamp wins for snapshot entries
+          } else {
+            replace = (entry.id || '') > (existing.id || '');
+          }
+
+          if (replace) {
+            if (existing.id) duplicateWeeklyGoalEntryIds.add(existing.id);
+            weeklyGoalsBest.set(weekKey, entry);
+          } else {
+            if (entry.id) duplicateWeeklyGoalEntryIds.add(entry.id);
+          }
+        }
+      }
+    }
+  }
+
   const allDuplicatePointIds = new Set<string>([
     ...duplicateHabitEntryIds,
     ...duplicateWeeklyReviewEntryIds,
+    ...duplicateWeeklyGoalEntryIds,
   ]);
 
   const dedupedHistoryFull = allDuplicatePointIds.size > 0
@@ -677,8 +746,11 @@ function mergeAppStateInternal(
     mergedEvictedExcisionRecords.map((r) => r && r.id).filter(Boolean)
   );
 
-  const finalHistory = dedupedHistoryFull.slice(0, 500);
-  const droppedHistory = dedupedHistoryFull.slice(500);
+  const historyWithoutEvicted = dedupedHistoryFull.filter(
+    (e) => !(e && e.id && evictedEntryIdSet.has(e.id))
+  );
+  const finalHistory = historyWithoutEvicted.slice(0, 500);
+  const droppedHistory = historyWithoutEvicted.slice(500);
   const newEvictedFromMerge: EvictedEntryRecord[] = [];
 
   if (droppedHistory.length > 0) {
@@ -1223,25 +1295,93 @@ function mergeAppStateInternal(
       }
   }
 
+  const isBaseTrackerTombstoned = Boolean(
+    baseState.addictionTracker?.id &&
+      (tombstoneSet.has(baseState.addictionTracker.id) ||
+        ((baseState.deletedEntityIds || []).includes(baseState.addictionTracker.id) &&
+          !(incomingState.restoredEntityIds || []).includes(baseState.addictionTracker.id) &&
+          !(baseState.restoredEntityIds || []).includes(baseState.addictionTracker.id)))
+  );
+
   let addictionTracker = incomingState.addictionTracker !== undefined
     ? incomingState.addictionTracker
     : baseState.addictionTracker;
 
+  if (
+    !incomingState.addictionTracker &&
+    baseState.addictionTracker &&
+    !isBaseTrackerTombstoned
+  ) {
+    addictionTracker = baseState.addictionTracker;
+  }
+
   if (baseState.addictionTracker && incomingState.addictionTracker && baseState.addictionTracker.id === incomingState.addictionTracker.id) {
-    const baseAwards = baseState.addictionTracker.awardedMilestones || [];
-    const incAwards = incomingState.addictionTracker.awardedMilestones || [];
+    const baseT = baseState.addictionTracker;
+    const incT = incomingState.addictionTracker;
+
+    const baseStartMs = new Date(baseT.startDate).getTime();
+    const incStartMs = new Date(incT.startDate).getTime();
+
+    // Pick winning side based on later startDate (tie -> incoming)
+    let winningSide = incT;
+    let resolvedStartDate = incT.startDate;
+    let resolvedMilestonesUnlocked: string[] = [];
+
+    if (!isNaN(baseStartMs) && !isNaN(incStartMs)) {
+      if (incStartMs > baseStartMs) {
+        winningSide = incT;
+        resolvedStartDate = incT.startDate;
+        resolvedMilestonesUnlocked = Array.isArray(incT.milestonesUnlocked) ? incT.milestonesUnlocked : [];
+      } else if (baseStartMs > incStartMs) {
+        winningSide = baseT;
+        resolvedStartDate = baseT.startDate;
+        resolvedMilestonesUnlocked = Array.isArray(baseT.milestonesUnlocked) ? baseT.milestonesUnlocked : [];
+      } else {
+        // Equal startDates (same streak): union milestonesUnlocked
+        winningSide = incT;
+        resolvedStartDate = incT.startDate;
+        resolvedMilestonesUnlocked = Array.from(
+          new Set([...(baseT.milestonesUnlocked || []), ...(incT.milestonesUnlocked || [])])
+        );
+      }
+    } else {
+      resolvedMilestonesUnlocked = Array.isArray(incT.milestonesUnlocked) ? incT.milestonesUnlocked : (baseT.milestonesUnlocked || []);
+    }
+
+    // 1. Union revokedAwardIds
+    const baseRevoked = baseT.revokedAwardIds || [];
+    const incRevoked = incT.revokedAwardIds || [];
+    const mergedRevokedIds = Array.from(new Set([...baseRevoked, ...incRevoked]));
+    const revokedSet = new Set(mergedRevokedIds);
+
+    // 2. Union awardedMilestones keyed by getAwardKey
+    const baseAwards = baseT.awardedMilestones || [];
+    const incAwards = incT.awardedMilestones || [];
     const awardsMap = new Map<string, any>();
+
     for (const a of [...baseAwards, ...incAwards]) {
-      if (a && a.milestone && !awardsMap.has(a.milestone)) {
-        awardsMap.set(a.milestone, a);
+      if (a && a.milestone) {
+        const key = getAwardKey(a);
+        if (!awardsMap.has(key)) {
+          awardsMap.set(key, a);
+        }
       }
     }
-    if (addictionTracker) {
-      addictionTracker = {
-        ...addictionTracker,
-        awardedMilestones: Array.from(awardsMap.values()),
-      };
-    }
+
+    // Exclude any awards whose key is in revokedSet (no !a.id bypass)
+    const finalAwards = Array.from(awardsMap.values()).filter(
+      (a) => !revokedSet.has(getAwardKey(a))
+    );
+
+    addictionTracker = {
+      id: winningSide.id,
+      title: winningSide.title || baseT.title || 'Sobriety',
+      createdAt: winningSide.createdAt || baseT.createdAt || new Date().toISOString(),
+      startDate: resolvedStartDate,
+      milestonesUnlocked: resolvedMilestonesUnlocked,
+      awardedMilestones: finalAwards,
+      revokedAwardIds: mergedRevokedIds,
+    };
   }
 
   return {

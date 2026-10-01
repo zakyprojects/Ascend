@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Activity, Dumbbell, Flame, Plus, Trash2, Calendar, Award } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { WORKOUT_POINTS, calculateWorkoutPoints, getWorkoutMultiplier } from '@/lib/pointsConfig';
+import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
@@ -9,6 +9,7 @@ import { todayKey, formatDateLong, parseDate, startOfWeek } from '@/lib/dates';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
+import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 
 const DEFAULT_WORKOUT_TYPES = [
   'Running',
@@ -70,7 +71,11 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
     if (entries.length === 0) {
       return { label: "This Week's Minutes", value: 0, unit: 'mins' };
     }
-    entries.sort((a, b) => (b[1] * getWorkoutMultiplier(b[0])) - (a[1] * getWorkoutMultiplier(a[0])));
+    entries.sort((a, b) => {
+      const ptsB = calculateWorkoutPoints(b[0], b[1], b[1], 9999).rawPoints;
+      const ptsA = calculateWorkoutPoints(a[0], a[1], a[1], 9999).rawPoints;
+      return ptsB - ptsA;
+    });
     const [bestUnit, bestAmount] = entries[0];
     const unitTitle = bestUnit.charAt(0).toUpperCase() + bestUnit.slice(1);
     const displayAmount = Number.isInteger(bestAmount) ? bestAmount : Math.round(bestAmount * 100) / 100;
@@ -209,6 +214,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           </div>
         </div>
       </div>
+
+      <CapMeterConnected state={store.state} capId="exercise" />
 
       {/* Weekly Activity Chart */}
       <div className="card p-5">

@@ -5,8 +5,12 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
-import { CravingLog } from '@/types';
+import { CravingLog, getAwardKey } from '@/types';
 import { formatDateLong } from '@/lib/dates';
+import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
+import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS } from '@/lib/pointsConfig';
+import { CapMeter } from '@/components/ui/CapMeter';
+import { recoverySeasonCapNote } from '@/lib/capCopy';
 
 const DISTRACTION_ACTIVITIES = [
   'Drink a cold glass of water slowly',
@@ -41,6 +45,12 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   const tracker = store.state.addictionTracker;
   const cravingLogs = store.state.cravingLogs;
 
+  const activeSeasonNum = getSeasonNumber(leagueNow());
+  const revokedSet = new Set(tracker?.revokedAwardIds || []);
+  const heldSeasonPoints = (tracker?.awardedMilestones || [])
+    .filter((a) => !revokedSet.has(getAwardKey(a)) && a.seasonNumber === activeSeasonNum)
+    .reduce((sum, a) => sum + (a.points || 0), 0);
+
   // Auto-check milestones on mount
   useEffect(() => {
     store.checkAddictionMilestones();
@@ -71,9 +81,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   }, [tracker?.startDate]);
 
   const milestones = [
-    { key: '24h', label: '24 Hours Clean', requiredHours: 24, points: 20, icon: '🎉' },
-    { key: '1w', label: '1 Week Clean', requiredHours: 168, points: 50, icon: '🏅' },
-    { key: '1m', label: '1 Month Clean', requiredHours: 720, points: 150, icon: '🏆' },
+    { key: '1w', label: '1 Week Clean', requiredHours: 168, points: 10, icon: '🏅' },
+    { key: '1m', label: '1 Month Clean', requiredHours: 720, points: 25, icon: '🏆' },
+    { key: '90d', label: '90 Days Clean', requiredHours: 2160, points: 50, icon: '👑' },
   ];
 
   const handleStartTracker = (e: React.FormEvent) => {
@@ -181,7 +191,15 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           </div>
 
           {/* Milestones Celebrations */}
-          <div>
+          <div className="space-y-3">
+            <CapMeter
+              variant="bar"
+              label="Recovery points this season"
+              earned={heldSeasonPoints}
+              cap={RECOVERY_POINTS.seasonCap}
+              note={recoverySeasonCapNote()}
+            />
+
             <div className="text-xs font-bold text-content-tertiary mb-3 flex items-center gap-2">
               <Award size={16} className="text-warning-text" />
               Milestone Celebrations & Badges
@@ -189,6 +207,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {milestones.map((m) => {
                 const isUnlocked = tracker.milestonesUnlocked.includes(m.key);
+                const isAwarded = (tracker.awardedMilestones || []).some(
+                  (a) => !revokedSet.has(getAwardKey(a)) && a.milestone === m.key && a.seasonNumber === activeSeasonNum
+                );
+                const isCapped = !isAwarded && wouldExceedRecoverySeasonCap(heldSeasonPoints, m.points);
+
                 return (
                   <button
                     key={m.key}
@@ -198,6 +221,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                     className={`card p-3 flex items-center gap-3 text-left transition-all ${
                       isUnlocked
                         ? 'bg-amber-500/10 border-amber-500/40 text-content-secondary cursor-pointer hover:bg-amber-500/20'
+                        : isCapped
+                        ? 'bg-bg-800/40 border-overlay-subtle text-content-disabled opacity-50'
                         : 'bg-bg-800/40 border-overlay-subtle text-content-disabled opacity-60'
                     }`}
                   >
@@ -205,7 +230,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                     <div>
                       <div className="text-xs font-bold">{m.label}</div>
                       <div className="text-[10px] text-content-muted">
-                        {isUnlocked ? `Unlocked! (+${m.points} pts)` : `Requires ${m.requiredHours}h`}
+                        {isUnlocked
+                          ? `Unlocked! (+${m.points} pts)`
+                          : isCapped
+                          ? 'Season cap reached'
+                          : `Requires ${m.requiredHours}h`}
                       </div>
                     </div>
                   </button>
