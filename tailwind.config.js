@@ -131,6 +131,8 @@ export default {
         'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
         'count-up': 'countUp 0.5s ease-out',
         'celebrate': 'celebrate 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+        'enter-up': 'enterUp var(--duration-enter) var(--ease-emphasized) both',
+        'enter-fade': 'enterFade var(--duration-fast) var(--ease-standard) both',
       },
       keyframes: {
         fadeIn: {
@@ -158,6 +160,36 @@ export default {
           '50%': { transform: 'scale(1.15) rotate(5deg)', opacity: '1' },
           '100%': { transform: 'scale(1) rotate(0)', opacity: '1' },
         },
+        enterUp: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        enterFade: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+      },
+      transitionDuration: {
+        fast: 'var(--duration-fast)',
+        base: 'var(--duration-base)',
+        enter: 'var(--duration-enter)',
+        slow: 'var(--duration-slow)',
+      },
+      transitionTimingFunction: {
+        standard: 'var(--ease-standard)',
+        emphasized: 'var(--ease-emphasized)',
+      },
+      zIndex: {
+        sticky: 'var(--z-sticky)',
+        drawer: 'var(--z-drawer)',
+        modal: 'var(--z-modal)',
+        popover: 'var(--z-popover)',
+        toast: 'var(--z-toast)',
+        blocking: 'var(--z-blocking)',
+      },
+      // Provisional: locks after font approval
+      fontSize: {
+        micro: ['0.6875rem', { lineHeight: '1rem' }],
       },
     },
   },

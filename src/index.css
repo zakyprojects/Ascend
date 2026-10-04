@@ -171,6 +171,21 @@
     --rank-master-bg: rgba(234, 179, 8, 0.08);
     --rank-master-border: rgba(234, 179, 8, 0.25);
     --rank-master-glow: rgba(234, 179, 8, 0.08);
+
+    /* Motion tokens (theme-independent) */
+    --duration-fast: 150ms;
+    --duration-base: 200ms;
+    --duration-enter: 250ms;
+    --duration-slow: 500ms;
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+    /* Layer scale (theme-independent) */
+    --z-sticky: 30;
+    --z-drawer: 40;
+    --z-modal: 50;
+    --z-popover: 60;
+    --z-toast: 70;
+    --z-blocking: 80;
   }
 
   [data-theme='light'] {
