@@ -137,11 +137,6 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                 <h2 className="section-title">
                   {activeLeague === 'ninetyDay' ? `${getSeasonLabel(now)} — 90-Day League` : config.name}
                 </h2>
-                {activeLeague === 'ninetyDay' && (
-                  <span className="text-[10px] badge-purple px-2 py-0.5 rounded-full font-bold">
-                    Active
-                  </span>
-                )}
               </div>
               <p className="text-[11px] text-content-muted">{getLocalResetDetail(activeLeague, now)}</p>
             </div>

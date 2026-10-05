@@ -11,6 +11,7 @@ import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { EmptyState } from '@/components/ui/primitives';
 
 export function HabitTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
@@ -102,16 +103,16 @@ export function HabitTracker({ store }: { store: AppStore }) {
         </div>
       </div>
       {habits.length === 0 ? (
-        <div className="card p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-bg-600 flex items-center justify-center mx-auto mb-4">
-            <Check size={28} className="text-content-subtle" />
-          </div>
-          <h3 className="font-display font-bold text-content-secondary text-lg">No habits yet</h3>
-          <p className="text-sm text-content-disabled mt-1.5 mb-5">Browse the preset library or create your own to start building streaks.</p>
-          <button onClick={() => { setShowAdd(true); setAddMode('choice'); }} className="btn-primary mx-auto">
-            <Plus size={18} /> Add Your First Habit
-          </button>
-        </div>
+        <EmptyState
+          icon={Check}
+          title="No habits yet"
+          description="Browse the preset library or create your own to start building streaks."
+          action={
+            <button onClick={() => { setShowAdd(true); setAddMode('choice'); }} className="btn-primary mx-auto">
+              <Plus size={18} /> Add Your First Habit
+            </button>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {todayHabits.length > 0 && (
@@ -203,7 +204,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
                             <span className="text-xs text-content-disabled">
                               {preset.frequency === 'daily' ? 'Daily' : 'Weekly'}
                             </span>
-                            <span className="text-xs text-brand-text font-medium">+{preset.points} pts</span>
+                            <span className="text-xs text-brand-text font-medium tabular-nums">+{preset.points} pts</span>
                           </div>
                         </div>
                         {alreadyAdded ? (
@@ -226,8 +227,9 @@ export function HabitTracker({ store }: { store: AppStore }) {
               ← Back
             </button>
             <div>
-              <label className="label">Habit Name</label>
+              <label className="label" htmlFor="habit-name-input">Habit Name</label>
               <input
+                id="habit-name-input"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -369,12 +371,12 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
             {streak > 0 && (
               <div className="flex items-center gap-1 text-xs">
                 <Flame size={13} className="text-secondary-500" />
-                <span className="text-secondary-400 font-medium">{streak} day{streak !== 1 ? 's' : ''}</span>
+                <span className="text-secondary-400 font-medium tabular-nums">{streak} day{streak !== 1 ? 's' : ''}</span>
               </div>
             )}
             {bestStreak > 0 && (
               <div className="flex items-center gap-1 text-xs text-content-disabled">
-                <span>Best: {bestStreak}</span>
+                <span className="tabular-nums">Best: {bestStreak}</span>
               </div>
             )}
             {isLinked ? (
@@ -410,6 +412,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
 
         <button
           onClick={onDelete}
+          aria-label="Delete habit"
           className="shrink-0 p-2 rounded-lg text-content-subtle hover:text-error hover:bg-error/10 transition-colors opacity-0 group-hover:opacity-100"
         >
           <Trash2 size={16} />

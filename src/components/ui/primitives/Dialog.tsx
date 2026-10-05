@@ -57,8 +57,8 @@ export const Dialog: React.FC<DialogProps> = ({
     const autofocusEl = panelRef.current?.querySelector<HTMLElement>('[data-autofocus]');
     if (autofocusEl) {
       autofocusEl.focus();
-    } else {
-      panelRef.current?.focus();
+    } else if (panelRef.current && !panelRef.current.contains(document.activeElement)) {
+      panelRef.current.focus();
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {

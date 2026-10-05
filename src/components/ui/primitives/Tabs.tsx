@@ -33,19 +33,16 @@ export const Tabs: React.FC<TabsProps> = ({
   const isSegmented = variant === 'segmented';
   const isSm = size === 'sm';
   const tabRefs = React.useRef<Map<string, HTMLButtonElement>>(new Map());
-  const mountedRef = React.useRef(false);
+  const listRef = React.useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      return;
-    }
-    if (scrollable) {
-      const activeEl = tabRefs.current.get(value);
-      if (activeEl) {
-        activeEl.scrollIntoView({ inline: 'nearest', block: 'nearest' });
-      }
-    }
+  React.useLayoutEffect(() => {
+    if (!scrollable) return;
+    const list = listRef.current;
+    const el = tabRefs.current.get(value);
+    if (!list || !el) return;
+    const l = list.getBoundingClientRect();
+    const e = el.getBoundingClientRect();
+    list.scrollLeft += (e.left + e.width / 2) - (l.left + l.width / 2);
   }, [value, scrollable]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -84,6 +81,7 @@ export const Tabs: React.FC<TabsProps> = ({
 
   return (
     <div
+      ref={listRef}
       role="tablist"
       aria-label={ariaLabel}
       onKeyDown={handleKeyDown}

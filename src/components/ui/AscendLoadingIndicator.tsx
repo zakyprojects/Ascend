@@ -95,7 +95,7 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
         <div className="flex items-center gap-2 mb-1.5">
           <span className="font-display font-bold text-content-primary text-xl tracking-wide">Ascend</span>
           <span className="text-[10px] bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-            Self Growth
+            Beta
           </span>
         </div>
 

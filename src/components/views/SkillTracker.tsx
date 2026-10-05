@@ -554,6 +554,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           <div>
             <label className="block text-xs font-medium text-content-muted mb-1">Short Note / What did you practice?</label>
             <textarea
+              autoFocus
               value={note}
               onChange={(e) => {
                 setNote(e.target.value);

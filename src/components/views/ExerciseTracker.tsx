@@ -10,6 +10,8 @@ import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { EmptyState } from '@/components/ui/primitives';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 const DEFAULT_WORKOUT_TYPES = [
   'Running',
@@ -259,14 +261,16 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         <h2 className="section-title mb-3">Recent Workout Logs</h2>
 
         {workouts.length === 0 ? (
-          <div className="card p-8 text-center">
-            <Dumbbell size={32} className="mx-auto text-content-subtle mb-2" />
-            <p className="text-sm font-medium text-content-muted">No workouts logged yet</p>
-            <p className="text-xs text-content-disabled mt-1 mb-4">Start logging your physical activity to earn points and stay fit.</p>
-            <button onClick={() => setLogModalOpen(true)} className="btn-primary mx-auto">
-              Log Your First Workout
-            </button>
-          </div>
+          <EmptyState
+            icon={Dumbbell}
+            title="No workouts logged yet"
+            description="Start logging your physical activity to earn points and stay fit."
+            action={
+              <button onClick={() => setLogModalOpen(true)} className="btn-primary mx-auto">
+                Log Your First Workout
+              </button>
+            }
+          />
         ) : (
           <div className="space-y-2.5">
             {workouts.map((w) => (
@@ -288,12 +292,13 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                  <span className="text-xs font-bold text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 tabular-nums">
                     +{w.pointsAwarded} pts
                   </span>
                   <button
                     onClick={() => setDeleteModalWorkout(w)}
-                    className="p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all"
+                    aria-label="Delete workout"
+                    className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
                     title="Delete Workout"
                   >
                     <Trash2 size={16} />
@@ -309,8 +314,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       <Modal open={logModalOpen} onClose={() => setLogModalOpen(false)} title="Log Workout Session">
         <form onSubmit={handleLogSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Workout Type</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-type-select">Workout Type</label>
             <select
+              id="workout-type-select"
               value={workoutType}
               onChange={(e) => setWorkoutType(e.target.value)}
               className="input mb-2"
@@ -336,8 +342,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           {metricType === 'mins' ? (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1">Metric Type</label>
+                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-metric-type">Metric Type</label>
                 <select
+                  id="workout-metric-type"
                   value={metricType}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -357,10 +364,11 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1">
+                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-duration-input">
                   Duration (Minutes)
                 </label>
                 <input
+                  id="workout-duration-input"
                   type="number"
                   step="any"
                   min="1"
@@ -378,8 +386,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1">Metric Type</label>
+                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-metric-type">Metric Type</label>
                 <select
+                  id="workout-metric-type"
                   value={metricType}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -399,10 +408,11 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1">
+                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-amount-input">
                   Amount ({metricType})
                 </label>
                 <input
+                  id="workout-amount-input"
                   type="number"
                   step="any"
                   min="0.1"
@@ -472,8 +482,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             Set a target number of workout sessions per week. If you complete fewer sessions than your target by the end of the week, a miss penalty will be applied.
           </p>
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Target Workout Sessions / Week</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="target-sessions-input">Target Workout Sessions / Week</label>
             <input
+              id="target-sessions-input"
               type="number"
               min="0"
               max="21"

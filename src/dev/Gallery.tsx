@@ -488,6 +488,193 @@ export function Gallery() {
           </div>
         </Section>
 
+        {/* Section: Button vs .btn-* comparison */}
+        <Section title="Button vs .btn-* (legacy left / Button right)">
+          <div className="space-y-6">
+            {/* 1. Default md */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                1. Default md (.btn-* vs Button)
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Legacy .btn-*</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button className="btn-primary">Primary</button>
+                    <button className="btn-secondary">Secondary</button>
+                    <button className="btn-ghost">Ghost</button>
+                    <button className="btn-danger">Danger</button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Primitive &lt;Button&gt;</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="primary">Primary</Button>
+                    <Button variant="secondary">Secondary</Button>
+                    <Button variant="ghost">Ghost</Button>
+                    <Button variant="danger">Danger</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Small */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                2. Small (.btn-* text-xs py-1.5 px-3 vs Button size="sm")
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Legacy .btn-* text-xs py-1.5 px-3</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button className="btn-primary text-xs py-1.5 px-3">Primary</button>
+                    <button className="btn-secondary text-xs py-1.5 px-3">Secondary</button>
+                    <button className="btn-ghost text-xs py-1.5 px-3">Ghost</button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Primitive &lt;Button size="sm"&gt;</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="primary" size="sm">Primary</Button>
+                    <Button variant="secondary" size="sm">Secondary</Button>
+                    <Button variant="ghost" size="sm">Ghost</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Header pattern */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                3. Header pattern (Icon + text)
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Legacy "btn-primary flex items-center gap-2"</span>
+                  <button className="btn-primary flex items-center gap-2">
+                    <Plus size={18} />
+                    <span>Add Item</span>
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Primitive &lt;Button variant="primary"&gt;</span>
+                  <Button variant="primary">
+                    <Plus size={18} />
+                    <span>Add Item</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Disabled */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                4. Disabled state
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Legacy disabled</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button disabled className="btn-primary">Disabled Primary</button>
+                    <button disabled className="btn-secondary">Disabled Secondary</button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Primitive &lt;Button disabled&gt;</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button disabled variant="primary">Disabled Primary</Button>
+                    <Button disabled variant="secondary">Disabled Secondary</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Override REAL PATTERN A */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                5. Override REAL PATTERN A: "text-xs py-1.5 px-3"
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Legacy "btn-secondary text-xs py-1.5 px-3"</span>
+                  <button className="btn-secondary text-xs py-1.5 px-3">Pattern A</button>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">&lt;Button variant="secondary" className="text-xs py-1.5 px-3"&gt;</span>
+                  <Button variant="secondary" className="text-xs py-1.5 px-3">Pattern A</Button>
+                </div>
+              </div>
+            </div>
+
+            {/* 6. Override REAL PATTERN B */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                6. Override REAL PATTERN B: "text-xs flex items-center gap-2"
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Legacy "btn-secondary text-xs flex items-center gap-2"</span>
+                  <button className="btn-secondary text-xs flex items-center gap-2">
+                    <Plus size={16} />
+                    <span>Pattern B</span>
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">&lt;Button variant="secondary" className="text-xs"&gt;</span>
+                  <Button variant="secondary" className="text-xs">
+                    <Plus size={16} />
+                    <span>Pattern B</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* 7. Override REAL PATTERN C */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                7. Override REAL PATTERN C: "text-[10px] py-0.5 px-2"
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Legacy "btn-secondary text-[10px] py-0.5 px-2"</span>
+                  <button className="btn-secondary text-[10px] py-0.5 px-2">Micro C</button>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">&lt;Button variant="secondary" className="text-[10px] py-0.5 px-2"&gt;</span>
+                  <Button variant="secondary" className="text-[10px] py-0.5 px-2">Micro C</Button>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-warning-text italic">
+              If right is bigger than left, Button's default padding/size is beating the override.
+            </p>
+
+            {/* 8. Modal pair */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                8. Modal pair (w-80 flex gap-2)
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Legacy "btn-secondary flex-1" / "btn-primary flex-1"</span>
+                  <div className="w-80 flex gap-2">
+                    <button className="btn-secondary flex-1">Cancel</button>
+                    <button className="btn-primary flex-1">Save</button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] text-content-disabled font-mono block">Primitive &lt;Button className="flex-1"&gt;</span>
+                  <div className="w-80 flex gap-2">
+                    <Button variant="secondary" className="flex-1">Cancel</Button>
+                    <Button variant="primary" className="flex-1">Save</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Section>
+
         {/* Section 2: Cards */}
         <Section title="Cards">
           <div className="space-y-6">

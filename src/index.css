@@ -104,6 +104,10 @@
     --badge-rose-text: #fda4af;
     --badge-rose-border: rgba(244, 63, 94, 0.30);
 
+    --badge-red-bg: rgba(239, 68, 68, 0.20);
+    --badge-red-text: #fca5a5;
+    --badge-red-border: rgba(239, 68, 68, 0.30);
+
     --badge-orange-bg: rgba(249, 115, 22, 0.20);
     --badge-orange-text: #fdba74;
     --badge-orange-border: rgba(249, 115, 22, 0.30);
@@ -550,6 +554,12 @@
     background-color: var(--badge-rose-bg);
     color: var(--badge-rose-text);
     border: 1px solid var(--badge-rose-border);
+  }
+
+  .badge-red {
+    background-color: var(--badge-red-bg);
+    color: var(--badge-red-text);
+    border: 1px solid var(--badge-red-border);
   }
 
   .badge-orange {

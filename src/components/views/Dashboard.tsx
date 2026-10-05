@@ -1,5 +1,27 @@
 import { useState, useEffect } from 'react';
-import { Flame, TrendingUp, Star, BookOpen, Check, ArrowRight, Sparkles, Trophy, Brain, Calendar, CalendarDays, Activity, BookMarked, Zap, ShieldAlert, HeartPulse, Timer, Clock } from 'lucide-react';
+import {
+  Flame,
+  TrendingUp,
+  Star,
+  BookOpen,
+  Check,
+  ArrowRight,
+  Sparkles,
+  Trophy,
+  Brain,
+  Calendar,
+  CalendarDays,
+  Activity,
+  BookMarked,
+  Zap,
+  ShieldAlert,
+  HeartPulse,
+  Timer,
+  Clock,
+  type LucideIcon,
+} from 'lucide-react';
+import { Card, EmptyState, Button } from '@/components/ui/primitives';
+import { TAP_TARGET, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
 import { calculateStreak, todayKey, formatDateLong, parseDate } from '@/lib/dates';
@@ -17,6 +39,44 @@ import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 const LEAGUE_ICONS: Record<string, typeof Trophy> = {
   Calendar, CalendarDays, Brain,
 };
+
+const MODULE_TONE_CLASS = {
+  emerald: 'badge-emerald',
+  amber: 'badge-amber',
+  purple: 'badge-purple',
+  rose: 'badge-rose',
+  red: 'badge-red',
+  sky: 'badge-sky',
+  cyan: 'badge-cyan',
+  indigo: 'badge-indigo',
+} as const;
+
+interface ModuleCardProps {
+  tone: keyof typeof MODULE_TONE_CLASS;
+  icon: LucideIcon;
+  title: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+function ModuleCard({ tone, icon: Icon, title, onClick, children }: ModuleCardProps) {
+  return (
+    <Card
+      variant="interactive"
+      padding="md"
+      onClick={onClick}
+      className="flex flex-col justify-between space-y-2"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-content-muted font-medium">{title}</span>
+        <span className={`${MODULE_TONE_CLASS[tone]} w-8 h-8 rounded-lg flex items-center justify-center`}>
+          <Icon size={18} aria-hidden="true" />
+        </span>
+      </div>
+      {children}
+    </Card>
+  );
+}
 
 interface DashboardProps {
   store: AppStore;
@@ -139,7 +199,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               )}
             </div>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-3xl font-display font-bold text-content-primary">
+              <span className="text-3xl font-display font-bold text-content-primary tabular-nums">
                 {ninetyDayData.userPoints.toLocaleString()}
               </span>
               <span className="text-sm text-content-disabled">points</span>
@@ -178,10 +238,10 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard icon={<Check size={18} />} label="Done Today" value={`${completedToday.length}/${habits.length}`} color="#34d399" />
-        <StatCard icon={<TrendingUp size={18} />} label="Completion" value={`${completionRate}%`} color="#0ea5e9" />
-        <StatCard icon={<Flame size={18} />} label={currentStreakLabel} value={currentStreakValue} color="#f59e0b" />
-        <StatCard icon={<Star size={18} />} label="Habits" value={String(habits.length)} color="#6366f1" />
+        <StatCard icon={<Check size={18} />} label="Done Today" value={`${completedToday.length}/${habits.length}`} tone="emerald" />
+        <StatCard icon={<TrendingUp size={18} />} label="Completion" value={`${completionRate}%`} tone="sky" />
+        <StatCard icon={<Flame size={18} />} label={currentStreakLabel} value={currentStreakValue} tone="amber" />
+        <StatCard icon={<Star size={18} />} label="Habits" value={String(habits.length)} tone="indigo" />
       </div>
 
       {/* Activity Summary Widgets Grid */}
@@ -191,106 +251,92 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {/* Exercise Summary Widget */}
-          <button
+          <ModuleCard
+            tone="emerald"
+            icon={Activity}
+            title="Exercise Tracker"
             onClick={() => onViewChange('exercise')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-emerald-theme"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-content-muted font-medium">Exercise Tracker</span>
-              <Activity size={18} className="text-brand-text" />
-            </div>
             <div>
               <div className="text-xl font-bold text-content-primary">{weeklyExerciseMins} <span className="text-xs font-normal text-content-muted">mins this week</span></div>
               <div className="text-[11px] text-content-disabled">{weeklyWorkouts.length} sessions completed</div>
             </div>
-          </button>
+          </ModuleCard>
 
           {/* Reading Summary Widget */}
-          <button
+          <ModuleCard
+            tone="amber"
+            icon={BookMarked}
+            title="Reading Hub"
             onClick={() => onViewChange('reading')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-amber-theme"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-content-muted font-medium">Reading Hub</span>
-              <BookMarked size={18} className="text-warning-text" />
-            </div>
             <div>
               <div className="text-xl font-bold text-content-primary">{activeBooks} <span className="text-xs font-normal text-content-muted">books in progress</span></div>
               <div className="text-[11px] text-content-disabled">{finishedBooks} finished total</div>
             </div>
-          </button>
+          </ModuleCard>
 
           {/* Skill Summary Widget */}
-          <button
+          <ModuleCard
+            tone="purple"
+            icon={Zap}
+            title="Skill Learning"
             onClick={() => onViewChange('skills')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-purple-theme"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-content-muted font-medium">Skill Learning</span>
-              <Zap size={18} className="text-purple-hierarchy" />
-            </div>
             <div>
               <div className="text-xl font-bold text-content-primary">{totalSkillHours} <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
               <div className="text-[11px] text-content-disabled">{store.state.skills.length} skills tracked</div>
             </div>
-          </button>
+          </ModuleCard>
 
           {/* Bad Habit Summary Widget */}
-          <button
+          <ModuleCard
+            tone="rose"
+            icon={ShieldAlert}
+            title="Bad Habits Reduction"
             onClick={() => onViewChange('bad-habits')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-rose-theme"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-content-muted font-medium">Bad Habits Reduction</span>
-              <ShieldAlert size={18} className="text-rose-theme" />
-            </div>
             <div>
               <div className="text-xl font-bold text-content-primary">{badHabitCount} <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
               <div className="text-[11px] text-content-disabled">Escalating penalties enabled</div>
             </div>
-          </button>
+          </ModuleCard>
 
           {/* Addiction Recovery Summary Widget */}
-          <button
+          <ModuleCard
+            tone="red"
+            icon={HeartPulse}
+            title="Addiction Recovery"
             onClick={() => onViewChange('recovery')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-red-theme"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-content-muted font-medium">Addiction Recovery</span>
-              <HeartPulse size={18} className="text-red-400" />
-            </div>
             <div>
               <div className="text-xl font-bold text-content-primary">
                 {activeAddiction ? activeAddiction.title : 'Sobriety Tracker'}
               </div>
               <div className="text-[11px] text-content-disabled">Includes emergency support & breathing</div>
             </div>
-          </button>
+          </ModuleCard>
 
           {/* Deep Focus Summary Widget */}
-          <button
+          <ModuleCard
+            tone="cyan"
+            icon={Timer}
+            title="Prefrontal / Focus"
             onClick={() => onViewChange('prefrontal')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-cyan-theme"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-content-muted font-medium">Prefrontal / Focus</span>
-              <Timer size={18} className="text-cyan-hierarchy" />
-            </div>
             <div>
               <div className="text-xl font-bold text-content-primary">{weeklyFocusMins} <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
               <div className="text-[11px] text-content-disabled">Pomodoro, decisions & emotions</div>
             </div>
-          </button>
+          </ModuleCard>
 
           {/* Time Tracker Blueprint Widget */}
-          <button
+          <ModuleCard
+            tone="indigo"
+            icon={Clock}
+            title="Time Tracker"
             onClick={() => onViewChange('time-tracker')}
-            className="card p-4 card-hover text-left flex flex-col justify-between space-y-2 border-l-4 border-l-indigo-theme"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-content-muted font-medium">Time Tracker</span>
-              <Clock size={18} className="text-indigo-theme" />
-            </div>
             <div>
               <div className="text-xl font-bold text-content-primary">
                 {todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'}{' '}
@@ -302,7 +348,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                   : 'No scheduled blocks yet'}
               </div>
             </div>
-          </button>
+          </ModuleCard>
         </div>
       </div>
 
@@ -316,12 +362,16 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
         </div>
 
         {habits.length === 0 ? (
-          <div className="card p-6 text-center">
-            <p className="text-sm text-content-disabled mb-3">No habits yet. Start building your routine!</p>
-            <button onClick={() => onViewChange('habits')} className="btn-primary mx-auto">
-              Add Your First Habit
-            </button>
-          </div>
+          <EmptyState
+            surface
+            size="md"
+            title="No habits yet. Start building your routine!"
+            action={
+              <Button variant="primary" onClick={() => onViewChange('habits')}>
+                Add Your First Habit
+              </Button>
+            }
+          />
         ) : (
           <div className="space-y-2">
             {pendingToday.length > 0 ? (
@@ -333,12 +383,13 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                     <button
                       disabled={isToggling || isLinked}
                       title={isLinked ? 'Log reading progress in Reading Hub' : undefined}
+                      aria-label={isLinked ? `${habit.name} (log in Reading Hub)` : `Mark ${habit.name} done`}
                       onClick={() => !isLinked && executeWithKey(habit.id, async () => { store.toggleHabit(habit.id); })}
                       className={`shrink-0 w-9 h-9 rounded-lg border border-overlay-subtle flex items-center justify-center transition-all ${
                         isLinked
                           ? 'bg-bg-600/60 text-content-subtle cursor-default'
                           : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary active:scale-90'
-                      }`}
+                      } ${TAP_TARGET} ${FOCUS_RING}`}
                     >
                       {isToggling ? <AscendLoadingIndicator size="sm" /> : <Check size={18} />}
                     </button>
@@ -382,9 +433,10 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             {todayEntry ? 'Edit' : 'Write'} <ArrowRight size={14} />
           </button>
         </div>
-        <button
+        <Card
+          variant="interactive"
+          padding="md"
           onClick={() => onViewChange('journal')}
-          className="card p-4 card-hover w-full text-left"
         >
           {todayEntry ? (
             <div>
@@ -407,7 +459,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               </div>
             </div>
           )}
-        </button>
+        </Card>
       </div>
     </div>
   );
@@ -430,6 +482,12 @@ function moodColor(mood: string): string {
   return colors[mood] ?? '#94a3b8';
 }
 
+const LEAGUE_TONE: Record<LeagueType, keyof typeof MODULE_TONE_CLASS> = {
+  weekly: 'emerald',
+  monthly: 'sky',
+  ninetyDay: 'purple',
+};
+
 function LeagueRankCard({
   type,
   rank,
@@ -444,42 +502,34 @@ function LeagueRankCard({
   now: Date;
 }) {
   const config = LEAGUE_CONFIG[type];
+  const tone = LEAGUE_TONE[type];
   const Icon = LEAGUE_ICONS[config.icon] ?? Calendar;
   const label = type === 'weekly' ? 'Weekly' : type === 'monthly' ? 'Monthly' : `${getSeasonLabel(now)} (90-Day)`;
 
   return (
     <div className="card p-3 text-center relative">
-      {type === 'ninetyDay' && (
-        <span className="absolute top-1.5 right-1.5 text-[9px] badge-season px-1.5 py-0.5 rounded font-bold">
-          Active
-        </span>
-      )}
       <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-1.5"
-        style={{ backgroundColor: `${config.color}15` }}
+        className={`${MODULE_TONE_CLASS[tone]} w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-1.5`}
       >
-        <Icon size={14} style={{ color: config.color }} />
+        <Icon size={14} aria-hidden="true" />
       </div>
       <div className="text-xs text-content-muted font-medium mb-0.5">{label}</div>
-      <div className="text-lg font-display font-bold" style={{ color: config.color }}>
+      <div className="text-lg font-display font-bold tabular-nums" style={{ color: `var(--badge-${tone}-text)` }}>
         #{rank}
       </div>
-      <div className="text-[10px] text-content-muted">{points.toLocaleString()} pts</div>
+      <div className="text-[10px] text-content-muted tabular-nums">{points.toLocaleString()} pts</div>
       <div className="text-[10px] text-brand-text mt-0.5 truncate font-mono font-medium">{countdown}</div>
     </div>
   );
 }
 
-function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
+function StatCard({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: keyof typeof MODULE_TONE_CLASS }) {
   return (
     <div className="card p-4">
-      <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center mb-2"
-        style={{ backgroundColor: `${color}15`, color }}
-      >
+      <div className={`${MODULE_TONE_CLASS[tone]} w-9 h-9 rounded-lg flex items-center justify-center mb-2`}>
         {icon}
       </div>
-      <div className="stat-value">{value}</div>
+      <div className="stat-value tabular-nums">{value}</div>
       <div className="stat-label mt-0.5">{label}</div>
     </div>
   );

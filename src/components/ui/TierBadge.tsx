@@ -76,15 +76,12 @@ export function TierProgress({ totalPoints }: TierProgressProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium" style={{ color: `var(--rank-${tierKey}-text)` }}>
-          {tier.name}
-        </span>
         {next ? (
-          <span className="text-xs text-content-disabled">
+          <span className="text-xs text-content-disabled ml-auto">
             {next.name} at {next.minPoints.toLocaleString()}
           </span>
         ) : (
-          <span className="text-xs text-content-disabled">Max tier reached</span>
+          <span className="text-xs text-content-disabled ml-auto">Max tier reached</span>
         )}
       </div>
       <div className="h-2.5 bg-bg-600 rounded-full overflow-hidden">
@@ -96,14 +93,13 @@ export function TierProgress({ totalPoints }: TierProgressProps) {
           }}
         />
       </div>
-      <div className="flex items-center justify-between mt-1.5">
-        <span className="text-xs text-content-disabled">{totalPoints.toLocaleString()} points</span>
-        {next && (
-          <span className="text-xs text-content-disabled">
+      {next && (
+        <div className="flex items-center justify-between mt-1.5">
+          <span className="text-xs text-content-disabled ml-auto">
             {(next.minPoints - totalPoints).toLocaleString()} to go
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
