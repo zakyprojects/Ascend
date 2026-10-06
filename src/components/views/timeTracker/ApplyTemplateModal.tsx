@@ -54,11 +54,12 @@ export function ApplyTemplateModal({
         <div>
           {/* Target Date Picker */}
           <div className="mb-3">
-            <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <label htmlFor="tt-apply-date" className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
               <Calendar size={13} className="text-success-text" />
               <span>Target Schedule Date</span>
             </label>
             <input
+              id="tt-apply-date"
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}

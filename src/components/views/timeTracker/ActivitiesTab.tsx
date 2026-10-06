@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TimeTrackerActivity } from '@/types';
 import { AppStore } from '@/lib/store';
-import { getActivityThemeColor } from '@/lib/timeTracker';
+import { getActivityDisplayColor } from '@/lib/timeTracker';
 import { ActivityIcon } from './ActivityIcon';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -73,7 +73,7 @@ export function ActivitiesTab({
       {/* 2. Activities Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {activities.map((act) => {
-          const color = getActivityThemeColor(act.color, theme);
+          const color = getActivityDisplayColor(act, theme);
           return (
             <div
               key={act.id}
@@ -122,6 +122,7 @@ export function ActivitiesTab({
                   onClick={() => onOpenEditActivityModal(act)}
                   className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer"
                   title="Edit Category"
+                  aria-label="Edit category"
                 >
                   <Edit2 size={14} />
                 </button>
@@ -131,6 +132,7 @@ export function ActivitiesTab({
                     onClick={() => setDeleteTargetActivity(act)}
                     className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                     title="Delete Category"
+                    aria-label="Delete category"
                   >
                     <Trash2 size={14} />
                   </button>

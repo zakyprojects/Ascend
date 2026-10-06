@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   TimeTrackerActivity,
   TimeTrackerBlock,
@@ -14,7 +14,8 @@ import {
   timeStringToMinutes,
   minutesToTimeString,
   getAscendViewForModule,
-  getActivityThemeColor,
+  getActivityDisplayColor,
+  categoryTintStyle,
 } from '@/lib/timeTracker';
 import { todayKey, formatDateKeyHuman, addDays } from '@/lib/dates';
 import { CapMeter } from '@/components/ui/CapMeter';
@@ -24,6 +25,7 @@ import { ActivityIcon } from './ActivityIcon';
 import { LiveCountdown } from './LiveCountdown';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
+import { EmptyState } from '@/components/ui/primitives';
 import {
   Clock,
   Plus,
@@ -38,17 +40,32 @@ import {
   Trash2,
   Edit2,
   Sparkles,
-  Zap,
   Flame,
   AlertCircle,
   BrainCircuit,
   Activity,
   BookOpen,
-  Check,
+  X,
   SkipForward,
   Coffee,
 } from 'lucide-react';
 import { View } from '@/components/AppShell';
+
+function getLaunchModules(
+  primary: TimeTrackerActivity | undefined | null,
+  secondaryIds: string[] | undefined,
+  activityMap: Map<string, TimeTrackerActivity>
+): { moduleId: string; activityId: string }[] {
+  const out: { moduleId: string; activityId: string }[] = [];
+  if (primary?.ascendModule) out.push({ moduleId: primary.ascendModule, activityId: primary.id });
+  (secondaryIds || []).forEach((secId) => {
+    const secAct = activityMap.get(secId);
+    if (secAct?.ascendModule && !out.some((m) => m.moduleId === secAct.ascendModule)) {
+      out.push({ moduleId: secAct.ascendModule, activityId: secAct.id });
+    }
+  });
+  return out;
+}
 
 interface ScheduleTabProps {
   store: AppStore;
@@ -105,6 +122,32 @@ export function ScheduleTab({
       (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
     );
   }, [store.state.timeTracker?.dailyLogs, selectedDateKey]);
+
+  const [selectedStripBlockId, setSelectedStripBlockId] = useState<string | null>(null);
+  const stripTrackRef = useRef<HTMLDivElement>(null);
+  const [stripWidth, setStripWidth] = useState(0);
+
+  useEffect(() => {
+    if (dailyBlocks.length === 0) return;
+    const el = stripTrackRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    if (rect.width > 0) {
+      setStripWidth(Math.round(rect.width));
+    }
+
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          setStripWidth(Math.round(entry.contentRect.width));
+        }
+      }
+    });
+
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [dailyBlocks.length > 0]);
 
   const activityMap = useMemo(() => {
     return new Map<string, TimeTrackerActivity>(activities.map((a) => [a.id, a]));
@@ -217,6 +260,7 @@ export function ScheduleTab({
             onClick={handlePrevDay}
             className="p-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-subtle transition-colors cursor-pointer shrink-0"
             title="Previous Day"
+            aria-label="Previous day"
           >
             <ChevronLeft size={18} />
           </button>
@@ -235,6 +279,7 @@ export function ScheduleTab({
             onClick={handleNextDay}
             className="p-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-subtle transition-colors cursor-pointer shrink-0"
             title="Next Day"
+            aria-label="Next day"
           >
             <ChevronRight size={18} />
           </button>
@@ -251,6 +296,17 @@ export function ScheduleTab({
 
         {/* Schedule Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {dailyBlocks.length > 0 && (
+            <button
+              onClick={() => setShowClearDayModal(true)}
+              disabled={isPastDate}
+              className="p-2 text-xs text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Clear Schedule for this Day"
+            >
+              <RotateCcw size={15} />
+            </button>
+          )}
+
           {templates.length > 0 && (
             <button
               onClick={onOpenApplyTemplateModal}
@@ -260,17 +316,6 @@ export function ScheduleTab({
             >
               <Layers size={14} className="text-success-text shrink-0" />
               <span className="whitespace-nowrap">Apply Template</span>
-            </button>
-          )}
-
-          {dailyBlocks.length > 0 && (
-            <button
-              onClick={() => setShowClearDayModal(true)}
-              disabled={isPastDate}
-              className="p-2 text-xs text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Clear Schedule for this Day"
-            >
-              <RotateCcw size={15} />
             </button>
           )}
 
@@ -287,15 +332,15 @@ export function ScheduleTab({
 
       {/* 2. Real-Time Live Status Card (When Viewing Today) */}
       {isSelectedDateToday && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-bg-800 to-bg-750 border border-emerald-500/30 shadow-sm relative overflow-hidden">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-4 rounded-2xl bg-bg-800 border border-overlay-subtle shadow-sm relative overflow-hidden">
+          <div className="flex flex-col gap-3">
             {/* Active Block Info */}
             <div className="flex items-center gap-3.5 min-w-0">
               {liveStats.activeBlock && liveStats.activeBlockActivity ? (() => {
-                const activeColor = getActivityThemeColor(liveStats.activeBlockActivity.color, theme);
+                const activeColor = getActivityDisplayColor(liveStats.activeBlockActivity, theme);
                 return (
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg relative"
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 relative"
                     style={{
                       backgroundColor: `${activeColor}25`,
                       color: activeColor,
@@ -334,10 +379,12 @@ export function ScheduleTab({
                         liveStats.activeBlock.secondaryActivityIds.map((secId) => {
                           const secAct = activityMap.get(secId);
                           if (!secAct) return null;
+                          if (getLaunchModules(liveStats.activeBlockActivity, liveStats.activeBlock?.secondaryActivityIds, activityMap).some((m) => m.activityId === secId)) return null;
                           return (
                             <span
                               key={secId}
-                              className="badge-emerald text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0"
+                              className="text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0"
+                              style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                             >
                               +{secAct.name}
                             </span>
@@ -374,7 +421,7 @@ export function ScheduleTab({
 
             {/* Quick Action Button for Active Block */}
             {liveStats.activeBlock && (
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <div className="flex flex-wrap items-center gap-2 w-full">
                 <button
                   onClick={() => handleToggleComplete(liveStats.activeBlock!)}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
@@ -397,26 +444,18 @@ export function ScheduleTab({
                 </button>
 
                 {(() => {
-                  const activeLinkedModules: string[] = [];
-                  if (liveStats.activeBlockActivity?.ascendModule) {
-                    activeLinkedModules.push(liveStats.activeBlockActivity.ascendModule);
-                  }
-                  if (liveStats.activeBlock.secondaryActivityIds) {
-                    liveStats.activeBlock.secondaryActivityIds.forEach((secId) => {
-                      const secAct = activityMap.get(secId);
-                      if (secAct?.ascendModule && !activeLinkedModules.includes(secAct.ascendModule)) {
-                        activeLinkedModules.push(secAct.ascendModule);
-                      }
-                    });
-                  }
-                  return activeLinkedModules.map((mod) => (
+                  const activeLinkedModules = getLaunchModules(liveStats.activeBlockActivity, liveStats.activeBlock.secondaryActivityIds, activityMap);
+                  return activeLinkedModules.map((m) => (
                     <button
-                      key={mod}
-                      onClick={() => handleLaunchModuleHandoff(liveStats.activeBlock!, mod)}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-success-text bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 transition-all shadow-sm cursor-pointer"
+                      key={m.moduleId}
+                      onClick={() => handleLaunchModuleHandoff(liveStats.activeBlock!, m.moduleId)}
+                      aria-label={`Launch ${m.moduleId}`}
+                      title={`Open ${m.moduleId} (${activityMap.get(m.activityId)?.name ?? m.moduleId})`}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap hover:opacity-80 transition-opacity cursor-pointer"
+                      style={categoryTintStyle(getActivityDisplayColor(activityMap.get(m.activityId), theme))}
                     >
-                      <Play size={13} className="fill-current text-success-text" />
-                      <span>Launch {mod}</span>
+                      <Play size={11} className="fill-current shrink-0" />
+                      <span>{m.moduleId}</span>
                     </button>
                   ));
                 })()}
@@ -429,8 +468,13 @@ export function ScheduleTab({
             <div className="mt-3">
               <div className="w-full h-1.5 bg-bg-700 rounded-full overflow-hidden border border-overlay-subtle">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 rounded-full"
-                  style={{ width: `${liveStats.activeBlockProgressPercent}%` }}
+                  className="h-full bg-primary-500 transition-all duration-500 rounded-full"
+                  style={{
+                    width: `${liveStats.activeBlockProgressPercent}%`,
+                    ...(liveStats.activeBlockActivity
+                      ? { backgroundColor: getActivityDisplayColor(liveStats.activeBlockActivity, theme) }
+                      : {}),
+                  }}
                 />
               </div>
             </div>
@@ -467,9 +511,9 @@ export function ScheduleTab({
         <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
           <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Deep Work</span>
-            <BrainCircuit size={14} className="text-indigo-theme" />
+            <BrainCircuit size={14} className="text-info-text" />
           </div>
-          <p className="text-lg font-bold text-indigo-theme">
+          <p className="text-lg font-bold text-info-text">
             {formatDurationHuman(liveStats.deepWorkMinutesToday)}
           </p>
           <p className="text-[11px] text-content-disabled">Focus & High-leverage</p>
@@ -516,7 +560,10 @@ export function ScheduleTab({
           </div>
 
           {/* Timeline Track with Major Hour Grid Guides */}
-          <div className="relative w-full h-11 bg-bg-900/90 rounded-xl overflow-visible border border-overlay-default shadow-inner">
+          <div
+            ref={stripTrackRef}
+            className="relative w-full h-11 bg-bg-900/90 rounded-xl overflow-visible border border-overlay-default"
+          >
             {/* Subtle Vertical Hour Grid Lines */}
             {[0, 3, 6, 9, 12, 15, 18, 21, 24].map((hour) => (
               <div
@@ -534,7 +581,7 @@ export function ScheduleTab({
               const leftPercent = (startMins / 1440) * 100;
               const widthPercent = (duration / 1440) * 100;
               const act = activityMap.get(block.activityId);
-              const color = getActivityThemeColor(act?.color, theme);
+              const color = getActivityDisplayColor(act, theme);
 
               const isBlockActive =
                 isSelectedDateToday &&
@@ -546,63 +593,51 @@ export function ScheduleTab({
               const isBlockPast =
                 isSelectedDateToday && nowMinutesCurrent >= endMins;
 
+              const blockName = block.customTitle || act?.name || 'Block';
+              const blockPx = (stripWidth * widthPercent) / 100 - 10;
+              const iconFits = stripWidth > 0 && blockPx >= 12;
+              const nameFits = stripWidth > 0 && blockPx >= 16 + blockName.length * 6.5;
+
               return (
                 <div
                   key={block.id}
-                  onClick={() => onOpenEditBlockModal(block)}
-                  className={`group absolute top-1 bottom-1 rounded-md cursor-pointer transition-all flex items-center justify-center px-1 overflow-hidden z-1 shadow-sm ${
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selectedStripBlockId === block.id}
+                  aria-label={`${blockName}, ${formatTime12h(block.startTime)} to ${formatTime12h(block.endTime)}`}
+                  title={`${blockName} · ${formatTime12h(block.startTime)} – ${formatTime12h(block.endTime)} (${formatDurationHuman(duration)})`}
+                  onClick={() => setSelectedStripBlockId((cur) => (cur === block.id ? null : block.id))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      if (e.key === ' ') e.preventDefault();
+                      setSelectedStripBlockId((cur) => (cur === block.id ? null : block.id));
+                    }
+                  }}
+                  className={`absolute top-1 bottom-1 rounded-md cursor-pointer transition-all flex items-center justify-center px-1 overflow-hidden z-1 shadow-sm ${
                     isBlockActive
-                      ? 'ring-2 ring-emerald-500 dark:ring-emerald-400 ring-offset-1 ring-offset-bg-900 dark:ring-offset-slate-950 shadow-md'
+                      ? 'ring-2 ring-content-primary ring-offset-1 ring-offset-bg-900 shadow-md'
                       : isBlockPast
                       ? 'opacity-70 hover:opacity-100'
                       : 'hover:brightness-110 hover:shadow-md'
+                  } ${
+                    selectedStripBlockId === block.id && !isBlockActive
+                      ? 'ring-2 ring-content-tertiary ring-offset-1 ring-offset-bg-900'
+                      : ''
                   }`}
                   style={{
                     left: `calc(${leftPercent}% + 1px)`,
                     width: `calc(${widthPercent}% - 2px)`,
                     backgroundColor: color,
-                    backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.15) 100%)',
                   }}
                 >
-                  {widthPercent > 4 && (
-                    <span className="text-[10px] font-bold text-white truncate drop-shadow px-1 select-none">
-                      {block.customTitle || act?.name}
+                  {nameFits ? (
+                    <span className="flex items-center gap-1 min-w-0">
+                      <ActivityIcon iconName={act?.icon || 'Activity'} size={12} className="text-white drop-shadow shrink-0" />
+                      <span className="text-[10px] font-bold text-white whitespace-nowrap drop-shadow select-none">{blockName}</span>
                     </span>
-                  )}
-
-                  {/* High-End Floating Tooltip on Hover */}
-                  <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-30 whitespace-nowrap">
-                    <div className="px-2.5 py-1.5 rounded-lg bg-bg-800/95 border border-overlay-medium text-content-primary text-xs shadow-2xl backdrop-blur-md space-y-0.5 text-center">
-                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                        <p className="font-bold text-white">
-                          {block.customTitle || act?.name || 'Block'}
-                        </p>
-                        {block.secondaryActivityIds &&
-                          block.secondaryActivityIds.map((secId) => {
-                            const secAct = activityMap.get(secId);
-                            if (!secAct) return null;
-                            return (
-                              <span
-                                key={secId}
-                                className="badge-emerald text-[10px] font-mono px-1 py-0.2 rounded shrink-0"
-                              >
-                                +{secAct.name}
-                              </span>
-                            );
-                          })}
-                      </div>
-                      <p className="text-[11px] text-content-tertiary font-mono">
-                        {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)}{' '}
-                        <span className="text-content-muted">({formatDurationHuman(duration)})</span>
-                      </p>
-                      {block.completed && (
-                        <p className="text-[10px] text-success-text font-semibold flex items-center justify-center gap-1">
-                          <Check size={10} /> Completed
-                        </p>
-                      )}
-                    </div>
-                    <div className="w-2 h-2 bg-bg-800 rotate-45 -mt-1 border-r border-b border-overlay-medium" />
-                  </div>
+                  ) : iconFits ? (
+                    <ActivityIcon iconName={act?.icon || 'Activity'} size={12} className="text-white drop-shadow shrink-0" />
+                  ) : null}
                 </div>
               );
             })}
@@ -610,13 +645,13 @@ export function ScheduleTab({
             {/* Current Time Needle Cursor with Glowing Beacon */}
             {isSelectedDateToday && (
               <div
-                className="absolute -top-1 -bottom-1 w-[2px] bg-rose-500 z-20 pointer-events-none shadow-[0_0_10px_rgba(244,63,94,0.9)]"
+                className="absolute -top-1 -bottom-1 w-[2px] bg-rose-500 z-20 pointer-events-none"
                 style={{
                   left: `${(nowMinutesCurrent / 1440) * 100}%`,
                 }}
               >
                 {/* Top Glowing Diamond */}
-                <div className="w-3 h-3 bg-rose-500 rotate-45 -ml-[5px] -mt-1.5 rounded-xs shadow-md border border-overlay-heavy" />
+                <div className="w-3 h-3 bg-rose-500 rotate-45 -ml-[5px] -mt-1.5 rounded-sm shadow-md border border-overlay-heavy" />
               </div>
             )}
           </div>
@@ -633,6 +668,49 @@ export function ScheduleTab({
             <span>9 PM</span>
             <span>12 AM</span>
           </div>
+
+          {(() => {
+            const sel = dailyBlocks.find((b) => b.id === selectedStripBlockId);
+            if (!sel) return null;
+            const selAct = activityMap.get(sel.activityId);
+            const selColor = getActivityDisplayColor(selAct, theme);
+            const selMins = Math.max(1, timeStringToMinutes(sel.endTime) - timeStringToMinutes(sel.startTime));
+            const selName = sel.customTitle || selAct?.name || 'Block';
+
+            return (
+              <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-bg-800 border border-overlay-subtle">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: selColor }} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-content-primary break-words">{selName}</p>
+                    <p className="text-xs font-mono text-content-tertiary">
+                      {formatTime12h(sel.startTime)} – {formatTime12h(sel.endTime)} · {formatDurationHuman(selMins)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onOpenEditBlockModal(sel)}
+                    disabled={isPastDate}
+                    aria-label="Edit block"
+                    title={isPastDate ? 'Cannot edit past logs' : 'Edit Block'}
+                    className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Edit2 size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStripBlockId(null)}
+                    aria-label="Close block details"
+                    className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -659,43 +737,39 @@ export function ScheduleTab({
         )}
 
         {dailyBlocks.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-bg-800/30 border border-overlay-subtle text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-success-text flex items-center justify-center mx-auto shadow-inner">
-              <Clock size={28} />
-            </div>
-            <div>
-              <h4 className="text-base font-bold text-content-secondary">No Blocks Scheduled</h4>
-              <p className="text-xs text-content-muted max-w-sm mx-auto mt-1">
-                Construct your daily blueprint by adding time blocks or applying one of your saved templates.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-3">
-              {templates.length > 0 && (
+          <EmptyState
+            icon={Clock}
+            title="No Blocks Scheduled"
+            description="Construct your daily blueprint by adding time blocks or applying one of your saved templates."
+            action={
+              <div className="flex items-center justify-center gap-3">
+                {templates.length > 0 && (
+                  <button
+                    onClick={onOpenApplyTemplateModal}
+                    disabled={isPastDate}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default border border-overlay-default text-xs font-semibold text-content-secondary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Layers size={14} className="text-success-text" />
+                    <span>Apply Template</span>
+                  </button>
+                )}
                 <button
-                  onClick={onOpenApplyTemplateModal}
+                  onClick={() => onOpenAddBlockModal()}
                   disabled={isPastDate}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default border border-overlay-default text-xs font-semibold text-content-secondary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Layers size={14} className="text-success-text" />
-                  <span>Apply Template</span>
+                  <Plus size={14} />
+                  <span>Add Time Block</span>
                 </button>
-              )}
-              <button
-                onClick={() => onOpenAddBlockModal()}
-                disabled={isPastDate}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Plus size={14} />
-                <span>Add Time Block</span>
-              </button>
-            </div>
-          </div>
+              </div>
+            }
+          />
         ) : (
           <div className="space-y-2.5">
             {dailyBlocks.map((block) => {
               const act = activityMap.get(block.activityId);
               const durationMins = calculateBlockDurationMinutes(block.startTime, block.endTime);
-              const color = getActivityThemeColor(act?.color, theme);
+              const color = getActivityDisplayColor(act, theme);
 
               const startMins = timeStringToMinutes(block.startTime);
               const endMins = timeStringToMinutes(block.endTime);
@@ -710,11 +784,11 @@ export function ScheduleTab({
               const isBlockPast =
                 isSelectedDateToday && nowMinutesCurrent >= endMins;
 
-              const linkedModules: { moduleId: string; activityName: string }[] = [];
+              const linkedModules: { moduleId: string; activityId: string; activityName: string }[] = [];
               const seenModules = new Set<string>();
 
               if (act?.ascendModule) {
-                linkedModules.push({ moduleId: act.ascendModule, activityName: act.name });
+                linkedModules.push({ moduleId: act.ascendModule, activityId: act.id, activityName: act.name });
                 seenModules.add(act.ascendModule);
               }
 
@@ -722,7 +796,7 @@ export function ScheduleTab({
                 block.secondaryActivityIds.forEach((secId) => {
                   const secAct = activityMap.get(secId);
                   if (secAct?.ascendModule && !seenModules.has(secAct.ascendModule)) {
-                    linkedModules.push({ moduleId: secAct.ascendModule, activityName: secAct.name });
+                    linkedModules.push({ moduleId: secAct.ascendModule, activityId: secAct.id, activityName: secAct.name });
                     seenModules.add(secAct.ascendModule);
                   }
                 });
@@ -735,7 +809,7 @@ export function ScheduleTab({
                     block.skipped
                       ? 'bg-bg-900/20 border-overlay-subtle opacity-60'
                       : isBlockActive
-                      ? 'dark:bg-emerald-950/20 dark:border-emerald-500/40 dark:shadow-xl dark:shadow-emerald-950/30 dark:ring-2 dark:ring-emerald-500/30 bg-emerald-50 border-emerald-500/60 shadow-lg shadow-emerald-950/10 ring-2 ring-emerald-400/40'
+                      ? 'bg-bg-800 border-content-muted shadow-md'
                       : isBlockPast
                       ? 'bg-bg-900/40 border-overlay-subtle opacity-60 grayscale-[0.35] hover:opacity-90 hover:grayscale-0'
                       : block.completed
@@ -756,6 +830,7 @@ export function ScheduleTab({
                             ? 'text-content-subtle hover:text-content-muted'
                             : 'text-content-disabled hover:text-content-tertiary'
                         }`}
+                        aria-label={block.completed ? 'Mark uncompleted' : block.skipped ? 'Undo skipped' : 'Mark completed'}
                         title={
                           !isSelectedDateToday
                             ? "Only today's blocks can be completed"
@@ -776,7 +851,7 @@ export function ScheduleTab({
                       </button>
 
                       <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner mt-0.5"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
                         style={{
                           backgroundColor: `${color}25`,
                           color,
@@ -803,10 +878,12 @@ export function ScheduleTab({
                             block.secondaryActivityIds.map((secId) => {
                               const secAct = activityMap.get(secId);
                               if (!secAct) return null;
+                              if (linkedModules.some((m) => m.activityId === secId)) return null;
                               return (
                                 <span
                                   key={secId}
-                                  className="badge-emerald text-[10px] font-mono px-1.5 py-0.5 rounded truncate max-w-full"
+                                  className="text-[10px] font-mono px-1.5 py-0.5 rounded truncate max-w-full"
+                                  style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                                 >
                                   +{secAct.name}
                                 </span>
@@ -870,20 +947,16 @@ export function ScheduleTab({
                         {linkedModules.length > 0 && (
                           <div className="flex flex-wrap items-center gap-2 mt-2">
                             {linkedModules.map((item) => (
-                              <div key={item.moduleId} className="flex items-center gap-1.5">
-                                <span className="badge-emerald text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1">
-                                  <Zap size={11} className="text-success-text" />
-                                  Linked: {item.moduleId}
-                                </span>
-
-                                <button
-                                  onClick={() => handleLaunchModuleHandoff(block, item.moduleId)}
-                                  className="text-[11px] font-semibold text-success-text hover:opacity-80 transition-colors flex items-center gap-1 cursor-pointer"
-                                >
-                                  <span>Open {item.moduleId}</span>
-                                  <Play size={10} className="fill-current" />
-                                </button>
-                              </div>
+                              <button
+                                key={item.moduleId}
+                                onClick={() => handleLaunchModuleHandoff(block, item.moduleId)}
+                                title={`Open ${item.moduleId} (${item.activityName})`}
+                                className="text-[11px] font-semibold px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity flex items-center gap-1 cursor-pointer"
+                                style={categoryTintStyle(getActivityDisplayColor(activityMap.get(item.activityId), theme))}
+                              >
+                                <span>Open {item.moduleId}</span>
+                                <Play size={10} className="fill-current" />
+                              </button>
                             ))}
                           </div>
                         )}
@@ -897,6 +970,7 @@ export function ScheduleTab({
                         disabled={isPastDate}
                         className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Edit Block"
+                        aria-label="Edit block"
                       >
                         <Edit2 size={15} />
                       </button>
@@ -905,6 +979,7 @@ export function ScheduleTab({
                         disabled={isPastDate}
                         className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Delete Block"
+                        aria-label="Delete block"
                       >
                         <Trash2 size={15} />
                       </button>

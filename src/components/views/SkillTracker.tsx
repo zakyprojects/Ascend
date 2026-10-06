@@ -9,6 +9,8 @@ import { Skill, SkillLevel, SkillSessionLog } from '@/types';
 import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate, weekKey } from '@/lib/dates';
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { EmptyState } from '@/components/ui/primitives';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 export function SkillTracker({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -314,16 +316,16 @@ export function SkillTracker({ store }: { store: AppStore }) {
         </div>
 
         {skills.length === 0 ? (
-          <div className="card p-8 text-center">
-            <Target size={32} className="mx-auto text-content-subtle mb-2" />
-            <p className="text-sm font-medium text-content-muted">No skills added yet</p>
-            <p className="text-xs text-content-disabled mt-1 mb-4">
-              Add a skill (e.g. Coding, Spanish, Guitar, Design) to log practice sessions and earn points.
-            </p>
-            <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
-              Add Your First Skill
-            </button>
-          </div>
+          <EmptyState
+            icon={Target}
+            title="No skills added yet"
+            description="Add a skill (e.g. Coding, Spanish, Guitar, Design) to log practice sessions and earn points."
+            action={
+              <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
+                Add Your First Skill
+              </button>
+            }
+          />
         ) : filteredSkills.length === 0 ? (
           <div className="card p-6 text-center">
             <p className="text-sm text-content-disabled">No skills found in category &ldquo;{selectedCategory}&rdquo;</p>
@@ -351,7 +353,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       </div>
                       <button
                         onClick={() => setDeleteModalSkill(skill)}
-                        className="text-content-subtle hover:text-rose-theme p-1"
+                        aria-label="Delete skill"
+                        className={`text-content-subtle hover:text-rose-theme p-1 ${TAP_TARGET}`}
                         title="Delete Skill"
                       >
                         <Trash2 size={16} />
@@ -365,14 +368,14 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       <div className="flex items-center gap-2 text-xs text-content-disabled">
                         {streak > 0 && (
                           <>
-                            <span className="flex items-center gap-1 text-secondary-400 font-medium">
+                            <span className="flex items-center gap-1 text-secondary-400 font-medium tabular-nums">
                               <Flame size={13} className="text-secondary-500" />
                               {streak} day{streak !== 1 ? 's' : ''}
                             </span>
                             <span>•</span>
                           </>
                         )}
-                        <span>{hours.toFixed(1)} hrs</span>
+                        <span className="tabular-nums">{hours.toFixed(1)} hrs</span>
                         <span>•</span>
                         <span>Last: {lastPracticed}</span>
                       </div>
@@ -382,7 +385,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     <div className="space-y-1 pt-0.5">
                       <div className="flex justify-between items-center text-[11px] text-content-disabled">
                         <span>{progressText}</span>
-                        <span>{Math.round(progressPercent)}%</span>
+                        <span className="tabular-nums">{Math.round(progressPercent)}%</span>
                       </div>
                       <div className="w-full bg-bg-800 rounded-full h-1.5 overflow-hidden border border-overlay-subtle">
                         <div
@@ -433,18 +436,19 @@ export function SkillTracker({ store }: { store: AppStore }) {
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-content-secondary text-sm">{skill?.name || 'Skill'}</span>
-                              <span className="text-xs text-content-disabled">({log.durationMinutes} mins)</span>
+                              <span className="text-xs text-content-disabled tabular-nums">({log.durationMinutes} mins)</span>
                             </div>
                             {log.note && <p className="text-xs text-content-muted mt-0.5">{log.note}</p>}
                             <p className="text-[10px] text-content-disabled mt-1">{formatDateLong(log.date)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="badge-purple text-xs font-bold px-2.5 py-1 rounded-full">
+                          <span className="badge-purple text-xs font-bold px-2.5 py-1 rounded-full tabular-nums">
                             +{log.pointsAwarded} pts
                           </span>
                           <button
                             onClick={() => setDeleteModalLog(log)}
+                            aria-label="Delete practice log"
                             className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
                             title="Delete Practice Session Log"
                           >
@@ -465,8 +469,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
       <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Skill">
         <form onSubmit={handleAddSkillSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Skill Name</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-name-input">Skill Name</label>
             <input
+              id="skill-name-input"
               type="text"
               value={skillName}
               onChange={(e) => setSkillName(e.target.value)}
@@ -477,8 +482,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
           </div>
 
           <div className="relative">
-            <label className="block text-xs font-medium text-content-muted mb-1">Category (Optional)</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-category-input">Category (Optional)</label>
             <input
+              id="skill-category-input"
               type="text"
               value={category}
               onChange={(e) => {
@@ -539,8 +545,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleLogPracticeSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Practice Duration (Minutes)</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-duration-input">Practice Duration (Minutes)</label>
             <input
+              id="skill-duration-input"
               type="number"
               min="1"
               max="300"
@@ -552,8 +559,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Short Note / What did you practice?</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-note-input">Short Note / What did you practice?</label>
             <textarea
+              id="skill-note-input"
               autoFocus
               value={note}
               onChange={(e) => {
@@ -570,7 +578,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
           <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
             <span>Points to earn:</span>
-            <span className="font-bold text-purple-hierarchy">+{skillPreviewPoints} pts</span>
+            <span className="font-bold text-purple-hierarchy tabular-nums">+{skillPreviewPoints} pts</span>
           </div>
 
           <div className="flex gap-2 pt-2">

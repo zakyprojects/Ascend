@@ -24,6 +24,8 @@ import {
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { EmptyState, Tabs } from '@/components/ui/primitives';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
 import { todayKey, formatDateLong, parseDate, getNow, weekKey } from '@/lib/dates';
@@ -459,66 +461,27 @@ export function ReadingHub({ store }: { store: AppStore }) {
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
           {/* Main Navigation Tabs */}
-          <div className="flex items-stretch justify-between w-full bg-bg-700/40 p-1 rounded-xl gap-1">
-            <button
-              onClick={() => setActiveTab('reading')}
-              className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
-                activeTab === 'reading'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
-              }`}
-            >
-              <PlayCircle size={14} className="shrink-0" />
-              <span className="text-[9px] sm:text-xs font-semibold leading-tight sm:whitespace-nowrap">
-                Currently Reading ({inProgressBooks.length})
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('to-read')}
-              className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
-                activeTab === 'to-read'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
-              }`}
-            >
-              <ListTodo size={14} className="shrink-0" />
-              <span className="text-[9px] sm:text-xs font-semibold leading-tight sm:whitespace-nowrap">
-                My Library ({toReadBooks.length})
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('discover')}
-              className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
-                activeTab === 'discover'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
-              }`}
-            >
-              <Library size={14} className="shrink-0" />
-              <span className="text-[9px] sm:text-xs font-semibold leading-tight sm:whitespace-nowrap">
-                Discover Books
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('completed')}
-              className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2 px-1 rounded-lg transition-all text-center ${
-                activeTab === 'completed'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                  : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
-              }`}
-            >
-              <CheckCircle2 size={14} className="shrink-0" />
-              <span className="text-[9px] sm:text-xs font-semibold leading-tight sm:whitespace-nowrap">
-                Completed ({completedBooks.length})
-              </span>
-            </button>
-          </div>
+          <Tabs
+            ariaLabel="Reading Hub sections"
+            variant="segmented"
+            size="sm"
+            scrollable
+            value={activeTab}
+            onChange={(id) => setActiveTab(id as typeof activeTab)}
+            items={[
+              { id: 'reading', label: 'Currently Reading', icon: PlayCircle, badge: inProgressBooks.length },
+              { id: 'to-read', label: 'My Library', icon: ListTodo, badge: toReadBooks.length },
+              { id: 'discover', label: 'Discover Books', icon: Library },
+              { id: 'completed', label: 'Completed', icon: CheckCircle2, badge: completedBooks.length },
+            ]}
+          />
 
           {/* Search & Category Filter */}
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full">
             <div className="relative w-full sm:flex-1">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" />
               <input
+                aria-label="Search books"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -528,6 +491,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <select
+                aria-label="Filter books by category"
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value as BookCategory | 'all')}
                 className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-44"
@@ -540,6 +504,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 ))}
               </select>
               <select
+                aria-label="Sort books"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'trending' | 'bestsellers' | 'az')}
                 className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-36"
@@ -557,34 +522,32 @@ export function ReadingHub({ store }: { store: AppStore }) {
       {activeTab === 'reading' && (
         <div className="space-y-4">
           {filteredInProgress.length === 0 ? (
-            <div className="card p-8 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-warning-text flex items-center justify-center mx-auto">
-                <BookOpen size={24} />
-              </div>
-              <h3 className="text-base font-bold text-content-secondary">No books currently in progress</h3>
-              <p className="text-xs text-content-muted max-w-md mx-auto">
-                Start reading a book from your To Read list, discover foundational titles, or add a custom book.
-              </p>
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <button
-                  onClick={() => setActiveTab('discover')}
-                  className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
-                >
-                  <Library size={14} />
-                  <span>Discover Books</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setCustomStatus('reading');
-                    setAddCustomModalOpen(true);
-                  }}
-                  className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
-                >
-                  <Plus size={14} />
-                  <span>Add Book</span>
-                </button>
-              </div>
-            </div>
+            <EmptyState
+              icon={BookOpen}
+              title="No books currently in progress"
+              description="Start reading a book from your To Read list, discover foundational titles, or add a custom book."
+              action={
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => setActiveTab('discover')}
+                    className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
+                  >
+                    <Library size={14} />
+                    <span>Discover Books</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCustomStatus('reading');
+                      setAddCustomModalOpen(true);
+                    }}
+                    className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
+                  >
+                    <Plus size={14} />
+                    <span>Add Book</span>
+                  </button>
+                </div>
+              }
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredInProgress.map((book) => {
@@ -614,6 +577,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         </div>
                         <button
                           onClick={() => setDeleteModalBook(book)}
+                          aria-label="Remove book"
                           className="p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all shrink-0"
                           title="Remove Book"
                         >
@@ -635,7 +599,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           </span>
                           <span className="font-bold text-warning-text">{percent}%</span>
                         </div>
-                        <div className="h-2 w-full bg-bg-950/60 rounded-full overflow-hidden border border-overlay-subtle">
+                        <div className="h-2 w-full bg-bg-900 rounded-full overflow-hidden border border-overlay-subtle">
                           <div
                             className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-300"
                             style={{ width: `${percent}%` }}
@@ -678,6 +642,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       </div>
 
                       <select
+                        aria-label="Update book reading status"
                         value={book.status}
                         onChange={(e) => store.updateUserBookStatus(book.id, e.target.value as UserBookStatus)}
                         className="input text-xs py-1 px-2 bg-bg-900 border-overlay-default text-content-tertiary w-fit shrink-0 cursor-pointer"
@@ -699,34 +664,32 @@ export function ReadingHub({ store }: { store: AppStore }) {
       {activeTab === 'to-read' && (
         <div className="space-y-4">
           {filteredToRead.length === 0 ? (
-            <div className="card p-8 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-overlay-subtle text-content-muted flex items-center justify-center mx-auto">
-                <ListTodo size={24} />
-              </div>
-              <h3 className="text-base font-bold text-content-secondary">No books in your library</h3>
-              <p className="text-xs text-content-muted max-w-md mx-auto">
-                Browse our curated self-improvement recommendations or add your own books to your reading library.
-              </p>
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <button
-                  onClick={() => setActiveTab('discover')}
-                  className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
-                >
-                  <Library size={14} />
-                  <span>Discover Books</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setCustomStatus('to-read');
-                    setAddCustomModalOpen(true);
-                  }}
-                  className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
-                >
-                  <Plus size={14} />
-                  <span>Add to Library</span>
-                </button>
-              </div>
-            </div>
+            <EmptyState
+              icon={ListTodo}
+              title="No books in your library"
+              description="Browse our curated self-improvement recommendations or add your own books to your reading library."
+              action={
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => setActiveTab('discover')}
+                    className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
+                  >
+                    <Library size={14} />
+                    <span>Discover Books</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCustomStatus('to-read');
+                      setAddCustomModalOpen(true);
+                    }}
+                    className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
+                  >
+                    <Plus size={14} />
+                    <span>Add to Library</span>
+                  </button>
+                </div>
+              }
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {filteredToRead.map((book) => (
@@ -743,7 +706,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       </div>
                       <button
                         onClick={() => setDeleteModalBook(book)}
-                        className="p-1 text-content-disabled hover:text-rose-theme rounded transition-all"
+                        aria-label="Remove book"
+                        className={`p-1 text-content-disabled hover:text-rose-theme rounded transition-all ${TAP_TARGET}`}
                         title="Remove Book"
                       >
                         <Trash2 size={14} />
@@ -779,6 +743,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
       {/* TAB 3: DISCOVER BOOKS */}
       {activeTab === 'discover' && (
         <div className="space-y-4">
+          {filteredCurated.length === 0 && (
+            <EmptyState size="sm" icon={BookOpen} title="No books match your search" description="Try a different search or category." />
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredCurated.map((curated) => {
               const userBook = getUserBookForCurated(curated.id);
@@ -853,15 +820,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
       {activeTab === 'completed' && (
         <div className="space-y-4">
           {filteredCompleted.length === 0 ? (
-            <div className="card p-8 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-success-text flex items-center justify-center mx-auto">
-                <CheckCircle2 size={24} />
-              </div>
-              <h3 className="text-base font-bold text-content-secondary">No completed books yet</h3>
-              <p className="text-xs text-content-muted max-w-md mx-auto">
-                Finish reading your first book to log your key insights, takeaways, and earn points rewards.
-              </p>
-            </div>
+            <EmptyState
+              icon={CheckCircle2}
+              title="No completed books yet"
+              description="Finish reading your first book to log your key insights, takeaways, and earn points rewards."
+            />
           ) : (
             <div className="space-y-3">
               {filteredCompleted.map((book) => (
@@ -902,6 +865,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       )}
                       <button
                         onClick={() => setDeleteModalBook(book)}
+                        aria-label="Remove book"
                         className="p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all"
                         title="Remove Book"
                       >
@@ -925,7 +889,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     </span>
                     <button
                       onClick={() => store.restartBook(book.id)}
-                      className="text-xs text-warning-text hover:text-warning-text-muted font-medium transition-colors"
+                      className={`text-xs text-warning-text hover:text-warning-text-muted font-medium transition-colors ${TAP_TARGET}`}
                     >
                       Re-read book →
                     </button>
@@ -945,10 +909,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleAddCustomSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="rh-add-title" className="block text-xs font-semibold text-content-tertiary mb-1">
               Book Title <span className="text-rose-theme">*</span>
             </label>
             <input
+              id="rh-add-title"
               type="text"
               required
               value={customTitle}
@@ -960,10 +925,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="rh-add-author" className="block text-xs font-semibold text-content-tertiary mb-1">
               Author
             </label>
             <input
+              id="rh-add-author"
               type="text"
               value={customAuthor}
               onChange={(e) => setCustomAuthor(e.target.value)}
@@ -974,10 +940,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="rh-add-category" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Category
               </label>
               <select
+                id="rh-add-category"
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value as BookCategory)}
                 className="input w-full bg-bg-800"
@@ -992,10 +959,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="rh-add-status" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Initial Status
               </label>
               <select
+                id="rh-add-status"
                 value={customStatus}
                 onChange={(e) => setCustomStatus(e.target.value as UserBookStatus)}
                 className="input w-full bg-bg-800"
@@ -1009,10 +977,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="rh-add-total" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Total Length
               </label>
               <input
+                id="rh-add-total"
                 type="number"
                 min="1"
                 required
@@ -1022,10 +991,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="rh-add-unit" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Unit
               </label>
               <select
+                id="rh-add-unit"
                 value={customUnit}
                 onChange={(e) => setCustomUnit(e.target.value as 'pages' | 'chapters')}
                 className="input w-full bg-bg-800"
@@ -1037,10 +1007,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="rh-add-date" className="block text-xs font-semibold text-content-tertiary mb-1">
               Target Finish Date (Optional)
             </label>
             <input
+              id="rh-add-date"
               type="date"
               value={customTargetFinishDate}
               onChange={(e) => setCustomTargetFinishDate(e.target.value)}
@@ -1049,10 +1020,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="rh-add-notes" className="block text-xs font-semibold text-content-tertiary mb-1">
               Description / Notes (Optional)
             </label>
             <textarea
+              id="rh-add-notes"
               value={customDescription}
               onChange={(e) => setCustomDescription(e.target.value)}
               placeholder="Why are you reading this book? What topics does it cover?"
@@ -1093,10 +1065,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="rh-start-total" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Total Length <span className="text-rose-theme">*</span>
               </label>
               <input
+                id="rh-start-total"
                 type="number"
                 min="1"
                 required
@@ -1107,10 +1080,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="rh-start-unit" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Unit
               </label>
               <select
+                id="rh-start-unit"
                 value={startUnit}
                 onChange={(e) => setStartUnit(e.target.value as 'pages' | 'chapters')}
                 className="input w-full bg-bg-800"
@@ -1122,10 +1096,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="rh-start-date" className="block text-xs font-semibold text-content-tertiary mb-1">
               Target Finish Date (Optional)
             </label>
             <input
+              id="rh-start-date"
               type="date"
               value={startTargetDate}
               onChange={(e) => setStartTargetDate(e.target.value)}
@@ -1165,10 +1140,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </p>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="rh-progress-current" className="block text-xs font-semibold text-content-tertiary mb-1">
               What {progressModalBook?.unit === 'chapters' ? 'chapter' : 'page'} are you on currently?
             </label>
             <input
+              id="rh-progress-current"
               type="number"
               required
               min="0"
@@ -1273,10 +1249,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="rh-finish-insights" className="block text-xs font-semibold text-content-tertiary mb-1">
               Key Insights & Reflections <span className="text-rose-theme">*</span>
             </label>
             <textarea
+              id="rh-finish-insights"
               required
               value={reflectionInput}
               onChange={(e) => setReflectionInput(e.target.value)}

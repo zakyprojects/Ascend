@@ -11,13 +11,15 @@ import {
   formatDurationHuman,
   timeStringToMinutes,
   DAYS_OF_WEEK,
-  getActivityThemeColor,
+  getActivityDisplayColor,
+  categoryTintStyle,
 } from '@/lib/timeTracker';
 import { todayKey, formatDateKeyHuman } from '@/lib/dates';
 import { ActivityIcon } from './ActivityIcon';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
+import { EmptyState } from '@/components/ui/primitives';
 import {
   Layers,
   Plus,
@@ -188,30 +190,30 @@ export function TemplatesTab({
       </div>
 
       {/* Blueprint Philosophy / 8-8-8 Guide */}
-      <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-bg-800 to-bg-750 border border-emerald-500/20 flex flex-col xl:flex-row gap-4 items-start">
-        <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-500/30 shadow-inner">
+      <div className="p-4 rounded-2xl bg-bg-800 border border-overlay-subtle flex flex-col xl:flex-row gap-4 items-start">
+        <div className="w-12 h-12 rounded-xl bg-overlay-subtle flex items-center justify-center shrink-0 border border-overlay-default">
           <Compass className="text-success-text" size={24} />
         </div>
         <div className="flex-1 w-full">
-          <h3 className="text-sm font-bold text-success-text mb-1.5">The Balance Sheet of Life: 8+8+8 Rule</h3>
+          <h3 className="text-sm font-bold text-content-primary mb-1.5">The Balance Sheet of Life: 8+8+8 Rule</h3>
           <p className="text-xs text-content-tertiary leading-relaxed mb-3 max-w-3xl">
             Distribute your 24 hours intentionally to maintain a perfect balance sheet of your life. Ascend Blueprints are built on this foundational philosophy.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Hard Work */}
-            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-emerald-500/30 transition-colors">
+            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
               <h4 className="text-[11px] font-bold text-content-secondary mb-1 flex items-center gap-1.5">
-                <Brain className="text-success-text" size={13} /> 
+                <Brain className="text-content-muted" size={13} /> 
                 8 Hours: Hard Work
               </h4>
               <p className="text-[10px] text-content-muted leading-snug">Deep focus, career progression, and building your empire.</p>
             </div>
 
             {/* Life & Balance */}
-            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-rose-500/30 transition-colors">
+            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
               <h4 className="text-[11px] font-bold text-content-secondary mb-1.5 flex items-center gap-1.5">
-                <Heart className="text-rose-theme" size={13} /> 
+                <Heart className="text-content-muted" size={13} /> 
                 8 Hours: 3Fs, 3Hs, & 3Ss
               </h4>
               <div className="text-[10px] text-content-muted leading-snug space-y-0.5">
@@ -222,9 +224,9 @@ export function TemplatesTab({
             </div>
 
             {/* Sleep */}
-            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-indigo-500/30 transition-colors">
+            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
               <h4 className="text-[11px] font-bold text-content-secondary mb-1 flex items-center gap-1.5">
-                <Moon className="text-indigo-theme" size={13} /> 
+                <Moon className="text-content-muted" size={13} /> 
                 8 Hours: Good Sleep
               </h4>
               <p className="text-[10px] text-content-muted leading-snug">High-quality recovery to repair the prefrontal cortex and body.</p>
@@ -235,39 +237,35 @@ export function TemplatesTab({
 
       {/* 2. Template Cards List */}
       {templates.length === 0 ? (
-        <div className="p-8 rounded-2xl bg-bg-800/30 border border-overlay-subtle text-center space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-success-text flex items-center justify-center mx-auto shadow-inner">
-            <Layers size={28} />
-          </div>
-          <div>
-            <h4 className="text-base font-bold text-content-secondary">No Blueprint Templates Yet</h4>
-            <p className="text-xs text-content-muted max-w-md mx-auto mt-1">
-              Save time every day by building recurring 24-hour routine blueprints. Days assigned to these blueprints will automatically apply each morning.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              onClick={onOpenCreateTemplateModal}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
-            >
-              <Plus size={14} />
-              <span>Create Your First Blueprint</span>
-            </button>
-
-            {!store.state.timeTracker?.templates?.some((t) => t.id === 'template-default-weekday') && (
+        <EmptyState
+          icon={Layers}
+          title="No Blueprint Templates Yet"
+          description="Save time every day by building recurring 24-hour routine blueprints. Days assigned to these blueprints will automatically apply each morning."
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <button
-                onClick={() => {
-                  store.restoreTimeTrackerTemplate('template-default-weekday');
-                  showSuccessToast('Template Restored', 'Standard Productive Day blueprint has been restored.');
-                }}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-secondary border border-overlay-default text-xs font-semibold transition-all cursor-pointer"
+                onClick={onOpenCreateTemplateModal}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
               >
-                <RotateCcw size={14} className="text-success-text" />
-                <span>Restore Default Blueprint</span>
+                <Plus size={14} />
+                <span>Create Your First Blueprint</span>
               </button>
-            )}
-          </div>
-        </div>
+
+              {!store.state.timeTracker?.templates?.some((t) => t.id === 'template-default-weekday') && (
+                <button
+                  onClick={() => {
+                    store.restoreTimeTrackerTemplate('template-default-weekday');
+                    showSuccessToast('Template Restored', 'Standard Productive Day blueprint has been restored.');
+                  }}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-secondary border border-overlay-default text-xs font-semibold transition-all cursor-pointer"
+                >
+                  <RotateCcw size={14} className="text-success-text" />
+                  <span>Restore Default Blueprint</span>
+                </button>
+              )}
+            </div>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {templates.map((tpl) => {
@@ -306,6 +304,7 @@ export function TemplatesTab({
                         onClick={() => onOpenEditTemplateModal(tpl)}
                         className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer"
                         title="Edit Template"
+                        aria-label="Edit template"
                       >
                         <Edit2 size={15} />
                       </button>
@@ -313,6 +312,7 @@ export function TemplatesTab({
                         onClick={() => setDeleteTargetTemplate(tpl)}
                         className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                         title="Delete Template"
+                        aria-label="Delete template"
                       >
                         <Trash2 size={15} />
                       </button>
@@ -369,7 +369,7 @@ export function TemplatesTab({
                           const leftPercent = (startMins / 1440) * 100;
                           const widthPercent = (duration / 1440) * 100;
                           const act = activityMap.get(block.activityId);
-                          const color = getActivityThemeColor(act?.color, theme);
+                          const color = getActivityDisplayColor(act, theme);
 
                           return (
                             <div
@@ -394,7 +394,7 @@ export function TemplatesTab({
                   <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
                     {sortedBlocks.map((block) => {
                       const act = activityMap.get(block.activityId);
-                      const color = getActivityThemeColor(act?.color, theme);
+                      const color = getActivityDisplayColor(act, theme);
                       return (
                         <div
                           key={block.id}
@@ -418,7 +418,8 @@ export function TemplatesTab({
                                 return (
                                   <span
                                     key={secId}
-                                    className="text-[10px] text-success-text font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0"
+                                    className="text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0"
+                                    style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                                   >
                                     +{secAct.name}
                                   </span>
@@ -426,7 +427,10 @@ export function TemplatesTab({
                               })}
                           </div>
                           {act?.ascendModule && (
-                            <span className="text-[10px] text-success-text bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shrink-0">
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
+                              style={categoryTintStyle(color)}
+                            >
                               {act.ascendModule}
                             </span>
                           )}

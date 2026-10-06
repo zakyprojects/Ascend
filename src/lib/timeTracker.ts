@@ -63,6 +63,8 @@ export const AVAILABLE_ACTIVITY_COLORS = [
   { name: 'Pink', value: '#ec4899' },
   { name: 'Teal', value: '#14b8a6' },
   { name: 'Yellow', value: '#facc15' },
+  { name: 'Slate', value: '#64748b' },
+  { name: 'Stone', value: '#a8a29e' },
 ];
 
 /**
@@ -500,7 +502,56 @@ export const DARK_TO_LIGHT_ACTIVITY_COLORS: Record<string, string> = {
   '#f97316': '#c2410c', // Meals (Orange)
   '#a855f7': '#9333ea', // Entertainment (Purple)
   '#14b8a6': '#0f766e', // Walking (Teal)
+  '#64748b': '#475569',
+  '#a8a29e': '#78716c',
+  '#84cc16': '#4d7c0f',
+  '#ec4899': '#be185d',
+  '#0ea5e9': '#0369a1',
 };
+
+export const LEGACY_DEFAULT_ACTIVITY_COLORS: Record<string, string> = {
+  'act-sleep': '#6366f1',
+  'act-deep-work': '#06b6d4',
+  'act-reading': '#3b82f6',
+  'act-skills': '#8b5cf6',
+  'act-entertainment': '#a855f7',
+  'act-walking': '#14b8a6',
+};
+
+export const NEW_DEFAULT_ACTIVITY_COLORS: Record<string, string> = {
+  'act-sleep': '#64748b',
+  'act-deep-work': '#0ea5e9',
+  'act-reading': '#14b8a6',
+  'act-skills': '#ec4899',
+  'act-entertainment': '#84cc16',
+  'act-walking': '#a8a29e',
+};
+
+export function resolveActivityColor(
+  activity: Pick<TimeTrackerActivity, 'id' | 'color' | 'isSystemDefault'> | undefined | null
+): string | undefined {
+  if (
+    activity?.isSystemDefault &&
+    activity.id &&
+    activity.color &&
+    activity.color.trim().toLowerCase() === LEGACY_DEFAULT_ACTIVITY_COLORS[activity.id]
+  ) {
+    return NEW_DEFAULT_ACTIVITY_COLORS[activity.id] || activity.color;
+  }
+  return activity?.color;
+}
+
+export function getActivityDisplayColor(
+  activity: Pick<TimeTrackerActivity, 'id' | 'color' | 'isSystemDefault'> | undefined | null,
+  theme: 'dark' | 'light' = 'dark',
+  fallback?: string
+): string {
+  return getActivityThemeColor(resolveActivityColor(activity) || fallback, theme);
+}
+
+export function categoryTintStyle(color: string): { backgroundColor: string; color: string; border: string } {
+  return { backgroundColor: `${color}20`, color, border: `1px solid ${color}40` };
+}
 
 /**
  * Resolves an activity color hex string based on the active theme ('dark' | 'light').

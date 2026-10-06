@@ -4,6 +4,7 @@ import { TimeTrackerActivity } from '@/types';
 import { ActivityIcon } from './ActivityIcon';
 import {
   getActivityThemeColor,
+  resolveActivityColor,
   AVAILABLE_ACTIVITY_ICONS,
   AVAILABLE_ACTIVITY_COLORS,
 } from '@/lib/timeTracker';
@@ -53,7 +54,7 @@ export function ActivityModal({
 
     if (editingActivity) {
       setName(editingActivity.name);
-      setColor(editingActivity.color);
+      setColor(resolveActivityColor(editingActivity) ?? editingActivity.color);
       setIcon(editingActivity.icon);
       setAscendModule(editingActivity.ascendModule || '');
     } else {
@@ -141,10 +142,11 @@ export function ActivityModal({
 
         {/* Category Name */}
         <div>
-          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
+          <label htmlFor="tt-act-name" className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
             Category Name <span className="text-rose-theme">*</span>
           </label>
           <input
+            id="tt-act-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -173,6 +175,7 @@ export function ActivityModal({
                   }`}
                   style={{ backgroundColor: displaySwatchColor }}
                   title={col.name}
+                  aria-label={`Select colour ${col.name}`}
                 />
               );
             })}
@@ -192,6 +195,7 @@ export function ActivityModal({
                   type="button"
                   key={ic}
                   onClick={() => setIcon(ic)}
+                  aria-label={`Select icon ${ic}`}
                   className={`p-2 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-emerald-600/30 text-success-text border border-emerald-500 shadow-sm'
@@ -207,11 +211,12 @@ export function ActivityModal({
 
         {/* Ascend Module Linkage */}
         <div>
-          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+          <label htmlFor="tt-act-module" className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
             <LinkIcon size={13} className="text-success-text" />
             Ascend Ecosystem Module Sync (Optional)
           </label>
           <select
+            id="tt-act-module"
             value={ascendModule}
             onChange={(e) => setAscendModule(e.target.value)}
             className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2.5 text-sm text-content-primary focus:outline-none focus:border-emerald-500"

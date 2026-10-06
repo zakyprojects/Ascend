@@ -14,7 +14,8 @@ import {
   calculateBlockDurationMinutes,
   checkTimeCollision,
   normalizeOrSplitMidnightBlock,
-  getActivityThemeColor,
+  getActivityDisplayColor,
+  categoryTintStyle,
 } from '@/lib/timeTracker';
 import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
@@ -236,10 +237,11 @@ export function TemplateEditorModal({
 
           {/* Template Title */}
           <div>
-            <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
+            <label htmlFor="tt-tpl-title" className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
               Template Title
             </label>
             <input
+              id="tt-tpl-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -305,7 +307,7 @@ export function TemplateEditorModal({
                   const act = activities.find((a) => a.id === block.activityId);
                   const duration = calculateBlockDurationMinutes(block.startTime, block.endTime);
                   const theme = getLocalThemePreference() || 'dark';
-                  const resolvedColor = getActivityThemeColor(act?.color, theme);
+                  const resolvedColor = getActivityDisplayColor(act, theme);
                   return (
                     <div
                       key={block.id}
@@ -327,7 +329,7 @@ export function TemplateEditorModal({
                               {block.customTitle || act?.name || 'Block'}
                             </p>
                             {act?.ascendModule && (
-                              <span className="text-[10px] text-success-text font-mono">
+                              <span className="text-[10px] font-mono" style={{ color: resolvedColor }}>
                                 [{act.ascendModule}]
                               </span>
                             )}
@@ -338,7 +340,8 @@ export function TemplateEditorModal({
                                 return (
                                   <span
                                     key={secId}
-                                    className="text-[10px] text-success-text font-mono bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded"
+                                    className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                                    style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                                   >
                                     +{secAct.name}
                                   </span>
@@ -357,6 +360,7 @@ export function TemplateEditorModal({
                           onClick={() => handleOpenEditBlock(block)}
                           className="p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors cursor-pointer"
                           title="Edit block"
+                          aria-label="Edit block"
                         >
                           <Edit2 size={14} />
                         </button>
@@ -365,6 +369,7 @@ export function TemplateEditorModal({
                           onClick={() => handleRemoveBlock(block.id)}
                           className="p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors cursor-pointer"
                           title="Remove block"
+                          aria-label="Remove block"
                         >
                           <Trash2 size={14} />
                         </button>

@@ -11,7 +11,7 @@ import {
   checkTimeCollision,
   calculateBlockDurationMinutes,
   formatDurationHuman,
-  getActivityThemeColor,
+  getActivityDisplayColor,
 } from '@/lib/timeTracker';
 import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
@@ -216,7 +216,7 @@ export function TimeBlockModal({
               const isPrimary = act.id === activityId;
               const isSecondary = secondaryActivityIds.includes(act.id);
               const theme = getLocalThemePreference() || 'dark';
-              const resolvedColor = getActivityThemeColor(act.color, theme);
+              const resolvedColor = getActivityDisplayColor(act, theme);
               return (
                 <button
                   type="button"
@@ -264,13 +264,14 @@ export function TimeBlockModal({
         <div className="grid grid-cols-2 gap-3 pt-1">
           <div className="flex flex-col h-full space-y-1.5">
             <div className="flex items-center justify-between gap-1">
-              <label className="text-xs font-medium text-content-tertiary truncate">Start Time (24h)</label>
+              <label htmlFor="tt-block-start" className="text-xs font-medium text-content-tertiary truncate">Start Time (24h)</label>
               <span className="text-[11px] text-content-muted font-mono bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(startTime)}
               </span>
             </div>
             <div className="relative mt-auto">
               <input
+                id="tt-block-start"
                 type="time"
                 step="60"
                 value={startTime}
@@ -283,13 +284,14 @@ export function TimeBlockModal({
 
           <div className="flex flex-col h-full space-y-1.5">
             <div className="flex items-center justify-between gap-1">
-              <label className="text-xs font-medium text-content-tertiary truncate">End Time (24h)</label>
+              <label htmlFor="tt-block-end" className="text-xs font-medium text-content-tertiary truncate">End Time (24h)</label>
               <span className="text-[11px] text-content-muted font-mono bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(endTime)}
               </span>
             </div>
             <div className="relative mt-auto">
               <input
+                id="tt-block-end"
                 type="time"
                 step="60"
                 value={endTime}
@@ -336,11 +338,12 @@ export function TimeBlockModal({
 
         {/* Custom Title (Optional) */}
         <div>
-          <label className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
+          <label htmlFor="tt-block-title" className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
             <Tag size={13} className="text-content-muted" />
             Custom Label / Task (Optional)
           </label>
           <input
+            id="tt-block-title"
             type="text"
             value={customTitle}
             onChange={(e) => setCustomTitle(e.target.value)}
@@ -351,11 +354,12 @@ export function TimeBlockModal({
 
         {/* Notes (Optional) */}
         <div>
-          <label className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
+          <label htmlFor="tt-block-notes" className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
             <FileText size={13} className="text-content-muted" />
             Notes & Intentions (Optional)
           </label>
           <textarea
+            id="tt-block-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Key objectives, location, or constraints..."

@@ -413,7 +413,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
         <button
           onClick={onDelete}
           aria-label="Delete habit"
-          className="shrink-0 p-2 rounded-lg text-content-subtle hover:text-error hover:bg-error/10 transition-colors opacity-0 group-hover:opacity-100"
+          className="shrink-0 p-2 rounded-lg text-content-disabled hover:text-error hover:bg-error/10 transition-colors"
         >
           <Trash2 size={16} />
         </button>

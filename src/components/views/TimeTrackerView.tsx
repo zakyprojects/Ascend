@@ -15,6 +15,7 @@ import { TemplateEditorModal } from './timeTracker/TemplateEditorModal';
 import { ApplyTemplateModal } from './timeTracker/ApplyTemplateModal';
 import { ActivityModal } from './timeTracker/ActivityModal';
 import { useToast } from '@/components/ui/Toast';
+import { Tabs } from '@/components/ui/primitives';
 import { Clock, Layers, Tag, Calendar, Sparkles } from 'lucide-react';
 import { View } from '@/components/AppShell';
 
@@ -188,7 +189,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full aspect-square bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 shadow-inner">
+            <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full aspect-square bg-emerald-500/20 border border-emerald-500/30 text-success-text">
               <Clock size={24} />
             </div>
             <div>
@@ -203,73 +204,20 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center p-1 rounded-2xl bg-bg-800/80 border border-overlay-default shrink-0 self-start md:self-auto max-w-full overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('schedule')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === 'schedule'
-                ? 'bg-emerald-600 text-on-brand shadow-md shadow-emerald-900/30'
-                : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
-            }`}
-          >
-            <Clock size={14} className="shrink-0" />
-            <span className="whitespace-nowrap">Daily Schedule</span>
-            {currentDailyBlocks.length > 0 && (
-              <span
-                className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
-                  activeTab === 'schedule'
-                    ? 'bg-overlay-strong dark:text-content-primary text-on-brand'
-                    : 'dark:bg-emerald-500/20 dark:text-emerald-300 bg-overlay-default text-content-muted'
-                }`}
-              >
-                {currentDailyBlocks.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('templates')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === 'templates'
-                ? 'bg-emerald-600 text-on-brand shadow-md shadow-emerald-900/30'
-                : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
-            }`}
-          >
-            <Layers size={14} className="shrink-0" />
-            <span className="whitespace-nowrap">Templates</span>
-            {templates.length > 0 && (
-              <span
-                className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
-                  activeTab === 'templates'
-                    ? 'bg-overlay-strong dark:text-content-primary text-on-brand'
-                    : 'dark:bg-emerald-500/20 dark:text-emerald-300 bg-overlay-default text-content-muted'
-                }`}
-              >
-                {templates.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('activities')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === 'activities'
-                ? 'bg-emerald-600 text-on-brand shadow-md shadow-emerald-900/30'
-                : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
-            }`}
-          >
-            <Tag size={14} className="shrink-0" />
-            <span className="whitespace-nowrap">Categories</span>
-            <span
-              className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
-                activeTab === 'activities'
-                  ? 'bg-overlay-strong dark:text-content-primary text-on-brand'
-                  : 'dark:bg-emerald-500/20 dark:text-emerald-300 bg-overlay-default text-content-muted'
-              }`}
-            >
-              {activities.length}
-            </span>
-          </button>
+        <div className="shrink-0 self-start md:self-auto max-w-full">
+          <Tabs
+            ariaLabel="Time Tracker sections"
+            variant="segmented"
+            size="sm"
+            scrollable
+            value={activeTab}
+            onChange={(id) => setActiveTab(id as TabType)}
+            items={[
+              { id: 'schedule', label: 'Daily Schedule', icon: Clock, badge: currentDailyBlocks.length },
+              { id: 'templates', label: 'Templates', icon: Layers, badge: templates.length },
+              { id: 'activities', label: 'Categories', icon: Tag, badge: activities.length },
+            ]}
+          />
         </div>
       </div>
 

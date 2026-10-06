@@ -51,7 +51,7 @@ import {
   computeLiveSchedule,
   ensureDefaultActivities,
   getAscendViewForModule,
-  getActivityThemeColor,
+  getActivityDisplayColor,
 } from '@/lib/timeTracker';
 import { ActivityIcon } from './timeTracker/ActivityIcon';
 import { useToast } from '@/components/ui/Toast';
@@ -1508,7 +1508,7 @@ function FocusTimerSubmodule({
               {/* Block Details Pill */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-xs">
                 {(() => {
-                  const resolvedOverdueColor = getActivityThemeColor(overdueBlockActivity?.color || '#f43f5e', theme);
+                  const resolvedOverdueColor = getActivityDisplayColor(overdueBlockActivity, theme, '#f43f5e');
                   return (
                     <div
                       className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
@@ -1758,7 +1758,7 @@ function FocusTimerSubmodule({
                 <div className="space-y-3">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-overlay-subtle border border-overlay-default text-xs">
                     {(() => {
-                      const resolvedActiveColor = getActivityThemeColor(activeBlockActivity?.color, theme);
+                      const resolvedActiveColor = getActivityDisplayColor(activeBlockActivity, theme);
                       return (
                         <div
                           className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
@@ -1960,7 +1960,7 @@ function FocusTimerSubmodule({
 
                 {/* Undo Block Banner if user is still inside resolved block time window */}
                 {currentResolvedBlock && (() => {
-                  const resolvedCurrentColor = getActivityThemeColor(currentResolvedBlockActivity?.color || '#06b6d4', theme);
+                  const resolvedCurrentColor = getActivityDisplayColor(currentResolvedBlockActivity, theme, '#10b981');
                   return (
                     <div className="p-3 px-4 rounded-xl bg-overlay-subtle border border-cyan-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left shadow-sm">
                       <div className="flex items-center gap-3 w-full min-w-0">
@@ -2004,7 +2004,7 @@ function FocusTimerSubmodule({
 
                 {/* Next Block Preview Card */}
                 {(() => {
-                  const resolvedNextColor = getActivityThemeColor(nextBlockActivity?.color || '#10b981', theme);
+                  const resolvedNextColor = getActivityDisplayColor(nextBlockActivity, theme, '#10b981');
                   return (
                     <div className="p-4 rounded-xl bg-overlay-subtle border border-overlay-default text-left flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md hover:border-emerald-500/30 transition-all">
                       <div className="flex items-start sm:items-center gap-3 w-full min-w-0">
@@ -2086,7 +2086,7 @@ function FocusTimerSubmodule({
                 </div>
 
                 {currentResolvedBlock && (() => {
-                  const resolvedCurrentColor = getActivityThemeColor(currentResolvedBlockActivity?.color || '#06b6d4', theme);
+                  const resolvedCurrentColor = getActivityDisplayColor(currentResolvedBlockActivity, theme, '#10b981');
                   return (
                     <div className="p-3 px-4 rounded-xl bg-overlay-subtle border border-cyan-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left shadow-sm mt-2">
                       <div className="flex items-center gap-3 w-full min-w-0">

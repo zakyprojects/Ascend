@@ -796,7 +796,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-sleep',
     name: 'Sleep',
-    color: '#6366f1', // Indigo
+    color: '#64748b', // Slate
     icon: 'Moon',
     isSystemDefault: true,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -804,7 +804,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-deep-work',
     name: 'Deep Work',
-    color: '#06b6d4', // Cyan
+    color: '#0ea5e9', // Sky
     icon: 'BrainCircuit',
     isSystemDefault: true,
     ascendModule: 'Deep Focus',
@@ -830,7 +830,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-reading',
     name: 'Reading',
-    color: '#3b82f6', // Blue
+    color: '#14b8a6', // Teal
     icon: 'BookOpen',
     isSystemDefault: true,
     ascendModule: 'Reading',
@@ -839,7 +839,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-skills',
     name: 'Skills',
-    color: '#8b5cf6', // Violet
+    color: '#ec4899', // Pink
     icon: 'Sparkles',
     isSystemDefault: true,
     ascendModule: 'Skills',
@@ -864,7 +864,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-entertainment',
     name: 'Entertainment',
-    color: '#a855f7', // Purple
+    color: '#84cc16', // Lime
     icon: 'Gamepad2',
     isSystemDefault: true,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -872,7 +872,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-walking',
     name: 'Walking',
-    color: '#14b8a6', // Teal
+    color: '#a8a29e', // Stone
     icon: 'Footprints',
     isSystemDefault: true,
     ascendModule: 'Exercise',
