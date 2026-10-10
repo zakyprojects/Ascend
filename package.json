@@ -1,13 +1,13 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "ascend",
   "private": true,
-  "version": "6.9.0",
+  "version": "9.0.3",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 3000",
+    "dev": "vite",
     "build": "tsc --noEmit -p tsconfig.app.json && vite build",
     "lint": "eslint .",
-    "preview": "vite preview --host 0.0.0.0 --port 3000",
+    "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
