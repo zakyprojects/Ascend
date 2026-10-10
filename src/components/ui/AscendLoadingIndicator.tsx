@@ -122,26 +122,36 @@ export interface AscendLoadingIndicatorProps {
   className?: string;
 }
 
-const INDICATOR_SIZES = {
-  sm: { box: 'w-4 h-4', ribbonWidth: 9, swooshStroke: 4 },
-  md: { box: 'w-6 h-6', ribbonWidth: 7.5, swooshStroke: 3.5 },
-  lg: { box: 'w-8 h-8', ribbonWidth: 6, swooshStroke: 3 },
-  xl: { box: 'w-12 h-12', ribbonWidth: 5.2, swooshStroke: 2.5 },
-};
-
 export const AscendLoadingIndicator: React.FC<AscendLoadingIndicatorProps> = ({
   size = 'sm',
   className = '',
 }) => {
-  const { box, ribbonWidth, swooshStroke } = INDICATOR_SIZES[size];
+  const sizeMap = {
+    sm: { container: 'w-4 h-4', icon: 'w-3 h-3', ring: 'border-2', ribbonWidth: 9, swooshStroke: 4 },
+    md: { container: 'w-6 h-6', icon: 'w-4 h-4', ring: 'border-2', ribbonWidth: 9, swooshStroke: 4 },
+    lg: { container: 'w-8 h-8', icon: 'w-6 h-6', ring: 'border-2', ribbonWidth: 7.5, swooshStroke: 3.5 },
+    xl: { container: 'w-12 h-12', icon: 'w-9 h-9', ring: 'border-3', ribbonWidth: 6, swooshStroke: 3 },
+  };
+
+  const currentSize = sizeMap[size];
 
   return (
     <span
-      className={`inline-flex items-center justify-center shrink-0 ${box} ${className}`}
+      className={`inline-flex items-center justify-center relative shrink-0 ${currentSize.container} ${className}`}
       role="status"
       aria-label="Loading..."
     >
-      <AscendLoaderMark className="w-full h-full" ribbonWidth={ribbonWidth} swooshStroke={swooshStroke} />
+      {/* Outer spinning gradient ring */}
+      <span className={`absolute inset-0 rounded-full border-t-emerald-400 border-r-transparent border-b-primary-500 border-l-transparent animate-spin ${currentSize.ring}`} />
+      
+      {/* Center pulsing real Ascend Logo */}
+      <span className="relative flex items-center justify-center animate-pulse">
+        <AscendLoaderMark
+          className={`${currentSize.icon} rounded-md shadow-sm`}
+          ribbonWidth={currentSize.ribbonWidth}
+          swooshStroke={currentSize.swooshStroke}
+        />
+      </span>
     </span>
   );
 };
@@ -157,24 +167,44 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
 }) => {
   return (
     <div
-      className="fixed inset-0 z-[9999] bg-bg-900/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-fade-in"
+      className="fixed inset-0 z-[9999] bg-bg-900/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-fadeIn"
       role="dialog"
       aria-modal="true"
       aria-label={message}
     >
-      <div className="relative flex flex-col items-center max-w-sm" role="status">
-        <AscendLoaderMark className="w-24 h-24 mb-6 drop-shadow-xl" ribbonWidth={5.2} swooshStroke={1.5} />
+      {/* Background ambient glow aura */}
+      <div className="absolute w-48 h-48 bg-primary-500/15 rounded-full blur-3xl animate-pulse" />
+
+      <div className="relative flex flex-col items-center max-w-sm">
+        {/* Large Animated Ascend Logo Container */}
+        <div className="relative w-20 h-20 mb-6 flex items-center justify-center">
+          {/* Outer glowing pulsing aura */}
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-primary-500/30 to-emerald-400/20 animate-ping opacity-30" />
+          
+          {/* Spinning gradient ring */}
+          <div className="absolute -inset-1.5 rounded-2xl border-2 border-primary-500/20 border-t-primary-400 border-r-emerald-400 animate-spin" />
+
+          {/* Logo Badge Container */}
+          <div className="w-20 h-20 rounded-2xl bg-bg-800/90 border border-primary-500/40 shadow-2xl shadow-primary-500/20 flex items-center justify-center relative overflow-hidden backdrop-blur-xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/20 via-transparent to-emerald-500/10" />
+            
+            {/* Animated REAL Ascend Logo */}
+            <div className="relative animate-bounce transition-transform duration-700">
+              <AscendLoaderMark className="w-11 h-11 rounded-xl shadow-lg" ribbonWidth={5.2} swooshStroke={1.5} />
+            </div>
+          </div>
+        </div>
 
         {/* Brand Name */}
         <div className="flex items-center gap-2 mb-1.5">
           <span className="font-display font-bold text-content-primary text-xl tracking-wide">Ascend</span>
           <span className="text-[10px] bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-            Beta
+            Self Growth
           </span>
         </div>
 
         {/* Primary Message */}
-        <p className="text-sm font-semibold text-content-secondary mt-1">
+        <p className="text-sm font-semibold text-content-secondary mt-1 animate-pulse">
           {message}
         </p>
 
@@ -184,7 +214,25 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
             {submessage}
           </p>
         )}
+
+        {/* Animated loader bar */}
+        <div className="w-36 h-1 bg-bg-700 rounded-full overflow-hidden mt-5 relative">
+          <div
+            className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary-500 to-emerald-400 w-1/2 rounded-full animate-pulse"
+            style={{
+              animation: 'loadingBar 1.2s ease-in-out infinite',
+            }}
+          />
+        </div>
       </div>
+
+      <style>{`
+        @keyframes loadingBar {
+          0% { left: -50%; width: 50%; }
+          50% { left: 25%; width: 50%; }
+          100% { left: 100%; width: 50%; }
+        }
+      `}</style>
     </div>
   );
 };
