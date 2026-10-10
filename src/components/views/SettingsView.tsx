@@ -36,6 +36,7 @@ import { Modal } from '@/components/ui/Modal';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
+import { Tabs } from '@/components/ui/primitives';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator, AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
 
@@ -361,11 +362,23 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       )}
 
       {/* Sectioned Main Layout (Sidebar Navigation + Independent Content Area) */}
-      <div className="flex gap-5 min-h-[520px] items-start">
-        {/* Persistent Narrow Sidebar */}
-        <aside className="w-16 sm:w-56 shrink-0 bg-bg-800/80 border border-overlay-default rounded-2xl p-2 sm:p-3 space-y-1 self-stretch flex flex-col justify-between">
+      <div className="flex flex-col sm:flex-row gap-5 min-h-[520px] sm:items-start">
+        {/* Mobile: section strip (same pattern as the mobile sibling switcher) */}
+        <Tabs
+          className="sm:hidden"
+          items={sectionsList.map(({ id, label }) => ({ id, label }))}
+          value={activeSection}
+          onChange={(id) => handleSelectSection(id as SettingsSection)}
+          variant="underline"
+          size="sm"
+          scrollable
+          ariaLabel="Settings sections"
+        />
+
+        {/* Desktop/tablet: persistent sidebar */}
+        <aside className="hidden sm:flex w-56 shrink-0 bg-bg-800/80 border border-overlay-default rounded-2xl p-3 space-y-1 self-stretch flex-col justify-between">
           <div className="space-y-1">
-            <p className="hidden sm:block text-[10px] font-bold uppercase tracking-wider text-content-disabled px-3 py-1.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-content-disabled px-3 py-1.5">
               Sections
             </p>
             {sectionsList.map((sec) => {
@@ -374,7 +387,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 <button
                   key={sec.id}
                   onClick={() => handleSelectSection(sec.id)}
-                  className={`w-full flex items-center gap-3 px-2.5 sm:px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                     active
                       ? sec.danger
                         ? 'bg-rose-500/20 text-rose-theme border border-rose-500/30 shadow-md'
@@ -383,19 +396,17 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       ? 'text-rose-theme-muted hover:bg-rose-500/10 hover:text-rose-theme border border-transparent'
                       : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle border border-transparent'
                   }`}
-                  title={sec.label}
-                  aria-label={sec.label}
                 >
                   <span className={`shrink-0 ${active ? (sec.danger ? 'text-rose-theme' : 'text-brand-text') : ''}`}>
                     {sec.icon}
                   </span>
-                  <span className="hidden sm:inline truncate text-left">{sec.label}</span>
+                  <span className="truncate text-left">{sec.label}</span>
                 </button>
               );
             })}
           </div>
 
-          <div className="hidden sm:block pt-4 border-t border-overlay-subtle px-3">
+          <div className="pt-4 border-t border-overlay-subtle px-3">
             <p className="text-[10px] text-content-disabled font-mono">Ascend v{__APP_VERSION__}</p>
           </div>
         </aside>
