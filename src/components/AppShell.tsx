@@ -25,6 +25,7 @@ import { AppStore } from '@/lib/store';
 import { GuestLogoutWarningModal } from './ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from './ui/LogoutConfirmModal';
 import { NotificationCenter } from './ui/NotificationCenter';
+import { AppLogo } from './ui/AppLogo';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 
 export type View =
@@ -131,11 +132,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
       <aside className="hidden lg:flex flex-col w-64 h-full glass border-r border-overlay-subtle shrink-0 overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center gap-2.5">
-            <img
-              src="/favicon.svg"
-              alt="Ascend Logo"
-              className="w-9 h-9 rounded-xl object-cover shrink-0"
-            />
+            <AppLogo className="w-9 h-9 rounded-[22%] object-cover shrink-0" />
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <div className="font-display font-bold text-content-primary text-lg leading-none">Ascend</div>
@@ -263,11 +260,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
         {/* Mobile header */}
         <header className="lg:hidden glass border-b border-overlay-subtle px-4 pt-[calc(0.75rem_+_env(safe-area-inset-top))] pb-3 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <img
-              src="/favicon.svg"
-              alt="Ascend Logo"
-              className="w-8 h-8 rounded-lg object-cover shrink-0"
-            />
+            <AppLogo className="w-8 h-8 rounded-[22%] object-cover shrink-0" />
             <span className="font-display font-bold text-content-primary">Ascend</span>
             <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md badge-beta text-[9px] font-bold uppercase tracking-wider">
               Beta

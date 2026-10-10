@@ -496,6 +496,17 @@
 }
 
 @layer components {
+  /* Theme-aware in-app logo (see AppLogo.tsx); dark is the default theme. */
+  .app-logo-light {
+    display: none;
+  }
+  [data-theme='light'] .app-logo-dark {
+    display: none;
+  }
+  [data-theme='light'] .app-logo-light {
+    display: block;
+  }
+
   .glass {
     @apply bg-bg-800/80 backdrop-blur-xl border border-overlay-subtle;
   }
