@@ -156,18 +156,42 @@ export const AscendLoadingIndicator: React.FC<AscendLoadingIndicatorProps> = ({
   );
 };
 
+/** How long the overlay takes to fade out when `exiting` (callers unmount it after this). */
+export const OVERLAY_EXIT_MS = 450;
+
+/** Delay that resumes index.html's splash entrance (.sp-enter) on the page-load clock. */
+function bootEntranceDelay(): string {
+  const firstPaint = performance.getEntriesByType('paint')[0]?.startTime ?? 0;
+  return `${firstPaint - performance.now()}ms`;
+}
+
 export interface AscendLoadingOverlayProps {
   message?: string;
   submessage?: string;
+  /**
+   * 'boot': continues the pre-React splash's entrance, so the handoff never replays it.
+   * 'fade' (default): fades in over the app (logout, account purge).
+   */
+  entrance?: 'boot' | 'fade';
+  /** Fades the overlay out and lifts its content, revealing the app beneath. */
+  exiting?: boolean;
 }
 
 export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
   message = 'Loading...',
   submessage,
+  entrance = 'fade',
+  exiting = false,
 }) => {
+  const [bootDelay] = React.useState(() => (entrance === 'boot' ? bootEntranceDelay() : '0ms'));
+  const exitStyle = { animationDuration: `${OVERLAY_EXIT_MS}ms` };
+  const rootMotion = exiting ? 'animate-overlay-exit pointer-events-none' : entrance === 'fade' ? 'animate-fade-in' : '';
+  const contentMotion = exiting ? 'animate-boot-lift' : entrance === 'boot' ? 'animate-boot-enter' : '';
+
   return (
     <div
-      className="fixed inset-0 z-[9999] bg-bg-900/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none"
+      className={`fixed inset-0 z-[9999] bg-bg-900/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none ${rootMotion}`}
+      style={exiting ? exitStyle : undefined}
       role="dialog"
       aria-modal="true"
       aria-label={message}
@@ -175,7 +199,10 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
       {/* Background ambient glow aura */}
       <div className="absolute w-48 h-48 bg-primary-500/15 rounded-full blur-3xl animate-pulse" />
 
-      <div className="relative flex flex-col items-center max-w-sm">
+      <div
+        className={`relative flex flex-col items-center max-w-sm ${contentMotion}`}
+        style={exiting ? exitStyle : entrance === 'boot' ? { animationDelay: bootDelay } : undefined}
+      >
         {/* Large Animated Ascend Logo Container */}
         <div className="relative w-20 h-20 mb-6 flex items-center justify-center">
           {/* Outer glowing pulsing aura */}

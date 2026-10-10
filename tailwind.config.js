@@ -154,6 +154,12 @@ export default {
         'slide-down': 'slideDown var(--duration-enter) var(--ease-emphasized) both',
         'shake': 'shake 320ms var(--ease-standard)',
         'rank-glow': 'rankGlow 1400ms var(--ease-standard) both',
+        'slide-in-left': 'slideInLeft var(--duration-enter) var(--ease-emphasized) both',
+        // Boot overlay (AscendLoadingOverlay): the entrance mirrors index.html's splash
+        // (.sp-enter); exit durations are set inline from OVERLAY_EXIT_MS.
+        'boot-enter': 'bootEnter 400ms var(--ease-emphasized) both',
+        'boot-lift': 'bootLift var(--ease-emphasized) both',
+        'overlay-exit': 'enterFade var(--ease-standard) reverse both',
       },
       keyframes: {
         fadeIn: {
@@ -197,6 +203,18 @@ export default {
         slideInRight: {
           '0%': { opacity: '0', transform: 'translateX(16px)' },
           '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        slideInLeft: {
+          '0%': { opacity: '0', transform: 'translateX(-16px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        bootEnter: {
+          '0%': { opacity: '0', transform: 'translateY(12px) scale(0.96)' },
+          '100%': { opacity: '1', transform: 'none' },
+        },
+        bootLift: {
+          '0%': { opacity: '1', transform: 'none' },
+          '100%': { opacity: '0', transform: 'scale(1.08)' },
         },
         slideDown: {
           '0%': { opacity: '0', translate: '0 -8px' },

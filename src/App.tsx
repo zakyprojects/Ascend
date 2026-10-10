@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppState } from '@/lib/store';
 import { AppShell, View } from '@/components/AppShell';
 import { Dashboard } from '@/components/views/Dashboard';
@@ -22,7 +22,7 @@ import { AccountabilityPartner } from '@/components/views/AccountabilityPartner'
 import { SettingsView } from '@/components/views/SettingsView';
 import { AuthModal } from '@/components/ui/AuthModal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
+import { AscendLoadingOverlay, OVERLAY_EXIT_MS } from '@/components/ui/AscendLoadingIndicator';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
@@ -33,76 +33,97 @@ function App() {
   const [view, setView] = useState<View>('dashboard');
   const [userOpenedAuthModal, setUserOpenedAuthModal] = useState(false);
 
-  if (store.isAuthChecking) {
-    return (
-      <AscendLoadingOverlay
-        message="Verifying session..."
-        submessage="Preparing your personal growth workspace"
-      />
-    );
+  // When the session check ends, the boot overlay stays mounted for its exit animation,
+  // revealing the app beneath. Derived during render so the app never shows a frame without it.
+  const [wasAuthChecking, setWasAuthChecking] = useState(store.isAuthChecking);
+  const [bootOverlayExiting, setBootOverlayExiting] = useState(false);
+  if (wasAuthChecking !== store.isAuthChecking) {
+    setWasAuthChecking(store.isAuthChecking);
+    setBootOverlayExiting(wasAuthChecking);
   }
+  useEffect(() => {
+    if (!bootOverlayExiting) return;
+    const timer = setTimeout(() => setBootOverlayExiting(false), OVERLAY_EXIT_MS);
+    return () => clearTimeout(timer);
+  }, [bootOverlayExiting]);
+
+  // Rendered beside the app (not instead of it), so it is not remounted when it starts exiting.
+  const bootOverlay = (store.isAuthChecking || bootOverlayExiting) && (
+    <AscendLoadingOverlay
+      message="Verifying session..."
+      submessage="Preparing your personal growth workspace"
+      entrance="boot"
+      exiting={!store.isAuthChecking}
+    />
+  );
 
   const currentUser = store.state.currentUser;
   const isUnauthenticated = !currentUser;
   const authModalOpen = isUnauthenticated || userOpenedAuthModal;
 
   return (
-    <ToastProvider>
-      <UpdateBanner />
-      <OfflineBanner />
-      <AppShell
-        currentView={view}
-        onViewChange={setView}
-        store={store}
-        onOpenAuthModal={() => setUserOpenedAuthModal(true)}
-      >
-        <ErrorBoundary fallbackTitle="Section Error">
-          {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
-          {view === 'habits' && <HabitTracker store={store} />}
-          {view === 'time-tracker' && <TimeTrackerView store={store} onNavigate={setView} />}
-          {view === 'weekly-goals' && <WeeklyGoalsView store={store} />}
-          {view === 'projects-goals' && (
-            <ProjectsGoalsView
-              store={store}
-              onStartFocusSession={(taskTitle) => {
-                sessionStorage.setItem('ascend_pending_focus_task', taskTitle);
-                setView('prefrontal');
-              }}
-            />
-          )}
-          {view === 'journal' && <Journal store={store} />}
-          {view === 'exercise' && <ExerciseTracker store={store} />}
-          {(view === 'reading' || view === 'books') && <ReadingHub store={store} />}
-          {view === 'skills' && <SkillTracker store={store} />}
-          {view === 'bad-habits' && <BadHabitTracker store={store} />}
-          {view === 'recovery' && <AddictionRecovery store={store} />}
-          {view === 'prefrontal' && <PrefrontalCortex store={store} onNavigate={setView} />}
-          {view === 'plans' && <ImprovementPlans store={store} />}
-          {view === 'partner' && <AccountabilityPartner store={store} />}
-          {view === 'tiers' && <TierView store={store} />}
-          {view === 'leagues' && <Leagues store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
-          {view === 'lessons' && <Lessons store={store} />}
-          {view === 'neuroplasticity' && <Neuroplasticity onViewChange={setView} />}
-          {view === 'settings' && <SettingsView store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
-        </ErrorBoundary>
-      </AppShell>
+    <>
+      {!store.isAuthChecking && (
+        <ToastProvider>
+          <UpdateBanner />
+          <OfflineBanner />
+          <AppShell
+            currentView={view}
+            onViewChange={setView}
+            store={store}
+            onOpenAuthModal={() => setUserOpenedAuthModal(true)}
+          >
+            <ErrorBoundary fallbackTitle="Section Error">
+              {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+              {view === 'habits' && <HabitTracker store={store} />}
+              {view === 'time-tracker' && <TimeTrackerView store={store} onNavigate={setView} />}
+              {view === 'weekly-goals' && <WeeklyGoalsView store={store} />}
+              {view === 'projects-goals' && (
+                <ProjectsGoalsView
+                  store={store}
+                  onStartFocusSession={(taskTitle) => {
+                    sessionStorage.setItem('ascend_pending_focus_task', taskTitle);
+                    setView('prefrontal');
+                  }}
+                />
+              )}
+              {view === 'journal' && <Journal store={store} />}
+              {view === 'exercise' && <ExerciseTracker store={store} />}
+              {(view === 'reading' || view === 'books') && <ReadingHub store={store} />}
+              {view === 'skills' && <SkillTracker store={store} />}
+              {view === 'bad-habits' && <BadHabitTracker store={store} />}
+              {view === 'recovery' && <AddictionRecovery store={store} />}
+              {view === 'prefrontal' && <PrefrontalCortex store={store} onNavigate={setView} />}
+              {view === 'plans' && <ImprovementPlans store={store} />}
+              {view === 'partner' && <AccountabilityPartner store={store} />}
+              {view === 'tiers' && <TierView store={store} />}
+              {view === 'leagues' && <Leagues store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+              {view === 'lessons' && <Lessons store={store} />}
+              {view === 'neuroplasticity' && <Neuroplasticity onViewChange={setView} />}
+              {view === 'settings' && <SettingsView store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+            </ErrorBoundary>
+          </AppShell>
 
-      <AuthModal
-        open={authModalOpen}
-        onClose={() => setUserOpenedAuthModal(false)}
-        guestState={store.state}
-      />
+          <AuthModal
+            open={authModalOpen}
+            onClose={() => setUserOpenedAuthModal(false)}
+            onAuthSuccess={() => setUserOpenedAuthModal(true)}
+            guestState={store.state}
+          />
 
-      <ConfirmDeleteModal
-        open={Boolean(store.destructiveWipeModal?.open)}
-        onClose={store.handleCancelDestructiveWipe}
-        onConfirm={store.handleConfirmDestructiveWipe}
-        title={store.destructiveWipeModal?.title || 'Confirm Data Removal'}
-        description={store.destructiveWipeModal?.description}
-        confirmText="Yes, Save Changes"
-        isDeleting={store.isSavingDestructiveWipe}
-      />
-    </ToastProvider>
+          <ConfirmDeleteModal
+            open={Boolean(store.destructiveWipeModal?.open)}
+            onClose={store.handleCancelDestructiveWipe}
+            onConfirm={store.handleConfirmDestructiveWipe}
+            title={store.destructiveWipeModal?.title || 'Confirm Data Removal'}
+            description={store.destructiveWipeModal?.description}
+            confirmText="Yes, Save Changes"
+            isDeleting={store.isSavingDestructiveWipe}
+          />
+        </ToastProvider>
+      )}
+      {bootOverlay}
+    </>
   );
 }
 

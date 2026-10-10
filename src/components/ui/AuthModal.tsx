@@ -6,6 +6,9 @@ import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 import { PasswordInput } from './PasswordInput';
 
+/** How long the sign-in/sign-up success screen shows before the modal closes. */
+const AUTH_SUCCESS_MS = 900;
+
 /** Wraps a promise with an 8-second hard timeout. */
 function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
   return Promise.race([
@@ -19,10 +22,12 @@ function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
 interface AuthModalProps {
   open: boolean;
   onClose: () => void;
+  /** Called as the success screen starts; the parent keeps the modal open until onClose. */
+  onAuthSuccess?: () => void;
   guestState: AppState;
 }
 
-export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
+export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModalProps) {
   const isAnonymousUser = Boolean(guestState.currentUser?.isAnonymous);
   const isAuthenticated = Boolean(guestState.currentUser);
 
@@ -40,6 +45,9 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  // Screen switches slide in; the screen shown when the modal opens does not.
+  const [modeSwitched, setModeSwitched] = useState(false);
+  const [successTitle, setSuccessTitle] = useState('');
 
   // Set default mode when modal opens
   useEffect(() => {
@@ -55,6 +63,8 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
       setLoading(false);
       setErrorMsg('');
       setSuccessMsg('');
+      setModeSwitched(false);
+      setSuccessTitle('');
     }
   }, [open, isAnonymousUser, isAuthenticated, guestState.currentUser]);
 
@@ -91,6 +101,23 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
   const guestPoints = guestState.seasonPoints ?? guestState.totalPoints ?? 0;
   const guestHabitsCount = guestState.habits.length;
   const hasGuestData = guestPoints > 0 || guestHabitsCount > 0;
+
+  const switchMode = (next: typeof mode) => {
+    setModeSwitched(true);
+    setMode(next);
+  };
+
+  /** Shows the success screen, then runs `next`. Reduced motion skips straight to `next`. */
+  const finishWithSuccess = async (title: string, next: () => void) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      next();
+      return;
+    }
+    onAuthSuccess?.();
+    setSuccessTitle(title);
+    await new Promise((resolve) => setTimeout(resolve, AUTH_SUCCESS_MS));
+    next();
+  };
 
   const handleGuestSignIn = async () => {
     setErrorMsg('');
@@ -141,7 +168,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
         }
 
         await withTimeout(upgradeAnonymousUser(email, password, username, avatar));
-        window.location.reload();
+        await finishWithSuccess('Progress saved!', () => window.location.reload());
       } else if (mode === 'signup') {
         const check = await isUsernameAvailable(username);
         if (!check.available) {
@@ -166,10 +193,10 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
           return;
         }
 
-        onClose();
+        await finishWithSuccess('Welcome to Ascend!', onClose);
       } else {
         await withTimeout(loginUser(email, password));
-        onClose();
+        await finishWithSuccess('Welcome back!', onClose);
       }
     } catch (err: unknown) {
       const authErr = err as { code?: string; status?: number; message?: string };
@@ -232,9 +259,20 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
           </div>
         )}
 
+        {/* Success screen after sign-in / sign-up / upgrade, shown until the modal closes */}
+        {successTitle && (
+          <div className="flex flex-col items-center text-center py-8" role="status">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center animate-pop">
+              <Check size={30} className="text-success-text" />
+            </div>
+            <p className="mt-4 text-base font-display font-bold text-content-primary animate-enter-up">{successTitle}</p>
+            <p className="mt-1 text-xs text-content-muted animate-enter-up">Opening your workspace...</p>
+          </div>
+        )}
+
         {/* 1. MANDATORY LANDING CHOICE SCREEN (3 Stacked Buttons, NO Form Fields) */}
-        {mode === 'choice' && (
-          <div className="space-y-4 py-2">
+        {mode === 'choice' && !successTitle && (
+          <div className={`space-y-4 py-2 ${modeSwitched ? 'animate-slide-in-left' : ''}`}>
             <div className="text-center space-y-1">
               {/* Torch chip: a self-contained dark badge, intentionally the same in both themes. */}
               <img src="/logo-torch.svg" alt="Ascend Logo" className="w-20 h-20 rounded-[22%] mx-auto shadow-lg shadow-emerald-500/20 mb-3 object-cover" />
@@ -250,7 +288,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               {/* Option 1: Sign Up */}
               <button
                 type="button"
-                onClick={() => { setMode('signup'); resetForm(); }}
+                onClick={() => { switchMode('signup'); resetForm(); }}
                 className="w-full p-4 bg-primary-500 hover:bg-primary-600 text-on-brand rounded-2xl shadow-xl transition-all flex items-center justify-between group border border-primary-400/30"
               >
                 <div className="text-left">
@@ -267,7 +305,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               {/* Option 2: Login */}
               <button
                 type="button"
-                onClick={() => { setMode('login'); resetForm(); }}
+                onClick={() => { switchMode('login'); resetForm(); }}
                 className="w-full p-4 bg-bg-800 hover:bg-bg-700 text-content-primary rounded-2xl border border-overlay-default transition-all flex items-center justify-between group hover:border-overlay-strong"
               >
                 <div className="text-left">
@@ -304,13 +342,13 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
         )}
 
         {/* 2. SUB-VIEW FORMS (Sign Up / Login / Upgrade) */}
-        {mode !== 'choice' && (
-          <div className="space-y-4">
+        {mode !== 'choice' && !successTitle && (
+          <div className={`space-y-4 ${modeSwitched ? 'animate-slide-in-right' : ''}`}>
             {/* Header with Back to Options button for unauthenticated users */}
             {!isAuthenticated && (
               <button
                 type="button"
-                onClick={() => setMode('choice')}
+                onClick={() => switchMode('choice')}
                 className="text-xs font-semibold text-content-muted hover:text-content-secondary flex items-center gap-1.5 transition-colors py-1"
               >
                 <ArrowLeft size={14} />
