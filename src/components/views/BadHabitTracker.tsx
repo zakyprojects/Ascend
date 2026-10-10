@@ -25,6 +25,7 @@ import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { EmptyState } from '@/components/ui/primitives';
 import { getBadHabitSlot } from '@/lib/badHabitEligibility';
 import { getCapStatus } from '@/lib/capStatus';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 export function BadHabitTracker({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -299,7 +300,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                       <button
                         onClick={() => setDeleteModalHabit(bh)}
                         aria-label="Delete bad habit"
-                        className="p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all"
+                        className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
                         title="Delete Bad Habit (resist points and today's Occurred penalty are reversed; earlier penalties stay)"
                       >
                         <Trash2 size={16} />

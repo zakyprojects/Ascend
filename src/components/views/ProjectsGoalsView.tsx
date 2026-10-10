@@ -50,6 +50,7 @@ import {
 import { todayKey, weekKey, formatDateLong, formatDateShort } from '@/lib/dates';
 import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
 import { useCompletionPop } from '@/lib/useCompletionPop';
+import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 
 type SubViewTab = 'goals' | 'projects' | 'tasks';
 
@@ -247,7 +248,7 @@ function TaskItemRow({
 
           <button
             onClick={() => openEditTaskModal(task)}
-            className="p-1.5 text-content-muted hover:text-content-secondary transition-colors"
+            className={`p-1.5 text-content-muted hover:text-content-secondary transition-colors ${TAP_TARGET_Y}`}
             title="Edit Task"
             aria-label={`Edit task "${task.title}"`}
           >
@@ -256,7 +257,7 @@ function TaskItemRow({
 
           <button
             onClick={() => setDeleteTaskTarget(task)}
-            className="p-1.5 text-content-muted hover:text-rose-theme transition-colors"
+            className={`p-1.5 text-content-muted hover:text-rose-theme transition-colors ${TAP_TARGET_Y}`}
             title="Delete Task"
             aria-label={`Delete task "${task.title}"`}
           >
@@ -323,7 +324,7 @@ function TaskItemRow({
 
                 <button
                   onClick={() => setDeleteSubtaskTarget({ taskId: task.id, subtask: st })}
-                  className="p-1 text-content-disabled hover:text-rose-theme transition-all"
+                  className={`p-1 text-content-disabled hover:text-rose-theme transition-all ${TAP_TARGET}`}
                   title="Delete Subtask"
                 >
                   <Trash2 size={12} />
@@ -1694,7 +1695,7 @@ export function ProjectsGoalsView({
                         <div className="flex items-center gap-0.5 shrink-0">
                           <button
                             onClick={() => openEditGoalModal(goal)}
-                            className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors"
+                            className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors ${TAP_TARGET_Y}`}
                             title="Edit Goal"
                             aria-label={`Edit goal "${goal.title}"`}
                           >
@@ -1702,7 +1703,7 @@ export function ProjectsGoalsView({
                           </button>
                           <button
                             onClick={() => setDeleteGoalTarget(goal)}
-                            className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors"
+                            className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors ${TAP_TARGET_Y}`}
                             title="Delete Goal"
                             aria-label={`Delete goal "${goal.title}"`}
                           >
@@ -1761,7 +1762,7 @@ export function ProjectsGoalsView({
                             type="button"
                             onClick={() => handleUpdateGoalManualProgress(goal, prog.percent - 5)}
                             disabled={prog.percent <= 0}
-                            className="w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default"
+                            className={`w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default ${TAP_TARGET}`}
                             title="Decrease 5%"
                             aria-label={`Decrease progress for "${goal.title}"`}
                           >
@@ -1787,7 +1788,7 @@ export function ProjectsGoalsView({
                             type="button"
                             onClick={() => handleUpdateGoalManualProgress(goal, prog.percent + 5)}
                             disabled={prog.percent >= 100}
-                            className="w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default"
+                            className={`w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default ${TAP_TARGET}`}
                             title="Increase 5%"
                             aria-label={`Increase progress for "${goal.title}"`}
                           >
@@ -1831,7 +1832,7 @@ export function ProjectsGoalsView({
                 </button>
                 <button
                   onClick={() => setFilterGoalId(null)}
-                  className="p-1 text-content-muted hover:text-content-secondary"
+                  className={`p-1 text-content-muted hover:text-content-secondary ${TAP_TARGET}`}
                   title="Clear Filter"
                 >
                   <X size={14} />
@@ -2079,7 +2080,7 @@ export function ProjectsGoalsView({
                             <button
                               type="button"
                               onClick={() => store.moveProjectOrder(project.id, 'up')}
-                              className="p-1 text-content-muted hover:text-content-secondary hover:bg-overlay-default rounded-lg transition-colors"
+                              className={`p-1 text-content-muted hover:text-content-secondary hover:bg-overlay-default rounded-lg transition-colors ${TAP_TARGET_Y}`}
                               title="Move Up in sequence"
                             >
                               <ChevronUp size={14} />
@@ -2087,7 +2088,7 @@ export function ProjectsGoalsView({
                             <button
                               type="button"
                               onClick={() => store.moveProjectOrder(project.id, 'down')}
-                              className="p-1 text-content-muted hover:text-content-secondary hover:bg-overlay-default rounded-lg transition-colors"
+                              className={`p-1 text-content-muted hover:text-content-secondary hover:bg-overlay-default rounded-lg transition-colors ${TAP_TARGET_Y}`}
                               title="Move Down in sequence"
                             >
                               <ChevronDown size={14} />
@@ -2131,7 +2132,7 @@ export function ProjectsGoalsView({
                         <div className="flex items-center gap-0.5 shrink-0">
                           <button
                             onClick={() => openEditProjectModal(project)}
-                            className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors"
+                            className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors ${TAP_TARGET_Y}`}
                             title="Edit Project"
                             aria-label={`Edit project "${project.title}"`}
                           >
@@ -2139,7 +2140,7 @@ export function ProjectsGoalsView({
                           </button>
                           <button
                             onClick={() => setDeleteProjectTarget(project)}
-                            className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors"
+                            className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors ${TAP_TARGET_Y}`}
                             title="Delete Project"
                             aria-label={`Delete project "${project.title}"`}
                           >
@@ -2205,7 +2206,7 @@ export function ProjectsGoalsView({
                             type="button"
                             onClick={() => handleUpdateProjectManualProgress(project, prog.percent - 5)}
                             disabled={prog.percent <= 0 || lockStatus.isLocked}
-                            className="w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default"
+                            className={`w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default ${TAP_TARGET}`}
                             title="Decrease 5%"
                           >
                             <Minus size={12} />
@@ -2230,7 +2231,7 @@ export function ProjectsGoalsView({
                             type="button"
                             onClick={() => handleUpdateProjectManualProgress(project, prog.percent + 5)}
                             disabled={prog.percent >= 100 || lockStatus.isLocked}
-                            className="w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default"
+                            className={`w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default ${TAP_TARGET}`}
                             title="Increase 5%"
                           >
                             <Plus size={12} />
@@ -2276,7 +2277,7 @@ export function ProjectsGoalsView({
                     </button>
                     <button
                       onClick={() => setFilterProjectId(null)}
-                      className="p-1 text-content-muted hover:text-content-secondary"
+                      className={`p-1 text-content-muted hover:text-content-secondary ${TAP_TARGET}`}
                       title="Clear Filter"
                     >
                       <X size={14} />
@@ -2881,7 +2882,7 @@ export function ProjectsGoalsView({
                   <button
                     type="button"
                     onClick={() => setTaskFormSubtasks((prev) => prev.filter((_, i) => i !== idx))}
-                    className="text-content-muted hover:text-rose-theme p-1"
+                    className={`text-content-muted hover:text-rose-theme p-1 ${TAP_TARGET}`}
                     aria-label={`Remove subtask "${st.title}"`}
                   >
                     <Trash2 size={12} />

@@ -578,7 +578,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         <button
                           onClick={() => setDeleteModalBook(book)}
                           aria-label="Remove book"
-                          className="p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all shrink-0"
+                          className={`p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all shrink-0 ${TAP_TARGET}`}
                           title="Remove Book"
                         >
                           <Trash2 size={16} />
@@ -866,7 +866,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       <button
                         onClick={() => setDeleteModalBook(book)}
                         aria-label="Remove book"
-                        className="p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all"
+                        className={`p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
                         title="Remove Book"
                       >
                         <Trash2 size={16} />

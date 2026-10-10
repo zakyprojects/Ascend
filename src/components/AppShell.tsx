@@ -25,6 +25,7 @@ import { AppStore } from '@/lib/store';
 import { GuestLogoutWarningModal } from './ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from './ui/LogoutConfirmModal';
 import { NotificationCenter } from './ui/NotificationCenter';
+import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 
 export type View =
   | 'dashboard'
@@ -168,14 +169,14 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
                     currentView === 'settings'
                       ? 'bg-primary-500/20 text-brand-text border border-primary-500/30'
                       : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
-                  }`}
+                  } ${TAP_TARGET_Y}`}
                 >
                   <Settings size={15} />
                 </button>
                 <button
                   onClick={handleLogoutClick}
                   title="Log Out"
-                  className="p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-all"
+                  className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET_Y}`}
                 >
                   <LogOut size={15} />
                 </button>

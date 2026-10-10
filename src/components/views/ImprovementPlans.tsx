@@ -43,6 +43,7 @@ import { getProfilePointsByUsername, getProfileSeasonPointsByUsername } from '@/
 import { leagueNow } from '@/lib/leagueTime';
 import { isTodayLocal, calculateActivePlanStreak, formatDateShort, parseDate } from '@/lib/dates';
 import { STARTER_TEMPLATES } from '@/data/planTemplates';
+import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 
 function ExpandableDescription({ text }: { text: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -760,7 +761,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               setEditingNoteId({ ...editingNoteId, [noteKey]: !isEditingThisNote });
                               setEditingNoteText({ ...editingNoteText, [noteKey]: n.note });
                             }}
-                            className="text-content-muted hover:text-purple-hierarchy transition-colors"
+                            className={`text-content-muted hover:text-purple-hierarchy transition-colors ${TAP_TARGET_Y}`}
                             title="Edit Note"
                             aria-label="Edit reflection note"
                           >
@@ -768,7 +769,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           </button>
                           <button
                             onClick={() => setNoteToDelete({ planId, noteKey, mode })}
-                            className="text-content-muted hover:text-rose-theme transition-colors"
+                            className={`text-content-muted hover:text-rose-theme transition-colors ${TAP_TARGET_Y}`}
                             title="Delete Note"
                             aria-label="Delete reflection note"
                           >
@@ -1042,7 +1043,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       store.completeFollowedPlanStep(planId, step.id);
                     }
                   }}
-                  className="text-content-disabled hover:text-success-text transition-colors"
+                  className={`text-content-disabled hover:text-success-text transition-colors ${TAP_TARGET}`}
                   aria-label={step.completed ? `Mark step "${step.title}" incomplete` : `Mark step "${step.title}" complete`}
                 >
                   {step.completed ? (
@@ -1184,7 +1185,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                 plan.isPublic
                                   ? 'text-blue-theme hover:bg-blue-500/20'
                                   : 'text-content-disabled hover:text-content-tertiary hover:bg-bg-700'
-                              }`}
+                              } ${TAP_TARGET_Y}`}
                               title={plan.isPublic ? 'Make Private' : 'Make Public'}
                               aria-label={plan.isPublic ? `Make "${plan.title}" private` : `Make "${plan.title}" public`}
                             >
@@ -1200,7 +1201,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             {/* Pencil Edit Icon */}
                             <button
                               onClick={() => handleOpenEdit(plan)}
-                              className="p-1.5 rounded text-content-muted hover:text-blue-theme hover:bg-bg-700 transition-colors"
+                              className={`p-1.5 rounded text-content-muted hover:text-blue-theme hover:bg-bg-700 transition-colors ${TAP_TARGET_Y}`}
                               title="Edit Structure"
                               aria-label={`Edit structure of "${plan.title}"`}
                             >
@@ -1210,7 +1211,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             {/* Trash Delete Icon */}
                             <button
                               onClick={() => setPlanToDelete(plan)}
-                              className="p-1.5 rounded text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors"
+                              className={`p-1.5 rounded text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET_Y}`}
                               title="Delete Plan"
                               aria-label={`Delete plan "${plan.title}"`}
                             >
@@ -1449,7 +1450,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                   plan.isPublic
                                     ? 'text-blue-theme hover:bg-blue-500/20'
                                     : 'text-content-disabled hover:text-content-tertiary hover:bg-bg-700'
-                                }`}
+                                } ${TAP_TARGET_Y}`}
                                 title={plan.isPublic ? 'Make Private' : 'Make Public'}
                                 aria-label={plan.isPublic ? `Make "${plan.title}" private` : `Make "${plan.title}" public`}
                               >
@@ -1463,7 +1464,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               </button>
                               <button
                                 onClick={() => handleOpenEdit(plan)}
-                                className="p-1.5 rounded text-content-muted hover:text-blue-theme hover:bg-bg-700 transition-colors"
+                                className={`p-1.5 rounded text-content-muted hover:text-blue-theme hover:bg-bg-700 transition-colors ${TAP_TARGET_Y}`}
                                 title="Edit Structure"
                                 aria-label={`Edit structure of "${plan.title}"`}
                               >
@@ -1471,7 +1472,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               </button>
                               <button
                                 onClick={() => setPlanToDelete(plan)}
-                                className="p-1.5 rounded text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors"
+                                className={`p-1.5 rounded text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET_Y}`}
                                 title="Delete Plan"
                                 aria-label={`Delete plan "${plan.title}"`}
                               >
@@ -1739,7 +1740,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       <button
                         type="button"
                         onClick={() => handleRemoveStepField(idx)}
-                        className="text-content-subtle hover:text-rose-theme p-1"
+                        className={`text-content-subtle hover:text-rose-theme p-1 ${TAP_TARGET}`}
                         aria-label={`Remove step "${step}"`}
                       >
                         <Trash2 size={15} />
@@ -1982,7 +1983,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       <button
                         type="button"
                         onClick={() => setEditSteps(editSteps.filter((_, i) => i !== idx))}
-                        className="text-content-subtle hover:text-rose-theme p-1"
+                        className={`text-content-subtle hover:text-rose-theme p-1 ${TAP_TARGET}`}
                         aria-label={`Remove step "${step}"`}
                       >
                         <Trash2 size={15} />

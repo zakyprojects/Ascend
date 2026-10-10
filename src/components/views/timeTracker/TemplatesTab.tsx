@@ -38,6 +38,7 @@ import {
   AlertTriangle,
   RotateCcw,
 } from 'lucide-react';
+import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 
 interface TemplatesTabProps {
   store: AppStore;
@@ -302,7 +303,7 @@ export function TemplatesTab({
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => onOpenEditTemplateModal(tpl)}
-                        className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer"
+                        className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
                         title="Edit Template"
                         aria-label="Edit template"
                       >
@@ -310,7 +311,7 @@ export function TemplatesTab({
                       </button>
                       <button
                         onClick={() => setDeleteTargetTemplate(tpl)}
-                        className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                        className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
                         title="Delete Template"
                         aria-label="Delete template"
                       >

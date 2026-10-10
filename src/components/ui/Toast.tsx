@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -147,7 +148,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               </div>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="p-1 rounded-lg text-content-muted hover:text-content-primary hover:bg-overlay-subtle transition-colors"
+                className={`p-1 rounded-lg text-content-muted hover:text-content-primary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
                 aria-label="Dismiss toast"
               >
                 <X size={14} />

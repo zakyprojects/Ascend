@@ -35,6 +35,7 @@ import {
 } from '@/lib/dates';
 import { WeeklyGoalItem, WeeklyGoalPriority, WeeklyGoalLinkedModule, WeeklyGoalReflection } from '@/types';
 import { computeLinkedGoalProgress, GoalProgressResult, LINKED_GOAL_METRICS, LinkedModule } from '@/lib/linkedGoalMetrics';
+import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 function GoalItemRow({
   item,
   selectedWeekKey,
@@ -122,7 +123,7 @@ function GoalItemRow({
                 isDone
                   ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
                   : 'bg-bg-800 border-overlay-strong text-content-disabled hover:border-overlay-heavy'
-              }`}
+              } ${TAP_TARGET}`}
             >
               {isDone ? <Check size={14} className={popClass} /> : <Circle size={14} />}
             </button>
@@ -165,7 +166,7 @@ function GoalItemRow({
           <button
             onClick={() => openEditModal(item)}
             disabled={isPastWeek}
-            className="p-1.5 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
+            className={`p-1.5 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
             title="Edit Goal"
             aria-label={`Edit goal "${item.title}"`}
           >
@@ -174,7 +175,7 @@ function GoalItemRow({
           <button
             onClick={() => setDeleteGoalModal(item)}
             disabled={isPastWeek}
-            className="p-1.5 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
+            className={`p-1.5 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
             title="Delete Goal"
             aria-label={`Delete goal "${item.title}"`}
           >
@@ -216,7 +217,7 @@ function GoalItemRow({
                         }
                       }}
                       disabled={isPastWeek || isFutureWeek || prog.current <= 0}
-                      className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors"
+                      className={`p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors ${TAP_TARGET}`}
                       title="Decrement progress"
                       aria-label={`Decrease progress for "${item.title}"`}
                     >
@@ -235,7 +236,7 @@ function GoalItemRow({
                         }
                       }}
                       disabled={isPastWeek || isFutureWeek || prog.current >= prog.target}
-                      className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors"
+                      className={`p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors ${TAP_TARGET}`}
                       title="Increment progress"
                       aria-label={`Increase progress for "${item.title}"`}
                     >
@@ -612,7 +613,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           <div className="flex items-center gap-2 bg-bg-900/60 p-1.5 rounded-xl border border-overlay-subtle self-start md:self-auto">
             <button
               onClick={() => setSelectedWeekKey(offsetWeekKey(selectedWeekKey, -1))}
-              className="p-1.5 rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-800 transition-colors"
+              className={`p-1.5 rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-800 transition-colors ${TAP_TARGET}`}
               title="Previous Week"
               aria-label="Previous week"
             >
@@ -628,7 +629,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
             <button
               onClick={() => setSelectedWeekKey(offsetWeekKey(selectedWeekKey, 1))}
-              className="p-1.5 rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-800 transition-colors"
+              className={`p-1.5 rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-800 transition-colors ${TAP_TARGET}`}
               title="Next Week"
               aria-label="Next week"
             >
@@ -962,7 +963,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                         setEditReflectionContent(ref.content);
                       }}
                       disabled={isPastWeek || isFutureWeek}
-                      className="p-1 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
+                      className={`p-1 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
                       title="Edit reflection"
                       aria-label="Edit reflection"
                     >
@@ -971,7 +972,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                     <button
                       onClick={() => setDeleteReflectionModal(ref)}
                       disabled={isPastWeek || isFutureWeek}
-                      className="p-1 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
+                      className={`p-1 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
                       title="Delete reflection"
                       aria-label="Delete reflection"
                     >

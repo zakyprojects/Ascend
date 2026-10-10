@@ -969,7 +969,7 @@ export function Journal({ store }: { store: AppStore }) {
                         e.stopPropagation();
                         setDeleteModalEntry(entry);
                       }}
-                      className="text-content-subtle hover:text-rose-theme p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
+                      className={`text-content-subtle hover:text-rose-theme p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
                       title="Delete Journal Entry"
                       aria-label="Delete journal entry"
                     >

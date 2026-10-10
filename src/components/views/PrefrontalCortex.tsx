@@ -58,6 +58,7 @@ import { ActivityIcon } from './timeTracker/ActivityIcon';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 type PFCTab = 'focus' | 'decision' | 'emotion';
 
@@ -2171,7 +2172,7 @@ function FocusTimerSubmodule({
                       </span>
                       <button
                         onClick={() => setDeleteModalLog(log)}
-                        className="text-content-subtle hover:text-rose-theme p-1 transition-colors shrink-0"
+                        className={`text-content-subtle hover:text-rose-theme p-1 transition-colors shrink-0 ${TAP_TARGET}`}
                         title="Delete Focus Session Log"
                         aria-label="Delete focus session log"
                       >
@@ -2505,7 +2506,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                 </div>
                 <button
                   onClick={() => setDeleteModalDecision(d)}
-                  className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
+                  className={`text-content-subtle hover:text-rose-theme p-1 transition-colors ${TAP_TARGET}`}
                   title="Delete Decision Journal Entry"
                   aria-label="Delete decision entry"
                 >
@@ -2739,7 +2740,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setDeleteModalEmotion(l)}
-                  className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
+                  className={`text-content-subtle hover:text-rose-theme p-1 transition-colors ${TAP_TARGET}`}
                   title="Delete Emotion Log"
                   aria-label="Delete emotion log"
                 >

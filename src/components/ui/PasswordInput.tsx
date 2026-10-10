@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock } from 'lucide-react';
+import { TAP_AREA } from '@/components/ui/primitives/shared';
 
 export interface PasswordInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
@@ -55,7 +56,7 @@ export function PasswordInput({
           tabIndex={-1}
           onClick={() => setShowPassword((prev) => !prev)}
           aria-label={showPassword ? 'Hide password' : 'Show password'}
-          className="absolute inset-y-0 right-0 pr-3 flex items-center text-content-disabled hover:text-content-primary focus:outline-none transition-colors"
+          className={`absolute inset-y-0 right-0 pr-3 flex items-center text-content-disabled hover:text-content-primary focus:outline-none transition-colors ${TAP_AREA}`}
         >
           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>

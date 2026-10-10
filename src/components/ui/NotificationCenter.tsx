@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Bell, Check, CheckCheck, Trash2, X, Award, Users, AlertTriangle, Zap, Info, Calendar, CheckCircle2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { AppNotification } from '@/types';
-import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 
 // Must match AppShell's `lg:` breakpoint, where the bell moves from the mobile
 // header into the desktop sidebar.
@@ -183,7 +183,7 @@ export function NotificationCenter({
                 )}
                 <button
                   onClick={() => setOpen(false)}
-                  className="p-1 text-content-disabled hover:text-content-tertiary rounded-lg hover:bg-overlay-subtle"
+                  className={`p-1 text-content-disabled hover:text-content-tertiary rounded-lg hover:bg-overlay-subtle ${TAP_TARGET}`}
                 >
                   <X size={16} />
                 </button>
@@ -243,7 +243,7 @@ export function NotificationCenter({
                         <button
                           onClick={(e) => handleMarkRead(notif.id, e)}
                           title="Mark as read"
-                          className="p-1 text-content-disabled hover:text-success-text hover:bg-emerald-500/10 rounded-lg transition-all"
+                          className={`p-1 text-content-disabled hover:text-success-text hover:bg-emerald-500/10 rounded-lg transition-all ${TAP_TARGET_Y}`}
                         >
                           <Check size={14} />
                         </button>
@@ -251,7 +251,7 @@ export function NotificationCenter({
                       <button
                         onClick={(e) => handleClear(notif.id, e)}
                         title="Clear notification"
-                        className="p-1 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all"
+                        className={`p-1 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all ${TAP_TARGET_Y}`}
                       >
                         <Trash2 size={14} />
                       </button>

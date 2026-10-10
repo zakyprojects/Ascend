@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from 'lucide-react';
+import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 
 interface ActivitiesTabProps {
   store: AppStore;
@@ -120,7 +121,7 @@ export function ActivitiesTab({
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => onOpenEditActivityModal(act)}
-                  className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer"
+                  className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
                   title="Edit Category"
                   aria-label="Edit category"
                 >
@@ -130,7 +131,7 @@ export function ActivitiesTab({
                 {!act.isSystemDefault && (
                   <button
                     onClick={() => setDeleteTargetActivity(act)}
-                    className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                    className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
                     title="Delete Category"
                     aria-label="Delete category"
                   >

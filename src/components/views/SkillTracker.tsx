@@ -449,7 +449,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                           <button
                             onClick={() => setDeleteModalLog(log)}
                             aria-label="Delete practice log"
-                            className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
+                            className={`text-content-subtle hover:text-rose-theme p-1 transition-colors ${TAP_TARGET}`}
                             title="Delete Practice Session Log"
                           >
                             <Trash2 size={16} />

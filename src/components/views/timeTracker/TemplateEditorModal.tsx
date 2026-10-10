@@ -24,6 +24,7 @@ import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Plus, Trash2, Edit2, Clock, Calendar, AlertTriangle, Layers, Check } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { uid } from '@/lib/dates';
+import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 
 interface TemplateEditorModalProps {
   open: boolean;
@@ -358,7 +359,7 @@ export function TemplateEditorModal({
                         <button
                           type="button"
                           onClick={() => handleOpenEditBlock(block)}
-                          className="p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors cursor-pointer"
+                          className={`p-1.5 rounded-lg text-content-muted hover:text-content-secondary hover:bg-overlay-subtle transition-colors cursor-pointer ${TAP_TARGET_Y}`}
                           title="Edit block"
                           aria-label="Edit block"
                         >
@@ -367,7 +368,7 @@ export function TemplateEditorModal({
                         <button
                           type="button"
                           onClick={() => handleRemoveBlock(block.id)}
-                          className="p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors cursor-pointer ${TAP_TARGET_Y}`}
                           title="Remove block"
                           aria-label="Remove block"
                         >

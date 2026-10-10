@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { EmptyState } from '@/components/ui/primitives';
 import { useCompletionPop } from '@/lib/useCompletionPop';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 export function HabitTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
@@ -417,7 +418,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
         <button
           onClick={onDelete}
           aria-label="Delete habit"
-          className="shrink-0 p-2 rounded-lg text-content-disabled hover:text-error hover:bg-error/10 transition-colors"
+          className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-error hover:bg-error/10 transition-colors ${TAP_TARGET}`}
         >
           <Trash2 size={16} />
         </button>

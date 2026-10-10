@@ -32,7 +32,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
 import { EmptyState, Skeleton } from '@/components/ui/primitives';
-import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { TAP_TARGET, TAP_AREA } from '@/components/ui/primitives/shared';
 import { getCurrentTier } from '@/lib/tiers';
 import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
@@ -1168,7 +1168,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       <button
                         onClick={() => setChallengeToDelete(challenge)}
                         aria-label={`Delete joint pact "${challenge.title}"`}
-                        className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 cursor-pointer"
+                        className={`absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 cursor-pointer ${TAP_AREA}`}
                         title="Delete Joint Pact"
                       >
                         <Trash2 size={16} />
@@ -1414,7 +1414,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           <button
                             onClick={() => setChallengeToDelete(challenge)}
                             aria-label={`Delete pact history "${challenge.title}"`}
-                            className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 cursor-pointer"
+                            className={`absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 cursor-pointer ${TAP_AREA}`}
                             title="Delete Pact History"
                           >
                             <Trash2 size={16} />

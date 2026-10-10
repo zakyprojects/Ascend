@@ -50,6 +50,7 @@ import {
   Coffee,
 } from 'lucide-react';
 import { View } from '@/components/AppShell';
+import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 
 function getLaunchModules(
   primary: TimeTrackerActivity | undefined | null,
@@ -258,7 +259,7 @@ export function ScheduleTab({
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={handlePrevDay}
-            className="p-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-subtle transition-colors cursor-pointer shrink-0"
+            className={`p-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-subtle transition-colors cursor-pointer shrink-0 ${TAP_TARGET}`}
             title="Previous Day"
             aria-label="Previous day"
           >
@@ -277,7 +278,7 @@ export function ScheduleTab({
 
           <button
             onClick={handleNextDay}
-            className="p-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-subtle transition-colors cursor-pointer shrink-0"
+            className={`p-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-subtle transition-colors cursor-pointer shrink-0 ${TAP_TARGET}`}
             title="Next Day"
             aria-label="Next day"
           >
@@ -300,7 +301,7 @@ export function ScheduleTab({
             <button
               onClick={() => setShowClearDayModal(true)}
               disabled={isPastDate}
-              className="p-2 text-xs text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`p-2 text-xs text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded-xl transition-colors cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${TAP_TARGET}`}
               title="Clear Schedule for this Day"
             >
               <RotateCcw size={15} />
@@ -695,7 +696,7 @@ export function ScheduleTab({
                     disabled={isPastDate}
                     aria-label="Edit block"
                     title={isPastDate ? 'Cannot edit past logs' : 'Edit Block'}
-                    className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${TAP_TARGET_Y}`}
                   >
                     <Edit2 size={15} />
                   </button>
@@ -703,7 +704,7 @@ export function ScheduleTab({
                     type="button"
                     onClick={() => setSelectedStripBlockId(null)}
                     aria-label="Close block details"
-                    className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer"
+                    className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
                   >
                     <X size={15} />
                   </button>
@@ -829,7 +830,7 @@ export function ScheduleTab({
                             : block.skipped
                             ? 'text-content-subtle hover:text-content-muted'
                             : 'text-content-disabled hover:text-content-tertiary'
-                        }`}
+                        } ${TAP_TARGET}`}
                         aria-label={block.completed ? 'Mark uncompleted' : block.skipped ? 'Undo skipped' : 'Mark completed'}
                         title={
                           !isSelectedDateToday
@@ -968,7 +969,7 @@ export function ScheduleTab({
                       <button
                         onClick={() => onOpenEditBlockModal(block)}
                         disabled={isPastDate}
-                        className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${TAP_TARGET_Y}`}
                         title="Edit Block"
                         aria-label="Edit block"
                       >
@@ -977,7 +978,7 @@ export function ScheduleTab({
                       <button
                         onClick={() => setDeleteTargetBlock(block)}
                         disabled={isPastDate}
-                        className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${TAP_TARGET_Y}`}
                         title="Delete Block"
                         aria-label="Delete block"
                       >
