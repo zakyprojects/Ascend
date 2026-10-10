@@ -382,6 +382,23 @@
     overscroll-behavior-y: none;
   }
 
+  /* Custom arrow cursor (same as TradeEdge, Zakria 2026-10-10): filled, tilted arrow with a
+     contrasting outline. Mouse/trackpad only; links/buttons keep the hand, disabled keeps
+     not-allowed, text fields keep the caret. */
+  @media (pointer: fine) {
+    html {
+      --cursor-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='2 2 25 25'%3E%3Cpath d='M7.79 5.60 L21.21 10.90 Q24.00 12.00 21.12 12.86 L18.83 13.54 Q14.60 14.80 13.25 18.94 L12.53 21.15 Q11.60 24.00 10.64 21.16 L5.96 7.34 Q5.00 4.50 7.79 5.60 Z' fill='%23f4f2ec' stroke='%230b0d12' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E") 3 3;
+      cursor: var(--cursor-arrow), auto;
+    }
+    html[data-theme='light'] {
+      --cursor-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='2 2 25 25'%3E%3Cpath d='M7.79 5.60 L21.21 10.90 Q24.00 12.00 21.12 12.86 L18.83 13.54 Q14.60 14.80 13.25 18.94 L12.53 21.15 Q11.60 24.00 10.64 21.16 L5.96 7.34 Q5.00 4.50 7.79 5.60 Z' fill='%2314110a' stroke='%23ffffff' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E") 3 3;
+    }
+    /* Explicit "not clickable" spots would otherwise fall back to the system arrow. */
+    html .cursor-default {
+      cursor: var(--cursor-arrow), default;
+    }
+  }
+
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
