@@ -118,7 +118,7 @@ export function OfflineBanner() {
   if (!isOnline) {
     return (
       <div
-        className="fixed top-2 left-1/2 -translate-x-1/2 z-[9995] max-w-lg w-[calc(100%-2rem)] bg-amber-500/15 border border-amber-500/30 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-lg flex items-center justify-between gap-3 animate-slide-down"
+        className="fixed top-[calc(0.5rem_+_env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[9995] max-w-lg w-[calc(100%-2rem)] bg-amber-500/15 border border-amber-500/30 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-lg flex items-center justify-between gap-3 animate-slide-down"
         role="alert"
         aria-live="assertive"
       >
@@ -143,7 +143,7 @@ export function OfflineBanner() {
   if (showRestored) {
     return (
       <div
-        className="fixed top-2 left-1/2 -translate-x-1/2 z-[9995] max-w-lg w-[calc(100%-2rem)] bg-emerald-500/15 border border-emerald-500/30 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-3 animate-slide-down"
+        className="fixed top-[calc(0.5rem_+_env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[9995] max-w-lg w-[calc(100%-2rem)] bg-emerald-500/15 border border-emerald-500/30 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-3 animate-slide-down"
         role="status"
       >
         <div className="p-1.5 rounded-lg bg-emerald-500/20 shrink-0 text-success-text">
