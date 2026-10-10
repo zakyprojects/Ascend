@@ -507,6 +507,53 @@
     display: block;
   }
 
+  /* Branded loader (see AscendLoaderMark in AscendLoadingIndicator.tsx): solid chip colours per theme. */
+  .ascend-loader {
+    --al-chip: #112725;
+    --al-chip-border: #114136;
+    --al-stairs: #059669;
+    --al-steps: #6ee7b7;
+    --al-leg-a-0: #10b981;
+    --al-leg-a-1: #6ee7b7;
+    --al-leg-b-0: #34d399;
+    --al-leg-b-1: #059669;
+  }
+  [data-theme='light'] .ascend-loader {
+    --al-chip: #cdf2e5;
+    --al-chip-border: #9fdfc6;
+    --al-stairs: #047857;
+    --al-steps: #10b981;
+    --al-leg-a-0: #047857;
+    --al-leg-a-1: #10b981;
+    --al-leg-b-0: #059669;
+    --al-leg-b-1: #065f46;
+  }
+  .ascend-loader-chip {
+    fill: var(--al-chip);
+    stroke: var(--al-chip-border);
+  }
+  .ascend-loader-stairs {
+    fill: var(--al-stairs);
+  }
+  .ascend-loader-steps {
+    fill: var(--al-steps);
+  }
+  .ascend-loader-swoosh-base {
+    opacity: 0.4;
+  }
+  .ascend-loader-glint {
+    animation: ascend-loader-glint 1.4s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    /* No sweep; a slow pulse keeps the loader from reading as frozen. */
+    .ascend-loader-glint {
+      display: none;
+    }
+    .ascend-loader-swoosh-base {
+      animation: ascend-loader-pulse 2s ease-in-out infinite;
+    }
+  }
+
   .glass {
     @apply bg-bg-800/80 backdrop-blur-xl border border-overlay-subtle;
   }
@@ -870,14 +917,33 @@
 }
 
 /* Reduced motion: one global switch for every animation and transition in the app.
-   Loading spinners keep turning, since a frozen spinner reads as a hung app. */
+   Loading spinners and the branded loader's pulse keep moving, since a frozen loader reads as a hung app. */
 @media (prefers-reduced-motion: reduce) {
-  *:not(.animate-spin),
+  *:not(.animate-spin):not(.ascend-loader-swoosh-base),
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@keyframes ascend-loader-glint {
+  from {
+    transform: translateX(-80px);
+  }
+  to {
+    transform: translateX(80px);
+  }
+}
+
+@keyframes ascend-loader-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.85;
   }
 }
