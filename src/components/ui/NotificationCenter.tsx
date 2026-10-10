@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Bell, Check, CheckCheck, Trash2, X, Award, Users, AlertTriangle, Zap, Info, Calendar, CheckCircle2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { AppNotification } from '@/types';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 interface NotificationCenterProps {
   store: AppStore;
@@ -135,7 +136,7 @@ export function NotificationCenter({
           {/* Backdrop — covers entire screen */}
           <div
             style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
-            className="bg-bg-950/60 backdrop-blur-xs md:bg-transparent md:backdrop-blur-none"
+            className="bg-black/60 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none"
             onClick={() => setOpen(false)}
           />
 
@@ -269,7 +270,7 @@ export function NotificationCenter({
         ref={buttonRef}
         onClick={handleToggle}
         title="Notifications"
-        className={`relative p-2 rounded-xl transition-all ${
+        className={`p-2 rounded-xl transition-all ${TAP_TARGET} ${
           open
             ? 'bg-primary-500/20 text-brand-text border border-primary-500/30'
             : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'

@@ -10,6 +10,11 @@ function withOpacityValue(varName) {
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ['selector', '[data-theme="dark"]'],
+  future: {
+    // Apply hover: utilities only on devices that can truly hover, so a tap
+    // on touch screens never leaves a stuck hover state behind.
+    hoverOnlyWhenSupported: true,
+  },
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {

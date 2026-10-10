@@ -235,7 +235,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             return (
               <div key={d.dayLabel} className="flex flex-col items-center h-full justify-end group relative">
                 {/* Tooltip */}
-                <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-bg-700 text-content-secondary text-[10px] px-1.5 py-0.5 rounded border border-overlay-default pointer-events-none whitespace-nowrap z-10">
+                <div className="absolute -top-7 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity bg-bg-700 text-content-secondary text-[10px] px-1.5 py-0.5 rounded border border-overlay-default pointer-events-none whitespace-nowrap z-10">
                   {d.points} pts
                 </div>
                 {/* Bar */}
