@@ -366,6 +366,17 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* iOS Safari auto-zooms into any focused field under 16px. Pinch-zoom is
+     enabled (no user-scalable=no), so keep text fields at 16px on iOS only;
+     other platforms keep their designed sizes. */
+  @supports (-webkit-touch-callout: none) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
+
   body {
     @apply bg-bg-900 text-content-secondary font-sans antialiased;
     overscroll-behavior-y: none;
