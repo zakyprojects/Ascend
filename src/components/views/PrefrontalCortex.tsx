@@ -38,6 +38,7 @@ import { AppStore } from '@/lib/store';
 import { DEFAULT_TIME_TRACKER_ACTIVITIES } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { EmptyState } from '@/components/ui/primitives';
 import {
   todayKey,
   formatDateLong,
@@ -1088,6 +1089,7 @@ function FocusTimerSubmodule({
 
           <button
             onClick={() => setAboutModalOpen(true)}
+            aria-label="About Deep Focus"
             className="btn-ghost text-xs text-cyan-hierarchy hover:bg-cyan-500/10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-500/20"
           >
             <HelpCircle size={15} />
@@ -1144,6 +1146,7 @@ function FocusTimerSubmodule({
                       e.stopPropagation();
                       setShowNotifHint(false);
                     }}
+                    aria-label="Close notification settings hint"
                     className="text-content-muted hover:text-content-primary text-xs px-1"
                   >
                     ✕
@@ -1271,8 +1274,9 @@ function FocusTimerSubmodule({
 
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block text-[11px] font-medium text-content-muted mb-1">Focus Duration (mins)</label>
+                  <label htmlFor="pfc-custom-focus-mins" className="block text-[11px] font-medium text-content-muted mb-1">Focus Duration (mins)</label>
                   <input
+                    id="pfc-custom-focus-mins"
                     type="number"
                     min="1"
                     step="5"
@@ -1283,8 +1287,9 @@ function FocusTimerSubmodule({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-content-muted mb-1">Break Duration (mins)</label>
+                  <label htmlFor="pfc-custom-break-mins" className="block text-[11px] font-medium text-content-muted mb-1">Break Duration (mins)</label>
                   <input
+                    id="pfc-custom-break-mins"
                     type="number"
                     min="1"
                     step="1"
@@ -1306,7 +1311,7 @@ function FocusTimerSubmodule({
 
           {/* Big Timer Display */}
           <div className="py-2">
-            <div className="text-6xl sm:text-7xl font-display font-bold text-content-primary tracking-tight">
+            <div className="text-6xl sm:text-7xl font-display font-bold text-content-primary tracking-tight tabular-nums">
               {formatTime(timeLeft)}
             </div>
             {activeSession && (
@@ -1322,8 +1327,9 @@ function FocusTimerSubmodule({
           {/* Task Tagging Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto text-left">
             <div>
-              <label className="block text-[11px] font-medium text-content-muted mb-1">Task Name</label>
+              <label htmlFor="pfc-task-name" className="block text-[11px] font-medium text-content-muted mb-1">Task Name</label>
               <input
+                id="pfc-task-name"
                 type="text"
                 disabled={!!activeSession}
                 value={taskName}
@@ -1333,8 +1339,9 @@ function FocusTimerSubmodule({
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-content-muted mb-1">Tag Skill (Optional)</label>
+              <label htmlFor="pfc-tag-skill" className="block text-[11px] font-medium text-content-muted mb-1">Tag Skill (Optional)</label>
               <select
+                id="pfc-tag-skill"
                 disabled={!!activeSession}
                 value={selectedSkillId}
                 onChange={(e) => setSelectedSkillId(e.target.value)}
@@ -1357,7 +1364,7 @@ function FocusTimerSubmodule({
                 className={`w-full min-[420px]:w-auto px-6 py-3 rounded-xl font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   isCustom && customFocusMins < 1
                     ? 'bg-bg-600 text-content-disabled cursor-not-allowed shadow-none'
-                    : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-cyan-500/20 hover:from-cyan-600 hover:to-blue-700'
+                    : 'bg-primary-500 hover:bg-primary-600 text-on-brand shadow-sm'
                 }`}
               >
                 <Play size={18} />
@@ -1366,7 +1373,7 @@ function FocusTimerSubmodule({
             ) : isRunning ? (
               <button
                 onClick={handlePauseSession}
-                className="w-full min-[420px]:w-auto px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full min-[420px]:w-auto px-6 py-3 rounded-xl bg-primary-500 hover:bg-primary-600 text-on-brand font-bold text-sm shadow-sm flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Pause size={18} />
                 <span>Pause Timer</span>
@@ -1374,7 +1381,7 @@ function FocusTimerSubmodule({
             ) : (
               <button
                 onClick={handleResumeSession}
-                className="w-full min-[420px]:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 hover:from-cyan-600 hover:to-blue-700 cursor-pointer"
+                className="w-full min-[420px]:w-auto px-6 py-3 rounded-xl bg-primary-500 hover:bg-primary-600 text-on-brand font-bold text-sm shadow-sm flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Play size={18} />
                 <span>Resume Session</span>
@@ -1394,9 +1401,9 @@ function FocusTimerSubmodule({
         /* Live Schedule HUD View (Sync Mode) */
         !isScheduleIgnited ? (
           /* State A: Not Ignited */
-          <div className="card p-8 text-center space-y-6 bg-gradient-to-b from-emerald-500/10 via-bg-800 to-bg-750 border border-emerald-500/30 rounded-2xl relative overflow-hidden shadow-xl">
+          <div className="card p-8 text-center space-y-6 bg-bg-800 border border-emerald-500/30 rounded-2xl relative overflow-hidden shadow-sm">
             <div className="max-w-md mx-auto space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-success-text flex items-center justify-center mx-auto shadow-inner">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-success-text flex items-center justify-center mx-auto">
                 <Flame size={32} className="animate-pulse" />
               </div>
 
@@ -1422,7 +1429,7 @@ function FocusTimerSubmodule({
               <button
                 type="button"
                 onClick={handleIgniteSchedule}
-                className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-on-brand font-bold text-sm shadow-lg shadow-emerald-900/40 flex items-center justify-center gap-2.5 transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                className="w-full py-3.5 px-6 rounded-xl bg-primary-500 hover:bg-primary-600 text-on-brand font-bold text-sm shadow-sm flex items-center justify-center gap-2.5 transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
                 <Flame size={18} className="fill-current text-amber-500" />
                 <span>Ignite Today&apos;s Schedule</span>
@@ -1431,9 +1438,9 @@ function FocusTimerSubmodule({
           </div>
         ) : showStopConfirm ? (
           /* State: Custom Stop Confirmation UI */
-          <div className="card p-8 text-center space-y-6 bg-gradient-to-b from-rose-500/15 via-bg-800 to-bg-750 border border-rose-500/50 rounded-2xl relative overflow-hidden shadow-xl">
+          <div className="card p-8 text-center space-y-6 bg-bg-800 border border-rose-500/50 rounded-2xl relative overflow-hidden shadow-sm">
             <div className="max-w-md mx-auto space-y-5 py-4">
-              <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-theme flex items-center justify-center mx-auto shadow-inner">
+              <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-theme flex items-center justify-center mx-auto">
                 <PowerOff className="animate-pulse" size={32} />
               </div>
 
@@ -1455,7 +1462,7 @@ function FocusTimerSubmodule({
                 <button
                   type="button"
                   onClick={executeStopSync}
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold shadow-lg shadow-rose-900/40 transition-all cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-sm transition-all cursor-pointer"
                 >
                   Yes, Disengage Sync
                 </button>
@@ -1464,7 +1471,7 @@ function FocusTimerSubmodule({
           </div>
         ) : overdueBlock ? (
           /* State D: The Accountability Lock (Overdue Block) */
-          <div className="card p-6 sm:p-8 text-center space-y-6 bg-gradient-to-b from-rose-500/15 via-bg-800 to-bg-750 border-2 border-rose-500/60 relative overflow-hidden rounded-2xl shadow-xl">
+          <div className="card p-6 sm:p-8 text-center space-y-6 bg-bg-800 border-2 border-rose-500/60 relative overflow-hidden rounded-2xl shadow-sm">
             {/* Warning Indicator Banner */}
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-error-text border-b border-rose-500/20 pb-4">
               <div className="flex items-center gap-2">
@@ -1482,6 +1489,7 @@ function FocusTimerSubmodule({
                   type="button"
                   onClick={(e) => handleStopSync(e)}
                   title="Stop Schedule Sync"
+                  aria-label="Stop schedule sync"
                   className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-error-text hover:bg-rose-500/20 border border-rose-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <PowerOff size={13} />
@@ -1492,7 +1500,7 @@ function FocusTimerSubmodule({
 
             {/* Warning Icon & Heading */}
             <div className="space-y-3">
-              <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-theme flex items-center justify-center mx-auto shadow-inner">
+              <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-theme flex items-center justify-center mx-auto">
                 <AlertTriangle size={32} className="animate-pulse text-rose-theme" />
               </div>
 
@@ -1530,7 +1538,7 @@ function FocusTimerSubmodule({
 
             {/* Locked Timer Display */}
             <div className="py-2 space-y-2">
-              <div className="text-6xl sm:text-8xl font-display font-black text-rose-theme tracking-tight drop-shadow-sm font-mono animate-pulse">
+              <div className="text-6xl sm:text-8xl font-display font-black text-rose-theme tracking-tight font-mono animate-pulse">
                 00:00
               </div>
               <p className="text-xs text-rose-theme-muted flex items-center justify-center gap-1.5 font-mono">
@@ -1551,7 +1559,7 @@ function FocusTimerSubmodule({
                     showErrorToast('Failed to Complete Block', err?.message);
                   }
                 }}
-                className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-gradient-to-r from-rose-600 via-rose-500 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-sm shadow-xl shadow-rose-950/80 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer border border-rose-400/40"
+                className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer border border-rose-400/40"
               >
                 <CheckCircle2 size={18} className="text-white shrink-0" />
                 <span>Mark Completed</span>
@@ -1577,10 +1585,10 @@ function FocusTimerSubmodule({
           </div>
         ) : activeBlock ? (
           /* State B: Ignited & Active Block */
-          <div className="card p-6 sm:p-8 text-center space-y-6 bg-gradient-to-b from-emerald-500/10 via-bg-800 to-bg-750 border border-emerald-500/40 relative overflow-hidden rounded-2xl shadow-xl">
+          <div className="card p-6 sm:p-8 text-center space-y-6 bg-bg-800 border border-emerald-500/40 relative overflow-hidden rounded-2xl shadow-sm">
             {/* Live HUD Indicator Banner */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-content-muted border-b border-overlay-subtle pb-4">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-content-muted border-b border-overlay-subtle pb-4">
+              <div className="flex flex-col items-center gap-1 shrink-0 whitespace-nowrap">
                 <span className="badge badge-emerald text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1">
                   <Radio size={12} className="text-success-text animate-pulse" />
                   LIVE TRACKER BLOCK
@@ -1590,7 +1598,7 @@ function FocusTimerSubmodule({
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-auto sm:justify-end">
                 {activeBlock.originalStartTime && (
                   <button
                     type="button"
@@ -1603,7 +1611,7 @@ function FocusTimerSubmodule({
                       }
                     }}
                     title={`Revert start time back to ${formatTime12h(activeBlock.originalStartTime)}`}
-                    className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-warning-text border border-amber-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                    className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-warning-text border border-amber-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm whitespace-nowrap"
                   >
                     <RotateCcw size={13} />
                     <span>Undo Early Start</span>
@@ -1631,7 +1639,7 @@ function FocusTimerSubmodule({
                             setSelectedBreakMinutes(Math.min(5, maxAllowedBreakMinutes));
                             setShowTakeBreakModal(true);
                           }}
-                          className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm ${
+                          className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm whitespace-nowrap ${
                             isBreakDisabled
                               ? 'bg-overlay-subtle text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
                               : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text border border-emerald-500/30 cursor-pointer'
@@ -1659,7 +1667,7 @@ function FocusTimerSubmodule({
                           showErrorToast('Failed to Skip Block', err?.message);
                         }
                       }}
-                      className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-overlay-subtle text-content-muted hover:text-content-secondary hover:bg-overlay-default border border-overlay-default flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-overlay-subtle text-content-muted hover:text-content-secondary hover:bg-overlay-default border border-overlay-default flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
                     >
                       <SkipForward size={13} className="text-content-muted" />
                       <span>Skip Block</span>
@@ -1678,7 +1686,7 @@ function FocusTimerSubmodule({
                           showErrorToast('Failed to Complete Block', err?.message);
                         }
                       }}
-                      className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                         activeBlock.completed
                           ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30'
                           : 'bg-overlay-subtle text-content-tertiary hover:bg-overlay-default border border-overlay-default'
@@ -1694,7 +1702,8 @@ function FocusTimerSubmodule({
                   type="button"
                   onClick={(e) => handleStopSync(e)}
                   title="Stop Schedule Sync"
-                  className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-overlay-subtle hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
+                  aria-label="Stop schedule sync"
+                  className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-overlay-subtle hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer sm:ml-auto whitespace-nowrap"
                 >
                   <PowerOff size={13} />
                   <span className="hidden sm:inline">Stop Sync</span>
@@ -1721,7 +1730,7 @@ function FocusTimerSubmodule({
 
                 {/* Break Countdown */}
                 <div className="py-2 space-y-2">
-                  <div className="text-6xl sm:text-8xl font-display font-black text-success-text tracking-tight drop-shadow-sm font-mono">
+                  <div className="text-6xl sm:text-8xl font-display font-black text-success-text tracking-tight font-mono">
                     {formatSeconds(activeBreakState.remainingBreakSeconds)}
                   </div>
                   <p className="text-xs text-content-muted flex items-center justify-center gap-1.5 font-mono">
@@ -1853,7 +1862,7 @@ function FocusTimerSubmodule({
 
                 {/* Massive Live Countdown */}
                 <div className="py-2 space-y-2">
-                  <div className="text-6xl sm:text-8xl font-display font-black text-success-text tracking-tight drop-shadow-sm font-mono">
+                  <div className="text-6xl sm:text-8xl font-display font-black text-success-text tracking-tight font-mono">
                     {formatSeconds(activeBlockRemainingSeconds)}
                   </div>
                   <p className="text-xs text-content-muted flex items-center justify-center gap-1.5 font-mono">
@@ -1873,7 +1882,7 @@ function FocusTimerSubmodule({
                   </div>
                   <div className="w-full bg-bg-700/80 rounded-full h-2 overflow-hidden border border-overlay-subtle">
                     <div
-                      className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-1000"
+                      className="bg-primary-500 h-full rounded-full transition-all duration-1000"
                       style={{ width: `${activeBlockProgress}%` }}
                     />
                   </div>
@@ -1883,7 +1892,7 @@ function FocusTimerSubmodule({
           </div>
         ) : (
           /* State C: Ignited & Gap/Empty */
-          <div className="card p-6 sm:p-8 text-center space-y-6 bg-gradient-to-b from-bg-800 to-bg-750 border border-overlay-subtle rounded-2xl relative overflow-hidden shadow-xl">
+          <div className="card p-6 sm:p-8 text-center space-y-6 bg-bg-800 border border-overlay-subtle rounded-2xl relative overflow-hidden shadow-sm">
             {/* Top Bar with Status Badge & Stop Sync in normal flow */}
             <div className="flex items-center justify-between gap-3 border-b border-overlay-subtle pb-4 text-xs text-content-muted">
               <div className="flex items-center gap-2">
@@ -1909,6 +1918,7 @@ function FocusTimerSubmodule({
                 type="button"
                 onClick={(e) => handleStopSync(e)}
                 title="Stop Schedule Sync"
+                aria-label="Stop schedule sync"
                 className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-overlay-subtle hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <PowerOff size={13} />
@@ -1954,7 +1964,11 @@ function FocusTimerSubmodule({
                 </div>
 
                 {/* Countdown to Next Block */}
-                <div className="text-5xl sm:text-6xl font-display font-bold text-warning-text font-mono tracking-tight drop-shadow-sm">
+                <div
+                  className={`text-5xl sm:text-6xl font-display font-bold font-mono tracking-tight ${
+                    currentResolvedBlock?.skipped ? 'text-warning-text' : 'text-amber-600 dark:text-amber-400'
+                  }`}
+                >
                   {formatSeconds(gapRemainingSeconds)}
                 </div>
 
@@ -2129,15 +2143,7 @@ function FocusTimerSubmodule({
                 })()}
               </div>
             ) : (
-              <div className="max-w-md mx-auto space-y-3 py-4">
-                <div className="w-12 h-12 rounded-xl bg-bg-700 border border-overlay-default text-content-muted flex items-center justify-center mx-auto">
-                  <CalendarDays size={24} />
-                </div>
-                <h2 className="text-lg font-bold text-content-primary">No Blocks Scheduled Today</h2>
-                <p className="text-xs text-content-muted">
-                  Open the Time Tracker module to apply a recurring blueprint or schedule custom blocks for today.
-                </p>
-              </div>
+              <EmptyState surface={false} icon={CalendarDays} title="No Blocks Scheduled Today" description="Open the Time Tracker module to apply a recurring blueprint or schedule custom blocks for today." />
             )}
           </div>
         )
@@ -2167,6 +2173,7 @@ function FocusTimerSubmodule({
                         onClick={() => setDeleteModalLog(log)}
                         className="text-content-subtle hover:text-rose-theme p-1 transition-colors shrink-0"
                         title="Delete Focus Session Log"
+                        aria-label="Delete focus session log"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -2174,7 +2181,7 @@ function FocusTimerSubmodule({
                   </div>
 
                   {log.reflection && (
-                    <div className="p-2.5 rounded-lg bg-cyan-500/5 border border-cyan-500/15 text-cyan-200 text-[11px] italic break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full min-w-0">
+                    <div className="p-2.5 rounded-lg bg-cyan-500/5 border border-cyan-500/15 text-cyan-hierarchy text-[11px] italic break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full min-w-0">
                       "<span className="not-italic font-medium text-content-tertiary">Reflection:</span> {log.reflection}"
                     </div>
                   )}
@@ -2373,15 +2380,16 @@ function FocusTimerSubmodule({
       {/* Post-Session Reflection Modal */}
       <Modal open={reflectionModalOpen} onClose={() => setReflectionModalOpen(false)} title="Focus Session Completed! 🎉">
         <div className="space-y-4">
-          <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-xs text-cyan-200">
+          <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-xs text-cyan-hierarchy">
             Great job! You logged <strong>{completedSessionData?.durationMinutes} minutes</strong> of focus on <strong>"{completedSessionData?.taskName}"</strong>.
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="pfc-session-reflection" className="block text-xs font-medium text-content-tertiary mb-1">
               Post-Session Reflection (Optional)
             </label>
             <textarea
+              id="pfc-session-reflection"
               value={reflectionText}
               onChange={(e) => setReflectionText(e.target.value)}
               placeholder="What did you accomplish during this focus session? What went well?"
@@ -2479,14 +2487,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
       </div>
 
       {decisionLogs.length === 0 ? (
-        <div className="card p-8 text-center">
-          <Scale size={32} className="mx-auto text-content-subtle mb-2" />
-          <p className="text-sm font-medium text-content-muted">No decisions logged yet</p>
-          <p className="text-xs text-content-disabled mt-1 mb-4">Log key choices, your rationale, and set a future date to review how it played out.</p>
-          <button onClick={() => setModalOpen(true)} className="btn-primary mx-auto">
-            Log Your First Decision
-          </button>
-        </div>
+        <EmptyState icon={Scale} title="No decisions logged yet" description="Log key choices, your rationale, and set a future date to review how it played out." action={<button onClick={() => setModalOpen(true)} className="btn-primary">Log Your First Decision</button>} />
       ) : (
         <div className="space-y-3">
           {decisionLogs.map((d) => (
@@ -2506,6 +2507,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                   onClick={() => setDeleteModalDecision(d)}
                   className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
                   title="Delete Decision Journal Entry"
+                  aria-label="Delete decision entry"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -2523,7 +2525,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
               </div>
 
               {d.reflection ? (
-                <div className="p-3 bg-purple-500/10 rounded-xl text-xs text-purple-200 border border-purple-500/20 break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full min-w-0">
+                <div className="p-3 bg-purple-500/10 rounded-xl text-xs text-purple-hierarchy border border-purple-500/20 break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full min-w-0">
                   <span className="font-bold text-purple-hierarchy block mb-1">Reflection & Learnings:</span>
                   "{d.reflection}"
                 </div>
@@ -2545,8 +2547,9 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Log New Decision">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Decision Title</label>
+            <label htmlFor="pfc-decision-title" className="block text-xs font-medium text-content-muted mb-1">Decision Title</label>
             <input
+              id="pfc-decision-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -2557,8 +2560,9 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Rationale / Why are you deciding this?</label>
+            <label htmlFor="pfc-decision-rationale" className="block text-xs font-medium text-content-muted mb-1">Rationale / Why are you deciding this?</label>
             <textarea
+              id="pfc-decision-rationale"
               value={rationale}
               onChange={(e) => setRationale(e.target.value)}
               placeholder="What context, data, or assumptions led to this decision?"
@@ -2568,8 +2572,9 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Expected Outcome</label>
+            <label htmlFor="pfc-decision-outcome" className="block text-xs font-medium text-content-muted mb-1">Expected Outcome</label>
             <input
+              id="pfc-decision-outcome"
               type="text"
               value={expectedOutcome}
               onChange={(e) => setExpectedOutcome(e.target.value)}
@@ -2579,8 +2584,9 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Date to Revisit</label>
+            <label htmlFor="pfc-decision-revisit-date" className="block text-xs font-medium text-content-muted mb-1">Date to Revisit</label>
             <input
+              id="pfc-decision-revisit-date"
               type="date"
               value={revisitDate}
               onChange={(e) => setRevisitDate(e.target.value)}
@@ -2604,8 +2610,9 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
       <Modal open={!!reflectModalDecision} onClose={() => setReflectModalDecision(null)} title={`Reflect: ${reflectModalDecision?.title}`}>
         <form onSubmit={handleReflectionSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">What actually happened? What did you learn?</label>
+            <label htmlFor="pfc-decision-reflection-notes" className="block text-xs font-medium text-content-muted mb-1">What actually happened? What did you learn?</label>
             <textarea
+              id="pfc-decision-reflection-notes"
               value={reflectionText}
               onChange={(e) => setReflectionText(e.target.value)}
               placeholder="Compare the actual outcome to your expected outcome..."
@@ -2716,14 +2723,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
 
       {/* Emotion Logs List */}
       {emotionLogs.length === 0 ? (
-        <div className="card p-8 text-center">
-          <HeartHandshake size={32} className="mx-auto text-content-subtle mb-2" />
-          <p className="text-sm font-medium text-content-muted">No emotions labeled yet</p>
-          <p className="text-xs text-content-disabled mt-1 mb-4">When experiencing a strong feeling, label it explicitly to calm prefrontal reactivity.</p>
-          <button onClick={() => setModalOpen(true)} className="btn-primary mx-auto">
-            Label Your First Emotion
-          </button>
-        </div>
+        <EmptyState icon={HeartHandshake} title="No emotions labeled yet" description="When experiencing a strong feeling, label it explicitly to calm prefrontal reactivity." action={<button onClick={() => setModalOpen(true)} className="btn-primary">Label Your First Emotion</button>} />
       ) : (
         <div className="space-y-2">
           {emotionLogs.slice(0, 15).map((l) => (
@@ -2741,6 +2741,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
                   onClick={() => setDeleteModalEmotion(l)}
                   className="text-content-subtle hover:text-rose-theme p-1 transition-colors"
                   title="Delete Emotion Log"
+                  aria-label="Delete emotion log"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -2754,8 +2755,8 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Label Strong Emotion">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Select Emotion</label>
-            <select value={emotion} onChange={(e) => setEmotion(e.target.value)} className="input mb-2">
+            <label htmlFor="pfc-emotion-select" className="block text-xs font-medium text-content-muted mb-1">Select Emotion</label>
+            <select id="pfc-emotion-select" value={emotion} onChange={(e) => setEmotion(e.target.value)} className="input mb-2">
               {COMMON_EMOTIONS.map((e) => (
                 <option key={e} value={e}>{e}</option>
               ))}
@@ -2763,6 +2764,8 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
             </select>
             {emotion === 'Other' && (
               <input
+                id="pfc-emotion-custom"
+                aria-label="Custom emotion name"
                 type="text"
                 value={customEmotion}
                 onChange={(e) => setCustomEmotion(e.target.value)}
@@ -2779,6 +2782,8 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
               <span className="font-bold text-rose-theme">{intensity} / 10</span>
             </div>
             <input
+              id="pfc-emotion-intensity"
+              aria-label="Emotion intensity"
               type="range"
               min="1"
               max="10"
@@ -2789,8 +2794,9 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Context / What triggered it?</label>
+            <label htmlFor="pfc-emotion-context" className="block text-xs font-medium text-content-muted mb-1">Context / What triggered it?</label>
             <textarea
+              id="pfc-emotion-context"
               value={context}
               onChange={(e) => setContext(e.target.value)}
               placeholder="e.g. Work deadline pressure, argument with a peer"

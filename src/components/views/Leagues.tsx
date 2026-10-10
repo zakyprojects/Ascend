@@ -58,7 +58,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
       {/* Guest Mode Banner */}
       {(!currentUser || currentUser.isAnonymous) && (
-        <div className="p-4 rounded-xl bg-gradient-to-r from-primary-500/10 via-primary-600/10 to-primary-500/5 border border-primary-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-xl bg-bg-750 border border-primary-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-primary-500/20 flex items-center justify-center shrink-0 text-brand-text">
               <Sparkles size={18} />
@@ -109,7 +109,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
               </div>
               <span
                 className="text-xs font-display font-bold"
-                style={{ color: active ? cfg.color : '#94a3b8' }}
+                style={{ color: active ? cfg.color : 'var(--color-content-muted)' }}
               >
                 {type === 'ninetyDay' ? `90-Day (${getSeasonLabel(now)})` : type === 'monthly' ? 'Monthly' : 'Weekly'}
               </span>

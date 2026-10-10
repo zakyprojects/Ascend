@@ -1,6 +1,7 @@
 import { Modal } from './Modal';
 import { LeagueCompetitor } from '@/types';
 import { TierBadge } from './TierBadge';
+import { EmptyState } from '@/components/ui/primitives';
 import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, ShieldCheck, CheckCircle2, EyeOff, Trophy } from 'lucide-react';
 import { getProfileStreakStats } from '@/lib/streakLogic';
 import { getCurrentTier } from '@/lib/tiers';
@@ -38,7 +39,7 @@ export function CompetitorProfileModal({
         {/* Profile Header */}
         <div className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500/20 to-primary-600/30 border border-primary-500/30 flex items-center justify-center text-3xl shrink-0 shadow-lg">
+            <div className="w-14 h-14 rounded-2xl bg-primary-500/20 border border-primary-500/30 flex items-center justify-center text-3xl shrink-0 shadow-lg">
               {competitor.avatar}
             </div>
             <div className="min-w-0 flex-1">
@@ -197,9 +198,10 @@ export function CompetitorProfileModal({
                   ))}
                 </div>
               ) : (
-                <div className="card p-4 text-center text-xs text-content-disabled">
-                  No active habits shared yet.
-                </div>
+                <EmptyState
+                  size="sm"
+                  title="No active habits shared yet."
+                />
               )}
             </div>
 

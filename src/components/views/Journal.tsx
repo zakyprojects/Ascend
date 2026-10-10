@@ -30,6 +30,8 @@ import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { useToast } from '@/components/ui/Toast';
+import { EmptyState, Tabs } from '@/components/ui/primitives';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { getDailyPrompt, JournalPrompt } from '@/data/journalPrompts';
 
 // Minimum required non-whitespace characters to save an entry
@@ -352,7 +354,7 @@ export function Journal({ store }: { store: AppStore }) {
                   <p className="text-xs text-success-text font-bold">
                     {justCelebrated ? "Reflection saved! Great work today." : "Today's entry saved and confirmed"}
                   </p>
-                  <p className="text-[11px] text-success-text-muted">
+                  <p className="text-[11px] text-success-text">
                     Your mood and daily notes have been recorded in history.
                   </p>
                 </div>
@@ -371,7 +373,7 @@ export function Journal({ store }: { store: AppStore }) {
               <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shadow-inner"
+                    className="w-9 h-9 rounded-xl flex items-center justify-center"
                     style={{ backgroundColor: `${todayMoodConfig.color}20` }}
                   >
                     <TodayMoodIcon size={20} style={{ color: todayMoodConfig.color }} />
@@ -434,7 +436,7 @@ export function Journal({ store }: { store: AppStore }) {
 
             {/* Mood selector */}
             <div>
-              <label className="label mb-2">How are you feeling today?</label>
+              <p className="label mb-2">How are you feeling today?</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {MOODS.map((m) => {
                   const Icon = m.icon;
@@ -453,12 +455,12 @@ export function Journal({ store }: { store: AppStore }) {
                     >
                       <Icon
                         size={26}
-                        style={{ color: selected ? m.color : '#64748b' }}
+                        style={{ color: selected ? m.color : 'var(--color-content-muted)' }}
                         className={`transition-transform ${selected ? 'scale-110' : ''}`}
                       />
                       <span
                         className="text-xs font-bold transition-colors"
-                        style={{ color: selected ? m.color : '#94a3b8' }}
+                        style={{ color: selected ? m.color : 'var(--color-content-muted)' }}
                       >
                         {m.label}
                       </span>
@@ -471,37 +473,23 @@ export function Journal({ store }: { store: AppStore }) {
             {/* Guided Prompt Toggle & Header */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="label mb-0 flex items-center gap-1.5">
+                <label htmlFor="journal-notes" className="label mb-0 flex items-center gap-1.5">
                   <BookOpen size={14} className="text-content-muted" />
                   <span>Your Journal Notes</span>
                 </label>
 
                 {/* Prompt / Free Write Toggle */}
-                <div className="flex items-center gap-1 bg-bg-700 p-0.5 rounded-lg border border-overlay-subtle">
-                  <button
-                    type="button"
-                    onClick={() => toggleGuidedPrompt(true)}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all ${
-                      showGuidedPrompt
-                        ? 'bg-primary-500 text-on-brand shadow-sm'
-                        : 'text-content-muted hover:text-content-secondary'
-                    }`}
-                  >
-                    <Sparkles size={12} />
-                    <span>Guided Prompt</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleGuidedPrompt(false)}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                      !showGuidedPrompt
-                        ? 'bg-bg-500 text-content-primary shadow-sm'
-                        : 'text-content-muted hover:text-content-secondary'
-                    }`}
-                  >
-                    <span>Free Write</span>
-                  </button>
-                </div>
+                <Tabs
+                  ariaLabel="Journal writing mode"
+                  variant="segmented"
+                  size="sm"
+                  value={showGuidedPrompt ? 'guided' : 'free'}
+                  onChange={(id) => toggleGuidedPrompt(id === 'guided')}
+                  items={[
+                    { id: 'guided', label: 'Guided Prompt', icon: Sparkles },
+                    { id: 'free', label: 'Free Write' },
+                  ]}
+                />
               </div>
 
               {/* GUIDED PROMPT CARD (Visible when toggle is ON) */}
@@ -514,7 +502,7 @@ export function Journal({ store }: { store: AppStore }) {
                     <button
                       type="button"
                       onClick={() => setPromptOffset((prev) => prev + 1)}
-                      className="text-xs text-content-muted hover:text-brand-text flex items-center gap-1 py-0.5 px-2 rounded-lg hover:bg-overlay-subtle transition-all"
+                      className={`text-xs text-content-muted hover:text-brand-text flex items-center gap-1 py-0.5 px-2 rounded-lg hover:bg-overlay-subtle transition-all ${TAP_TARGET}`}
                       title="Show another prompt"
                     >
                       <RotateCcw size={12} />
@@ -530,6 +518,8 @@ export function Journal({ store }: { store: AppStore }) {
               {/* Textarea Input */}
               <div className="relative">
                 <textarea
+                  id="journal-notes"
+                  dir="auto"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder={
@@ -537,7 +527,7 @@ export function Journal({ store }: { store: AppStore }) {
                       ? "Write your answer or thoughts to the prompt above..."
                       : "What happened today? What are you grateful for? What could be better?"
                   }
-                  className="input min-h-[140px] resize-y leading-relaxed text-content-primary placeholder:text-content-disabled font-sans"
+                  className="input min-h-[140px] resize-y leading-relaxed text-content-primary placeholder:text-content-disabled font-sans caret-primary-500"
                 />
               </div>
 
@@ -624,47 +614,27 @@ export function Journal({ store }: { store: AppStore }) {
           </div>
 
           {/* 7D vs 30D Time Range Switcher */}
-          <div className="flex items-center bg-bg-700 p-0.5 rounded-xl border border-overlay-subtle">
-            <button
-              type="button"
-              onClick={() => setChartRange('7d')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                chartRange === '7d'
-                  ? 'bg-primary-500 text-on-brand shadow-sm'
-                  : 'text-content-muted hover:text-content-secondary'
-              }`}
-            >
-              Last 7 Days
-            </button>
-            <button
-              type="button"
-              onClick={() => setChartRange('30d')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                chartRange === '30d'
-                  ? 'bg-primary-500 text-on-brand shadow-sm'
-                  : 'text-content-muted hover:text-content-secondary'
-              }`}
-            >
-              Last 30 Days
-            </button>
-          </div>
+          <Tabs
+            ariaLabel="Mood chart range"
+            variant="segmented"
+            size="sm"
+            value={chartRange}
+            onChange={(id) => setChartRange(id as typeof chartRange)}
+            items={[
+              { id: '7d', label: 'Last 7 Days' },
+              { id: '30d', label: 'Last 30 Days' },
+            ]}
+          />
         </div>
 
         {/* Empty State vs Active Trend Chart */}
         {!hasEnoughDataForTrend ? (
-          <div className="p-8 text-center bg-bg-800/60 rounded-xl border border-overlay-subtle space-y-3">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-brand-text">
-              <TrendingUp size={24} />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-content-secondary">
-                Not enough data yet
-              </p>
-              <p className="text-xs text-content-muted max-w-md mx-auto mt-1">
-                Keep journaling for a couple of days to unlock your interactive mood trend graph and emotional awareness insights.
-              </p>
-            </div>
-          </div>
+          <EmptyState
+            surface={false}
+            icon={TrendingUp}
+            title="Not enough data yet"
+            description="Keep journaling for a couple of days to unlock your interactive mood trend graph and emotional awareness insights."
+          />
         ) : (
           <div className="space-y-4 animate-fade-in">
             {/* Interactive SVG Trend Chart */}
@@ -773,7 +743,7 @@ export function Journal({ store }: { store: AppStore }) {
                                     cx={cx}
                                     cy={cy}
                                     r={radius + 1.5}
-                                    fill="#0f172a"
+                                    fill="var(--color-bg-800)"
                                     className="transition-all duration-150 group-hover:scale-125 origin-center"
                                     style={{
                                       transformOrigin: `${cx}px ${cy}px`,
@@ -796,7 +766,7 @@ export function Journal({ store }: { store: AppStore }) {
                                   cx={cx}
                                   cy={cy}
                                   r="2.5"
-                                  fill="rgba(255,255,255,0.18)"
+                                  fill="var(--color-content-disabled)"
                                   className="group-hover:fill-white/50 transition-colors"
                                 />
                               )}
@@ -921,11 +891,11 @@ export function Journal({ store }: { store: AppStore }) {
         </div>
 
         {entries.length === 0 ? (
-          <div className="card p-8 text-center">
-            <p className="text-sm text-content-muted">
-              No journal entries saved yet. Write your thoughts above to start your journal history!
-            </p>
-          </div>
+          <EmptyState
+            icon={BookOpen}
+            title="No journal entries yet"
+            description="Write your thoughts above to start your journal history!"
+          />
         ) : (
           <div className="space-y-2.5">
             {entries.map((entry) => {
@@ -1001,6 +971,7 @@ export function Journal({ store }: { store: AppStore }) {
                       }}
                       className="text-content-subtle hover:text-rose-theme p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
                       title="Delete Journal Entry"
+                      aria-label="Delete journal entry"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -1034,7 +1005,7 @@ export function Journal({ store }: { store: AppStore }) {
               <div className="flex items-center justify-between p-3.5 bg-bg-800 rounded-xl border border-overlay-subtle">
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shadow-inner"
+                    className="w-9 h-9 rounded-xl flex items-center justify-center"
                     style={{ backgroundColor: `${moodMeta.color}20` }}
                   >
                     <Icon size={20} style={{ color: moodMeta.color }} />

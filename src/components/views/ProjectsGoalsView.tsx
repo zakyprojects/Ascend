@@ -62,6 +62,308 @@ const GOAL_CATEGORY_SUGGESTIONS = [
   'Mindset & Focus',
 ];
 
+function TaskItemRow({
+  task,
+  currentToday,
+  expandedTaskIds,
+  getProjectLockStatus,
+  store,
+  priorityColor,
+  setFilterProjectId,
+  setActiveTab,
+  getProjectName,
+  formatDateShort,
+  onStartFocusSession,
+  openEditTaskModal,
+  setDeleteTaskTarget,
+  toggleTaskExpand,
+  setDeleteSubtaskTarget,
+  newSubtaskInputs,
+  setNewSubtaskInputs,
+  handleAddInlineSubtask,
+}: {
+  task: Task;
+  currentToday: string;
+  expandedTaskIds: Set<string>;
+  getProjectLockStatus: (projectId: string) => any;
+  store: AppStore;
+  priorityColor: (p: TaskPriority) => string;
+  setFilterProjectId: (id: string | null) => void;
+  setActiveTab: (tab: 'goals' | 'projects' | 'tasks') => void;
+  getProjectName: (id?: string) => string | null;
+  formatDateShort: (d: string) => string;
+  onStartFocusSession?: (taskTitle: string) => void;
+  openEditTaskModal: (task: Task) => void;
+  setDeleteTaskTarget: (task: Task) => void;
+  toggleTaskExpand: (taskId: string) => void;
+  setDeleteSubtaskTarget: (target: { taskId: string; subtask: TaskSubtask }) => void;
+  newSubtaskInputs: Record<string, string>;
+  setNewSubtaskInputs: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  handleAddInlineSubtask: (taskId: string) => void;
+}) {
+  const isOverdue = task.dueDate && task.dueDate < currentToday && !task.completed;
+  const isDueToday = task.dueDate === currentToday && !task.completed;
+  const subtasks = task.subtasks || [];
+  const completedSubtasks = subtasks.filter((st) => st.completed).length;
+  const isExpanded = expandedTaskIds.has(task.id);
+  const hasSubtasks = subtasks.length > 0;
+  const projectLock = task.projectId ? getProjectLockStatus(task.projectId) : { isLocked: false, reason: '' };
+
+  const animKey = `task_${task.id}`;
+  const shouldAnimate = task.completed && !store.hasAnimated(animKey);
+
+  useEffect(() => {
+    if (shouldAnimate) {
+      store.markAnimated(animKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldAnimate, animKey]);
+
+  return (
+    <div
+      key={task.id}
+      className={`card p-4 border transition-all rounded-2xl space-y-3 ${
+        projectLock.isLocked
+          ? 'bg-bg-800/80 border-amber-500/20'
+          : task.completed
+          ? 'bg-bg-800/50 border-overlay-subtle opacity-75'
+          : 'bg-bg-800 border-overlay-default hover:border-emerald-500/30'
+      }`}
+    >
+      {/* Main Row */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          {/* Task Checkbox */}
+          <button
+            onClick={() => {
+              if (!hasSubtasks && !projectLock.isLocked) {
+                store.toggleTaskCompleted(task.id);
+              }
+            }}
+            disabled={hasSubtasks || projectLock.isLocked}
+            aria-label={
+              projectLock.isLocked
+                ? `Task "${task.title}" is locked`
+                : task.completed
+                ? `Mark task "${task.title}" incomplete`
+                : `Mark task "${task.title}" complete`
+            }
+            className={`mt-0.5 w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
+              hasSubtasks || projectLock.isLocked ? 'cursor-not-allowed opacity-90' : ''
+            } ${
+              task.completed
+                ? 'bg-emerald-500 border-emerald-400 text-on-brand'
+                : projectLock.isLocked
+                ? 'border-amber-500/30 bg-amber-500/10 text-warning-text'
+                : 'border-overlay-strong hover:border-emerald-400 text-transparent'
+            }`}
+            title={
+              projectLock.isLocked
+                ? (projectLock.reason || 'Project is locked by sequence order')
+                : hasSubtasks
+                ? 'Auto-synced: completion is driven by subtasks'
+                : task.completed
+                ? 'Mark incomplete'
+                : 'Mark complete'
+            }
+          >
+            {projectLock.isLocked ? (
+              <Lock size={11} className="text-warning-text" />
+            ) : (
+              <Check size={13} strokeWidth={3} className={`${task.completed ? 'block' : 'hidden'} ${shouldAnimate ? 'animate-scale-in' : ''}`} />
+            )}
+          </button>
+
+          <div className="space-y-1 flex-1 min-w-0">
+            <div className="flex items-center gap-x-2 gap-y-1.5 flex-wrap">
+              <span
+                className={`text-sm font-bold leading-snug break-words ${
+                  task.completed ? 'line-through text-content-muted' : 'text-content-primary'
+                }`}
+              >
+                {task.title}
+              </span>
+
+              <span className={`badge text-[10px] font-bold border ${priorityColor(task.priority)}`}>
+                {task.priority.toUpperCase()}
+              </span>
+
+              {task.projectId && (
+                <button
+                  onClick={() => {
+                    setFilterProjectId(task.projectId || null);
+                    setActiveTab('tasks');
+                  }}
+                  className={`badge text-[10px] flex items-center gap-1 max-w-[180px] truncate border ${
+                    projectLock.isLocked
+                      ? 'bg-amber-500/10 text-warning-text border-amber-500/30'
+                      : 'badge-cyan'
+                  }`}
+                  title={`Project: ${getProjectName(task.projectId)} ${projectLock.isLocked ? '(Locked)' : ''}`}
+                >
+                  {projectLock.isLocked ? <Lock size={10} className="shrink-0 text-warning-text" /> : <FolderKanban size={10} className="shrink-0" />}
+                  <span className="truncate">{getProjectName(task.projectId)}</span>
+                </button>
+              )}
+
+              {task.dueDate && (
+                <span
+                  className={`badge text-[10px] flex items-center gap-1 border ${
+                    isOverdue
+                      ? 'bg-rose-500/15 text-rose-theme border-rose-500/30 font-bold'
+                      : isDueToday
+                      ? 'bg-amber-500/15 text-warning-text border-amber-500/30 font-bold'
+                      : 'bg-overlay-subtle text-content-muted border-overlay-default'
+                  }`}
+                >
+                  <Calendar size={10} />
+                  <span>
+                    {isOverdue ? 'Overdue: ' : isDueToday ? 'Today: ' : 'Due: '}
+                    {formatDateShort(task.dueDate)}
+                  </span>
+                </span>
+              )}
+            </div>
+
+            {task.description && (
+              <p className="text-xs text-content-muted leading-relaxed whitespace-pre-wrap">
+                {task.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Start Deep Focus Session Button */}
+          <button
+            onClick={() => {
+              if (onStartFocusSession) {
+                onStartFocusSession(task.title);
+              }
+            }}
+            className="px-2.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-hierarchy text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+            title="Start Deep Focus Session with this task"
+          >
+            <Timer size={13} />
+            <span className="hidden sm:inline">Focus</span>
+          </button>
+
+          <button
+            onClick={() => openEditTaskModal(task)}
+            className="p-1.5 text-content-muted hover:text-content-secondary transition-colors"
+            title="Edit Task"
+            aria-label={`Edit task "${task.title}"`}
+          >
+            <Edit3 size={14} />
+          </button>
+
+          <button
+            onClick={() => setDeleteTaskTarget(task)}
+            className="p-1.5 text-content-muted hover:text-rose-theme transition-colors"
+            title="Delete Task"
+            aria-label={`Delete task "${task.title}"`}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Subtasks Section */}
+      <div className="pt-2 border-t border-overlay-subtle">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => toggleTaskExpand(task.id)}
+            className="text-[11px] text-content-muted hover:text-content-secondary font-medium flex items-center gap-1.5 transition-colors"
+          >
+            {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            <span>
+              Subtasks ({completedSubtasks}/{subtasks.length})
+            </span>
+          </button>
+
+          {subtasks.length > 0 && (
+            <span className="text-[10px] text-content-disabled font-bold">
+              {Math.round((completedSubtasks / subtasks.length) * 100)}%
+            </span>
+          )}
+        </div>
+
+        {isExpanded && (
+          <div className="mt-2.5 pl-4 border-l-2 border-overlay-default space-y-2 animate-fade-in">
+            {subtasks.map((st) => (
+              <div key={st.id} className="flex items-center justify-between gap-2 group/st">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <button
+                    onClick={() => store.toggleSubtask(task.id, st.id)}
+                    disabled={projectLock.isLocked}
+                    aria-label={
+                      st.completed
+                        ? `Mark subtask "${st.title}" incomplete`
+                        : `Mark subtask "${st.title}" complete`
+                    }
+                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0 ${
+                      projectLock.isLocked ? 'cursor-not-allowed opacity-60' : ''
+                    } ${
+                      st.completed
+                        ? 'bg-emerald-500 border-emerald-400 text-on-brand'
+                        : 'border-overlay-strong hover:border-emerald-400 text-transparent'
+                    }`}
+                    title={projectLock.isLocked ? 'Project is locked by sequence order' : undefined}
+                  >
+                    <Check size={10} strokeWidth={3} className={st.completed ? 'block' : 'hidden'} />
+                  </button>
+                  <span
+                    className={`text-xs ${
+                      st.completed ? 'line-through text-content-disabled' : 'text-content-tertiary'
+                    } truncate`}
+                  >
+                    {st.title}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => setDeleteSubtaskTarget({ taskId: task.id, subtask: st })}
+                  className="p-1 text-content-disabled hover:text-rose-theme transition-all"
+                  title="Delete Subtask"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+
+            {/* Add Subtask Input */}
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="text"
+                placeholder="Add a subtask..."
+                value={newSubtaskInputs[task.id] || ''}
+                onChange={(e) =>
+                  setNewSubtaskInputs((prev) => ({ ...prev, [task.id]: e.target.value }))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddInlineSubtask(task.id);
+                  }
+                }}
+                className="w-full bg-bg-900 border border-overlay-default rounded-lg px-2.5 py-1 text-xs text-content-secondary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500/50"
+              />
+              <button
+                type="button"
+                onClick={() => handleAddInlineSubtask(task.id)}
+                className="px-2 py-1 bg-overlay-subtle hover:bg-overlay-default text-content-tertiary rounded-lg text-xs font-semibold shrink-0"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ProjectsGoalsView({
   store,
   onStartFocusSession,
@@ -1395,6 +1697,7 @@ export function ProjectsGoalsView({
                             onClick={() => openEditGoalModal(goal)}
                             className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors"
                             title="Edit Goal"
+                            aria-label={`Edit goal "${goal.title}"`}
                           >
                             <Edit3 size={14} />
                           </button>
@@ -1402,6 +1705,7 @@ export function ProjectsGoalsView({
                             onClick={() => setDeleteGoalTarget(goal)}
                             className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors"
                             title="Delete Goal"
+                            aria-label={`Delete goal "${goal.title}"`}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -1460,18 +1764,19 @@ export function ProjectsGoalsView({
                             disabled={prog.percent <= 0}
                             className="w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default"
                             title="Decrease 5%"
+                            aria-label={`Decrease progress for "${goal.title}"`}
                           >
                             <Minus size={12} />
                           </button>
                         )}
 
-                        <div className="flex-1 bg-bg-900 rounded-full h-2.5 overflow-hidden border border-overlay-subtle shadow-inner">
+                        <div className="flex-1 bg-bg-900 rounded-full h-2.5 overflow-hidden border border-overlay-subtle">
                           <div
                             className={`h-2.5 rounded-full transition-all duration-300 ${
                               prog.percent >= 100
-                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-sm shadow-emerald-500/30'
+                                ? 'bg-emerald-500'
                                 : prog.percent > 0
-                                ? 'bg-gradient-to-r from-purple-600 to-purple-400 shadow-sm shadow-purple-500/20'
+                                ? 'bg-purple-500'
                                 : 'bg-bg-600'
                             }`}
                             style={{ width: `${Math.min(100, Math.max(prog.percent, 0))}%` }}
@@ -1485,6 +1790,7 @@ export function ProjectsGoalsView({
                             disabled={prog.percent >= 100}
                             className="w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default"
                             title="Increase 5%"
+                            aria-label={`Increase progress for "${goal.title}"`}
                           >
                             <Plus size={12} />
                           </button>
@@ -1828,6 +2134,7 @@ export function ProjectsGoalsView({
                             onClick={() => openEditProjectModal(project)}
                             className="p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors"
                             title="Edit Project"
+                            aria-label={`Edit project "${project.title}"`}
                           >
                             <Edit3 size={14} />
                           </button>
@@ -1835,6 +2142,7 @@ export function ProjectsGoalsView({
                             onClick={() => setDeleteProjectTarget(project)}
                             className="p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors"
                             title="Delete Project"
+                            aria-label={`Delete project "${project.title}"`}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -1905,13 +2213,13 @@ export function ProjectsGoalsView({
                           </button>
                         )}
 
-                        <div className="flex-1 bg-bg-900 rounded-full h-2.5 overflow-hidden border border-overlay-subtle shadow-inner">
+                        <div className="flex-1 bg-bg-900 rounded-full h-2.5 overflow-hidden border border-overlay-subtle">
                           <div
                             className={`h-2.5 rounded-full transition-all duration-300 ${
                               prog.percent >= 100
-                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-sm shadow-emerald-500/30'
+                                ? 'bg-emerald-500'
                                 : prog.percent > 0
-                                ? 'bg-gradient-to-r from-cyan-500 to-cyan-400 shadow-sm shadow-cyan-500/20'
+                                ? 'bg-cyan-500'
                                 : 'bg-bg-600'
                             }`}
                             style={{ width: `${Math.min(100, Math.max(prog.percent, 0))}%` }}
@@ -2207,245 +2515,29 @@ export function ProjectsGoalsView({
                 </div>
               )}
 
-              {filteredTasks.map((task) => {
-                const isOverdue = task.dueDate && task.dueDate < currentToday && !task.completed;
-                const isDueToday = task.dueDate === currentToday && !task.completed;
-                const subtasks = task.subtasks || [];
-                const completedSubtasks = subtasks.filter((st) => st.completed).length;
-                const isExpanded = expandedTaskIds.has(task.id);
-                const hasSubtasks = subtasks.length > 0;
-                const projectLock = task.projectId ? getProjectLockStatus(task.projectId) : { isLocked: false, reason: '' };
-
-                return (
-                  <div
-                    key={task.id}
-                    className={`card p-4 border transition-all rounded-2xl space-y-3 ${
-                      projectLock.isLocked
-                        ? 'bg-bg-800/80 border-amber-500/20'
-                        : task.completed
-                        ? 'bg-bg-800/50 border-overlay-subtle opacity-75'
-                        : 'bg-bg-800 border-overlay-default hover:border-emerald-500/30'
-                    }`}
-                  >
-                    {/* Main Row */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        {/* Task Checkbox */}
-                        <button
-                          onClick={() => {
-                            if (!hasSubtasks && !projectLock.isLocked) {
-                              store.toggleTaskCompleted(task.id);
-                            }
-                          }}
-                          disabled={hasSubtasks || projectLock.isLocked}
-                          className={`mt-0.5 w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
-                            hasSubtasks || projectLock.isLocked ? 'cursor-not-allowed opacity-90' : ''
-                          } ${
-                            task.completed
-                              ? 'bg-emerald-500 border-emerald-400 text-on-brand'
-                              : projectLock.isLocked
-                              ? 'border-amber-500/30 bg-amber-500/10 text-warning-text'
-                              : 'border-overlay-strong hover:border-emerald-400 text-transparent'
-                          }`}
-                          title={
-                            projectLock.isLocked
-                              ? (projectLock.reason || 'Project is locked by sequence order')
-                              : hasSubtasks
-                              ? 'Auto-synced: completion is driven by subtasks'
-                              : task.completed
-                              ? 'Mark incomplete'
-                              : 'Mark complete'
-                          }
-                        >
-                          {projectLock.isLocked ? (
-                            <Lock size={11} className="text-warning-text" />
-                          ) : (
-                            <Check size={13} strokeWidth={3} className={task.completed ? 'block' : 'hidden'} />
-                          )}
-                        </button>
-
-                        <div className="space-y-1 flex-1 min-w-0">
-                          <div className="flex items-center gap-x-2 gap-y-1.5 flex-wrap">
-                            <span
-                              className={`text-sm font-bold leading-snug break-words ${
-                                task.completed ? 'line-through text-content-muted' : 'text-content-primary'
-                              }`}
-                            >
-                              {task.title}
-                            </span>
-
-                            <span className={`badge text-[10px] font-bold border ${priorityColor(task.priority)}`}>
-                              {task.priority.toUpperCase()}
-                            </span>
-
-                            {task.projectId && (
-                              <button
-                                onClick={() => {
-                                  setFilterProjectId(task.projectId || null);
-                                  setActiveTab('tasks');
-                                }}
-                                className={`badge text-[10px] flex items-center gap-1 max-w-[180px] truncate border ${
-                                  projectLock.isLocked
-                                    ? 'bg-amber-500/10 text-warning-text border-amber-500/30'
-                                    : 'badge-cyan'
-                                }`}
-                                title={`Project: ${getProjectName(task.projectId)} ${projectLock.isLocked ? '(Locked)' : ''}`}
-                              >
-                                {projectLock.isLocked ? <Lock size={10} className="shrink-0 text-warning-text" /> : <FolderKanban size={10} className="shrink-0" />}
-                                <span className="truncate">{getProjectName(task.projectId)}</span>
-                              </button>
-                            )}
-
-                            {task.dueDate && (
-                              <span
-                                className={`badge text-[10px] flex items-center gap-1 border ${
-                                  isOverdue
-                                    ? 'bg-rose-500/15 text-rose-theme border-rose-500/30 font-bold'
-                                    : isDueToday
-                                    ? 'bg-amber-500/15 text-warning-text border-amber-500/30 font-bold'
-                                    : 'bg-overlay-subtle text-content-muted border-overlay-default'
-                                }`}
-                              >
-                                <Calendar size={10} />
-                                <span>
-                                  {isOverdue ? 'Overdue: ' : isDueToday ? 'Today: ' : 'Due: '}
-                                  {formatDateShort(task.dueDate)}
-                                </span>
-                              </span>
-                            )}
-                          </div>
-
-                          {task.description && (
-                            <p className="text-xs text-content-muted leading-relaxed whitespace-pre-wrap">
-                              {task.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Start Deep Focus Session Button */}
-                        <button
-                          onClick={() => {
-                            if (onStartFocusSession) {
-                              onStartFocusSession(task.title);
-                            }
-                          }}
-                          className="px-2.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-hierarchy text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
-                          title="Start Deep Focus Session with this task"
-                        >
-                          <Timer size={13} />
-                          <span className="hidden sm:inline">Focus</span>
-                        </button>
-
-                        <button
-                          onClick={() => openEditTaskModal(task)}
-                          className="p-1.5 text-content-muted hover:text-content-secondary transition-colors"
-                          title="Edit Task"
-                        >
-                          <Edit3 size={14} />
-                        </button>
-
-                        <button
-                          onClick={() => setDeleteTaskTarget(task)}
-                          className="p-1.5 text-content-muted hover:text-rose-theme transition-colors"
-                          title="Delete Task"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Subtasks Section */}
-                    <div className="pt-2 border-t border-overlay-subtle">
-                      <div className="flex items-center justify-between">
-                        <button
-                          onClick={() => toggleTaskExpand(task.id)}
-                          className="text-[11px] text-content-muted hover:text-content-secondary font-medium flex items-center gap-1.5 transition-colors"
-                        >
-                          {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                          <span>
-                            Subtasks ({completedSubtasks}/{subtasks.length})
-                          </span>
-                        </button>
-
-                        {subtasks.length > 0 && (
-                          <span className="text-[10px] text-content-disabled font-bold">
-                            {Math.round((completedSubtasks / subtasks.length) * 100)}%
-                          </span>
-                        )}
-                      </div>
-
-                      {isExpanded && (
-                        <div className="mt-2.5 pl-4 border-l-2 border-overlay-default space-y-2 animate-fade-in">
-                          {subtasks.map((st) => (
-                            <div key={st.id} className="flex items-center justify-between gap-2 group/st">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <button
-                                  onClick={() => store.toggleSubtask(task.id, st.id)}
-                                  disabled={projectLock.isLocked}
-                                  className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0 ${
-                                    projectLock.isLocked ? 'cursor-not-allowed opacity-60' : ''
-                                  } ${
-                                    st.completed
-                                      ? 'bg-emerald-500 border-emerald-400 text-on-brand'
-                                      : 'border-overlay-strong hover:border-emerald-400 text-transparent'
-                                  }`}
-                                  title={projectLock.isLocked ? 'Project is locked by sequence order' : undefined}
-                                >
-                                  <Check size={10} strokeWidth={3} className={st.completed ? 'block' : 'hidden'} />
-                                </button>
-                                <span
-                                  className={`text-xs ${
-                                    st.completed ? 'line-through text-content-disabled' : 'text-content-tertiary'
-                                  } truncate`}
-                                >
-                                  {st.title}
-                                </span>
-                              </div>
-
-                              <button
-                                onClick={() => setDeleteSubtaskTarget({ taskId: task.id, subtask: st })}
-                                className="p-1 text-content-disabled hover:text-rose-theme opacity-0 group-hover/st:opacity-100 transition-all"
-                                title="Delete Subtask"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          ))}
-
-                          {/* Add Subtask Input */}
-                          <div className="flex items-center gap-2 pt-1">
-                            <input
-                              type="text"
-                              placeholder="Add a subtask..."
-                              value={newSubtaskInputs[task.id] || ''}
-                              onChange={(e) =>
-                                setNewSubtaskInputs((prev) => ({ ...prev, [task.id]: e.target.value }))
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleAddInlineSubtask(task.id);
-                                }
-                              }}
-                              className="w-full bg-bg-900 border border-overlay-default rounded-lg px-2.5 py-1 text-xs text-content-secondary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500/50"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAddInlineSubtask(task.id)}
-                              className="px-2 py-1 bg-overlay-subtle hover:bg-overlay-default text-content-tertiary rounded-lg text-xs font-semibold shrink-0"
-                            >
-                              Add
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              {filteredTasks.map((task) => (
+                <TaskItemRow
+                  key={task.id}
+                  task={task}
+                  currentToday={currentToday}
+                  expandedTaskIds={expandedTaskIds}
+                  getProjectLockStatus={getProjectLockStatus}
+                  store={store}
+                  priorityColor={priorityColor}
+                  setFilterProjectId={setFilterProjectId}
+                  setActiveTab={setActiveTab}
+                  getProjectName={getProjectName}
+                  formatDateShort={formatDateShort}
+                  onStartFocusSession={onStartFocusSession}
+                  openEditTaskModal={openEditTaskModal}
+                  setDeleteTaskTarget={setDeleteTaskTarget}
+                  toggleTaskExpand={toggleTaskExpand}
+                  setDeleteSubtaskTarget={setDeleteSubtaskTarget}
+                  newSubtaskInputs={newSubtaskInputs}
+                  setNewSubtaskInputs={setNewSubtaskInputs}
+                  handleAddInlineSubtask={handleAddInlineSubtask}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -2461,10 +2553,11 @@ export function ProjectsGoalsView({
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="pg-goal-title" className="block text-xs font-semibold text-content-tertiary mb-1">
               Goal Title <span className="text-rose-theme">*</span>
             </label>
             <input
+              id="pg-goal-title"
               type="text"
               placeholder="e.g. Achieve Financial Freedom, Run a Marathon, Master Spanish..."
               value={goalFormTitle}
@@ -2474,8 +2567,9 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">Description (Optional)</label>
+            <label htmlFor="pg-goal-description" className="block text-xs font-semibold text-content-tertiary mb-1">Description (Optional)</label>
             <textarea
+              id="pg-goal-description"
               rows={2}
               placeholder="Why this goal matters and what high-level success looks like..."
               value={goalFormDescription}
@@ -2485,8 +2579,9 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">Category Tag</label>
+            <label htmlFor="pg-goal-category" className="block text-xs font-semibold text-content-tertiary mb-1">Category Tag</label>
             <input
+              id="pg-goal-category"
               type="text"
               placeholder="e.g. Career, Health, Finance..."
               value={goalFormCategory}
@@ -2532,8 +2627,9 @@ export function ProjectsGoalsView({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">Target Completion Date</label>
+              <label htmlFor="pg-goal-target-date" className="block text-xs font-semibold text-content-tertiary mb-1">Target Completion Date</label>
               <input
+                id="pg-goal-target-date"
                 type="date"
                 min={minAllowedDate}
                 max={maxAllowedDate}
@@ -2544,8 +2640,9 @@ export function ProjectsGoalsView({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">Status</label>
+              <label htmlFor="pg-goal-status" className="block text-xs font-semibold text-content-tertiary mb-1">Status</label>
               <select
+                id="pg-goal-status"
                 value={goalFormStatus}
                 onChange={(e) => setGoalFormStatus(e.target.value as GoalStatus)}
                 className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-purple-500/50"
@@ -2588,10 +2685,11 @@ export function ProjectsGoalsView({
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="pg-project-title" className="block text-xs font-semibold text-content-tertiary mb-1">
               Project Title <span className="text-rose-theme">*</span>
             </label>
             <input
+              id="pg-project-title"
               type="text"
               placeholder="e.g. 30-Day Fitness Challenge, Start E-commerce Business, Kitchen Renovation..."
               value={projectFormTitle}
@@ -2601,8 +2699,9 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">Description (Optional)</label>
+            <label htmlFor="pg-project-description" className="block text-xs font-semibold text-content-tertiary mb-1">Description (Optional)</label>
             <textarea
+              id="pg-project-description"
               rows={2}
               placeholder="Project scope and deliverables..."
               value={projectFormDescription}
@@ -2612,8 +2711,9 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">Link to Goal (Optional)</label>
+            <label htmlFor="pg-project-goal-id" className="block text-xs font-semibold text-content-tertiary mb-1">Link to Goal (Optional)</label>
             <select
+              id="pg-project-goal-id"
               value={projectFormGoalId}
               onChange={(e) => setProjectFormGoalId(e.target.value)}
               className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-cyan-500/50"
@@ -2629,8 +2729,9 @@ export function ProjectsGoalsView({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">Start Date</label>
+              <label htmlFor="pg-project-start-date" className="block text-xs font-semibold text-content-tertiary mb-1">Start Date</label>
               <input
+                id="pg-project-start-date"
                 type="date"
                 min={minAllowedDate}
                 max={maxAllowedDate}
@@ -2641,8 +2742,9 @@ export function ProjectsGoalsView({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">Due Date</label>
+              <label htmlFor="pg-project-due-date" className="block text-xs font-semibold text-content-tertiary mb-1">Due Date</label>
               <input
+                id="pg-project-due-date"
                 type="date"
                 min={minAllowedDate}
                 max={maxAllowedDate}
@@ -2654,8 +2756,9 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">Status</label>
+            <label htmlFor="pg-project-status" className="block text-xs font-semibold text-content-tertiary mb-1">Status</label>
             <select
+              id="pg-project-status"
               value={projectFormStatus}
               onChange={(e) => setProjectFormStatus(e.target.value as ProjectStatus)}
               className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-cyan-500/50"
@@ -2698,10 +2801,11 @@ export function ProjectsGoalsView({
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="pg-task-title" className="block text-xs font-semibold text-content-tertiary mb-1">
               Task Title <span className="text-rose-theme">*</span>
             </label>
             <input
+              id="pg-task-title"
               type="text"
               placeholder="e.g. Read 10 pages, Do 50 pushups, Research 5 suppliers..."
               value={taskFormTitle}
@@ -2711,8 +2815,9 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">Description (Optional)</label>
+            <label htmlFor="pg-task-description" className="block text-xs font-semibold text-content-tertiary mb-1">Description (Optional)</label>
             <textarea
+              id="pg-task-description"
               rows={2}
               placeholder="Task instructions and notes..."
               value={taskFormDescription}
@@ -2723,8 +2828,9 @@ export function ProjectsGoalsView({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">Linked Project</label>
+              <label htmlFor="pg-task-project-id" className="block text-xs font-semibold text-content-tertiary mb-1">Linked Project</label>
               <select
+                id="pg-task-project-id"
                 value={taskFormProjectId}
                 onChange={(e) => setTaskFormProjectId(e.target.value)}
                 className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-emerald-500/50"
@@ -2739,8 +2845,9 @@ export function ProjectsGoalsView({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">Priority</label>
+              <label htmlFor="pg-task-priority" className="block text-xs font-semibold text-content-tertiary mb-1">Priority</label>
               <select
+                id="pg-task-priority"
                 value={taskFormPriority}
                 onChange={(e) => setTaskFormPriority(e.target.value as TaskPriority)}
                 className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-emerald-500/50"
@@ -2753,8 +2860,9 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">Due Date</label>
+            <label htmlFor="pg-task-due-date" className="block text-xs font-semibold text-content-tertiary mb-1">Due Date</label>
             <input
+              id="pg-task-due-date"
               type="date"
               min={minAllowedDate}
               max={maxAllowedDate}
@@ -2775,6 +2883,7 @@ export function ProjectsGoalsView({
                     type="button"
                     onClick={() => setTaskFormSubtasks((prev) => prev.filter((_, i) => i !== idx))}
                     className="text-content-muted hover:text-rose-theme p-1"
+                    aria-label={`Remove subtask "${st.title}"`}
                   >
                     <Trash2 size={12} />
                   </button>

@@ -33,6 +33,7 @@ import {
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { EmptyState } from '@/components/ui/primitives';
 import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
 import { getCurrentTier } from '@/lib/tiers';
 import { todayKey } from '@/lib/dates';
@@ -667,7 +668,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     const renderReviewDueBadge = () => {
       if (!isReviewDue) return null;
       return (
-        <div className="badge-amber flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-md mb-2 animate-pulse">
+        <div className="badge-amber flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-md mb-2">
           <Sparkles size={13} className="text-warning-text shrink-0" />
           <span>Review Due ({effectiveCadence === 'monthly' ? 'Monthly' : 'Weekly'} Check-in)</span>
         </div>
@@ -761,6 +762,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             }}
                             className="text-content-muted hover:text-purple-hierarchy transition-colors"
                             title="Edit Note"
+                            aria-label="Edit reflection note"
                           >
                             <Edit3 size={12} />
                           </button>
@@ -768,6 +770,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             onClick={() => setNoteToDelete({ planId, noteKey, mode })}
                             className="text-content-muted hover:text-rose-theme transition-colors"
                             title="Delete Note"
+                            aria-label="Delete reflection note"
                           >
                             <Trash2 size={12} />
                           </button>
@@ -831,15 +834,15 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           <div className="card space-y-3 p-3">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-content-tertiary">
-                Progress: <span className="text-warning-text font-bold">{curProg}</span> / {targetVal} {plan.targetUnit || 'units'}
+                Progress: <span className={isGoalCompleted ? 'text-success-text font-bold' : 'text-warning-text font-bold'}>{curProg}</span>{/* OLD: <span className="text-warning-text font-bold">{curProg}</span> */} / {targetVal} {plan.targetUnit || 'units'}
               </span>
-              <span className="font-bold text-warning-text">{pct}%</span>
+              <span className={isGoalCompleted ? 'font-bold text-success-text' : 'font-bold text-warning-text'}>{pct}%</span>{/* OLD: <span className="font-bold text-warning-text">{pct}%</span> */}
             </div>
 
             {/* Progress Bar */}
             <div className="w-full bg-bg-700 rounded-full h-2 overflow-hidden">
               <div 
-                className={`${isGoalCompleted ? 'bg-emerald-500' : 'bg-gradient-to-r from-amber-500 to-emerald-500'} h-full transition-all duration-500`} 
+                className={`${isGoalCompleted ? 'bg-emerald-500' : 'bg-amber-500'} h-full transition-all duration-500`} 
                 style={{ width: `${pct}%` }} 
               />
             </div>
@@ -934,7 +937,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           <div className="card space-y-3 p-3">
             <div className="flex items-center justify-between text-xs">
               <span className="flex items-center gap-1.5 font-bold text-rose-theme">
-                <Flame size={15} className="animate-pulse" /> {streak} {cadenceText} Streak
+                <Flame size={15} /> {streak} {cadenceText} Streak
               </span>
               <span className="text-content-muted text-[11px]">
                 Commitment: <span className="text-content-secondary">{durationText}</span> ({plan.cadence || 'daily'})
@@ -1040,6 +1043,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     }
                   }}
                   className="text-content-disabled hover:text-success-text transition-colors"
+                  aria-label={step.completed ? `Mark step "${step.title}" incomplete` : `Mark step "${step.title}" complete`}
                 >
                   {step.completed ? (
                     <CheckCircle2 size={15} className="text-success-text" />
@@ -1122,9 +1126,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           <div>
             <h2 className="text-sm font-semibold text-content-muted uppercase tracking-wider mb-3">Created By Me</h2>
             {myCreatedPlans.length === 0 ? (
-              <div className="card p-6 text-center text-content-disabled text-sm">
-                You haven't created any plans yet. Click "Create Plan" above to start building!
-              </div>
+              <EmptyState
+                title="You haven't created any plans yet."
+                description={'Click "Create Plan" above to start building!'}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {myCreatedPlans.map((plan) => {
@@ -1181,6 +1186,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                   : 'text-content-disabled hover:text-content-tertiary hover:bg-bg-700'
                               }`}
                               title={plan.isPublic ? 'Make Private' : 'Make Public'}
+                              aria-label={plan.isPublic ? `Make "${plan.title}" private` : `Make "${plan.title}" public`}
                             >
                               {isKeyLoading(`toggle_vis_${plan.id}`) ? (
                                 <AscendLoadingIndicator size="sm" />
@@ -1196,6 +1202,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               onClick={() => handleOpenEdit(plan)}
                               className="p-1.5 rounded text-content-muted hover:text-blue-theme hover:bg-bg-700 transition-colors"
                               title="Edit Structure"
+                              aria-label={`Edit structure of "${plan.title}"`}
                             >
                               <Edit3 size={14} />
                             </button>
@@ -1205,6 +1212,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               onClick={() => setPlanToDelete(plan)}
                               className="p-1.5 rounded text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors"
                               title="Delete Plan"
+                              aria-label={`Delete plan "${plan.title}"`}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -1225,9 +1233,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           <div>
             <h2 className="text-sm font-semibold text-content-muted uppercase tracking-wider mb-3">Followed & Copied Plans</h2>
             {followedPlans.length === 0 ? (
-              <div className="card p-6 text-center text-content-disabled text-sm">
-                You haven't copied any public plans yet. Visit the "Discover Public Plans" tab to browse and copy plans!
-              </div>
+              <EmptyState
+                title="You haven't copied any public plans yet."
+                description={'Visit the "Discover Public Plans" tab to browse and copy plans!'}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {followedPlans.map((follow) => (
@@ -1359,25 +1368,27 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               <p className="text-xs font-medium text-content-tertiary animate-pulse">Loading Public Plans...</p>
             </div>
           ) : remotePublicPlans.length === 0 ? (
-            <div className="card p-8 text-center text-content-disabled text-sm space-y-3">
-              <Compass size={32} className="mx-auto text-content-subtle mb-1" />
-              <p className="font-semibold text-content-muted">No public plans found matching your filters.</p>
-              <p className="text-xs text-content-disabled">Try adjusting your search query, category, or plan type filters.</p>
-              {(discoverSearch || discoverCategory !== 'All' || discoverPlanType !== 'all') && (
-                <button
-                  onClick={() => {
-                    setDiscoverSearch('');
-                    setDiscoverCategory('All');
-                    setDiscoverPlanType('all');
-                    setDiscoverSortBy('recent');
-                    loadPlans('', 'All', 'all', 'recent');
-                  }}
-                  className="btn-secondary text-xs py-1.5 px-4 mx-auto inline-block"
-                >
-                  Clear All Filters
-                </button>
-              )}
-            </div>
+            <EmptyState
+              icon={Compass}
+              title="No public plans found matching your filters."
+              description="Try adjusting your search query, category, or plan type filters."
+              action={
+                (discoverSearch || discoverCategory !== 'All' || discoverPlanType !== 'all') ? (
+                  <button
+                    onClick={() => {
+                      setDiscoverSearch('');
+                      setDiscoverCategory('All');
+                      setDiscoverPlanType('all');
+                      setDiscoverSortBy('recent');
+                      loadPlans('', 'All', 'all', 'recent');
+                    }}
+                    className="btn-secondary text-xs py-1.5 px-4 mx-auto inline-block"
+                  >
+                    Clear All Filters
+                  </button>
+                ) : undefined
+              }
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {remotePublicPlans.map((plan) => {
@@ -1427,6 +1438,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                     : 'text-content-disabled hover:text-content-tertiary hover:bg-bg-700'
                                 }`}
                                 title={plan.isPublic ? 'Make Private' : 'Make Public'}
+                                aria-label={plan.isPublic ? `Make "${plan.title}" private` : `Make "${plan.title}" public`}
                               >
                                 {isKeyLoading(`toggle_vis_${plan.id}`) ? (
                                   <AscendLoadingIndicator size="sm" />
@@ -1440,6 +1452,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                 onClick={() => handleOpenEdit(plan)}
                                 className="p-1.5 rounded text-content-muted hover:text-blue-theme hover:bg-bg-700 transition-colors"
                                 title="Edit Structure"
+                                aria-label={`Edit structure of "${plan.title}"`}
                               >
                                 <Edit3 size={14} />
                               </button>
@@ -1447,6 +1460,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                 onClick={() => setPlanToDelete(plan)}
                                 className="p-1.5 rounded text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors"
                                 title="Delete Plan"
+                                aria-label={`Delete plan "${plan.title}"`}
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -1614,8 +1628,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           {/* SHARED FIELDS */}
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Plan Title</label>
+            <label htmlFor="pip-create-title" className="block text-xs font-medium text-content-muted mb-1">Plan Title</label>
             <input
+              id="pip-create-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -1634,8 +1649,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Goal & Description</label>
+            <label htmlFor="pip-create-description" className="block text-xs font-medium text-content-muted mb-1">Goal & Description</label>
             <textarea
+              id="pip-create-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe the objective and core outcome of this plan..."
@@ -1646,8 +1662,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-content-muted mb-1">Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="input text-xs">
+              <label htmlFor="pip-create-category" className="block text-xs font-medium text-content-muted mb-1">Category</label>
+              <select id="pip-create-category" value={category} onChange={(e) => setCategory(e.target.value)} className="input text-xs">
                 {PLAN_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
@@ -1656,8 +1672,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-content-muted mb-1">Visibility</label>
+              <label htmlFor="pip-create-visibility" className="block text-xs font-medium text-content-muted mb-1">Visibility</label>
               <select
+                id="pip-create-visibility"
                 value={isPublic ? 'public' : 'private'}
                 onChange={(e) => setIsPublic(e.target.value === 'public')}
                 className="input text-xs"
@@ -1671,8 +1688,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {/* Phase C Review Cadence Selector - Hidden for Vision & Reflection plans */}
           {planType !== 'vision' && (
             <div>
-              <label className="block text-xs font-medium text-content-muted mb-1">Review Cadence (Check-in Loop)</label>
+              <label htmlFor="pip-create-review-cadence" className="block text-xs font-medium text-content-muted mb-1">Review Cadence (Check-in Loop)</label>
               <select
+                id="pip-create-review-cadence"
                 value={reviewCadence || ''}
                 onChange={(e) => setReviewCadence(e.target.value ? (e.target.value as 'weekly' | 'monthly') : null)}
                 className="input text-xs"
@@ -1709,6 +1727,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                         type="button"
                         onClick={() => handleRemoveStepField(idx)}
                         className="text-content-subtle hover:text-rose-theme p-1"
+                        aria-label={`Remove step "${step}"`}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -1723,8 +1742,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div className="card space-y-3 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-content-muted mb-1">Target Value (Number)</label>
+                  <label htmlFor="pip-create-target-value" className="block text-xs font-medium text-content-muted mb-1">Target Value (Number)</label>
                   <input
+                    id="pip-create-target-value"
                     type="number"
                     min="1"
                     value={targetValue}
@@ -1734,8 +1754,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-content-muted mb-1">Unit Label</label>
+                  <label htmlFor="pip-create-target-unit" className="block text-xs font-medium text-content-muted mb-1">Unit Label</label>
                   <input
+                    id="pip-create-target-unit"
                     type="text"
                     value={targetUnit}
                     onChange={(e) => setTargetUnit(e.target.value)}
@@ -1747,8 +1768,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-content-muted mb-1">Initial Progress</label>
+                  <label htmlFor="pip-create-initial-progress" className="block text-xs font-medium text-content-muted mb-1">Initial Progress</label>
                   <input
+                    id="pip-create-initial-progress"
                     type="number"
                     min="0"
                     value={currentProgress}
@@ -1757,8 +1779,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-content-muted mb-1">Target Date</label>
+                  <label htmlFor="pip-create-target-date" className="block text-xs font-medium text-content-muted mb-1">Target Date</label>
                   <input
+                    id="pip-create-target-date"
                     type="date"
                     value={targetDate}
                     onChange={(e) => setTargetDate(e.target.value)}
@@ -1773,8 +1796,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div className="card space-y-3 p-3">
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-content-muted mb-1">Cadence</label>
+                  <label htmlFor="pip-create-cadence" className="block text-xs font-medium text-content-muted mb-1">Cadence</label>
                   <select
+                    id="pip-create-cadence"
                     value={cadence}
                     onChange={(e) => setCadence(e.target.value as 'daily' | 'weekly')}
                     className="input text-xs"
@@ -1784,8 +1808,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-content-muted mb-1">Duration ({cadence === 'weekly' ? 'Weeks' : 'Days'})</label>
+                  <label htmlFor="pip-create-duration" className="block text-xs font-medium text-content-muted mb-1">Duration ({cadence === 'weekly' ? 'Weeks' : 'Days'})</label>
                   <input
+                    id="pip-create-duration"
                     type="number"
                     min="1"
                     value={duration}
@@ -1795,8 +1820,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-content-muted mb-1">Start Date</label>
+                  <label htmlFor="pip-create-start-date" className="block text-xs font-medium text-content-muted mb-1">Start Date</label>
                   <input
+                    id="pip-create-start-date"
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
@@ -1810,8 +1836,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {planType === 'vision' && (
             <div className="card space-y-3 p-3">
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1">Target Review Date (Optional)</label>
+                <label htmlFor="pip-create-target-review-date" className="block text-xs font-medium text-content-muted mb-1">Target Review Date (Optional)</label>
                 <input
+                  id="pip-create-target-review-date"
                   type="date"
                   value={targetReviewDate}
                   onChange={(e) => setTargetReviewDate(e.target.value)}
@@ -1819,8 +1846,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1">Initial Reflection Check-in Note (Optional)</label>
+                <label htmlFor="pip-create-initial-reflection-note" className="block text-xs font-medium text-content-muted mb-1">Initial Reflection Check-in Note (Optional)</label>
                 <textarea
+                  id="pip-create-initial-reflection-note"
                   value={initialReflectionNote}
                   onChange={(e) => setInitialReflectionNote(e.target.value)}
                   placeholder="First check-in note on your vision..."
@@ -1845,8 +1873,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Plan Structure">
         <form onSubmit={handleEditSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Plan Title</label>
+            <label htmlFor="pip-edit-title" className="block text-xs font-medium text-content-muted mb-1">Plan Title</label>
             <input
+              id="pip-edit-title"
               type="text"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
@@ -1856,8 +1885,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Goal & Description</label>
+            <label htmlFor="pip-edit-description" className="block text-xs font-medium text-content-muted mb-1">Goal & Description</label>
             <textarea
+              id="pip-edit-description"
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               className="input min-h-[70px] text-xs"
@@ -1867,8 +1897,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-content-muted mb-1">Category</label>
-              <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="input text-xs">
+              <label htmlFor="pip-edit-category" className="block text-xs font-medium text-content-muted mb-1">Category</label>
+              <select id="pip-edit-category" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="input text-xs">
                 {PLAN_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
@@ -1877,8 +1907,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-content-muted mb-1">Visibility</label>
+              <label htmlFor="pip-edit-visibility" className="block text-xs font-medium text-content-muted mb-1">Visibility</label>
               <select
+                id="pip-edit-visibility"
                 value={editIsPublic ? 'public' : 'private'}
                 onChange={(e) => setEditIsPublic(e.target.value === 'public')}
                 className="input text-xs"
@@ -1892,8 +1923,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {/* Phase C Review Cadence Selector - Hidden for Vision & Reflection plans */}
           {editingPlanType !== 'vision' && (
             <div>
-              <label className="block text-xs font-medium text-content-muted mb-1">Review Cadence (Check-in Loop)</label>
+              <label htmlFor="pip-edit-review-cadence" className="block text-xs font-medium text-content-muted mb-1">Review Cadence (Check-in Loop)</label>
               <select
+                id="pip-edit-review-cadence"
                 value={editReviewCadence || ''}
                 onChange={(e) => setEditReviewCadence(e.target.value ? (e.target.value as 'weekly' | 'monthly') : null)}
                 className="input text-xs"
@@ -1938,6 +1970,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                         type="button"
                         onClick={() => setEditSteps(editSteps.filter((_, i) => i !== idx))}
                         className="text-content-subtle hover:text-rose-theme p-1"
+                        aria-label={`Remove step "${step}"`}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -1952,8 +1985,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div className="card space-y-3 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-content-muted mb-1">Target Value</label>
+                  <label htmlFor="pip-edit-target-value" className="block text-xs font-medium text-content-muted mb-1">Target Value</label>
                   <input
+                    id="pip-edit-target-value"
                     type="number"
                     min="1"
                     value={editTargetValue}
@@ -1963,8 +1997,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-content-muted mb-1">Unit Label</label>
+                  <label htmlFor="pip-edit-target-unit" className="block text-xs font-medium text-content-muted mb-1">Unit Label</label>
                   <input
+                    id="pip-edit-target-unit"
                     type="text"
                     value={editTargetUnit}
                     onChange={(e) => setEditTargetUnit(e.target.value)}
@@ -1975,8 +2010,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1">Target Date</label>
+                <label htmlFor="pip-edit-target-date" className="block text-xs font-medium text-content-muted mb-1">Target Date</label>
                 <input
+                  id="pip-edit-target-date"
                   type="date"
                   value={editTargetDate}
                   onChange={(e) => setEditTargetDate(e.target.value)}
@@ -1989,8 +2025,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {editingPlanType === 'habit_journey' && (
             <div className="grid grid-cols-2 gap-3 bg-bg-800/50 p-3 rounded-lg border border-overlay-subtle">
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1">Cadence</label>
+                <label htmlFor="pip-edit-cadence" className="block text-xs font-medium text-content-muted mb-1">Cadence</label>
                 <select
+                  id="pip-edit-cadence"
                   value={editCadence}
                   onChange={(e) => setEditCadence(e.target.value as 'daily' | 'weekly')}
                   className="input text-xs"
@@ -2000,8 +2037,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1">Duration (Days/Weeks)</label>
+                <label htmlFor="pip-edit-duration" className="block text-xs font-medium text-content-muted mb-1">Duration (Days/Weeks)</label>
                 <input
+                  id="pip-edit-duration"
                   type="number"
                   min="1"
                   value={editDuration}
@@ -2015,8 +2053,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           {editingPlanType === 'vision' && (
             <div className="bg-bg-800/50 p-3 rounded-lg border border-overlay-subtle">
-              <label className="block text-xs font-medium text-content-muted mb-1">Target Review Date</label>
+              <label htmlFor="pip-edit-target-review-date" className="block text-xs font-medium text-content-muted mb-1">Target Review Date</label>
               <input
+                id="pip-edit-target-review-date"
                 type="date"
                 value={editTargetReviewDate}
                 onChange={(e) => setEditTargetReviewDate(e.target.value)}

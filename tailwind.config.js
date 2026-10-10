@@ -107,6 +107,12 @@ export default {
           text: 'var(--color-info-text)',
           soft: 'var(--color-info-soft)',
         },
+        indigo: {
+          DEFAULT: 'var(--badge-indigo-text)',
+          text: 'var(--badge-indigo-text)',
+          border: 'var(--badge-indigo-border)',
+          bg: 'var(--badge-indigo-bg)',
+        },
       },
       borderColor: {
         'overlay-subtle': 'var(--border-overlay-subtle)',

@@ -11,6 +11,8 @@ import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
 import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS } from '@/lib/pointsConfig';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { recoverySeasonCapNote } from '@/lib/capCopy';
+import { EmptyState } from '@/components/ui/primitives';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 const DISTRACTION_ACTIVITIES = [
   'Drink a cold glass of water slowly',
@@ -117,7 +119,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
 
         <button
           onClick={() => setEmergencyModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 text-white font-bold text-xs shadow-lg shadow-rose-500/20 hover:from-rose-600 hover:to-red-700 flex items-center gap-2 animate-pulse"
+          className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-sm flex items-center gap-2"
         >
           <PhoneCall size={16} />
           <span>Emergency Support</span>
@@ -134,16 +136,16 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
 
       {/* Main Sobriety Streak Card */}
       {!tracker ? (
-        <div className="card p-8 text-center space-y-3">
-          <ShieldCheck size={36} className="mx-auto text-rose-theme" />
-          <h2 className="text-lg font-bold text-content-primary">Set Up Your Sobriety Tracker</h2>
-          <p className="text-xs text-content-muted max-w-md mx-auto">
-            Choose what you are recovering from (e.g., Alcohol, Smoking, Sugar, Social Media) and start tracking your milestone achievements today.
-          </p>
-          <button onClick={() => setSetupTrackerModalOpen(true)} className="btn-primary mx-auto">
-            Start Sobriety Tracker
-          </button>
-        </div>
+        <EmptyState
+          icon={ShieldCheck}
+          title="Set Up Your Sobriety Tracker"
+          description="Choose what you are recovering from (e.g., Alcohol, Smoking, Sugar, Social Media) and start tracking your milestone achievements today."
+          action={
+            <button onClick={() => setSetupTrackerModalOpen(true)} className="btn-primary">
+              Start Sobriety Tracker
+            </button>
+          }
+        />
       ) : (
         <div className="card p-6 relative overflow-hidden space-y-6">
           <div className="flex items-center justify-between flex-wrap gap-2 border-b border-overlay-subtle pb-4">
@@ -259,9 +261,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         </div>
 
         {cravingLogs.length === 0 ? (
-          <div className="p-6 text-center text-xs text-content-disabled bg-bg-800/40 rounded-xl border border-overlay-subtle">
-            No cravings logged yet. Logging cravings helps identify environmental triggers and effective coping mechanisms.
-          </div>
+          <EmptyState
+            icon={Activity}
+            title="No cravings logged yet"
+            description="Logging cravings helps identify environmental triggers and effective coping mechanisms."
+          />
         ) : (
           <div className="space-y-3">
             {/* Craving History */}
@@ -276,8 +280,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                       <span className="text-content-disabled text-[10px]">{formatDateLong(log.date)}</span>
                       <button
                         onClick={() => setDeleteCravingModalLog(log)}
-                        className="text-content-subtle hover:text-rose-theme p-0.5 transition-colors"
+                        className={`text-content-subtle hover:text-rose-theme p-0.5 transition-colors ${TAP_TARGET}`}
                         title="Delete Craving Log"
+                        aria-label="Delete craving log"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -342,13 +347,16 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               value={intensity}
               onChange={(e) => setIntensity(Number(e.target.value))}
               className="w-full accent-rose-500"
+              id="craving-intensity"
+              aria-label="Craving Intensity"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">What triggered this craving?</label>
+            <label htmlFor="craving-trigger" className="block text-xs font-medium text-content-muted mb-1">What triggered this craving?</label>
             <input
               type="text"
+              id="craving-trigger"
               value={triggerText}
               onChange={(e) => setTriggerText(e.target.value)}
               placeholder="e.g. Stress after work, seeing an ad, feeling lonely"
@@ -358,9 +366,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Coping strategy used / planned</label>
+            <label htmlFor="craving-coping" className="block text-xs font-medium text-content-muted mb-1">Coping strategy used / planned</label>
             <input
               type="text"
+              id="craving-coping"
               value={copingText}
               onChange={(e) => setCopingText(e.target.value)}
               placeholder="e.g. Practiced 4-4-4 breathing, drank water, went for a walk"
@@ -384,9 +393,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <Modal open={setupTrackerModalOpen} onClose={() => setSetupTrackerModalOpen(false)} title="Set Up Sobriety Tracker">
         <form onSubmit={handleStartTracker} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">What are you abstaining from?</label>
+            <label htmlFor="setup-tracker-title" className="block text-xs font-medium text-content-muted mb-1">What are you abstaining from?</label>
             <input
               type="text"
+              id="setup-tracker-title"
               value={trackerTitle}
               onChange={(e) => setTrackerTitle(e.target.value)}
               placeholder="e.g. Alcohol, Smoking, Junk Food, Gambling"
@@ -537,7 +547,7 @@ function BreathingCircle() {
           className={`w-28 h-28 rounded-full border-2 transition-all duration-1000 flex flex-col items-center justify-center ${getCircleScale()}`}
         >
           <span className="text-xs uppercase tracking-widest text-purple-hierarchy font-bold">{phase}</span>
-          <span className="text-2xl font-display font-bold text-white mt-0.5">{seconds}s</span>
+          <span className="text-2xl font-display font-bold text-content-primary mt-0.5">{seconds}s</span>
         </div>
       </div>
 

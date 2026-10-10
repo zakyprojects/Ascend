@@ -324,8 +324,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
     <div className="max-w-5xl mx-auto space-y-5 pb-12">
       {/* Top Header */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20 shrink-0">
-          <Settings size={22} className="text-white" />
+        <div className="w-10 h-10 rounded-2xl bg-primary-500/20 border border-primary-500/30 flex items-center justify-center shrink-0">
+          <Settings size={22} className="text-brand-text" />
         </div>
         <div>
           <h1 className="text-2xl font-display font-bold text-content-primary">Settings & Preferences</h1>
@@ -335,8 +335,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
       {/* Guest Mode Banner */}
       {isGuest && (
-        <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-600/10 to-primary-500/10 border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div className="p-4 rounded-xl bg-bg-750 border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0 text-warning-text">
               <Sparkles size={18} />
             </div>
@@ -384,6 +384,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle border border-transparent'
                   }`}
                   title={sec.label}
+                  aria-label={sec.label}
                 >
                   <span className={`shrink-0 ${active ? (sec.danger ? 'text-rose-theme' : 'text-brand-text') : ''}`}>
                     {sec.icon}
@@ -447,7 +448,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               {/* Username Change Form */}
               <form onSubmit={handleSaveUsername} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-content-tertiary">
+                  <label htmlFor="settings-username" className="block text-xs font-semibold text-content-tertiary">
                     Leaderboard Username
                   </label>
                   {isCooldownActive && (
@@ -463,6 +464,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     <User size={16} />
                   </div>
                   <input
+                    id="settings-username"
                     type="text"
                     required
                     disabled={isCooldownActive || usernameSaving}
@@ -544,6 +546,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                             ? 'bg-primary-500/25 border-2 border-emerald-400 shadow-lg scale-110'
                             : 'hover:bg-overlay-subtle border border-transparent'
                         }`}
+                        aria-label={`Select avatar ${emoji}`}
+                        aria-pressed={selected}
                       >
                         {emoji}
                       </button>
@@ -567,7 +571,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
               {/* Read-only Email display */}
               <div>
-                <label className="block text-xs font-semibold text-content-tertiary mb-1">
+                <label htmlFor="settings-email" className="block text-xs font-semibold text-content-tertiary mb-1">
                   Registered Email Address
                 </label>
                 <div className="relative">
@@ -575,6 +579,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     <Mail size={16} />
                   </div>
                   <input
+                    id="settings-email"
                     type="email"
                     disabled
                     value={currentUser?.email || (isGuest ? 'Guest User (No Email)' : '')}
@@ -800,6 +805,9 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   className={`w-10 h-5 rounded-full transition-colors relative p-0.5 border shrink-0 mt-1 ${
                     (currentUser?.isProfilePublic ?? true) ? 'bg-primary-500 border-primary-400' : 'bg-bg-600 border-overlay-default'
                   }`}
+                  role="switch"
+                  aria-checked={currentUser?.isProfilePublic ?? true}
+                  aria-label="Public leaderboard profile and stats"
                 >
                   <div
                     className={`w-4 h-4 rounded-full bg-white transition-transform ${
@@ -839,6 +847,9 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   className={`w-10 h-5 rounded-full transition-colors relative p-0.5 border shrink-0 mt-1 ${
                     acceptsInvites ? 'bg-primary-500 border-primary-400' : 'bg-bg-600 border-overlay-default'
                   }`}
+                  role="switch"
+                  aria-checked={acceptsInvites}
+                  aria-label="Accept partnership invites"
                 >
                   <div
                     className={`w-4 h-4 rounded-full bg-white transition-transform ${

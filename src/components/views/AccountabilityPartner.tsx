@@ -31,6 +31,8 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
+import { EmptyState } from '@/components/ui/primitives';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { getCurrentTier } from '@/lib/tiers';
 import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
@@ -645,7 +647,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       {inviteError && (
         <div className="card p-4 border-l-4 border-l-rose-500 bg-rose-500/10 text-xs text-rose-theme flex items-center justify-between">
           <span>{inviteError}</span>
-          <button onClick={() => setInviteError(null)} className="text-content-muted hover:text-content-primary">
+          <button
+            onClick={() => setInviteError(null)}
+            aria-label="Dismiss error"
+            className={`text-content-muted hover:text-content-primary ${TAP_TARGET}`}
+          >
             <X size={14} />
           </button>
         </div>
@@ -736,7 +742,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   onClick={() => setSelectedPartnerId(p.id)}
                   className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between gap-3 ${
                     isSelected
-                      ? 'bg-gradient-to-b from-emerald-500/20 to-bg-800 border-emerald-500/50 shadow-lg ring-1 ring-emerald-500/40 scale-[1.02]'
+                      ? 'bg-bg-750 border-emerald-500/50 shadow-lg ring-1 ring-emerald-500/40 scale-[1.02]'
                       : 'bg-bg-800 border-overlay-subtle hover:border-overlay-strong text-content-tertiary'
                   }`}
                 >
@@ -747,7 +753,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       </div>
                       <span className="font-bold text-sm text-content-primary truncate max-w-[100px]">{pUsername}</span>
                     </div>
-                    {isSelected && <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />}
+                    {isSelected && <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />}
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] text-content-muted pt-2 border-t border-overlay-subtle">
@@ -768,7 +774,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           <div className="card p-5 space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-overlay-subtle pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-success-text font-bold text-xl shadow-inner">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-success-text font-bold text-xl">
                   {activePartnerUsername?.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -798,7 +804,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                 <span>Loading {activePartnerUsername}'s Stats...</span>
               </div>
             ) : (
-              <div className="p-5 bg-gradient-to-b from-bg-800 to-bg-900 rounded-2xl border border-overlay-default space-y-4 relative">
+              <div className="p-5 bg-bg-800 rounded-2xl border border-overlay-default space-y-4 relative">
                 {isStatsLoading && (
                   <div className="absolute top-3 right-4 flex items-center gap-1.5 text-[11px] text-content-muted bg-bg-900/80 px-2 py-1 rounded-md border border-overlay-default">
                     <AscendLoadingIndicator size="sm" />
@@ -1083,13 +1089,16 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             </div>
 
             {activePacts.length === 0 ? (
-              <div className="card p-8 text-center space-y-3">
-                <p className="text-sm text-content-muted">No active joint pacts with {activePartnerUsername} right now.</p>
-                <button onClick={() => setChallengeModalOpen(true)} className="btn-primary mx-auto text-xs flex items-center gap-1.5">
-                  <Plus size={14} />
-                  <span>Pledge Joint Pact</span>
-                </button>
-              </div>
+              <EmptyState
+                title="No active joint pacts"
+                description={`No active joint pacts with ${activePartnerUsername} right now.`}
+                action={
+                  <button onClick={() => setChallengeModalOpen(true)} className="btn-primary mx-auto text-xs flex items-center gap-1.5">
+                    <Plus size={14} />
+                    <span>Pledge Joint Pact</span>
+                  </button>
+                }
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {activePacts.map((challenge) => {
@@ -1134,6 +1143,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     <div key={challenge.id} className="card p-5 space-y-4 relative group border border-overlay-subtle hover:border-emerald-500/30 transition-all">
                       <button
                         onClick={() => setChallengeToDelete(challenge)}
+                        aria-label={`Delete joint pact "${challenge.title}"`}
                         className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 hover:scale-110 cursor-pointer"
                         title="Delete Joint Pact"
                       >
@@ -1178,7 +1188,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           </svg>
 
                           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                            <Flame size={18} className="text-warning-text animate-pulse mb-0.5" />
+                            <Flame size={18} className="text-warning-text mb-0.5" />
                             <span className="font-display font-extrabold text-xs text-content-primary leading-none">
                               {challenge.jointStreak}d
                             </span>
@@ -1379,6 +1389,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         >
                           <button
                             onClick={() => setChallengeToDelete(challenge)}
+                            aria-label={`Delete pact history "${challenge.title}"`}
                             className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 hover:scale-110 cursor-pointer"
                             title="Delete Pact History"
                           >
@@ -1454,21 +1465,17 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         </div>
       ) : (
         /* NO ACTIVE PARTNERS EMPTY STATE */
-        <div className="card p-10 text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-success-text flex items-center justify-center mx-auto text-2xl">
-            <Users size={32} />
-          </div>
-          <div className="max-w-md mx-auto space-y-1">
-            <h2 className="text-xl font-display font-bold text-content-primary">No Active Accountability Partners</h2>
-            <p className="text-xs text-content-muted">
-              Enter a partner's 6-digit User ID to send an invite. You can connect with up to 5 partners simultaneously!
-            </p>
-          </div>
-          <button onClick={() => setInviteModalOpen(true)} className="btn-primary mx-auto flex items-center gap-2">
-            <UserPlus size={18} />
-            <span>Invite Accountability Partner</span>
-          </button>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="No Active Accountability Partners"
+          description="Enter a partner's 6-digit User ID to send an invite. You can connect with up to 5 partners simultaneously!"
+          action={
+            <button onClick={() => setInviteModalOpen(true)} className="btn-primary mx-auto flex items-center gap-2">
+              <UserPlus size={18} />
+              <span>Invite Accountability Partner</span>
+            </button>
+          }
+        />
       )}
 
       {/* INVITE PARTNER MODAL */}
@@ -1486,8 +1493,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           </p>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">Partner's 6-digit User ID</label>
+            <label htmlFor="partner-invite-uid" className="block text-xs font-semibold text-content-tertiary mb-1">Partner's 6-digit User ID</label>
             <input
+              id="partner-invite-uid"
               type="text"
               placeholder="e.g. 049201"
               value={partnerUidInput}
@@ -1495,7 +1503,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                 setPartnerUidInput(e.target.value);
                 if (inviteError) setInviteError(null);
               }}
-              className="w-full bg-bg-700 border border-overlay-default text-content-primary placeholder:text-content-disabled rounded-xl px-3.5 py-2.5 text-sm font-mono tracking-widest focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all shadow-inner"
+              className="w-full bg-bg-700 border border-overlay-default text-content-primary placeholder:text-content-disabled rounded-xl px-3.5 py-2.5 text-sm font-mono tracking-widest focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
               maxLength={6}
             />
           </div>
@@ -1544,8 +1552,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         <form onSubmit={handleCreateChallengeSubmit} className="space-y-5">
           {/* Title */}
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">Pact Title</label>
+            <label htmlFor="pact-create-title" className="block text-xs font-semibold text-content-tertiary mb-1">Pact Title</label>
             <input
+              id="pact-create-title"
               type="text"
               placeholder="e.g. 14-Day Morning Mastery Sprint"
               value={challengeTitle}
@@ -1627,8 +1636,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
             {/* Target Input & Smart Suggestions */}
             <div className="space-y-1.5">
-              <label className="block text-[11px] text-content-muted font-semibold">Target Objective</label>
+              <label htmlFor="pact-create-user1-target" className="block text-[11px] text-content-muted font-semibold">Target Objective</label>
               <input
+                id="pact-create-user1-target"
                 type="text"
                 placeholder="e.g. Read 20 pages / 30m Gym / 10k Steps"
                 value={user1Target}
@@ -1701,8 +1711,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
             {/* Partner Target Input & Suggestions */}
             <div className="space-y-1.5">
-              <label className="block text-[11px] text-content-muted font-semibold">Target Objective</label>
+              <label htmlFor="pact-create-user2-target" className="block text-[11px] text-content-muted font-semibold">Target Objective</label>
               <input
+                id="pact-create-user2-target"
                 type="text"
                 placeholder="e.g. 5km Run / Cold Shower / 30m Coding"
                 value={user2Target}

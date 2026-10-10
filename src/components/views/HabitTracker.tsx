@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, Flame, Trash2, Check, Calendar, Repeat, BookMarked, Pencil, Info, AlertTriangle, BookOpen, Lock } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Habit, HabitFrequency } from '@/types';
@@ -311,6 +311,16 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
   const isToggling = isKeyLoading(habit.id);
   const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
 
+  const animKey = `habit_${habit.id}`;
+  const shouldAnimate = done && !store.hasAnimated(animKey);
+
+  useEffect(() => {
+    if (shouldAnimate) {
+      store.markAnimated(animKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldAnimate, animKey]);
+
   const handleToggle = async () => {
     if (isLinked) return;
     await executeWithKey(habit.id, async () => {
@@ -340,7 +350,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
           ) : isLinked && !done ? (
             <Lock size={18} className="text-content-disabled" />
           ) : (
-            <Check size={22} className={done ? 'animate-scale-in' : ''} />
+            <Check size={22} className={shouldAnimate ? 'animate-scale-in' : ''} />
           )}
         </button>
 

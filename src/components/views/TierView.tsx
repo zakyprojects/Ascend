@@ -6,14 +6,6 @@ const TIER_ICONS: Record<string, LucideIcon> = {
   Compass, Rocket, BookOpen, Dumbbell, Trophy, Star, Gem, Shield, Crown,
 };
 
-function hexToRgba(hex: string, alpha: number): string {
-  const clean = hex.replace('#', '');
-  const r = parseInt(clean.substring(0, 2), 16);
-  const g = parseInt(clean.substring(2, 4), 16);
-  const b = parseInt(clean.substring(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 export function TierView({ store }: { store: AppStore }) {
   const seasonPoints = store.getLeagueData('ninetyDay').userPoints;
   const currentTier = getCurrentTier(seasonPoints);
@@ -30,32 +22,17 @@ export function TierView({ store }: { store: AppStore }) {
 
       {/* Current tier showcase */}
       <div className="card p-6 text-center relative overflow-hidden">
-        <style>{`
-          @keyframes pulseGlowTier {
-            0%, 100% {
-              box-shadow: var(--tier-pulse-min);
-            }
-            50% {
-              box-shadow: var(--tier-pulse-max);
-            }
-          }
-          .animate-pulse-glow-tier {
-            animation: pulseGlowTier 2s ease-in-out infinite;
-          }
-        `}</style>
         <div
           className="absolute inset-0 opacity-10"
           style={{ background: `radial-gradient(circle at center, var(--rank-${currentTier.name.toLowerCase()}-glow), transparent 70%)` }}
         />
         <div className="relative">
           <div
-            className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-4 animate-pulse-glow-tier"
+            className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-4"
             style={{
               backgroundColor: `var(--rank-${currentTier.name.toLowerCase()}-bg)`,
               border: `2px solid var(--rank-${currentTier.name.toLowerCase()}-border)`,
-              '--tier-pulse-min': `0 0 20px ${hexToRgba(currentTier.color, 0.35)}`,
-              '--tier-pulse-max': `0 0 30px ${hexToRgba(currentTier.color, 0.60)}`,
-            } as React.CSSProperties}
+            }}
           >
             {(() => {
               const Icon = TIER_ICONS[currentTier.icon] ?? Compass;
@@ -164,7 +141,7 @@ export function TierView({ store }: { store: AppStore }) {
 
                 {/* Checkmark if unlocked */}
                 {isUnlocked && !isCurrent && (
-                  <div className="w-6 h-6 rounded-full bg-primary-500/15 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-primary-500/15 flex items-center justify-center shrink-0">
                     <Check size={14} className="text-success-text" />
                   </div>
                 )}
@@ -178,7 +155,7 @@ export function TierView({ store }: { store: AppStore }) {
       {store.state.pointsHistory.length > 0 && (
         <div>
           <h2 className="section-title mb-3">Recent Points</h2>
-          <div className="card divide-y divide-white/5">
+          <div className="card divide-y divide-overlay-subtle">
             {store.state.pointsHistory.slice(0, 10).map((entry) => (
               <div key={entry.id} className="flex items-center gap-3 p-3.5">
                 <div

@@ -21,6 +21,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { weeklyGoalsCapNote } from '@/lib/capCopy';
+import { EmptyState } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import {
@@ -33,6 +34,240 @@ import {
 } from '@/lib/dates';
 import { WeeklyGoalItem, WeeklyGoalPriority, WeeklyGoalLinkedModule, WeeklyGoalReflection } from '@/types';
 import { computeLinkedGoalProgress, GoalProgressResult, LINKED_GOAL_METRICS, LinkedModule } from '@/lib/linkedGoalMetrics';
+function GoalItemRow({
+  item,
+  selectedWeekKey,
+  isPastWeek,
+  isFutureWeek,
+  getGoalProgress,
+  store,
+  showErrorToast,
+  priorityColor,
+  openEditModal,
+  setDeleteGoalModal,
+}: {
+  item: WeeklyGoalItem;
+  selectedWeekKey: string;
+  isPastWeek: boolean;
+  isFutureWeek: boolean;
+  getGoalProgress: (item: WeeklyGoalItem, targetWeekKey?: string) => GoalProgressResult;
+  store: AppStore;
+  showErrorToast: (title: string, message?: string) => void;
+  priorityColor: (p: WeeklyGoalPriority) => string;
+  openEditModal: (item: WeeklyGoalItem) => void;
+  setDeleteGoalModal: (item: WeeklyGoalItem) => void;
+}) {
+  const prog = getGoalProgress(item);
+  const isDone = item.completed || prog.percent >= 100;
+
+  const animKey = `weeklyGoal_${item.id}`;
+  const shouldAnimate = isDone && !store.hasAnimated(animKey);
+
+  useEffect(() => {
+    if (shouldAnimate) {
+      store.markAnimated(animKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldAnimate, animKey]);
+
+  return (
+    <div
+      key={item.id}
+      className={`p-4 rounded-xl border transition-all space-y-3 ${
+        isDone
+          ? 'bg-emerald-500/5 border-emerald-500/20'
+          : 'bg-bg-900/60 border-overlay-default hover:border-overlay-strong'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 flex-1">
+          {item.linkedModule && item.linkedModule !== 'none' ? (
+            <div
+              title="Auto-synced from linked activity"
+              className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border cursor-default select-none pointer-events-none ${
+                isDone
+                  ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
+                  : 'bg-bg-800 border-overlay-strong text-content-disabled'
+              }`}
+            >
+              {isDone ? <Check size={14} className={shouldAnimate ? 'animate-scale-in' : ''} /> : <Circle size={14} />}
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                const isFreeformWithStepper = prog.target > 1;
+                const nextCompleted = !isDone;
+
+                try {
+                  if (isFreeformWithStepper) {
+                    if (nextCompleted) {
+                      store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
+                        completed: true,
+                        manualProgress: Math.max(item.manualProgress || 0, item.targetValue || 1),
+                      });
+                    } else {
+                      store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
+                        completed: false,
+                      });
+                    }
+                  } else {
+                    store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
+                      completed: nextCompleted,
+                      manualProgress: nextCompleted ? (item.targetValue || 1) : 0,
+                    });
+                  }
+                } catch (err: any) {
+                  showErrorToast('Failed to update goal', err?.message);
+                }
+              }}
+              disabled={isPastWeek || isFutureWeek}
+              aria-label={isDone ? `Mark "${item.title}" incomplete` : `Mark "${item.title}" complete`}
+              className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border disabled:opacity-50 disabled:cursor-not-allowed ${
+                isDone
+                  ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
+                  : 'bg-bg-800 border-overlay-strong text-content-disabled hover:border-overlay-heavy'
+              }`}
+            >
+              {isDone ? <Check size={14} className={shouldAnimate ? 'animate-scale-in' : ''} /> : <Circle size={14} />}
+            </button>
+          )}
+
+          <div className="space-y-1 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className={`text-sm font-semibold text-content-primary ${
+                  isDone ? 'line-through text-content-muted' : ''
+                }`}
+              >
+                {item.title}
+              </span>
+
+              <span className={`badge text-[10px] font-bold border ${priorityColor(item.priority)}`}>
+                {item.priority.toUpperCase()}
+              </span>
+
+              {item.carriedOverFromWeekKey && (
+                <span className="badge badge-purple text-[10px]">
+                  Carried over from {item.carriedOverFromWeekKey}
+                </span>
+              )}
+
+              {item.linkedModule && item.linkedModule !== 'none' && (
+                <span className="badge badge-cyan text-[10px] flex items-center gap-1">
+                  <Zap size={10} /> Linked: {item.linkedModule.toUpperCase()}
+                </span>
+              )}
+            </div>
+
+            {item.targetDescription && (
+              <p className="text-xs text-content-muted">{item.targetDescription}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => openEditModal(item)}
+            disabled={isPastWeek}
+            className="p-1.5 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
+            title="Edit Goal"
+            aria-label={`Edit goal "${item.title}"`}
+          >
+            <Edit3 size={15} />
+          </button>
+          <button
+            onClick={() => setDeleteGoalModal(item)}
+            disabled={isPastWeek}
+            className="p-1.5 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
+            title="Delete Goal"
+            aria-label={`Delete goal "${item.title}"`}
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+      </div>
+
+      {/* PROGRESS BAR FOR MEASURABLE / LINKED GOALS */}
+      <div className="space-y-1.5 pt-1 border-t border-overlay-subtle">
+        {prog.needsMetricSelection ? (
+          <div className="flex items-center justify-between text-xs text-warning-text bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg">
+            <span className="flex items-center gap-1.5">
+              <AlertTriangle size={13} />
+              <span>Choose what to track for this goal</span>
+            </span>
+            <button
+              onClick={() => openEditModal(item)}
+              className="text-[11px] underline hover:text-content-primary font-medium ml-2"
+            >
+              Choose Metric
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between text-[11px] text-content-muted font-medium">
+              <span>Progress</span>
+              <div className="flex items-center gap-2">
+                {(!item.linkedModule || item.linkedModule === 'none') && prog.target > 1 && (
+                  <div className="flex items-center gap-1 bg-bg-800 px-1.5 py-0.5 rounded-lg border border-overlay-default text-xs">
+                    <button
+                      onClick={() => {
+                        const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
+                        const newVal = Math.max(0, currentVal - 1);
+                        try {
+                          store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
+                        } catch (err: any) {
+                          showErrorToast('Failed to update goal', err?.message);
+                        }
+                      }}
+                      disabled={isPastWeek || isFutureWeek || prog.current <= 0}
+                      className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors"
+                      title="Decrement progress"
+                      aria-label={`Decrease progress for "${item.title}"`}
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <span className="font-bold text-content-secondary min-w-[16px] text-center">{prog.current}</span>
+                    <button
+                      onClick={() => {
+                        const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
+                        const newVal = Math.min(prog.target, currentVal + 1);
+                        try {
+                          store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
+                        } catch (err: any) {
+                          showErrorToast('Failed to update goal', err?.message);
+                        }
+                      }}
+                      disabled={isPastWeek || isFutureWeek || prog.current >= prog.target}
+                      className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors"
+                      title="Increment progress"
+                      aria-label={`Increase progress for "${item.title}"`}
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                )}
+                <span className="text-content-secondary font-bold">
+                  {prog.current} / {prog.target} {prog.unit} ({prog.percent}%)
+                </span>
+              </div>
+            </div>
+
+            <div className="w-full bg-bg-800 rounded-full h-2 overflow-hidden border border-overlay-subtle">
+              <div
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  prog.percent >= 100
+                    ? 'bg-emerald-400'
+                    : 'bg-primary-500'
+                }`}
+                style={{ width: `${prog.percent}%` }}
+              />
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -382,6 +617,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               onClick={() => setSelectedWeekKey(offsetWeekKey(selectedWeekKey, -1))}
               className="p-1.5 rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-800 transition-colors"
               title="Previous Week"
+              aria-label="Previous week"
             >
               <ChevronLeft size={16} />
             </button>
@@ -397,6 +633,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               onClick={() => setSelectedWeekKey(offsetWeekKey(selectedWeekKey, 1))}
               className="p-1.5 rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-800 transition-colors"
               title="Next Week"
+              aria-label="Next week"
             >
               <ChevronRight size={16} />
             </button>
@@ -424,7 +661,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </div>
             <div className="w-full bg-bg-900 rounded-full h-2.5 overflow-hidden border border-overlay-subtle">
               <div
-                className="bg-gradient-to-r from-primary-500 to-emerald-400 h-2.5 rounded-full transition-all duration-500"
+                className="bg-primary-500 h-2.5 rounded-full transition-all duration-500"
                 style={{ width: `${goalStats.percent}%` }}
               />
             </div>
@@ -540,221 +777,39 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         })()}
 
         {activeGoalDoc.goals.filter((g) => !g.archived).length === 0 ? (
-          <div className="text-center py-8 space-y-3 bg-bg-900/30 rounded-xl border border-dashed border-overlay-default">
-            <Target size={28} className="text-content-subtle mx-auto" />
-            <div>
-              <p className="text-xs font-semibold text-content-tertiary">No Weekly Goals Set Yet</p>
-              <p className="text-[11px] text-content-disabled">
-                Define 1-3 measurable, high-leverage priorities to align your effort this week.
-              </p>
-            </div>
-            <button
-              onClick={openCreateModal}
-              disabled={isPastWeek}
-              className="btn-secondary text-xs inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Plus size={14} /> Set First Goal
-            </button>
-          </div>
+          <EmptyState
+            icon={Target}
+            title="No Weekly Goals Set Yet"
+            description="Define 1-3 measurable, high-leverage priorities to align your effort this week."
+            size="sm"
+            surface={false}
+            action={
+              <button
+                onClick={openCreateModal}
+                disabled={isPastWeek}
+                className="btn-secondary text-xs inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus size={14} /> Set First Goal
+              </button>
+            }
+          />
         ) : (
           <div className="space-y-3">
-            {activeGoalDoc.goals.filter((g) => !g.archived).map((item) => {
-              const prog = getGoalProgress(item);
-              const isDone = item.completed || prog.percent >= 100;
-
-              return (
-                <div
-                  key={item.id}
-                  className={`p-4 rounded-xl border transition-all space-y-3 ${
-                    isDone
-                      ? 'bg-emerald-500/5 border-emerald-500/20'
-                      : 'bg-bg-900/60 border-overlay-default hover:border-overlay-strong'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 flex-1">
-                      {item.linkedModule && item.linkedModule !== 'none' ? (
-                        <div
-                          title="Auto-synced from linked activity"
-                          className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border cursor-default select-none pointer-events-none ${
-                            isDone
-                              ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
-                              : 'bg-bg-800 border-overlay-strong text-content-disabled'
-                          }`}
-                        >
-                          {isDone ? <Check size={14} /> : <Circle size={14} />}
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            const isFreeformWithStepper = prog.target > 1;
-                            const nextCompleted = !isDone;
-
-                            try {
-                              if (isFreeformWithStepper) {
-                                if (nextCompleted) {
-                                  store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
-                                    completed: true,
-                                    manualProgress: Math.max(item.manualProgress || 0, item.targetValue || 1),
-                                  });
-                                } else {
-                                  store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
-                                    completed: false,
-                                  });
-                                }
-                              } else {
-                                store.updateWeeklyGoalItem(selectedWeekKey, item.id, {
-                                  completed: nextCompleted,
-                                  manualProgress: nextCompleted ? (item.targetValue || 1) : 0,
-                                });
-                              }
-                            } catch (err: any) {
-                              showErrorToast('Failed to update goal', err?.message);
-                            }
-                          }}
-                          disabled={isPastWeek || isFutureWeek}
-                          className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border disabled:opacity-50 disabled:cursor-not-allowed ${
-                            isDone
-                              ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
-                              : 'bg-bg-800 border-overlay-strong text-content-disabled hover:border-overlay-heavy'
-                          }`}
-                        >
-                          {isDone ? <Check size={14} /> : <Circle size={14} />}
-                        </button>
-                      )}
-
-                      <div className="space-y-1 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className={`text-sm font-semibold text-content-primary ${
-                              isDone ? 'line-through text-content-muted' : ''
-                            }`}
-                          >
-                            {item.title}
-                          </span>
-
-                          <span className={`badge text-[10px] font-bold border ${priorityColor(item.priority)}`}>
-                            {item.priority.toUpperCase()}
-                          </span>
-
-                          {item.carriedOverFromWeekKey && (
-                            <span className="badge badge-purple text-[10px]">
-                              Carried over from {item.carriedOverFromWeekKey}
-                            </span>
-                          )}
-
-                          {item.linkedModule && item.linkedModule !== 'none' && (
-                            <span className="badge badge-cyan text-[10px] flex items-center gap-1">
-                              <Zap size={10} /> Linked: {item.linkedModule.toUpperCase()}
-                            </span>
-                          )}
-                        </div>
-
-                        {item.targetDescription && (
-                          <p className="text-xs text-content-muted">{item.targetDescription}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => openEditModal(item)}
-                        disabled={isPastWeek}
-                        className="p-1.5 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
-                        title="Edit Goal"
-                      >
-                        <Edit3 size={15} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteGoalModal(item)}
-                        disabled={isPastWeek}
-                        className="p-1.5 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
-                        title="Delete Goal"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* PROGRESS BAR FOR MEASURABLE / LINKED GOALS */}
-                  <div className="space-y-1.5 pt-1 border-t border-overlay-subtle">
-                    {prog.needsMetricSelection ? (
-                      <div className="flex items-center justify-between text-xs text-warning-text bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg">
-                        <span className="flex items-center gap-1.5">
-                          <AlertTriangle size={13} />
-                          <span>Choose what to track for this goal</span>
-                        </span>
-                        <button
-                          onClick={() => openEditModal(item)}
-                          className="text-[11px] underline hover:text-content-primary font-medium ml-2"
-                        >
-                          Choose Metric
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between text-[11px] text-content-muted font-medium">
-                          <span>Progress</span>
-                          <div className="flex items-center gap-2">
-                            {(!item.linkedModule || item.linkedModule === 'none') && prog.target > 1 && (
-                              <div className="flex items-center gap-1 bg-bg-800 px-1.5 py-0.5 rounded-lg border border-overlay-default text-xs">
-                                <button
-                                  onClick={() => {
-                                    const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
-                                    const newVal = Math.max(0, currentVal - 1);
-                                    try {
-                                      store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
-                                    } catch (err: any) {
-                                      showErrorToast('Failed to update goal', err?.message);
-                                    }
-                                  }}
-                                  disabled={isPastWeek || isFutureWeek || prog.current <= 0}
-                                  className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors"
-                                  title="Decrement progress"
-                                >
-                                  <Minus size={12} />
-                                </button>
-                                <span className="font-bold text-content-secondary min-w-[16px] text-center">{prog.current}</span>
-                                <button
-                                  onClick={() => {
-                                    const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
-                                    const newVal = Math.min(prog.target, currentVal + 1);
-                                    try {
-                                      store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
-                                    } catch (err: any) {
-                                      showErrorToast('Failed to update goal', err?.message);
-                                    }
-                                  }}
-                                  disabled={isPastWeek || isFutureWeek || prog.current >= prog.target}
-                                  className="p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors"
-                                  title="Increment progress"
-                                >
-                                  <Plus size={12} />
-                                </button>
-                              </div>
-                            )}
-                            <span className="text-content-secondary font-bold">
-                              {prog.current} / {prog.target} {prog.unit} ({prog.percent}%)
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="w-full bg-bg-800 rounded-full h-2 overflow-hidden border border-overlay-subtle">
-                          <div
-                            className={`h-2 rounded-full transition-all duration-300 ${
-                              prog.percent >= 100
-                                ? 'bg-emerald-400'
-                                : 'bg-primary-500'
-                            }`}
-                            style={{ width: `${prog.percent}%` }}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {activeGoalDoc.goals.filter((g) => !g.archived).map((item) => (
+              <GoalItemRow
+                key={item.id}
+                item={item}
+                selectedWeekKey={selectedWeekKey}
+                isPastWeek={isPastWeek}
+                isFutureWeek={isFutureWeek}
+                getGoalProgress={getGoalProgress}
+                store={store}
+                showErrorToast={showErrorToast}
+                priorityColor={priorityColor}
+                openEditModal={openEditModal}
+                setDeleteGoalModal={setDeleteGoalModal}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -790,10 +845,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         {/* ADD REFLECTION FORM */}
         {showAddReflection && (
           <div className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
-            <label className="block text-xs font-semibold text-content-secondary">
+            <label htmlFor="new-reflection-content" className="block text-xs font-semibold text-content-secondary">
               New Reflection Entry
             </label>
             <textarea
+              id="new-reflection-content"
               value={newReflectionContent}
               onChange={(e) => setNewReflectionContent(e.target.value)}
               placeholder="What went exceptionally well? What friction did you encounter? What key adjustment will you make next week?"
@@ -835,11 +891,13 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             return (
               <>
                 {reflections.length === 0 && !showAddReflection && (
-                  <div className="text-center py-6 border border-dashed border-overlay-subtle rounded-xl text-content-disabled text-xs">
-                    {selectedWeekKey === currentWeekKey
-                      ? `No reflections added for ${selectedWeekKey} yet. Click "+ Add Reflection" above to add your insights.`
-                      : `No reflections added for ${selectedWeekKey}.`}
-                  </div>
+                  <EmptyState
+                    icon={Sparkles}
+                    title={selectedWeekKey === currentWeekKey ? `No reflections added for ${selectedWeekKey} yet.` : `No reflections added for ${selectedWeekKey}.`}
+                    description={selectedWeekKey === currentWeekKey ? 'Click "+ Add Reflection" above to add your insights.' : undefined}
+                    size="sm"
+                    surface={false}
+                  />
                 )}
 
                 {reflections.map((ref) => {
@@ -848,10 +906,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                   if (isEditingThis) {
                     return (
                       <div key={ref.id} className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
-                        <label className="block text-xs font-semibold text-content-secondary">
+                        <label htmlFor="edit-reflection-content" className="block text-xs font-semibold text-content-secondary">
                           Edit Reflection
                         </label>
                         <textarea
+                          id="edit-reflection-content"
                           value={editReflectionContent}
                           onChange={(e) => setEditReflectionContent(e.target.value)}
                           className="input min-h-[90px] text-xs leading-relaxed"
@@ -908,6 +967,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                       disabled={isPastWeek || isFutureWeek}
                       className="p-1 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
                       title="Edit reflection"
+                      aria-label="Edit reflection"
                     >
                       <Edit3 size={14} />
                     </button>
@@ -916,6 +976,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                       disabled={isPastWeek || isFutureWeek}
                       className="p-1 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted"
                       title="Delete reflection"
+                      aria-label="Delete reflection"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -941,10 +1002,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       >
         <div className="space-y-4 pt-2">
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="goal-title" className="block text-xs font-semibold text-content-tertiary mb-1">
               Goal Title <span className="text-rose-theme">*</span>
             </label>
             <input
+              id="goal-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -955,10 +1017,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="goal-description" className="block text-xs font-semibold text-content-tertiary mb-1">
               Target Description & Strategy
             </label>
             <textarea
+              id="goal-description"
               value={targetDescription}
               onChange={(e) => setTargetDescription(e.target.value)}
               placeholder="Why is this high leverage? How will you schedule this?"
@@ -968,10 +1031,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-priority" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Priority Level
               </label>
               <select
+                id="goal-priority"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as WeeklyGoalPriority)}
                 className="input w-full bg-bg-800"
@@ -983,10 +1047,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-linked-module" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Link Tracker Module
               </label>
               <select
+                id="goal-linked-module"
                 value={linkedModule}
                 onChange={(e) => {
                   const mod = e.target.value as WeeklyGoalLinkedModule;
@@ -1008,10 +1073,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {/* ITEM SELECTOR DEPENDING ON LINKED MODULE */}
           {linkedModule === 'exercise' && (
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-workout-item" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Select Workout <span className="text-rose-theme">*</span>
               </label>
               <select
+                id="goal-workout-item"
                 value={linkedItemId}
                 onChange={(e) => setLinkedItemId(e.target.value)}
                 className="input w-full bg-bg-800"
@@ -1028,10 +1094,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           {linkedModule === 'habit' && (
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-habit-item" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Select Habit <span className="text-rose-theme">*</span>
               </label>
               <select
+                id="goal-habit-item"
                 value={linkedItemId}
                 onChange={(e) => setLinkedItemId(e.target.value)}
                 className="input w-full bg-bg-800"
@@ -1048,10 +1115,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           {linkedModule === 'reading' && (
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-book-item" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Select Book <span className="text-rose-theme">*</span>
               </label>
               <select
+                id="goal-book-item"
                 value={linkedItemId}
                 onChange={(e) => setLinkedItemId(e.target.value)}
                 className="input w-full bg-bg-800"
@@ -1068,10 +1136,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           {linkedModule === 'skill' && (
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-skill-item" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Select Skill <span className="text-rose-theme">*</span>
               </label>
               <select
+                id="goal-skill-item"
                 value={linkedItemId}
                 onChange={(e) => setLinkedItemId(e.target.value)}
                 className="input w-full bg-bg-800"
@@ -1089,10 +1158,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {/* TARGET VALUE & METRIC / UNIT INPUTS */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-target-amount" className="block text-xs font-semibold text-content-tertiary mb-1">
                 Target Goal Amount
               </label>
               <input
+                id="goal-target-amount"
                 type="number"
                 min="1"
                 value={targetValue}
@@ -1103,10 +1173,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
             {linkedModule !== 'none' ? (
               <div>
-                <label className="block text-xs font-semibold text-content-tertiary mb-1">
+                <label htmlFor="goal-metric-key" className="block text-xs font-semibold text-content-tertiary mb-1">
                   Select Metric <span className="text-rose-theme">*</span>
                 </label>
                 <select
+                  id="goal-metric-key"
                   value={linkedMetricKey}
                   onChange={(e) => setLinkedMetricKey(e.target.value)}
                   className="input w-full bg-bg-800"
@@ -1121,10 +1192,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               </div>
             ) : (
               <div>
-                <label className="block text-xs font-semibold text-content-tertiary mb-1">
+                <label htmlFor="goal-unit-label" className="block text-xs font-semibold text-content-tertiary mb-1">
                   Unit Label
                 </label>
                 <input
+                  id="goal-unit-label"
                   type="text"
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}

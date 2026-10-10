@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { BookOpen, Check, Clock, ArrowLeft, Search, Sparkles } from 'lucide-react';
+import { BookOpen, Check, Clock, Search, Sparkles } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import { Lesson } from '@/types';
 import { Modal } from '@/components/ui/Modal';
+import { EmptyState } from '@/components/ui/primitives';
 import { getSeasonNumber, leagueNow } from '@/lib/leagueTime';
 
 export function Lessons({ store }: { store: AppStore }) {
@@ -57,10 +58,12 @@ export function Lessons({ store }: { store: AppStore }) {
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" />
         <input
+          id="lessons-search"
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search lessons..."
+          aria-label="Search lessons"
           className="input pl-10"
         />
       </div>
@@ -129,9 +132,11 @@ export function Lessons({ store }: { store: AppStore }) {
       </div>
 
       {filtered.length === 0 && (
-        <div className="card p-8 text-center">
-          <p className="text-sm text-content-disabled">No lessons found. Try a different search or category.</p>
-        </div>
+        <EmptyState
+          icon={BookOpen}
+          title="No lessons found"
+          description="Try a different search or category."
+        />
       )}
 
       {/* Lesson reader modal */}

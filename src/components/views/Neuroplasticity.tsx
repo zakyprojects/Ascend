@@ -1,5 +1,6 @@
 import { Brain, Repeat, Moon, Sparkles, Clock, Target, ArrowRight } from 'lucide-react';
 import { View } from '@/components/AppShell';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 interface NeuroplasticityProps {
   onViewChange?: (view: View) => void;
@@ -15,7 +16,6 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
 
       {/* Hero */}
       <div className="card p-6 relative overflow-hidden">
-        <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #a855f7, transparent 70%)' }} />
         <div className="relative">
           <div className="w-16 h-16 rounded-2xl bg-purple-500/15 flex items-center justify-center mb-4">
             <Brain size={32} className="text-purple-hierarchy" />
@@ -91,7 +91,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
       </div>
 
       {/* 90-Day League CTA */}
-      <div className="card p-5 border-2 border-purple-500/30 bg-purple-500/5">
+      <div className="card p-5 border border-purple-500/30 bg-purple-500/5">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0">
             <Target size={20} className="text-purple-hierarchy" />
@@ -135,7 +135,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
           ))}
         </div>
         {onViewChange && (
-          <button onClick={() => onViewChange('lessons')} className="btn-ghost text-xs mt-3">
+          <button onClick={() => onViewChange('lessons')} className={`btn-ghost text-xs mt-3 ${TAP_TARGET}`}>
             Read all lessons <ArrowRight size={14} />
           </button>
         )}
