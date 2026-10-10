@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useRef } from 'react';
 import {
   LogIn,
   LogOut,
@@ -19,7 +19,8 @@ import {
   getGroupForView,
 } from './nav/navConfig';
 import { useSidebarGroups } from './nav/useSidebarGroups';
-import { TierBadge } from './ui/TierBadge';
+import { RankChip } from './ui/RankChip';
+import { ViewEntrance } from './ViewEntrance';
 import { AppStore } from '@/lib/store';
 import { GuestLogoutWarningModal } from './ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from './ui/LogoutConfirmModal';
@@ -68,6 +69,13 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
   useEffect(() => { if (activeGroupId) open(activeGroupId); }, [activeGroupId, open]);
 
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
+
+  // Views that already played their entrance this session. Revisits render
+  // instantly: replaying on every tab switch would make navigation feel slow.
+  const enteredViewsRef = useRef<Set<View>>(new Set());
+  useEffect(() => {
+    enteredViewsRef.current.add(currentView);
+  }, [currentView]);
 
   const currentUser = store.state.currentUser;
   const username = store.state.username;
@@ -242,12 +250,10 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
         </nav>
 
         <div className="p-3 border-t border-overlay-subtle">
-          <div className="card px-3 py-2 flex items-center justify-between">
-            <TierBadge totalPoints={seasonPoints} size="sm" showName />
-            <span className="text-xs text-content-disabled tabular-nums">
-              {seasonPoints.toLocaleString()} points
-            </span>
-          </div>
+          <RankChip
+            seasonPoints={seasonPoints}
+            latestEntryTimestamp={store.state.pointsHistory?.[0]?.timestamp}
+          />
         </div>
       </aside>
 
@@ -311,8 +317,10 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
               />
             </div>
           )}
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 animate-fade-in">
-            {children}
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+            <ViewEntrance key={currentView} animate={!enteredViewsRef.current.has(currentView)}>
+              {children}
+            </ViewEntrance>
           </div>
         </main>
 
