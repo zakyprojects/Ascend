@@ -33,27 +33,32 @@ function App() {
   const [view, setView] = useState<View>('dashboard');
   const [userOpenedAuthModal, setUserOpenedAuthModal] = useState(false);
 
-  // When the session check ends, the boot overlay stays mounted for its exit animation,
-  // revealing the app beneath. Derived during render so the app never shows a frame without it.
-  const [wasAuthChecking, setWasAuthChecking] = useState(store.isAuthChecking);
-  const [bootOverlayExiting, setBootOverlayExiting] = useState(false);
-  if (wasAuthChecking !== store.isAuthChecking) {
-    setWasAuthChecking(store.isAuthChecking);
-    setBootOverlayExiting(wasAuthChecking);
+  // Blocking loader: the initial session check, then any later sign-in that is still loading
+  // the user's data once the auth modal's success screen is done (never an empty guest view).
+  // It stays mounted for its exit animation, revealing the app beneath; state is derived
+  // during render so the app never shows a frame without it.
+  const showLoader = store.isAuthChecking || (store.isSessionLoading && !userOpenedAuthModal);
+  const [loaderShown, setLoaderShown] = useState(showLoader);
+  const [loaderExiting, setLoaderExiting] = useState(false);
+  const [loaderKind, setLoaderKind] = useState<'boot' | 'session'>('boot');
+  if (loaderShown !== showLoader) {
+    setLoaderShown(showLoader);
+    setLoaderExiting(loaderShown);
+    if (showLoader) setLoaderKind(store.isAuthChecking ? 'boot' : 'session');
   }
   useEffect(() => {
-    if (!bootOverlayExiting) return;
-    const timer = setTimeout(() => setBootOverlayExiting(false), OVERLAY_EXIT_MS);
+    if (!loaderExiting) return;
+    const timer = setTimeout(() => setLoaderExiting(false), OVERLAY_EXIT_MS);
     return () => clearTimeout(timer);
-  }, [bootOverlayExiting]);
+  }, [loaderExiting]);
 
   // Rendered beside the app (not instead of it), so it is not remounted when it starts exiting.
-  const bootOverlay = (store.isAuthChecking || bootOverlayExiting) && (
+  const loaderOverlay = (showLoader || loaderExiting) && (
     <AscendLoadingOverlay
-      message="Verifying session..."
-      submessage="Preparing your personal growth workspace"
-      entrance="boot"
-      exiting={!store.isAuthChecking}
+      message={loaderKind === 'boot' ? 'Verifying session...' : 'Loading your workspace...'}
+      submessage={loaderKind === 'boot' ? 'Preparing your personal growth workspace' : 'Syncing your data'}
+      entrance={loaderKind === 'boot' ? 'boot' : 'fade'}
+      exiting={!showLoader}
     />
   );
 
@@ -122,7 +127,7 @@ function App() {
           />
         </ToastProvider>
       )}
-      {bootOverlay}
+      {loaderOverlay}
     </>
   );
 }

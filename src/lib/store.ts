@@ -1649,6 +1649,8 @@ export function reconcileAllWeeklyReflections(
 export function useAppState() {
   const [state, setStateRaw] = useState<AppState>(loadInitialState);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  // True while a sign-in made after the initial check (login, sign-up, guest) loads the user's data.
+  const [isSessionLoading, setIsSessionLoading] = useState(false);
   const isHydrated = useRef(false);
   const canPersistLocally = useRef(false);
   const authGenerationRef = useRef(0);
@@ -2260,6 +2262,7 @@ export function useAppState() {
           if (myGeneration !== authGenerationRef.current) return;
           setState(nextGuestState);
           setIsAuthChecking(false);
+          setIsSessionLoading(false);
           return;
         }
 
@@ -2273,6 +2276,7 @@ export function useAppState() {
           }
 
           const myGeneration = ++authGenerationRef.current;
+          if (event === 'SIGNED_IN') setIsSessionLoading(true);
 
           const userId = session.user.id;
           const email = session.user.email || '';
@@ -2421,6 +2425,7 @@ export function useAppState() {
               }
             }
           } finally {
+            if (mounted && myGeneration === authGenerationRef.current) setIsSessionLoading(false);
             if (mounted) setIsAuthChecking(false);
           }
         } else {
@@ -10525,6 +10530,7 @@ export function useAppState() {
   return {
     state,
     isAuthChecking,
+    isSessionLoading,
     setAuthSessionState,
     logout,
     addPresetHabit,
