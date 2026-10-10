@@ -15,7 +15,7 @@ const RY = 15;
 const ROT = (-14 * Math.PI) / 180;
 const SPAN = (165 * Math.PI) / 180;
 const SAMPLES = 48;
-export const LOOP_MS = 1600;
+const LOOP_MS = 1600;
 const FRAMES = 96; // 60fps over one 1.6s loop
 
 export interface RibbonFrame {
