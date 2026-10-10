@@ -254,7 +254,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               <button
                 type="button"
                 onClick={() => { setMode('signup'); resetForm(); }}
-                className="w-full p-4 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-on-brand rounded-2xl shadow-xl transition-all flex items-center justify-between group border border-primary-400/30"
+                className="w-full p-4 bg-primary-500 hover:bg-primary-600 text-on-brand rounded-2xl shadow-xl transition-all flex items-center justify-between group border border-primary-400/30"
               >
                 <div className="text-left">
                   <div className="font-bold text-sm flex items-center gap-2">
@@ -264,7 +264,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                     Create a new account with email & password
                   </div>
                 </div>
-                <UserPlus size={20} className="group-hover:scale-110 transition-transform shrink-0" />
+                <UserPlus size={20} className="shrink-0" />
               </button>
 
               {/* Option 2: Login */}
@@ -281,7 +281,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                     Log in to your existing account
                   </div>
                 </div>
-                <LogIn size={20} className="text-content-muted group-hover:text-content-secondary group-hover:scale-110 transition-all shrink-0" />
+                <LogIn size={20} className="text-content-muted group-hover:text-content-secondary transition-colors shrink-0" />
               </button>
 
               {/* Option 3: Continue as Guest */}
@@ -300,7 +300,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
                     Instant access — no email or password required
                   </div>
                 </div>
-                <UserCheck size={20} className="text-success-text group-hover:scale-110 transition-transform shrink-0" />
+                <UserCheck size={20} className="text-success-text shrink-0" />
               </button>
             </div>
           </div>
@@ -470,7 +470,7 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-on-brand font-medium text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3 bg-primary-500 hover:bg-primary-600 text-on-brand font-medium text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
                   <>

@@ -101,7 +101,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
           {config.hierarchyBadge}
         </span>
         <div
-          className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-105 duration-200 ${
+          className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg ${
             tier === 'goals'
               ? 'hero-icon-glow-purple'
               : tier === 'projects'

@@ -1168,7 +1168,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       <button
                         onClick={() => setChallengeToDelete(challenge)}
                         aria-label={`Delete joint pact "${challenge.title}"`}
-                        className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 hover:scale-110 cursor-pointer"
+                        className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 cursor-pointer"
                         title="Delete Joint Pact"
                       >
                         <Trash2 size={16} />
@@ -1279,7 +1279,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                                 type="button"
                                 disabled={isNudgeCooldown || isKeyLoading(`nudge_${challenge.id}`)}
                                 onClick={() => handleNudgePartner(challenge)}
-                                className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all duration-200 active:scale-95 hover:scale-105 hover:brightness-110 flex items-center gap-1 cursor-pointer select-none ${
+                                className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all duration-200 active:scale-95 flex items-center gap-1 cursor-pointer select-none ${
                                   isNudgeCooldown || isKeyLoading(`nudge_${challenge.id}`)
                                     ? 'bg-bg-900 text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
                                     : 'bg-amber-500/20 hover:bg-amber-500/30 text-warning-text border border-amber-500/40 shadow-sm'
@@ -1414,7 +1414,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           <button
                             onClick={() => setChallengeToDelete(challenge)}
                             aria-label={`Delete pact history "${challenge.title}"`}
-                            className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 hover:scale-110 cursor-pointer"
+                            className="absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all duration-200 active:scale-90 cursor-pointer"
                             title="Delete Pact History"
                           >
                             <Trash2 size={16} />

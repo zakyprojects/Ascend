@@ -184,7 +184,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
               {currentUser.isAnonymous && (
                 <button
                   onClick={onOpenAuthModal}
-                  className="w-full py-1.5 px-2 bg-gradient-to-r from-primary-500/20 to-primary-600/20 hover:from-primary-500/30 hover:to-primary-600/30 border border-primary-500/30 text-brand-text font-semibold text-[11px] rounded-lg transition-all flex items-center justify-center gap-1.5"
+                  className="w-full py-1.5 px-2 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-brand-text font-semibold text-[11px] rounded-lg transition-all flex items-center justify-center gap-1.5"
                 >
                   <span>Save Progress — Create Account</span>
                 </button>
@@ -193,7 +193,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
           ) : (
             <button
               onClick={onOpenAuthModal}
-              className="w-full card p-3 bg-gradient-to-r from-primary-500/20 to-primary-600/20 hover:from-primary-500/30 hover:to-primary-600/30 border border-primary-500/30 flex items-center justify-center gap-2 text-brand-text font-medium text-xs rounded-xl transition-all"
+              className="w-full card p-3 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 flex items-center justify-center gap-2 text-brand-text font-medium text-xs rounded-xl transition-all"
             >
               <LogIn size={16} />
               <span>Sign In / Register</span>

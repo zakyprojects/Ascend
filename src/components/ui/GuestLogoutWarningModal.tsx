@@ -42,7 +42,7 @@ export function GuestLogoutWarningModal({
               onClose();
               onSaveProgressFirst();
             }}
-            className="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 disabled:opacity-50 text-on-brand font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-on-brand font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
           >
             <Shield size={16} />
             <span>Save Progress First (Create Account)</span>

@@ -1114,7 +1114,7 @@ function FocusTimerSubmodule({
             <button
               type="button"
               onClick={handleHeaderNotifButtonClick}
-              className="transition-all hover:scale-105 active:scale-95"
+              className="transition-all active:scale-95"
               title={
                 notificationPerm === 'default'
                   ? 'Click to request browser notification permission'
@@ -1404,7 +1404,7 @@ function FocusTimerSubmodule({
           <div className="card p-8 text-center space-y-6 bg-bg-800 border border-emerald-500/30 rounded-2xl relative overflow-hidden shadow-sm">
             <div className="max-w-md mx-auto space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-success-text flex items-center justify-center mx-auto">
-                <Flame size={32} className="animate-pulse" />
+                <Flame size={32} />
               </div>
 
               <div>
@@ -1441,7 +1441,7 @@ function FocusTimerSubmodule({
           <div className="card p-8 text-center space-y-6 bg-bg-800 border border-rose-500/50 rounded-2xl relative overflow-hidden shadow-sm">
             <div className="max-w-md mx-auto space-y-5 py-4">
               <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-theme flex items-center justify-center mx-auto">
-                <PowerOff className="animate-pulse" size={32} />
+                <PowerOff size={32} />
               </div>
 
               <div className="space-y-2">
@@ -1538,7 +1538,7 @@ function FocusTimerSubmodule({
 
             {/* Locked Timer Display */}
             <div className="py-2 space-y-2">
-              <div className="text-6xl sm:text-8xl font-display font-black text-rose-theme tracking-tight font-mono animate-pulse">
+              <div className="text-6xl sm:text-8xl font-display font-black text-rose-theme tracking-tight font-mono">
                 00:00
               </div>
               <p className="text-xs text-rose-theme-muted flex items-center justify-center gap-1.5 font-mono">
