@@ -33,7 +33,7 @@ import {
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { EmptyState } from '@/components/ui/primitives';
+import { EmptyState, Skeleton } from '@/components/ui/primitives';
 import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
 import { getCurrentTier } from '@/lib/tiers';
 import { todayKey } from '@/lib/dates';
@@ -1363,9 +1363,22 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           </div>
 
           {isLoadingPlans ? (
-            <div className="card p-12 text-center text-content-muted text-sm space-y-4 flex flex-col items-center justify-center min-h-[220px]">
-              <AscendLoadingIndicator size="lg" />
-              <p className="text-xs font-medium text-content-tertiary animate-pulse">Loading Public Plans...</p>
+            <div role="status" aria-label="Loading public plans" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="card p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-7 w-7 rounded-full" />
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-2.5 w-12" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-5/6" />
+                  <Skeleton className="h-8 w-full rounded-xl" />
+                </div>
+              ))}
             </div>
           ) : remotePublicPlans.length === 0 ? (
             <EmptyState

@@ -50,3 +50,6 @@ export type { NavItemProps, NavSectionProps } from './Nav';
 
 export { Tabs } from './Tabs';
 export type { TabItem, TabsProps } from './Tabs';
+
+export { Skeleton } from './Skeleton';
+export type { SkeletonProps } from './Skeleton';

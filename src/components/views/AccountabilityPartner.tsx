@@ -31,7 +31,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
-import { EmptyState } from '@/components/ui/primitives';
+import { EmptyState, Skeleton } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { getCurrentTier } from '@/lib/tiers';
 import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
@@ -799,9 +799,33 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
             {/* ITEM 4: "YOU VS PARTNER" SIDE-BY-SIDE HEAD-TO-HEAD COMPARISON CARD */}
             {isStatsLoading && !partnerStatsData ? (
-              <div className="p-8 bg-bg-800/80 rounded-2xl border border-overlay-default flex items-center justify-center gap-3 text-content-muted text-xs min-h-[220px]">
-                <AscendLoadingIndicator size="md" />
-                <span>Loading {activePartnerUsername}'s Stats...</span>
+              <div
+                role="status"
+                aria-label={`Loading ${activePartnerUsername}'s stats`}
+                className="p-5 bg-bg-800 rounded-2xl border border-overlay-default space-y-4"
+              >
+                <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
+                  <Skeleton className="h-4 w-44" />
+                  <Skeleton className="h-4 w-28" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[0, 1].map((col) => (
+                    <div key={col} className="p-4 rounded-xl border border-overlay-subtle space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="space-y-1.5">
+                          <Skeleton className="h-3.5 w-24" />
+                          <Skeleton className="h-2.5 w-14" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[0, 1, 2, 3].map((cell) => (
+                          <Skeleton key={cell} className="h-12" />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="p-5 bg-bg-800 rounded-2xl border border-overlay-default space-y-4 relative">
