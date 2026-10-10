@@ -28,6 +28,7 @@ import {
   type BadgeTone,
   type TabItem,
 } from '../components/ui/primitives';
+import { AscendLoadingIndicator, AscendLoadingOverlay } from '../components/ui/AscendLoadingIndicator';
 
 interface SectionProps {
   title: string;
@@ -50,6 +51,15 @@ const buttonVariants: Array<'primary' | 'secondary' | 'ghost' | 'danger'> = [
   'secondary',
   'ghost',
   'danger',
+];
+
+const LOADER_SIZES: Array<'sm' | 'md' | 'lg' | 'xl'> = ['sm', 'md', 'lg', 'xl'];
+
+const LOADER_SURFACES: Array<{ label: string; className: string }> = [
+  { label: 'primary', className: 'bg-primary-500 text-on-brand' },
+  { label: 'danger', className: 'bg-rose-600 text-white' },
+  { label: 'surface', className: 'bg-bg-800 border border-bg-700 text-content-secondary' },
+  { label: 'page', className: 'bg-bg-900 border border-bg-700 text-content-secondary' },
 ];
 
 const TONES: BadgeTone[] = [
@@ -484,6 +494,73 @@ export function Gallery() {
               <div className="w-[200px]">
                 <Button>Very long button label that overflows container</Button>
               </div>
+            </div>
+          </div>
+        </Section>
+
+        {/* Section: Loaders */}
+        <Section title="Loaders">
+          <div className="space-y-6">
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                AscendLoadingIndicator sizes (sm is used everywhere today)
+              </p>
+              <div className="flex flex-wrap items-end gap-6">
+                {LOADER_SIZES.map((size) => (
+                  <div key={size} className="flex flex-col items-center gap-1.5">
+                    <AscendLoadingIndicator size={size} />
+                    <span className="text-micro text-content-muted font-mono">{size}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                sm on coloured surfaces
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                {LOADER_SURFACES.map(({ label, className }) => (
+                  <div key={label} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${className}`}>
+                    <AscendLoadingIndicator size="sm" />
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                Page load: 1) pre-React splash (index.html) then 2) Verifying session (React)
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <iframe
+                    key={theme}
+                    src="/?splash-preview"
+                    title="Pre-React splash preview"
+                    className="w-full h-[420px] rounded-xl border border-bg-700"
+                  />
+                  <p className="text-micro text-content-muted">
+                    1. index.html shell, shown before the JS bundle parses
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  {/* transform makes the fixed overlay fill this box instead of the viewport */}
+                  <div className="relative h-[420px] overflow-hidden rounded-xl border border-bg-700 [transform:translateZ(0)]">
+                    <AscendLoadingOverlay
+                      message="Verifying session..."
+                      submessage="Preparing your personal growth workspace"
+                    />
+                  </div>
+                  <p className="text-micro text-content-muted">
+                    2. AscendLoadingOverlay while the session is checked
+                  </p>
+                </div>
+              </div>
+              <p className="text-micro text-content-muted">
+                Both should look identical, so there is no jump between them. Reduced motion: glint stops, swoosh pulses.
+              </p>
             </div>
           </div>
         </Section>

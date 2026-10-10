@@ -12,7 +12,11 @@ import './index.css';
 
 const root = createRoot(document.getElementById('root')!);
 
-if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('gallery')) {
+const devParams = new URLSearchParams(window.location.search);
+
+if (import.meta.env.DEV && devParams.has('splash-preview')) {
+  // Dev only: render nothing so index.html's pre-React splash stays on screen (embedded by the gallery).
+} else if (import.meta.env.DEV && devParams.has('gallery')) {
   import('./dev/Gallery').then(({ Gallery }) =>
     root.render(
       <StrictMode>
