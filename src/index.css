@@ -900,6 +900,14 @@
   }
 }
 
+/* Theme switch (SettingsView handleThemeToggle): the new theme is revealed by a clip-path circle,
+   so the browser's default root crossfade is turned off. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 /* Reduced motion: one global switch for every animation and transition in the app.
    Loading spinners keep moving, since a frozen spinner reads as a hung app. The branded loader
    is JS-driven and shows its static logo under reduced motion (AscendLoaderMark). */

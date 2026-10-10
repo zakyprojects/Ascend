@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import {
   Settings,
   User,
@@ -113,6 +114,36 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
   // Theme state synced with store
   const isDarkMode = store.state.themePreference !== 'light';
+
+  // Switch theme with a circular reveal growing from the button. Browsers without the
+  // View Transitions API, and reduced-motion users, get the instant switch.
+  const handleThemeToggle = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (typeof document.startViewTransition !== 'function' || reduceMotion) {
+      store.toggleThemePreference();
+      return;
+    }
+
+    const { left, top, width, height } = event.currentTarget.getBoundingClientRect();
+    const x = left + width / 2;
+    const y = top + height / 2;
+    const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+
+    // flushSync puts the re-rendered button label inside the new snapshot.
+    const transition = document.startViewTransition(() => {
+      flushSync(() => store.toggleThemePreference());
+    });
+    transition.ready
+      .then(() => {
+        document.documentElement.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          { duration: 450, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', pseudoElement: '::view-transition-new(root)' }
+        );
+      })
+      .catch(() => {
+        // Skipped by a rapid second click: the theme has already switched.
+      });
+  };
 
   // Account action modals
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -893,7 +924,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
                 <button
                   type="button"
-                  onClick={() => store.toggleThemePreference()}
+                  onClick={handleThemeToggle}
                   className="px-3.5 py-1.5 bg-bg-800 hover:bg-bg-700 border border-overlay-default text-content-secondary font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5"
                 >
                   {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
