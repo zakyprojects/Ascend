@@ -191,7 +191,7 @@ export function NotificationCenter({
             </div>
 
             {/* List */}
-            <div className="max-h-80 overflow-y-auto divide-y divide-white/5" style={{ maxHeight: isMobileShell() ? '70vh' : 480 }}>
+            <div className="max-h-80 overflow-y-auto divide-y divide-overlay-subtle" style={{ maxHeight: isMobileShell() ? '70vh' : 480 }}>
               {notifications.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
                   <div className="w-10 h-10 rounded-full bg-overlay-subtle flex items-center justify-center mx-auto text-content-disabled">

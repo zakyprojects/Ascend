@@ -224,7 +224,7 @@ export function TimeBlockModal({
                   onClick={() => handleActivityClick(act.id)}
                   className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all relative ${
                     isPrimary
-                      ? 'bg-emerald-500/15 border-emerald-500/60 shadow-md text-white ring-1 ring-emerald-500/40'
+                      ? 'bg-emerald-500/15 border-emerald-500/60 shadow-md text-content-primary ring-1 ring-emerald-500/40'
                       : isSecondary
                       ? 'bg-overlay-default border-emerald-500/40 text-content-primary shadow-xs'
                       : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:bg-overlay-default hover:border-overlay-default hover:text-content-secondary'

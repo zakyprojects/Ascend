@@ -119,9 +119,9 @@ export function ActivityModal({
           <div
             className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors shadow-inner"
             style={{
-              backgroundColor: resolvedPreviewColor ? `${resolvedPreviewColor}25` : 'rgba(255, 255, 255, 0.05)',
-              color: resolvedPreviewColor || '#94a3b8',
-              border: resolvedPreviewColor ? `1px solid ${resolvedPreviewColor}40` : '1px solid rgba(255, 255, 255, 0.1)',
+              backgroundColor: resolvedPreviewColor ? `${resolvedPreviewColor}25` : 'var(--bg-overlay-subtle)',
+              color: resolvedPreviewColor || 'var(--color-content-muted)',
+              border: resolvedPreviewColor ? `1px solid ${resolvedPreviewColor}40` : '1px solid var(--border-overlay-default)',
             }}
           >
             {icon ? (
@@ -171,7 +171,7 @@ export function ActivityModal({
                   key={col.value}
                   onClick={() => setColor(col.value)}
                   className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer ${
-                    isSelected ? 'scale-110 border-white shadow-lg' : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100'
+                    isSelected ? 'scale-110 border-content-primary shadow-lg' : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100'
                   }`}
                   style={{ backgroundColor: displaySwatchColor }}
                   title={col.name}

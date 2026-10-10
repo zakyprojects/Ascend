@@ -767,7 +767,7 @@ export function Journal({ store }: { store: AppStore }) {
                                   cy={cy}
                                   r="2.5"
                                   fill="var(--color-content-disabled)"
-                                  className="group-hover:fill-white/50 transition-colors"
+                                  className="group-hover:fill-content-muted transition-colors"
                                 />
                               )}
                             </g>
