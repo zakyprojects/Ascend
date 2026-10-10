@@ -152,7 +152,7 @@ export function NotificationCenter({
                 ? { left: 16, right: 16, maxWidth: 384, margin: '0 auto' }
                 : { width: 384 }),
             }}
-            className="glass bg-bg-900/95 border border-overlay-default rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col"
+            className="glass bg-bg-900/95 border border-overlay-default rounded-2xl shadow-2xl overflow-hidden animate-scale-in flex flex-col"
           >
             {/* Header */}
             <div className="p-3.5 border-b border-overlay-subtle flex items-center justify-between bg-bg-800/50">

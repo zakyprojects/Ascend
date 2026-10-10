@@ -139,6 +139,16 @@ export default {
         'celebrate': 'celebrate 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
         'enter-up': 'enterUp var(--duration-enter) var(--ease-emphasized) both',
         'enter-fade': 'enterFade var(--duration-fast) var(--ease-standard) both',
+        // No fill-mode on purpose: a retained transform on the view wrapper would
+        // become the containing block for any position:fixed descendant.
+        'view-enter': 'enterUp var(--duration-enter) var(--ease-emphasized)',
+        'pop': 'pop 320ms var(--ease-emphasized)',
+        'slide-in-right': 'slideInRight var(--duration-enter) var(--ease-emphasized) both',
+        // Uses the individual `translate` property so it composes with the
+        // element's own `-translate-x-1/2` centering transform.
+        'slide-down': 'slideDown var(--duration-enter) var(--ease-emphasized) both',
+        'shake': 'shake 320ms var(--ease-standard)',
+        'rank-glow': 'rankGlow 1400ms var(--ease-standard) both',
       },
       keyframes: {
         fadeIn: {
@@ -173,6 +183,29 @@ export default {
         enterFade: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
+        },
+        pop: {
+          '0%': { opacity: '0', transform: 'scale(0.6)' },
+          '60%': { opacity: '1', transform: 'scale(1.12)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        slideInRight: {
+          '0%': { opacity: '0', transform: 'translateX(16px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        slideDown: {
+          '0%': { opacity: '0', translate: '0 -8px' },
+          '100%': { opacity: '1', translate: '0 0' },
+        },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '20%, 60%': { transform: 'translateX(-4px)' },
+          '40%, 80%': { transform: 'translateX(4px)' },
+        },
+        rankGlow: {
+          '0%': { opacity: '0', transform: 'scale(0.85)' },
+          '30%': { opacity: '1', transform: 'scale(1.05)' },
+          '100%': { opacity: '0', transform: 'scale(1.1)' },
         },
       },
       transitionDuration: {

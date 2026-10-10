@@ -63,7 +63,7 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
 }) => {
   return (
     <div
-      className="fixed inset-0 z-[9999] bg-bg-900/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-fadeIn"
+      className="fixed inset-0 z-[9999] bg-bg-900/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-label={message}

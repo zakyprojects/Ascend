@@ -443,7 +443,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       {/* Milestone Unlocked Modal */}
       <Modal open={!!celebrationMilestone} onClose={() => setCelebrationMilestone(null)} title="Milestone Unlocked! 🎉">
         <div className="text-center space-y-4 py-2">
-          <div className="w-16 h-16 rounded-full bg-amber-500/20 text-warning-text border border-amber-500/40 flex items-center justify-center text-3xl mx-auto animate-bounce">
+          <div className="w-16 h-16 rounded-full bg-amber-500/20 text-warning-text border border-amber-500/40 flex items-center justify-center text-3xl mx-auto animate-celebrate">
             🏆
           </div>
           <h3 className="text-lg font-bold text-content-primary">{celebrationMilestone}</h3>

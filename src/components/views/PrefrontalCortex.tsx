@@ -1137,7 +1137,7 @@ function FocusTimerSubmodule({
             </button>
 
             {showNotifHint && notificationPerm !== 'default' && (
-              <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-bg-800 border border-overlay-default rounded-xl shadow-xl z-30 text-left text-xs space-y-1.5 text-content-tertiary animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-bg-800 border border-overlay-default rounded-xl shadow-xl z-30 text-left text-xs space-y-1.5 text-content-tertiary animate-scale-in">
                 <div className="flex items-center justify-between text-content-primary font-semibold text-[11px]">
                   <span>Browser Settings Required</span>
                   <button
@@ -1476,7 +1476,7 @@ function FocusTimerSubmodule({
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-error-text border-b border-rose-500/20 pb-4">
               <div className="flex items-center gap-2">
                 <span className="badge bg-rose-500/20 text-error-text border border-rose-500/40 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1">
-                  <AlertTriangle size={13} className="text-rose-theme animate-bounce" />
+                  <AlertTriangle size={13} className="text-rose-theme" />
                   LIVE TRACKER BLOCK • OVERDUE
                 </span>
                 <span className="text-[11px] font-mono text-content-muted">

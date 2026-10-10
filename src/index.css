@@ -829,3 +829,16 @@
     @apply text-xs text-content-disabled uppercase tracking-wide font-medium;
   }
 }
+
+/* Reduced motion: one global switch for every animation and transition in the app.
+   Loading spinners keep turning, since a frozen spinner reads as a hung app. */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.animate-spin),
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
