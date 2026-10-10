@@ -538,22 +538,6 @@
   .ascend-loader-steps {
     fill: var(--al-steps);
   }
-  .ascend-loader-swoosh-base {
-    opacity: 0.4;
-  }
-  .ascend-loader-glint {
-    animation: ascend-loader-glint 1.4s linear infinite;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    /* No sweep; a slow pulse keeps the loader from reading as frozen. */
-    .ascend-loader-glint {
-      display: none;
-    }
-    .ascend-loader-swoosh-base {
-      animation: ascend-loader-pulse 2s ease-in-out infinite;
-    }
-  }
-
   .glass {
     @apply bg-bg-800/80 backdrop-blur-xl border border-overlay-subtle;
   }
@@ -917,9 +901,10 @@
 }
 
 /* Reduced motion: one global switch for every animation and transition in the app.
-   Loading spinners and the branded loader's pulse keep moving, since a frozen loader reads as a hung app. */
+   Loading spinners keep moving, since a frozen spinner reads as a hung app. The branded loader
+   is JS-driven and shows its static logo under reduced motion (AscendLoaderMark). */
 @media (prefers-reduced-motion: reduce) {
-  *:not(.animate-spin):not(.ascend-loader-swoosh-base),
+  *:not(.animate-spin),
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
@@ -929,21 +914,3 @@
   }
 }
 
-@keyframes ascend-loader-glint {
-  from {
-    transform: translateX(-80px);
-  }
-  to {
-    transform: translateX(80px);
-  }
-}
-
-@keyframes ascend-loader-pulse {
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 0.85;
-  }
-}
