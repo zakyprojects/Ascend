@@ -24,6 +24,7 @@ import { weeklyGoalsCapNote } from '@/lib/capCopy';
 import { EmptyState } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
+import { useCompletionPop } from '@/lib/useCompletionPop';
 import {
   weekKey,
   getWeekDates,
@@ -60,15 +61,9 @@ function GoalItemRow({
   const prog = getGoalProgress(item);
   const isDone = item.completed || prog.percent >= 100;
 
-  const animKey = `weeklyGoal_${item.id}`;
-  const shouldAnimate = isDone && !store.hasAnimated(animKey);
-
-  useEffect(() => {
-    if (shouldAnimate) {
-      store.markAnimated(animKey);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldAnimate, animKey]);
+  // Linked goals complete from other modules' activity, so only the manual
+  // checkbox and the + stepper arm the completion pop.
+  const { arm: armCompletionPop, popClass } = useCompletionPop(isDone);
 
   return (
     <div
@@ -90,13 +85,14 @@ function GoalItemRow({
                   : 'bg-bg-800 border-overlay-strong text-content-disabled'
               }`}
             >
-              {isDone ? <Check size={14} className={shouldAnimate ? 'animate-scale-in' : ''} /> : <Circle size={14} />}
+              {isDone ? <Check size={14} /> : <Circle size={14} />}
             </div>
           ) : (
             <button
               onClick={() => {
                 const isFreeformWithStepper = prog.target > 1;
                 const nextCompleted = !isDone;
+                if (nextCompleted) armCompletionPop();
 
                 try {
                   if (isFreeformWithStepper) {
@@ -128,7 +124,7 @@ function GoalItemRow({
                   : 'bg-bg-800 border-overlay-strong text-content-disabled hover:border-overlay-heavy'
               }`}
             >
-              {isDone ? <Check size={14} className={shouldAnimate ? 'animate-scale-in' : ''} /> : <Circle size={14} />}
+              {isDone ? <Check size={14} className={popClass} /> : <Circle size={14} />}
             </button>
           )}
 
@@ -231,6 +227,7 @@ function GoalItemRow({
                       onClick={() => {
                         const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
                         const newVal = Math.min(prog.target, currentVal + 1);
+                        armCompletionPop();
                         try {
                           store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
                         } catch (err: any) {

@@ -49,6 +49,7 @@ import {
 } from '@/types';
 import { todayKey, weekKey, formatDateLong, formatDateShort } from '@/lib/dates';
 import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
+import { useCompletionPop } from '@/lib/useCompletionPop';
 
 type SubViewTab = 'goals' | 'projects' | 'tasks';
 
@@ -109,15 +110,9 @@ function TaskItemRow({
   const hasSubtasks = subtasks.length > 0;
   const projectLock = task.projectId ? getProjectLockStatus(task.projectId) : { isLocked: false, reason: '' };
 
-  const animKey = `task_${task.id}`;
-  const shouldAnimate = task.completed && !store.hasAnimated(animKey);
-
-  useEffect(() => {
-    if (shouldAnimate) {
-      store.markAnimated(animKey);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldAnimate, animKey]);
+  // Armed by the task checkbox and by subtask clicks: ticking the last subtask
+  // completes the task, which is the user's own action too.
+  const { arm: armCompletionPop, popClass } = useCompletionPop(task.completed);
 
   return (
     <div
@@ -137,6 +132,7 @@ function TaskItemRow({
           <button
             onClick={() => {
               if (!hasSubtasks && !projectLock.isLocked) {
+                if (!task.completed) armCompletionPop();
                 store.toggleTaskCompleted(task.id);
               }
             }}
@@ -170,7 +166,7 @@ function TaskItemRow({
             {projectLock.isLocked ? (
               <Lock size={11} className="text-warning-text" />
             ) : (
-              <Check size={13} strokeWidth={3} className={`${task.completed ? 'block' : 'hidden'} ${shouldAnimate ? 'animate-scale-in' : ''}`} />
+              <Check size={13} strokeWidth={3} className={`${task.completed ? 'block' : 'hidden'} ${popClass}`} />
             )}
           </button>
 
@@ -295,7 +291,10 @@ function TaskItemRow({
               <div key={st.id} className="flex items-center justify-between gap-2 group/st">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <button
-                    onClick={() => store.toggleSubtask(task.id, st.id)}
+                    onClick={() => {
+                      if (!st.completed) armCompletionPop();
+                      store.toggleSubtask(task.id, st.id);
+                    }}
                     disabled={projectLock.isLocked}
                     aria-label={
                       st.completed

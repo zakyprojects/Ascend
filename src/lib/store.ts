@@ -1794,10 +1794,6 @@ export function useAppState() {
   const tabId = useRef<string>(Math.random().toString(36).substring(2) + Date.now().toString(36)).current;
   const isRemoteBroadcastUpdate = useRef(false);
   const inFlightHabitToggles = useRef<Set<string>>(new Set());
-  const animatedEntityIds = useRef<Set<string>>(new Set());
-
-  const hasAnimated = (key: string): boolean => animatedEntityIds.current.has(key);
-  const markAnimated = (key: string): void => { animatedEntityIds.current.add(key); };
 
   useEffect(() => {
     currentUserRef.current = state.currentUser;
@@ -3026,7 +3022,6 @@ export function useAppState() {
         ...sanitized,
         themePreference: localTheme,
       });
-      animatedEntityIds.current.clear();
 
       // 6. Surface user-facing notifications for any failures that occurred
       if (typeof window !== 'undefined') {
@@ -10532,8 +10527,6 @@ export function useAppState() {
     isAuthChecking,
     setAuthSessionState,
     logout,
-    hasAnimated,
-    markAnimated,
     addPresetHabit,
     addCustomHabit,
     updateHabit,

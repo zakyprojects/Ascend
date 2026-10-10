@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Flame, Trash2, Check, Calendar, Repeat, BookMarked, Pencil, Info, AlertTriangle, BookOpen, Lock } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Habit, HabitFrequency } from '@/types';
@@ -12,6 +12,7 @@ import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { EmptyState } from '@/components/ui/primitives';
+import { useCompletionPop } from '@/lib/useCompletionPop';
 
 export function HabitTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
@@ -311,18 +312,11 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
   const isToggling = isKeyLoading(habit.id);
   const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
 
-  const animKey = `habit_${habit.id}`;
-  const shouldAnimate = done && !store.hasAnimated(animKey);
-
-  useEffect(() => {
-    if (shouldAnimate) {
-      store.markAnimated(animKey);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldAnimate, animKey]);
+  const { arm: armCompletionPop, popClass } = useCompletionPop(done);
 
   const handleToggle = async () => {
     if (isLinked) return;
+    if (!done) armCompletionPop();
     await executeWithKey(habit.id, async () => {
       await store.toggleHabit(habit.id);
     });
@@ -350,7 +344,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
           ) : isLinked && !done ? (
             <Lock size={18} className="text-content-disabled" />
           ) : (
-            <Check size={22} className={shouldAnimate ? 'animate-scale-in' : ''} />
+            <Check size={22} className={popClass} />
           )}
         </button>
 
