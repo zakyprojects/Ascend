@@ -2319,7 +2319,7 @@ export function ProjectsGoalsView({
                 <select
                   value={quickTaskPriority}
                   onChange={(e) => setQuickTaskPriority(e.target.value as TaskPriority)}
-                  className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-2.5 py-2 text-[10px] sm:text-xs text-content-tertiary focus:outline-none min-w-[110px]"
+                  className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-2.5 py-2 text-[10px] sm:text-xs text-content-tertiary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 min-w-[110px]"
                 >
                   <option value="high">🔴 High Priority</option>
                   <option value="medium">🟡 Med Priority</option>
@@ -2330,7 +2330,7 @@ export function ProjectsGoalsView({
                   <select
                     value={quickTaskProjectId}
                     onChange={(e) => setQuickTaskProjectId(e.target.value)}
-                    className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-2.5 py-2 text-[10px] sm:text-xs text-content-tertiary focus:outline-none min-w-[110px] truncate"
+                    className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-2.5 py-2 text-[10px] sm:text-xs text-content-tertiary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 min-w-[110px] truncate"
                   >
                     <option value="">No Project</option>
                     {projects.map((p) => (
@@ -2374,7 +2374,7 @@ export function ProjectsGoalsView({
                 <select
                   value={taskPriorityFilter}
                   onChange={(e) => setTaskPriorityFilter(e.target.value as 'all' | TaskPriority)}
-                  className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-content-tertiary focus:outline-none shrink-0"
+                  className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-content-tertiary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 shrink-0"
                 >
                   <option value="all">All Priorities</option>
                   <option value="high">🔴 High Priority</option>
@@ -2386,7 +2386,7 @@ export function ProjectsGoalsView({
                   <select
                     value={taskProjectFilter}
                     onChange={(e) => setTaskProjectFilter(e.target.value)}
-                    className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-content-tertiary focus:outline-none max-w-full sm:max-w-[160px] truncate shrink-0"
+                    className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-3 py-1.5 text-[10px] sm:text-xs text-content-tertiary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 max-w-full sm:max-w-[160px] truncate shrink-0"
                   >
                     <option value="all">All Projects</option>
                     <option value="standalone">Standalone Tasks Only</option>
@@ -2908,7 +2908,7 @@ export function ProjectsGoalsView({
                     }
                   }
                 }}
-                className="flex-1 px-3 py-1.5 bg-bg-900 border border-overlay-default rounded-lg text-xs text-content-primary focus:outline-none"
+                className="flex-1 px-3 py-1.5 bg-bg-900 border border-overlay-default rounded-lg text-xs text-content-primary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30"
               />
               <button
                 type="button"
