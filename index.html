@@ -73,13 +73,21 @@
       .splash-loader .sl-stairs { fill:var(--al-stairs); }
       .splash-loader .sl-steps { fill:var(--al-steps); }
       .splash-loader.is-animating .sl-swoosh { display:none; }
-      /* Production splash layout (static ring + badge + loading bar), with the animated chip inside. */
-      :root { --splash-card-bg: rgba(17, 19, 25, 0.95); --splash-card-border: rgba(16, 185, 129, 0.4); --splash-ring-border: rgba(16, 185, 129, 0.3); --splash-track: #1e222d; }
-      [data-theme="light"] { --splash-card-bg: #ffffff; --splash-card-border: rgba(16, 185, 129, 0.35); --splash-ring-border: rgba(16, 185, 129, 0.25); --splash-track: #e2e8f0; }
-      @keyframes loadingBarAnim {
-        0% { left: -50%; width: 50%; }
-        50% { left: 25%; width: 50%; }
-        100% { left: 100%; width: 50%; }
+      /* Boot stack around the chip: AscendLoadingOverlay's layers, held still. Only the chip's ribbon and the loading bar move. */
+      :root { --splash-card: rgba(17,19,25,0.9); --splash-track: #171a23; }
+      [data-theme="light"] { --splash-card: rgba(255,255,255,0.9); --splash-track: #f1f4f3; }
+      .sp-glow { position:absolute; width:192px; height:192px; border-radius:9999px; background:rgba(16,185,129,0.15); filter:blur(64px); }
+      .sp-logo { position:relative; width:80px; height:80px; margin-bottom:24px; display:flex; align-items:center; justify-content:center; }
+      .sp-ping { position:absolute; inset:0; border-radius:16px; background:linear-gradient(to top right, rgba(16,185,129,0.3), rgba(52,211,153,0.2)); opacity:0.3; }
+      .sp-ring { position:absolute; inset:-6px; border-radius:16px; border:2px solid rgba(16,185,129,0.2); border-top-color:#34d399; border-right-color:#34d399; }
+      .sp-badge { position:relative; width:80px; height:80px; box-sizing:border-box; border-radius:16px; background:var(--splash-card); border:1px solid rgba(16,185,129,0.4); box-shadow:0 25px 50px -12px rgba(16,185,129,0.2); display:flex; align-items:center; justify-content:center; overflow:hidden; -webkit-backdrop-filter:blur(24px); backdrop-filter:blur(24px); }
+      .sp-badge-tint { position:absolute; inset:0; background:linear-gradient(to bottom right, rgba(16,185,129,0.2), transparent, rgba(16,185,129,0.1)); }
+      .sp-mark { position:relative; display:flex; }
+      .sp-bar-track { width:144px; height:4px; background:var(--splash-track); border-radius:9999px; overflow:hidden; margin-top:20px; position:relative; }
+      .sp-bar { position:absolute; top:0; bottom:0; left:0; width:50%; border-radius:9999px; background:linear-gradient(to right, #10b981, #34d399); animation:spLoadingBar 1.2s ease-in-out infinite; }
+      @keyframes spLoadingBar { 0% { left:-50%; width:50%; } 50% { left:25%; width:50%; } 100% { left:100%; width:50%; } }
+      @media (prefers-reduced-motion: reduce) {
+        .sp-bar { animation:none; }
       }
     </style>
   </head>
@@ -87,31 +95,37 @@
     <div id="root">
       <!-- Instant Inlined Shell (Displays before React/JS bundle parses) -->
       <div style="position:fixed;inset:0;z-index:9999;background-color:var(--splash-bg,#0a0b0f);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;user-select:none;">
+        <!-- Background ambient glow aura -->
+        <div class="sp-glow"></div>
         <div style="position:relative;display:flex;flex-direction:column;align-items:center;max-width:384px;">
           
-          <!-- Logo Badge Container -->
-          <div style="position:relative;width:80px;height:80px;margin-bottom:24px;display:flex;align-items:center;justify-content:center;">
-            <div style="position:absolute;inset:-6px;border-radius:16px;border:2px solid var(--splash-ring-border, rgba(16,185,129,0.3));border-top-color:#10b981;"></div>
-            <div style="width:80px;height:80px;border-radius:16px;background:var(--splash-card-bg, rgba(17,19,25,0.9));border:1px solid var(--splash-card-border, rgba(16,185,129,0.4));display:flex;align-items:center;justify-content:center;box-shadow:0 20px 25px -5px rgba(16,185,129,0.15);">
-              <!-- Animated Ascend chip (AscendLoaderMark) -->
-              <svg id="splash-loader" class="splash-loader" viewBox="0 0 100 100" aria-hidden="true" style="width:44px;height:44px;border-radius:12px;" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="slLegA" x1="0" y1="1" x2="1" y2="0"><stop offset="0" style="stop-color:var(--al-leg-a-0)"/><stop offset="1" style="stop-color:var(--al-leg-a-1)"/></linearGradient>
-                  <linearGradient id="slLegB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--al-leg-b-0)"/><stop offset="1" style="stop-color:var(--al-leg-b-1)"/></linearGradient>
-                  <linearGradient id="slSwoosh" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#F59E0B"/><stop offset="1" stop-color="#FCD34D"/></linearGradient>
-                  <linearGradient id="slRibbon" gradientUnits="userSpaceOnUse" x1="10" y1="60" x2="90" y2="25"><stop offset="0" stop-color="#F59E0B"/><stop offset="1" stop-color="#FCD34D"/></linearGradient>
-                </defs>
-                <rect class="sl-chip" x="1" y="1" width="98" height="98" rx="22" stroke-width="2"/>
-                <path id="sl-ribbon-back" fill="url(#slRibbon)"/>
-                <g transform="translate(12 11) scale(0.76)">
-                  <polygon class="sl-stairs" points="2,93 15,93 15,84 28,84 28,75 41,75 41,66 54,66 54,57 67,57 67,48 80,48 80,39 93,39 93,52 34,100 2,100"/>
-                  <g class="sl-steps"><rect x="2" y="93" width="13" height="2"/><rect x="15" y="84" width="13" height="2"/><rect x="28" y="75" width="13" height="2"/><rect x="41" y="66" width="13" height="2"/><rect x="54" y="57" width="13" height="2"/><rect x="67" y="48" width="13" height="2"/><rect x="80" y="39" width="13" height="2"/></g>
-                  <g fill="url(#slLegB)"><path d="M45.74 3.52 L57.19 57.00 L65.89 57.00 L48.66 2.88 Z"/><path d="M56.4 57 V54.6 H65.1 Q66.6 54.6 66.6 56.1 V57 Z"/></g>
-                  <path class="sl-swoosh" d="M4.26 56.54 L5.70 55.94 L7.14 55.37 L8.59 54.83 L10.04 54.31 L11.49 53.81 L12.95 53.33 L14.41 52.87 L15.88 52.43 L17.35 52.01 L18.82 51.60 L20.31 51.21 L21.79 50.83 L23.29 50.46 L24.78 50.10 L26.29 49.75 L27.80 49.40 L29.31 49.06 L30.84 48.73 L32.37 48.40 L33.90 48.07 L35.44 47.74 L36.99 47.41 L38.55 47.08 L40.11 46.75 L41.68 46.41 L43.26 46.07 L44.84 45.71 L46.44 45.35 L48.04 44.98 L49.64 44.60 L51.20 44.02 L52.76 43.43 L54.33 42.82 L55.90 42.19 L57.48 41.55 L59.06 40.89 L60.64 40.21 L62.23 39.51 L63.81 38.79 L65.41 38.05 L67.00 37.28 L68.59 36.48 L70.19 35.66 L71.79 34.81 L73.39 33.93 L74.99 33.02 L76.59 32.08 L78.19 31.11 L79.79 30.10 L81.40 29.06 L83.00 27.98 L84.60 26.87 L86.20 25.71 L87.80 24.52 L89.40 23.28 L91.00 22.01 L92.60 20.69 L94.20 19.32 L95.79 17.91 L97.38 16.46 L96.62 15.54 L94.91 16.84 L93.21 18.08 L91.52 19.27 L89.83 20.42 L88.14 21.52 L86.47 22.57 L84.79 23.58 L83.12 24.55 L81.46 25.48 L79.80 26.36 L78.15 27.21 L76.50 28.03 L74.85 28.80 L73.21 29.54 L71.58 30.25 L69.95 30.93 L68.33 31.58 L66.71 32.20 L65.09 32.79 L63.48 33.36 L61.88 33.90 L60.28 34.42 L58.68 34.92 L57.09 35.40 L55.50 35.85 L53.91 36.29 L52.33 36.72 L50.75 37.12 L49.18 37.52 L47.61 37.90 L46.09 38.46 L44.58 39.00 L43.07 39.54 L41.56 40.08 L40.05 40.60 L38.54 41.12 L37.04 41.64 L35.54 42.16 L34.04 42.67 L32.54 43.19 L31.05 43.71 L29.56 44.23 L28.08 44.75 L26.59 45.28 L25.12 45.82 L23.65 46.36 L22.18 46.91 L20.72 47.48 L19.26 48.05 L17.81 48.64 L16.37 49.24 L14.94 49.85 L13.51 50.49 L12.09 51.14 L10.67 51.80 L9.27 52.49 L7.87 53.20 L6.48 53.93 L5.10 54.68 L3.74 55.46 Z" fill="url(#slSwoosh)" stroke="url(#slSwoosh)" stroke-width="1.5" stroke-linejoin="round"/>
-                  <g fill="url(#slLegA)"><path d="M45.77 2.76 L15.11 84.00 L27.68 84.00 L48.63 3.64 Z"/><path d="M15.2 84 V81.6 H26.5 Q28 81.6 28 83.1 V84 Z"/></g>
-                </g>
-                <path id="sl-ribbon-front" fill="url(#slRibbon)"/>
-              </svg>
+          <!-- Logo stack (mirrors AscendLoadingOverlay): ping aura, ring, badge, animated chip -->
+          <div class="sp-logo">
+            <div class="sp-ping"></div>
+            <div class="sp-ring"></div>
+            <div class="sp-badge">
+              <div class="sp-badge-tint"></div>
+              <div class="sp-mark">
+                <!-- Animated Ascend chip (AscendLoaderMark) -->
+                <svg id="splash-loader" class="splash-loader" viewBox="0 0 100 100" aria-hidden="true" style="width:44px;height:44px;border-radius:12px;box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="slLegA" x1="0" y1="1" x2="1" y2="0"><stop offset="0" style="stop-color:var(--al-leg-a-0)"/><stop offset="1" style="stop-color:var(--al-leg-a-1)"/></linearGradient>
+                    <linearGradient id="slLegB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--al-leg-b-0)"/><stop offset="1" style="stop-color:var(--al-leg-b-1)"/></linearGradient>
+                    <linearGradient id="slSwoosh" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#F59E0B"/><stop offset="1" stop-color="#FCD34D"/></linearGradient>
+                    <linearGradient id="slRibbon" gradientUnits="userSpaceOnUse" x1="10" y1="60" x2="90" y2="25"><stop offset="0" stop-color="#F59E0B"/><stop offset="1" stop-color="#FCD34D"/></linearGradient>
+                  </defs>
+                  <rect class="sl-chip" x="1" y="1" width="98" height="98" rx="22" stroke-width="2"/>
+                  <path id="sl-ribbon-back" fill="url(#slRibbon)"/>
+                  <g transform="translate(12 11) scale(0.76)">
+                    <polygon class="sl-stairs" points="2,93 15,93 15,84 28,84 28,75 41,75 41,66 54,66 54,57 67,57 67,48 80,48 80,39 93,39 93,52 34,100 2,100"/>
+                    <g class="sl-steps"><rect x="2" y="93" width="13" height="2"/><rect x="15" y="84" width="13" height="2"/><rect x="28" y="75" width="13" height="2"/><rect x="41" y="66" width="13" height="2"/><rect x="54" y="57" width="13" height="2"/><rect x="67" y="48" width="13" height="2"/><rect x="80" y="39" width="13" height="2"/></g>
+                    <g fill="url(#slLegB)"><path d="M45.74 3.52 L57.19 57.00 L65.89 57.00 L48.66 2.88 Z"/><path d="M56.4 57 V54.6 H65.1 Q66.6 54.6 66.6 56.1 V57 Z"/></g>
+                    <path class="sl-swoosh" d="M4.26 56.54 L5.70 55.94 L7.14 55.37 L8.59 54.83 L10.04 54.31 L11.49 53.81 L12.95 53.33 L14.41 52.87 L15.88 52.43 L17.35 52.01 L18.82 51.60 L20.31 51.21 L21.79 50.83 L23.29 50.46 L24.78 50.10 L26.29 49.75 L27.80 49.40 L29.31 49.06 L30.84 48.73 L32.37 48.40 L33.90 48.07 L35.44 47.74 L36.99 47.41 L38.55 47.08 L40.11 46.75 L41.68 46.41 L43.26 46.07 L44.84 45.71 L46.44 45.35 L48.04 44.98 L49.64 44.60 L51.20 44.02 L52.76 43.43 L54.33 42.82 L55.90 42.19 L57.48 41.55 L59.06 40.89 L60.64 40.21 L62.23 39.51 L63.81 38.79 L65.41 38.05 L67.00 37.28 L68.59 36.48 L70.19 35.66 L71.79 34.81 L73.39 33.93 L74.99 33.02 L76.59 32.08 L78.19 31.11 L79.79 30.10 L81.40 29.06 L83.00 27.98 L84.60 26.87 L86.20 25.71 L87.80 24.52 L89.40 23.28 L91.00 22.01 L92.60 20.69 L94.20 19.32 L95.79 17.91 L97.38 16.46 L96.62 15.54 L94.91 16.84 L93.21 18.08 L91.52 19.27 L89.83 20.42 L88.14 21.52 L86.47 22.57 L84.79 23.58 L83.12 24.55 L81.46 25.48 L79.80 26.36 L78.15 27.21 L76.50 28.03 L74.85 28.80 L73.21 29.54 L71.58 30.25 L69.95 30.93 L68.33 31.58 L66.71 32.20 L65.09 32.79 L63.48 33.36 L61.88 33.90 L60.28 34.42 L58.68 34.92 L57.09 35.40 L55.50 35.85 L53.91 36.29 L52.33 36.72 L50.75 37.12 L49.18 37.52 L47.61 37.90 L46.09 38.46 L44.58 39.00 L43.07 39.54 L41.56 40.08 L40.05 40.60 L38.54 41.12 L37.04 41.64 L35.54 42.16 L34.04 42.67 L32.54 43.19 L31.05 43.71 L29.56 44.23 L28.08 44.75 L26.59 45.28 L25.12 45.82 L23.65 46.36 L22.18 46.91 L20.72 47.48 L19.26 48.05 L17.81 48.64 L16.37 49.24 L14.94 49.85 L13.51 50.49 L12.09 51.14 L10.67 51.80 L9.27 52.49 L7.87 53.20 L6.48 53.93 L5.10 54.68 L3.74 55.46 Z" fill="url(#slSwoosh)" stroke="url(#slSwoosh)" stroke-width="1.5" stroke-linejoin="round"/>
+                    <g fill="url(#slLegA)"><path d="M45.77 2.76 L15.11 84.00 L27.68 84.00 L48.63 3.64 Z"/><path d="M15.2 84 V81.6 H26.5 Q28 81.6 28 83.1 V84 Z"/></g>
+                  </g>
+                  <path id="sl-ribbon-front" fill="url(#slRibbon)"/>
+                </svg>
+              </div>
             </div>
           </div>
 
@@ -129,10 +143,8 @@
             Preparing your personal growth workspace
           </p>
 
-          <!-- Loading Bar -->
-          <div style="width:144px;height:4px;background:var(--splash-track,#1e222d);border-radius:9999px;overflow:hidden;margin-top:20px;position:relative;">
-            <div style="position:absolute;top:0;bottom:0;left:0;background:linear-gradient(90deg, #10b981, #34d399);width:50%;border-radius:9999px;animation:loadingBarAnim 1.2s ease-in-out infinite;"></div>
-          </div>
+          <!-- Animated loader bar -->
+          <div class="sp-bar-track"><div class="sp-bar"></div></div>
         </div>
       </div>
     </div>
