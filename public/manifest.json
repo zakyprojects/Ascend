@@ -3,7 +3,7 @@
   "short_name": "Ascend",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0B1F1A",
+  "background_color": "#112725",
   "theme_color": "#0a0b0f",
   "icons": [
     {
