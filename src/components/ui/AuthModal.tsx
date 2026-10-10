@@ -5,7 +5,6 @@ import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnony
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 import { PasswordInput } from './PasswordInput';
-import { AppLogo } from './AppLogo';
 
 /** Wraps a promise with an 8-second hard timeout. */
 function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
@@ -237,7 +236,8 @@ export function AuthModal({ open, onClose, guestState }: AuthModalProps) {
         {mode === 'choice' && (
           <div className="space-y-4 py-2">
             <div className="text-center space-y-1">
-              <AppLogo className="w-12 h-12 rounded-[22%] mx-auto shadow-lg shadow-emerald-500/20 mb-3 object-cover" />
+              {/* Torch chip: a self-contained dark badge, intentionally the same in both themes. */}
+              <img src="/logo-torch.svg" alt="Ascend Logo" className="w-20 h-20 rounded-[22%] mx-auto shadow-lg shadow-emerald-500/20 mb-3 object-cover" />
               <h2 className="text-xl font-display font-bold text-content-primary">
                 Ascend Self-Growth
               </h2>
