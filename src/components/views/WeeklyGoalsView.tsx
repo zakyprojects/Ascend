@@ -451,7 +451,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       const reflectionId = deleteReflectionModal.id;
       await executeWithKey(`delete_weekly_reflection_${reflectionId}`, async () => {
         try {
-          store.deleteWeeklyReflection(selectedWeekKey, reflectionId);
+          await store.deleteWeeklyReflection(selectedWeekKey, reflectionId);
           setDeleteReflectionModal(null);
           showSuccessToast('Reflection Deleted', 'Weekly reflection entry removed.', `weekly_reflection_${reflectionId}`);
         } catch (err: any) {
@@ -466,7 +466,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       const goalId = deleteGoalModal.id;
       await executeWithKey(`delete_weekly_goal_${goalId}`, async () => {
         try {
-          store.deleteWeeklyGoalItem(selectedWeekKey, goalId);
+          await store.deleteWeeklyGoalItem(selectedWeekKey, goalId);
           setDeleteGoalModal(null);
           showSuccessToast('Goal Deleted', 'Weekly goal removed.', `weekly_goal_${goalId}`);
         } catch (err: any) {

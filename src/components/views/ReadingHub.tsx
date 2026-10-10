@@ -1321,7 +1321,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         onClose={() => setDeleteModalBook(null)}
         onConfirm={async () => {
           if (deleteModalBook) {
-            store.deleteBook(deleteModalBook.id);
+            await store.deleteBook(deleteModalBook.id);
             setDeleteModalBook(null);
             showSuccessToast('Book Deleted', 'Book removed successfully.', `book_${deleteModalBook.id}`);
           }

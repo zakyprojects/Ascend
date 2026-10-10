@@ -31,13 +31,8 @@ export function ConfirmDeleteModal({
 
   const handleConfirmClick = async () => {
     setInternalDeleting(true);
-    const start = Date.now();
     try {
       await onConfirm();
-      const elapsed = Date.now() - start;
-      if (elapsed < 400) {
-        await new Promise((r) => setTimeout(r, 400 - elapsed));
-      }
     } catch (err: any) {
       showErrorToast('Deletion Failed', err?.message || 'Failed to delete item. Please check your connection.');
     } finally {

@@ -1080,7 +1080,7 @@ export function Journal({ store }: { store: AppStore }) {
         onConfirm={async () => {
           if (deleteModalEntry) {
             await executeDelete(async () => {
-              store.deleteJournalEntry(deleteModalEntry.id);
+              await store.deleteJournalEntry(deleteModalEntry.id);
               setDeleteModalEntry(null);
               showSuccessToast('Entry Deleted', 'Journal entry removed successfully.', `journal_${deleteModalEntry.id}`);
             });

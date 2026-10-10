@@ -372,7 +372,7 @@ export function ProjectsGoalsView({
   onStartFocusSession?: (taskTitle: string) => void;
 }) {
   const { showSuccessToast, showErrorToast } = useToast();
-  const { isKeyLoading, executeWithKey } = useAsyncActionKey(300);
+  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
 
   // Active sub-view tab
   const [activeTab, setActiveTab] = useState<SubViewTab>('tasks');
@@ -936,7 +936,7 @@ export function ProjectsGoalsView({
   const handleDeleteGoalConfirm = async () => {
     if (!deleteGoalTarget) return;
     await executeWithKey(`delete_goal_${deleteGoalTarget.id}`, async () => {
-      store.deleteGoal(deleteGoalTarget.id);
+      await store.deleteGoal(deleteGoalTarget.id);
       showSuccessToast('Goal Deleted', 'Linked projects were safely unlinked.', `goal_${deleteGoalTarget.id}`);
       setDeleteGoalTarget(null);
       if (filterGoalId === deleteGoalTarget.id) {
@@ -1058,7 +1058,7 @@ export function ProjectsGoalsView({
   const handleDeleteProjectConfirm = async () => {
     if (!deleteProjectTarget) return;
     await executeWithKey(`delete_project_${deleteProjectTarget.id}`, async () => {
-      store.deleteProject(deleteProjectTarget.id);
+      await store.deleteProject(deleteProjectTarget.id);
       showSuccessToast('Project Deleted', 'Linked tasks were safely unlinked.', `project_${deleteProjectTarget.id}`);
       setDeleteProjectTarget(null);
       if (filterProjectId === deleteProjectTarget.id) {
@@ -1173,7 +1173,7 @@ export function ProjectsGoalsView({
   const handleDeleteTaskConfirm = async () => {
     if (!deleteTaskTarget) return;
     await executeWithKey(`delete_task_${deleteTaskTarget.id}`, async () => {
-      store.deleteTask(deleteTaskTarget.id);
+      await store.deleteTask(deleteTaskTarget.id);
       showSuccessToast('Task Deleted', 'Task removed.', `task_${deleteTaskTarget.id}`);
       setDeleteTaskTarget(null);
     });
@@ -1182,7 +1182,7 @@ export function ProjectsGoalsView({
   const handleDeleteSubtaskConfirm = async () => {
     if (!deleteSubtaskTarget) return;
     await executeWithKey(`delete_subtask_${deleteSubtaskTarget.subtask.id}`, async () => {
-      store.deleteSubtask(deleteSubtaskTarget.taskId, deleteSubtaskTarget.subtask.id);
+      await store.deleteSubtask(deleteSubtaskTarget.taskId, deleteSubtaskTarget.subtask.id);
       showSuccessToast('Subtask Deleted', 'Subtask removed.', `subtask_${deleteSubtaskTarget.subtask.id}`);
       setDeleteSubtaskTarget(null);
     });

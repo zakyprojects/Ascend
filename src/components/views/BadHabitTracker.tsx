@@ -121,7 +121,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
     if (!deleteModalHabit) return;
     const habitId = deleteModalHabit.id;
     await executeWithKey(`delete_bad_habit_${habitId}`, async () => {
-      store.deleteBadHabit(habitId);
+      await store.deleteBadHabit(habitId);
       setDeleteModalHabit(null);
       showSuccessToast('Habit Deleted', 'Bad habit record removed.', `bad_habit_${habitId}`);
     });

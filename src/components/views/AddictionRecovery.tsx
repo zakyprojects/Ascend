@@ -462,7 +462,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         onClose={() => setDeleteTrackerConfirmOpen(false)}
         onConfirm={async () => {
           await executeWithKey('delete_addiction_tracker', async () => {
-            store.deleteAddictionTracker();
+            await store.deleteAddictionTracker();
             setDeleteTrackerConfirmOpen(false);
             showSuccessToast('Tracker Deleted', 'Sobriety tracker and history removed.', `tracker_${tracker?.id || 'main'}`);
           });
@@ -482,7 +482,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           if (deleteCravingModalLog) {
             const logId = deleteCravingModalLog.id;
             await executeWithKey(`delete_craving_log_${logId}`, async () => {
-              store.deleteCravingLog(logId);
+              await store.deleteCravingLog(logId);
               setDeleteCravingModalLog(null);
               showSuccessToast('Log Deleted', 'Craving log removed.', `craving_log_${logId}`);
             });

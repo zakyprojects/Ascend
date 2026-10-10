@@ -455,7 +455,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         onConfirm={async () => {
           if (deleteModalWorkout) {
             await executeDelete(async () => {
-              store.deleteWorkout(deleteModalWorkout.id);
+              await store.deleteWorkout(deleteModalWorkout.id);
               setDeleteModalWorkout(null);
               showSuccessToast('Workout Deleted', 'Workout removed successfully.', `workout_${deleteModalWorkout.id}`);
             });

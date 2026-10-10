@@ -7,8 +7,7 @@ import { PRESET_CATEGORIES, PresetHabit } from '@/lib/presets';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habitPenalties';
-import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
-import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
+import { useAsyncAction } from '@/lib/useAsyncAction';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { EmptyState } from '@/components/ui/primitives';
@@ -309,18 +308,14 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
   const streak = calculateStreak(habit.completions, habit.frequency);
   const bestStreak = calculateBestStreak(habit.completions, habit.frequency);
   const seasonPoints = store.getLeagueData('ninetyDay').userPoints;
-  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
-  const isToggling = isKeyLoading(habit.id);
   const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
 
   const { arm: armCompletionPop, popClass } = useCompletionPop(done);
 
-  const handleToggle = async () => {
+  const handleToggle = () => {
     if (isLinked) return;
     if (!done) armCompletionPop();
-    await executeWithKey(habit.id, async () => {
-      await store.toggleHabit(habit.id);
-    });
+    store.toggleHabit(habit.id);
   };
 
   return (
@@ -328,7 +323,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
       <div className="flex items-center gap-3">
         <button
           onClick={handleToggle}
-          disabled={isToggling || isLinked}
+          disabled={isLinked}
           title={isLinked ? 'Automatically tracked by logging pages in Reading Hub' : undefined}
           className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
             isLinked ? 'cursor-default' : 'active:scale-90'
@@ -340,9 +335,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
               : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary border border-overlay-subtle'
           }`}
         >
-          {isToggling ? (
-            <AscendLoadingIndicator size="sm" />
-          ) : isLinked && !done ? (
+          {isLinked && !done ? (
             <Lock size={18} className="text-content-disabled" />
           ) : (
             <Check size={22} className={popClass} />

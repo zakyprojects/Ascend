@@ -1,16 +1,13 @@
 import { useState, useCallback } from 'react';
 
-const DEFAULT_MIN_DURATION_MS = 400;
-
 export interface UseAsyncActionOptions<T = any> {
-  minDurationMs?: number;
   onSuccess?: (result: T) => void;
   onError?: (error: Error) => void;
 }
 
 /**
- * Hook for managing single async action loading state with a minimum duration
- * to prevent single-frame flickering on fast network responses.
+ * Hook for managing single async action loading state. Loading lasts exactly as
+ * long as the real work: no artificial minimum.
  */
 export function useAsyncAction<Args extends any[], ReturnType>(
   actionFn?: (...args: Args) => Promise<ReturnType>,
@@ -18,30 +15,20 @@ export function useAsyncAction<Args extends any[], ReturnType>(
 ) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const minDuration = options?.minDurationMs ?? DEFAULT_MIN_DURATION_MS;
 
   const execute = useCallback(
     async (...args: Args): Promise<ReturnType | undefined> => {
       setIsLoading(true);
       setError(null);
-      const startTime = Date.now();
 
       try {
         if (!actionFn) {
           throw new Error('No action function provided to useAsyncAction');
         }
         const result = await actionFn(...args);
-        const elapsed = Date.now() - startTime;
-        if (elapsed < minDuration) {
-          await new Promise((res) => setTimeout(res, minDuration - elapsed));
-        }
         options?.onSuccess?.(result);
         return result;
       } catch (err: any) {
-        const elapsed = Date.now() - startTime;
-        if (elapsed < minDuration) {
-          await new Promise((res) => setTimeout(res, minDuration - elapsed));
-        }
         const errorObj = err instanceof Error ? err : new Error(String(err));
         setError(errorObj);
         options?.onError?.(errorObj);
@@ -50,30 +37,21 @@ export function useAsyncAction<Args extends any[], ReturnType>(
         setIsLoading(false);
       }
     },
-    [actionFn, minDuration, options]
+    [actionFn, options]
   );
 
   /**
-   * Inline helper: execute an arbitrary inline async function with minimum duration
+   * Inline helper: execute an arbitrary inline async function
    */
   const executeFn = useCallback(
     async <T,>(inlineFn: () => Promise<T>): Promise<T | undefined> => {
       setIsLoading(true);
       setError(null);
-      const startTime = Date.now();
 
       try {
         const result = await inlineFn();
-        const elapsed = Date.now() - startTime;
-        if (elapsed < minDuration) {
-          await new Promise((res) => setTimeout(res, minDuration - elapsed));
-        }
         return result;
       } catch (err: any) {
-        const elapsed = Date.now() - startTime;
-        if (elapsed < minDuration) {
-          await new Promise((res) => setTimeout(res, minDuration - elapsed));
-        }
         const errorObj = err instanceof Error ? err : new Error(String(err));
         setError(errorObj);
         throw err;
@@ -81,7 +59,7 @@ export function useAsyncAction<Args extends any[], ReturnType>(
         setIsLoading(false);
       }
     },
-    [minDuration]
+    []
   );
 
   return {
@@ -97,7 +75,7 @@ export function useAsyncAction<Args extends any[], ReturnType>(
 /**
  * Hook for managing key-based async actions (e.g. actions on individual items in a list)
  */
-export function useAsyncActionKey(defaultMinDurationMs = DEFAULT_MIN_DURATION_MS) {
+export function useAsyncActionKey() {
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
   const [errorMap, setErrorMap] = useState<Record<string, Error>>({});
 
@@ -115,20 +93,10 @@ export function useAsyncActionKey(defaultMinDurationMs = DEFAULT_MIN_DURATION_MS
         return next;
       });
 
-      const startTime = Date.now();
-
       try {
         const result = await asyncFn();
-        const elapsed = Date.now() - startTime;
-        if (elapsed < defaultMinDurationMs) {
-          await new Promise((res) => setTimeout(res, defaultMinDurationMs - elapsed));
-        }
         return result;
       } catch (err: any) {
-        const elapsed = Date.now() - startTime;
-        if (elapsed < defaultMinDurationMs) {
-          await new Promise((res) => setTimeout(res, defaultMinDurationMs - elapsed));
-        }
         const errorObj = err instanceof Error ? err : new Error(String(err));
         setErrorMap((prev) => ({ ...prev, [key]: errorObj }));
         throw err;
@@ -140,7 +108,7 @@ export function useAsyncActionKey(defaultMinDurationMs = DEFAULT_MIN_DURATION_MS
         });
       }
     },
-    [defaultMinDurationMs]
+    []
   );
 
   return {

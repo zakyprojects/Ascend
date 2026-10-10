@@ -31,8 +31,6 @@ import { TierBadge, TierProgress } from '@/components/ui/TierBadge';
 import { LEAGUE_CONFIG, formatCountdown, getTimeUntilReset, getSeasonLabel } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { LeagueType } from '@/types';
-import { useAsyncActionKey } from '@/lib/useAsyncAction';
-import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { calculateBlockDurationMinutes, formatDurationHuman } from '@/lib/timeTracker';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 
@@ -91,7 +89,6 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   const tier = getCurrentTier(seasonPoints);
   const nextTier = getNextTier(seasonPoints);
 
-  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
 
   const todayEntry = store.getTodayJournalEntry();
   const completedToday = habits.filter((h) => store.isHabitDone(h));
@@ -376,22 +373,21 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           <div className="space-y-2">
             {pendingToday.length > 0 ? (
               pendingToday.slice(0, 4).map((habit) => {
-                const isToggling = isKeyLoading(habit.id);
                 const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
                 return (
                   <div key={habit.id} className="card p-3 flex items-center gap-3 card-hover">
                     <button
-                      disabled={isToggling || isLinked}
+                      disabled={isLinked}
                       title={isLinked ? 'Log reading progress in Reading Hub' : undefined}
                       aria-label={isLinked ? `${habit.name} (log in Reading Hub)` : `Mark ${habit.name} done`}
-                      onClick={() => !isLinked && executeWithKey(habit.id, async () => { store.toggleHabit(habit.id); })}
+                      onClick={() => !isLinked && store.toggleHabit(habit.id)}
                       className={`shrink-0 w-9 h-9 rounded-lg border border-overlay-subtle flex items-center justify-center transition-all ${
                         isLinked
                           ? 'bg-bg-600/60 text-content-subtle cursor-default'
                           : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary active:scale-90'
                       } ${TAP_TARGET} ${FOCUS_RING}`}
                     >
-                      {isToggling ? <AscendLoadingIndicator size="sm" /> : <Check size={18} />}
+                      <Check size={18} />
                     </button>
                     <span className="text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
                       {isLinked && <BookOpen size={13} className="text-warning-text shrink-0" />}

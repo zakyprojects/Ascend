@@ -611,7 +611,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           if (deleteModalSkill) {
             const skillId = deleteModalSkill.id;
             await executeWithKey(`delete_skill_${skillId}`, async () => {
-              store.deleteSkill(skillId);
+              await store.deleteSkill(skillId);
               setDeleteModalSkill(null);
               showSuccessToast('Skill Deleted', 'Skill removed successfully.', `skill_${skillId}`);
             });
