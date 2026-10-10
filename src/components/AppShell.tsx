@@ -125,9 +125,9 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
   ).length;
 
   return (
-    <div className="min-h-screen md:h-screen bg-bg-900 flex md:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div className="min-h-screen lg:h-dvh bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-64 h-full glass border-r border-overlay-subtle shrink-0 overflow-y-auto">
+      <aside className="hidden lg:flex flex-col w-64 h-full glass border-r border-overlay-subtle shrink-0 overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center gap-2.5">
             <img
@@ -258,9 +258,9 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
       </aside>
 
       {/* Mobile view wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 md:h-full md:overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 lg:h-full lg:overflow-hidden">
         {/* Mobile header */}
-        <header className="md:hidden glass border-b border-overlay-subtle px-4 pt-[calc(0.75rem_+_env(safe-area-inset-top))] pb-3 flex items-center justify-between sticky top-0 z-30">
+        <header className="lg:hidden glass border-b border-overlay-subtle px-4 pt-[calc(0.75rem_+_env(safe-area-inset-top))] pb-3 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <img
               src="/favicon.svg"
@@ -296,9 +296,9 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
         </header>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] md:pb-0">
+        <main className="flex-1 overflow-y-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] lg:pb-0">
           {activeGroup && (
-            <div className="md:hidden px-4 pt-3">
+            <div className="lg:hidden px-4 pt-3">
               <Tabs
                 items={activeGroup.items.map((i) => ({
                   id: i.id,
@@ -325,7 +325,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
         </main>
 
         {/* Mobile bottom nav */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-overlay-subtle pt-1.5 pb-[calc(0.375rem_+_env(safe-area-inset-bottom))] pl-[calc(0.25rem_+_env(safe-area-inset-left))] pr-[calc(0.25rem_+_env(safe-area-inset-right))] z-30">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 glass border-t border-overlay-subtle pt-1.5 pb-[calc(0.375rem_+_env(safe-area-inset-bottom))] pl-[calc(0.25rem_+_env(safe-area-inset-left))] pr-[calc(0.25rem_+_env(safe-area-inset-right))] z-30">
           <div className="grid grid-cols-5">
             <NavItemPrimitive
               icon={NAV_DASHBOARD.icon}

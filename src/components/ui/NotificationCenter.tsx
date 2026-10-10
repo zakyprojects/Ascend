@@ -5,6 +5,11 @@ import { AppStore } from '@/lib/store';
 import { AppNotification } from '@/types';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
+// Must match AppShell's `lg:` breakpoint, where the bell moves from the mobile
+// header into the desktop sidebar.
+const DESKTOP_SHELL_MIN_WIDTH = 1024;
+const isMobileShell = () => window.innerWidth < DESKTOP_SHELL_MIN_WIDTH;
+
 interface NotificationCenterProps {
   store: AppStore;
   compact?: boolean;
@@ -30,9 +35,7 @@ export function NotificationCenter({
   const computePosition = useCallback(() => {
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
-    const isMobile = window.innerWidth < 768;
-
-    if (isMobile) {
+    if (isMobileShell()) {
       // Centered modal on mobile
       setPosition({ top: 64 });
     } else if (align === 'sidebar' || align === 'left') {
@@ -136,7 +139,7 @@ export function NotificationCenter({
           {/* Backdrop — covers entire screen */}
           <div
             style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
-            className="bg-black/60 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none"
+            className="bg-black/60 backdrop-blur-sm lg:bg-transparent lg:backdrop-blur-none"
             onClick={() => setOpen(false)}
           />
 
@@ -149,7 +152,7 @@ export function NotificationCenter({
               ...(position.left !== undefined ? { left: position.left } : {}),
               ...(position.right !== undefined ? { right: position.right } : {}),
               // Mobile: fill width with margins
-              ...(window.innerWidth < 768
+              ...(isMobileShell()
                 ? { left: 16, right: 16, maxWidth: 384, margin: '0 auto' }
                 : { width: 384 }),
             }}
@@ -188,7 +191,7 @@ export function NotificationCenter({
             </div>
 
             {/* List */}
-            <div className="max-h-80 overflow-y-auto divide-y divide-white/5" style={{ maxHeight: window.innerWidth < 768 ? '70vh' : 480 }}>
+            <div className="max-h-80 overflow-y-auto divide-y divide-white/5" style={{ maxHeight: isMobileShell() ? '70vh' : 480 }}>
               {notifications.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
                   <div className="w-10 h-10 rounded-full bg-overlay-subtle flex items-center justify-center mx-auto text-content-disabled">
