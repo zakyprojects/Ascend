@@ -258,19 +258,19 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                       <Activity size={20} />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-content-secondary">{w.type}</h3>
+                      <h3 className="item-name text-sm text-content-secondary">{w.type}</h3>
                       <p className="text-xs text-content-disabled">
                         {formatDateLong(w.date)} • {w.amount !== undefined && w.unit && w.unit !== 'mins' ? (
-                          <span className="text-success-text font-medium">{w.amount} {w.unit}</span>
+                          <span className="figure text-success-text">{w.amount} {w.unit}</span>
                         ) : (
-                          <span className="text-content-muted">{w.amount ?? w.durationMinutes} mins</span>
+                          <span className="figure text-content-muted">{w.amount ?? w.durationMinutes} mins</span>
                         )}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 tabular-nums">
+                    <span className="figure text-xs text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
                       +{w.pointsAwarded} pts
                     </span>
                     <button
@@ -411,7 +411,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
 
           <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
             <span>Points to earn:</span>
-            <span className="font-bold text-success-text">+{previewPointsToEarn} pts</span>
+            <span className="figure text-success-text">+{previewPointsToEarn} pts</span>
           </div>
 
           <div className="flex gap-2 pt-2">

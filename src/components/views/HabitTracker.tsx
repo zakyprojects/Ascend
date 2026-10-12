@@ -111,8 +111,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
             <Disclosure icon={AlertTriangle} tone="warning" title="Tier-Scaled Missed Habit Penalties">
               <p>
                 Missing a preset habit deducts points equal to its value (1st miss = -1x).
-                For <span className="text-content-secondary font-semibold">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="text-warning-text font-semibold">1.5x</span>.
-                For <span className="text-brand-text font-semibold">Performer tier and above</span>, escalation caps at <span className="text-rose-theme font-semibold">2.5x</span>.
+                For <span className="text-content-secondary font-medium">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="figure text-warning-text">1.5x</span>.
+                For <span className="text-brand-text font-medium">Performer tier and above</span>, escalation caps at <span className="figure text-rose-theme">2.5x</span>.
                 Completing the habit breaks the miss streak and resets the penalty to 1x!
               </p>
             </Disclosure>
@@ -175,7 +175,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
                 <BookMarked size={22} className="text-brand-text" />
               </div>
               <div className="flex-1">
-                <h3 className="font-display font-bold text-content-primary">Browse Preset Habits</h3>
+                <h3 className="item-name">Browse Preset Habits</h3>
                 <p className="text-xs text-content-disabled mt-0.5">Choose from a curated library. Preset habits earn points.</p>
               </div>
             </button>
@@ -187,7 +187,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
                 <Pencil size={22} className="text-content-muted" />
               </div>
               <div className="flex-1">
-                <h3 className="font-display font-bold text-content-primary">Create Custom Habit</h3>
+                <h3 className="item-name">Create Custom Habit</h3>
                 <p className="text-xs text-content-disabled mt-0.5">Track personal goals. Custom habits don't earn points.</p>
               </div>
             </button>
@@ -201,7 +201,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
             </button>
             {PRESET_CATEGORIES.map((category) => (
               <div key={category.name}>
-                <h3 className="text-sm font-display font-bold text-content-tertiary mb-2">{category.name}</h3>
+                <h3 className="stat-label mb-2">{category.name}</h3>
                 <div className="space-y-1.5">
                   {category.habits.map((preset) => {
                     const alreadyAdded = habits.some((h) => h.name === preset.name && h.isPreset);
@@ -217,12 +217,12 @@ export function HabitTracker({ store }: { store: AppStore }) {
                         }`}
                       >
                         <div className="flex-1 min-w-0">
-                          <span className="text-sm font-medium text-content-secondary">{preset.name}</span>
+                          <span className="item-name text-sm text-content-secondary">{preset.name}</span>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-xs text-content-disabled">
                               {preset.frequency === 'daily' ? 'Daily' : 'Weekly'}
                             </span>
-                            <span className="text-xs text-brand-text font-medium tabular-nums">+{preset.points} pts</span>
+                            <span className="figure text-xs text-brand-text">+{preset.points} pts</span>
                           </div>
                         </div>
                         {alreadyAdded ? (
@@ -331,7 +331,7 @@ function WeekConsistencyCard({ habits }: { habits: Habit[] }) {
     <div className="card p-4 flex flex-col justify-between gap-2">
       <div className="flex items-baseline justify-between gap-2">
         <div className="stat-label">Last 7 Days</div>
-        <span className="text-2xs text-content-muted tabular-nums">
+        <span className="figure text-2xs text-content-muted">
           <CountUp value={activeDays} />/{WEEK_DAYS} active
         </span>
       </div>
@@ -437,7 +437,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
             {isLinked && (
               <BookOpen size={14} className="text-brand-text shrink-0" />
             )}
-            <h3 className={`font-medium truncate ${done ? 'text-content-disabled line-through' : 'text-content-secondary'}`}>
+            <h3 className={`item-name truncate ${done ? 'text-content-disabled line-through' : 'text-content-secondary'}`}>
               {habit.name}
             </h3>
             {isLinked ? (
@@ -459,25 +459,25 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
             {streak > 0 && (
               <div className="flex items-center gap-1 text-xs">
                 <Flame size={13} className="text-brand-text" />
-                <span className="text-brand-text font-medium tabular-nums">{streak} day{streak !== 1 ? 's' : ''}</span>
+                <span className="figure text-brand-text">{streak} day{streak !== 1 ? 's' : ''}</span>
               </div>
             )}
             {bestStreak > 0 && (
               <div className="flex items-center gap-1 text-xs text-content-disabled">
-                <span className="tabular-nums">Best: {bestStreak}</span>
+                <span className="figure">Best: {bestStreak}</span>
               </div>
             )}
             {isLinked ? (
-              <div className="text-xs text-brand-text font-medium flex items-center gap-1">
+              <div className="text-xs text-brand-text flex items-center gap-1">
                 <span>Auto-synced</span>
                 {habit.points === 0 ? (
                   <span className="text-content-subtle">For habit tracking, no points</span>
                 ) : (
-                  <span className="text-brand-text font-medium">+{habit.points} pts</span>
+                  <span className="figure text-brand-text">+{habit.points} pts</span>
                 )}
               </div>
             ) : habit.isPreset ? (
-              <div className="text-xs text-brand-text font-medium">+{habit.points} pts</div>
+              <div className="figure text-xs text-brand-text">+{habit.points} pts</div>
             ) : (
               <div className="text-xs text-content-subtle">No points</div>
             )}

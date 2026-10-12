@@ -50,10 +50,10 @@ export function WeekActivityCard({ points, pointsPartial, habits }: WeekActivity
       {metric === 'points' ? (
         <>
           <div className="flex items-baseline gap-1.5">
-            <CountUp value={earned} className="text-2xl font-display font-bold text-content-primary tabular-nums" />
+            <CountUp value={earned} className="font-serif text-[2rem] leading-none text-content-primary tabular-nums" />
             <span className="text-sm text-content-muted">pts earned</span>
             {lost > 0 && (
-              <span className="ml-auto text-xs text-warning-text tabular-nums">−{lost.toLocaleString()} penalties</span>
+              <span className="figure ml-auto text-xs text-warning-text">−{lost.toLocaleString()} penalties</span>
             )}
           </div>
           <BarChart
@@ -74,7 +74,7 @@ export function WeekActivityCard({ points, pointsPartial, habits }: WeekActivity
       ) : (
         <>
           <div className="flex items-baseline gap-1.5">
-            <CountUp value={habitRate} className="text-2xl font-display font-bold text-content-primary tabular-nums" />
+            <CountUp value={habitRate} className="font-serif text-[2rem] leading-none text-content-primary tabular-nums" />
             <span className="text-sm text-content-muted">% of daily habits done</span>
           </div>
           <BarChart

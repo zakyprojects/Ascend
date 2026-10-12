@@ -269,7 +269,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
               <Reveal index={1} className="card p-4 space-y-3">
                 <div className="flex items-baseline justify-between gap-3">
                   <h2 className="section-title">Practice, Last 7 Days</h2>
-                  <span className="text-xs text-content-muted tabular-nums">
+                  <span className="figure text-xs text-content-muted">
                     <CountUp value={practiceWeekTotal} /> mins
                   </span>
                 </div>
@@ -343,7 +343,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     <div className="space-y-3">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h3 className="font-semibold text-content-secondary text-base">{skill.name}</h3>
+                          <h3 className="item-name text-content-secondary text-base">{skill.name}</h3>
                           {skill.category && <p className="text-xs text-content-disabled">{skill.category}</p>}
                         </div>
                         <button
@@ -363,14 +363,14 @@ export function SkillTracker({ store }: { store: AppStore }) {
                         <div className="flex items-center gap-2 text-xs text-content-disabled">
                           {streak > 0 && (
                             <>
-                              <span className="flex items-center gap-1 text-brand-text font-medium tabular-nums">
+                              <span className="figure flex items-center gap-1 text-brand-text">
                                 <Flame size={13} className="text-brand-text" />
                                 {streak} day{streak !== 1 ? 's' : ''}
                               </span>
                               <span>•</span>
                             </>
                           )}
-                          <span className="tabular-nums">{hours.toFixed(1)} hrs</span>
+                          <span className="figure">{hours.toFixed(1)} hrs</span>
                           <span>•</span>
                           <span>Last: {lastPracticed}</span>
                         </div>
@@ -380,7 +380,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       <div className="space-y-1 pt-0.5">
                         <div className="flex justify-between items-center text-micro text-content-disabled">
                           <span>{progressText}</span>
-                          <span className="tabular-nums">{Math.round(progressPercent)}%</span>
+                          <span className="figure">{Math.round(progressPercent)}%</span>
                         </div>
                         <ProgressBar value={progressPercent} label="Level progress" tone="brand" size="sm" />
                       </div>
@@ -411,7 +411,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
             <div className="space-y-4">
               {groupedHistoryLogs.map((group) => (
                 <div key={group.title} className="space-y-2">
-                  <div className="text-xs font-semibold text-content-disabled uppercase tracking-wider px-1">
+                  <div className="stat-label px-1">
                     {group.title}
                   </div>
                   <div className="space-y-2">
@@ -425,15 +425,15 @@ export function SkillTracker({ store }: { store: AppStore }) {
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-semibold text-content-secondary text-sm">{skill?.name || 'Skill'}</span>
-                                <span className="text-xs text-content-disabled tabular-nums">({log.durationMinutes} mins)</span>
+                                <span className="item-name text-content-secondary text-sm">{skill?.name || 'Skill'}</span>
+                                <span className="figure text-xs text-content-disabled">({log.durationMinutes} mins)</span>
                               </div>
                               {log.note && <p className="text-xs text-content-muted mt-0.5">{log.note}</p>}
                               <p className="text-2xs text-content-disabled mt-1">{formatDateLong(log.date)}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="badge-neutral text-xs font-bold px-2.5 py-1 rounded-full tabular-nums">
+                            <span className="badge-neutral figure text-xs px-2.5 py-1 rounded-full">
                               +{log.pointsAwarded} pts
                             </span>
                             <button
@@ -492,7 +492,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
             />
             {categorySuggestionsOpen && categorySuggestions.length > 0 && (
               <div className="absolute z-50 left-0 right-0 mt-1 bg-bg-750 border border-overlay-medium rounded-xl shadow-lg max-h-36 overflow-y-auto p-1 space-y-0.5">
-                <div className="text-2xs font-semibold uppercase tracking-wider text-content-disabled px-2.5 py-1">
+                <div className="stat-label px-2.5 py-1">
                   Existing Categories
                 </div>
                 {categorySuggestions.map((sug) => (
@@ -569,7 +569,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
           <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
             <span>Points to earn:</span>
-            <span className="font-bold text-brand-text tabular-nums">+{skillPreviewPoints} pts</span>
+            <span className="figure text-brand-text">+{skillPreviewPoints} pts</span>
           </div>
 
           <div className="flex gap-2 pt-2">
