@@ -152,13 +152,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <Activity className="text-success-text" size={26} />
-            Exercise Tracker
-          </h1>
-          <p className="text-sm text-content-disabled mt-1">
-            Log workouts, track weekly activity, and earn points (up to {WORKOUT_POINTS.dailyCap} pts/day)
-          </p>
+          <h1 className="page-title">Exercise</h1>
+          <p className="page-subtitle">Log workouts and keep your weekly rhythm.</p>
         </div>
         <div className="page-header-actions">
           <button

@@ -236,13 +236,8 @@ export function PrefrontalCortex({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="page-title flex items-center gap-2">
-          <BrainCircuit className="text-content-secondary" size={26} />
-          Prefrontal Cortex Module
-        </h1>
-        <p className="text-sm text-content-disabled mt-1">
-          Train executive functions: deep focus sessions, decision journaling, and emotion labeling
-        </p>
+        <h1 className="page-title">Prefrontal Cortex</h1>
+        <p className="page-subtitle">Deep focus, a decision journal and emotion labeling.</p>
       </div>
 
       {/* Tabs */}

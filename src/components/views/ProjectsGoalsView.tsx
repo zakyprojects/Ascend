@@ -1279,10 +1279,7 @@ export function ProjectsGoalsView({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="page-title flex items-center gap-2.5">
-                <FolderKanban className="text-brand-text" size={26} />
-                Projects & Goals
-              </h1>
+              <h1 className="page-title">Projects & Goals</h1>
               <button
                 type="button"
                 onClick={() => setIsGuideModalOpen(true)}

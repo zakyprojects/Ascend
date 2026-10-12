@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { ProgressBar } from './primitives/ProgressBar';
 
 export interface CapMeterProps {
@@ -70,10 +71,15 @@ export function CapMeter({
         </div>
       )}
 
+      {/* The rules stay one tap away instead of a paragraph above every page (Design v3). */}
       {note && (
-        <div className="text-micro text-content-muted">
-          {note}
-        </div>
+        <details className="group">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-micro text-content-muted hover:text-content-secondary [&::-webkit-details-marker]:hidden">
+            How points work
+            <ChevronDown size={12} aria-hidden="true" className="transition-transform group-open:rotate-180" />
+          </summary>
+          <p className="mt-1.5 text-micro leading-relaxed text-content-muted">{note}</p>
+        </details>
       )}
     </div>
   );

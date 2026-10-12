@@ -68,7 +68,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
       <div className="page-header">
         <div>
           <h1 className="page-title">Habit Tracker</h1>
-          <p className="text-sm text-content-disabled mt-1">Build consistency, one day at a time</p>
+          <p className="page-subtitle">Build consistency, one day at a time.</p>
         </div>
         <button onClick={() => { setShowAdd(true); setAddMode('choice'); }} className="btn-primary sm:shrink-0">
           <Plus size={18} />

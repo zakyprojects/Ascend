@@ -618,17 +618,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="page-title flex items-center gap-2">
-              <Users className="text-success-text" size={26} />
-              Accountability Partners
-            </h1>
+            <h1 className="page-title">Accountability Partners</h1>
             <span className="badge bg-emerald-500/15 text-success-text font-bold text-xs px-2.5 py-1">
               {partnerships.length} / 5 Partners
             </span>
           </div>
-          <p className="text-sm text-content-muted mt-1">
-            Form joint pacts, track mutual momentum, and stay locked in with your accountability circle
-          </p>
+          <p className="page-subtitle">Make pacts with friends and keep each other on track.</p>
         </div>
 
         <div>

@@ -315,9 +315,7 @@ export function Journal({ store }: { store: AppStore }) {
       {/* Header */}
       <div>
         <h1 className="page-title">Journal</h1>
-        <p className="text-sm text-content-disabled mt-1">
-          Reflect daily, build emotional awareness, and track your mood trends
-        </p>
+        <p className="page-subtitle">Reflect daily and see how your mood moves.</p>
       </div>
 
       <PageColumns

@@ -333,8 +333,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           <Settings size={22} className="text-brand-text" />
         </div>
         <div>
-          <h1 className="page-title">Settings & Preferences</h1>
-          <p className="text-xs text-content-muted">Manage your profile, identity, privacy, and account options</p>
+          <h1 className="page-title">Settings</h1>
+          <p className="page-subtitle">Profile, privacy and account.</p>
         </div>
       </div>
 

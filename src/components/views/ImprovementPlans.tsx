@@ -1064,13 +1064,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <Compass className="text-brand-text" size={26} />
-            Personal Improvement Plans
-          </h1>
-          <p className="text-sm text-content-disabled mt-1">
-            Build Milestones, Target Goals, Habit Journeys, & Vision reflections — discover public plans & track progress
-          </p>
+          <h1 className="page-title">Improvement Plans</h1>
+          <p className="page-subtitle">Milestones, goals and habit journeys, your own or shared.</p>
         </div>
         <button onClick={() => setCreateModalOpen(true)} className="btn-primary flex items-center gap-2 sm:shrink-0">
           <Plus size={18} />

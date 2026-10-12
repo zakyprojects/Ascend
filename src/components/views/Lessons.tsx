@@ -33,7 +33,7 @@ export function Lessons({ store }: { store: AppStore }) {
     <div className="space-y-6">
       <div>
         <h1 className="page-title">Lessons</h1>
-        <p className="text-sm text-content-disabled mt-1">Short, practical self-improvement articles</p>
+        <p className="page-subtitle">Short, practical self-improvement reads.</p>
       </div>
 
       {/* Stats */}

@@ -132,13 +132,8 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <ShieldAlert className="text-rose-theme" size={26} />
-            Bad Habit Reduction Tracker
-          </h1>
-          <p className="text-sm text-content-disabled mt-1">
-            Earn points on your first {BAD_HABIT_POINTS.eligibleSlots} active habits (+{BAD_HABIT_POINTS.resistBase} per resist, max +{BAD_HABIT_POINTS.dailyCap}/day), enforce rank-tiered escalating penalties on those habits, and complete 75%+ commitments.
-          </p>
+          <h1 className="page-title">Bad Habits</h1>
+          <p className="page-subtitle">Resist each day and let the streak do the work.</p>
         </div>
         <button onClick={() => setAddModalOpen(true)} className="btn-primary flex items-center gap-2 sm:shrink-0">
           <Plus size={18} />

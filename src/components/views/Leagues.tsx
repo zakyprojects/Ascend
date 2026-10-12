@@ -40,7 +40,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
       <div className="page-header">
         <div>
           <h1 className="page-title">Leagues</h1>
-          <p className="text-sm text-content-disabled mt-1">Compete with real users, view ranks, and climb tiers</p>
+          <p className="page-subtitle">Compete with real people and climb the table.</p>
         </div>
         {!currentUser && onOpenAuthModal && (
           <button

@@ -379,13 +379,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title flex items-center gap-2.5">
-            <BookOpen className="text-brand-text" size={26} />
-            Reading Hub
-          </h1>
-          <p className="text-sm text-content-muted mt-1">
-            Track daily reading progress, build continuous streaks, queue future reads, and discover foundational self-improvement books.
-          </p>
+          <h1 className="page-title">Reading Hub</h1>
+          <p className="page-subtitle">Log pages, keep the streak, and line up what to read next.</p>
         </div>
         <div className="page-header-actions">
           {readingHabit ? (

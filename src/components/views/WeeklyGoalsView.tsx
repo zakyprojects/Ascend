@@ -608,12 +608,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       <div className="card p-5 space-y-4 border border-overlay-default bg-bg-800/80">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-overlay-subtle pb-4">
           <div>
-            <div className="flex items-center gap-2">
-              <Target size={24} className="text-success-text" />
-              <h1 className="page-title">Weekly Executive Goals & Review</h1>
-            </div>
-            <p className="text-sm text-content-muted mt-1">
-              Set high-leverage measurable goals, auto-sync activity progress across trackers, and conduct structured Sunday reflections.
+            <h1 className="page-title">Weekly Goals</h1>
+            <p className="page-subtitle">
+              Set the week's goals, watch them fill in, and reflect on Sunday.
             </p>
           </div>
 

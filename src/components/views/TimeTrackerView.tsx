@@ -188,16 +188,11 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
       {/* 1. Main View Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full aspect-square bg-emerald-500/20 border border-emerald-500/30 text-success-text">
-              <Clock size={24} />
-            </div>
+          <div>
             <div>
-              <h1 className="page-title">
-                Time Tracker
-              </h1>
-              <p className="text-xs text-content-muted">
-                Precision 24-hour time blocking, recurring blueprints, and cross-module execution.
+              <h1 className="page-title">Time Tracker</h1>
+              <p className="page-subtitle">
+                Plan the day in blocks and see where the hours go.
               </p>
             </div>
           </div>

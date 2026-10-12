@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { HeartPulse, ShieldCheck, Flame, AlertCircle, Sparkles, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award, Trash2 } from 'lucide-react';
+import { ShieldCheck, Flame, AlertCircle, Sparkles, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -113,13 +113,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       {/* Top Header + Emergency Button */}
       <div className="page-header">
         <div>
-          <h1 className="page-title flex items-center gap-2">
-            <HeartPulse className="text-rose-theme" size={26} />
-            Addiction Recovery Module
-          </h1>
-          <p className="text-sm text-content-disabled mt-1">
-            Sobriety streak counter, craving logs, and immediate emergency support
-          </p>
+          <h1 className="page-title">Addiction Recovery</h1>
+          <p className="page-subtitle">Your sobriety streak, craving log and emergency support.</p>
         </div>
 
         <button
