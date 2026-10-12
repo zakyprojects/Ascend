@@ -178,7 +178,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                 {/* Live Counter Display */}
                 <div className="grid grid-cols-4 gap-2 text-center">
                   <div className="p-3">
-                    <div className="figure text-3xl sm:text-4xl text-content-primary">{timeElapsed.days}</div>
+                    <div className="figure text-3xl sm:text-4xl text-rose-theme">{timeElapsed.days}</div>
                     <div className="stat-label mt-1">Days</div>
                   </div>
                   <div className="p-3">
@@ -201,7 +201,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                     value={nextMilestone ? elapsedHours : 1}
                     max={nextMilestone ? nextMilestone.requiredHours : 1}
                     label={nextMilestone ? `Progress to ${nextMilestone.label}` : 'All milestones reached'}
-                    tone="brand"
+                    tone="warning"
                     size={56}
                     thickness={5}
                   >
@@ -233,7 +233,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                   />
 
                   <div className="section-title mb-3 flex items-center gap-2">
-                    <Award size={16} className="text-content-subtle" />
+                    <Award size={16} className="text-warning-text" />
                     Milestones and badges
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -252,7 +252,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                           }}
                           className={`rounded-xl p-3 flex items-center gap-3 text-left transition-colors ${
                             isUnlocked
-                              ? 'bg-primary-500/10 text-content-secondary cursor-pointer hover:bg-primary-500/15'
+                              ? 'bg-amber-500/10 border border-amber-500/40 text-content-secondary cursor-pointer hover:bg-amber-500/20'
                               : isCapped
                               ? 'text-content-disabled opacity-50'
                               : 'text-content-disabled opacity-60'
@@ -322,7 +322,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                           </div>
                         </div>
                         {log.trigger && <p className="text-content-muted"><span className="text-content-disabled font-medium">Trigger:</span> {log.trigger}</p>}
-                        {log.copingStrategy && <p className="text-content-muted"><span className="text-content-disabled font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
+                        {log.copingStrategy && <p className="text-success-text"><span className="text-content-disabled font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
                       </div>
                     ))}
                   </div>
@@ -337,8 +337,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <Dialog open={emergencyModalOpen} onClose={() => setEmergencyModalOpen(false)} title="Emergency support" maxWidth="max-w-lg">
         <div className="space-y-6">
           {/* Guided Breathing Box */}
-          <div className="text-center space-y-4">
-            <h3 className="section-title flex items-center justify-center gap-2">
+          <div className="card p-5 text-center border border-purple-500/30 space-y-4">
+            <h3 className="text-purple-hierarchy section-title flex items-center justify-center gap-2">
               4-4-4-4 box breathing
             </h3>
             <BreathingCircle />
@@ -350,12 +350,12 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               <h4 className="item-name text-sm">Quick distraction</h4>
               <button
                 onClick={() => setDistractionIdx((prev) => (prev + 1) % DISTRACTION_ACTIVITIES.length)}
-                className="btn-ghost text-micro text-content-muted flex items-center gap-1"
+                className="btn-ghost text-micro text-brand-text flex items-center gap-1"
               >
                 <RefreshCw size={12} /> Next Suggestion
               </button>
             </div>
-            <div className="p-3 text-base font-medium leading-snug text-content-primary text-center">
+            <div className="p-3 bg-primary-500/10 rounded-xl border border-primary-500/20 text-base font-medium leading-snug text-brand-text text-center">
               {DISTRACTION_ACTIVITIES[distractionIdx]}
             </div>
           </div>
@@ -566,13 +566,13 @@ function BreathingCircle() {
   const getCircleScale = () => {
     switch (phase) {
       case 'Inhale':
-        return 'scale-125 bg-primary-500/30 border-primary-400';
+        return 'scale-125 bg-purple-500/30 border-purple-400';
       case 'Hold':
-        return 'scale-125 bg-primary-500/40 border-primary-300';
+        return 'scale-125 bg-purple-500/40 border-purple-300';
       case 'Exhale':
-        return 'scale-90 bg-primary-500/10 border-primary-500/30';
+        return 'scale-90 bg-purple-500/10 border-purple-500/30';
       case 'Rest':
-        return 'scale-90 bg-primary-500/10 border-primary-500/20';
+        return 'scale-90 bg-purple-500/10 border-purple-500/20';
     }
   };
 
@@ -582,7 +582,7 @@ function BreathingCircle() {
         <div
           className={`w-28 h-28 rounded-full border-2 transition-all duration-1000 flex flex-col items-center justify-center ${getCircleScale()}`}
         >
-          <span className="text-xs font-medium text-content-muted">{phase}</span>
+          <span className="text-xs font-medium text-purple-hierarchy">{phase}</span>
           <span className="figure text-2xl text-content-primary mt-0.5">{seconds}s</span>
         </div>
       </div>
@@ -590,7 +590,7 @@ function BreathingCircle() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => setIsActive(!isActive)}
-          className="btn-ghost text-xs text-content-primary flex items-center gap-1"
+          className="btn-ghost text-xs text-purple-hierarchy flex items-center gap-1"
         >
           {isActive ? <Pause size={14} /> : <Play size={14} />}
           <span>{isActive ? 'Pause' : 'Start'}</span>

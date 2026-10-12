@@ -1,4 +1,4 @@
-import { Brain, Repeat, Moon, Sparkles, Clock, Target, ArrowRight } from 'lucide-react';
+import { Brain, Repeat, Moon, Lightbulb, Clock, Target, ArrowRight } from 'lucide-react';
 import { View } from '@/components/AppShell';
 import { PageColumns } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
@@ -22,6 +22,9 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             {/* Hero */}
             <Reveal index={0} className="card p-6 relative overflow-hidden">
               <div className="relative">
+                <div className="w-14 h-14 rounded-2xl bg-purple-500/15 flex items-center justify-center mb-4">
+                  <Brain size={28} className="text-purple-hierarchy" />
+                </div>
                 <h2 className="section-title mb-2">
                   Your brain is not fixed.
                 </h2>
@@ -30,14 +33,14 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
                   you repeat and every skill you practice changes its structure.
                 </p>
                 <p className="text-sm text-content-muted leading-relaxed mt-3">
-                  This is called <span className="text-content-primary font-medium">neuroplasticity</span>. It means you
+                  This is called <span className="text-purple-hierarchy font-medium">neuroplasticity</span>. It means you
                   can always change, with the right approach.
                 </p>
               </div>
             </Reveal>
 
             {/* Core principle */}
-            <Reveal index={1} className="card p-5">
+            <Reveal index={1} className="card p-5 border-l-2 border-l-purple-500">
               <p className="italic text-lg font-medium leading-snug text-content-primary mb-2">
                 "Neurons that fire together, wire together."
               </p>
@@ -53,21 +56,25 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
               <div className="grid-cards-lg gap-3">
                 <PillarCard
                   icon={<Repeat size={18} />}
+                  color="#34d399"
                   title="Repetition over intensity"
                   description="A 10-minute daily habit beats a 2-hour weekly session. The brain rewires through short, spaced repeats, not marathons."
                 />
                 <PillarCard
                   icon={<Moon size={18} />}
+                  color="#60a5fa"
                   title="Sleep locks in learning"
                   description="Sleep is when the brain strengthens the day's useful connections and prunes the rest. Without it, practice doesn't stick as well."
                 />
                 <PillarCard
-                  icon={<Sparkles size={18} />}
+                  icon={<Lightbulb size={18} />}
+                  color="#fbbf24"
                   title="New things drive growth"
                   description="Routine builds efficiency; new experiences build capacity. Something new releases dopamine, which tells the brain to pay attention and learn."
                 />
                 <PillarCard
                   icon={<Clock size={18} />}
+                  color="#a855f7"
                   title="The 90-day window"
                   description="Research suggests a new behavior takes roughly 66–90 days of steady repetition to become automatic. That's why the 90-Day League is 90 days long."
                 />
@@ -90,9 +97,11 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             </Reveal>
 
             {/* 90-Day League CTA */}
-            <Reveal index={3} className="card p-5">
+            <Reveal index={3} className="card p-5 border border-purple-500/30 bg-purple-500/5">
               <div className="flex items-start gap-3">
-                <Target size={18} className="text-content-subtle shrink-0 mt-1" />
+                <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0">
+                  <Target size={20} className="text-purple-hierarchy" />
+                </div>
                 <div className="flex-1">
                   <h3 className="section-title mb-1">The 90-Day League</h3>
                   <p className="text-sm text-content-muted leading-relaxed mb-3">
@@ -124,7 +133,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
                   "Novelty: The Brain's Growth Trigger",
                 ].map((title) => (
                   <div key={title} className="p-3 flex items-center gap-2 text-sm text-content-muted">
-                    <Brain size={14} className="text-content-subtle shrink-0" />
+                    <Brain size={14} className="text-purple-hierarchy shrink-0" />
                     {title}
                   </div>
                 ))}
@@ -142,11 +151,16 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
   );
 }
 
-function PillarCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+function PillarCard({ icon, color, title, description }: { icon: React.ReactNode; color: string; title: string; description: string }) {
   return (
     <div className="card p-4">
       <div className="flex items-start gap-3">
-        <div className="text-content-subtle shrink-0 mt-0.5">{icon}</div>
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ backgroundColor: `${color}15`, color }}
+        >
+          {icon}
+        </div>
         <div>
           <h3 className="item-name text-sm mb-1">{title}</h3>
           <p className="text-xs text-content-muted leading-relaxed">{description}</p>
@@ -159,7 +173,9 @@ function PillarCard({ icon, title, description }: { icon: React.ReactNode; title
 function Tip({ num, text }: { num: string; text: string }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="figure text-xs text-content-subtle w-4 shrink-0 mt-1">{num}</span>
+      <div className="w-6 h-6 rounded-lg bg-purple-500/15 flex items-center justify-center shrink-0 mt-0.5">
+        <span className="figure text-xs text-purple-hierarchy">{num}</span>
+      </div>
       <p className="text-sm text-content-muted leading-relaxed">{text}</p>
     </div>
   );
