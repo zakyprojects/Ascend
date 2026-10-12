@@ -114,7 +114,6 @@ export default {
         'fade-in': 'fadeIn 0.3s ease-out',
         'slide-up': 'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
         'scale-in': 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
         'count-up': 'countUp 0.5s ease-out',
         'celebrate': 'celebrate 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
         'enter-up': 'enterUp var(--duration-enter) var(--ease-emphasized) both',
@@ -157,10 +156,6 @@ export default {
         scaleIn: {
           '0%': { opacity: '0', transform: 'scale(0.95)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
-        },
-        pulseGlow: {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(16, 185, 129, 0.3)' },
-          '50%': { boxShadow: '0 0 30px rgba(16, 185, 129, 0.5)' },
         },
         countUp: {
           '0%': { opacity: '0', transform: 'translateY(8px)' },
