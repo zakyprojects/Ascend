@@ -462,7 +462,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         </div>
       </Reveal>
 
-      <PageColumns
+      <PageColumns stickyAside
         aside={
           <>
             {readingLogs.length > 0 && (

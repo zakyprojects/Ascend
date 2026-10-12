@@ -185,7 +185,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         </div>
       </Reveal>
 
-      <PageColumns
+      <PageColumns stickyAside
         aside={
           <>
             <CapMeterConnected state={store.state} capId="badHabitsResisted" />

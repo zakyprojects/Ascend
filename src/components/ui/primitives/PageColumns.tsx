@@ -9,6 +9,9 @@ export interface PageColumnsProps {
   aside?: ReactNode;
   /** Main-column content that comes after the aside on narrow screens. */
   children?: ReactNode;
+  /** Full-width content after both columns, for sections that would otherwise leave the side
+   *  column empty beside them once a short aside ends (a grid of summary cards). */
+  footer?: ReactNode;
   /** Keep the aside in view while the main column scrolls. Only for asides shorter than the
    *  viewport; a taller sticky aside would hide its own bottom. */
   stickyAside?: boolean;
@@ -22,13 +25,14 @@ export interface PageColumnsProps {
  * than the single column it replaces; between 1024px and 1440px the single column already fills. Spacing matches the
  * pages' `space-y-6` rhythm, so a page reads the same on phones as before.
  */
-export function PageColumns({ lead, aside, children, stickyAside = false, className }: PageColumnsProps) {
+export function PageColumns({ lead, aside, children, footer, stickyAside = false, className }: PageColumnsProps) {
   const hasLead = lead != null && lead !== false;
   const hasAside = aside != null && aside !== false;
   const hasChildren = children != null && children !== false;
   const split = hasLead && hasChildren;
+  const hasFooter = footer != null && footer !== false;
 
-  return (
+  const columns = (
     <div
       className={cx(
         'grid gap-6',
@@ -54,6 +58,14 @@ export function PageColumns({ lead, aside, children, stickyAside = false, classN
           {children}
         </div>
       )}
+    </div>
+  );
+
+  if (!hasFooter) return columns;
+  return (
+    <div className="space-y-6">
+      {columns}
+      {footer}
     </div>
   );
 }

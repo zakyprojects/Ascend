@@ -98,7 +98,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
         {hasDailyHabits && <WeekConsistencyCard habits={habits} />}
       </Reveal>
 
-      <PageColumns
+      <PageColumns stickyAside
         aside={
           <>
             <CapMeterConnected state={store.state} capId="presetHabits" />

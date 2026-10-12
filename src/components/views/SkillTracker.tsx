@@ -293,7 +293,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
         </div>
       </Reveal>
 
-      <PageColumns
+      <PageColumns stickyAside
         aside={
           <>
             {skillLogs.length > 0 && (

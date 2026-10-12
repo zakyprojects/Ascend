@@ -367,117 +367,120 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             </Reveal>
           </>
         }
-      >
-        {/* Activity Summary Widgets Grid */}
-        <Reveal index={6}>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="section-title">Self-Improvement Activity Summary</h2>
-          </div>
-          <div className="grid-cards gap-3">
-            {/* Exercise Summary Widget */}
-            <ModuleCard
-              tone="emerald"
-              icon={Activity}
-              title="Exercise Tracker"
-              onClick={() => onViewChange('exercise')}
-            >
-              <div>
-                <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyExerciseMins} /> <span className="text-xs font-normal text-content-muted">mins this week</span></div>
-                <div className="text-micro text-content-disabled"><CountUp value={weeklyWorkouts.length} /> sessions completed</div>
+        footer={
+          <>
+            {/* Activity Summary Widgets Grid */}
+            <Reveal index={6}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="section-title">Self-Improvement Activity Summary</h2>
               </div>
-            </ModuleCard>
+              <div className="grid-cards gap-3">
+                {/* Exercise Summary Widget */}
+                <ModuleCard
+                  tone="emerald"
+                  icon={Activity}
+                  title="Exercise Tracker"
+                  onClick={() => onViewChange('exercise')}
+                >
+                  <div>
+                    <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyExerciseMins} /> <span className="text-xs font-normal text-content-muted">mins this week</span></div>
+                    <div className="text-micro text-content-disabled"><CountUp value={weeklyWorkouts.length} /> sessions completed</div>
+                  </div>
+                </ModuleCard>
 
-            {/* Reading Summary Widget */}
-            <ModuleCard
-              tone="amber"
-              icon={BookMarked}
-              title="Reading Hub"
-              onClick={() => onViewChange('reading')}
-            >
-              <div>
-                <div className="text-xl font-bold text-content-primary"><CountUp value={activeBooks} /> <span className="text-xs font-normal text-content-muted">books in progress</span></div>
-                <div className="text-micro text-content-disabled"><CountUp value={finishedBooks} /> finished total</div>
-              </div>
-            </ModuleCard>
+                {/* Reading Summary Widget */}
+                <ModuleCard
+                  tone="amber"
+                  icon={BookMarked}
+                  title="Reading Hub"
+                  onClick={() => onViewChange('reading')}
+                >
+                  <div>
+                    <div className="text-xl font-bold text-content-primary"><CountUp value={activeBooks} /> <span className="text-xs font-normal text-content-muted">books in progress</span></div>
+                    <div className="text-micro text-content-disabled"><CountUp value={finishedBooks} /> finished total</div>
+                  </div>
+                </ModuleCard>
 
-            {/* Skill Summary Widget */}
-            <ModuleCard
-              tone="purple"
-              icon={Zap}
-              title="Skill Learning"
-              onClick={() => onViewChange('skills')}
-            >
-              <div>
-                <div className="text-xl font-bold text-content-primary"><CountUp value={totalSkillHours} decimals={1} /> <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
-                <div className="text-micro text-content-disabled"><CountUp value={store.state.skills.length} /> skills tracked</div>
-              </div>
-            </ModuleCard>
+                {/* Skill Summary Widget */}
+                <ModuleCard
+                  tone="purple"
+                  icon={Zap}
+                  title="Skill Learning"
+                  onClick={() => onViewChange('skills')}
+                >
+                  <div>
+                    <div className="text-xl font-bold text-content-primary"><CountUp value={totalSkillHours} decimals={1} /> <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
+                    <div className="text-micro text-content-disabled"><CountUp value={store.state.skills.length} /> skills tracked</div>
+                  </div>
+                </ModuleCard>
 
-            {/* Bad Habit Summary Widget */}
-            <ModuleCard
-              tone="rose"
-              icon={ShieldAlert}
-              title="Bad Habits Reduction"
-              onClick={() => onViewChange('bad-habits')}
-            >
-              <div>
-                <div className="text-xl font-bold text-content-primary"><CountUp value={badHabitCount} /> <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
-                <div className="text-micro text-content-disabled">Escalating penalties enabled</div>
-              </div>
-            </ModuleCard>
+                {/* Bad Habit Summary Widget */}
+                <ModuleCard
+                  tone="rose"
+                  icon={ShieldAlert}
+                  title="Bad Habits Reduction"
+                  onClick={() => onViewChange('bad-habits')}
+                >
+                  <div>
+                    <div className="text-xl font-bold text-content-primary"><CountUp value={badHabitCount} /> <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
+                    <div className="text-micro text-content-disabled">Escalating penalties enabled</div>
+                  </div>
+                </ModuleCard>
 
-            {/* Addiction Recovery Summary Widget */}
-            <ModuleCard
-              tone="red"
-              icon={HeartPulse}
-              title="Addiction Recovery"
-              onClick={() => onViewChange('recovery')}
-            >
-              <div>
-                <div className="text-xl font-bold text-content-primary">
-                  {activeAddiction ? activeAddiction.title : 'Sobriety Tracker'}
-                </div>
-                <div className="text-micro text-content-disabled">Includes emergency support & breathing</div>
-              </div>
-            </ModuleCard>
+                {/* Addiction Recovery Summary Widget */}
+                <ModuleCard
+                  tone="red"
+                  icon={HeartPulse}
+                  title="Addiction Recovery"
+                  onClick={() => onViewChange('recovery')}
+                >
+                  <div>
+                    <div className="text-xl font-bold text-content-primary">
+                      {activeAddiction ? activeAddiction.title : 'Sobriety Tracker'}
+                    </div>
+                    <div className="text-micro text-content-disabled">Includes emergency support & breathing</div>
+                  </div>
+                </ModuleCard>
 
-            {/* Deep Focus Summary Widget */}
-            <ModuleCard
-              tone="cyan"
-              icon={Timer}
-              title="Prefrontal / Focus"
-              onClick={() => onViewChange('prefrontal')}
-            >
-              <div>
-                <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyFocusMins} /> <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
-                <div className="text-micro text-content-disabled">Pomodoro, decisions & emotions</div>
-              </div>
-            </ModuleCard>
+                {/* Deep Focus Summary Widget */}
+                <ModuleCard
+                  tone="cyan"
+                  icon={Timer}
+                  title="Prefrontal / Focus"
+                  onClick={() => onViewChange('prefrontal')}
+                >
+                  <div>
+                    <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyFocusMins} /> <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
+                    <div className="text-micro text-content-disabled">Pomodoro, decisions & emotions</div>
+                  </div>
+                </ModuleCard>
 
-            {/* Time Tracker Blueprint Widget */}
-            <ModuleCard
-              tone="indigo"
-              icon={Clock}
-              title="Time Tracker"
-              onClick={() => onViewChange('time-tracker')}
-            >
-              <div>
-                <div className="text-xl font-bold text-content-primary">
-                  <AutoNum text={todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'} />{' '}
-                  <span className="text-xs font-normal text-content-muted">planned today</span>
-                </div>
-                <div className="text-micro text-content-disabled">
-                  {todayBlocks.length > 0 ? (
-                    <AutoNum text={`${todayCompletedBlocksCount}/${todayBlocks.length} blocks completed`} />
-                  ) : (
-                    'No scheduled blocks yet'
-                  )}
-                </div>
+                {/* Time Tracker Blueprint Widget */}
+                <ModuleCard
+                  tone="indigo"
+                  icon={Clock}
+                  title="Time Tracker"
+                  onClick={() => onViewChange('time-tracker')}
+                >
+                  <div>
+                    <div className="text-xl font-bold text-content-primary">
+                      <AutoNum text={todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'} />{' '}
+                      <span className="text-xs font-normal text-content-muted">planned today</span>
+                    </div>
+                    <div className="text-micro text-content-disabled">
+                      {todayBlocks.length > 0 ? (
+                        <AutoNum text={`${todayCompletedBlocksCount}/${todayBlocks.length} blocks completed`} />
+                      ) : (
+                        'No scheduled blocks yet'
+                      )}
+                    </div>
+                  </div>
+                </ModuleCard>
               </div>
-            </ModuleCard>
-          </div>
-        </Reveal>
-      </PageColumns>
+            </Reveal>
+          </>
+        }
+      />
     </div>
   );
 }
