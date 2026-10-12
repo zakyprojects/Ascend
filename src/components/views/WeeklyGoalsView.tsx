@@ -13,7 +13,8 @@ import {
   Zap,
   Edit3,
   Trash2,
-  Sparkles,
+  PenLine,
+  Clock,
 } from 'lucide-react';
 import { AppStore, isWeeklyReflectionAwarded } from '@/lib/store';
 import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoints } from '@/lib/pointsConfig';
@@ -83,7 +84,7 @@ function GoalItemRow({
               title="Auto-synced from linked activity"
               className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border cursor-default select-none pointer-events-none ${
                 isDone
-                  ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
+                  ? 'bg-emerald-500 border-emerald-400 text-bg-900'
                   : 'bg-bg-800 border-overlay-strong text-content-disabled'
               }`}
             >
@@ -122,7 +123,7 @@ function GoalItemRow({
               aria-label={isDone ? `Mark "${item.title}" incomplete` : `Mark "${item.title}" complete`}
               className={`w-6 h-6 mt-0.5 rounded-lg flex items-center justify-center shrink-0 transition-all border disabled:opacity-50 disabled:cursor-not-allowed ${
                 isDone
-                  ? 'bg-emerald-500 border-emerald-400 text-bg-900 font-bold'
+                  ? 'bg-emerald-500 border-emerald-400 text-bg-900'
                   : 'bg-bg-800 border-overlay-strong text-content-disabled hover:border-overlay-heavy'
               } ${TAP_TARGET}`}
             >
@@ -133,15 +134,15 @@ function GoalItemRow({
           <div className="space-y-1 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={`text-sm font-semibold text-content-primary ${
+                className={`item-name text-sm ${
                   isDone ? 'line-through text-content-muted' : ''
                 }`}
               >
                 {item.title}
               </span>
 
-              <span className={`badge text-2xs font-bold border ${priorityColor(item.priority)}`}>
-                {item.priority.toUpperCase()}
+              <span className={`badge text-2xs capitalize border ${priorityColor(item.priority)}`}>
+                {item.priority}
               </span>
 
               {item.carriedOverFromWeekKey && (
@@ -152,7 +153,7 @@ function GoalItemRow({
 
               {item.linkedModule && item.linkedModule !== 'none' && (
                 <span className="badge badge-neutral text-2xs flex items-center gap-1">
-                  <Zap size={10} /> Linked: {item.linkedModule.toUpperCase()}
+                  <Zap size={10} /> Linked: <span className="capitalize">{item.linkedModule}</span>
                 </span>
               )}
             </div>
@@ -195,14 +196,14 @@ function GoalItemRow({
             </span>
             <button
               onClick={() => openEditModal(item)}
-              className="text-micro underline hover:text-content-primary font-medium ml-2"
+              className="text-micro underline hover:text-content-primary ml-2"
             >
               Choose Metric
             </button>
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between text-micro text-content-muted font-medium">
+            <div className="flex items-center justify-between text-micro text-content-muted">
               <span>Progress</span>
               <div className="flex items-center gap-2">
                 {(!item.linkedModule || item.linkedModule === 'none') && prog.target > 1 && (
@@ -224,7 +225,7 @@ function GoalItemRow({
                     >
                       <Minus size={12} />
                     </button>
-                    <span className="font-bold text-content-secondary min-w-[16px] text-center">{prog.current}</span>
+                    <span className="figure text-content-secondary min-w-[16px] text-center">{prog.current}</span>
                     <button
                       onClick={() => {
                         const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
@@ -245,7 +246,7 @@ function GoalItemRow({
                     </button>
                   </div>
                 )}
-                <span className="text-content-secondary font-bold">
+                <span className="figure text-content-secondary">
                   {prog.current} / {prog.target} {prog.unit} ({prog.percent}%)
                 </span>
               </div>
@@ -626,7 +627,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </button>
 
             <div className="text-center px-3">
-              <span className="text-xs font-bold text-content-secondary block">{selectedWeekKey}</span>
+              <span className="figure text-xs text-content-secondary block">{selectedWeekKey}</span>
               <span className="text-2xs text-content-muted block whitespace-nowrap">
                 {formatWeekRange(selectedWeekKey)}
               </span>
@@ -644,7 +645,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             {selectedWeekKey !== currentWeekKey && (
               <button
                 onClick={() => setSelectedWeekKey(currentWeekKey)}
-                className="ml-1 text-micro font-bold text-brand-text hover:opacity-80 bg-primary-500/10 px-2 py-1 rounded-lg border border-primary-500/20 transition-all"
+                className="ml-1 text-micro font-medium text-brand-text hover:opacity-80 bg-primary-500/10 px-2 py-1 rounded-lg border border-primary-500/20 transition-all"
               >
                 Today
               </button>
@@ -655,12 +656,12 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         {/* OVERALL WEEK PROGRESS BAR & SUMMARY BADGES */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
           <div className="md:col-span-2 bg-bg-900/40 p-3.5 rounded-xl border border-overlay-subtle space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-content-tertiary flex items-center gap-1.5">
                 <BarChart2 size={14} className="text-brand-text" />
                 Weekly Target Completion
               </span>
-              <span className="text-brand-text font-bold tabular-nums">
+              <span className="figure text-brand-text">
                 <AutoNum text={`${goalStats.percent}%`} /> Complete ({goalStats.completed}/{goalStats.total})
               </span>
             </div>
@@ -669,18 +670,18 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           <div className="bg-bg-900/40 p-3.5 rounded-xl border border-overlay-subtle flex items-center justify-around">
             <div className="text-center">
-              <CountUp value={goalStats.total} className="text-lg font-bold text-content-primary block tabular-nums" />
-              <span className="text-2xs uppercase tracking-wider text-content-muted font-medium">Total Goals</span>
+              <CountUp value={goalStats.total} className="font-serif text-[1.75rem] leading-none text-content-primary block tabular-nums" />
+              <span className="stat-label mt-1 block">Total Goals</span>
             </div>
             <div className="w-px h-8 bg-overlay-default" />
             <div className="text-center">
-              <CountUp value={goalStats.completed} className="text-lg font-bold text-success-text block tabular-nums" />
-              <span className="text-2xs uppercase tracking-wider text-content-muted font-medium">Completed</span>
+              <CountUp value={goalStats.completed} className="font-serif text-[1.75rem] leading-none text-success-text block tabular-nums" />
+              <span className="stat-label mt-1 block">Completed</span>
             </div>
             <div className="w-px h-8 bg-overlay-default" />
             <div className="text-center">
-              <CountUp value={goalStats.highPriorityCompleted} className="text-lg font-bold text-rose-theme block tabular-nums" />
-              <span className="text-2xs uppercase tracking-wider text-content-muted font-medium">High Pri Done</span>
+              <CountUp value={goalStats.highPriorityCompleted} className="font-serif text-[1.75rem] leading-none text-rose-theme block tabular-nums" />
+              <span className="stat-label mt-1 block">High Pri Done</span>
             </div>
           </div>
         </div>
@@ -715,7 +716,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 <div className="flex items-start gap-2.5">
                   <AlertTriangle size={18} className="text-warning-text shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="text-xs font-bold text-warning-text">Unresolved Goals from Previous Weeks</h3>
+                    <h3 className="item-name text-sm !text-warning-text">Unresolved Goals from Previous Weeks</h3>
                     <p className="text-xs text-content-secondary mt-0.5">
                       You have {unaddressedPastGoals.length} incomplete priority goal{unaddressedPastGoals.length > 1 ? 's' : ''} from earlier weeks.
                       Select whether to carry them over into this week or dismiss them.
@@ -730,9 +731,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                       className="scroll-rise flex items-center justify-between p-2.5 bg-bg-900/70 border border-overlay-default rounded-lg"
                     >
                       <div className="space-y-0.5">
-                        <span className="text-xs font-bold text-content-secondary block">{goal.title}</span>
-                        <span className="text-2xs text-warning-text font-medium">
-                          From {pastWeek} ({goal.priority.toUpperCase()} Priority)
+                        <span className="item-name text-xs text-content-secondary block">{goal.title}</span>
+                        <span className="text-2xs text-warning-text">
+                          From {pastWeek} (<span className="capitalize">{goal.priority}</span> Priority)
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -760,10 +761,10 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-overlay-subtle pb-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <Target size={18} className="text-brand-text shrink-0" />
-                  <h3 className="text-sm font-bold text-content-secondary">
+                  <h3 className="section-title">
                     Target Priorities for {selectedWeekKey}
                   </h3>
-                  <span className="badge badge-primary text-2xs font-bold">
+                  <span className="badge badge-primary figure text-2xs">
                     {calculateWeeklyGoalsPoints(activeGoalDoc.goals).pointsAwarded}/{WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts
                   </span>
                 </div>
@@ -844,8 +845,8 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             <div className="card p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
                 <div>
-                  <h3 className="text-sm font-bold text-content-secondary flex items-center gap-2">
-                    <Sparkles size={16} className="text-brand-text" />
+                  <h3 className="section-title flex items-center gap-2">
+                    <PenLine size={16} className="text-brand-text" />
                     Weekly Reflections
                   </h3>
                   <p className="text-xs text-content-muted mt-0.5">
@@ -871,7 +872,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               {/* ADD REFLECTION FORM */}
               {showAddReflection && (
                 <div className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
-                  <label htmlFor="new-reflection-content" className="block text-xs font-semibold text-content-secondary">
+                  <label htmlFor="new-reflection-content" className="block text-xs font-medium text-content-tertiary">
                     New Reflection Entry
                   </label>
                   <textarea
@@ -894,7 +895,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                       disabled={isPastWeek || isFutureWeek}
                       className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Sparkles size={14} />
+                      <Check size={14} />
                       <span>Save Reflection</span>
                     </button>
                   </div>
@@ -918,7 +919,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                     <>
                       {reflections.length === 0 && !showAddReflection && (
                         <EmptyState
-                          icon={Sparkles}
+                          icon={PenLine}
                           title={selectedWeekKey === currentWeekKey ? `No reflections added for ${selectedWeekKey} yet.` : `No reflections added for ${selectedWeekKey}.`}
                           description={selectedWeekKey === currentWeekKey ? 'Click "+ Add Reflection" above to add your insights.' : undefined}
                           size="sm"
@@ -932,7 +933,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                         if (isEditingThis) {
                           return (
                             <div key={ref.id} className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
-                              <label htmlFor="edit-reflection-content" className="block text-xs font-semibold text-content-secondary">
+                              <label htmlFor="edit-reflection-content" className="block text-xs font-medium text-content-tertiary">
                                 Edit Reflection
                               </label>
                               <textarea
@@ -968,19 +969,19 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                           >
                             <div className="flex items-center justify-between text-micro text-content-muted">
                               <div className="flex items-center gap-2">
-                                <span className="font-medium text-content-tertiary">
+                                <span className="figure text-content-tertiary">
                                   {new Date(ref.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                 </span>
                                 {isWeeklyReflectionAwarded(selectedWeekKey, ref.id, store.state) ? (
-                                  <span className="badge badge-emerald text-2xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                                    <Sparkles size={11} /> +{WEEKLY_REFLECTION_POINTS.awarded} pts
+                                  <span className="badge badge-emerald figure text-2xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <Check size={11} /> +{WEEKLY_REFLECTION_POINTS.awarded} pts
                                   </span>
                                 ) : isBeforeCutoff && latestReflection?.id === ref.id ? (
                                   <span
-                                    className="badge badge-neutral text-2xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+                                    className="badge badge-neutral figure text-2xs px-2 py-0.5 rounded-full flex items-center gap-1"
                                     title="Points will be awarded when cutoff passes on Sunday 17:00"
                                   >
-                                    <Sparkles size={11} /> Pending +{WEEKLY_REFLECTION_POINTS.awarded} pts
+                                    <Clock size={11} /> Pending +{WEEKLY_REFLECTION_POINTS.awarded} pts
                                   </span>
                                 ) : null}
                               </div>
@@ -1031,7 +1032,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       >
         <div className="space-y-4 pt-2">
           <div>
-            <label htmlFor="goal-title" className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="goal-title" className="block text-xs font-medium text-content-tertiary mb-1">
               Goal Title <span className="text-rose-theme">*</span>
             </label>
             <input
@@ -1046,7 +1047,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="goal-description" className="block text-xs font-semibold text-content-tertiary mb-1">
+            <label htmlFor="goal-description" className="block text-xs font-medium text-content-tertiary mb-1">
               Target Description & Strategy
             </label>
             <textarea
@@ -1060,7 +1061,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="goal-priority" className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-priority" className="block text-xs font-medium text-content-tertiary mb-1">
                 Priority Level
               </label>
               <select
@@ -1076,7 +1077,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </div>
 
             <div>
-              <label htmlFor="goal-linked-module" className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-linked-module" className="block text-xs font-medium text-content-tertiary mb-1">
                 Link Tracker Module
               </label>
               <select
@@ -1102,7 +1103,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {/* ITEM SELECTOR DEPENDING ON LINKED MODULE */}
           {linkedModule === 'exercise' && (
             <div>
-              <label htmlFor="goal-workout-item" className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-workout-item" className="block text-xs font-medium text-content-tertiary mb-1">
                 Select Workout <span className="text-rose-theme">*</span>
               </label>
               <select
@@ -1123,7 +1124,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           {linkedModule === 'habit' && (
             <div>
-              <label htmlFor="goal-habit-item" className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-habit-item" className="block text-xs font-medium text-content-tertiary mb-1">
                 Select Habit <span className="text-rose-theme">*</span>
               </label>
               <select
@@ -1144,7 +1145,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           {linkedModule === 'reading' && (
             <div>
-              <label htmlFor="goal-book-item" className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-book-item" className="block text-xs font-medium text-content-tertiary mb-1">
                 Select Book <span className="text-rose-theme">*</span>
               </label>
               <select
@@ -1156,7 +1157,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 <option value="" disabled>Select a specific book...</option>
                 {store.state.libraryBooks.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.title} {b.status === 'completed' ? '✓ (Completed)' : b.status === 'reading' ? '📖 (Reading)' : '⏳ (To Read)'}
+                    {b.title} {b.status === 'completed' ? '(Completed)' : b.status === 'reading' ? '(Reading)' : '(To Read)'}
                   </option>
                 ))}
               </select>
@@ -1165,7 +1166,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           {linkedModule === 'skill' && (
             <div>
-              <label htmlFor="goal-skill-item" className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-skill-item" className="block text-xs font-medium text-content-tertiary mb-1">
                 Select Skill <span className="text-rose-theme">*</span>
               </label>
               <select
@@ -1187,7 +1188,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {/* TARGET VALUE & METRIC / UNIT INPUTS */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="goal-target-amount" className="block text-xs font-semibold text-content-tertiary mb-1">
+              <label htmlFor="goal-target-amount" className="block text-xs font-medium text-content-tertiary mb-1">
                 Target Goal Amount
               </label>
               <input
@@ -1202,7 +1203,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
             {linkedModule !== 'none' ? (
               <div>
-                <label htmlFor="goal-metric-key" className="block text-xs font-semibold text-content-tertiary mb-1">
+                <label htmlFor="goal-metric-key" className="block text-xs font-medium text-content-tertiary mb-1">
                   Select Metric <span className="text-rose-theme">*</span>
                 </label>
                 <select
@@ -1221,7 +1222,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               </div>
             ) : (
               <div>
-                <label htmlFor="goal-unit-label" className="block text-xs font-semibold text-content-tertiary mb-1">
+                <label htmlFor="goal-unit-label" className="block text-xs font-medium text-content-tertiary mb-1">
                   Unit Label
                 </label>
                 <input
@@ -1298,8 +1299,8 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             How would you like to carry over <strong className="text-content-primary">"{carryOverPromptModal?.goal.title}"</strong> into {currentWeekKey}?
           </p>
           <div className="card p-3 space-y-1">
-            <span className="text-micro text-content-muted font-medium block">Current Progress in {carryOverPromptModal?.pastWeek}:</span>
-            <span className="text-xs font-bold text-brand-text block">
+            <span className="text-micro text-content-muted block">Current Progress in {carryOverPromptModal?.pastWeek}:</span>
+            <span className="figure text-sm text-brand-text block">
               {carryOverPromptModal?.goal.manualProgress || 0} / {carryOverPromptModal?.goal.targetValue} {carryOverPromptModal?.goal.unit || 'times'}
             </span>
           </div>

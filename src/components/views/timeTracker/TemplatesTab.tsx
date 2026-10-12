@@ -154,9 +154,9 @@ export function TemplatesTab({
   return (
     <div className="space-y-6">
       {/* 1. Header and Action */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle ">
         <div>
-          <h2 className="text-base font-bold text-content-primary flex items-center gap-2">
+          <h2 className="font-serif text-xl leading-tight text-content-primary flex items-center gap-2">
             <Layers className="text-success-text" size={18} />
             <span>Recurring Templates</span>
           </h2>
@@ -181,7 +181,7 @@ export function TemplatesTab({
 
           <button
             onClick={onOpenCreateTemplateModal}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all shrink-0 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-sm transition-all shrink-0 cursor-pointer"
           >
             <Plus size={15} />
             <span>Create Template</span>
@@ -195,7 +195,7 @@ export function TemplatesTab({
           <Compass className="text-success-text" size={24} />
         </div>
         <div className="flex-1 w-full">
-          <h3 className="text-sm font-bold text-content-primary mb-1.5">The Balance Sheet of Life: 8+8+8 Rule</h3>
+          <h3 className="font-serif text-lg leading-tight text-content-primary mb-1.5">The Balance Sheet of Life: 8+8+8 Rule</h3>
           <p className="text-xs text-content-tertiary leading-relaxed mb-3 max-w-3xl">
             Distribute your 24 hours intentionally to maintain a perfect balance sheet of your life. Ascend Blueprints are built on this foundational philosophy.
           </p>
@@ -203,7 +203,7 @@ export function TemplatesTab({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Hard Work */}
             <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
-              <h4 className="text-micro font-bold text-content-secondary mb-1 flex items-center gap-1.5">
+              <h4 className="item-name text-xs text-content-secondary mb-1 flex items-center gap-1.5">
                 <Brain className="text-content-muted" size={13} /> 
                 8 Hours: Hard Work
               </h4>
@@ -212,20 +212,20 @@ export function TemplatesTab({
 
             {/* Life & Balance */}
             <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
-              <h4 className="text-micro font-bold text-content-secondary mb-1.5 flex items-center gap-1.5">
+              <h4 className="item-name text-xs text-content-secondary mb-1.5 flex items-center gap-1.5">
                 <Heart className="text-content-muted" size={13} /> 
                 8 Hours: 3Fs, 3Hs, & 3Ss
               </h4>
               <div className="text-2xs text-content-muted leading-snug space-y-0.5">
-                <p><strong className="text-content-tertiary font-semibold">3Fs:</strong> Family, Friends, Faith</p>
-                <p><strong className="text-content-tertiary font-semibold">3Hs:</strong> Health, Hygiene, Hobby</p>
-                <p><strong className="text-content-tertiary font-semibold">3Ss:</strong> Soul, Service, Smile</p>
+                <p><strong className="text-content-tertiary font-medium">3Fs:</strong> Family, Friends, Faith</p>
+                <p><strong className="text-content-tertiary font-medium">3Hs:</strong> Health, Hygiene, Hobby</p>
+                <p><strong className="text-content-tertiary font-medium">3Ss:</strong> Soul, Service, Smile</p>
               </div>
             </div>
 
             {/* Sleep */}
             <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
-              <h4 className="text-micro font-bold text-content-secondary mb-1 flex items-center gap-1.5">
+              <h4 className="item-name text-xs text-content-secondary mb-1 flex items-center gap-1.5">
                 <Moon className="text-content-muted" size={13} /> 
                 8 Hours: Good Sleep
               </h4>
@@ -245,7 +245,7 @@ export function TemplatesTab({
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 onClick={onOpenCreateTemplateModal}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
               >
                 <Plus size={14} />
                 <span>Create Your First Blueprint</span>
@@ -287,13 +287,13 @@ export function TemplatesTab({
                   {/* Title & Actions */}
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-base font-bold text-content-primary">{tpl.title}</h3>
+                      <h3 className="item-name text-base">{tpl.title}</h3>
                       <div className="flex items-center gap-2 mt-1 text-xs text-content-muted">
-                        <span className="font-semibold text-content-tertiary">
+                        <span className="figure text-content-tertiary">
                           {sortedBlocks.length} block(s)
                         </span>
                         <span>·</span>
-                        <span className="font-mono text-success-text font-medium">
+                        <span className="figure text-success-text">
                           {formatDurationHuman(totalMinutes)} planned
                         </span>
                       </div>
@@ -321,7 +321,7 @@ export function TemplatesTab({
 
                   {/* Active Days Badges */}
                   <div>
-                    <span className="text-2xs font-bold uppercase tracking-wider text-content-disabled block mb-1.5">
+                    <span className="stat-label block mb-1.5">
                       Auto-Apply Days
                     </span>
                     <div className="flex flex-wrap gap-1">
@@ -345,7 +345,7 @@ export function TemplatesTab({
                               handleToggleDay(tpl, day);
                             }}
                             title={`Toggle ${day} auto-apply for ${tpl.title}`}
-                            className={`px-2 py-0.5 rounded-md text-2xs font-bold transition-all cursor-pointer ${
+                            className={`px-2 py-0.5 rounded-md text-2xs font-medium transition-all cursor-pointer ${
                               isDayActive
                                 ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30 hover:bg-emerald-500/30'
                                 : 'bg-bg-900/40 text-content-subtle border border-overlay-subtle hover:text-content-muted hover:border-overlay-default'
@@ -405,10 +405,10 @@ export function TemplatesTab({
                               className="w-2.5 h-2.5 rounded-full shrink-0"
                               style={{ backgroundColor: color }}
                             />
-                            <span className="font-mono text-micro text-content-muted shrink-0">
+                            <span className="figure text-micro text-content-muted shrink-0">
                               {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)}
                             </span>
-                            <span className="font-semibold text-content-secondary truncate">
+                            <span className="item-name text-content-secondary truncate">
                               {block.customTitle || act?.name || 'Block'}
                             </span>
                             {block.secondaryActivityIds &&
@@ -418,7 +418,7 @@ export function TemplatesTab({
                                 return (
                                   <span
                                     key={secId}
-                                    className="text-2xs font-mono px-1.5 py-0.5 rounded shrink-0"
+                                    className="text-2xs font-medium px-1.5 py-0.5 rounded shrink-0"
                                     style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                                   >
                                     +{secAct.name}
@@ -500,7 +500,7 @@ export function TemplatesTab({
             <button
               type="button"
               onClick={confirmTransfer}
-              className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-warning hover:bg-warning transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-warning hover:bg-warning transition-colors cursor-pointer"
             >
               Transfer Day
             </button>

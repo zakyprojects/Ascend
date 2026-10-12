@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Check, Clock, Search, Sparkles } from 'lucide-react';
+import { BookOpen, Check, Clock, Search } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import { Lesson } from '@/types';
@@ -42,14 +42,14 @@ export function Lessons({ store }: { store: AppStore }) {
           <div className="stat-label">Lessons Read (Season {activeSeasonNum})</div>
           <div className="stat-value mt-1 tabular-nums">
             <CountUp value={readCount} />
-            <span className="text-base text-content-disabled">/{LESSONS.length}</span>
+            <span className="figure text-base text-content-disabled">/{LESSONS.length}</span>
           </div>
         </div>
         <div className="card p-4">
           <div className="stat-label">Points Earned</div>
           <div className="stat-value mt-1 text-brand-text tabular-nums">
             <CountUp value={earnedPoints} />
-            <span className="text-base text-content-disabled">/{totalPoints}</span>
+            <span className="figure text-base text-content-disabled">/{totalPoints}</span>
           </div>
         </div>
       </Reveal>
@@ -117,13 +117,13 @@ export function Lessons({ store }: { store: AppStore }) {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-medium text-content-secondary truncate">{lesson.title}</h3>
+                <h3 className="item-name text-sm text-content-secondary truncate">{lesson.title}</h3>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs text-content-disabled">{lesson.category}</span>
-                  <span className="text-xs text-content-subtle flex items-center gap-0.5">
+                  <span className="figure text-xs text-content-subtle flex items-center gap-0.5">
                     <Clock size={11} /> {lesson.readTime} min
                   </span>
-                  <span className="text-xs text-brand-text">+{lesson.points} pts</span>
+                  <span className="figure text-xs text-brand-text">+{lesson.points} pts</span>
                 </div>
               </div>
             </button>
@@ -171,7 +171,7 @@ export function Lessons({ store }: { store: AppStore }) {
                   }}
                   className="btn-primary w-full"
                 >
-                  <Sparkles size={16} />
+                  <Check size={16} />
                   Mark as Read (+{openLesson.points} pts)
                 </button>
               )}

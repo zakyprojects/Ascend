@@ -255,7 +255,7 @@ export function ScheduleTab({
   return (
     <div className="space-y-6">
       {/* 1. Date Navigation & Actions Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle ">
         {/* Date Selector Navigation */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
@@ -269,10 +269,10 @@ export function ScheduleTab({
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-bg-900/60 border border-overlay-default flex-1 sm:flex-none justify-center">
             <Calendar size={16} className="text-success-text shrink-0" />
-            <span className="text-sm font-bold text-content-primary min-w-[100px] sm:min-w-[120px] text-center">
+            <span className="item-name text-sm min-w-[100px] sm:min-w-[120px] text-center">
               {formattedDayTitle}
             </span>
-            <span className="text-xs font-mono text-content-disabled hidden sm:inline">
+            <span className="text-xs text-content-disabled hidden sm:inline">
               ({dayOfWeek})
             </span>
           </div>
@@ -324,7 +324,7 @@ export function ScheduleTab({
           <button
             onClick={() => onOpenAddBlockModal()}
             disabled={isPastDate}
-            className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={15} className="shrink-0" />
             <span className="whitespace-nowrap">Schedule Block</span>
@@ -362,11 +362,11 @@ export function ScheduleTab({
 
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-micro font-bold uppercase tracking-wider text-success-text flex items-center gap-1">
+                  <span className="font-mono text-2xs uppercase tracking-[0.08em] font-medium text-success-text flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     {liveStats.activeBlock ? 'Active Live Block' : 'Live Status'}
                   </span>
-                  <span className="text-xs text-content-disabled font-mono">
+                  <span className="figure text-xs text-content-disabled">
                     {liveStats.currentTimeString}
                   </span>
                 </div>
@@ -374,7 +374,7 @@ export function ScheduleTab({
                 {liveStats.activeBlock && liveStats.activeBlockActivity ? (
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-base font-bold text-content-primary truncate">
+                      <h3 className="font-serif text-xl leading-tight text-content-primary truncate">
                         {liveStats.activeBlock.customTitle || liveStats.activeBlockActivity.name}
                       </h3>
                       {liveStats.activeBlock.secondaryActivityIds &&
@@ -385,7 +385,7 @@ export function ScheduleTab({
                           return (
                             <span
                               key={secId}
-                              className="text-2xs font-mono px-1.5 py-0.5 rounded shrink-0"
+                              className="text-2xs font-medium px-1.5 py-0.5 rounded shrink-0"
                               style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                             >
                               +{secAct.name}
@@ -396,14 +396,14 @@ export function ScheduleTab({
                     <p className="text-xs text-content-tertiary">
                       {formatTime12h(liveStats.activeBlock.startTime)} –{' '}
                       {formatTime12h(liveStats.activeBlock.endTime)} ·{' '}
-                      <span className="text-success-text font-semibold">
+                      <span className="figure text-success-text">
                         <LiveCountdown endTime={liveStats.activeBlock.endTime} />
                       </span>
                     </p>
                   </div>
                 ) : (
                   <div>
-                    <h3 className="text-sm font-semibold text-content-tertiary">
+                    <h3 className="item-name text-sm text-content-tertiary">
                       Free / Unscheduled Window
                     </h3>
                     {liveStats.nextBlock ? (
@@ -525,14 +525,14 @@ export function ScheduleTab({
         <div className="p-4 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-3">
           <div className="flex items-center justify-between text-xs text-content-muted">
             <div className="flex items-center gap-2">
-              <span className="font-semibold uppercase tracking-wider text-micro text-content-tertiary">
+              <span className="item-name text-xs text-content-secondary">
                 24-Hour Timeline Distribution
               </span>
-              <span className="text-2xs text-content-disabled font-mono">
+              <span className="figure text-2xs text-content-disabled">
                 ({dailyBlocks.length} blocks · {formatDurationHuman(liveStats.totalScheduledMinutesToday)})
               </span>
             </div>
-            <span className="text-micro font-mono text-content-disabled">00:00 – 24:00</span>
+            <span className="figure text-micro text-content-disabled">00:00 – 24:00</span>
           </div>
 
           {/* Timeline Track with Major Hour Grid Guides */}
@@ -608,11 +608,11 @@ export function ScheduleTab({
                 >
                   {nameFits ? (
                     <span className="flex items-center gap-1 min-w-0">
-                      <ActivityIcon iconName={act?.icon || 'Activity'} size={12} className="text-white drop-shadow shrink-0" />
-                      <span className="text-2xs font-bold text-white whitespace-nowrap drop-shadow select-none">{blockName}</span>
+                      <ActivityIcon iconName={act?.icon || 'Activity'} size={12} className="text-white shrink-0" />
+                      <span className="text-2xs font-medium text-white whitespace-nowrap select-none">{blockName}</span>
                     </span>
                   ) : iconFits ? (
-                    <ActivityIcon iconName={act?.icon || 'Activity'} size={12} className="text-white drop-shadow shrink-0" />
+                    <ActivityIcon iconName={act?.icon || 'Activity'} size={12} className="text-white shrink-0" />
                   ) : null}
                 </div>
               );
@@ -633,7 +633,7 @@ export function ScheduleTab({
           </div>
 
           {/* Major Hour Markers (0h, 3h, 6h, 9h, 12h, 15h, 18h, 21h, 24h) */}
-          <div className="flex justify-between text-2xs font-mono text-content-muted px-0.5 pt-0.5">
+          <div className="figure flex justify-between text-2xs text-content-muted px-0.5 pt-0.5">
             <span>12 AM</span>
             <span>3 AM</span>
             <span>6 AM</span>
@@ -658,8 +658,8 @@ export function ScheduleTab({
                 <div className="flex items-start gap-2.5 min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: selColor }} />
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-content-primary break-words">{selName}</p>
-                    <p className="text-xs font-mono text-content-tertiary">
+                    <p className="item-name text-sm break-words">{selName}</p>
+                    <p className="figure text-xs text-content-tertiary">
                       {formatTime12h(sel.startTime)} – {formatTime12h(sel.endTime)} · {formatDurationHuman(selMins)}
                     </p>
                   </div>
@@ -693,7 +693,7 @@ export function ScheduleTab({
       {/* 5. Scheduled Blocks List with Live Status Sync */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-content-secondary uppercase tracking-wider">
+          <h3 className="font-serif text-xl leading-tight text-content-primary">
             Scheduled Timeline ({dailyBlocks.length})
           </h3>
           {dailyBlocks.length > 0 && (
@@ -732,7 +732,7 @@ export function ScheduleTab({
                 <button
                   onClick={() => onOpenAddBlockModal()}
                   disabled={isPastDate}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold whitespace-nowrap shadow-lg shadow-emerald-900/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold whitespace-nowrap shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus size={14} />
                   <span>Add Time Block</span>
@@ -840,7 +840,7 @@ export function ScheduleTab({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap min-w-0">
                           <span
-                            className="px-2 py-0.5 rounded-md text-2xs font-bold truncate max-w-full"
+                            className="px-2 py-0.5 rounded-md text-2xs font-medium truncate max-w-full"
                             style={{
                               backgroundColor: `${color}20`,
                               color,
@@ -858,7 +858,7 @@ export function ScheduleTab({
                               return (
                                 <span
                                   key={secId}
-                                  className="text-2xs font-mono px-1.5 py-0.5 rounded truncate max-w-full"
+                                  className="text-2xs font-medium px-1.5 py-0.5 rounded truncate max-w-full"
                                   style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                                 >
                                   +{secAct.name}
@@ -866,11 +866,11 @@ export function ScheduleTab({
                               );
                             })}
 
-                          <span className="text-xs font-mono font-semibold text-content-tertiary whitespace-nowrap">
+                          <span className="figure text-xs text-content-tertiary whitespace-nowrap">
                             {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)}
                           </span>
 
-                          <span className="text-micro text-content-disabled font-mono whitespace-nowrap">
+                          <span className="figure text-micro text-content-disabled whitespace-nowrap">
                             ({formatDurationHuman(durationMins)})
                           </span>
 
@@ -882,7 +882,7 @@ export function ScheduleTab({
                           )}
 
                           {isBlockActive && !block.skipped && (
-                            <span className="badge-emerald px-2 py-0.5 rounded-full text-2xs font-bold flex items-center gap-1">
+                            <span className="badge-emerald px-2 py-0.5 rounded-full text-2xs font-medium flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                               Active Now
                             </span>
@@ -903,7 +903,7 @@ export function ScheduleTab({
                         </div>
 
                         <h4
-                          className={`text-sm font-bold mt-1 break-words ${
+                          className={`item-name text-sm mt-1 break-words ${
                             block.completed
                               ? 'text-content-muted line-through'
                               : block.skipped

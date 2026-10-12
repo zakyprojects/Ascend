@@ -51,9 +51,9 @@ export function ActivitiesTab({
   return (
     <div className="space-y-6">
       {/* 1. Header & Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle ">
         <div>
-          <h2 className="text-base font-bold text-content-primary flex items-center gap-2">
+          <h2 className="font-serif text-xl leading-tight text-content-primary flex items-center gap-2">
             <Tag className="text-success-text" size={18} />
             <span>Master Activity Categories</span>
           </h2>
@@ -64,7 +64,7 @@ export function ActivitiesTab({
 
         <button
           onClick={onOpenCreateActivityModal}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/30 transition-all shrink-0 cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-sm transition-all shrink-0 cursor-pointer"
         >
           <Plus size={15} />
           <span>New Category</span>
@@ -94,10 +94,10 @@ export function ActivitiesTab({
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <h4 className="text-sm font-bold text-content-primary truncate">{act.name}</h4>
+                    <h4 className="item-name text-sm truncate">{act.name}</h4>
                     {act.isSystemDefault && (
                       <span
-                        className="px-1.5 py-0.2 rounded text-3xs font-bold bg-overlay-subtle text-content-muted border border-overlay-default flex items-center gap-0.5"
+                        className="px-1.5 py-0.2 rounded text-3xs font-medium bg-overlay-subtle text-content-muted border border-overlay-default flex items-center gap-0.5"
                         title="System Default"
                       >
                         <ShieldCheck size={10} />
@@ -107,7 +107,7 @@ export function ActivitiesTab({
                   </div>
 
                   {act.ascendModule ? (
-                    <div className="flex items-center gap-1 mt-1.5 text-success-text text-micro font-medium">
+                    <div className="flex items-center gap-1 mt-1.5 text-success-text text-micro">
                       <LinkIcon size={12} className="text-success-text shrink-0" />
                       <span className="truncate">Linked: {act.ascendModule}</span>
                     </div>

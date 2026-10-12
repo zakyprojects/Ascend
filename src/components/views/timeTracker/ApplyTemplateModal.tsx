@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Dialog } from '@/components/ui/primitives';
 import { TimeTrackerTemplate } from '@/types';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { Layers, Sparkles, RefreshCw, Plus, Calendar } from 'lucide-react';
+import { Layers, Check, RefreshCw, Plus, Calendar } from 'lucide-react';
 import { formatDurationHuman, calculateBlockDurationMinutes } from '@/lib/timeTracker';
 
 interface ApplyTemplateModalProps {
@@ -54,7 +54,7 @@ export function ApplyTemplateModal({
         <div>
           {/* Target Date Picker */}
           <div className="mb-3">
-            <label htmlFor="tt-apply-date" className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <label htmlFor="tt-apply-date" className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
               <Calendar size={13} className="text-success-text" />
               <span>Target Schedule Date</span>
             </label>
@@ -68,7 +68,7 @@ export function ApplyTemplateModal({
             />
           </div>
 
-          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
+          <label className="block text-xs font-medium text-content-tertiary mb-2">
             Select Template
           </label>
           <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
@@ -90,12 +90,12 @@ export function ApplyTemplateModal({
                   }`}
                 >
                   <div className="min-w-0 pr-2">
-                    <p className="text-xs font-semibold truncate">{tpl.title}</p>
+                    <p className="item-name text-xs !text-current truncate">{tpl.title}</p>
                     <p className="text-micro text-content-muted">
                       {tpl.blocks?.length || 0} scheduled blocks ({formatDurationHuman(totalMins)})
                     </p>
                   </div>
-                  <div className="text-2xs font-mono text-success-text shrink-0 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                  <div className="figure text-2xs text-success-text shrink-0 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
                     {tpl.activeDays?.length || 0} active days
                   </div>
                 </button>
@@ -106,7 +106,7 @@ export function ApplyTemplateModal({
 
         {/* Application Mode */}
         <div>
-          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
+          <label className="block text-xs font-medium text-content-tertiary mb-2">
             Application Mode
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -115,7 +115,7 @@ export function ApplyTemplateModal({
               onClick={() => setMode('merge')}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 mode === 'merge'
-                  ? 'bg-emerald-500/15 border-emerald-500/60 text-success-text font-semibold shadow-sm ring-1 ring-emerald-500/40'
+                  ? 'bg-emerald-500/15 border-emerald-500/60 text-success-text font-medium shadow-sm ring-1 ring-emerald-500/40'
                   : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
               }`}
             >
@@ -133,7 +133,7 @@ export function ApplyTemplateModal({
               onClick={() => setMode('replace')}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 mode === 'replace'
-                  ? 'bg-primary-500/20 border-primary-500/70 text-brand-text font-semibold shadow-sm ring-1 ring-primary-500/40'
+                  ? 'bg-primary-500/20 border-primary-500/70 text-brand-text font-medium shadow-sm ring-1 ring-primary-500/40'
                   : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
               }`}
             >
@@ -161,7 +161,7 @@ export function ApplyTemplateModal({
           <button
             type="submit"
             disabled={isApplying || !selectedTemplateId}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
           >
             {isApplying ? (
               <>
@@ -170,7 +170,7 @@ export function ApplyTemplateModal({
               </>
             ) : (
               <>
-                <Sparkles size={14} />
+                <Check size={14} />
                 <span>Apply to Schedule</span>
               </>
             )}

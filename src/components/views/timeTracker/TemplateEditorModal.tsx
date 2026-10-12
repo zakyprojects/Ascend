@@ -238,7 +238,7 @@ export function TemplateEditorModal({
 
           {/* Template Title */}
           <div>
-            <label htmlFor="tt-tpl-title" className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
+            <label htmlFor="tt-tpl-title" className="block text-xs font-medium text-content-tertiary mb-1.5">
               Template Title
             </label>
             <input
@@ -254,7 +254,7 @@ export function TemplateEditorModal({
 
           {/* Active Days of Week (Auto-Apply Assignment) */}
           <div>
-            <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-medium text-content-tertiary mb-1.5">
               Auto-Apply Days
             </label>
             <p className="text-micro text-content-muted mb-2">
@@ -284,7 +284,7 @@ export function TemplateEditorModal({
           {/* Blueprint Blocks Section */}
           <div className="pt-2">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-content-muted uppercase tracking-wider">
+              <label className="text-xs font-medium text-content-tertiary">
                 Template Blocks ({blocks.length})
               </label>
               <button
@@ -326,11 +326,11 @@ export function TemplateEditorModal({
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-xs font-medium text-content-secondary truncate">
+                            <p className="item-name text-xs text-content-secondary truncate">
                               {block.customTitle || act?.name || 'Block'}
                             </p>
                             {act?.ascendModule && (
-                              <span className="text-2xs font-mono" style={{ color: resolvedColor }}>
+                              <span className="text-2xs" style={{ color: resolvedColor }}>
                                 [{act.ascendModule}]
                               </span>
                             )}
@@ -341,7 +341,7 @@ export function TemplateEditorModal({
                                 return (
                                   <span
                                     key={secId}
-                                    className="text-2xs font-mono px-1.5 py-0.5 rounded"
+                                    className="text-2xs font-medium px-1.5 py-0.5 rounded"
                                     style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                                   >
                                     +{secAct.name}
@@ -349,7 +349,7 @@ export function TemplateEditorModal({
                                 );
                               })}
                           </div>
-                          <p className="text-micro text-content-muted font-mono">
+                          <p className="figure text-micro text-content-muted">
                             {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)} ({formatDurationHuman(duration)})
                           </p>
                         </div>
@@ -395,7 +395,7 @@ export function TemplateEditorModal({
             <button
               type="submit"
               disabled={isSaving}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
             >
               {isSaving ? (
                 <>
@@ -453,7 +453,7 @@ export function TemplateEditorModal({
             <button
               type="button"
               onClick={confirmTransfer}
-              className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-warning hover:bg-warning transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-warning hover:bg-warning transition-colors cursor-pointer"
             >
               Transfer Day
             </button>

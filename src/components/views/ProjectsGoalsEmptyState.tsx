@@ -17,7 +17,7 @@ const TIER_CONFIG = {
     quote: '“Dreams without goals are just dreams.” – Denzel Washington',
     buttonText: 'Create Your First Goal',
     iconBg: 'badge-neutral',
-    btnClass: 'bg-primary-600 hover:bg-primary-500 hover:shadow-primary-500/60 text-white shadow-primary-900/30',
+    btnClass: 'bg-primary-600 hover:bg-primary-500 text-white',
     hierarchyBadge: 'Tier 3 • North Star',
     hierarchyBadgeColor: 'badge badge-neutral',
     cardBorderHover: 'hover:border-primary-500/30',
@@ -28,7 +28,7 @@ const TIER_CONFIG = {
     text: 'Projects group related tasks together to achieve your broader goals. Break down your vision into actionable phases.',
     buttonText: 'Create Your First Project',
     iconBg: 'badge-neutral',
-    btnClass: 'bg-primary-600 hover:bg-primary-500 hover:shadow-primary-500/60 text-white shadow-primary-900/30',
+    btnClass: 'bg-primary-600 hover:bg-primary-500 text-white',
     hierarchyBadge: 'Tier 2 • Action Phases',
     hierarchyBadgeColor: 'badge badge-neutral',
     cardBorderHover: 'hover:border-primary-500/30',
@@ -39,7 +39,7 @@ const TIER_CONFIG = {
     text: 'Tasks are the atomic, daily actions that move the needle. Link them to projects to maintain focus.',
     buttonText: 'Create Your First Task',
     iconBg: 'badge-emerald',
-    btnClass: 'bg-emerald-600 hover:bg-emerald-500 text-on-brand shadow-emerald-900/30',
+    btnClass: 'bg-emerald-600 hover:bg-emerald-500 text-on-brand',
     hierarchyBadge: 'Tier 1 • Atomic Execution',
     hierarchyBadgeColor: 'badge badge-emerald',
     cardBorderHover: 'hover:border-emerald-500/30',
@@ -57,7 +57,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
           <Icon size={24} />
         </div>
         <div className="max-w-sm mx-auto space-y-1">
-          <h3 className="text-sm font-bold text-content-secondary">No {tier.charAt(0).toUpperCase() + tier.slice(1)} Found</h3>
+          <h3 className="item-name text-sm text-content-secondary">No {tier.charAt(0).toUpperCase() + tier.slice(1)} Found</h3>
           <p className="text-xs text-content-muted leading-relaxed">
             No items match your active search or filter criteria.
           </p>
@@ -65,7 +65,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
         <button
           type="button"
           onClick={onCreate}
-          className={`btn-primary text-xs px-4 py-2 inline-flex items-center gap-1.5 shadow-lg ${config.btnClass}`}
+          className={`btn-primary text-xs px-4 py-2 inline-flex items-center gap-1.5 shadow-sm ${config.btnClass}`}
         >
           <Plus size={14} />
           <span>{config.buttonText}</span>
@@ -76,20 +76,15 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
 
   return (
     <div
-      className={`card p-10 sm:p-12 text-center border-overlay-medium space-y-6 shadow-md transition-all relative overflow-hidden hero-card-glow-emerald ${config.cardBorderHover}`}
+      className={`card p-10 sm:p-12 text-center border-overlay-medium space-y-6 shadow-sm transition-all relative overflow-hidden ${config.cardBorderHover}`}
     >
-      {/* Ambient Gradient Glow */}
-      <div
-        className="hero-glow"
-      />
-
       {/* Tier Badge & Hierarchy Context */}
       <div className="flex flex-col items-center gap-3 relative z-10">
         <span className={config.hierarchyBadgeColor}>
           {config.hierarchyBadge}
         </span>
         <div
-          className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg hero-icon-glow-emerald ${config.iconBg}`}
+          className={`w-16 h-16 rounded-2xl flex items-center justify-center ${config.iconBg}`}
         >
           <Icon size={32} />
         </div>
@@ -97,14 +92,14 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
 
       {/* Bold H3 Title & Explanatory Copy */}
       <div className="max-w-md mx-auto space-y-2 relative z-10">
-        <h3 className="text-base sm:text-lg font-bold text-content-primary tracking-tight">
+        <h3 className="font-serif text-2xl sm:text-[1.75rem] leading-tight text-content-primary">
           {config.title}
         </h3>
         <p className="text-xs sm:text-sm text-content-secondary leading-relaxed">
           {config.text}
         </p>
         {'quote' in config && config.quote && (
-          <p className="text-xs italic text-brand-text pt-1 font-medium">
+          <p className="font-serif text-sm italic text-content-tertiary pt-1">
             {config.quote}
           </p>
         )}
@@ -115,7 +110,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
         <button
           type="button"
           onClick={() => onTabSwitch?.('tasks')}
-          className={`font-semibold transition-colors cursor-pointer hover:text-content-secondary ${
+          className={`font-medium transition-colors cursor-pointer hover:text-content-secondary ${
             tier === 'tasks' ? 'text-success-text underline underline-offset-4' : 'text-content-disabled'
           }`}
         >
@@ -125,7 +120,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
         <button
           type="button"
           onClick={() => onTabSwitch?.('projects')}
-          className={`font-semibold transition-colors cursor-pointer hover:text-content-secondary ${
+          className={`font-medium transition-colors cursor-pointer hover:text-content-secondary ${
             tier === 'projects' ? 'text-content-secondary underline underline-offset-4' : 'text-content-disabled'
           }`}
         >
@@ -135,7 +130,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
         <button
           type="button"
           onClick={() => onTabSwitch?.('goals')}
-          className={`font-semibold transition-colors cursor-pointer hover:text-content-secondary ${
+          className={`font-medium transition-colors cursor-pointer hover:text-content-secondary ${
             tier === 'goals' ? 'text-brand-text underline underline-offset-4' : 'text-content-disabled'
           }`}
         >
@@ -148,7 +143,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
         <button
           type="button"
           onClick={onCreate}
-          className={`btn-primary text-xs sm:text-sm font-semibold px-5 py-2.5 inline-flex items-center gap-2 rounded-xl shadow-lg transition-all active:scale-95 ${config.btnClass}`}
+          className={`btn-primary text-xs sm:text-sm font-semibold px-5 py-2.5 inline-flex items-center gap-2 rounded-xl shadow-sm transition-all active:scale-95 ${config.btnClass}`}
         >
           <Plus size={16} />
           <span>{config.buttonText}</span>

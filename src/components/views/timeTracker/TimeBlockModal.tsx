@@ -16,7 +16,7 @@ import {
 import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { Clock, AlertTriangle, Sparkles, Tag, FileText } from 'lucide-react';
+import { Clock, AlertTriangle, Check, Tag, FileText } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
 interface TimeBlockModalProps {
@@ -204,7 +204,7 @@ export function TimeBlockModal({
         {/* Activity Category Selection */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-content-muted uppercase tracking-wider">
+            <label className="text-xs font-medium text-content-tertiary">
               Activity Categories
             </label>
             <span className="text-micro text-content-muted">
@@ -237,18 +237,18 @@ export function TimeBlockModal({
                     <ActivityIcon iconName={act.icon} size={15} />
                   </div>
                   <div className="truncate min-w-0 flex-1">
-                    <p className="text-xs font-medium truncate">{act.name}</p>
+                    <p className="item-name text-xs !text-current truncate">{act.name}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       {isPrimary ? (
-                        <span className="text-3xs font-bold uppercase tracking-wider text-success-text bg-emerald-500/20 px-1.5 py-0.5 rounded">
+                        <span className="text-2xs font-medium text-success-text bg-emerald-500/20 px-1.5 py-0.5 rounded">
                           Primary
                         </span>
                       ) : isSecondary ? (
-                        <span className="text-3xs font-medium uppercase tracking-wider text-success-text bg-overlay-default px-1.5 py-0.5 rounded">
+                        <span className="text-2xs font-medium text-success-text bg-overlay-default px-1.5 py-0.5 rounded">
                           Secondary
                         </span>
                       ) : act.ascendModule ? (
-                        <span className="text-2xs text-success-text font-mono block truncate">
+                        <span className="text-2xs text-success-text block truncate">
                           {act.ascendModule}
                         </span>
                       ) : null}
@@ -265,7 +265,7 @@ export function TimeBlockModal({
           <div className="flex flex-col h-full space-y-1.5">
             <div className="flex items-center justify-between gap-1">
               <label htmlFor="tt-block-start" className="text-xs font-medium text-content-tertiary truncate">Start Time (24h)</label>
-              <span className="text-micro text-content-muted font-mono bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
+              <span className="figure text-micro text-content-muted bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(startTime)}
               </span>
             </div>
@@ -285,7 +285,7 @@ export function TimeBlockModal({
           <div className="flex flex-col h-full space-y-1.5">
             <div className="flex items-center justify-between gap-1">
               <label htmlFor="tt-block-end" className="text-xs font-medium text-content-tertiary truncate">End Time (24h)</label>
-              <span className="text-micro text-content-muted font-mono bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
+              <span className="figure text-micro text-content-muted bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(endTime)}
               </span>
             </div>
@@ -309,7 +309,7 @@ export function TimeBlockModal({
             <Clock size={13} className="text-success-text" />
             <span>Calculated Duration:</span>
           </div>
-          <span className="text-xs font-semibold text-success-text bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg">
+          <span className="figure text-xs text-success-text bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg">
             {formatDurationHuman(calculatedDuration)} ({calculatedDuration} mins)
           </span>
         </div>
@@ -319,11 +319,11 @@ export function TimeBlockModal({
           <div className="p-3 bg-warning/10 border border-warning/25 rounded-xl flex items-start gap-2.5 text-xs text-warning-text-muted">
             <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="font-semibold text-warning-text">Midnight Boundary Split</p>
+              <p className="font-medium text-warning-text">Midnight Boundary Split</p>
               <p className="text-content-tertiary text-micro leading-relaxed">
                 This block crosses midnight ({formatTime12h(startTime)} to {formatTime12h(endTime)}). It will automatically be split into 2 safe daily blocks:
               </p>
-              <div className="flex items-center gap-2 pt-1 font-mono text-2xs text-warning-text">
+              <div className="figure flex items-center gap-2 pt-1 text-2xs text-warning-text">
                 <span className="bg-warning/20 px-2 py-0.5 rounded border border-warning/30">
                   Part 1 (Today): {startTime} - 23:59
                 </span>
@@ -381,7 +381,7 @@ export function TimeBlockModal({
           <button
             type="submit"
             disabled={isSaving || isZeroDuration}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
           >
             {isSaving ? (
               <>
@@ -390,7 +390,7 @@ export function TimeBlockModal({
               </>
             ) : (
               <>
-                <Sparkles size={14} />
+                <Check size={14} />
                 <span>{editingBlock ? 'Update Block' : 'Schedule Block'}</span>
               </>
             )}

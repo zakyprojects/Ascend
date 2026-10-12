@@ -10,7 +10,7 @@ import {
 } from '@/lib/timeTracker';
 import { getLocalThemePreference } from '@/lib/store';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { Sparkles, AlertTriangle, Link as LinkIcon, Check } from 'lucide-react';
+import { Shapes, AlertTriangle, Link as LinkIcon, Check } from 'lucide-react';
 
 interface ActivityModalProps {
   open: boolean;
@@ -127,11 +127,11 @@ export function ActivityModal({
             {icon ? (
               <ActivityIcon iconName={icon} size={24} />
             ) : (
-              <Sparkles size={22} className="text-content-disabled" />
+              <Shapes size={22} className="text-content-disabled" />
             )}
           </div>
           <div>
-            <p className="text-sm font-semibold text-content-primary">
+            <p className="item-name text-sm">
               {name.trim() || 'Category Name Preview'}
             </p>
             <p className="text-xs text-content-muted">
@@ -142,7 +142,7 @@ export function ActivityModal({
 
         {/* Category Name */}
         <div>
-          <label htmlFor="tt-act-name" className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
+          <label htmlFor="tt-act-name" className="block text-xs font-medium text-content-tertiary mb-1.5">
             Category Name <span className="text-rose-theme">*</span>
           </label>
           <input
@@ -158,7 +158,7 @@ export function ActivityModal({
 
         {/* Color Picker */}
         <div>
-          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
+          <label className="block text-xs font-medium text-content-tertiary mb-2">
             Color Accent <span className="text-rose-theme">*</span>
           </label>
           <div className="flex flex-wrap gap-2">
@@ -171,7 +171,7 @@ export function ActivityModal({
                   key={col.value}
                   onClick={() => setColor(col.value)}
                   className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer ${
-                    isSelected ? 'scale-110 border-content-primary shadow-lg' : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100'
+                    isSelected ? 'scale-110 border-content-primary shadow-sm' : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100'
                   }`}
                   style={{ backgroundColor: displaySwatchColor }}
                   title={col.name}
@@ -184,7 +184,7 @@ export function ActivityModal({
 
         {/* Icon Picker */}
         <div>
-          <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
+          <label className="block text-xs font-medium text-content-tertiary mb-2">
             Category Icon <span className="text-rose-theme">*</span>
           </label>
           <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-36 overflow-y-auto p-1 bg-bg-900/50 rounded-xl border border-overlay-subtle">
@@ -211,7 +211,7 @@ export function ActivityModal({
 
         {/* Ascend Module Linkage */}
         <div>
-          <label htmlFor="tt-act-module" className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+          <label htmlFor="tt-act-module" className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
             <LinkIcon size={13} className="text-success-text" />
             Ascend Ecosystem Module Sync (Optional)
           </label>
@@ -245,7 +245,7 @@ export function ActivityModal({
           <button
             type="submit"
             disabled={isSaving}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
           >
             {isSaving ? (
               <>
