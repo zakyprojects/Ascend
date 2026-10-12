@@ -2387,7 +2387,7 @@ export function ProjectsGoalsView({
                     Start with a goal
                   </h3>
                   <p className="text-sm text-content-muted leading-relaxed">
-                    Set a goal first, then add the daily tasks that get you there.
+                    Goals give your daily tasks a direction.
                   </p>
                 </div>
 
@@ -2398,6 +2398,13 @@ export function ProjectsGoalsView({
                 >
                   <Plus size={16} />
                   <span>Create Your First Goal</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => quickTaskInputRef.current?.focus()}
+                  className="block mx-auto text-xs text-content-muted hover:text-content-secondary underline-offset-2 hover:underline"
+                >
+                  Or add a task above without a goal
                 </button>
               </div>
             ) : (

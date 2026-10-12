@@ -520,6 +520,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       <Plus size={14} />
                       <span>Add Book</span>
                     </button>
+                    <button type="button" onClick={() => setActiveTab('discover')} className="btn-secondary text-xs py-1.5 px-3">
+                      Discover books
+                    </button>
                   </div>
                 }
               />
@@ -648,6 +651,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     >
                       <Plus size={14} />
                       <span>Add to Library</span>
+                    </button>
+                    <button type="button" onClick={() => setActiveTab('discover')} className="btn-secondary text-xs py-1.5 px-3">
+                      Discover books
                     </button>
                   </div>
                 }
