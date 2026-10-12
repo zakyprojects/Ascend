@@ -150,8 +150,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
+      <div className="page-header">
+        <div>
           <h1 className="page-title flex items-center gap-2">
             <Activity className="text-success-text" size={26} />
             Exercise Tracker
@@ -160,7 +160,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             Log workouts, track weekly activity, and earn points (up to {WORKOUT_POINTS.dailyCap} pts/day)
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="page-header-actions">
           <button
             onClick={() => {
               setTargetSessionsInput(exerciseGoal?.targetWeeklySessions || 3);

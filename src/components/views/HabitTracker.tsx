@@ -64,14 +64,14 @@ export function HabitTracker({ store }: { store: AppStore }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
+      <div className="page-header">
+        <div>
           <h1 className="page-title">Habit Tracker</h1>
           <p className="text-sm text-content-disabled mt-1">Build consistency, one day at a time</p>
         </div>
-        <button onClick={() => { setShowAdd(true); setAddMode('choice'); }} className="btn-primary shrink-0">
+        <button onClick={() => { setShowAdd(true); setAddMode('choice'); }} className="btn-primary sm:shrink-0">
           <Plus size={18} />
-          <span className="hidden sm:inline">New Habit</span>
+          <span>New Habit</span>
         </button>
       </div>
 

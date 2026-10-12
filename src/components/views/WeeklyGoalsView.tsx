@@ -760,9 +760,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
             {/* WEEKLY GOALS LIST SECTION */}
             <div className="card p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
-                <div className="flex items-center gap-2">
-                  <Target size={18} className="text-brand-text" />
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-overlay-subtle pb-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <Target size={18} className="text-brand-text shrink-0" />
                   <h3 className="text-sm font-bold text-content-secondary">
                     Target Priorities for {selectedWeekKey}
                   </h3>
@@ -774,7 +774,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 <button
                   onClick={openCreateModal}
                   disabled={isPastWeek}
-                  className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus size={14} /> Add Weekly Goal
                 </button>

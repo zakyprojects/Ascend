@@ -1062,8 +1062,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
+      <div className="page-header">
+        <div>
           <h1 className="page-title flex items-center gap-2">
             <Compass className="text-blue-theme" size={26} />
             Personal Improvement Plans
@@ -1072,7 +1072,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             Build Milestones, Target Goals, Habit Journeys, & Vision reflections — discover public plans & track progress
           </p>
         </div>
-        <button onClick={() => setCreateModalOpen(true)} className="btn-primary flex items-center gap-2 shrink-0">
+        <button onClick={() => setCreateModalOpen(true)} className="btn-primary flex items-center gap-2 sm:shrink-0">
           <Plus size={18} />
           <span>Create Plan</span>
         </button>

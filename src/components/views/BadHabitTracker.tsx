@@ -130,8 +130,8 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
+      <div className="page-header">
+        <div>
           <h1 className="page-title flex items-center gap-2">
             <ShieldAlert className="text-rose-theme" size={26} />
             Bad Habit Reduction Tracker
@@ -140,7 +140,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
             Earn points on your first {BAD_HABIT_POINTS.eligibleSlots} active habits (+{BAD_HABIT_POINTS.resistBase} per resist, max +{BAD_HABIT_POINTS.dailyCap}/day), enforce rank-tiered escalating penalties on those habits, and complete 75%+ commitments.
           </p>
         </div>
-        <button onClick={() => setAddModalOpen(true)} className="btn-primary flex items-center gap-2 shrink-0">
+        <button onClick={() => setAddModalOpen(true)} className="btn-primary flex items-center gap-2 sm:shrink-0">
           <Plus size={18} />
           <span>Add Bad Habit</span>
         </button>

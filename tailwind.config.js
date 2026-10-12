@@ -149,12 +149,10 @@ export default {
         // No fill-mode on purpose: a retained transform on the view wrapper would
         // become the containing block for any position:fixed descendant.
         'view-enter': 'enterUp var(--duration-enter) var(--ease-emphasized)',
-        // Dialog (primitives/Dialog): a bottom sheet on phones, a scale-in card from sm up.
+        // Dialog (primitives/Dialog): a centred card on every screen size that rises and sharpens in.
         // Enter ends on `transform: none`, so nothing inside is trapped in a containing block.
-        'sheet-up': 'sheetUp 320ms var(--ease-emphasized) both',
-        'sheet-down': 'sheetDown 200ms var(--ease-standard) forwards',
-        'dialog-in': 'dialogIn var(--duration-enter) var(--ease-emphasized) both',
-        'dialog-out': 'dialogOut 160ms var(--ease-standard) forwards',
+        'dialog-in': 'dialogIn 340ms var(--ease-emphasized) both',
+        'dialog-out': 'dialogOut 180ms var(--ease-standard) forwards',
         'exit-fade': 'exitFade 200ms var(--ease-standard) forwards',
         'toast-out': 'toastOut 180ms var(--ease-standard) forwards',
         // Scroll reveal (Motion.tsx Reveal): `backwards` holds it hidden through its stagger delay
@@ -204,21 +202,13 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-        sheetUp: {
-          '0%': { transform: 'translateY(100%)' },
-          '100%': { transform: 'none' },
-        },
-        sheetDown: {
-          '0%': { transform: 'none' },
-          '100%': { transform: 'translateY(100%)' },
-        },
         dialogIn: {
-          '0%': { opacity: '0', transform: 'translateY(8px) scale(0.97)' },
-          '100%': { opacity: '1', transform: 'none' },
+          '0%': { opacity: '0', transform: 'translateY(16px) scale(0.95)', filter: 'blur(6px)' },
+          '100%': { opacity: '1', transform: 'none', filter: 'none' },
         },
         dialogOut: {
           '0%': { opacity: '1', transform: 'none' },
-          '100%': { opacity: '0', transform: 'scale(0.97)' },
+          '100%': { opacity: '0', transform: 'translateY(8px) scale(0.96)', filter: 'blur(4px)' },
         },
         exitFade: {
           '0%': { opacity: '1' },

@@ -196,6 +196,7 @@
     --spot-color: 52 211 153;
     --spot-alpha: 0.075;
     --spot-ring-alpha: 0.8;
+    --dialog-scrim: 3 10 9;
     --atmo-glow-a: rgb(16 185 129 / 0.11);
     --atmo-glow-b: rgb(45 212 191 / 0.05);
     --atmo-line: rgb(52 211 153 / 0.09);
@@ -208,6 +209,7 @@
     --spot-color: 16 185 129;
     --spot-alpha: 0.07;
     --spot-ring-alpha: 0.7;
+    --dialog-scrim: 15 30 27;
     --atmo-glow-a: rgb(16 185 129 / 0.12);
     --atmo-glow-b: rgb(20 184 166 / 0.07);
     --atmo-line: rgb(4 120 87 / 0.08);
@@ -405,6 +407,15 @@
   @media (min-width: 1280px) {
     html {
       font-size: clamp(100%, calc(0.6875rem + 0.390625vw), 112.5%);
+    }
+  }
+
+  /* Compact phones (iPhone SE and other ≤400px screens): the whole rem-based UI steps down to
+     15px so text, buttons and spacing fit the narrow width without crowding. Fields stay 16px on
+     iOS (rule above) so focusing them never zooms. */
+  @media (max-width: 400px) {
+    html {
+      font-size: 93.75%;
     }
   }
 
@@ -623,17 +634,18 @@
       var(--card-sheen);
   }
 
-  /* A list item that was just added (or moved to another list) settles in; first paint included.
-     Removal is instant on purpose: delaying an unmount would keep deleted data on screen. */
+  /* A list item that was just added (or moved to another list) rises in; first paint included.
+     React unmounts a deleted item at once (no deleted data kept on screen); its exit is played by
+     lib/listExit.ts on an inert copy. */
   .enter-item {
     transition:
-      opacity var(--duration-enter) var(--ease-standard),
-      transform 320ms var(--ease-emphasized);
+      opacity 360ms var(--ease-standard),
+      transform 460ms var(--ease-emphasized);
   }
   @starting-style {
     .enter-item {
       opacity: 0;
-      transform: translateY(6px);
+      transform: translateY(14px) scale(0.98);
     }
   }
 
@@ -657,6 +669,23 @@
   [data-theme='light'] .card {
     border-color: var(--border-overlay-medium);
     box-shadow: var(--shadow-md);
+  }
+
+  /* Dialog backdrop: the page dims and goes soft-focus behind an open dialog. */
+  .dialog-backdrop {
+    background: rgb(var(--dialog-scrim) / 0.55);
+    backdrop-filter: blur(10px) saturate(1.15);
+    -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  }
+  [data-theme='light'] .dialog-backdrop {
+    background: rgb(var(--dialog-scrim) / 0.35);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .dialog-backdrop {
+      background: rgb(var(--dialog-scrim) / 0.8);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
   }
 
   [data-theme='light'] .modal-panel .card {
@@ -1047,7 +1076,25 @@
   }
 
   .page-title {
-    @apply font-display font-bold text-content-primary tracking-tight text-2xl sm:text-[1.75rem] leading-tight;
+    @apply font-display font-bold text-content-primary tracking-tight text-[1.375rem] sm:text-[1.75rem] leading-tight;
+  }
+
+  /* Page header: title block and actions side by side from sm up; on phones the actions drop
+     under the title so the title and its description keep the full width, and primary/secondary
+     buttons share the row evenly. */
+  .page-header {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4;
+  }
+  .page-header > :first-child {
+    @apply min-w-0;
+  }
+  .page-header-actions {
+    @apply flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end;
+  }
+  @media (max-width: 639px) {
+    .page-header-actions > :is(.btn-primary, .btn-secondary, button) {
+      flex: 1 1 auto;
+    }
   }
 
   /* Page atmosphere behind the app (AppShell): two soft emerald glows and faint contour lines,

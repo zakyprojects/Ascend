@@ -111,7 +111,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       {/* Top Header + Emergency Button */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="page-header">
         <div>
           <h1 className="page-title flex items-center gap-2">
             <HeartPulse className="text-rose-theme" size={26} />
@@ -124,7 +124,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
 
         <button
           onClick={() => setEmergencyModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-sm flex items-center gap-2"
+          className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2 sm:shrink-0"
         >
           <PhoneCall size={16} />
           <span>Emergency Support</span>

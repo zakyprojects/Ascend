@@ -11,9 +11,11 @@ import '@fontsource/plus-jakarta-sans/800.css';
 import './index.css';
 import { installPageVisibilityFlag } from './lib/motion';
 import { installCardSpotlight } from './lib/cardSpotlight';
+import { installListExit } from './lib/listExit';
 
 installPageVisibilityFlag();
 installCardSpotlight();
+installListExit();
 
 const root = createRoot(document.getElementById('root')!);
 

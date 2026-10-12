@@ -1371,7 +1371,7 @@ export function ProjectsGoalsView({
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Pending Tasks</span>
                   <CountUp value={hierarchyStats.pendingTasks} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
-                <CheckSquare size={18} className="text-success-text opacity-60" />
+                <CheckSquare size={18} className="text-success-text opacity-60 hidden sm:block shrink-0" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1379,7 +1379,7 @@ export function ProjectsGoalsView({
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Projects</span>
                   <CountUp value={hierarchyStats.activeProjects} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
-                <FolderKanban size={18} className="text-cyan-hierarchy opacity-60" />
+                <FolderKanban size={18} className="text-cyan-hierarchy opacity-60 hidden sm:block shrink-0" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1387,7 +1387,7 @@ export function ProjectsGoalsView({
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Goals</span>
                   <CountUp value={hierarchyStats.activeGoals} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
-                <Target size={18} className="text-purple-hierarchy opacity-60" />
+                <Target size={18} className="text-purple-hierarchy opacity-60 hidden sm:block shrink-0" />
               </div>
             </>
           )}
@@ -1399,7 +1399,7 @@ export function ProjectsGoalsView({
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Projects</span>
                   <CountUp value={hierarchyStats.activeProjects} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
-                <FolderKanban size={18} className="text-cyan-hierarchy opacity-60" />
+                <FolderKanban size={18} className="text-cyan-hierarchy opacity-60 hidden sm:block shrink-0" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1407,7 +1407,7 @@ export function ProjectsGoalsView({
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Pending Tasks</span>
                   <CountUp value={hierarchyStats.pendingTasks} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
-                <CheckSquare size={18} className="text-success-text opacity-60" />
+                <CheckSquare size={18} className="text-success-text opacity-60 hidden sm:block shrink-0" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1415,7 +1415,7 @@ export function ProjectsGoalsView({
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Goals</span>
                   <CountUp value={hierarchyStats.activeGoals} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
-                <Target size={18} className="text-purple-hierarchy opacity-60" />
+                <Target size={18} className="text-purple-hierarchy opacity-60 hidden sm:block shrink-0" />
               </div>
             </>
           )}
@@ -1427,7 +1427,7 @@ export function ProjectsGoalsView({
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Goals</span>
                   <CountUp value={hierarchyStats.activeGoals} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
-                <Target size={18} className="text-purple-hierarchy opacity-60" />
+                <Target size={18} className="text-purple-hierarchy opacity-60 hidden sm:block shrink-0" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1435,7 +1435,7 @@ export function ProjectsGoalsView({
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Projects</span>
                   <CountUp value={hierarchyStats.activeProjects} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
-                <FolderKanban size={18} className="text-cyan-hierarchy opacity-60" />
+                <FolderKanban size={18} className="text-cyan-hierarchy opacity-60 hidden sm:block shrink-0" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1443,7 +1443,7 @@ export function ProjectsGoalsView({
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Pending Tasks</span>
                   <CountUp value={hierarchyStats.pendingTasks} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
-                <CheckSquare size={18} className="text-success-text opacity-60" />
+                <CheckSquare size={18} className="text-success-text opacity-60 hidden sm:block shrink-0" />
               </div>
             </>
           )}

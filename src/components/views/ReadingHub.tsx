@@ -377,7 +377,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="page-header">
         <div>
           <h1 className="page-title flex items-center gap-2.5">
             <BookOpen className="text-warning-text" size={26} />
@@ -387,7 +387,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             Track daily reading progress, build continuous streaks, queue future reads, and discover foundational self-improvement books.
           </p>
         </div>
-        <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
+        <div className="page-header-actions">
           {readingHabit ? (
             <button
               onClick={() => setUnlinkConfirmOpen(true)}

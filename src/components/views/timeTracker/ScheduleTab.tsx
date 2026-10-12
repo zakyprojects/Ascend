@@ -744,12 +744,12 @@ export function ScheduleTab({
             title="No Blocks Scheduled"
             description="Construct your daily blueprint by adding time blocks or applying one of your saved templates."
             action={
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                 {templates.length > 0 && (
                   <button
                     onClick={onOpenApplyTemplateModal}
                     disabled={isPastDate}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default border border-overlay-default text-xs font-semibold text-content-secondary transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default border border-overlay-default text-xs font-semibold text-content-secondary whitespace-nowrap transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Layers size={14} className="text-success-text" />
                     <span>Apply Template</span>
@@ -758,7 +758,7 @@ export function ScheduleTab({
                 <button
                   onClick={() => onOpenAddBlockModal()}
                   disabled={isPastDate}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold whitespace-nowrap shadow-lg shadow-emerald-900/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus size={14} />
                   <span>Add Time Block</span>

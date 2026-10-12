@@ -37,8 +37,8 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
+      <div className="page-header">
+        <div>
           <h1 className="page-title">Leagues</h1>
           <p className="text-sm text-content-disabled mt-1">Compete with real users, view ranks, and climb tiers</p>
         </div>

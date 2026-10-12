@@ -13,7 +13,7 @@ export interface DialogProps {
   preventClose?: boolean;
 }
 
-// Matches the longest exit animation (sheet-down / exit-fade, tailwind.config.js).
+// Matches the longest exit animation (dialog-out / exit-fade, tailwind.config.js).
 const EXIT_MS = 200;
 
 const dialogStack: symbol[] = [];
@@ -164,14 +164,14 @@ export const Dialog: React.FC<DialogProps> = ({
   return createPortal(
     <div
       className={cx(
-        'fixed inset-0 z-modal flex items-end sm:items-center justify-center p-0 sm:p-4',
+        'fixed inset-0 z-modal flex items-center justify-center p-3 sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]',
         exiting && 'pointer-events-none'
       )}
       aria-hidden={exiting || undefined}
     >
       <div
         className={cx(
-          'absolute inset-0 bg-black/60 backdrop-blur-sm',
+          'dialog-backdrop absolute inset-0',
           exiting ? 'animate-exit-fade' : 'motion-safe:animate-enter-fade'
         )}
         onClick={() => {
@@ -185,18 +185,14 @@ export const Dialog: React.FC<DialogProps> = ({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cx(
-          'modal-panel relative w-full bg-bg-800 border border-bg-700 rounded-t-2xl sm:rounded-2xl shadow-xl z-10 max-h-[90dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]',
+          'modal-panel relative w-full bg-bg-800 border border-bg-700 rounded-2xl shadow-xl z-10 max-h-full overflow-y-auto overscroll-contain',
           maxWidth,
-          exiting
-            ? 'animate-sheet-down sm:animate-dialog-out'
-            : 'motion-safe:animate-sheet-up sm:motion-safe:animate-dialog-in'
+          exiting ? 'animate-dialog-out' : 'motion-safe:animate-dialog-in'
         )}
       >
         <div className="sticky top-0 bg-bg-800 z-10 border-b border-bg-700">
-          {/* Sheet handle: tells a phone user this is a sheet over the page. */}
-          <div aria-hidden="true" className="sm:hidden mx-auto mt-2 h-1 w-10 rounded-full bg-overlay-strong" />
-          <div className="flex items-center justify-between px-4 pb-4 pt-2 sm:pt-4">
-            <h2 id={titleId} className="text-lg font-bold tracking-wide text-content-primary">
+          <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:py-4">
+            <h2 id={titleId} className="min-w-0 text-base sm:text-lg font-bold tracking-wide text-content-primary">
               {content.title}
             </h2>
             {!preventClose && (
