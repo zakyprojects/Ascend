@@ -145,13 +145,13 @@ function GoalItemRow({
               </span>
 
               {item.carriedOverFromWeekKey && (
-                <span className="badge badge-purple text-2xs">
+                <span className="badge badge-neutral text-2xs">
                   Carried over from {item.carriedOverFromWeekKey}
                 </span>
               )}
 
               {item.linkedModule && item.linkedModule !== 'none' && (
-                <span className="badge badge-cyan text-2xs flex items-center gap-1">
+                <span className="badge badge-neutral text-2xs flex items-center gap-1">
                   <Zap size={10} /> Linked: {item.linkedModule.toUpperCase()}
                 </span>
               )}
@@ -188,7 +188,7 @@ function GoalItemRow({
       {/* PROGRESS BAR FOR MEASURABLE / LINKED GOALS */}
       <div className="space-y-1.5 pt-1 border-t border-overlay-subtle">
         {prog.needsMetricSelection ? (
-          <div className="flex items-center justify-between text-xs text-warning-text bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg">
+          <div className="flex items-center justify-between text-xs text-warning-text bg-warning/10 border border-warning/20 px-2.5 py-1.5 rounded-lg">
             <span className="flex items-center gap-1.5">
               <AlertTriangle size={13} />
               <span>Choose what to track for this goal</span>
@@ -596,7 +596,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       case 'high':
         return 'bg-rose-500/15 text-rose-theme border-rose-500/30';
       case 'medium':
-        return 'bg-amber-500/15 text-warning-text border-amber-500/30';
+        return 'bg-overlay-default text-content-secondary border-overlay-medium';
       case 'low':
         return 'bg-overlay-subtle text-content-tertiary border-overlay-default';
     }
@@ -848,7 +848,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
                 <div>
                   <h3 className="text-sm font-bold text-content-secondary flex items-center gap-2">
-                    <Sparkles size={16} className="text-warning-text" />
+                    <Sparkles size={16} className="text-brand-text" />
                     Weekly Reflections
                   </h3>
                   <p className="text-xs text-content-muted mt-0.5">
@@ -980,7 +980,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                                   </span>
                                 ) : isBeforeCutoff && latestReflection?.id === ref.id ? (
                                   <span
-                                    className="badge badge-amber text-2xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+                                    className="badge badge-neutral text-2xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
                                     title="Points will be awarded when cutoff passes on Sunday 17:00"
                                   >
                                     <Sparkles size={11} /> Pending +{WEEKLY_REFLECTION_POINTS.awarded} pts
@@ -1302,7 +1302,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           </p>
           <div className="card p-3 space-y-1">
             <span className="text-micro text-content-muted font-medium block">Current Progress in {carryOverPromptModal?.pastWeek}:</span>
-            <span className="text-xs font-bold text-warning-text block">
+            <span className="text-xs font-bold text-brand-text block">
               {carryOverPromptModal?.goal.manualProgress || 0} / {carryOverPromptModal?.goal.targetValue} {carryOverPromptModal?.goal.unit || 'times'}
             </span>
           </div>

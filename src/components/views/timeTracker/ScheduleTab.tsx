@@ -524,9 +524,9 @@ export function ScheduleTab({
         <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
           <div className="flex items-center justify-between text-content-muted text-xs">
             <span>Training & Mind</span>
-            <Activity size={14} className="text-warning-text" />
+            <Activity size={14} className="text-brand-text" />
           </div>
-          <p className="text-lg font-bold text-warning-text">
+          <p className="text-lg font-bold text-brand-text">
             <AutoNum text={formatDurationHuman(liveStats.exerciseMinutesToday + liveStats.readingMinutesToday)} />
           </p>
           <p className="text-micro text-content-disabled">Exercise & Reading</p>
@@ -915,7 +915,7 @@ export function ScheduleTab({
                           )}
 
                           {block.skipped && (
-                            <span className="badge-amber px-2 py-0.5 rounded-full text-2xs font-medium flex items-center gap-1">
+                            <span className="badge-neutral px-2 py-0.5 rounded-full text-2xs font-medium flex items-center gap-1">
                               <SkipForward size={10} />
                               Skipped
                             </span>

@@ -161,7 +161,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-theme shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
             <TrendingUp size={22} />
           </div>
           <div>
@@ -173,7 +173,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
             <Award size={22} />
           </div>
           <div>
@@ -318,7 +318,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           {isCompleteUnlocked ? (
                             <span className="text-success-text font-semibold">✓ 75%+ Complete Unlocked ({habitStreak}/{commitmentDays}d)</span>
                           ) : (
-                            <span>Unlocks Complete at <strong className="text-warning-text">{unlockThreshold}d</strong> ({habitStreak}/{commitmentDays}d)</span>
+                            <span>Unlocks Complete at <strong className="text-brand-text">{unlockThreshold}d</strong> ({habitStreak}/{commitmentDays}d)</span>
                           )}
                         </span>
                       </div>
@@ -384,7 +384,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           {todayLog.status !== 'no_report' ? (
                             <button
                               onClick={() => store.undoTodayBadHabitLog(bh.id)}
-                              className="text-warning-text hover:opacity-80 flex items-center gap-1 text-micro font-semibold transition-colors"
+                              className="text-content-secondary hover:text-content-primary flex items-center gap-1 text-micro font-semibold transition-colors"
                             >
                               <RotateCcw size={12} />
                               <span>Undo Today's Action</span>
@@ -418,7 +418,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                                   : isOccurred
                                   ? 'bg-rose-500/20 text-rose-theme border border-rose-500/40'
                                   : isNoReport
-                                  ? 'bg-amber-500/20 text-warning-text border border-amber-500/40'
+                                  ? 'bg-overlay-default text-content-muted border border-overlay-medium'
                                   : 'bg-bg-700/50 text-content-subtle border border-overlay-subtle'
                               }`}
                               title={`${d}: ${

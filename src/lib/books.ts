@@ -7,14 +7,14 @@ export interface CuratedBookCategory {
 
 export const BOOK_CATEGORIES: CuratedBookCategory[] = [
   { name: 'Habits', badgeClass: 'badge-emerald' },
-  { name: 'Mindset', badgeClass: 'badge-purple' },
-  { name: 'Productivity', badgeClass: 'badge-blue' },
-  { name: 'Discipline', badgeClass: 'badge-orange' },
-  { name: 'Finance', badgeClass: 'badge-amber' },
+  { name: 'Mindset', badgeClass: 'badge-neutral' },
+  { name: 'Productivity', badgeClass: 'badge-neutral' },
+  { name: 'Discipline', badgeClass: 'badge-neutral' },
+  { name: 'Finance', badgeClass: 'badge-neutral' },
   { name: 'Relationships', badgeClass: 'badge-rose' },
-  { name: 'Spirituality', badgeClass: 'badge-teal' },
-  { name: 'Business', badgeClass: 'badge-cyan' },
-  { name: 'Influence', badgeClass: 'badge-indigo' },
+  { name: 'Spirituality', badgeClass: 'badge-neutral' },
+  { name: 'Business', badgeClass: 'badge-neutral' },
+  { name: 'Influence', badgeClass: 'badge-neutral' },
 ];
 
 export function getCategoryMeta(category: BookCategory): CuratedBookCategory {

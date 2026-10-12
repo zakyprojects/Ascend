@@ -57,11 +57,11 @@ const MOODS: MoodMeta[] = [
     label: 'Sad',
     score: 1,
     icon: Frown,
-    color: '#38bdf8', // Sky blue
-    bgClass: 'bg-sky-500/15',
-    textClass: 'text-sky-theme',
-    borderClass: 'border-sky-500/30',
-    borderLeftClass: 'border-l-sky-400',
+    color: '#fb7185', // Soft rose (low end of the mood scale)
+    bgClass: 'bg-warning/15',
+    textClass: 'text-warning-text',
+    borderClass: 'border-warning/30',
+    borderLeftClass: 'border-l-warning',
   },
   {
     value: 'neutral',
@@ -79,22 +79,22 @@ const MOODS: MoodMeta[] = [
     label: 'Happy',
     score: 3,
     icon: Smile,
-    color: '#10b981', // Emerald green
-    bgClass: 'bg-emerald-500/15',
-    textClass: 'text-success-text',
-    borderClass: 'border-emerald-500/30',
-    borderLeftClass: 'border-l-emerald-400',
+    color: '#34d399', // Light emerald
+    bgClass: 'bg-primary-300/10',
+    textClass: 'text-brand-text',
+    borderClass: 'border-primary-300/30',
+    borderLeftClass: 'border-l-primary-300',
   },
   {
     value: 'motivated',
     label: 'Motivated',
     score: 4,
     icon: Zap,
-    color: '#f59e0b', // Amber
-    bgClass: 'bg-amber-500/15',
-    textClass: 'text-warning-text',
-    borderClass: 'border-amber-500/30',
-    borderLeftClass: 'border-l-amber-400',
+    color: '#10b981', // Emerald (top of the mood scale)
+    bgClass: 'bg-emerald-500/15',
+    textClass: 'text-success-text',
+    borderClass: 'border-emerald-500/30',
+    borderLeftClass: 'border-l-emerald-400',
   },
 ];
 

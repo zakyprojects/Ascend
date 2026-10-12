@@ -380,7 +380,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       <div className="page-header">
         <div>
           <h1 className="page-title flex items-center gap-2.5">
-            <BookOpen className="text-warning-text" size={26} />
+            <BookOpen className="text-brand-text" size={26} />
             Reading Hub
           </h1>
           <p className="text-sm text-content-muted mt-1">
@@ -418,7 +418,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       {/* Hero Stats */}
       <Reveal index={0} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center text-warning-text shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
             <Flame size={22} />
           </div>
           <div>
@@ -450,7 +450,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
             <Award size={22} />
           </div>
           <div>
@@ -589,7 +589,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   return (
                     <div
                       key={book.id}
-                      className="card p-5 space-y-4 border border-amber-500/20 bg-gradient-to-br from-bg-800 to-amber-950/10 hover:border-amber-500/40 transition-all flex flex-col justify-between"
+                      className="card p-5 space-y-4 border border-primary-500/20 bg-gradient-to-br from-bg-800 to-primary-500/5 hover:border-primary-500/40 transition-all flex flex-col justify-between"
                     >
                       <div>
                         <div className="flex items-start justify-between gap-3">
@@ -597,7 +597,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             <div className="flex items-center gap-2 mb-1.5">
                               {renderCategoryBadge(book.category, true)}
                               {book.isCurated && (
-                                <span className="badge badge-amber text-2xs flex items-center gap-1">
+                                <span className="badge badge-neutral text-2xs flex items-center gap-1">
                                   <Sparkles size={10} /> Curated
                                 </span>
                               )}
@@ -627,7 +627,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             <span className="text-content-muted">
                               {current} / {total} {unit}
                             </span>
-                            <span className="font-bold text-warning-text">{percent}%</span>
+                            <span className="font-bold text-brand-text">{percent}%</span>
                           </div>
                           <ProgressBar value={percent} label="Reading progress" tone="warning" />
                         </div>
@@ -635,7 +635,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         {/* Target Date */}
                         {book.targetFinishDate && (
                           <div className="flex items-center gap-1.5 text-micro text-content-muted mt-2.5">
-                            <Calendar size={12} className="text-warning-text" />
+                            <Calendar size={12} className="text-brand-text" />
                             <span>Target Finish: {formatDateLong(book.targetFinishDate)}</span>
                           </div>
                         )}
@@ -778,13 +778,13 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 return (
                   <div
                     key={curated.id}
-                    className="card p-5 flex flex-col justify-between space-y-4 border-overlay-medium shadow-sm hover:border-amber-500/40 transition-all"
+                    className="card p-5 flex flex-col justify-between space-y-4 border-overlay-medium shadow-sm hover:border-primary-500/40 transition-all"
                   >
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
                         {renderCategoryBadge(curated.category, true)}
                         <span
-                          className="badge badge-amber text-2xs flex items-center gap-1"
+                          className="badge badge-neutral text-2xs flex items-center gap-1"
                           title="Requires reading inside Ascend across ≥7 days span and ≥5 logged reading days"
                         >
                           <Sparkles size={10} /> +{READING_POINTS.completionBonus} pts on finish
@@ -812,7 +812,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             userBook.status === 'completed'
                               ? 'badge-emerald'
                               : userBook.status === 'reading'
-                              ? 'badge-amber'
+                              ? 'badge-neutral'
                               : 'bg-overlay-subtle text-content-muted border border-overlay-default'
                           }`}
                         >
@@ -865,7 +865,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             <CheckCircle2 size={10} /> Completed
                           </span>
                           {book.pointsAwarded ? (
-                            <span className="badge badge-amber text-2xs flex items-center gap-1">
+                            <span className="badge badge-neutral text-2xs flex items-center gap-1">
                               <Sparkles size={10} /> +{book.pointsAwarded} pts bonus
                             </span>
                           ) : (
@@ -914,7 +914,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       </span>
                       <button
                         onClick={() => store.restartBook(book.id)}
-                        className={`text-xs text-warning-text hover:text-warning-text-muted font-medium transition-colors ${TAP_TARGET}`}
+                        className={`text-xs text-brand-text hover:text-brand-text font-medium transition-colors ${TAP_TARGET}`}
                       >
                         Re-read book →
                       </button>
@@ -1229,8 +1229,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleFinishSubmit} className="space-y-4">
           {finishEligibility?.isEligible ? (
-            <div className="p-3.5 bg-amber-500/15 border border-amber-500/30 rounded-xl flex items-center gap-3 text-warning-text">
-              <Sparkles size={24} className="shrink-0 text-warning-text" />
+            <div className="p-3.5 bg-primary-500/15 border border-primary-500/30 rounded-xl flex items-center gap-3 text-brand-text">
+              <Sparkles size={24} className="shrink-0 text-brand-text" />
               <div className="text-xs space-y-0.5">
                 <span className="font-bold block">Congratulations on finishing!</span>
                 <span>

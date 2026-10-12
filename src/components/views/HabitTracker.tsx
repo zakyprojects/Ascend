@@ -90,7 +90,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
         </div>
         <div className="card p-4">
           <div className="stat-label">To Do Today</div>
-          <CountUp value={todayHabits.length} className="stat-value mt-1 block tabular-nums text-secondary-400" />
+          <CountUp value={todayHabits.length} className="stat-value mt-1 block tabular-nums text-brand-text" />
         </div>
         <div className="card p-4">
           <div className="stat-label">Done Today</div>
@@ -132,7 +132,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
             {todayHabits.length > 0 && (
               <div>
                 <h2 className="section-title mb-3 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-secondary-500" />
+                  <span className="w-2 h-2 rounded-full bg-brand-text" />
                   To Do
                 </h2>
                 <div className="space-y-2.5">
@@ -432,13 +432,13 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             {isLinked && (
-              <BookOpen size={14} className="text-warning-text shrink-0" />
+              <BookOpen size={14} className="text-brand-text shrink-0" />
             )}
             <h3 className={`font-medium truncate ${done ? 'text-content-disabled line-through' : 'text-content-secondary'}`}>
               {habit.name}
             </h3>
             {isLinked ? (
-              <span className="badge bg-warning-soft text-warning-text border border-[var(--badge-beta-border)] shrink-0">
+              <span className="badge badge-neutral shrink-0">
                 Reading Hub
               </span>
             ) : (
@@ -455,8 +455,8 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
           <div className="flex flex-wrap items-center gap-3 mt-1">
             {streak > 0 && (
               <div className="flex items-center gap-1 text-xs">
-                <Flame size={13} className="text-secondary-500" />
-                <span className="text-secondary-400 font-medium tabular-nums">{streak} day{streak !== 1 ? 's' : ''}</span>
+                <Flame size={13} className="text-brand-text" />
+                <span className="text-brand-text font-medium tabular-nums">{streak} day{streak !== 1 ? 's' : ''}</span>
               </div>
             )}
             {bestStreak > 0 && (
@@ -465,7 +465,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
               </div>
             )}
             {isLinked ? (
-              <div className="text-xs text-warning-text font-medium flex items-center gap-1">
+              <div className="text-xs text-brand-text font-medium flex items-center gap-1">
                 <span>Auto-synced</span>
                 {habit.points === 0 ? (
                   <span className="text-content-subtle">For habit tracking, no points</span>

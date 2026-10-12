@@ -316,7 +316,7 @@ export function TimeBlockModal({
 
         {/* Midnight Crossing Warning & Explanation */}
         {isMidnightCrossing && (
-          <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-start gap-2.5 text-xs text-warning-text-muted">
+          <div className="p-3 bg-warning/10 border border-warning/25 rounded-xl flex items-start gap-2.5 text-xs text-warning-text-muted">
             <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-semibold text-warning-text">Midnight Boundary Split</p>
@@ -324,11 +324,11 @@ export function TimeBlockModal({
                 This block crosses midnight ({formatTime12h(startTime)} to {formatTime12h(endTime)}). It will automatically be split into 2 safe daily blocks:
               </p>
               <div className="flex items-center gap-2 pt-1 font-mono text-2xs text-warning-text">
-                <span className="bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+                <span className="bg-warning/20 px-2 py-0.5 rounded border border-warning/30">
                   Part 1 (Today): {startTime} - 23:59
                 </span>
                 <span>+</span>
-                <span className="bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+                <span className="bg-warning/20 px-2 py-0.5 rounded border border-warning/30">
                   Part 2 (Tomorrow): 00:00 - {endTime}
                 </span>
               </div>

@@ -64,22 +64,7 @@ const LOADER_SURFACES: Array<{ label: string; className: string }> = [
   { label: 'page', className: 'bg-bg-900 border border-bg-700 text-content-secondary' },
 ];
 
-const TONES: BadgeTone[] = [
-  'neutral',
-  'emerald',
-  'amber',
-  'purple',
-  'cyan',
-  'rose',
-  'blue',
-  'sky',
-  'teal',
-  'orange',
-  'indigo',
-  'violet',
-  'season',
-  'beta',
-];
+const TONES: BadgeTone[] = ['neutral', 'emerald', 'warning', 'rose'];
 
 function DialogDemo() {
   const [basicOpen, setBasicOpen] = useState(false);
@@ -425,7 +410,7 @@ function ChartsDemo() {
             <ProgressRing value={9} max={30} label="Ring success" tone="success">
               <span className="font-display text-sm font-bold text-content-primary">9d</span>
             </ProgressRing>
-            <ProgressRing value={0} label="Ring empty" tone="purple" size={56} thickness={5} />
+            <ProgressRing value={0} label="Ring empty" tone="brand" size={56} thickness={5} />
           </div>
         </div>
       </IntroMotionContext.Provider>

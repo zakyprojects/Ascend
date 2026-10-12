@@ -82,7 +82,7 @@ export function CompetitorProfileModal({
         {!canViewDetailed ? (
           <div className="card p-6 text-center space-y-2.5 animate-fade-in">
             <div className="w-10 h-10 rounded-xl bg-bg-700 flex items-center justify-center mx-auto text-content-muted">
-              {!viewerIsPublic ? <EyeOff size={20} className="text-warning-text" /> : <Lock size={20} />}
+              {!viewerIsPublic ? <EyeOff size={20} /> : <Lock size={20} />}
             </div>
 
             {!viewerIsPublic ? (
@@ -91,7 +91,7 @@ export function CompetitorProfileModal({
                 <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
                   Because you have set your own profile to private, other members' detailed statistics and active habits are hidden from you.
                 </p>
-                <p className="text-micro text-warning-text font-medium">
+                <p className="text-micro text-brand-text font-medium">
                   Enable your public profile setting in the sidebar to view member achievements.
                 </p>
               </>
@@ -123,38 +123,38 @@ export function CompetitorProfileModal({
                       <>
                         <StatCard
                           icon={Flame}
-                          color="#f59e0b"
+                          color="#10b981"
                           label="Current Streak"
                           value={`${cDays} days`}
                           subtitle={cCat || undefined}
                         />
                         <StatCard
                           icon={CheckSquare}
-                          color="#34d399"
+                          color="#10b981"
                           label="Habits Done"
                           value={stats.habitsCompletedCount.toLocaleString()}
                         />
                         <StatCard
                           icon={BookOpen}
-                          color="#0ea5e9"
+                          color="#10b981"
                           label="Journal Entries"
                           value={stats.journalEntriesCount.toLocaleString()}
                         />
                         <StatCard
                           icon={Activity}
-                          color="#14b8a6"
+                          color="#10b981"
                           label="Exercise Mins"
                           value={`${stats.exerciseMinutes}m`}
                         />
                         <StatCard
                           icon={Book}
-                          color="#fbbf24"
+                          color="#10b981"
                           label="Books Read"
                           value={`${stats.booksRead}`}
                         />
                         <StatCard
                           icon={Target}
-                          color="#f472b6"
+                          color="#10b981"
                           label="Skills Practiced"
                           value={`${stats.skillsPracticedCount}`}
                         />
@@ -208,7 +208,7 @@ export function CompetitorProfileModal({
             {seasonHistory && seasonHistory.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                  <Trophy size={14} className="text-warning-text" />
+                  <Trophy size={14} className="text-brand-text" />
                   Past Seasons & Trophies ({seasonHistory.length})
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
@@ -280,7 +280,7 @@ function StatCard({
         <p className="text-2xs text-content-muted truncate">{label}</p>
         <p className="text-xs font-bold text-content-secondary truncate">{value}</p>
         {subtitle && (
-          <p className="text-2xs text-[color:var(--badge-orange-text)] font-medium truncate mt-0.5" title={`Source: ${subtitle}`}>
+          <p className="text-2xs text-[color:var(--badge-neutral-text)] font-medium truncate mt-0.5" title={`Source: ${subtitle}`}>
             {subtitle}
           </p>
         )}

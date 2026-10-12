@@ -55,12 +55,12 @@ const CATEGORY_OPTIONS: {
   bgColor: string;
 }[] = [
   { value: 'habit', label: 'Habit', icon: CheckCircle2, color: 'text-success-text', borderColor: 'border-emerald-500/40', bgColor: 'bg-emerald-500/10' },
-  { value: 'exercise', label: 'Workout', icon: Dumbbell, color: 'text-warning-text', borderColor: 'border-amber-500/40', bgColor: 'bg-amber-500/10' },
-  { value: 'reading', label: 'Reading', icon: BookOpen, color: 'text-sky-theme', borderColor: 'border-sky-500/40', bgColor: 'bg-sky-500/10' },
+  { value: 'exercise', label: 'Workout', icon: Dumbbell, color: 'text-brand-text', borderColor: 'border-primary-500/40', bgColor: 'bg-primary-500/10' },
+  { value: 'reading', label: 'Reading', icon: BookOpen, color: 'text-brand-text', borderColor: 'border-primary-500/40', bgColor: 'bg-primary-500/10' },
   { value: 'bad_habit', label: 'Reduction', icon: AlertTriangle, color: 'text-rose-theme', borderColor: 'border-rose-500/40', bgColor: 'bg-rose-500/10' },
-  { value: 'skill', label: 'Skill', icon: Zap, color: 'text-purple-hierarchy', borderColor: 'border-purple-500/40', bgColor: 'bg-purple-500/10' },
-  { value: 'journal', label: 'Journal', icon: FileText, color: 'text-indigo-theme', borderColor: 'border-indigo-500/40', bgColor: 'bg-indigo-500/10' },
-  { value: 'recovery', label: 'Sobriety', icon: ShieldAlert, color: 'text-teal-theme', borderColor: 'border-teal-500/40', bgColor: 'bg-teal-500/10' },
+  { value: 'skill', label: 'Skill', icon: Zap, color: 'text-brand-text', borderColor: 'border-primary-500/40', bgColor: 'bg-primary-500/10' },
+  { value: 'journal', label: 'Journal', icon: FileText, color: 'text-brand-text', borderColor: 'border-primary-500/40', bgColor: 'bg-primary-500/10' },
+  { value: 'recovery', label: 'Sobriety', icon: ShieldAlert, color: 'text-brand-text', borderColor: 'border-primary-500/40', bgColor: 'bg-primary-500/10' },
 ];
 
 const SUGGESTIONS_BY_CATEGORY: Record<SharedChallengeCategory, string[]> = {
@@ -708,7 +708,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               {sentInvites.map((invite) => (
                 <div key={invite.id} className="flex items-center justify-between bg-bg-700/40 p-2.5 rounded-xl border border-overlay-subtle text-xs">
                   <div className="flex items-center gap-2 text-content-tertiary">
-                    <Clock size={14} className="text-warning-text" />
+                    <Clock size={14} className="text-brand-text" />
                     <span>Invite sent to <strong>{invite.toUsername}</strong></span>
                   </div>
                   <button
@@ -839,7 +839,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                 {/* Versus Header */}
                 <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
                   <div className="flex items-center gap-2">
-                    <Trophy size={16} className="text-warning-text" />
+                    <Trophy size={16} className="text-brand-text" />
                     <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">Head-to-Head Comparison</span>
                   </div>
 
@@ -849,7 +849,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         <TrendingUp size={13} /> You lead by <CountUp value={mySeasonPoints - partnerSeasonPoints} className="tabular-nums" /> pts
                       </span>
                     ) : partnerSeasonPoints > mySeasonPoints ? (
-                      <span className="text-warning-text flex items-center gap-1">
+                      <span className="text-brand-text flex items-center gap-1">
                         <TrendingUp size={13} /> {activePartnerUsername} leads by <CountUp value={partnerSeasonPoints - mySeasonPoints} className="tabular-nums" /> pts
                       </span>
                     ) : (
@@ -882,15 +882,15 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Points</span>
-                        <CountUp value={mySeasonPoints} className="text-sm font-display font-bold text-warning-text tabular-nums" />
+                        <CountUp value={mySeasonPoints} className="text-sm font-display font-bold text-brand-text tabular-nums" />
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Current Streak</span>
-                        <span className="text-sm font-display font-bold text-[color:var(--badge-orange-text)]">{myCurrentStreakDays}d</span>
+                        <span className="text-sm font-display font-bold text-[color:var(--badge-neutral-text)]">{myCurrentStreakDays}d</span>
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Habits Done Today</span>
-                        <span className="text-sm font-display font-bold text-sky-theme">{myHabitsCompletedToday}</span>
+                        <span className="text-sm font-display font-bold text-brand-text">{myHabitsCompletedToday}</span>
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Total Habits</span>
@@ -921,15 +921,15 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Points</span>
-                        <CountUp value={partnerSeasonPoints} className="text-sm font-display font-bold text-warning-text tabular-nums" />
+                        <CountUp value={partnerSeasonPoints} className="text-sm font-display font-bold text-brand-text tabular-nums" />
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Current Streak</span>
-                        <span className="text-sm font-display font-bold text-[color:var(--badge-orange-text)]">{partnerCurrentStreakDays}d</span>
+                        <span className="text-sm font-display font-bold text-[color:var(--badge-neutral-text)]">{partnerCurrentStreakDays}d</span>
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Habits Done Today</span>
-                        <span className="text-sm font-display font-bold text-sky-theme">{partnerHabitsCompletedToday}</span>
+                        <span className="text-sm font-display font-bold text-brand-text">{partnerHabitsCompletedToday}</span>
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Total Habits</span>
@@ -956,10 +956,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   </span>
                   <div className="flex items-center gap-2 text-2xs text-content-muted flex-wrap">
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" /> Both Locked In</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-500/80 inline-block" /> You Only</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-sky-500/80 inline-block" /> Partner Only</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-primary-500/80 inline-block" /> You Only</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-primary-500/80 inline-block" /> Partner Only</span>
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-rose-500/15 border border-rose-500/40 text-rose-theme font-extrabold text-3xs inline-flex items-center justify-center leading-none">!</span> Missed Day</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-bg-900 border border-amber-500/40 text-warning-text text-3xs inline-flex items-center justify-center">·</span> Pending</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-bg-900 border border-primary-500/40 text-brand-text text-3xs inline-flex items-center justify-center">·</span> Pending</span>
                   </div>
                 </div>
               </div>
@@ -994,7 +994,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       if (d.status === 'both') {
                         cellStyle = 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30 ring-1 ring-emerald-400/50';
                       } else {
-                        cellStyle = 'bg-amber-500/80 text-white shadow-sm';
+                        cellStyle = 'bg-primary-500/80 text-white shadow-sm';
                       }
                       tooltip = `${d.shortDate} (Day ${d.dayNumber}): You completed pledge ✓`;
                     } else if (d.isPast) {
@@ -1010,7 +1010,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     } else if (d.isToday) {
                       if (d.hasActivePacts) {
                         cellContent = '·';
-                        cellStyle = 'bg-bg-900 border border-amber-500/40 text-warning-text font-bold ring-1 ring-amber-500/20';
+                        cellStyle = 'bg-bg-900 border border-primary-500/40 text-brand-text font-bold ring-1 ring-primary-500/20';
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): Pending today`;
                       } else {
                         cellContent = '·';
@@ -1052,7 +1052,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       if (d.status === 'both') {
                         cellStyle = 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30 ring-1 ring-emerald-400/50';
                       } else {
-                        cellStyle = 'bg-sky-500/80 text-white shadow-sm';
+                        cellStyle = 'bg-primary-500/80 text-white shadow-sm';
                       }
                       tooltip = `${d.shortDate} (Day ${d.dayNumber}): ${activePartnerUsername} completed pledge ✓`;
                     } else if (d.isPast) {
@@ -1068,7 +1068,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     } else if (d.isToday) {
                       if (d.hasActivePacts) {
                         cellContent = '·';
-                        cellStyle = 'bg-bg-900 border border-amber-500/40 text-warning-text font-bold ring-1 ring-amber-500/20';
+                        cellStyle = 'bg-bg-900 border border-primary-500/40 text-brand-text font-bold ring-1 ring-primary-500/20';
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): Pending today`;
                       } else {
                         cellContent = '·';
@@ -1104,7 +1104,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="section-title flex items-center gap-2">
-                <Award size={18} className="text-warning-text" />
+                <Award size={18} className="text-brand-text" />
                 <span>Active Joint Pacts with {activePartnerUsername} ({activePacts.length})</span>
               </h2>
               <button onClick={() => setChallengeModalOpen(true)} className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5">
@@ -1190,7 +1190,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           tone="success"
                           size={80}
                         >
-                          <Flame size={18} className="text-warning-text mb-0.5" />
+                          <Flame size={18} className="text-brand-text mb-0.5" />
                           <span className="font-display font-extrabold text-xs text-content-primary leading-none">
                             {challenge.jointStreak}d
                           </span>
@@ -1235,7 +1235,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                                 <CheckCircle2 size={13} /> Pledge Locked In ✓
                               </span>
                             ) : (
-                              <span className="text-warning-text font-medium flex items-center gap-1 text-micro">
+                              <span className="text-brand-text font-medium flex items-center gap-1 text-micro">
                                 <Clock size={12} /> Pending Today
                               </span>
                             )}
@@ -1259,13 +1259,13 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                                 className={`px-2 py-0.5 rounded-lg text-micro font-bold transition-all duration-200 active:scale-95 flex items-center gap-1 cursor-pointer select-none ${
                                   isNudgeCooldown || isKeyLoading(`nudge_${challenge.id}`)
                                     ? 'bg-bg-900 text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
-                                    : 'bg-amber-500/20 hover:bg-amber-500/30 text-warning-text border border-amber-500/40 shadow-sm'
+                                    : 'bg-primary-500/20 hover:bg-primary-500/30 text-brand-text border border-primary-500/40 shadow-sm'
                                 }`}
                               >
                                 {isKeyLoading(`nudge_${challenge.id}`) ? (
                                   <AscendLoadingIndicator size="sm" />
                                 ) : (
-                                  <Zap size={11} className={isNudgeCooldown ? 'text-content-disabled' : 'text-warning-text fill-warning-text'} />
+                                  <Zap size={11} className={isNudgeCooldown ? 'text-content-disabled' : 'text-brand-text fill-brand-text'} />
                                 )}
                                 <span>
                                   {isKeyLoading(`nudge_${challenge.id}`)
@@ -1289,11 +1289,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                               <CheckCircle2 size={13} /> Both Locked In Today ✓
                             </div>
                           ) : myDone && !partnerDone ? (
-                            <div className="badge-amber inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full">
+                            <div className="badge-neutral inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full">
                               <Clock size={13} /> You Locked In · Waiting on {activePartnerUsername}
                             </div>
                           ) : !myDone && partnerDone ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-500/15 border border-sky-500/30 text-sky-theme text-xs font-medium rounded-full">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary-500/15 border border-primary-500/30 text-brand-text text-xs font-medium rounded-full">
                               <Clock size={13} /> {activePartnerUsername} Locked In · Log your pledge!
                             </div>
                           ) : (
@@ -1406,7 +1406,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                                     Completed 🎉
                                   </span>
                                 ) : (
-                                  <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-amber-500/20 text-warning-text border border-amber-500/40">
+                                  <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-overlay-subtle text-content-muted border border-overlay-default">
                                     Expired
                                   </span>
                                 )}
@@ -1676,7 +1676,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           {/* User 2 (Partner's Pledge) Section */}
           <div className="card p-4 space-y-3.5 border-overlay-medium shadow-sm">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-sky-theme flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-brand-text flex items-center gap-1.5">
                 <Users size={15} /> {activePartnerUsername}'s Daily Pledge
               </label>
               <span className="text-micro text-content-disabled">Partner objective</span>
@@ -1697,7 +1697,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     }}
                     className={`p-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
                       isSelected
-                        ? `${cat.bgColor} ${cat.borderColor} ring-1 ring-sky-400 shadow-sm`
+                        ? `${cat.bgColor} ${cat.borderColor} ring-1 ring-primary-400 shadow-sm`
                         : 'bg-bg-700 border-overlay-medium hover:border-overlay-default shadow-sm text-content-muted hover:bg-bg-600'
                     }`}
                   >
@@ -1733,7 +1733,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       onClick={() => setUser2Target(suggestion)}
                       className={`text-2xs px-2 py-0.5 rounded-lg border transition-all ${
                         user2Target === suggestion
-                          ? 'badge-sky'
+                          ? 'badge-neutral'
                           : 'bg-bg-900 text-content-muted border-overlay-subtle hover:border-overlay-strong hover:text-content-secondary'
                       }`}
                     >

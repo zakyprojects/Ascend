@@ -133,7 +133,7 @@ export function ApplyTemplateModal({
               onClick={() => setMode('replace')}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 mode === 'replace'
-                  ? 'bg-amber-500/20 border-amber-500/70 text-warning-text font-semibold shadow-sm ring-1 ring-amber-500/40'
+                  ? 'bg-primary-500/20 border-primary-500/70 text-brand-text font-semibold shadow-sm ring-1 ring-primary-500/40'
                   : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
               }`}
             >

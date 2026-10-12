@@ -22,8 +22,8 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             {/* Hero */}
             <Reveal index={0} className="card p-6 relative overflow-hidden">
               <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-purple-500/15 flex items-center justify-center mb-4">
-                  <Brain size={32} className="text-purple-hierarchy" />
+                <div className="w-16 h-16 rounded-2xl bg-primary-500/15 flex items-center justify-center mb-4">
+                  <Brain size={32} className="text-brand-text" />
                 </div>
                 <h2 className="text-xl font-display font-bold text-content-primary mb-2">
                   Your brain is not fixed.
@@ -34,14 +34,14 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
                   every skill you practice, every experience you have physically changes its structure.
                 </p>
                 <p className="text-sm text-content-muted leading-relaxed mt-3">
-                  This is called <span className="text-purple-hierarchy font-medium">neuroplasticity</span>, and it means
+                  This is called <span className="text-brand-text font-medium">neuroplasticity</span>, and it means
                   you are never stuck with who you are. Change is always possible — it just requires the right approach.
                 </p>
               </div>
             </Reveal>
 
             {/* Core principle */}
-            <Reveal index={1} className="card p-5 border-l-2 border-l-purple-500">
+            <Reveal index={1} className="card p-5 border-l-2 border-l-primary-500">
               <p className="text-lg font-display font-bold text-content-primary mb-2">
                 "Neurons that fire together, wire together."
               </p>
@@ -58,25 +58,25 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
               <div className="grid-cards-lg gap-3">
                 <PillarCard
                   icon={<Repeat size={20} />}
-                  color="#34d399"
+                  color="#10b981"
                   title="Repetition Over Intensity"
                   description="A 10-minute daily habit beats a 2-hour weekly session. Brain rewiring happens through repeated, spaced activation — not marathon sessions. The daily repetition keeps neurons firing together, wiring them into a permanent pathway."
                 />
                 <PillarCard
                   icon={<Moon size={20} />}
-                  color="#60a5fa"
+                  color="#10b981"
                   title="Sleep Consolidates Learning"
                   description="Practice is the input, but sleep is where the brain actually does the rewiring. During sleep, your brain replays the day's experiences, strengthens important connections, and prunes unnecessary ones. Without good sleep, your daily repetitions don't consolidate effectively."
                 />
                 <PillarCard
                   icon={<Sparkles size={20} />}
-                  color="#fbbf24"
+                  color="#10b981"
                   title="Novelty Triggers Growth"
                   description="Routine builds efficiency, but novelty builds capacity. When you encounter something new, your brain releases dopamine and activates neuroplasticity. It's literally telling itself to pay attention and learn. This is why trying new things keeps your brain plastic and adaptable."
                 />
                 <PillarCard
                   icon={<Clock size={20} />}
-                  color="#a855f7"
+                  color="#10b981"
                   title="The 90-Day Window"
                   description="Research suggests it takes roughly 66–90 days of consistent repetition for a new behavior to become automatic — to literally wire itself into your brain's default circuitry. This is why the 90-Day League exists: it's a scientifically grounded window for real neurological change."
                 />
@@ -99,10 +99,10 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             </Reveal>
 
             {/* 90-Day League CTA */}
-            <Reveal index={3} className="card p-5 border border-purple-500/30 bg-purple-500/5">
+            <Reveal index={3} className="card p-5 border border-primary-500/30 bg-primary-500/5">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0">
-                  <Target size={20} className="text-purple-hierarchy" />
+                <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center shrink-0">
+                  <Target size={20} className="text-brand-text" />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-display font-bold text-content-primary mb-1">The 90-Day League</h3>
@@ -137,7 +137,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
                   "Novelty: The Brain's Growth Trigger",
                 ].map((title) => (
                   <div key={title} className="card p-3 flex items-center gap-2 text-sm text-content-muted">
-                    <Brain size={14} className="text-purple-hierarchy shrink-0" />
+                    <Brain size={14} className="text-brand-text shrink-0" />
                     {title}
                   </div>
                 ))}
@@ -177,8 +177,8 @@ function PillarCard({ icon, color, title, description }: { icon: React.ReactNode
 function Tip({ num, text }: { num: string; text: string }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="w-6 h-6 rounded-lg bg-purple-500/15 flex items-center justify-center shrink-0 mt-0.5">
-        <span className="text-xs font-bold text-purple-hierarchy">{num}</span>
+      <div className="w-6 h-6 rounded-lg bg-primary-500/15 flex items-center justify-center shrink-0 mt-0.5">
+        <span className="text-xs font-bold text-brand-text">{num}</span>
       </div>
       <p className="text-sm text-content-muted leading-relaxed">{text}</p>
     </div>

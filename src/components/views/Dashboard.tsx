@@ -44,13 +44,13 @@ const LEAGUE_ICONS: Record<string, typeof Trophy> = {
 
 const MODULE_TONE_CLASS = {
   emerald: 'badge-emerald',
-  amber: 'badge-amber',
-  purple: 'badge-purple',
+  amber: 'badge-warning',
+  purple: 'badge-neutral',
   rose: 'badge-rose',
   red: 'badge-red',
-  sky: 'badge-sky',
-  cyan: 'badge-cyan',
-  indigo: 'badge-indigo',
+  sky: 'badge-neutral',
+  cyan: 'badge-neutral',
+  indigo: 'badge-neutral',
 } as const;
 
 interface ModuleCardProps {
@@ -161,9 +161,9 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
       {/* Guest Mode Banner on Dashboard */}
       {store.state.currentUser?.isAnonymous && onOpenAuthModal && (
-        <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-600/10 to-primary-500/10 border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-xl bg-primary-500/5 border border-primary-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0 text-warning-text">
+            <div className="w-9 h-9 rounded-xl bg-primary-500/15 flex items-center justify-center shrink-0 text-brand-text">
               <Sparkles size={18} />
             </div>
             <div>
@@ -177,7 +177,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           </div>
           <button
             onClick={onOpenAuthModal}
-            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg shadow-md transition-all shrink-0 w-full sm:w-auto"
+            className="btn-primary text-xs shrink-0 w-full sm:w-auto"
           >
             Save Progress / Create Account
           </button>
@@ -287,7 +287,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                               <Check size={18} />
                             </button>
                             <span className="text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
-                              {isLinked && <BookOpen size={13} className="text-warning-text shrink-0" />}
+                              {isLinked && <BookOpen size={13} className="text-brand-text shrink-0" />}
                               <span>{habit.name}</span>
                             </span>
                             {isLinked && habit.points === 0 ? (
@@ -494,10 +494,10 @@ function greeting(): string {
 
 function moodColor(mood: string): string {
   const colors: Record<string, string> = {
-    happy: '#fbbf24',
+    happy: '#34d399',
     neutral: '#94a3b8',
-    sad: '#60a5fa',
-    motivated: '#34d399',
+    sad: '#fb7185',
+    motivated: '#10b981',
   };
   return colors[mood] ?? '#94a3b8';
 }

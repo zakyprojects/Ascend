@@ -132,7 +132,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       </div>
 
       {/* Persistent Disclaimer Banner */}
-      <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-500/10 flex items-start gap-3">
+      <div className="card p-4 border-l-4 border-l-warning bg-warning/10 flex items-start gap-3">
         <AlertCircle size={22} className="text-warning-text shrink-0 mt-0.5" />
         <div className="text-xs text-content-tertiary leading-relaxed">
           <span className="font-bold text-warning-text">Important Medical Disclaimer:</span> This module is a self-management support tool designed to complement — but <span className="underline">not replace</span> — professional medical treatment or therapy. If you are experiencing severe addiction, physical withdrawal, or crisis, please seek immediate assistance from a licensed healthcare professional or hotline (e.g. SAMHSA Helpline: 1-800-662-4357).
@@ -238,7 +238,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                   />
 
                   <div className="text-xs font-bold text-content-tertiary mb-3 flex items-center gap-2">
-                    <Award size={16} className="text-warning-text" />
+                    <Award size={16} className="text-brand-text" />
                     Milestone Celebrations & Badges
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -257,7 +257,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                           }}
                           className={`card p-3 flex items-center gap-3 text-left transition-all ${
                             isUnlocked
-                              ? 'bg-amber-500/10 border-amber-500/40 text-content-secondary cursor-pointer hover:bg-amber-500/20'
+                              ? 'bg-primary-500/10 border-primary-500/40 text-content-secondary cursor-pointer hover:bg-primary-500/20'
                               : isCapped
                               ? 'bg-bg-800/40 border-overlay-subtle text-content-disabled opacity-50'
                               : 'bg-bg-800/40 border-overlay-subtle text-content-disabled opacity-60'
@@ -312,7 +312,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                       <div key={log.id} className="card enter-item p-3 bg-bg-800/60 border border-overlay-subtle space-y-1 text-xs">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-content-secondary flex items-center gap-2">
-                            Intensity: <span className={`px-2 py-0.5 rounded font-mono ${log.intensity >= 7 ? 'bg-rose-500/20 text-rose-theme' : 'bg-amber-500/20 text-warning-text'}`}>{log.intensity}/10</span>
+                            Intensity: <span className={`px-2 py-0.5 rounded font-mono ${log.intensity >= 7 ? 'bg-rose-500/20 text-rose-theme' : 'bg-warning/20 text-warning-text'}`}>{log.intensity}/10</span>
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="text-content-disabled text-2xs">{formatDateLong(log.date)}</span>
@@ -342,8 +342,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <Dialog open={emergencyModalOpen} onClose={() => setEmergencyModalOpen(false)} title="Emergency Support & Urge Surfing" maxWidth="max-w-lg">
         <div className="space-y-6">
           {/* Guided Breathing Box */}
-          <div className="card p-5 text-center bg-bg-800 border border-purple-500/30 space-y-4">
-            <h3 className="text-sm font-bold text-purple-hierarchy flex items-center justify-center gap-2">
+          <div className="card p-5 text-center bg-bg-800 border border-primary-500/30 space-y-4">
+            <h3 className="text-sm font-bold text-brand-text flex items-center justify-center gap-2">
               <Sparkles size={16} /> Guided 4-4-4-4 Box Breathing
             </h3>
             <BreathingCircle />
@@ -484,7 +484,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       {/* Milestone Unlocked Modal */}
       <Dialog open={!!celebrationMilestone} onClose={() => setCelebrationMilestone(null)} title="Milestone Unlocked! 🎉">
         <div className="text-center space-y-4 py-2">
-          <div className="w-16 h-16 rounded-full bg-amber-500/20 text-warning-text border border-amber-500/40 flex items-center justify-center text-3xl mx-auto animate-celebrate">
+          <div className="w-16 h-16 rounded-full bg-primary-500/20 text-brand-text border border-primary-500/40 flex items-center justify-center text-3xl mx-auto animate-celebrate">
             🏆
           </div>
           <h3 className="text-lg font-bold text-content-primary">{celebrationMilestone}</h3>
@@ -571,13 +571,13 @@ function BreathingCircle() {
   const getCircleScale = () => {
     switch (phase) {
       case 'Inhale':
-        return 'scale-125 bg-purple-500/30 border-purple-400';
+        return 'scale-125 bg-primary-500/30 border-primary-400';
       case 'Hold':
-        return 'scale-125 bg-purple-500/40 border-purple-300';
+        return 'scale-125 bg-primary-500/40 border-primary-300';
       case 'Exhale':
-        return 'scale-90 bg-purple-500/10 border-purple-500/30';
+        return 'scale-90 bg-primary-500/10 border-primary-500/30';
       case 'Rest':
-        return 'scale-90 bg-purple-500/10 border-purple-500/20';
+        return 'scale-90 bg-primary-500/10 border-primary-500/20';
     }
   };
 
@@ -587,7 +587,7 @@ function BreathingCircle() {
         <div
           className={`w-28 h-28 rounded-full border-2 transition-all duration-1000 flex flex-col items-center justify-center ${getCircleScale()}`}
         >
-          <span className="text-xs uppercase tracking-widest text-purple-hierarchy font-bold">{phase}</span>
+          <span className="text-xs uppercase tracking-widest text-brand-text font-bold">{phase}</span>
           <span className="text-2xl font-display font-bold text-content-primary mt-0.5">{seconds}s</span>
         </div>
       </div>
@@ -595,7 +595,7 @@ function BreathingCircle() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => setIsActive(!isActive)}
-          className="btn-ghost text-xs text-purple-hierarchy flex items-center gap-1"
+          className="btn-ghost text-xs text-brand-text flex items-center gap-1"
         >
           {isActive ? <Pause size={14} /> : <Play size={14} />}
           <span>{isActive ? 'Pause' : 'Start'}</span>

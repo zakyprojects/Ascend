@@ -1,15 +1,12 @@
 import { useCallback, useState } from 'react';
 
-export type ChartTone = 'brand' | 'success' | 'warning' | 'purple' | 'cyan';
+export type ChartTone = 'brand' | 'success' | 'warning';
 
 /** Tone as a text colour: SVG strokes/fills and HTML fills read it through currentColor. */
 export const toneText: Record<ChartTone, string> = {
   brand: 'text-primary-500',
   success: 'text-success-text',
   warning: 'text-warning-text',
-  // Module identity colours (Skills purple, Projects cyan), kept by decision.
-  purple: 'text-purple-500',
-  cyan: 'text-cyan-500',
 };
 
 /**

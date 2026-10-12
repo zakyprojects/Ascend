@@ -6,7 +6,7 @@ export interface DisclosureProps {
   /** Always-visible one-line summary. */
   title: ReactNode;
   icon?: LucideIcon;
-  /** 'warning' for rules that cost points (amber edge), 'neutral' for plain explanations. */
+  /** 'warning' for rules that cost points (soft rose edge), 'neutral' for plain explanations. */
   tone?: 'warning' | 'neutral';
   defaultOpen?: boolean;
   children: ReactNode;
@@ -23,7 +23,7 @@ export function Disclosure({ title, icon: Icon, tone = 'neutral', defaultOpen = 
   return (
     <details
       open={defaultOpen}
-      className={cx('disclosure group card', warning && 'border-l-4 border-l-amber-500 bg-amber-500/5', className)}
+      className={cx('disclosure group card', warning && 'border-l-4 border-l-warning bg-warning/5', className)}
     >
       <summary
         className={cx(

@@ -56,7 +56,7 @@ export function CapMeterConnected({ state, capId }: CapMeterConnectedProps) {
         note={capNote(capId)}
       />
       {status.isCapped && (
-        <div className="mt-1.5 text-micro text-warning-text">
+        <div className="mt-1.5 text-micro text-content-muted">
           {capReachedText(status.earned, status.cap)}
         </div>
       )}

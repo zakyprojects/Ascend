@@ -340,9 +340,9 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
       {/* Guest Mode Banner */}
       {isGuest && (
-        <div className="p-4 rounded-xl bg-bg-750 border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-xl bg-primary-500/5 border border-primary-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0 text-warning-text">
+            <div className="w-9 h-9 rounded-xl bg-primary-500/15 flex items-center justify-center shrink-0 text-brand-text">
               <Sparkles size={18} />
             </div>
             <div>
@@ -357,7 +357,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {onOpenAuthModal && (
             <button
               onClick={onOpenAuthModal}
-              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg shadow-md transition-all shrink-0 w-full sm:w-auto"
+              className="btn-primary text-xs shrink-0 w-full sm:w-auto"
             >
               Save Progress (Create Account)
             </button>
@@ -467,7 +467,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     Leaderboard Username
                   </label>
                   {isCooldownActive && (
-                    <span className="badge-amber text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
+                    <span className="badge-neutral text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
                       <Clock size={12} />
                       Cooldown: {hoursLeft}h {minsLeft}m left
                     </span>
@@ -800,7 +800,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                         Public
                       </span>
                     ) : (
-                      <span className="badge-amber text-2xs font-bold px-2 py-0.5 rounded-md">
+                      <span className="badge-neutral text-2xs font-bold px-2 py-0.5 rounded-md">
                         Private
                       </span>
                     )}
@@ -866,7 +866,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
               <div className="flex items-center justify-between p-3.5 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="flex items-center gap-3">
-                  {isDarkMode ? <Moon size={20} className="text-brand-text" /> : <Sun size={20} className="text-warning-text" />}
+                  {isDarkMode ? <Moon size={20} className="text-brand-text" /> : <Sun size={20} className="text-content-secondary" />}
                   <div>
                     <p className="text-xs font-bold text-content-secondary">Visual Theme Mode</p>
                     <p className="text-micro text-content-muted">

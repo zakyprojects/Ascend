@@ -192,11 +192,11 @@ export function SkillTracker({ store }: { store: AppStore }) {
       case 'beginner':
         return 'bg-emerald-500/15 text-success-text border-emerald-500/30';
       case 'intermediate':
-        return 'badge-blue';
+        return 'badge-neutral';
       case 'advanced':
-        return 'badge-purple';
+        return 'badge-neutral';
       case 'expert':
-        return 'badge-amber';
+        return 'badge-emerald';
     }
   };
 
@@ -241,7 +241,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
       <div className="page-header">
         <div>
           <h1 className="page-title flex items-center gap-2">
-            <Zap className="text-purple-hierarchy" size={26} />
+            <Zap className="text-brand-text" size={26} />
             Skill Learning Tracker
           </h1>
           <p className="text-sm text-content-disabled mt-1">
@@ -257,7 +257,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
       {/* Hero Stats */}
       <Reveal index={0} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
             <Target size={22} />
           </div>
           <div>
@@ -269,7 +269,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
         </div>
 
         <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-theme shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
             <Clock size={22} />
           </div>
           <div>
@@ -307,7 +307,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                 <BarChart
                   data={practiceDays.map((day, i) => ({ label: formatWeekdayShort(day), value: practiceMinutes[i] }))}
                   label={`Skill practice minutes per day, last 7 days: ${practiceWeekTotal} total`}
-                  tone="purple"
+                  tone="brand"
                   highlightIndex={practiceDays.length - 1}
                   formatTooltip={(datum, i) => `${formatWeekdayDate(practiceDays[i])}: ${datum.value} mins`}
                 />
@@ -332,7 +332,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     onClick={() => setSelectedCategory(cat)}
                     className={`px-2.5 py-1 rounded-lg text-xs transition-all ${
                       selectedCategory === cat
-                        ? 'bg-purple-500/20 text-purple-hierarchy border border-purple-500/40 font-semibold'
+                        ? 'bg-primary-500/20 text-brand-text border border-primary-500/40 font-semibold'
                         : 'bg-bg-800 text-content-disabled hover:text-content-muted border border-overlay-subtle'
                     }`}
                   >
@@ -359,7 +359,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
               <p className="text-sm text-content-disabled">No skills found in category &ldquo;{selectedCategory}&rdquo;</p>
               <button
                 onClick={() => setSelectedCategory('All')}
-                className="text-xs text-purple-hierarchy hover:underline mt-2 inline-block font-medium"
+                className="text-xs text-brand-text hover:underline mt-2 inline-block font-medium"
               >
                 Show all skills
               </button>
@@ -396,8 +396,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
                         <div className="flex items-center gap-2 text-xs text-content-disabled">
                           {streak > 0 && (
                             <>
-                              <span className="flex items-center gap-1 text-secondary-400 font-medium tabular-nums">
-                                <Flame size={13} className="text-secondary-500" />
+                              <span className="flex items-center gap-1 text-brand-text font-medium tabular-nums">
+                                <Flame size={13} className="text-brand-text" />
                                 {streak} day{streak !== 1 ? 's' : ''}
                               </span>
                               <span>•</span>
@@ -415,7 +415,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                           <span>{progressText}</span>
                           <span className="tabular-nums">{Math.round(progressPercent)}%</span>
                         </div>
-                        <ProgressBar value={progressPercent} label="Level progress" tone="purple" size="sm" />
+                        <ProgressBar value={progressPercent} label="Level progress" tone="brand" size="sm" />
                       </div>
                     </div>
 
@@ -453,7 +453,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       return (
                         <div key={log.id} className="card enter-item p-3.5 flex items-start justify-between card-hover">
                           <div className="flex items-start gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0 mt-0.5">
+                            <div className="w-9 h-9 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0 mt-0.5">
                               <Clock size={18} />
                             </div>
                             <div>
@@ -466,7 +466,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="badge-purple text-xs font-bold px-2.5 py-1 rounded-full tabular-nums">
+                            <span className="badge-neutral text-xs font-bold px-2.5 py-1 rounded-full tabular-nums">
                               +{log.pointsAwarded} pts
                             </span>
                             <button
@@ -602,7 +602,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
           <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
             <span>Points to earn:</span>
-            <span className="font-bold text-purple-hierarchy tabular-nums">+{skillPreviewPoints} pts</span>
+            <span className="font-bold text-brand-text tabular-nums">+{skillPreviewPoints} pts</span>
           </div>
 
           <div className="flex gap-2 pt-2">

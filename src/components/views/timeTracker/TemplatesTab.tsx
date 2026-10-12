@@ -483,7 +483,7 @@ export function TemplatesTab({
           title="Transfer Auto-Apply Day?"
           maxWidth="max-w-md"
         >
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3 mb-6">
+          <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 flex items-start gap-3 mb-6">
             <AlertTriangle className="text-warning-text shrink-0 mt-0.5" size={18} />
             <p className="text-sm text-warning-text-muted leading-relaxed">
               Are you sure you want to replace it? The day <strong className="text-warning-text">{conflictState.day}</strong> is currently assigned to <strong className="text-warning-text">{conflictState.conflictingTitle}</strong>.
@@ -500,7 +500,7 @@ export function TemplatesTab({
             <button
               type="button"
               onClick={confirmTransfer}
-              className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-amber-600 hover:bg-amber-500 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-warning hover:bg-warning transition-colors cursor-pointer"
             >
               Transfer Day
             </button>

@@ -159,7 +159,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
               {activeLeague === 'ninetyDay' && (
                 <div className="card bg-bg-700/60 p-4 mb-4 border-l-2" style={{ borderColor: config.color }}>
                   <div className="flex items-start gap-2">
-                    <Brain size={16} className="text-purple-hierarchy mt-0.5 shrink-0" />
+                    <Brain size={16} className="text-brand-text mt-0.5 shrink-0" />
                     <div>
                       <p className="text-sm text-content-secondary font-bold mb-1">90 Days to Rewire Your Brain</p>
                       <p className="text-xs text-content-muted leading-relaxed">
