@@ -29,7 +29,6 @@ import {
   preloadView,
 } from '@/components/views/lazyViews';
 import { PageSkeleton } from '@/components/views/PageSkeleton';
-import { AuthModal } from '@/components/ui/AuthModal';
 import type { AuthPageProps, AuthScreen } from '@/components/auth/AuthPage';
 import { loadedAuthPage, preloadAuthPage } from '@/components/auth/lazyAuthPage';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -43,7 +42,6 @@ function App() {
   const store = useAppState();
   // Page changes wait for the page's code first, so the view transition never shows a fallback.
   const { view, auth, search, navigationKind, navigate: setView, goToPath } = useViewRoute(preloadView);
-  const [userOpenedAuthModal, setUserOpenedAuthModal] = useState(false);
 
   // ---- Sign-in pages (/login, /signup) ------------------------------------------------------
   // Signed out: every page goes to /login?next=<page>. A guest (anonymous account) on /login or
@@ -115,7 +113,7 @@ function App() {
   const showLoader =
     store.isAuthChecking ||
     (needsAuthPage && !AuthPageView) ||
-    (store.isSessionLoading && !authHold && !userOpenedAuthModal);
+    (store.isSessionLoading && !authHold);
   const [loaderShown, setLoaderShown] = useState(showLoader);
   const [loaderExiting, setLoaderExiting] = useState(false);
   const [loaderKind, setLoaderKind] = useState<'boot' | 'session'>('boot');
@@ -146,6 +144,11 @@ function App() {
     if (appVisible) prefetchAllViewsWhenIdle();
   }, [appVisible]);
 
+  // In-app sign-in buttons: a guest saves progress on /signup, anyone else signs in on /login;
+  // both come back to this page afterwards.
+  const openAuth = () =>
+    goToPath(authPathWithNext(currentUser ? 'signup' : 'login', pathForView(view) + search));
+
   // The app itself: not while a sign-in page is up, nor for the one frame a redirect away from
   // a sign-in page takes (signed in, or local-only mode).
   const showApp = authReady && !authScreen && !auth;
@@ -175,11 +178,11 @@ function App() {
               navigationKind={navigationKind}
               onViewChange={setView}
               store={store}
-              onOpenAuthModal={() => setUserOpenedAuthModal(true)}
+              onOpenAuth={openAuth}
             >
               <ErrorBoundary fallbackTitle="Section Error">
                 <Suspense fallback={<PageSkeleton />}>
-                  {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+                  {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuth={openAuth} />}
                   {view === 'habits' && <HabitTracker store={store} />}
                   {view === 'time-tracker' && <TimeTrackerView store={store} onNavigate={setView} />}
                   {view === 'weekly-goals' && <WeeklyGoalsView store={store} />}
@@ -202,21 +205,14 @@ function App() {
                   {view === 'plans' && <ImprovementPlans store={store} />}
                   {view === 'partner' && <AccountabilityPartner store={store} />}
                   {view === 'tiers' && <TierView store={store} />}
-                  {view === 'leagues' && <Leagues store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+                  {view === 'leagues' && <Leagues store={store} onOpenAuth={openAuth} />}
                   {view === 'lessons' && <Lessons store={store} />}
                   {view === 'neuroplasticity' && <Neuroplasticity onViewChange={setView} />}
-                  {view === 'settings' && <SettingsView store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+                  {view === 'settings' && <SettingsView store={store} onOpenAuth={openAuth} />}
                 </Suspense>
               </ErrorBoundary>
             </AppShell>
           )}
-
-          <AuthModal
-            open={userOpenedAuthModal && Boolean(currentUser)}
-            onClose={() => setUserOpenedAuthModal(false)}
-            onAuthSuccess={() => setUserOpenedAuthModal(true)}
-            guestState={store.state}
-          />
 
           <ConfirmDeleteModal
             open={Boolean(store.destructiveWipeModal?.open)}

@@ -24,10 +24,10 @@ const LEAGUE_TEXT: Record<LeagueType, string> = {
 
 interface LeaguesProps {
   store: AppStore;
-  onOpenAuthModal?: () => void;
+  onOpenAuth?: () => void;
 }
 
-export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
+export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const [activeLeague, setActiveLeague] = useState<LeagueType>('weekly');
   const [showArchive, setShowArchive] = useState<LeagueType | null>(null);
   const [selectedCompetitor, setSelectedCompetitor] = useState<LeagueCompetitor | null>(null);
@@ -64,9 +64,9 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
               </p>
             </div>
           </div>
-          {onOpenAuthModal && (
+          {onOpenAuth && (
             <button
-              onClick={onOpenAuthModal}
+              onClick={onOpenAuth}
               className="px-3.5 py-1.5 bg-primary-600 hover:bg-primary-700 text-on-brand text-xs font-semibold rounded-lg transition-colors shrink-0 w-full sm:w-auto"
             >
               Create Account

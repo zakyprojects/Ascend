@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, Shield, Zap, ArrowLeft } from 'lucide-react';
+import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, Shield, Zap } from 'lucide-react';
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
@@ -18,38 +18,29 @@ function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
   ]);
 }
 
-export type AuthPanelMode = 'choice' | 'login' | 'signup' | 'upgrade';
+export type AuthPanelMode = 'login' | 'signup' | 'upgrade';
 
-/** The heading for each screen (the dialog title / page heading). */
+/** The heading for each screen (the page heading). */
 export function authPanelTitle(mode: AuthPanelMode): string {
-  return mode === 'choice'
-    ? 'Welcome to Ascend'
-    : mode === 'upgrade'
-    ? 'Save your progress'
-    : mode === 'signup'
-    ? 'Create an account'
-    : 'Sign in';
+  return mode === 'upgrade' ? 'Save your progress' : mode === 'signup' ? 'Create an account' : 'Sign in';
 }
 
 // Screen order for the slide direction: moving forward slides in from the right, back from the left.
-const MODE_ORDER: Record<AuthPanelMode, number> = { choice: 0, login: 1, signup: 2, upgrade: 2 };
+const MODE_ORDER: Record<AuthPanelMode, number> = { login: 0, signup: 1, upgrade: 1 };
 
 interface AuthPanelProps {
-  /** The screen to show; the parent owns it (the panel asks for changes with onModeChange). */
+  /** The screen to show (from the address: /login, /signup, or /signup for a guest). */
   mode: AuthPanelMode;
-  onModeChange: (mode: AuthPanelMode) => void;
-  /** False while hidden (a closed dialog): transient state is cleared for the next showing. */
-  active?: boolean;
   /** Called as the success screen starts; the parent keeps the panel shown until onDone. */
   onAuthSuccess?: () => void;
   /** Sign-in, sign-up or guest start finished (after the success screen). */
   onDone: () => void;
   guestState: AppState;
   /**
-   * On the sign-in pages: the addresses of the other screens, shown as real links under the form
-   * (sign in <-> create account; "Not now" for a guest's upgrade), and how to follow one in-app.
+   * The addresses of the other screens, shown as real links under the form (sign in <-> create
+   * account; "Not now" for a guest's upgrade), and how to follow one in-app.
    */
-  pageLinks?: { login: string; signup: string; dismiss: string; navigate: (href: string) => void };
+  pageLinks: { login: string; signup: string; dismiss: string; navigate: (href: string) => void };
 }
 
 /** A plain left click follows the link in-app; modified/middle clicks keep the browser's own behaviour. */
@@ -65,11 +56,10 @@ const PAGE_LINK_CLASS = 'font-medium text-brand-text hover:underline underline-o
 
 /**
  * The sign-in / sign-up / guest-upgrade form with its success screen. Screen changes slide in;
- * the screen shown when the panel becomes active does not.
+ * the first screen shown does not.
  */
-export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, onDone, guestState, pageLinks }: AuthPanelProps) {
+export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks }: AuthPanelProps) {
   const isAnonymousUser = Boolean(guestState.currentUser?.isAnonymous);
-  const isAuthenticated = Boolean(guestState.currentUser);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -84,35 +74,23 @@ export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, on
   const [loading, setLoading] = useState(false);
   const [successTitle, setSuccessTitle] = useState('');
 
-  // Screen switches slide in (direction from MODE_ORDER); the screen shown when the panel
-  // becomes active does not. Derived during render so a new screen's first frame animates.
+  // Screen switches slide in (direction from MODE_ORDER); the first screen does not. Derived
+  // during render so a new screen's first frame animates.
   const [slide, setSlide] = useState<'left' | 'right' | null>(null);
   const [shownMode, setShownMode] = useState(mode);
-  const [wasActive, setWasActive] = useState(active);
-  if (active !== wasActive) {
-    setWasActive(active);
+  if (mode !== shownMode) {
     setShownMode(mode);
-    setSlide(null);
-  } else if (mode !== shownMode) {
-    setShownMode(mode);
-    setSlide(active ? (MODE_ORDER[mode] > MODE_ORDER[shownMode] ? 'right' : 'left') : null);
+    setSlide(MODE_ORDER[mode] > MODE_ORDER[shownMode] ? 'right' : 'left');
   }
   const slideClass = slide === 'right' ? 'animate-slide-in-right' : slide === 'left' ? 'animate-slide-in-left' : '';
 
-  // A guest's upgrade starts from their own username; transient state clears while hidden.
+  // A guest's upgrade starts from their own username.
   useEffect(() => {
-    if (active) {
-      if (isAnonymousUser) {
-        setUsername(guestState.currentUser?.username || '');
-        setAvatar('');
-      }
-    } else {
-      setLoading(false);
-      setErrorMsg('');
-      setSuccessMsg('');
-      setSuccessTitle('');
+    if (isAnonymousUser) {
+      setUsername(guestState.currentUser?.username || '');
+      setAvatar('');
     }
-  }, [active, isAnonymousUser, guestState.currentUser]);
+  }, [isAnonymousUser, guestState.currentUser]);
 
   useEffect(() => {
     setErrorMsg('');
@@ -147,8 +125,6 @@ export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, on
   const guestPoints = guestState.seasonPoints ?? guestState.totalPoints ?? 0;
   const guestHabitsCount = guestState.habits.length;
   const hasGuestData = guestPoints > 0 || guestHabitsCount > 0;
-
-  const switchMode = (next: AuthPanelMode) => onModeChange(next);
 
   /** Shows the success screen, then runs `next`. Reduced motion skips straight to `next`. */
   const finishWithSuccess = async (title: string, next: () => void) => {
@@ -259,17 +235,6 @@ export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, on
     }
   };
 
-  const resetForm = () => {
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
-    setUsername(isAnonymousUser ? (guestState.currentUser?.username || '') : '');
-    setAvatar('');
-    setErrorMsg('');
-    setSuccessMsg('');
-    setUsernameStatus(null);
-  };
-
   const guestButton = (
     <button
       type="button"
@@ -318,76 +283,9 @@ export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, on
         </div>
       )}
 
-      {/* 1. MANDATORY LANDING CHOICE SCREEN (3 Stacked Buttons, NO Form Fields) */}
-      {mode === 'choice' && !successTitle && (
-        <div key="choice" className={`space-y-4 py-2 ${slideClass}`}>
-          <div className="text-center space-y-1">
-            {/* Torch chip: a self-contained dark badge, intentionally the same in both themes. */}
-            <img src="/logo-torch.svg" alt="Ascend Logo" className="w-20 h-20 rounded-[22%] mx-auto shadow-lg shadow-emerald-500/15 mb-3 object-cover" />
-            <h2 className="section-title">
-              Ascend Self-Growth
-            </h2>
-            <p className="text-xs text-content-muted max-w-xs mx-auto">
-              Track habits and compete in leagues. Pick how you want to start.
-            </p>
-          </div>
-
-          <div className="space-y-3 pt-2">
-            {/* Option 1: Sign Up */}
-            <button
-              type="button"
-              onClick={() => { switchMode('signup'); resetForm(); }}
-              className="w-full p-4 bg-primary-600 hover:bg-primary-700 text-on-brand rounded-2xl transition-all flex items-center justify-between group"
-            >
-              <div className="text-left">
-                <div className="font-semibold text-sm flex items-center gap-2">
-                  <span>Sign Up</span>
-                </div>
-                <div className="text-micro text-primary-100/90 mt-0.5">
-                  Create an account with email and password
-                </div>
-              </div>
-              <UserPlus size={20} className="shrink-0" />
-            </button>
-
-            {/* Option 2: Login */}
-            <button
-              type="button"
-              onClick={() => { switchMode('login'); resetForm(); }}
-              className="w-full p-4 bg-bg-800 hover:bg-bg-700 text-content-primary rounded-2xl border border-overlay-default transition-all flex items-center justify-between group hover:border-overlay-strong"
-            >
-              <div className="text-left">
-                <div className="font-semibold text-sm flex items-center gap-2">
-                  <span>Sign In</span>
-                </div>
-                <div className="text-micro text-content-muted mt-0.5">
-                  Log in to your existing account
-                </div>
-              </div>
-              <LogIn size={20} className="text-content-muted group-hover:text-content-secondary transition-colors shrink-0" />
-            </button>
-
-            {/* Option 3: Continue as Guest */}
-            {guestButton}
-          </div>
-        </div>
-      )}
-
-      {/* 2. SUB-VIEW FORMS (Sign Up / Login / Upgrade) */}
-      {mode !== 'choice' && !successTitle && (
+      {/* Sign in / sign up / save progress */}
+      {!successTitle && (
         <div key={mode} className={`space-y-4 ${slideClass}`}>
-          {/* Header with Back to Options button for unauthenticated users */}
-          {!isAuthenticated && !pageLinks && (
-            <button
-              type="button"
-              onClick={() => switchMode('choice')}
-              className="text-xs font-medium text-content-muted hover:text-content-secondary flex items-center gap-1.5 transition-colors py-1"
-            >
-              <ArrowLeft size={14} />
-              <span>Back</span>
-            </button>
-          )}
-
           <div>
             <h2 className="section-title text-center">
               {mode === 'upgrade'
@@ -560,7 +458,7 @@ export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, on
             </button>
           </form>
 
-          {pageLinks && mode === 'login' && (
+          {mode === 'login' && (
             <p className="text-xs text-content-muted text-center pt-1">
               Don’t have an account?{' '}
               <a href={pageLinks.signup} onClick={inAppClick(pageLinks.signup, pageLinks.navigate)} className={PAGE_LINK_CLASS}>
@@ -569,7 +467,7 @@ export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, on
             </p>
           )}
 
-          {pageLinks && mode === 'signup' && (
+          {mode === 'signup' && (
             <div className="space-y-4 pt-1">
               {guestButton}
               <p className="text-xs text-content-muted text-center">
@@ -581,7 +479,7 @@ export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, on
             </div>
           )}
 
-          {pageLinks && mode === 'upgrade' && (
+          {mode === 'upgrade' && (
             <p className="text-xs text-content-muted text-center pt-1">
               <a href={pageLinks.dismiss} onClick={inAppClick(pageLinks.dismiss, pageLinks.navigate)} className={PAGE_LINK_CLASS}>
                 Not now

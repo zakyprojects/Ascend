@@ -4,7 +4,7 @@ import { AuthPanel, AuthPanelMode, authPanelTitle } from '@/components/ui/AuthPa
 import { authPathWithNext, nextFromSearch } from '@/lib/routes';
 
 /** The screens of the sign-in pages: /login, /signup, and /signup for a guest (save progress). */
-export type AuthScreen = 'login' | 'signup' | 'upgrade';
+export type AuthScreen = AuthPanelMode;
 
 const DOCUMENT_TITLES: Record<AuthScreen, string> = {
   login: 'Sign in · Ascend',
@@ -48,10 +48,6 @@ export function AuthPage({ screen, search, guestState, onAuthSuccess, onDone, on
     panelRef.current?.querySelector<HTMLInputElement>('input:not([type="hidden"]):not([type="checkbox"]):not([disabled])')?.focus();
   }, []);
 
-  const handleModeChange = (mode: AuthPanelMode) => {
-    if (mode === 'login' || mode === 'signup') onNavigate(links[mode]);
-  };
-
   return (
     <div className="relative isolate min-h-dvh bg-bg-900 flex items-center justify-center p-3 sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div aria-hidden="true" className="app-atmosphere" />
@@ -70,7 +66,6 @@ export function AuthPage({ screen, search, guestState, onAuthSuccess, onDone, on
         <div className="p-4">
           <AuthPanel
             mode={screen}
-            onModeChange={handleModeChange}
             onAuthSuccess={onAuthSuccess}
             onDone={onDone}
             guestState={guestState}

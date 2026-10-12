@@ -56,11 +56,11 @@ interface AppShellProps {
   navigationKind: NavigationKind;
   onViewChange: (view: View) => void;
   store: AppStore;
-  onOpenAuthModal: () => void;
+  onOpenAuth: () => void;
   children: ReactNode;
 }
 
-export function AppShell({ currentView, navigationKind, onViewChange, store, onOpenAuthModal, children }: AppShellProps) {
+export function AppShell({ currentView, navigationKind, onViewChange, store, onOpenAuth, children }: AppShellProps) {
   const [zoneSheetOpen, setZoneSheetOpen] = useState(false);
   const closeZoneSheet = useCallback(() => setZoneSheetOpen(false), []);
   const [quickLogOpen, setQuickLogOpen] = useState(false);
@@ -246,7 +246,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               isDark={isDarkTheme}
               onToggleTheme={store.toggleThemePreference}
               onOpenSettings={() => goTo(NAV_SETTINGS.id)}
-              onOpenAuth={onOpenAuthModal}
+              onOpenAuth={onOpenAuth}
               onLogout={handleLogoutClick}
             />
           )}
@@ -272,7 +272,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
             {currentUser && <NotificationCenter store={store} compact />}
             {!currentUser && (
               <button
-                onClick={onOpenAuthModal}
+                onClick={onOpenAuth}
                 className="btn-primary text-xs py-1 px-2.5 flex items-center gap-1"
               >
                 <LogIn size={13} />
@@ -348,7 +348,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
       <GuestLogoutWarningModal
         open={guestLogoutWarningOpen}
         onClose={() => setGuestLogoutWarningOpen(false)}
-        onSaveProgressFirst={onOpenAuthModal}
+        onSaveProgressFirst={onOpenAuth}
         onLogoutAnyway={handleGuestLogoutAnyway}
         isLoggingOut={isLoggingOut}
       />
@@ -379,7 +379,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               fullWidth
               onClick={() => {
                 setAccountOpen(false);
-                onOpenAuthModal();
+                onOpenAuth();
               }}
             >
               Create Account to Save Progress
@@ -391,7 +391,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               fullWidth
               onClick={() => {
                 setAccountOpen(false);
-                onOpenAuthModal();
+                onOpenAuth();
               }}
             >
               Sign In or Register

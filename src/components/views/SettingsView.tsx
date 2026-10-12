@@ -48,10 +48,10 @@ type SettingsSection =
 
 interface SettingsViewProps {
   store: AppStore;
-  onOpenAuthModal?: () => void;
+  onOpenAuth?: () => void;
 }
 
-export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
+export function SettingsView({ store, onOpenAuth }: SettingsViewProps) {
   const currentUser = store.state.currentUser;
   const isGuest = Boolean(currentUser?.isAnonymous);
   const userId = currentUser?.id || '';
@@ -348,9 +348,9 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               </p>
             </div>
           </div>
-          {onOpenAuthModal && (
+          {onOpenAuth && (
             <button
-              onClick={onOpenAuthModal}
+              onClick={onOpenAuth}
               className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs rounded-lg transition-colors shrink-0 w-full sm:w-auto"
             >
               Save Progress (Create Account)
@@ -959,7 +959,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
         open={showGuestLogoutWarning}
         onClose={() => setShowGuestLogoutWarning(false)}
         onSaveProgressFirst={() => {
-          if (onOpenAuthModal) onOpenAuthModal();
+          if (onOpenAuth) onOpenAuth();
         }}
         onLogoutAnyway={handleGuestLogoutAnyway}
         isLoggingOut={isLoggingOut}

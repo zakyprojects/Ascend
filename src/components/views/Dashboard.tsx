@@ -78,10 +78,10 @@ function ModuleCard({ tone, icon: Icon, title, onClick, children }: ModuleCardPr
 interface DashboardProps {
   store: AppStore;
   onViewChange: (view: View) => void;
-  onOpenAuthModal?: () => void;
+  onOpenAuth?: () => void;
 }
 
-export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardProps) {
+export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
   const habits = store.state.habits;
   const ninetyDayData = store.getLeagueData('ninetyDay');
   const seasonPoints = ninetyDayData.userPoints;
@@ -142,7 +142,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
       </div>
 
       {/* Guest Mode Banner on Dashboard */}
-      {store.state.currentUser?.isAnonymous && onOpenAuthModal && (
+      {store.state.currentUser?.isAnonymous && onOpenAuth && (
         <div className="p-4 rounded-xl border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0 text-warning-text">
@@ -157,7 +157,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               </p>
             </div>
           </div>
-          <button onClick={onOpenAuthModal} className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs rounded-lg transition-colors shrink-0 w-full sm:w-auto">
+          <button onClick={onOpenAuth} className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs rounded-lg transition-colors shrink-0 w-full sm:w-auto">
             Create Account
           </button>
         </div>
