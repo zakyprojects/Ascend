@@ -2,6 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Old hash links (#/habits) become paths (/habits) before the app or Supabase loads, without a
+      // new history entry. Only #/ hashes are routes: #access_token=..., #error=... and a bare # are
+      // left alone for the auth client. KEEP IN SYNC with src/lib/routes.ts (the app re-checks).
+      (function() {
+        try {
+          var h = location.hash;
+          if (h.indexOf('#/') !== 0) return;
+          var id = decodeURIComponent(h.slice(2)).replace(/^\/+|\/+$/g, '').toLowerCase();
+          var renamed = { dashboard: '', 'index.html': '', books: 'reading', prefrontal: 'prefrontal-cortex' };
+          if (Object.prototype.hasOwnProperty.call(renamed, id)) id = renamed[id];
+          if (!/^[a-z0-9-]*$/.test(id)) id = '';
+          history.replaceState(history.state, '', '/' + id + location.search);
+        } catch (e) {}
+      })();
+    </script>
     <!-- Favicons & App Icons -->
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
