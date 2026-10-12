@@ -28,10 +28,16 @@ export function TierView({ store }: { store: AppStore }) {
             {/* Current tier showcase */}
             <div className="card p-6 text-center">
               <div>
-                <div className="flex items-center justify-center mb-3">
+                <div
+                  className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4"
+                  style={{
+                    backgroundColor: `var(--rank-${currentTier.name.toLowerCase()}-bg)`,
+                    border: `2px solid var(--rank-${currentTier.name.toLowerCase()}-border)`,
+                  }}
+                >
                   {(() => {
                     const Icon = TIER_ICONS[currentTier.icon] ?? Compass;
-                    return <Icon size={32} strokeWidth={1.5} style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }} />;
+                    return <Icon size={36} strokeWidth={1.75} style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }} />;
                   })()}
                 </div>
                 <h2 className="font-serif text-5xl leading-none" style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }}>
@@ -80,7 +86,7 @@ export function TierView({ store }: { store: AppStore }) {
                 <Reveal key={tier.name} index={idx}>
                 <div
                   className={`p-4 flex items-center gap-4 ${
-                    isCurrent ? 'bg-overlay-subtle' : ''
+                    isCurrent ? 'bg-primary-500/5' : ''
                   } ${isUnlocked ? '' : 'opacity-50'}`}
                 >
                   {/* Rank number */}
@@ -89,7 +95,16 @@ export function TierView({ store }: { store: AppStore }) {
                   </div>
 
                   {/* Icon */}
-                  <div className="w-6 flex items-center justify-center shrink-0">
+                  <div
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                      !isUnlocked ? 'bg-overlay-subtle border border-overlay-default' : ''
+                    }`}
+                    style={
+                      isUnlocked
+                        ? { backgroundColor: `var(--rank-${tierKey}-bg)`, border: `1.5px solid var(--rank-${tierKey}-border)` }
+                        : undefined
+                    }
+                  >
                     {isUnlocked ? (
                       <Icon size={18} style={{ color: `var(--rank-${tierKey}-text)` }} />
                     ) : (
@@ -124,7 +139,9 @@ export function TierView({ store }: { store: AppStore }) {
 
                   {/* Checkmark if unlocked */}
                   {isUnlocked && !isCurrent && (
-                    <Check size={16} className="text-success-text shrink-0" />
+                    <div className="w-6 h-6 rounded-full bg-primary-500/15 flex items-center justify-center shrink-0">
+                      <Check size={14} className="text-success-text" />
+                    </div>
                   )}
                 </div>
                 </Reveal>
@@ -140,7 +157,7 @@ export function TierView({ store }: { store: AppStore }) {
             <div className="card divide-y divide-overlay-subtle">
               {store.state.pointsHistory.slice(0, 10).map((entry) => (
                 <div key={entry.id} className="scroll-rise flex items-center gap-3 p-3.5">
-                  <div className="w-10 text-right shrink-0">
+                  <div className={`w-10 h-8 rounded-lg flex items-center justify-center shrink-0 ${entry.amount > 0 ? 'bg-primary-500/15' : 'bg-error/15'}`}>
                     <span className={`figure text-xs ${entry.amount > 0 ? 'text-brand-text' : 'text-error'}`}>
                       {entry.amount > 0 ? '+' : ''}
                       {entry.amount}

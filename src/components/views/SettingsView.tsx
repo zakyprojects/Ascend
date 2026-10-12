@@ -334,8 +334,11 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
       {/* Guest Mode Banner */}
       {isGuest && (
-        <div className="p-4 rounded-xl border border-overlay-default flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-xl border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0 text-warning-text">
+              <User size={18} />
+            </div>
             <div>
               <p className="text-xs font-medium text-content-secondary">
                 Guest account ({currentUser?.username})
@@ -348,7 +351,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {onOpenAuthModal && (
             <button
               onClick={onOpenAuthModal}
-              className="btn-primary text-xs shrink-0 w-full sm:w-auto"
+              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs rounded-lg transition-colors shrink-0 w-full sm:w-auto"
             >
               Save Progress (Create Account)
             </button>
@@ -385,14 +388,14 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                     active
                       ? sec.danger
-                        ? 'bg-overlay-default text-rose-theme'
-                        : 'bg-overlay-default text-content-primary'
+                        ? 'bg-rose-500/15 text-rose-theme'
+                        : 'bg-primary-500/15 text-brand-text'
                       : sec.danger
-                      ? 'text-rose-theme-muted hover:bg-overlay-subtle hover:text-rose-theme'
+                      ? 'text-rose-theme-muted hover:bg-rose-500/10 hover:text-rose-theme'
                       : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
                   }`}
                 >
-                  <span className="shrink-0">
+                  <span className={`shrink-0 ${active ? (sec.danger ? 'text-rose-theme' : 'text-brand-text') : ''}`}>
                     {sec.icon}
                   </span>
                   <span className="truncate text-left">{sec.label}</span>
@@ -430,7 +433,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="figure text-sm tracking-widest text-content-primary px-1">
+                  <span className="figure text-sm tracking-widest text-brand-text bg-primary-500/10 px-3 py-1 rounded-lg border border-primary-500/20">
                     {currentUser?.uid || '100001'}
                   </span>
                   <button
@@ -457,7 +460,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     Leaderboard username
                   </label>
                   {isCooldownActive && (
-                    <span className="badge-neutral text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-lg">
+                    <span className="badge-amber text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-lg">
                       <Clock size={12} />
                       Cooldown: {hoursLeft}h {minsLeft}m left
                     </span>
@@ -480,11 +483,11 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   {usernameInput.trim() && usernameInput.trim() !== currentUser?.username && (
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                       {usernameStatus?.available ? (
-                        <span className="text-micro font-medium text-success-text flex items-center gap-1">
+                        <span className="badge-emerald text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-lg">
                           <Check size={12} /> Available
                         </span>
                       ) : usernameStatus?.reason ? (
-                        <span className="text-micro font-medium text-rose-theme flex items-center gap-1 truncate max-w-[110px]">
+                        <span className="text-micro font-medium text-rose-theme flex items-center gap-1 bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-500/20 truncate max-w-[110px]">
                           Not available
                         </span>
                       ) : null}
@@ -494,8 +497,10 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
                 {usernameMsg && (
                   <div
-                    className={`py-1 text-xs flex items-center gap-2 ${
-                      usernameMsg.type === 'success' ? 'text-success-text' : 'text-rose-theme'
+                    className={`p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                      usernameMsg.type === 'success'
+                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-success-text'
+                        : 'bg-rose-500/10 border border-rose-500/30 text-rose-theme'
                     }`}
                   >
                     {usernameMsg.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
@@ -629,7 +634,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       {passwordMsg && (
                         <div
                           className={`p-2 rounded-lg text-xs flex items-center gap-2 ${
-                            passwordMsg.type === 'success' ? 'text-success-text' : 'text-error-text'
+                            passwordMsg.type === 'success' ? 'bg-emerald-500/10 text-success-text' : 'bg-rose-500/10 text-error-text'
                           }`}
                         >
                           {passwordMsg.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
@@ -756,11 +761,11 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               </div>
 
                 {notifBrowserPerm === 'denied' && (
-                  <div className="p-3 bg-rose-500/5 border border-rose-500/30 rounded-xl flex items-start gap-2.5 text-xs">
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-theme flex items-start gap-2.5 text-xs">
                     <BellOff size={16} className="text-rose-theme shrink-0 mt-0.5" />
                     <div className="space-y-1">
                       <p className="font-medium text-rose-theme">Notifications are blocked by your browser</p>
-                      <p className="text-micro text-content-muted leading-relaxed">
+                      <p className="text-micro text-rose-theme-muted leading-relaxed">
                         Allow notifications for this site in your browser settings, or these alerts won't show.
                       </p>
                     </div>
@@ -785,11 +790,11 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   <div className="flex items-center gap-2">
                     <span className="item-name text-xs text-content-secondary">Public profile</span>
                     {(currentUser?.isProfilePublic ?? true) ? (
-                      <span className="text-2xs text-content-muted">
+                      <span className="badge-emerald text-2xs font-medium px-2 py-0.5 rounded-lg">
                         Public
                       </span>
                     ) : (
-                      <span className="text-2xs text-content-muted">
+                      <span className="badge-amber text-2xs font-medium px-2 py-0.5 rounded-lg">
                         Private
                       </span>
                     )}
@@ -817,11 +822,11 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   <div className="flex items-center gap-2">
                     <span className="item-name text-xs text-content-secondary">Partner invites</span>
                     {acceptsInvites ? (
-                      <span className="text-2xs text-content-muted">
+                      <span className="badge-emerald text-2xs font-medium px-2 py-0.5 rounded-lg">
                         Accepting
                       </span>
                     ) : (
-                      <span className="text-2xs text-content-muted">
+                      <span className="text-2xs bg-rose-500/10 text-rose-theme border border-rose-500/20 px-2 py-0.5 rounded-lg font-medium">
                         Blocked
                       </span>
                     )}
@@ -855,7 +860,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  {isDarkMode ? <Moon size={18} className="text-content-subtle" /> : <Sun size={18} className="text-content-subtle" />}
+                  {isDarkMode ? <Moon size={18} className="text-brand-text" /> : <Sun size={18} className="text-warning-text" />}
                   <div>
                     <p className="item-name text-xs text-content-secondary">Theme</p>
                     <p className="text-micro text-content-muted">
@@ -900,7 +905,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="px-4 py-2.5 hover:bg-overlay-subtle text-rose-theme font-medium text-xs rounded-xl border border-overlay-default transition-colors flex items-center justify-center gap-2"
+                  className="bg-rose-500/10 px-4 py-2.5 hover:bg-rose-500/20 text-rose-theme font-medium text-xs rounded-xl border border-rose-500/30 transition-colors flex items-center justify-center gap-2"
                 >
                   <Trash2 size={16} />
                   <span>Delete Account</span>

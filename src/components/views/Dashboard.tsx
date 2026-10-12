@@ -39,14 +39,26 @@ const LEAGUE_ICONS: Record<string, LucideIcon> = {
   Calendar, CalendarDays, Brain,
 };
 
+const MODULE_TONE_CLASS = {
+  emerald: 'badge-emerald',
+  amber: 'badge-amber',
+  purple: 'badge-purple',
+  rose: 'badge-rose',
+  red: 'badge-red',
+  sky: 'badge-sky',
+  cyan: 'badge-cyan',
+  indigo: 'badge-indigo',
+} as const;
+
 interface ModuleCardProps {
+  tone: keyof typeof MODULE_TONE_CLASS;
   icon: LucideIcon;
   title: string;
   onClick: () => void;
   children: React.ReactNode;
 }
 
-function ModuleCard({ icon: Icon, title, onClick, children }: ModuleCardProps) {
+function ModuleCard({ tone, icon: Icon, title, onClick, children }: ModuleCardProps) {
   return (
     <Card
       variant="interactive"
@@ -56,7 +68,9 @@ function ModuleCard({ icon: Icon, title, onClick, children }: ModuleCardProps) {
     >
       <div className="flex items-center justify-between">
         <span className="stat-label">{title}</span>
-        <Icon size={16} className="text-content-subtle" aria-hidden="true" />
+        <span className={`${MODULE_TONE_CLASS[tone]} w-8 h-8 rounded-lg flex items-center justify-center`}>
+          <Icon size={16} aria-hidden="true" />
+        </span>
       </div>
       {children}
     </Card>
@@ -137,9 +151,11 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
       {/* Guest Mode Banner on Dashboard */}
       {store.state.currentUser?.isAnonymous && onOpenAuthModal && (
-        <div className="p-4 rounded-xl border border-overlay-default flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-xl border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Save size={18} className="shrink-0 text-content-muted" aria-hidden="true" />
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0 text-warning-text">
+              <Save size={18} aria-hidden="true" />
+            </div>
             <div>
               <p className="text-xs font-medium text-content-secondary">
                 You're in a guest session ({store.state.currentUser.username})
@@ -149,7 +165,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               </p>
             </div>
           </div>
-          <button onClick={onOpenAuthModal} className="btn-primary text-xs shrink-0 w-full sm:w-auto">
+          <button onClick={onOpenAuthModal} className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs rounded-lg transition-colors shrink-0 w-full sm:w-auto">
             Create Account
           </button>
         </div>
@@ -249,7 +265,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                             <Check size={18} />
                           </button>
                           <span className="item-name text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
-                            {isLinked && <BookOpen size={13} className="text-brand-text shrink-0" />}
+                            {isLinked && <BookOpen size={13} className="text-warning-text shrink-0" />}
                             <span>{habit.name}</span>
                           </span>
                           {isLinked && habit.points === 0 ? (
@@ -344,35 +360,35 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             <Reveal index={5}>
               <h2 className="section-title mb-3">Your Modules</h2>
               <div className="grid-cards gap-3">
-                <ModuleCard icon={Activity} title="Exercise" onClick={() => onViewChange('exercise')}>
+                <ModuleCard tone="emerald" icon={Activity} title="Exercise" onClick={() => onViewChange('exercise')}>
                   <div>
                     <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={weeklyExerciseMins} /> <span className="font-sans text-xs text-content-muted">mins this week</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={weeklyWorkouts.length} /> sessions completed</div>
                   </div>
                 </ModuleCard>
 
-                <ModuleCard icon={BookMarked} title="Reading" onClick={() => onViewChange('reading')}>
+                <ModuleCard tone="amber" icon={BookMarked} title="Reading" onClick={() => onViewChange('reading')}>
                   <div>
                     <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={activeBooks} /> <span className="font-sans text-xs text-content-muted">books in progress</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={finishedBooks} /> finished total</div>
                   </div>
                 </ModuleCard>
 
-                <ModuleCard icon={Zap} title="Skills" onClick={() => onViewChange('skills')}>
+                <ModuleCard tone="purple" icon={Zap} title="Skills" onClick={() => onViewChange('skills')}>
                   <div>
                     <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={totalSkillHours} decimals={1} /> <span className="font-sans text-xs text-content-muted">hrs practice</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={store.state.skills.length} /> skills tracked</div>
                   </div>
                 </ModuleCard>
 
-                <ModuleCard icon={ShieldAlert} title="Bad Habits" onClick={() => onViewChange('bad-habits')}>
+                <ModuleCard tone="rose" icon={ShieldAlert} title="Bad Habits" onClick={() => onViewChange('bad-habits')}>
                   <div>
                     <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={badHabitCount} /> <span className="font-sans text-xs text-content-muted">habits reduced</span></div>
                     <div className="text-micro text-content-disabled">Escalating penalties enabled</div>
                   </div>
                 </ModuleCard>
 
-                <ModuleCard icon={HeartPulse} title="Recovery" onClick={() => onViewChange('recovery')}>
+                <ModuleCard tone="red" icon={HeartPulse} title="Recovery" onClick={() => onViewChange('recovery')}>
                   <div>
                     <div className="item-name text-base leading-snug">
                       {activeAddiction ? activeAddiction.title : 'Sobriety Tracker'}
@@ -381,14 +397,14 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                   </div>
                 </ModuleCard>
 
-                <ModuleCard icon={Timer} title="Focus" onClick={() => onViewChange('prefrontal')}>
+                <ModuleCard tone="cyan" icon={Timer} title="Focus" onClick={() => onViewChange('prefrontal')}>
                   <div>
                     <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={weeklyFocusMins} /> <span className="font-sans text-xs text-content-muted">focus mins this week</span></div>
                     <div className="text-micro text-content-disabled">Pomodoro, decisions & emotions</div>
                   </div>
                 </ModuleCard>
 
-                <ModuleCard icon={Clock} title="Time Tracker" onClick={() => onViewChange('time-tracker')}>
+                <ModuleCard tone="indigo" icon={Clock} title="Time Tracker" onClick={() => onViewChange('time-tracker')}>
                   <div>
                     <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums">
                       <AutoNum text={todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'} />{' '}
@@ -421,28 +437,37 @@ function greeting(): string {
 
 function moodColor(mood: string): string {
   const colors: Record<string, string> = {
-    happy: '#34d399',
+    happy: '#fbbf24',
     neutral: '#94a3b8',
-    sad: '#fb7185',
-    motivated: '#10b981',
+    sad: '#60a5fa',
+    motivated: '#34d399',
   };
   return colors[mood] ?? '#94a3b8';
 }
 
+const LEAGUE_TONE: Record<LeagueType, keyof typeof MODULE_TONE_CLASS> = {
+  weekly: 'emerald',
+  monthly: 'sky',
+  ninetyDay: 'purple',
+};
+
 function LeagueRow({ type, rank, points }: { type: LeagueType; rank: number; points: number }) {
+  const tone = LEAGUE_TONE[type];
   const config = LEAGUE_CONFIG[type];
   const Icon = LEAGUE_ICONS[config.icon] ?? Calendar;
   const label = type === 'weekly' ? 'Weekly' : type === 'monthly' ? 'Monthly' : `${getSeasonLabel(leagueNow())} (90-Day)`;
 
   return (
     <div className="flex items-center gap-3 px-4 py-3">
-      <Icon size={16} className="shrink-0 text-content-muted" aria-hidden="true" />
+      <span className={`${MODULE_TONE_CLASS[tone]} w-8 h-8 rounded-lg flex items-center justify-center shrink-0`}>
+        <Icon size={15} aria-hidden="true" />
+      </span>
       <div className="min-w-0 flex-1">
         <div className="item-name truncate text-sm text-content-secondary">{label}</div>
         <LeagueCountdown type={type} className="block truncate font-mono text-2xs text-content-disabled" />
       </div>
       <div className="text-right">
-        <div className="figure text-lg text-content-primary leading-none">
+        <div className="figure text-lg leading-none" style={{ color: `var(--badge-${tone}-text)` }}>
           #<CountUp value={rank} />
         </div>
         <div className="mt-1 figure text-2xs text-content-muted"><CountUp value={points} /> pts</div>
