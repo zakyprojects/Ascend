@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { ProgressRing } from './charts';
+import type { ChartTone } from './charts/chartShared';
 import { cx } from './primitives/shared';
 
 export interface PageHeroStat {
@@ -7,13 +8,15 @@ export interface PageHeroStat {
   value: ReactNode;
   /** A short line under the value (unit, context). */
   hint?: ReactNode;
+  /** Colour for the value (e.g. text-brand-text, text-secondary-400); neutral when left out. */
+  valueClassName?: string;
 }
 
 export interface PageHeroProps {
   /** Optional progress ring before the headline number (today's share, a weekly target). */
-  ring?: { value: number; max: number; label: string; center: ReactNode; caption?: string };
+  ring?: { value: number; max: number; label: string; center: ReactNode; caption?: string; tone?: ChartTone };
   /** The one number the page is about, set large in the serif. */
-  lead: { label: string; value: ReactNode; hint?: ReactNode };
+  lead: { label: string; value: ReactNode; hint?: ReactNode; valueClassName?: string };
   /** Supporting numbers, shown as quiet columns divided by hairlines (no boxes). */
   stats?: PageHeroStat[];
   /** Right-hand slot, usually the page's points meter. */
@@ -38,7 +41,7 @@ export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }:
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:gap-8">
           <div className="flex items-center gap-5">
             {ring && (
-              <ProgressRing value={ring.value} max={Math.max(ring.max, 1)} label={ring.label} size={104} thickness={8}>
+              <ProgressRing value={ring.value} max={Math.max(ring.max, 1)} label={ring.label} size={104} thickness={8} tone={ring.tone}>
                 <span className="text-3xl font-medium leading-none text-content-primary tabular-nums">
                   {ring.center}
                 </span>
@@ -47,7 +50,7 @@ export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }:
             )}
             <div className="min-w-0">
               <div className="stat-label">{lead.label}</div>
-              <div className="mt-1 font-serif text-5xl leading-none text-content-primary tabular-nums">{lead.value}</div>
+              <div className={cx('mt-1 font-serif text-5xl leading-none tabular-nums', lead.valueClassName ?? 'text-content-primary')}>{lead.value}</div>
               {lead.hint && <div className="mt-2 text-sm text-content-muted">{lead.hint}</div>}
             </div>
           </div>
@@ -57,7 +60,7 @@ export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }:
               {stats.map((stat) => (
                 <div key={stat.label} className="min-w-0 sm:px-6 sm:first:pl-0 md:first:pl-8 sm:[&:not(:first-child)]:border-l sm:[&:not(:first-child)]:border-overlay-subtle">
                   <dt className="stat-label">{stat.label}</dt>
-                  <dd className="mt-1 text-3xl font-medium leading-none text-content-primary tabular-nums">{stat.value}</dd>
+                  <dd className={cx('mt-1 text-3xl font-medium leading-none tabular-nums', stat.valueClassName ?? 'text-content-primary')}>{stat.value}</dd>
                   {stat.hint && <dd className="mt-0.5 text-micro text-content-muted">{stat.hint}</dd>}
                 </div>
               ))}

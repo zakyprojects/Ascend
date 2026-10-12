@@ -55,7 +55,7 @@ export function ApplyTemplateModal({
           {/* Target Date Picker */}
           <div className="mb-3">
             <label htmlFor="tt-apply-date" className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
-              <Calendar size={13} className="text-content-subtle" />
+              <Calendar size={13} className="text-success-text" />
               <span>Target Schedule Date</span>
             </label>
             <input
@@ -85,7 +85,7 @@ export function ApplyTemplateModal({
                   onClick={() => setSelectedTemplateId(tpl.id)}
                   className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-primary-500/5 border-primary-500/60 text-content-primary'
+                      ? 'bg-emerald-500/15 border-emerald-500/60 text-content-primary'
                       : 'border-overlay-default text-content-tertiary hover:bg-overlay-subtle'
                   }`}
                 >
@@ -95,7 +95,7 @@ export function ApplyTemplateModal({
                       {tpl.blocks?.length || 0} scheduled blocks ({formatDurationHuman(totalMins)})
                     </p>
                   </div>
-                  <div className="figure text-2xs text-content-muted shrink-0">
+                  <div className="figure text-2xs text-success-text shrink-0 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg">
                     {tpl.activeDays?.length || 0} active days
                   </div>
                 </button>
@@ -115,7 +115,7 @@ export function ApplyTemplateModal({
               onClick={() => setMode('merge')}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 mode === 'merge'
-                  ? 'bg-primary-500/5 border-primary-500/60 text-content-primary font-medium'
+                  ? 'bg-emerald-500/15 border-emerald-500/60 text-success-text font-medium'
                   : 'border-overlay-default text-content-muted hover:bg-overlay-subtle'
               }`}
             >
@@ -133,7 +133,7 @@ export function ApplyTemplateModal({
               onClick={() => setMode('replace')}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                 mode === 'replace'
-                  ? 'bg-primary-500/5 border-primary-500/60 text-content-primary font-medium'
+                  ? 'bg-amber-500/15 border-amber-500/60 text-warning-text font-medium'
                   : 'border-overlay-default text-content-muted hover:bg-overlay-subtle'
               }`}
             >

@@ -270,7 +270,7 @@ export function TemplateEditorModal({
                     onClick={() => toggleDay(day)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-overlay-default border-overlay-strong text-content-primary'
+                        ? 'bg-emerald-600/20 border-emerald-500/70 text-success-text'
                         : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
                     }`}
                   >
@@ -290,7 +290,7 @@ export function TemplateEditorModal({
               <button
                 type="button"
                 onClick={handleOpenAddBlock}
-                className="flex items-center gap-1 text-xs font-medium text-content-secondary hover:text-content-primary cursor-pointer"
+                className="flex items-center gap-1 text-xs font-medium text-success-text hover:opacity-80 cursor-pointer"
               >
                 <Plus size={13} />
                 <span>Add Block</span>
@@ -316,8 +316,11 @@ export function TemplateEditorModal({
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div
-                          className="w-5 flex items-center justify-center shrink-0"
-                          style={{ color: resolvedColor }}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: `${resolvedColor}25`,
+                            color: resolvedColor,
+                          }}
                         >
                           <ActivityIcon iconName={act?.icon || 'Clock'} size={16} />
                         </div>

@@ -95,6 +95,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
           lead={{
             label: 'To do today',
             value: <CountUp value={todayHabits.length} />,
+            valueClassName: 'text-secondary-400',
             hint: todayHabits.length === 0 && habits.length > 0 ? 'All clear for today.' : undefined,
           }}
           stats={[{ label: 'Total habits', value: <CountUp value={habits.length} /> }]}
@@ -111,8 +112,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
             <Disclosure title="Missed habit penalties by tier" icon={AlertTriangle} tone="warning">
               <p>
                 Missing a preset habit deducts points equal to its value (1st miss = -1x).
-                For <span className="text-content-secondary font-medium">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="figure text-content-secondary">1.5x</span>.
-                For <span className="text-content-secondary font-medium">Performer tier and above</span>, escalation caps at <span className="figure text-content-secondary">2.5x</span>.
+                For <span className="text-content-secondary font-medium">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="figure text-warning-text">1.5x</span>.
+                For <span className="text-brand-text font-medium">Performer tier and above</span>, escalation caps at <span className="figure text-rose-theme">2.5x</span>.
                 Completing the habit breaks the miss streak and resets the penalty to 1x.
               </p>
             </Disclosure>
@@ -134,7 +135,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
           <div className="space-y-3">
             {todayHabits.length > 0 && (
               <div>
-                <h2 className="section-title mb-3">
+                <h2 className="section-title mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-secondary-500" />
                   To do
                 </h2>
                 <div className="space-y-2.5">
@@ -147,7 +149,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
 
             {completedToday.length > 0 && (
               <div>
-                <h2 className="section-title mb-3">
+                <h2 className="section-title mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary-500" />
                   Completed today
                 </h2>
                 <div className="space-y-2.5">
@@ -169,7 +172,9 @@ export function HabitTracker({ store }: { store: AppStore }) {
               onClick={() => setAddMode('preset')}
               className="card p-4 card-hover w-full flex items-center gap-3 text-left border-overlay-medium shadow-sm"
             >
-              <BookMarked size={18} className="text-content-muted shrink-0" />
+              <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center shrink-0">
+                <BookMarked size={18} className="text-brand-text" />
+              </div>
               <div className="flex-1">
                 <h3 className="item-name">Browse preset habits</h3>
                 <p className="text-xs text-content-disabled mt-0.5">Pick from the library. Preset habits earn points.</p>
@@ -258,7 +263,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
                   onClick={() => setFrequency('daily')}
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     frequency === 'daily'
-                      ? 'bg-overlay-default text-content-primary border border-overlay-strong'
+                      ? 'bg-primary-500/15 text-brand-text border border-primary-500/30'
                       : 'bg-bg-700 text-content-secondary border border-overlay-medium shadow-sm'
                   }`}
                 >
@@ -268,7 +273,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
                   onClick={() => setFrequency('weekly')}
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     frequency === 'weekly'
-                      ? 'bg-overlay-default text-content-primary border border-overlay-strong'
+                      ? 'bg-primary-500/15 text-brand-text border border-primary-500/30'
                       : 'bg-bg-700 text-content-secondary border border-overlay-medium shadow-sm'
                   }`}
                 >
@@ -429,13 +434,13 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             {isLinked && (
-              <BookOpen size={14} className="text-content-subtle shrink-0" />
+              <BookOpen size={14} className="text-warning-text shrink-0" />
             )}
             <h3 className={`item-name truncate ${done ? 'text-content-disabled line-through' : 'text-content-secondary'}`}>
               {habit.name}
             </h3>
             {isLinked ? (
-              <span className="text-xs text-content-muted shrink-0">
+              <span className="badge bg-warning-soft text-warning-text border border-[var(--badge-beta-border)] shrink-0">
                 Reading Hub
               </span>
             ) : (
@@ -462,7 +467,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
               </div>
             )}
             {isLinked ? (
-              <div className="text-xs text-content-muted flex items-center gap-1">
+              <div className="text-xs text-warning-text font-medium flex items-center gap-1">
                 <span>Auto-synced</span>
                 {habit.points === 0 ? (
                   <span className="text-content-subtle">For habit tracking, no points</span>
@@ -482,7 +487,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
             const consecutiveMisses = getHabitConsecutiveMisses(habit);
             if (!habit.isPreset || consecutiveMisses <= 0) return null;
             return (
-              <div className="mt-1.5 flex items-center gap-1 text-micro text-rose-theme w-fit font-medium">
+              <div className="mt-1.5 flex items-center gap-1 text-micro text-rose-theme bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-500/20 w-fit font-medium">
                 <AlertTriangle size={11} className="shrink-0" />
                 <span>
                   {consecutiveMisses} consecutive miss{consecutiveMisses > 1 ? 'es' : ''} (Next miss = {getMissPenaltyMultiplier(consecutiveMisses + 1, seasonPoints)}x penalty)

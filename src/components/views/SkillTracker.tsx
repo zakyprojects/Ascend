@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Flame, Target } from 'lucide-react';
+import { Plus, Trash2, Flame, Target, Clock } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -191,13 +191,13 @@ export function SkillTracker({ store }: { store: AppStore }) {
   const getLevelBadgeStyle = (level: SkillLevel) => {
     switch (level) {
       case 'beginner':
-        return 'badge-neutral';
+        return 'badge-emerald';
       case 'intermediate':
-        return 'badge-neutral';
+        return 'badge-blue';
       case 'advanced':
-        return 'badge-neutral';
+        return 'badge-purple';
       case 'expert':
-        return 'badge-neutral';
+        return 'badge-amber';
     }
   };
 
@@ -253,10 +253,10 @@ export function SkillTracker({ store }: { store: AppStore }) {
       <Reveal index={0}>
         <PageHero
           ariaLabel="Your practice"
-          lead={{ label: 'Total practice', value: <AutoNum text={totalPracticeHours} />, hint: 'hours' }}
+          lead={{ label: 'Total practice', value: <AutoNum text={totalPracticeHours} />, hint: 'hours', valueClassName: 'text-blue-theme' }}
           stats={[
-            { label: 'Skills', value: <CountUp value={skills.length} /> },
-            { label: 'Sessions', value: <CountUp value={skillLogs.length} /> },
+            { label: 'Skills', value: <CountUp value={skills.length} />, valueClassName: 'text-purple-hierarchy' },
+            { label: 'Sessions', value: <CountUp value={skillLogs.length} />, valueClassName: 'text-success-text' },
           ]}
           side={<CapMeterConnected state={store.state} capId="skills" bare />}
         />
@@ -276,7 +276,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                 <BarChart
                   data={practiceDays.map((day, i) => ({ label: formatWeekdayShort(day), value: practiceMinutes[i] }))}
                   label={`Skill practice minutes per day, last 7 days: ${practiceWeekTotal} total`}
-                  tone="brand"
+                  tone="purple"
                   highlightIndex={practiceDays.length - 1}
                   formatTooltip={(datum, i) => `${formatWeekdayDate(practiceDays[i])}: ${datum.value} mins`}
                 />
@@ -299,8 +299,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     onClick={() => setSelectedCategory(cat)}
                     className={`px-2.5 py-1 rounded-lg text-xs transition-all ${
                       selectedCategory === cat
-                        ? 'bg-overlay-default text-content-primary font-medium'
-                        : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
+                        ? 'bg-purple-500/20 text-purple-hierarchy border border-purple-500/40 font-medium'
+                        : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle border border-transparent'
                     }`}
                   >
                     {cat}
@@ -326,7 +326,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
               <p className="text-sm text-content-disabled">No skills found in category &ldquo;{selectedCategory}&rdquo;</p>
               <button
                 onClick={() => setSelectedCategory('All')}
-                className="text-xs text-content-secondary hover:text-content-primary hover:underline mt-2 inline-block font-medium"
+                className="text-xs text-purple-hierarchy hover:underline mt-2 inline-block font-medium"
               >
                 Show all skills
               </button>
@@ -357,7 +357,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       </div>
 
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`badge capitalize px-2.5 py-0.5 text-xs ${getLevelBadgeStyle(level)}`}>
+                        <span className={`badge capitalize font-semibold px-2.5 py-0.5 text-xs ${getLevelBadgeStyle(level)}`}>
                           {level}
                         </span>
                         <div className="flex items-center gap-2 text-xs text-content-disabled">
@@ -382,7 +382,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                           <span>{progressText}</span>
                           <span className="figure">{Math.round(progressPercent)}%</span>
                         </div>
-                        <ProgressBar value={progressPercent} label="Level progress" tone="brand" size="sm" />
+                        <ProgressBar value={progressPercent} label="Level progress" tone="purple" size="sm" />
                       </div>
                     </div>
 
@@ -420,6 +420,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       return (
                         <div key={log.id} className="enter-item p-3.5 flex items-start justify-between transition-colors hover:bg-overlay-subtle">
                           <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0 mt-0.5">
+                              <Clock size={18} />
+                            </div>
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="item-name text-content-secondary text-sm">{skill?.name || 'Skill'}</span>
@@ -430,7 +433,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="figure text-xs text-success-text">
+                            <span className="badge-purple figure text-xs px-2.5 py-1 rounded-full">
                               +{log.pointsAwarded} pts
                             </span>
                             <button
@@ -566,7 +569,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
           <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between border border-overlay-default">
             <span>Points to earn:</span>
-            <span className="figure text-success-text">+{skillPreviewPoints} pts</span>
+            <span className="figure text-purple-hierarchy">+{skillPreviewPoints} pts</span>
           </div>
 
           <div className="flex gap-2 pt-2">

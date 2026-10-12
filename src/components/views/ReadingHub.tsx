@@ -21,7 +21,7 @@ import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Dialog, EmptyState, PageColumns, ProgressBar, Tabs } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
-import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
+import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
 import { todayKey, formatDateLong, parseDate, getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
@@ -363,8 +363,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
   const renderCategoryBadge = (category?: BookCategory | string, compact = false) => {
     if (!category) return null;
+    const meta = getCategoryMeta(category as BookCategory);
     return (
-      <span className={compact ? 'text-2xs text-content-muted' : 'text-xs text-content-muted'}>
+      <span className={`badge ${meta.badgeClass} ${compact ? 'text-2xs px-2 py-0.5' : ''}`}>
         {category}
       </span>
     );
@@ -382,7 +383,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           {readingHabit ? (
             <button
               onClick={() => setUnlinkConfirmOpen(true)}
-              className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-2 whitespace-nowrap"
+              className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-2 border-emerald-500/30 text-success-text bg-emerald-500/10 hover:bg-emerald-500/20 whitespace-nowrap"
             >
               <Check size={14} className="text-success-text shrink-0" />
               <span className="whitespace-nowrap font-medium">Linked to habits</span>
@@ -409,11 +410,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
       <Reveal index={0}>
         <PageHero
           ariaLabel="Your reading"
-          lead={{ label: 'Reading streak', value: <CountUp value={streak} />, hint: 'days in a row' }}
+          lead={{ label: 'Reading streak', value: <CountUp value={streak} />, hint: 'days in a row', valueClassName: 'text-warning-text' }}
           stats={[
-            { label: 'Reading now', value: <CountUp value={inProgressBooks.length} /> },
-            { label: 'Finished', value: <CountUp value={completedBooks.length} /> },
-            { label: 'Completion points', value: <>+<CountUp value={totalCompletedPoints} /></> },
+            { label: 'Reading now', value: <CountUp value={inProgressBooks.length} />, valueClassName: 'text-brand-text' },
+            { label: 'Finished', value: <CountUp value={completedBooks.length} />, valueClassName: 'text-success-text' },
+            { label: 'Completion points', value: <>+<CountUp value={totalCompletedPoints} /></>, valueClassName: 'text-purple-hierarchy' },
           ]}
           side={<CapMeterConnected state={store.state} capId="reading" bare />}
         />
@@ -433,7 +434,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 <BarChart
                   data={pageDays.map((day, i) => ({ label: formatWeekdayShort(day), value: pagesByDay[i] }))}
                   label={`Pages read per day, last 7 days: ${pagesThisWeek} total`}
-                  tone="brand"
+                  tone="warning"
                   highlightIndex={pageDays.length - 1}
                   formatTooltip={(datum, i) => `${formatWeekdayDate(pageDays[i])}: ${datum.value} pages`}
                 />
@@ -540,7 +541,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   return (
                     <div
                       key={book.id}
-                      className="card p-5 space-y-4 flex flex-col justify-between"
+                      className="card p-5 space-y-4 border border-amber-500/20 bg-amber-500/[0.03] hover:border-amber-500/40 transition-colors flex flex-col justify-between"
                     >
                       <div>
                         <div className="flex items-start justify-between gap-3">
@@ -548,7 +549,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             <div className="flex items-center gap-2 mb-1.5">
                               {renderCategoryBadge(book.category, true)}
                               {book.isCurated && (
-                                <span className="text-2xs text-content-muted">
+                                <span className="badge badge-amber text-2xs">
                                   Curated
                                 </span>
                               )}
@@ -578,15 +579,15 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             <span className="figure text-content-muted">
                               {current} / {total} {unit}
                             </span>
-                            <span className="figure text-content-secondary">{percent}%</span>
+                            <span className="figure text-warning-text">{percent}%</span>
                           </div>
-                          <ProgressBar value={percent} label="Reading progress" tone="brand" />
+                          <ProgressBar value={percent} label="Reading progress" tone="warning" />
                         </div>
 
                         {/* Target Date */}
                         {book.targetFinishDate && (
                           <div className="flex items-center gap-1.5 text-micro text-content-muted mt-2.5">
-                            <Calendar size={12} className="text-content-subtle" />
+                            <Calendar size={12} className="text-warning-text" />
                             <span>Target Finish: {formatDateLong(book.targetFinishDate)}</span>
                           </div>
                         )}
@@ -612,7 +613,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             }}
                             className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5 whitespace-nowrap"
                           >
-                            <CheckCircle2 size={14} className="shrink-0" />
+                            <CheckCircle2 size={14} className="text-success-text shrink-0" />
                             <span>Finish</span>
                           </button>
                         </div>
@@ -725,13 +726,13 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 return (
                   <div
                     key={curated.id}
-                    className="card p-5 flex flex-col justify-between space-y-4"
+                    className="card p-5 flex flex-col justify-between space-y-4 hover:border-amber-500/40 transition-colors"
                   >
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
                         {renderCategoryBadge(curated.category, true)}
                         <span
-                          className="figure text-2xs text-content-muted"
+                          className="badge badge-amber figure text-2xs"
                           title="Needs reading in Ascend over at least 7 days, with at least 5 logged reading days"
                         >
                           +{READING_POINTS.completionBonus} pts on finish
@@ -757,9 +758,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         <span
                           className={`badge text-2xs px-2 py-0.5 ${
                             userBook.status === 'completed'
-                              ? 'badge-neutral'
+                              ? 'badge-emerald'
                               : userBook.status === 'reading'
-                              ? 'badge-neutral'
+                              ? 'badge-amber'
                               : 'bg-overlay-subtle text-content-muted'
                           }`}
                         >
@@ -802,17 +803,17 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 {filteredCompleted.map((book) => (
                   <div
                     key={book.id}
-                    className="card p-5 space-y-3"
+                    className="card p-5 space-y-3 border border-emerald-500/20"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
                           {renderCategoryBadge(book.category, true)}
-                          <span className="badge badge-neutral text-2xs">
-                            Completed
+                          <span className="badge badge-emerald text-2xs flex items-center gap-1">
+                            <CheckCircle2 size={10} /> Completed
                           </span>
                           {book.pointsAwarded ? (
-                            <span className="figure text-2xs text-content-muted">
+                            <span className="badge badge-amber figure text-2xs">
                               +{book.pointsAwarded} pts bonus
                             </span>
                           ) : (
@@ -831,7 +832,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       <div className="flex items-center gap-2 shrink-0">
                         {book.dateCompleted && (
                           <span className="text-xs text-content-muted flex items-center gap-1">
-                            <Calendar size={12} className="text-content-subtle" />
+                            <Calendar size={12} className="text-success-text" />
                             {formatDateLong(book.dateCompleted)}
                           </span>
                         )}
@@ -847,8 +848,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     </div>
 
                     {book.reflection && (
-                      <div className="text-xs text-content-tertiary leading-relaxed space-y-1">
-                        <span className="font-medium text-content-muted block text-micro">
+                      <div className="p-3.5 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] text-xs text-content-tertiary leading-relaxed space-y-1">
+                        <span className="font-medium text-success-text block text-micro">
                           Key takeaway
                         </span>
                         <p>{book.reflection}</p>
@@ -861,7 +862,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       </span>
                       <button
                         onClick={() => store.restartBook(book.id)}
-                        className={`text-xs text-content-secondary hover:text-content-primary font-medium transition-colors ${TAP_TARGET}`}
+                        className={`text-xs text-warning-text hover:text-warning-text-muted font-medium transition-colors ${TAP_TARGET}`}
                       >
                         Re-read book
                       </button>
@@ -1176,10 +1177,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleFinishSubmit} className="space-y-4">
           {finishEligibility?.isEligible ? (
-            <div className="p-3.5 border border-overlay-default rounded-xl flex items-center gap-3 text-content-secondary">
-              <CheckCircle2 size={18} className="shrink-0 text-success-text" />
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-3 text-warning-text">
+              <CheckCircle2 size={18} className="shrink-0 text-warning-text" />
               <div className="text-xs space-y-0.5">
-                <span className="font-semibold block text-content-primary">Nice work finishing it.</span>
+                <span className="font-semibold block">Nice work finishing it.</span>
                 <span>
                   You get the +{READING_POINTS.completionBonus} point completion bonus.
                 </span>

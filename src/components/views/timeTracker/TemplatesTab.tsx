@@ -157,7 +157,7 @@ export function TemplatesTab({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="section-title text-xl leading-tight flex items-center gap-2">
-            <Layers className="text-content-subtle" size={18} />
+            <Layers className="text-success-text" size={18} />
             <span>Recurring Templates</span>
           </h2>
           <p className="text-xs text-content-muted mt-0.5">
@@ -172,7 +172,7 @@ export function TemplatesTab({
                 store.restoreTimeTrackerTemplate('template-default-weekday');
                 showSuccessToast('Template Restored', 'Standard Productive Day blueprint has been restored.');
               }}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-content-secondary hover:text-content-primary hover:bg-overlay-subtle border border-overlay-default rounded-xl transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-success-text bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl transition-colors cursor-pointer"
             >
               <RotateCcw size={13} />
               <span>Restore Default Blueprint</span>
@@ -191,7 +191,7 @@ export function TemplatesTab({
 
       {/* Blueprint Philosophy / 8-8-8 Guide */}
       <div className="p-4 rounded-2xl border border-overlay-subtle flex flex-col xl:flex-row gap-3 items-start">
-        <Compass className="text-content-subtle shrink-0 mt-1" size={18} />
+        <Compass className="text-success-text shrink-0 mt-1" size={18} />
         <div className="flex-1 w-full">
           <h3 className="section-title mb-1.5">The 8+8+8 rule</h3>
           <p className="text-xs text-content-tertiary leading-relaxed mb-3 max-w-3xl">
@@ -257,7 +257,7 @@ export function TemplatesTab({
                   }}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-secondary border border-overlay-default text-xs font-semibold transition-all cursor-pointer"
                 >
-                  <RotateCcw size={14} />
+                  <RotateCcw size={14} className="text-success-text" />
                   <span>Restore Default Blueprint</span>
                 </button>
               )}
@@ -291,7 +291,7 @@ export function TemplatesTab({
                           {sortedBlocks.length} block(s)
                         </span>
                         <span>·</span>
-                        <span className="figure text-content-tertiary">
+                        <span className="figure text-success-text">
                           {formatDurationHuman(totalMinutes)} planned
                         </span>
                       </div>
@@ -449,7 +449,7 @@ export function TemplatesTab({
 
                   <button
                     onClick={() => onOpenApplyTemplateModal(tpl.id)}
-                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl hover:bg-overlay-subtle text-content-secondary border border-overlay-default text-xs font-medium transition-colors cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-success-text border border-emerald-500/30 text-xs font-medium transition-colors cursor-pointer"
                     title="Apply to another date"
                   >
                     <Calendar size={13} />

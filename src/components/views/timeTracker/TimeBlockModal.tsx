@@ -224,15 +224,15 @@ export function TimeBlockModal({
                   onClick={() => handleActivityClick(act.id)}
                   className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all relative ${
                     isPrimary
-                      ? 'bg-primary-500/5 border-primary-500/60 text-content-primary'
+                      ? 'bg-emerald-500/15 border-emerald-500/60 text-content-primary'
                       : isSecondary
-                      ? 'bg-overlay-default border-overlay-strong text-content-primary'
+                      ? 'bg-overlay-default border-emerald-500/40 text-content-primary'
                       : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle hover:border-overlay-default hover:text-content-secondary'
                   }`}
                 >
                   <div
-                    className="w-5 flex items-center justify-center shrink-0"
-                    style={{ color: resolvedColor }}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: `${resolvedColor}25`, color: resolvedColor }}
                   >
                     <ActivityIcon iconName={act.icon} size={15} />
                   </div>
@@ -244,11 +244,11 @@ export function TimeBlockModal({
                           Primary
                         </span>
                       ) : isSecondary ? (
-                        <span className="text-2xs font-medium text-content-secondary">
+                        <span className="text-2xs font-medium text-success-text/80">
                           Secondary
                         </span>
                       ) : act.ascendModule ? (
-                        <span className="text-2xs text-content-muted block truncate">
+                        <span className="text-2xs text-success-text block truncate">
                           {act.ascendModule}
                         </span>
                       ) : null}
@@ -306,10 +306,10 @@ export function TimeBlockModal({
         {/* Read-Only Computed Duration Indicator */}
         <div className="flex items-center justify-between py-2.5 border-y border-overlay-subtle">
           <div className="flex items-center gap-2 text-xs text-content-muted">
-            <Clock size={13} className="text-content-subtle" />
+            <Clock size={13} className="text-success-text" />
             <span>Calculated Duration:</span>
           </div>
-          <span className="figure text-xs text-content-primary">
+          <span className="figure text-xs text-success-text bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg">
             {formatDurationHuman(calculatedDuration)} ({calculatedDuration} mins)
           </span>
         </div>

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Dumbbell } from 'lucide-react';
+import { Plus, Trash2, Dumbbell, Calendar, Activity } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -199,10 +199,11 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             label: dominantUnitInfo.label,
             value: <AutoNum text={String(dominantUnitInfo.value)} />,
             hint: dominantUnitInfo.unit,
+            valueClassName: 'text-success-text',
           }}
           stats={[
-            { label: 'Sessions this week', value: <CountUp value={totalWeeklySessions} /> },
-            { label: 'Points today', value: <CountUp value={pointsEarnedToday} />, hint: `of ${WORKOUT_POINTS.dailyCap} a day` },
+            { label: 'Sessions this week', value: <CountUp value={totalWeeklySessions} />, valueClassName: 'text-blue-theme' },
+            { label: 'Points today', value: <CountUp value={pointsEarnedToday} />, hint: `of ${WORKOUT_POINTS.dailyCap} a day`, valueClassName: 'text-brand-text' },
           ]}
           side={<CapMeterConnected state={store.state} capId="exercise" bare />}
         />
@@ -214,7 +215,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             {/* Weekly Activity Chart */}
             <Reveal index={1} className="card p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="section-title">
+                <h2 className="section-title flex items-center gap-2">
+                  <Calendar size={18} className="text-brand-text" />
                   This week
                 </h2>
                 <span className="text-xs text-content-disabled">Mon–Sun, points</span>
@@ -253,11 +255,14 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               {workouts.map((w) => (
                 <div key={w.id} className="enter-item p-3.5 flex items-center justify-between transition-colors hover:bg-overlay-subtle">
                   <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
+                      <Activity size={18} />
+                    </div>
                     <div>
                       <h3 className="item-name text-sm text-content-secondary">{w.type}</h3>
                       <p className="text-xs text-content-disabled">
                         {formatDateLong(w.date)} • {w.amount !== undefined && w.unit && w.unit !== 'mins' ? (
-                          <span className="figure text-content-muted">{w.amount} {w.unit}</span>
+                          <span className="figure text-success-text">{w.amount} {w.unit}</span>
                         ) : (
                           <span className="figure text-content-muted">{w.amount ?? w.durationMinutes} mins</span>
                         )}
@@ -266,7 +271,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="figure text-xs text-success-text">
+                    <span className="figure text-xs text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
                       +{w.pointsAwarded} pts
                     </span>
                     <button
