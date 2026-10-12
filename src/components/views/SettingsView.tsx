@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { toggleThemeWithReveal } from '@/lib/themeTransition';
 import {
-  Settings,
   User,
   Lock,
   Bell,
@@ -10,7 +9,6 @@ import {
   Sun,
   Moon,
   Shield,
-  Save,
   Copy,
   Check,
   AlertCircle,
@@ -20,8 +18,6 @@ import {
   Trash2,
   HelpCircle,
   MessageSquare,
-  UserCheck,
-  UserX,
   Info,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
@@ -314,13 +310,13 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
     badge?: string;
     danger?: boolean;
   }> = [
-    { id: 'profile', label: 'Profile', icon: <User size={18} /> },
-    { id: 'account', label: 'Account & Security', icon: <Lock size={18} /> },
-    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> },
-    { id: 'privacy', label: 'Privacy', icon: <Eye size={18} /> },
-    { id: 'appearance', label: 'Appearance', icon: <Sun size={18} /> },
-    { id: 'danger', label: 'Account Management', icon: <Shield size={18} />, danger: true },
-    { id: 'about', label: 'About', icon: <Info size={18} /> },
+    { id: 'profile', label: 'Profile', icon: <User size={16} /> },
+    { id: 'account', label: 'Account & Security', icon: <Lock size={16} /> },
+    { id: 'notifications', label: 'Notifications', icon: <Bell size={16} /> },
+    { id: 'privacy', label: 'Privacy', icon: <Eye size={16} /> },
+    { id: 'appearance', label: 'Appearance', icon: <Sun size={16} /> },
+    { id: 'danger', label: 'Account Management', icon: <Shield size={16} />, danger: true },
+    { id: 'about', label: 'About', icon: <Info size={16} /> },
   ];
 
   const acceptsInvites = currentUser?.acceptPartnerInvites ?? true;
@@ -329,9 +325,6 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
     <div className="max-w-6xl mx-auto space-y-5 pb-12">
       {/* Top Header */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-primary-500/20 border border-primary-500/30 flex items-center justify-center shrink-0">
-          <Settings size={22} className="text-brand-text" />
-        </div>
         <div>
           <h1 className="page-title">Settings</h1>
           <p className="page-subtitle">Profile, privacy and account.</p>
@@ -340,11 +333,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
       {/* Guest Mode Banner */}
       {isGuest && (
-        <div className="p-4 rounded-xl bg-primary-500/5 border border-primary-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-xl border border-overlay-default flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary-500/15 flex items-center justify-center shrink-0 text-brand-text">
-              <Save size={18} />
-            </div>
             <div>
               <p className="text-xs font-medium text-content-secondary">
                 Temporary Guest Account ({currentUser?.username})
@@ -380,7 +370,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
         />
 
         {/* Desktop/tablet: persistent sidebar */}
-        <aside className="hidden sm:flex w-56 shrink-0 bg-bg-800/80 border border-overlay-default rounded-2xl p-3 space-y-1 self-stretch flex-col justify-between">
+        <aside className="hidden sm:flex w-56 shrink-0 border border-overlay-default rounded-2xl p-3 space-y-1 self-stretch flex-col justify-between">
           <div className="space-y-1">
             <p className="stat-label text-content-disabled px-3 py-1.5">
               Sections
@@ -391,17 +381,17 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 <button
                   key={sec.id}
                   onClick={() => handleSelectSection(sec.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                     active
                       ? sec.danger
-                        ? 'bg-rose-500/20 text-rose-theme border border-rose-500/30'
-                        : 'bg-primary-500/20 text-brand-text border border-primary-500/30'
+                        ? 'bg-overlay-default text-rose-theme'
+                        : 'bg-overlay-default text-content-primary'
                       : sec.danger
-                      ? 'text-rose-theme-muted hover:bg-rose-500/10 hover:text-rose-theme border border-transparent'
-                      : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle border border-transparent'
+                      ? 'text-rose-theme-muted hover:bg-overlay-subtle hover:text-rose-theme'
+                      : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
                   }`}
                 >
-                  <span className={`shrink-0 ${active ? (sec.danger ? 'text-rose-theme' : 'text-brand-text') : ''}`}>
+                  <span className="shrink-0">
                     {sec.icon}
                   </span>
                   <span className="truncate text-left">{sec.label}</span>
@@ -424,13 +414,12 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 1: PROFILE */}
           {activeSection === 'profile' && (
             <div className="card p-5 space-y-5">
-              <h2 className="section-title flex items-center gap-2 border-b border-overlay-subtle pb-3">
-                <User size={18} className="text-brand-text" />
+              <h2 className="section-title border-b border-overlay-subtle pb-3">
                 Profile Identity
               </h2>
 
               {/* Permanent 6-Digit User UID */}
-              <div className="p-3 bg-bg-800/80 rounded-xl border border-overlay-default flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="p-3 rounded-xl border border-overlay-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <label className="block text-xs font-medium text-content-tertiary">
                     Your Unique User ID (UID)
@@ -440,7 +429,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="figure text-sm tracking-widest text-brand-text bg-primary-500/10 px-3 py-1 rounded-lg border border-primary-500/20">
+                  <span className="figure text-sm tracking-widest text-content-primary px-1">
                     {currentUser?.uid || '100001'}
                   </span>
                   <button
@@ -452,7 +441,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                         setTimeout(() => setCopiedUid(false), 2000);
                       }
                     }}
-                    className="px-2.5 py-1 bg-bg-700 hover:bg-bg-600 border border-overlay-default text-content-secondary text-xs font-semibold rounded-lg transition-all flex items-center gap-1"
+                    className="px-2.5 py-1 hover:bg-overlay-subtle border border-overlay-default text-content-secondary text-xs font-medium rounded-lg transition-colors flex items-center gap-1"
                   >
                     {copiedUid ? <Check size={13} className="text-success-text" /> : <Copy size={13} />}
                     <span>{copiedUid ? 'Copied' : 'Copy'}</span>
@@ -490,11 +479,11 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   {usernameInput.trim() && usernameInput.trim() !== currentUser?.username && (
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                       {usernameStatus?.available ? (
-                        <span className="badge-emerald text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
+                        <span className="text-micro font-medium text-success-text flex items-center gap-1">
                           <Check size={12} /> Available
                         </span>
                       ) : usernameStatus?.reason ? (
-                        <span className="text-micro font-medium text-rose-theme flex items-center gap-1 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 truncate max-w-[110px]">
+                        <span className="text-micro font-medium text-rose-theme flex items-center gap-1 truncate max-w-[110px]">
                           Taken / Invalid
                         </span>
                       ) : null}
@@ -504,10 +493,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
                 {usernameMsg && (
                   <div
-                    className={`p-2.5 rounded-xl text-xs flex items-center gap-2 ${
-                      usernameMsg.type === 'success'
-                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-success-text'
-                        : 'bg-rose-500/10 border border-rose-500/30 text-rose-theme'
+                    className={`py-1 text-xs flex items-center gap-2 ${
+                      usernameMsg.type === 'success' ? 'text-success-text' : 'text-rose-theme'
                     }`}
                   >
                     {usernameMsg.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
@@ -527,7 +514,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       usernameInput.trim() === currentUser?.username ||
                       (usernameStatus !== null && !usernameStatus.available)
                     }
-                    className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-on-brand font-semibold text-xs rounded-xl shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-on-brand font-semibold text-xs rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     {usernameSaving ? 'Saving...' : 'Update Username'}
                   </button>
@@ -547,7 +534,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   )}
                 </div>
 
-                <div className="grid grid-cols-8 gap-2 p-3 bg-bg-800 rounded-2xl border border-overlay-subtle">
+                <div className="grid grid-cols-8 gap-2">
                   {EMOJI_AVATARS.map((emoji) => {
                     const selected = selectedAvatar === emoji;
                     return (
@@ -556,10 +543,10 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                         type="button"
                         disabled={avatarSaving}
                         onClick={() => handleSelectAvatar(emoji)}
-                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
+                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-xl flex items-center justify-center transition-colors ${
                           selected
-                            ? 'bg-primary-500/25 border-2 border-emerald-400 scale-110'
-                            : 'hover:bg-overlay-subtle border border-transparent'
+                            ? 'bg-primary-500/15 ring-1 ring-primary-500/40'
+                            : 'hover:bg-overlay-subtle'
                         }`}
                         aria-label={`Select avatar ${emoji}`}
                         aria-pressed={selected}
@@ -579,8 +566,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 2: ACCOUNT & SECURITY */}
           {activeSection === 'account' && (
             <div className="card p-5 space-y-4">
-              <h2 className="section-title flex items-center gap-2 border-b border-overlay-subtle pb-3">
-                <Lock size={18} className="text-brand-text" />
+              <h2 className="section-title border-b border-overlay-subtle pb-3">
                 Account & Security
               </h2>
 
@@ -614,14 +600,14 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     <button
                       type="button"
                       onClick={() => setShowPasswordForm(!showPasswordForm)}
-                      className="px-3 py-1.5 bg-bg-800 hover:bg-bg-700 border border-overlay-default text-content-secondary font-semibold text-xs rounded-xl transition-all"
+                      className="px-3 py-1.5 hover:bg-overlay-subtle border border-overlay-default text-content-secondary font-semibold text-xs rounded-xl transition-all"
                     >
                       {showPasswordForm ? 'Cancel' : 'Change Password'}
                     </button>
                   </div>
 
                   {showPasswordForm && (
-                    <form onSubmit={handleChangePassword} className="space-y-3 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+                    <form onSubmit={handleChangePassword} className="space-y-3 pt-1">
                       <PasswordInput
                         label="New Password"
                         required
@@ -653,7 +639,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       <button
                         type="submit"
                         disabled={passwordSaving}
-                        className="w-full py-2 bg-primary-500 hover:bg-primary-600 text-on-brand font-semibold text-xs rounded-lg shadow-sm transition-all disabled:opacity-50"
+                        className="w-full py-2 bg-primary-500 hover:bg-primary-600 text-on-brand font-semibold text-xs rounded-lg transition-colors disabled:opacity-50"
                       >
                         {passwordSaving ? 'Updating Password...' : 'Save New Password'}
                       </button>
@@ -667,8 +653,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 3: NOTIFICATIONS (Preferences only) */}
           {activeSection === 'notifications' && (
             <div className="card p-5 space-y-4">
-              <h2 className="section-title flex items-center gap-2 border-b border-overlay-subtle pb-3">
-                <Bell size={18} className="text-brand-text" />
+              <h2 className="section-title border-b border-overlay-subtle pb-3">
                 Notification Preferences
               </h2>
 
@@ -676,8 +661,9 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 Choose which notifications and alerts you wish to receive across Ascend features.
               </p>
 
-              <div className="space-y-2.5 pt-1">
-                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle cursor-pointer hover:border-overlay-default transition-all">
+              <div className="space-y-4">
+              <div className="divide-y divide-overlay-subtle">
+                <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                   <div>
                     <span className="item-name text-xs text-content-secondary block">Daily Habit Reminders</span>
                     <span className="text-micro text-content-muted">Receive daily reminders to check off active habits</span>
@@ -693,7 +679,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle cursor-pointer hover:border-overlay-default transition-all">
+                <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                   <div>
                     <span className="item-name text-xs text-content-secondary block">Accountability Partner Activity Alerts</span>
                     <span className="text-micro text-content-muted">Get notified when partners complete habits or challenges</span>
@@ -709,7 +695,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle cursor-pointer hover:border-overlay-default transition-all">
+                <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                   <div>
                     <span className="item-name text-xs text-content-secondary block">Weekly League Reset & Rank Updates</span>
                     <span className="text-micro text-content-muted">Receive weekly summaries of league placement and division promotions</span>
@@ -725,7 +711,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle cursor-pointer hover:border-overlay-default transition-all">
+                <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                   <div>
                     <span className="item-name text-xs text-content-secondary block">Sunday Evening Goal Planning Reminders</span>
                     <span className="text-micro text-content-muted">Receive a Sunday 7 PM notification to review past weekly goals and plan high-leverage priorities</span>
@@ -741,7 +727,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle cursor-pointer hover:border-overlay-default transition-all">
+                <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                   <div>
                     <span className="item-name text-xs text-content-secondary block">Focus Session Completion Alerts</span>
                     <span className="text-micro text-content-muted">App-level preference to attempt system alerts when focus sessions finish</span>
@@ -766,13 +752,14 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                   />
                 </label>
+              </div>
 
                 {notifBrowserPerm === 'denied' && (
-                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-2.5 text-xs text-rose-theme">
-                    <BellOff size={16} className="text-rose-theme shrink-0 mt-0.5" />
+                  <div className="p-3 border border-overlay-default rounded-xl flex items-start gap-2.5 text-xs">
+                    <BellOff size={16} className="text-content-subtle shrink-0 mt-0.5" />
                     <div className="space-y-1">
                       <p className="font-medium text-rose-theme">Browser Notification Permission Denied</p>
-                      <p className="text-micro text-rose-theme-muted leading-relaxed">
+                      <p className="text-micro text-content-muted leading-relaxed">
                         Notifications are blocked by your browser settings. Even with this preference enabled, alerts cannot fire until you allow notification permissions for this website in your browser's site settings.
                       </p>
                     </div>
@@ -785,22 +772,23 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 4: PRIVACY */}
           {activeSection === 'privacy' && (
             <div className="card p-5 space-y-4">
-              <h2 className="section-title flex items-center gap-2 border-b border-overlay-subtle pb-3">
-                <Eye size={18} className="text-brand-text" />
+              <h2 className="section-title border-b border-overlay-subtle pb-3">
                 Privacy & Visibility
               </h2>
 
+              <div className="divide-y divide-overlay-subtle -mt-1">
+
               {/* Public Stats & Habits Privacy Toggle */}
-              <div className="flex items-start justify-between gap-4 p-3.5 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+              <div className="flex items-start justify-between gap-4 py-3.5">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="item-name text-xs text-content-secondary">Public Leaderboard Profile & Stats</span>
                     {(currentUser?.isProfilePublic ?? true) ? (
-                      <span className="badge-emerald text-2xs font-medium px-2 py-0.5 rounded-md">
+                      <span className="text-2xs text-content-muted">
                         Public
                       </span>
                     ) : (
-                      <span className="badge-neutral text-2xs font-medium px-2 py-0.5 rounded-md">
+                      <span className="text-2xs text-content-muted">
                         Private
                       </span>
                     )}
@@ -823,17 +811,17 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               </div>
 
               {/* Accept Partnership Invites Toggle (TASK 2) */}
-              <div className="flex items-start justify-between gap-4 p-3.5 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+              <div className="flex items-start justify-between gap-4 py-3.5">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="item-name text-xs text-content-secondary">Accept Partnership Invites</span>
                     {acceptsInvites ? (
-                      <span className="badge-emerald text-2xs font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
-                        <UserCheck size={11} /> Accepting Invites
+                      <span className="text-2xs text-content-muted">
+                        Accepting Invites
                       </span>
                     ) : (
-                      <span className="text-2xs bg-rose-500/10 text-rose-theme border border-rose-500/20 px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
-                        <UserX size={11} /> Blocking Invites
+                      <span className="text-2xs text-content-muted">
+                        Blocking Invites
                       </span>
                     )}
                   </div>
@@ -853,20 +841,20 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   className="mt-1"
                 />
               </div>
+              </div>
             </div>
           )}
 
           {/* SECTION 5: APPEARANCE */}
           {activeSection === 'appearance' && (
             <div className="card p-5 space-y-4">
-              <h2 className="section-title flex items-center gap-2 border-b border-overlay-subtle pb-3">
-                <Sun size={18} className="text-brand-text" />
+              <h2 className="section-title border-b border-overlay-subtle pb-3">
                 Appearance Theme
               </h2>
 
-              <div className="flex items-center justify-between p-3.5 bg-bg-800/50 rounded-xl border border-overlay-subtle">
+              <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  {isDarkMode ? <Moon size={20} className="text-brand-text" /> : <Sun size={20} className="text-content-secondary" />}
+                  {isDarkMode ? <Moon size={18} className="text-content-subtle" /> : <Sun size={18} className="text-content-subtle" />}
                   <div>
                     <p className="item-name text-xs text-content-secondary">Visual Theme Mode</p>
                     <p className="text-micro text-content-muted">
@@ -878,7 +866,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 <button
                   type="button"
                   onClick={handleThemeToggle}
-                  className="px-3.5 py-1.5 bg-bg-800 hover:bg-bg-700 border border-overlay-default text-content-secondary font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 hover:bg-overlay-subtle border border-overlay-default text-content-secondary font-medium text-xs rounded-xl transition-colors flex items-center gap-1.5"
                 >
                   {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
                   <span>Switch to {isDarkMode ? 'Light' : 'Dark'}</span>
@@ -889,9 +877,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
           {/* SECTION 6: ACCOUNT MANAGEMENT */}
           {activeSection === 'danger' && (
-            <div className="card p-5 space-y-4 border border-rose-500/20">
-              <h2 className="section-title flex items-center gap-2 border-b border-overlay-subtle pb-3">
-                <Shield size={18} className="text-rose-theme" />
+            <div className="card p-5 space-y-4">
+              <h2 className="section-title border-b border-overlay-subtle pb-3">
                 Account Management
               </h2>
 
@@ -903,7 +890,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="px-4 py-2.5 bg-bg-800 hover:bg-bg-700 text-content-secondary font-semibold text-xs rounded-xl border border-overlay-default transition-all flex items-center justify-center gap-2"
+                  className="px-4 py-2.5 hover:bg-overlay-subtle text-content-secondary font-semibold text-xs rounded-xl border border-overlay-default transition-all flex items-center justify-center gap-2"
                 >
                   <LogOut size={16} className="text-content-muted" />
                   <span>Log Out of Account</span>
@@ -912,7 +899,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-theme font-semibold text-xs rounded-xl border border-rose-500/30 transition-all flex items-center justify-center gap-2"
+                  className="px-4 py-2.5 hover:bg-overlay-subtle text-rose-theme font-medium text-xs rounded-xl border border-overlay-default transition-colors flex items-center justify-center gap-2"
                 >
                   <Trash2 size={16} />
                   <span>Delete Account & Purge Data</span>
@@ -924,8 +911,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {/* SECTION 7: ABOUT */}
           {activeSection === 'about' && (
             <div className="card p-5 space-y-4">
-              <h2 className="section-title flex items-center gap-2 border-b border-overlay-subtle pb-3">
-                <Info size={18} className="text-brand-text" />
+              <h2 className="section-title border-b border-overlay-subtle pb-3">
                 About Ascend
               </h2>
 
@@ -942,7 +928,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   <button
                     type="button"
                     onClick={() => alert('Ascend Feedback & Support: Contact support@ascendgrowth.app')}
-                    className="px-3.5 py-2 bg-bg-800 hover:bg-bg-700 text-content-tertiary text-xs font-medium rounded-xl border border-overlay-subtle flex items-center gap-1.5 transition-all"
+                    className="px-3.5 py-2 hover:bg-overlay-subtle text-content-tertiary text-xs font-medium rounded-xl border border-overlay-default flex items-center gap-1.5 transition-colors"
                   >
                     <MessageSquare size={14} />
                     <span>Feedback & Support</span>
@@ -950,7 +936,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   <button
                     type="button"
                     onClick={() => alert('Ascend Documentation & Guide: See Help section in sidebar.')}
-                    className="px-3.5 py-2 bg-bg-800 hover:bg-bg-700 text-content-tertiary text-xs font-medium rounded-xl border border-overlay-subtle flex items-center gap-1.5 transition-all"
+                    className="px-3.5 py-2 hover:bg-overlay-subtle text-content-tertiary text-xs font-medium rounded-xl border border-overlay-default flex items-center gap-1.5 transition-colors"
                   >
                     <HelpCircle size={14} />
                     <span>User Documentation</span>
@@ -984,12 +970,9 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       {/* Delete Account Confirmation Modal */}
       <Dialog open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete Account Permanently" maxWidth="max-w-md">
         <div className="space-y-4">
-          <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-theme flex items-center justify-center shrink-0 mt-0.5">
-              <Trash2 size={20} />
-            </div>
+          <div className="p-4 border border-overlay-default rounded-xl">
             <div className="space-y-1">
-              <h3 className="font-serif text-xl leading-tight text-content-primary">Permanent Action</h3>
+              <h3 className="font-serif text-xl leading-tight text-rose-theme">Permanent Action</h3>
               <p className="text-xs text-content-tertiary leading-relaxed">
                 This will permanently remove your profile, habits, journal entries, points, league rank, and partner links from Supabase. This action cannot be undone.
               </p>
@@ -1000,7 +983,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
             <button
               type="button"
               onClick={() => setShowDeleteConfirm(false)}
-              className="flex-1 py-2.5 bg-bg-800 hover:bg-bg-700 text-content-tertiary font-semibold text-xs rounded-xl border border-overlay-default transition-all"
+              className="flex-1 py-2.5 hover:bg-overlay-subtle text-content-tertiary font-semibold text-xs rounded-xl border border-overlay-default transition-all"
             >
               Cancel
             </button>
@@ -1008,7 +991,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               type="button"
               disabled={isDeletingAccount}
               onClick={handleDeleteAccount}
-              className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isDeletingAccount ? (
                 <>

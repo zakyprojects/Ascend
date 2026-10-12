@@ -1,4 +1,4 @@
-import { AlertTriangle, Shield, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Dialog } from './primitives';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 
@@ -22,12 +22,9 @@ export function GuestLogoutWarningModal({
   return (
     <Dialog open={open} onClose={isLoggingOut ? () => {} : onClose} title="Guest Account Warning" maxWidth="max-w-md">
       <div className="space-y-4">
-        <div className="p-4 bg-warning/10 border border-warning/30 rounded-2xl flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-warning/20 text-warning-text flex items-center justify-center shrink-0 mt-0.5">
-            <AlertTriangle size={20} />
-          </div>
+        <div className="p-4 border border-overlay-default rounded-xl">
           <div className="space-y-1">
-            <h3 className="font-serif text-xl leading-tight text-content-primary">Guest Progress Will Be Lost</h3>
+            <h3 className="font-serif text-xl leading-tight text-warning-text">Guest Progress Will Be Lost</h3>
             <p className="text-xs text-content-tertiary leading-relaxed">
               You are currently using a guest account. Logging out will permanently end your guest session and erase your habits, points, and league rank unless you save your progress first.
             </p>
@@ -42,9 +39,8 @@ export function GuestLogoutWarningModal({
               onClose();
               onSaveProgressFirst();
             }}
-            className="w-full py-3 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-on-brand font-semibold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-on-brand font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-2"
           >
-            <Shield size={16} />
             <span>Save Progress First (Create Account)</span>
           </button>
 
@@ -54,7 +50,7 @@ export function GuestLogoutWarningModal({
             onClick={async () => {
               await onLogoutAnyway();
             }}
-            className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 disabled:opacity-50 text-rose-theme border border-rose-500/30 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+            className="w-full py-2.5 hover:bg-overlay-subtle disabled:opacity-50 text-rose-theme border border-overlay-default font-medium text-xs rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             {isLoggingOut ? (
               <>

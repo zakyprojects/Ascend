@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Dialog, PageColumns } from '@/components/ui/primitives';
-import { Trophy, Clock, Crown, Brain, Calendar, CalendarDays, ChevronDown, Archive, Sparkles, UserCheck, ChevronRight } from 'lucide-react';
+import { Crown, ChevronDown, ChevronRight } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LeagueType, LeagueCompetitor } from '@/types';
 import { LEAGUE_CONFIG, getLeaguePeriodLabel, getSeasonLabel, getLocalResetDetail } from '@/lib/leagues';
@@ -10,10 +10,6 @@ import { CompetitorProfileModal } from '@/components/ui/CompetitorProfileModal';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { CountUp, Reveal } from '@/components/ui/Motion';
-
-const LEAGUE_ICONS: Record<string, typeof Trophy> = {
-  Calendar, CalendarDays, Brain,
-};
 
 interface LeaguesProps {
   store: AppStore;
@@ -45,9 +41,8 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
         {!currentUser && onOpenAuthModal && (
           <button
             onClick={onOpenAuthModal}
-            className="hidden sm:flex shrink-0 items-center gap-1.5 px-3 py-1.5 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-brand-text text-xs font-semibold rounded-xl transition-all"
+            className="hidden sm:flex shrink-0 items-center gap-1.5 px-3 py-1.5 hover:bg-overlay-subtle border border-overlay-default text-content-secondary text-xs font-medium rounded-lg transition-colors"
           >
-            <Sparkles size={14} />
             <span>Sign Up to Claim Username</span>
           </button>
         )}
@@ -55,11 +50,8 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
       {/* Guest Mode Banner */}
       {(!currentUser || currentUser.isAnonymous) && (
-        <div className="p-4 rounded-xl bg-bg-750 border border-primary-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-xl border border-overlay-default flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary-500/20 flex items-center justify-center shrink-0 text-brand-text">
-              <Sparkles size={18} />
-            </div>
             <div>
               <p className="item-name text-xs">
                 You are competing as Guest ({currentUser?.username || store.state.username})
@@ -72,7 +64,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
           {onOpenAuthModal && (
             <button
               onClick={onOpenAuthModal}
-              className="px-3.5 py-1.5 bg-primary-500 hover:bg-primary-600 text-on-brand text-xs font-semibold rounded-lg shadow-md transition-all shrink-0 w-full sm:w-auto"
+              className="px-3.5 py-1.5 bg-primary-500 hover:bg-primary-600 text-on-brand text-xs font-semibold rounded-lg transition-colors shrink-0 w-full sm:w-auto"
             >
               Save Progress / Create Account
             </button>
@@ -86,30 +78,20 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
             {/* League tabs */}
             <div className="grid grid-cols-3 gap-2">
               {(Object.keys(LEAGUE_CONFIG) as LeagueType[]).map((type) => {
-                const cfg = LEAGUE_CONFIG[type];
-                const Icon = LEAGUE_ICONS[cfg.icon] ?? Calendar;
                 const active = activeLeague === type;
                 const data = store.getLeagueData(type);
                 return (
                   <button
                     key={type}
                     onClick={() => setActiveLeague(type)}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all ${
+                    className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-colors ${
                       active
-                        ? 'glass-strong border-2'
-                        : 'card card-hover border-2 border-transparent'
+                        ? 'bg-overlay-default border-overlay-default'
+                        : 'border-transparent hover:bg-overlay-subtle'
                     }`}
-                    style={active ? { borderColor: `${cfg.color}50` } : {}}
                   >
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${cfg.color}15` }}
-                    >
-                      <Icon size={20} style={{ color: cfg.color }} />
-                    </div>
                     <span
-                      className="text-xs font-medium"
-                      style={{ color: active ? cfg.color : 'var(--color-content-muted)' }}
+                      className={`text-xs font-medium ${active ? 'text-content-primary' : 'text-content-muted'}`}
                     >
                       {type === 'ninetyDay' ? `90-Day (${getSeasonLabel(now)})` : type === 'monthly' ? 'Monthly' : 'Weekly'}
                     </span>
@@ -123,15 +105,6 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
             <div className="card p-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${config.color}15` }}
-                  >
-                    {(() => {
-                      const Icon = LEAGUE_ICONS[config.icon] ?? Calendar;
-                      return <Icon size={16} style={{ color: config.color }} />;
-                    })()}
-                  </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="section-title">
@@ -142,24 +115,22 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 px-3 py-1 bg-bg-800 rounded-lg border border-overlay-subtle text-xs text-content-tertiary self-start sm:self-auto">
-                  <Clock size={13} className="text-content-muted" />
+                <div className="flex items-center gap-1.5 text-xs text-content-tertiary self-start sm:self-auto">
                   <span className="text-micro text-content-muted">
                     {activeLeague === 'ninetyDay' ? 'Season Ends in:' : 'Resets in:'}
                   </span>
-                  <LeagueCountdown type={activeLeague} className="font-mono font-bold text-brand-text tabular-nums" />
+                  <LeagueCountdown type={activeLeague} className="font-mono font-medium text-content-primary tabular-nums" />
                 </div>
               </div>
 
-              <p className="text-xs font-medium text-content-muted mb-4 bg-bg-800/50 px-3 py-1.5 rounded-lg border border-overlay-subtle inline-block">
+              <p className="text-xs text-content-muted mb-4">
                 Current Cycle: {periodLabel}
               </p>
 
               {/* 90-Day League neuroplasticity explanation */}
               {activeLeague === 'ninetyDay' && (
-                <div className="card bg-bg-700/60 p-4 mb-4 border-l-2" style={{ borderColor: config.color }}>
+                <div className="rounded-xl border border-overlay-default p-4 mb-4">
                   <div className="flex items-start gap-2">
-                    <Brain size={16} className="text-brand-text mt-0.5 shrink-0" />
                     <div>
                       <p className="item-name text-sm mb-1">90 Days to Rewire Your Brain</p>
                       <p className="text-xs text-content-muted leading-relaxed">
@@ -172,7 +143,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
               )}
 
               {/* Leaderboard list */}
-              <div className="space-y-2">
+              <div className="divide-y divide-overlay-subtle -mx-2 sm:-mx-3">
                 {leagueData.competitors.map((competitor, idx) => {
                   const rank = idx + 1;
                   const isUser = competitor.isUser;
@@ -183,10 +154,10 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                     <Reveal key={competitor.id || idx} index={idx}>
                     <button
                       onClick={() => setSelectedCompetitor(competitor)}
-                      className={`w-full flex items-center gap-2 sm:gap-4 px-2.5 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all text-left cursor-pointer group ${
+                      className={`w-full flex items-center gap-2 sm:gap-4 px-2.5 sm:px-4 py-2.5 sm:py-3 transition-colors text-left cursor-pointer group ${
                         isUser
-                          ? 'league-user-row border-2 hover:border-emerald-400'
-                          : 'bg-bg-700/50 hover:bg-bg-700 border border-overlay-subtle'
+                          ? 'bg-primary-500/5 hover:bg-primary-500/10'
+                          : 'hover:bg-overlay-subtle'
                       }`}
                     >
                       {/* Rank Position */}
@@ -199,13 +170,13 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                       </div>
 
                       {/* Avatar */}
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-bg-600 flex items-center justify-center text-base sm:text-lg shrink-0 border border-overlay-subtle">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-overlay-subtle flex items-center justify-center text-base sm:text-lg shrink-0">
                         {competitor.avatar}
                       </div>
 
                       {/* Name */}
                       <div className="flex-1 min-w-0">
-                        <span className={`item-name text-xs sm:text-sm truncate block ${isUser ? '!text-success-text' : '!text-content-secondary'}`}>
+                        <span className={`item-name text-xs sm:text-sm truncate block ${isUser ? '!text-content-primary' : '!text-content-secondary'}`}>
                           {competitor.name}
                         </span>
                       </div>
@@ -217,7 +188,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
                       {/* Period Points */}
                       <div className="text-right shrink-0 min-w-[55px] sm:min-w-[70px]">
-                        <span className={`figure text-xs sm:text-sm ${isUser ? 'text-success-text' : 'text-content-primary'}`}>
+                        <span className="figure text-xs sm:text-sm text-content-primary">
                           <CountUp value={competitor.points} className="tabular-nums" />
                         </span>
                         <span className="font-mono text-2xs text-content-disabled ml-1">pts</span>
@@ -236,23 +207,16 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
           // Archives
           archives.length > 0 && (
             <div>
-              <h2 className="section-title mb-3 flex items-center gap-2">
-                <Archive size={16} className="text-content-disabled" />
+              <h2 className="section-title mb-3">
                 Past Standings Archives
               </h2>
-              <div className="space-y-2">
+              <div className="card divide-y divide-overlay-subtle overflow-hidden">
                 {archives.map((archive, idx) => (
                   <button
                     key={idx}
                     onClick={() => setShowArchive(archive.type)}
-                    className="card p-4 card-hover w-full flex items-center gap-3 text-left"
+                    className="p-4 hover:bg-overlay-subtle transition-colors w-full flex items-center gap-3 text-left"
                   >
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: `${LEAGUE_CONFIG[archive.type].color}15` }}
-                    >
-                      <Trophy size={18} style={{ color: LEAGUE_CONFIG[archive.type].color }} />
-                    </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-content-secondary">{archive.periodLabel}</p>
                       <p className="text-xs text-content-disabled">
@@ -283,23 +247,21 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
           return (
             <div>
               <p className="text-sm text-content-disabled mb-4">{archive.periodLabel}</p>
-              <div className="space-y-1.5">
+              <div className="divide-y divide-overlay-subtle">
                 {archive.competitors.map((c, idx) => (
                   <div
                     key={idx}
-                    className={`scroll-rise flex items-center gap-3 p-3 rounded-xl ${
-                      c.isUser
-                        ? 'league-user-row border'
-                        : 'bg-bg-700/50 border border-overlay-subtle'
+                    className={`scroll-rise flex items-center gap-3 p-3 ${
+                      c.isUser ? 'bg-primary-500/5' : ''
                     }`}
                   >
                     <div className="w-7 text-center shrink-0">
                       <span className="figure text-sm text-content-disabled">{idx + 1}</span>
                     </div>
-                    <div className="w-9 h-9 rounded-lg bg-bg-600 flex items-center justify-center text-lg shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-overlay-subtle flex items-center justify-center text-lg shrink-0">
                       {c.avatar}
                     </div>
-                    <span className={`item-name text-sm flex-1 truncate ${c.isUser ? '!text-success-text' : '!text-content-secondary'}`}>
+                    <span className={`item-name text-sm flex-1 truncate ${c.isUser ? '!text-content-primary' : '!text-content-secondary'}`}>
                       {c.name}
                     </span>
                     <TierBadge totalPoints={c.points} size="sm" showName={false} />

@@ -26,22 +26,12 @@ export function TierView({ store }: { store: AppStore }) {
         aside={
           <>
             {/* Current tier showcase */}
-            <div className="card p-6 text-center relative overflow-hidden">
-              <div
-                className="absolute inset-0 opacity-10"
-                style={{ background: `radial-gradient(circle at center, var(--rank-${currentTier.name.toLowerCase()}-glow), transparent 70%)` }}
-              />
-              <div className="relative">
-                <div
-                  className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-4"
-                  style={{
-                    backgroundColor: `var(--rank-${currentTier.name.toLowerCase()}-bg)`,
-                    border: `2px solid var(--rank-${currentTier.name.toLowerCase()}-border)`,
-                  }}
-                >
+            <div className="card p-6 text-center">
+              <div>
+                <div className="flex items-center justify-center mb-3">
                   {(() => {
                     const Icon = TIER_ICONS[currentTier.icon] ?? Compass;
-                    return <Icon size={44} style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }} />;
+                    return <Icon size={32} strokeWidth={1.5} style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }} />;
                   })()}
                 </div>
                 <h2 className="font-serif text-[2.75rem] leading-none" style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }}>
@@ -79,7 +69,7 @@ export function TierView({ store }: { store: AppStore }) {
         {/* Tier ladder */}
         <div>
           <h2 className="section-title mb-3">All Ranks</h2>
-          <div className="space-y-2">
+          <div className="card divide-y divide-overlay-subtle overflow-hidden">
             {TIERS.map((tier, idx) => {
               const isUnlocked = seasonPoints >= tier.minPoints;
               const isCurrent = tier.name === currentTier.name;
@@ -89,10 +79,9 @@ export function TierView({ store }: { store: AppStore }) {
               return (
                 <Reveal key={tier.name} index={idx}>
                 <div
-                  className={`card p-4 flex items-center gap-4 transition-all ${
-                    isCurrent ? 'border-overlay-default bg-bg-700' : ''
+                  className={`p-4 flex items-center gap-4 ${
+                    isCurrent ? 'bg-overlay-subtle' : ''
                   } ${isUnlocked ? '' : 'opacity-50'}`}
-                  style={isCurrent ? { boxShadow: `0 0 20px var(--rank-${tierKey}-glow)` } : {}}
                 >
                   {/* Rank number */}
                   <div className="figure text-xs text-content-subtle w-6 text-center">
@@ -100,23 +89,11 @@ export function TierView({ store }: { store: AppStore }) {
                   </div>
 
                   {/* Icon */}
-                  <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                      !isUnlocked ? 'bg-bg-600 border border-overlay-default text-content-subtle' : ''
-                    }`}
-                    style={
-                      isUnlocked
-                        ? {
-                            backgroundColor: `var(--rank-${tierKey}-bg)`,
-                            border: `1.5px solid var(--rank-${tierKey}-border)`,
-                          }
-                        : undefined
-                    }
-                  >
+                  <div className="w-6 flex items-center justify-center shrink-0">
                     {isUnlocked ? (
-                      <Icon size={22} style={{ color: `var(--rank-${tierKey}-text)` }} />
+                      <Icon size={18} style={{ color: `var(--rank-${tierKey}-text)` }} />
                     ) : (
-                      <Lock size={18} className="text-content-subtle" />
+                      <Lock size={16} className="text-content-subtle" />
                     )}
                   </div>
 
@@ -130,7 +107,7 @@ export function TierView({ store }: { store: AppStore }) {
                         {tier.name}
                       </h3>
                       {isCurrent && (
-                        <span className="badge bg-primary-500/15 text-success-text">
+                        <span className="badge bg-overlay-default text-content-secondary">
                           <Check size={11} /> Current
                         </span>
                       )}
@@ -147,9 +124,7 @@ export function TierView({ store }: { store: AppStore }) {
 
                   {/* Checkmark if unlocked */}
                   {isUnlocked && !isCurrent && (
-                    <div className="w-6 h-6 rounded-full bg-primary-500/15 flex items-center justify-center shrink-0">
-                      <Check size={14} className="text-success-text" />
-                    </div>
+                    <Check size={16} className="text-content-muted shrink-0" />
                   )}
                 </div>
                 </Reveal>
@@ -165,11 +140,7 @@ export function TierView({ store }: { store: AppStore }) {
             <div className="card divide-y divide-overlay-subtle">
               {store.state.pointsHistory.slice(0, 10).map((entry) => (
                 <div key={entry.id} className="scroll-rise flex items-center gap-3 p-3.5">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                      entry.amount > 0 ? 'bg-primary-500/15' : 'bg-error/15'
-                    }`}
-                  >
+                  <div className="w-10 text-right shrink-0">
                     <span className={`figure text-xs ${entry.amount > 0 ? 'text-brand-text' : 'text-error'}`}>
                       {entry.amount > 0 ? '+' : ''}
                       {entry.amount}
