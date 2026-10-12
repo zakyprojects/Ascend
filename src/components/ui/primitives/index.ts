@@ -56,3 +56,6 @@ export type { ProgressBarProps, ProgressTone, ProgressSize } from './ProgressBar
 
 export { Skeleton } from './Skeleton';
 export type { SkeletonProps } from './Skeleton';
+
+export { Switch } from './Switch';
+export type { SwitchProps } from './Switch';

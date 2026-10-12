@@ -36,7 +36,7 @@ import {
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
-import { Dialog, Tabs } from '@/components/ui/primitives';
+import { Dialog, Switch, Tabs } from '@/components/ui/primitives';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator, AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
 
@@ -814,22 +814,12 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={store.toggleProfilePrivacy}
-                  className={`w-10 h-5 rounded-full transition-colors relative p-0.5 border shrink-0 mt-1 ${
-                    (currentUser?.isProfilePublic ?? true) ? 'bg-primary-500 border-primary-400' : 'bg-bg-600 border-overlay-default'
-                  }`}
-                  role="switch"
-                  aria-checked={currentUser?.isProfilePublic ?? true}
-                  aria-label="Public leaderboard profile and stats"
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                      (currentUser?.isProfilePublic ?? true) ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
+                <Switch
+                  checked={currentUser?.isProfilePublic ?? true}
+                  onChange={store.toggleProfilePrivacy}
+                  label="Public leaderboard profile and stats"
+                  className="mt-1"
+                />
               </div>
 
               {/* Accept Partnership Invites Toggle (TASK 2) */}
@@ -856,22 +846,12 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={store.toggleAcceptPartnerInvites}
-                  className={`w-10 h-5 rounded-full transition-colors relative p-0.5 border shrink-0 mt-1 ${
-                    acceptsInvites ? 'bg-primary-500 border-primary-400' : 'bg-bg-600 border-overlay-default'
-                  }`}
-                  role="switch"
-                  aria-checked={acceptsInvites}
-                  aria-label="Accept partnership invites"
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                      acceptsInvites ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
+                <Switch
+                  checked={acceptsInvites}
+                  onChange={store.toggleAcceptPartnerInvites}
+                  label="Accept partnership invites"
+                  className="mt-1"
+                />
               </div>
             </div>
           )}
