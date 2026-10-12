@@ -15,6 +15,13 @@ const LEAGUE_ICONS: Record<string, typeof Trophy> = {
   Calendar, CalendarDays, Brain,
 };
 
+// Theme-aware text colour per league (readable in light mode too).
+const LEAGUE_TEXT: Record<LeagueType, string> = {
+  weekly: 'var(--badge-emerald-text)',
+  monthly: 'var(--badge-sky-text)',
+  ninetyDay: 'var(--badge-purple-text)',
+};
+
 interface LeaguesProps {
   store: AppStore;
   onOpenAuthModal?: () => void;
@@ -95,7 +102,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                     </div>
                     <span
                       className="text-xs font-medium"
-                      style={{ color: active ? cfg.color : 'var(--color-content-muted)' }}
+                      style={{ color: active ? LEAGUE_TEXT[type] : 'var(--color-content-muted)' }}
                     >
                       {type === 'ninetyDay' ? `90-Day (${getSeasonLabel(now)})` : type === 'monthly' ? 'Monthly' : 'Weekly'}
                     </span>
