@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Plus, Flame, Trash2, Check, Calendar, Repeat, BookMarked, Pencil, Info, AlertTriangle, BookOpen, Lock } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Habit, HabitFrequency } from '@/types';
-import { calculateStreak, calculateBestStreak, getNow, weekKey, previousPeriodKey, formatWeekdayDate } from '@/lib/dates';
+import { calculateStreak, calculateBestStreak, getNow, weekKey, previousPeriodKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { PRESET_CATEGORIES, PresetHabit } from '@/lib/presets';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habitPenalties';
@@ -12,9 +12,9 @@ import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
-import { Heatmap } from '@/components/ui/charts';
+import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';
-import { dailyHabitCompletions, weekGridDayKeys } from '@/lib/weeklyActivity';
+import { dailyHabitCompletions, lastDayKeys } from '@/lib/weeklyActivity';
 
 export function HabitTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
@@ -60,6 +60,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
   const habits = store.state.habits;
   const todayHabits = habits.filter((h) => !store.isHabitDone(h));
   const completedToday = habits.filter((h) => store.isHabitDone(h));
+  const hasDailyHabits = habits.some((h) => h.frequency === 'daily');
 
   return (
     <div className="space-y-6">
@@ -74,8 +75,14 @@ export function HabitTracker({ store }: { store: AppStore }) {
         </button>
       </div>
 
-      {/* Stats row */}
-      <Reveal index={0} className="grid grid-cols-3 gap-3">
+      {/* Stats row; the 7-day card sits beside the stats from sm up and wraps under them on phones */}
+      <Reveal
+        index={0}
+        className={cx(
+          'grid grid-cols-3 gap-3',
+          hasDailyHabits && 'sm:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.7fr)]'
+        )}
+      >
         <div className="card p-4">
           <div className="stat-label">Total Habits</div>
           <CountUp value={habits.length} className="stat-value mt-1 block tabular-nums" />
@@ -88,10 +95,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
           <div className="stat-label">Done Today</div>
           <CountUp value={completedToday.length} className="stat-value mt-1 block tabular-nums text-brand-text" />
         </div>
-      </Reveal>
-
-      <Reveal index={1}>
-        <ConsistencyCard habits={habits} />
+        {hasDailyHabits && <WeekConsistencyCard habits={habits} />}
       </Reveal>
 
       <CapMeterConnected state={store.state} capId="presetHabits" />
@@ -309,41 +313,32 @@ export function HabitTracker({ store }: { store: AppStore }) {
   );
 }
 
-const CONSISTENCY_WEEKS = 12;
+const WEEK_DAYS = 7;
 
-/** Daily-habit completion over the last 12 weeks, one cell per day, Monday at the top. */
-function ConsistencyCard({ habits }: { habits: Habit[] }) {
-  const grid = useMemo(() => {
-    const keys = weekGridDayKeys(CONSISTENCY_WEEKS);
-    const realDays = keys.filter((k): k is string => k !== null);
-    const byDay = new Map(dailyHabitCompletions(habits, realDays).map((d) => [d.day, d]));
-    return keys.map((key) => {
-      const day = key ? byDay.get(key) : undefined;
-      if (!key || !day) return null;
-      const date = formatWeekdayDate(key);
-      return {
-        label: day.total > 0 ? `${date}: ${day.done}/${day.total} habits` : `${date}: no daily habits`,
-        value: day.total > 0 ? Math.round((day.done / day.total) * 100) : 0,
-      };
-    });
-  }, [habits]);
-
-  if (!habits.some((h) => h.frequency === 'daily')) return null;
-  const activeDays = grid.filter((c) => c && c.value > 0).length;
+/** Share of daily habits done on each of the last 7 days, today highlighted; compact, for the stats row. */
+function WeekConsistencyCard({ habits }: { habits: Habit[] }) {
+  const days = useMemo(() => dailyHabitCompletions(habits, lastDayKeys(WEEK_DAYS)), [habits]);
+  const activeDays = days.filter((d) => d.done > 0).length;
 
   return (
-    <div className="card p-4 space-y-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="section-title">Consistency</h2>
-        <span className="text-xs text-content-muted tabular-nums">
-          <CountUp value={activeDays} /> active days · last {CONSISTENCY_WEEKS} weeks
+    <div className="card p-4 col-span-3 sm:col-span-1 flex flex-col justify-between gap-2">
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="stat-label">Last 7 Days</div>
+        <span className="text-2xs text-content-muted tabular-nums">
+          <CountUp value={activeDays} />/{WEEK_DAYS} active
         </span>
       </div>
-      <Heatmap
-        cells={grid}
+      <BarChart
+        data={days.map((d) => ({ label: formatWeekdayShort(d.day), value: d.total > 0 ? (d.done / d.total) * 100 : 0 }))}
         max={100}
-        label={`Daily habit completion, last ${CONSISTENCY_WEEKS} weeks: ${activeDays} active days`}
-        className="max-w-xl"
+        height={36}
+        highlightIndex={WEEK_DAYS - 1}
+        label={`Daily habits done, last 7 days: ${activeDays} active days`}
+        formatTooltip={(_, i) => {
+          const d = days[i];
+          const date = formatWeekdayDate(d.day);
+          return d.total > 0 ? `${date}: ${d.done}/${d.total} habits` : `${date}: no daily habits`;
+        }}
       />
     </div>
   );

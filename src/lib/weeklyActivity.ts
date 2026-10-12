@@ -9,19 +9,6 @@ export function lastDayKeys(count: number, today = todayKey()): string[] {
   return Array.from({ length: count }, (_, i) => addDays(today, i - (count - 1)));
 }
 
-/**
- * Day keys for a calendar grid of `weeks` Monday-start weeks ending with the current one,
- * oldest first, column by column. Days after today are `null` so the grid keeps its shape.
- */
-export function weekGridDayKeys(weeks: number, now = new Date()): (string | null)[] {
-  const today = todayKey(now);
-  const firstMonday = addDays(todayKey(startOfWeek(now)), -(weeks - 1) * 7);
-  return Array.from({ length: weeks * 7 }, (_, i) => {
-    const key = addDays(firstMonday, i);
-    return key > today ? null : key;
-  });
-}
-
 export interface DayPoints {
   day: string;
   earned: number;
