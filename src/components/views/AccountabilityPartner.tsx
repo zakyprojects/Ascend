@@ -18,6 +18,8 @@ import {
   ChevronRight,
   AlertCircle,
   RotateCcw,
+  Flame,
+  Users,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -849,8 +851,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   {/* You Column */}
                   <div
                     className={`p-4 rounded-xl border transition-all ${
-                      mySeasonPoints >= partnerSeasonPoints
-                        ? 'bg-overlay-subtle border-overlay-subtle'
+                      mySeasonPoints > partnerSeasonPoints
+                        ? 'border-primary-500/40 bg-primary-500/5'
                         : 'border-overlay-subtle'
                     }`}
                   >
@@ -859,6 +861,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         <span className="text-xl">{currentUser?.avatar || '🧑'}</span>
                         <div>
                           <span className="item-name text-sm">You ({currentUsername})</span>
+                          {mySeasonPoints > partnerSeasonPoints && (
+                            <span className="badge badge-emerald text-2xs px-2 py-0.5 rounded-full ml-1.5">Leading</span>
+                          )}
                           <span className="block text-2xs text-content-muted">{myTier.name} Tier</span>
                         </div>
                       </div>
@@ -889,7 +894,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   <div
                     className={`p-4 rounded-xl border transition-all ${
                       partnerSeasonPoints > mySeasonPoints
-                        ? 'bg-overlay-subtle border-overlay-subtle'
+                        ? 'border-primary-500/40 bg-primary-500/5'
                         : 'border-overlay-subtle'
                     }`}
                   >
@@ -898,6 +903,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         <span className="text-xl">{partnerStatsData?.avatar || '🧑'}</span>
                         <div>
                           <span className="item-name text-sm">{activePartnerUsername}</span>
+                          {partnerSeasonPoints > mySeasonPoints && (
+                            <span className="badge badge-emerald text-2xs px-2 py-0.5 rounded-full ml-1.5">Leading</span>
+                          )}
                           <span className="block text-2xs text-content-muted">{partnerTier.name} Tier</span>
                         </div>
                       </div>
@@ -1168,6 +1176,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           tone="success"
                           size={80}
                         >
+                          <Flame size={16} className="text-brand-text mb-0.5" />
                           <span className="figure text-sm text-content-primary leading-none">
                             {challenge.jointStreak}d
                           </span>
@@ -1262,7 +1271,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         {/* Dual-Pill Indicator */}
                         <div>
                           {myDone && partnerDone ? (
-                            <div className="inline-flex items-center gap-1.5 text-xs font-medium text-success-text">
+                            <div className="inline-flex items-center gap-1.5 rounded-full bg-primary-500/10 px-2.5 py-1 text-xs font-medium text-brand-text">
                               <CheckCircle2 size={13} /> Both locked in today
                             </div>
                           ) : myDone && !partnerDone ? (
@@ -1441,6 +1450,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       ) : (
         /* NO ACTIVE PARTNERS EMPTY STATE */
         <EmptyState
+          icon={Users}
           title="No partners yet"
           description="Enter a friend's 6-digit user ID to send an invite. You can have up to 5 partners."
         />

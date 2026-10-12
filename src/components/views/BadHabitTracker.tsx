@@ -9,6 +9,7 @@ import {
   RotateCcw,
   CheckCheck,
   Lock,
+  ShieldAlert,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { useToast } from '@/components/ui/Toast';
@@ -180,6 +181,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
           {activeHabits.length === 0 ? (
             <EmptyState
+              icon={ShieldAlert}
               title="No bad habits tracked yet"
               description="Add a habit you want to cut back on (e.g. doomscrolling, junk food, late-night gaming) and log each day you resist it."
               action={
@@ -278,8 +280,8 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-content-muted flex items-center gap-1">
-                          <Flame size={14} className="text-content-subtle" />
-                          <span className="figure text-content-secondary">{habitStreak}d</span> resisted streak
+                          <Flame size={14} className={habitStreak > 0 ? 'text-brand-text' : 'text-content-subtle'} />
+                          <span className={`figure ${habitStreak > 0 ? 'text-brand-text' : 'text-content-secondary'}`}>{habitStreak}d</span> resisted streak
                         </span>
                         <span className="text-content-disabled">
                           {isCompleteUnlocked ? (

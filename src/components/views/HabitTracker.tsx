@@ -108,7 +108,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
             {hasDailyHabits && <WeekConsistencyCard habits={habits} />}
 
             {/* Missed Habit Penalty Info */}
-            <Disclosure title="Missed habit penalties by tier">
+            <Disclosure title="Missed habit penalties by tier" icon={AlertTriangle} tone="warning">
               <p>
                 Missing a preset habit deducts points equal to its value (1st miss = -1x).
                 For <span className="text-content-secondary font-medium">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="figure text-content-secondary">1.5x</span>.
@@ -121,6 +121,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
       >
         {habits.length === 0 ? (
           <EmptyState
+            icon={Check}
             title="No habits yet"
             description="Browse the preset library or create your own to start building streaks."
             action={
@@ -451,8 +452,8 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
           <div className="flex flex-wrap items-center gap-3 mt-1">
             {streak > 0 && (
               <div className="flex items-center gap-1 text-xs">
-                <Flame size={13} className="text-content-subtle" />
-                <span className="figure text-content-secondary">{streak} day{streak !== 1 ? 's' : ''}</span>
+                <Flame size={13} className="text-brand-text" />
+                <span className="figure text-brand-text">{streak} day{streak !== 1 ? 's' : ''}</span>
               </div>
             )}
             {bestStreak > 0 && (

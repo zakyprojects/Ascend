@@ -107,7 +107,7 @@ export function TierView({ store }: { store: AppStore }) {
                         {tier.name}
                       </h3>
                       {isCurrent && (
-                        <span className="badge bg-overlay-default text-content-secondary">
+                        <span className="badge badge-emerald">
                           <Check size={11} /> Current
                         </span>
                       )}
@@ -124,7 +124,7 @@ export function TierView({ store }: { store: AppStore }) {
 
                   {/* Checkmark if unlocked */}
                   {isUnlocked && !isCurrent && (
-                    <Check size={16} className="text-content-muted shrink-0" />
+                    <Check size={16} className="text-success-text shrink-0" />
                   )}
                 </div>
                 </Reveal>

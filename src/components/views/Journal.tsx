@@ -358,7 +358,7 @@ export function Journal({ store }: { store: AppStore }) {
 
                     {existingToday.pointsAwarded && (
                       <span className="figure text-xs text-success-text flex items-center gap-1.5 shrink-0 animate-scale-in">
-                        <Award size={14} className="text-content-subtle" />
+                        <Award size={14} className="text-success-text" />
                         <span>+{JOURNAL_POINTS.entryCompleted} pts earned</span>
                       </span>
                     )}

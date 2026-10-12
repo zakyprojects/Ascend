@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Flame } from 'lucide-react';
+import { Plus, Trash2, Flame, Target } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -312,6 +312,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
           {skills.length === 0 ? (
             <EmptyState
+              icon={Target}
               title="No skills added yet"
               description="Add a skill (e.g. coding, Spanish, guitar, design) to log practice and earn points."
               action={
@@ -362,8 +363,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
                         <div className="flex items-center gap-2 text-xs text-content-disabled">
                           {streak > 0 && (
                             <>
-                              <span className="figure flex items-center gap-1 text-content-secondary">
-                                <Flame size={13} className="text-content-subtle" />
+                              <span className="figure flex items-center gap-1 text-brand-text">
+                                <Flame size={13} className="text-brand-text" />
                                 {streak} day{streak !== 1 ? 's' : ''}
                               </span>
                               <span>•</span>

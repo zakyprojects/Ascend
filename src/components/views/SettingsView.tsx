@@ -12,6 +12,7 @@ import {
   Copy,
   Check,
   AlertCircle,
+  AlertTriangle,
   Clock,
   Mail,
   LogOut,
@@ -755,8 +756,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               </div>
 
                 {notifBrowserPerm === 'denied' && (
-                  <div className="p-3 border border-overlay-default rounded-xl flex items-start gap-2.5 text-xs">
-                    <BellOff size={16} className="text-content-subtle shrink-0 mt-0.5" />
+                  <div className="p-3 bg-rose-500/5 border border-rose-500/30 rounded-xl flex items-start gap-2.5 text-xs">
+                    <BellOff size={16} className="text-rose-theme shrink-0 mt-0.5" />
                     <div className="space-y-1">
                       <p className="font-medium text-rose-theme">Notifications are blocked by your browser</p>
                       <p className="text-micro text-content-muted leading-relaxed">
@@ -877,7 +878,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
           {/* SECTION 6: ACCOUNT MANAGEMENT */}
           {activeSection === 'danger' && (
-            <div className="card p-5 space-y-4">
+            <div className="card p-5 space-y-4 border border-rose-500/20">
               <h2 className="section-title border-b border-overlay-subtle pb-3">
                 Account Management
               </h2>
@@ -970,7 +971,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       {/* Delete Account Confirmation Modal */}
       <Dialog open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete account" maxWidth="max-w-md">
         <div className="space-y-4">
-          <div className="p-4 border border-overlay-default rounded-xl">
+          <div className="p-4 border border-rose-500/30 bg-rose-500/5 rounded-xl flex gap-3">
+            <AlertTriangle size={18} className="text-rose-theme shrink-0 mt-0.5" />
             <div className="space-y-1">
               <h3 className="text-base font-semibold leading-tight text-rose-theme">This can't be undone</h3>
               <p className="text-xs text-content-tertiary leading-relaxed">

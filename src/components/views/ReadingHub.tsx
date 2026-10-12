@@ -14,6 +14,8 @@ import {
   BookCopy,
   Zap,
   Check,
+  BookOpen,
+  ListTodo,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -506,6 +508,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="space-y-4">
             {filteredInProgress.length === 0 ? (
               <EmptyState
+                icon={BookOpen}
                 title="Nothing in progress"
                 description="Start a book from your library, pick one from Discover, or add your own."
                 action={
@@ -638,6 +641,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="space-y-4">
             {filteredToRead.length === 0 ? (
               <EmptyState
+                icon={ListTodo}
                 title="No books in your library"
                 description="Pick from the recommended books or add your own."
                 action={
@@ -789,6 +793,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="space-y-4">
             {filteredCompleted.length === 0 ? (
               <EmptyState
+                icon={CheckCircle2}
                 title="No completed books yet"
                 description="Finish a book to log what you learned and earn points."
               />

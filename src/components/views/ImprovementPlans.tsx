@@ -934,7 +934,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           <div className="space-y-3 pt-3 border-t border-overlay-subtle">
             <div className="flex items-center justify-between text-xs">
               <span className="flex items-center gap-1.5 font-medium text-content-primary">
-                <Flame size={15} className="text-content-subtle" /> <span className="figure">{streak}</span> {cadenceText} Streak
+                <Flame size={15} className={streak > 0 ? 'text-brand-text' : 'text-content-subtle'} /> <span className="figure">{streak}</span> {cadenceText} Streak
               </span>
               <span className="text-content-muted text-micro">
                 Commitment: <span className="text-content-secondary">{durationText}</span> ({plan.cadence || 'daily'})

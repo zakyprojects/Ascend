@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, Flame, AlertCircle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award, Trash2 } from 'lucide-react';
+import { ShieldCheck, Flame, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -127,8 +127,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       </div>
 
       {/* Persistent Disclaimer Banner */}
-      <div className="rounded-2xl p-4 border border-overlay-default flex items-start gap-3">
-        <AlertCircle size={16} className="text-content-subtle shrink-0 mt-0.5" />
+      <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 flex gap-3">
+        <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
         <div className="text-xs text-content-tertiary leading-relaxed">
           <span className="font-semibold text-warning-text">Medical disclaimer:</span> This is a self-help tool. It does <span className="underline">not replace</span> medical treatment or therapy. If you are in crisis, have severe withdrawal, or a serious addiction, contact a licensed professional or a helpline (e.g. SAMHSA Helpline: 1-800-662-4357).
         </div>
@@ -307,7 +307,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                       <div key={log.id} className="enter-item py-3 space-y-1 text-xs">
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-content-secondary flex items-center gap-2">
-                            Intensity: <span className={`figure ${log.intensity >= 7 ? 'text-rose-theme' : 'text-content-primary'}`}>{log.intensity}/10</span>
+                            Intensity: <span className={`figure ${log.intensity >= 7 ? 'text-rose-theme' : log.intensity >= 4 ? 'text-warning-text' : 'text-brand-text'}`}>{log.intensity}/10</span>
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="text-content-disabled text-2xs tabular-nums">{formatDateLong(log.date)}</span>
@@ -479,8 +479,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       {/* Milestone Unlocked Modal */}
       <Dialog open={!!celebrationMilestone} onClose={() => setCelebrationMilestone(null)} title="Milestone unlocked">
         <div className="text-center space-y-4 py-2">
-          <div className="mx-auto w-fit animate-celebrate">
-            <Award size={36} className="text-content-subtle" />
+          <div className="mx-auto w-14 h-14 rounded-full bg-primary-500/15 flex items-center justify-center animate-celebrate">
+            <Award size={28} className="text-brand-text" />
           </div>
           <h3 className="text-2xl font-semibold leading-tight text-content-primary">{celebrationMilestone}</h3>
           <p className="text-xs text-content-muted max-w-sm mx-auto">

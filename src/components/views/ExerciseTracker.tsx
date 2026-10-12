@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Dumbbell } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -239,6 +239,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
 
           {workouts.length === 0 ? (
             <EmptyState
+              icon={Dumbbell}
               title="No workouts logged yet"
               description="Log a workout to start earning points."
               action={

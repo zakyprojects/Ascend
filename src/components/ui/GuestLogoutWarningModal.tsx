@@ -1,4 +1,4 @@
-import { LogOut } from 'lucide-react';
+import { AlertTriangle, LogOut } from 'lucide-react';
 import { Dialog } from './primitives';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 
@@ -22,7 +22,8 @@ export function GuestLogoutWarningModal({
   return (
     <Dialog open={open} onClose={isLoggingOut ? () => {} : onClose} title="Before you log out" maxWidth="max-w-md">
       <div className="space-y-4">
-        <div className="p-4 border border-overlay-default rounded-xl">
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 flex gap-3">
+          <AlertTriangle size={18} className="text-warning-text shrink-0 mt-0.5" />
           <div className="space-y-1">
             <h3 className="text-base font-semibold leading-tight text-warning-text">Your guest progress will be lost</h3>
             <p className="text-xs text-content-tertiary leading-relaxed">
