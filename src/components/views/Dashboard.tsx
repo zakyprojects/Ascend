@@ -34,6 +34,8 @@ import { LeagueType } from '@/types';
 import { calculateBlockDurationMinutes, formatDurationHuman } from '@/lib/timeTracker';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
+import { dailyHabitCompletions, dailyPoints, lastDayKeys } from '@/lib/weeklyActivity';
+import { WeekActivityCard } from './WeekActivityCard';
 
 const LEAGUE_ICONS: Record<string, typeof Trophy> = {
   Calendar, CalendarDays, Brain,
@@ -99,6 +101,13 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
   const currentStreakLabel = 'Current Streak';
   const currentStreakValue = streakResult.formattedCurrentStreak;
+
+  // Last 7 local days, today last: drives the week chart and the hero's "today" delta.
+  const weekDays = lastDayKeys(7);
+  const weekPoints = dailyPoints(store.state.pointsHistory || [], weekDays);
+  const weekHabits = dailyHabitCompletions(habits, weekDays);
+  const today = weekPoints.days[weekPoints.days.length - 1];
+  const todayNet = today.earned - today.lost;
 
   const completionRate = habits.length > 0 ? Math.round((completedToday.length / habits.length) * 100) : 0;
 
@@ -206,6 +215,16 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                 className="text-3xl font-display font-bold text-content-primary tabular-nums"
               />
               <span className="text-sm text-content-disabled">points</span>
+              {todayNet !== 0 && (
+                <span
+                  className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
+                    todayNet > 0 ? 'bg-primary-500/15 text-brand-text' : 'bg-warning-soft text-warning-text'
+                  }`}
+                >
+                  {todayNet > 0 ? '+' : '−'}
+                  {Math.abs(todayNet).toLocaleString()} today
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -215,23 +234,139 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
       </div>
       </Reveal>
 
-      {/* League ranks */}
-      <Reveal index={1} className="grid grid-cols-3 gap-3">
-        <LeagueRankCard type="weekly" rank={weeklyData.userRank} points={weeklyData.userPoints} />
-        <LeagueRankCard type="monthly" rank={monthlyData.userRank} points={monthlyData.userPoints} />
-        <LeagueRankCard type="ninetyDay" rank={ninetyDayData.userRank} points={ninetyDayData.userPoints} />
-      </Reveal>
-
       {/* Stats grid */}
-      <Reveal index={2} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <Reveal index={1} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard icon={<Check size={18} />} label="Done Today" value={`${completedToday.length}/${habits.length}`} tone="emerald" />
         <StatCard icon={<TrendingUp size={18} />} label="Completion" value={`${completionRate}%`} tone="sky" />
         <StatCard icon={<Flame size={18} />} label={currentStreakLabel} value={currentStreakValue} tone="amber" />
         <StatCard icon={<Star size={18} />} label="Habits" value={String(habits.length)} tone="indigo" />
       </Reveal>
 
+      {/* Last 7 days + today's habits: the two things checked daily */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <Reveal index={2}>
+          <WeekActivityCard points={weekPoints.days} pointsPartial={weekPoints.partial} habits={weekHabits} />
+        </Reveal>
+
+        {/* Today's habits quick-complete */}
+        <Reveal index={3}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="section-title">Today's Habits</h2>
+            <button onClick={() => onViewChange('habits')} className="btn-ghost text-xs">
+              View all <ArrowRight size={14} />
+            </button>
+          </div>
+
+          {habits.length === 0 ? (
+            <EmptyState
+              surface
+              size="md"
+              title="No habits yet. Start building your routine!"
+              action={
+                <Button variant="primary" onClick={() => onViewChange('habits')}>
+                  Add Your First Habit
+                </Button>
+              }
+            />
+          ) : (
+            <div className="space-y-2">
+              {pendingToday.length > 0 ? (
+                pendingToday.slice(0, 4).map((habit) => {
+                  const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
+                  return (
+                    <div key={habit.id} className="card p-3 flex items-center gap-3 card-hover">
+                      <button
+                        disabled={isLinked}
+                        title={isLinked ? 'Log reading progress in Reading Hub' : undefined}
+                        aria-label={isLinked ? `${habit.name} (log in Reading Hub)` : `Mark ${habit.name} done`}
+                        onClick={() => !isLinked && store.toggleHabit(habit.id)}
+                        className={`shrink-0 w-9 h-9 rounded-lg border border-overlay-subtle flex items-center justify-center transition-all ${
+                          isLinked
+                            ? 'bg-bg-600/60 text-content-subtle cursor-default'
+                            : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary active:scale-90'
+                        } ${TAP_TARGET} ${FOCUS_RING}`}
+                      >
+                        <Check size={18} />
+                      </button>
+                      <span className="text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
+                        {isLinked && <BookOpen size={13} className="text-warning-text shrink-0" />}
+                        <span>{habit.name}</span>
+                      </span>
+                      {isLinked && habit.points === 0 ? (
+                        <span className="text-xs text-content-subtle">For habit tracking</span>
+                      ) : habit.isPreset ? (
+                        <span className="text-xs text-brand-text font-medium">+{habit.points} pts</span>
+                      ) : (
+                        <span className="text-xs text-content-subtle">No pts</span>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="card p-5 text-center">
+                  <div className="w-12 h-12 rounded-xl bg-primary-500/15 flex items-center justify-center mx-auto mb-2">
+                    <Sparkles size={22} className="text-brand-text" />
+                  </div>
+                  <p className="text-sm font-medium text-brand-text">All habits done today!</p>
+                  <p className="text-xs text-content-disabled mt-0.5">Great work. See you tomorrow.</p>
+                </div>
+              )}
+              {completedToday.length > 0 && pendingToday.length > 0 && (
+                <p className="text-xs text-content-subtle px-1">
+                  {completedToday.length} already completed
+                </p>
+              )}
+            </div>
+          )}
+        </Reveal>
+      </div>
+
+      {/* League ranks */}
+      <Reveal index={4} className="grid grid-cols-3 gap-3">
+        <LeagueRankCard type="weekly" rank={weeklyData.userRank} points={weeklyData.userPoints} />
+        <LeagueRankCard type="monthly" rank={monthlyData.userRank} points={monthlyData.userPoints} />
+        <LeagueRankCard type="ninetyDay" rank={ninetyDayData.userRank} points={ninetyDayData.userPoints} />
+      </Reveal>
+
+      {/* Journal snapshot */}
+      <Reveal index={5}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="section-title">Today's Journal</h2>
+          <button onClick={() => onViewChange('journal')} className="btn-ghost text-xs">
+            {todayEntry ? 'Edit' : 'Write'} <ArrowRight size={14} />
+          </button>
+        </div>
+        <Card
+          variant="interactive"
+          padding="md"
+          onClick={() => onViewChange('journal')}
+        >
+          {todayEntry ? (
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: moodColor(todayEntry.mood) }} />
+                <span className="text-xs text-content-muted capitalize">{todayEntry.mood}</span>
+              </div>
+              <p className="text-sm text-content-tertiary line-clamp-2">
+                {todayEntry.content || 'No content written'}
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-bg-600 flex items-center justify-center">
+                <BookOpen size={18} className="text-content-disabled" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-content-tertiary">Write today's entry</p>
+                <p className="text-xs text-content-disabled">How was your day? (+{JOURNAL_POINTS.entryCompleted} pts)</p>
+              </div>
+            </div>
+          )}
+        </Card>
+      </Reveal>
+
       {/* Activity Summary Widgets Grid */}
-      <Reveal index={3}>
+      <Reveal index={6}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="section-title">Self-Improvement Activity Summary</h2>
         </div>
@@ -338,115 +473,6 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             </div>
           </ModuleCard>
         </div>
-      </Reveal>
-
-      {/* Today's habits quick-complete */}
-      <Reveal index={4}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="section-title">Today's Habits</h2>
-          <button onClick={() => onViewChange('habits')} className="btn-ghost text-xs">
-            View all <ArrowRight size={14} />
-          </button>
-        </div>
-
-        {habits.length === 0 ? (
-          <EmptyState
-            surface
-            size="md"
-            title="No habits yet. Start building your routine!"
-            action={
-              <Button variant="primary" onClick={() => onViewChange('habits')}>
-                Add Your First Habit
-              </Button>
-            }
-          />
-        ) : (
-          <div className="space-y-2">
-            {pendingToday.length > 0 ? (
-              pendingToday.slice(0, 4).map((habit) => {
-                const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
-                return (
-                  <div key={habit.id} className="card p-3 flex items-center gap-3 card-hover">
-                    <button
-                      disabled={isLinked}
-                      title={isLinked ? 'Log reading progress in Reading Hub' : undefined}
-                      aria-label={isLinked ? `${habit.name} (log in Reading Hub)` : `Mark ${habit.name} done`}
-                      onClick={() => !isLinked && store.toggleHabit(habit.id)}
-                      className={`shrink-0 w-9 h-9 rounded-lg border border-overlay-subtle flex items-center justify-center transition-all ${
-                        isLinked
-                          ? 'bg-bg-600/60 text-content-subtle cursor-default'
-                          : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary active:scale-90'
-                      } ${TAP_TARGET} ${FOCUS_RING}`}
-                    >
-                      <Check size={18} />
-                    </button>
-                    <span className="text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
-                      {isLinked && <BookOpen size={13} className="text-warning-text shrink-0" />}
-                      <span>{habit.name}</span>
-                    </span>
-                    {isLinked && habit.points === 0 ? (
-                      <span className="text-xs text-content-subtle">For habit tracking</span>
-                    ) : habit.isPreset ? (
-                      <span className="text-xs text-brand-text font-medium">+{habit.points} pts</span>
-                    ) : (
-                      <span className="text-xs text-content-subtle">No pts</span>
-                    )}
-                  </div>
-                );
-              })
-            ) : (
-              <div className="card p-5 text-center">
-                <div className="w-12 h-12 rounded-xl bg-primary-500/15 flex items-center justify-center mx-auto mb-2">
-                  <Sparkles size={22} className="text-brand-text" />
-                </div>
-                <p className="text-sm font-medium text-brand-text">All habits done today!</p>
-                <p className="text-xs text-content-disabled mt-0.5">Great work. See you tomorrow.</p>
-              </div>
-            )}
-            {completedToday.length > 0 && pendingToday.length > 0 && (
-              <p className="text-xs text-content-subtle px-1">
-                {completedToday.length} already completed
-              </p>
-            )}
-          </div>
-        )}
-      </Reveal>
-
-      {/* Journal snapshot */}
-      <Reveal index={5}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="section-title">Today's Journal</h2>
-          <button onClick={() => onViewChange('journal')} className="btn-ghost text-xs">
-            {todayEntry ? 'Edit' : 'Write'} <ArrowRight size={14} />
-          </button>
-        </div>
-        <Card
-          variant="interactive"
-          padding="md"
-          onClick={() => onViewChange('journal')}
-        >
-          {todayEntry ? (
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: moodColor(todayEntry.mood) }} />
-                <span className="text-xs text-content-muted capitalize">{todayEntry.mood}</span>
-              </div>
-              <p className="text-sm text-content-tertiary line-clamp-2">
-                {todayEntry.content || 'No content written'}
-              </p>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-bg-600 flex items-center justify-center">
-                <BookOpen size={18} className="text-content-disabled" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-content-tertiary">Write today's entry</p>
-                <p className="text-xs text-content-disabled">How was your day? (+{JOURNAL_POINTS.entryCompleted} pts)</p>
-              </div>
-            </div>
-          )}
-        </Card>
       </Reveal>
     </div>
   );

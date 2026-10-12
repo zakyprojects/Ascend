@@ -1,0 +1,67 @@
+import { Habit, PointsEntry } from '@/types';
+import { addDays, parseDate, todayKey } from './dates';
+
+/** The ledger keeps only the newest entries (pointsLedger.ts caps it at 500). */
+const POINTS_HISTORY_CAP = 500;
+
+/** The last `count` local date keys, oldest first, ending today. */
+export function lastDayKeys(count: number, today = todayKey()): string[] {
+  return Array.from({ length: count }, (_, i) => addDays(today, i - (count - 1)));
+}
+
+export interface DayPoints {
+  day: string;
+  earned: number;
+  /** Penalties as a positive number. */
+  lost: number;
+}
+
+/**
+ * Points earned and lost per local day, from the points ledger. `partial` is true when the
+ * ledger is at its cap and its oldest kept entry falls inside the window, so the earliest
+ * days may be missing entries.
+ */
+export function dailyPoints(history: PointsEntry[], days: string[]): { days: DayPoints[]; partial: boolean } {
+  const byDay = new Map<string, DayPoints>(days.map((day) => [day, { day, earned: 0, lost: 0 }]));
+  let oldest: string | null = null;
+  for (const entry of history) {
+    const date = parseDate(entry?.timestamp);
+    if (!date || !Number.isFinite(entry.amount)) continue;
+    const key = todayKey(date);
+    if (oldest === null || key < oldest) oldest = key;
+    const bucket = byDay.get(key);
+    if (!bucket) continue;
+    if (entry.amount >= 0) bucket.earned += entry.amount;
+    else bucket.lost -= entry.amount;
+  }
+  const partial = history.length >= POINTS_HISTORY_CAP && oldest !== null && oldest > days[0];
+  return { days: days.map((day) => byDay.get(day)!), partial };
+}
+
+export interface DayHabits {
+  day: string;
+  done: number;
+  /** Daily habits that existed on that day. */
+  total: number;
+}
+
+/**
+ * Daily habits completed per local day. Weekly habits are left out: they are done once per
+ * week, so they have no per-day completion to count.
+ */
+export function dailyHabitCompletions(habits: Habit[], days: string[]): DayHabits[] {
+  const daily = habits.filter((h) => h.frequency === 'daily');
+  return days.map((day) => {
+    let done = 0;
+    let total = 0;
+    for (const habit of daily) {
+      if (habit.createdAtPeriod && habit.createdAtPeriod > day) continue;
+      total++;
+      const completions = habit.completions as Habit['completions'] | string[] | undefined;
+      // Legacy accounts stored completions as an array of keys (store.isHabitDone handles both).
+      const isDone = Array.isArray(completions) ? completions.includes(day) : completions?.[day]?.done === true;
+      if (isDone) done++;
+    }
+    return { day, done, total };
+  });
+}
