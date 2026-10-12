@@ -325,9 +325,9 @@ export function Journal({ store }: { store: AppStore }) {
 
             {/* TODAY'S ENTRY CARD (TWO-STATE FLOW) */}
             <div className="card p-5 border border-overlay-subtle relative overflow-hidden">
-              {/* Subtle background glow when celebrated */}
+              {/* Subtle background tint when celebrated */}
               {justCelebrated && (
-                <div className="absolute inset-0 bg-emerald-500/5 pointer-events-none animate-pulse-glow" />
+                <div className="absolute inset-0 bg-emerald-500/5 pointer-events-none" />
               )}
 
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
@@ -335,7 +335,7 @@ export function Journal({ store }: { store: AppStore }) {
                   <Calendar size={18} className="text-brand-text" />
                   <h2 className="section-title">Today's Journal Entry</h2>
                 </div>
-                <span className="text-xs text-content-muted font-medium bg-bg-800 px-3 py-1 rounded-lg border border-overlay-subtle">
+                <span className="font-mono text-xs text-content-muted bg-bg-800 px-3 py-1 rounded-lg border border-overlay-subtle">
                   {formatDateLong(todayKey())}
                 </span>
               </div>
@@ -347,7 +347,7 @@ export function Journal({ store }: { store: AppStore }) {
                   <div
                     className={`p-3.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
                       justCelebrated
-                        ? 'bg-emerald-500/20 border-emerald-500/40 shadow-lg shadow-emerald-500/10'
+                        ? 'bg-emerald-500/20 border-emerald-500/40'
                         : 'bg-emerald-500/10 border-emerald-500/20'
                     }`}
                   >
@@ -356,7 +356,7 @@ export function Journal({ store }: { store: AppStore }) {
                         <CheckCircle2 size={18} className={justCelebrated ? 'animate-celebrate' : ''} />
                       </div>
                       <div>
-                        <p className="text-xs text-success-text font-bold">
+                        <p className="text-xs text-success-text font-medium">
                           {justCelebrated ? "Reflection saved! Great work today." : "Today's entry saved and confirmed"}
                         </p>
                         <p className="text-micro text-success-text">
@@ -366,7 +366,7 @@ export function Journal({ store }: { store: AppStore }) {
                     </div>
 
                     {existingToday.pointsAwarded && (
-                      <span className="text-xs font-bold text-success-text bg-emerald-500/25 px-3 py-1 rounded-full border border-emerald-500/40 flex items-center gap-1.5 shrink-0 shadow-sm animate-scale-in">
+                      <span className="figure text-xs text-success-text bg-emerald-500/25 px-3 py-1 rounded-full border border-emerald-500/40 flex items-center gap-1.5 shrink-0 shadow-sm animate-scale-in">
                         <Award size={14} className="text-success-text" />
                         <span>+{JOURNAL_POINTS.entryCompleted} pts earned</span>
                       </span>
@@ -384,11 +384,11 @@ export function Journal({ store }: { store: AppStore }) {
                           <TodayMoodIcon size={20} style={{ color: todayMoodConfig.color }} />
                         </div>
                         <div>
-                          <span className="text-2xs text-content-disabled uppercase font-bold tracking-wider block">
+                          <span className="stat-label block">
                             Recorded Mood
                           </span>
                           <span
-                            className="text-sm font-bold flex items-center gap-1.5"
+                            className="text-sm font-medium flex items-center gap-1.5"
                             style={{ color: todayMoodConfig.color }}
                           >
                             {todayMoodConfig.label}
@@ -406,7 +406,7 @@ export function Journal({ store }: { store: AppStore }) {
                     </div>
 
                     <div>
-                      <span className="text-2xs text-content-disabled uppercase font-bold tracking-wider block mb-1.5">
+                      <span className="stat-label block mb-1.5">
                         Your Daily Notes
                       </span>
                       <div className="text-xs text-content-secondary leading-relaxed whitespace-pre-wrap min-h-[60px] p-3 rounded-lg bg-bg-900/60 border border-overlay-subtle">
@@ -434,7 +434,7 @@ export function Journal({ store }: { store: AppStore }) {
                           : `Write at least a sentence (10+ characters) to earn +${JOURNAL_POINTS.entryCompleted} points.`}
                       </span>
                     </div>
-                    <span className="text-micro font-bold bg-primary-500/20 px-2 py-0.5 rounded text-brand-text border border-primary-500/30 shrink-0">
+                    <span className="figure text-micro bg-primary-500/20 px-2 py-0.5 rounded text-brand-text border border-primary-500/30 shrink-0">
                       +{JOURNAL_POINTS.entryCompleted} pts
                     </span>
                   </div>
@@ -453,7 +453,7 @@ export function Journal({ store }: { store: AppStore }) {
                             onClick={() => setMood(m.value)}
                             className={`flex flex-col items-center gap-1.5 py-3.5 px-2 rounded-xl transition-all duration-200 ${
                               selected
-                                ? 'bg-bg-600 border-2 shadow-lg scale-[1.02]'
+                                ? 'bg-bg-600 border-2 shadow-sm scale-[1.02]'
                                 : 'bg-bg-700/80 border border-overlay-subtle hover:bg-bg-600 hover:border-overlay-default'
                             }`}
                             style={selected ? { borderColor: m.color, backgroundColor: `${m.color}15` } : {}}
@@ -464,7 +464,7 @@ export function Journal({ store }: { store: AppStore }) {
                               className={`transition-transform ${selected ? 'scale-110' : ''}`}
                             />
                             <span
-                              className="text-xs font-bold transition-colors"
+                              className="text-xs font-medium transition-colors"
                               style={{ color: selected ? m.color : 'var(--color-content-muted)' }}
                             >
                               {m.label}
@@ -501,7 +501,7 @@ export function Journal({ store }: { store: AppStore }) {
                     {showGuidedPrompt && (
                       <div className="p-3.5 bg-bg-800/90 rounded-xl border border-primary-500/20 space-y-2 animate-fade-in">
                         <div className="flex items-center justify-between gap-2">
-                          <span className={`text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${currentDailyPrompt.categoryColor}`}>
+                          <span className={`font-mono text-2xs font-medium uppercase tracking-[0.08em] px-2 py-0.5 rounded-md border ${currentDailyPrompt.categoryColor}`}>
                             {currentDailyPrompt.category}
                           </span>
                           <button
@@ -514,7 +514,7 @@ export function Journal({ store }: { store: AppStore }) {
                             <span>Shuffle Prompt</span>
                           </button>
                         </div>
-                        <p className="text-xs sm:text-sm font-medium text-content-secondary leading-snug">
+                        <p className="font-serif italic text-base sm:text-lg text-content-primary leading-snug">
                           "{currentDailyPrompt.prompt}"
                         </p>
                       </div>
@@ -550,14 +550,14 @@ export function Journal({ store }: { store: AppStore }) {
                             Write a bit more before saving — {charsNeeded} more {charsNeeded === 1 ? 'character' : 'characters'} needed.
                           </span>
                         ) : (
-                          <span className="text-success-text flex items-center gap-1 font-semibold animate-fade-in">
+                          <span className="text-success-text flex items-center gap-1 font-medium animate-fade-in">
                             <CheckCircle2 size={13} className="text-success-text" />
                             Ready to save ({trimmedContent.length} characters) • +{JOURNAL_POINTS.entryCompleted} pts
                           </span>
                         )}
                       </div>
 
-                      <span className={`text-micro font-mono ${hasEnoughContent ? 'text-success-text font-bold' : 'text-content-muted'}`}>
+                      <span className={`text-micro figure ${hasEnoughContent ? 'text-success-text' : 'text-content-muted'}`}>
                         {trimmedContent.length}/{MIN_JOURNAL_CONTENT_LENGTH} min
                       </span>
                     </div>
@@ -569,7 +569,7 @@ export function Journal({ store }: { store: AppStore }) {
                       type="button"
                       onClick={handleSave}
                       disabled={isSaving || !hasEnoughContent}
-                      className={`btn flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all shadow-md ${
+                      className={`btn flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all shadow-sm ${
                         hasEnoughContent
                           ? 'btn-primary'
                           : 'bg-bg-600 text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-70'
@@ -656,7 +656,7 @@ export function Journal({ store }: { store: AppStore }) {
                         <div key={row.level} className="flex items-center gap-2 w-full">
                           <div className="flex items-center gap-1 w-20 shrink-0">
                             <row.icon size={13} style={{ color: row.color }} />
-                            <span className="text-2xs font-semibold text-content-muted truncate">
+                            <span className="text-2xs text-content-muted truncate">
                               {row.label}
                             </span>
                           </div>
@@ -724,7 +724,7 @@ export function Journal({ store }: { store: AppStore }) {
                                   strokeWidth="2.5"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  className="drop-shadow-md pointer-events-none"
+                                  className="pointer-events-none"
                                 />
                               )}
 
@@ -792,7 +792,7 @@ export function Journal({ store }: { store: AppStore }) {
                                           cy={cy}
                                           r={radius}
                                           fill={pt.moodMeta?.color || '#10b981'}
-                                          className="transition-all duration-150 group-hover:scale-125 group-focus-visible:scale-125 origin-center drop-shadow-md"
+                                          className="transition-all duration-150 group-hover:scale-125 group-focus-visible:scale-125 origin-center"
                                           style={{
                                             transformOrigin: `${cx}px ${cy}px`,
                                           }}
@@ -817,12 +817,12 @@ export function Journal({ store }: { store: AppStore }) {
                     </div>
 
                     {/* X-Axis Day Labels */}
-                    <div className="flex justify-between items-center px-4 pl-24 text-2xs text-content-muted mt-2 font-medium">
+                    <div className="flex justify-between items-center px-4 pl-24 font-mono text-2xs text-content-muted mt-2">
                       {chartRange === '7d' ? (
                         chartData.map((d) => (
                           <span
                             key={d.dateKey}
-                            className={d.isToday ? 'text-brand-text font-bold' : 'text-content-muted'}
+                            className={d.isToday ? 'text-brand-text font-medium' : 'text-content-muted'}
                           >
                             {d.shortLabel}
                           </span>
@@ -831,7 +831,7 @@ export function Journal({ store }: { store: AppStore }) {
                         <>
                           <span>{chartData[0]?.label}</span>
                           <span>{chartData[Math.floor(chartData.length / 2)]?.label}</span>
-                          <span className="text-brand-text font-bold">Today</span>
+                          <span className="text-brand-text font-medium">Today</span>
                         </>
                       )}
                     </div>
@@ -840,15 +840,15 @@ export function Journal({ store }: { store: AppStore }) {
                     <div className="mt-2 min-h-[4.25rem]">
                     {hoveredChartPoint && hoveredChartPoint.moodMeta ? (
                       <div
-                        className="p-2.5 bg-bg-800 border border-overlay-default rounded-xl shadow-2xl space-y-1 animate-fade-in"
+                        className="p-2.5 bg-bg-800 border border-overlay-default rounded-xl shadow-sm space-y-1 animate-fade-in"
                         style={{ borderColor: `${hoveredChartPoint.moodMeta.color}40` }}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-content-secondary">
+                          <span className="font-mono text-xs text-content-secondary">
                             {formatDateLong(hoveredChartPoint.date)}
                           </span>
                           <span
-                            className="text-xs font-bold px-2 py-0.5 rounded-md"
+                            className="text-xs font-medium px-2 py-0.5 rounded-md"
                             style={{
                               backgroundColor: `${hoveredChartPoint.moodMeta.color}20`,
                               color: hoveredChartPoint.moodMeta.color,
@@ -886,11 +886,11 @@ export function Journal({ store }: { store: AppStore }) {
                             <Icon size={16} style={{ color: m.color }} />
                           </div>
                           <div>
-                            <span className="text-2xs text-content-muted uppercase font-semibold block">
+                            <span className="stat-label block">
                               {m.label}
                             </span>
-                            <span className="text-sm font-bold text-content-primary">
-                              <CountUp value={count} /> <span className="text-2xs text-content-muted font-normal">days</span>
+                            <span className="figure text-sm text-content-primary">
+                              <CountUp value={count} /> <span className="font-sans text-2xs text-content-muted font-normal">days</span>
                             </span>
                           </div>
                         </div>
@@ -902,14 +902,14 @@ export function Journal({ store }: { store: AppStore }) {
                   {averageScore && (
                     <div className="p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle flex flex-wrap items-center justify-between gap-2 text-xs">
                       <div className="flex items-center gap-2 text-content-muted">
-                        <span className="font-medium">Journaling Consistency:</span>
-                        <span className="text-content-secondary font-bold">
+                        <span>Journaling Consistency:</span>
+                        <span className="figure text-content-secondary">
                           {recordedPointsInRange.length} of {chartDaysCount} days ({Math.round((recordedPointsInRange.length / chartDaysCount) * 100)}%)
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-content-muted">
-                        <span className="font-medium">Average Mood Score:</span>
-                        <span className="text-success-text font-bold font-mono">
+                        <span>Average Mood Score:</span>
+                        <span className="figure text-success-text">
                           {averageScore} / 4.0
                         </span>
                       </div>
@@ -965,18 +965,18 @@ export function Journal({ store }: { store: AppStore }) {
                         {/* Entry Header & Snippet */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-bold text-content-secondary">
+                            <span className="item-name text-sm">
                               {formatDateLong(entry.date)}
                             </span>
 
                             {isToday && (
-                              <span className="text-2xs bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-bold">
+                              <span className="text-2xs bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-medium">
                                 Today
                               </span>
                             )}
 
                             <span
-                              className="text-xs font-semibold px-2 py-0.5 rounded-md border"
+                              className="text-xs font-medium px-2 py-0.5 rounded-md border"
                               style={{
                                 backgroundColor: `${moodMeta.color}15`,
                                 borderColor: `${moodMeta.color}30`,
@@ -1002,7 +1002,7 @@ export function Journal({ store }: { store: AppStore }) {
                         {/* Points & Action Buttons */}
                         <div className="flex items-center gap-2.5 shrink-0">
                           {entry.pointsAwarded && (
-                            <span className="text-xs text-success-text font-display font-bold bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 flex items-center gap-1">
+                            <span className="figure text-xs text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 flex items-center gap-1">
                               <Award size={13} /> +{JOURNAL_POINTS.entryCompleted} pts
                             </span>
                           )}
@@ -1058,17 +1058,17 @@ export function Journal({ store }: { store: AppStore }) {
                     <Icon size={20} style={{ color: moodMeta.color }} />
                   </div>
                   <div>
-                    <p className="text-2xs text-content-disabled uppercase font-bold tracking-wider">
+                    <p className="stat-label">
                       Recorded Mood
                     </p>
-                    <p className="text-sm font-bold" style={{ color: moodMeta.color }}>
+                    <p className="text-sm font-medium" style={{ color: moodMeta.color }}>
                       {moodMeta.label}
                     </p>
                   </div>
                 </div>
 
                 {selectedEntry.pointsAwarded ? (
-                  <span className="text-xs text-success-text font-bold bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 flex items-center gap-1.5">
+                  <span className="figure text-xs text-success-text bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 flex items-center gap-1.5">
                     <Award size={14} /> +{JOURNAL_POINTS.entryCompleted} pts Earned
                   </span>
                 ) : (
@@ -1079,7 +1079,7 @@ export function Journal({ store }: { store: AppStore }) {
               </div>
 
               <div>
-                <h4 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-2">
+                <h4 className="stat-label mb-2">
                   Daily Notes
                 </h4>
                 <div className="p-4 bg-bg-800 rounded-xl border border-overlay-subtle text-sm text-content-secondary leading-relaxed whitespace-pre-wrap min-h-[100px]">

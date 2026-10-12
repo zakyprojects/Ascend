@@ -25,7 +25,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
                 <div className="w-16 h-16 rounded-2xl bg-primary-500/15 flex items-center justify-center mb-4">
                   <Brain size={32} className="text-brand-text" />
                 </div>
-                <h2 className="text-xl font-display font-bold text-content-primary mb-2">
+                <h2 className="font-serif font-normal text-[1.75rem] leading-tight tracking-[-0.01em] text-content-primary mb-2">
                   Your brain is not fixed.
                 </h2>
                 <p className="text-sm text-content-muted leading-relaxed">
@@ -42,7 +42,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
 
             {/* Core principle */}
             <Reveal index={1} className="card p-5 border-l-2 border-l-primary-500">
-              <p className="text-lg font-display font-bold text-content-primary mb-2">
+              <p className="font-serif italic text-xl leading-snug text-content-primary mb-2">
                 "Neurons that fire together, wire together."
               </p>
               <p className="text-sm text-content-muted">
@@ -105,7 +105,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
                   <Target size={20} className="text-brand-text" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-display font-bold text-content-primary mb-1">The 90-Day League</h3>
+                  <h3 className="font-serif text-xl leading-tight text-content-primary mb-1">The 90-Day League</h3>
                   <p className="text-sm text-content-muted leading-relaxed mb-3">
                     This league is designed around the neuroscience of habit formation. 90 days of sustained
                     effort is enough time for new behaviors to physically rewire your brain. It's not just a
@@ -166,7 +166,7 @@ function PillarCard({ icon, color, title, description }: { icon: React.ReactNode
           {icon}
         </div>
         <div>
-          <h3 className="font-display font-bold text-content-primary text-sm mb-1">{title}</h3>
+          <h3 className="item-name text-sm mb-1">{title}</h3>
           <p className="text-xs text-content-muted leading-relaxed">{description}</p>
         </div>
       </div>
@@ -178,7 +178,7 @@ function Tip({ num, text }: { num: string; text: string }) {
   return (
     <div className="flex items-start gap-3">
       <div className="w-6 h-6 rounded-lg bg-primary-500/15 flex items-center justify-center shrink-0 mt-0.5">
-        <span className="text-xs font-bold text-brand-text">{num}</span>
+        <span className="figure text-xs text-brand-text">{num}</span>
       </div>
       <p className="text-sm text-content-muted leading-relaxed">{text}</p>
     </div>
