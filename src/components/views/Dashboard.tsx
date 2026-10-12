@@ -174,6 +174,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
       {/* Hero: today, the season, and where you stand on the climb */}
       <Reveal index={0}>
         <section className="card p-5 sm:p-6 relative overflow-hidden" aria-label="Today and your season">
+          <div aria-hidden="true" className="hero-glow hero-glow-corner" />
           <div className="relative grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-10">
             <div className="flex items-center gap-5">
               <ProgressRing

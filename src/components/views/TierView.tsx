@@ -26,8 +26,13 @@ export function TierView({ store }: { store: AppStore }) {
         aside={
           <>
             {/* Current tier showcase */}
-            <div className="card p-6 text-center">
-              <div>
+            <div className="card p-6 text-center relative overflow-hidden">
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 opacity-[0.08] pointer-events-none"
+                style={{ background: `radial-gradient(circle at 50% 30%, var(--rank-${currentTier.name.toLowerCase()}-text), transparent 65%)` }}
+              />
+              <div className="relative">
                 <div
                   className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4"
                   style={{

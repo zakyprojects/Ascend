@@ -275,7 +275,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
           <div className={`space-y-4 py-2 ${modeSwitched ? 'animate-slide-in-left' : ''}`}>
             <div className="text-center space-y-1">
               {/* Torch chip: a self-contained dark badge, intentionally the same in both themes. */}
-              <img src="/logo-torch.svg" alt="Ascend Logo" className="w-20 h-20 rounded-[22%] mx-auto shadow-sm mb-3 object-cover" />
+              <img src="/logo-torch.svg" alt="Ascend Logo" className="w-20 h-20 rounded-[22%] mx-auto shadow-lg shadow-emerald-500/15 mb-3 object-cover" />
               <h2 className="section-title">
                 Ascend Self-Growth
               </h2>

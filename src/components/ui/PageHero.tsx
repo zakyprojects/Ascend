@@ -32,6 +32,7 @@ export interface PageHeroProps {
 export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }: PageHeroProps) {
   return (
     <section className={cx('card relative overflow-hidden p-5 sm:p-6', className)} aria-label={ariaLabel}>
+      <div aria-hidden="true" className="hero-glow hero-glow-corner" />
       <div
         className={cx(
           'relative grid gap-6',

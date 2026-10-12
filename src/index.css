@@ -995,6 +995,35 @@
     border-left-color: var(--badge-rose-text) !important;
   }
 
+  /* Hero glows (restored lighter, static): a soft tint from the top of a hero card in its module
+     colour, and a faint halo on a hero icon tile. Purely decorative, pointer-events off. */
+  .hero-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 560px 300px at 50% 0%, rgb(16 185 129 / 0.10) 0%, transparent 70%);
+  }
+  .hero-glow-purple {
+    background: radial-gradient(ellipse 560px 300px at 50% 0%, rgb(168 85 247 / 0.12) 0%, transparent 70%);
+  }
+  .hero-glow-cyan {
+    background: radial-gradient(ellipse 560px 300px at 50% 0%, rgb(6 182 212 / 0.12) 0%, transparent 70%);
+  }
+  .hero-glow-corner {
+    background: radial-gradient(ellipse 520px 320px at 100% 0%, rgb(16 185 129 / 0.10) 0%, transparent 70%);
+  }
+  [data-theme='light'] .hero-glow { background: radial-gradient(ellipse 560px 300px at 50% 0%, rgb(16 185 129 / 0.08) 0%, transparent 70%); }
+  [data-theme='light'] .hero-glow-purple { background: radial-gradient(ellipse 560px 300px at 50% 0%, rgb(168 85 247 / 0.09) 0%, transparent 70%); }
+  [data-theme='light'] .hero-glow-cyan { background: radial-gradient(ellipse 560px 300px at 50% 0%, rgb(6 182 212 / 0.09) 0%, transparent 70%); }
+  [data-theme='light'] .hero-glow-corner { background: radial-gradient(ellipse 520px 320px at 100% 0%, rgb(16 185 129 / 0.08) 0%, transparent 70%); }
+
+  .hero-icon-glow-emerald { box-shadow: 0 0 14px rgb(16 185 129 / 0.30); }
+  .hero-icon-glow-purple { box-shadow: 0 0 14px rgb(168 85 247 / 0.30); }
+  .hero-icon-glow-cyan { box-shadow: 0 0 14px rgb(6 182 212 / 0.30); }
+  [data-theme='light'] .hero-icon-glow-emerald { box-shadow: 0 0 14px rgb(16 185 129 / 0.16); }
+  [data-theme='light'] .hero-icon-glow-purple { box-shadow: 0 0 14px rgb(168 85 247 / 0.16); }
+  [data-theme='light'] .hero-icon-glow-cyan { box-shadow: 0 0 14px rgb(6 182 212 / 0.16); }
+
   /* League Current User Row Highlight (Theme-Aware via CSS Tokens) */
   .league-user-row {
     background-color: var(--league-user-bg) !important;
@@ -1037,7 +1066,7 @@
   }
 
   .btn-primary {
-    @apply btn bg-primary-600 text-on-brand hover:bg-primary-700;
+    @apply btn bg-primary-600 text-on-brand hover:bg-primary-700 hover:shadow-brand-glow;
   }
 
 

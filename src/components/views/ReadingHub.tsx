@@ -541,7 +541,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   return (
                     <div
                       key={book.id}
-                      className="card p-5 space-y-4 border border-amber-500/20 bg-amber-500/[0.03] hover:border-amber-500/40 transition-colors flex flex-col justify-between"
+                      className="card p-5 space-y-4 border border-amber-500/20 bg-gradient-to-br from-transparent to-amber-500/[0.06] hover:border-amber-500/40 transition-colors flex flex-col justify-between"
                     >
                       <div>
                         <div className="flex items-start justify-between gap-3">
@@ -803,7 +803,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 {filteredCompleted.map((book) => (
                   <div
                     key={book.id}
-                    className="card p-5 space-y-3 border border-emerald-500/20"
+                    className="card p-5 space-y-3 border border-emerald-500/20 bg-gradient-to-r from-transparent to-emerald-500/[0.05]"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                       <div>

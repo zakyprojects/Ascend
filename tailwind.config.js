@@ -131,7 +131,8 @@ export default {
         sm: 'var(--shadow-sm)',
         md: 'var(--shadow-md)',
         lg: 'var(--shadow-lg)',
-        // Primary button hover: a soft emerald lift.
+        // Primary button hover: a soft emerald lift (lighter than the original 0.6).
+        'brand-glow': '0 6px 18px -8px rgb(16 185 129 / 0.45)',
       },
       fontFamily: {
         // Design v3: Geist runs the interface (and bold display numbers); Instrument Serif is reserved

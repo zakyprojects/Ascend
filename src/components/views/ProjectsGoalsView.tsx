@@ -2381,11 +2381,12 @@ export function ProjectsGoalsView({
           {filteredTasks.length === 0 ? (
             goals.length === 0 ? (
               /* The 'Wake-Up Call' Intervention: No Goals Set Yet */
-              <div className="py-16 px-6 text-center border border-dashed border-overlay-default rounded-2xl space-y-5">
-                <div className="w-14 h-14 rounded-2xl border flex items-center justify-center mx-auto badge-purple">
+              <div className="relative overflow-hidden py-16 px-6 text-center border border-dashed border-overlay-default rounded-2xl space-y-5">
+                <div aria-hidden="true" className="hero-glow hero-glow-purple" />
+                <div className="relative w-14 h-14 rounded-2xl border flex items-center justify-center mx-auto badge-purple hero-icon-glow-purple">
                   <Target size={26} />
                 </div>
-                <div className="max-w-md mx-auto space-y-2">
+                <div className="relative max-w-md mx-auto space-y-2">
                   <h3 className="text-lg font-semibold text-content-primary">
                     Start with a goal
                   </h3>
@@ -2397,7 +2398,7 @@ export function ProjectsGoalsView({
                 <button
                   type="button"
                   onClick={openCreateGoalModal}
-                  className="btn-primary bg-purple-600 hover:bg-purple-500 text-white text-sm px-5 py-2.5 inline-flex items-center gap-2"
+                  className="relative btn-primary bg-purple-600 hover:bg-purple-500 text-white text-sm px-5 py-2.5 inline-flex items-center gap-2"
                 >
                   <Plus size={16} />
                   <span>Create Your First Goal</span>
@@ -2405,7 +2406,7 @@ export function ProjectsGoalsView({
                 <button
                   type="button"
                   onClick={() => quickTaskInputRef.current?.focus()}
-                  className="block mx-auto text-xs text-content-muted hover:text-content-secondary underline-offset-2 hover:underline"
+                  className="relative block mx-auto text-xs text-content-muted hover:text-content-secondary underline-offset-2 hover:underline"
                 >
                   Or add a task above without a goal
                 </button>
