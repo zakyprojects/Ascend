@@ -182,7 +182,7 @@ function ToastCard({ toast, onDismiss }: { toast: ShownToast; onDismiss: (id: st
     >
       <div className="mt-0.5">{tone.icon}</div>
       <div className="flex-1 min-w-0">
-        <h4 className={`text-xs font-bold leading-snug ${tone.title}`}>{toast.title}</h4>
+        <h4 className={`text-xs font-medium leading-snug ${tone.title}`}>{toast.title}</h4>
         {toast.message && <p className={`text-micro mt-0.5 leading-relaxed ${tone.message}`}>{toast.message}</p>}
       </div>
       <button

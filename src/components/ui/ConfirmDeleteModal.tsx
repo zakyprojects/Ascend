@@ -48,7 +48,7 @@ export function ConfirmDeleteModal({
           <p className="text-xs text-content-tertiary leading-relaxed">
             {description || (
               <>
-                Are you sure you want to delete {itemName ? <strong className="text-content-primary font-bold">"{itemName}"</strong> : 'this item'}? This action cannot be undone.
+                Are you sure you want to delete {itemName ? <strong className="text-content-primary font-medium">"{itemName}"</strong> : 'this item'}? This action cannot be undone.
               </>
             )}
           </p>
@@ -67,7 +67,7 @@ export function ConfirmDeleteModal({
             type="button"
             onClick={handleConfirmClick}
             disabled={isDeleting}
-            className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-rose-900/20"
+            className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
           >
             {isDeleting ? (
               <>

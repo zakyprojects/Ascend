@@ -127,9 +127,9 @@ export function OfflineBanner() {
             <WifiOff size={16} />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-bold text-warning-text flex items-center gap-1.5">
+            <p className="text-xs font-medium text-warning-text flex items-center gap-1.5">
               <span>You are currently offline</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-warning-text animate-ping" />
+              <span className="w-1.5 h-1.5 rounded-full bg-warning-text" />
             </p>
             <p className="text-micro text-warning-text-muted truncate">
               Actions won't save until connection is restored. Please reconnect.
@@ -149,7 +149,7 @@ export function OfflineBanner() {
         <div className="p-1.5 rounded-lg bg-emerald-500/20 shrink-0 text-success-text">
           <Wifi size={16} />
         </div>
-        <p className="text-xs font-bold text-success-text">
+        <p className="text-xs font-medium text-success-text">
           Connection restored! Back online.
         </p>
       </div>

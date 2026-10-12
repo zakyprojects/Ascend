@@ -58,10 +58,10 @@ export function AscentProfile({ totalPoints }: { totalPoints: number }) {
             {tier.name}
           </div>
         </div>
-        <div className="text-right text-xs text-content-muted tabular-nums">
+        <div className="text-right text-xs text-content-muted">
           {next ? (
             <>
-              <span className="text-content-secondary font-medium">{(next.minPoints - totalPoints).toLocaleString()}</span> to {next.name}
+              <span className="figure text-content-secondary">{(next.minPoints - totalPoints).toLocaleString()}</span> to {next.name}
             </>
           ) : (
             'Top of the ladder'

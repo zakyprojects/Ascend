@@ -29,7 +29,6 @@ export interface PageHeroProps {
 export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }: PageHeroProps) {
   return (
     <section className={cx('card relative overflow-hidden p-5 sm:p-6', className)} aria-label={ariaLabel}>
-      <div className="hero-glow" />
       <div
         className={cx(
           'relative grid gap-6',
@@ -40,7 +39,7 @@ export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }:
           <div className="flex items-center gap-5">
             {ring && (
               <ProgressRing value={ring.value} max={Math.max(ring.max, 1)} label={ring.label} size={104} thickness={8}>
-                <span className="font-display text-xl font-semibold leading-none text-content-primary tabular-nums">
+                <span className="font-serif text-[1.75rem] leading-none text-content-primary tabular-nums">
                   {ring.center}
                 </span>
                 {ring.caption && <span className="mt-1 text-2xs text-content-muted">{ring.caption}</span>}
@@ -58,7 +57,7 @@ export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }:
               {stats.map((stat) => (
                 <div key={stat.label} className="min-w-0 sm:px-6 sm:first:pl-0 md:first:pl-8 sm:[&:not(:first-child)]:border-l sm:[&:not(:first-child)]:border-overlay-subtle">
                   <dt className="stat-label">{stat.label}</dt>
-                  <dd className="mt-1 font-display text-2xl font-semibold tracking-tight text-content-primary tabular-nums">{stat.value}</dd>
+                  <dd className="mt-1 font-serif text-[1.75rem] leading-none text-content-primary tabular-nums">{stat.value}</dd>
                   {stat.hint && <dd className="mt-0.5 text-micro text-content-muted">{stat.hint}</dd>}
                 </div>
               ))}

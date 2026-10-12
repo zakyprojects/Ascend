@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Dialog } from './primitives';
-import { Mail, Lock, User, Check, AlertCircle, Sparkles, LogIn, UserPlus, UserCheck, Shield, Zap, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, Shield, Zap, ArrowLeft } from 'lucide-react';
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
@@ -265,7 +265,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
             <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center animate-pop">
               <Check size={30} className="text-success-text" />
             </div>
-            <p className="mt-4 text-base font-display font-bold text-content-primary animate-enter-up">{successTitle}</p>
+            <p className="mt-4 font-serif text-2xl leading-tight text-content-primary animate-enter-up">{successTitle}</p>
             <p className="mt-1 text-xs text-content-muted animate-enter-up">Opening your workspace...</p>
           </div>
         )}
@@ -275,8 +275,8 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
           <div className={`space-y-4 py-2 ${modeSwitched ? 'animate-slide-in-left' : ''}`}>
             <div className="text-center space-y-1">
               {/* Torch chip: a self-contained dark badge, intentionally the same in both themes. */}
-              <img src="/logo-torch.svg" alt="Ascend Logo" className="w-20 h-20 rounded-[22%] mx-auto shadow-lg shadow-emerald-500/20 mb-3 object-cover" />
-              <h2 className="text-xl font-display font-bold text-content-primary">
+              <img src="/logo-torch.svg" alt="Ascend Logo" className="w-20 h-20 rounded-[22%] mx-auto shadow-sm mb-3 object-cover" />
+              <h2 className="section-title">
                 Ascend Self-Growth
               </h2>
               <p className="text-xs text-content-muted max-w-xs mx-auto">
@@ -289,10 +289,10 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
               <button
                 type="button"
                 onClick={() => { switchMode('signup'); resetForm(); }}
-                className="w-full p-4 bg-primary-500 hover:bg-primary-600 text-on-brand rounded-2xl shadow-xl transition-all flex items-center justify-between group border border-primary-400/30"
+                className="w-full p-4 bg-primary-500 hover:bg-primary-600 text-on-brand rounded-2xl shadow-sm transition-all flex items-center justify-between group border border-primary-400/30"
               >
                 <div className="text-left">
-                  <div className="font-bold text-sm flex items-center gap-2">
+                  <div className="font-semibold text-sm flex items-center gap-2">
                     <span>Sign Up</span>
                   </div>
                   <div className="text-micro text-primary-100/90 mt-0.5">
@@ -309,7 +309,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                 className="w-full p-4 bg-bg-800 hover:bg-bg-700 text-content-primary rounded-2xl border border-overlay-default transition-all flex items-center justify-between group hover:border-overlay-strong"
               >
                 <div className="text-left">
-                  <div className="font-bold text-sm flex items-center gap-2">
+                  <div className="font-semibold text-sm flex items-center gap-2">
                     <span>Sign In</span>
                   </div>
                   <div className="text-micro text-content-muted mt-0.5">
@@ -327,7 +327,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                 className="w-full p-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text rounded-2xl border border-emerald-500/30 transition-all flex items-center justify-between group disabled:opacity-50"
               >
                 <div className="text-left">
-                  <div className="font-bold text-sm flex items-center gap-2 text-success-text">
+                  <div className="font-semibold text-sm flex items-center gap-2 text-success-text">
                     <Zap size={15} />
                     <span>Continue as Guest</span>
                   </div>
@@ -349,7 +349,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
               <button
                 type="button"
                 onClick={() => switchMode('choice')}
-                className="text-xs font-semibold text-content-muted hover:text-content-secondary flex items-center gap-1.5 transition-colors py-1"
+                className="text-xs font-medium text-content-muted hover:text-content-secondary flex items-center gap-1.5 transition-colors py-1"
               >
                 <ArrowLeft size={14} />
                 <span>Back to entry options</span>
@@ -357,7 +357,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
             )}
 
             <div>
-              <h2 className="text-xl font-display font-bold text-content-primary text-center">
+              <h2 className="section-title text-center">
                 {mode === 'upgrade'
                   ? 'Save Your Progress'
                   : mode === 'signup'
@@ -483,12 +483,12 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
 
               {mode === 'signup' && hasGuestData && (
                 <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-xl space-y-2">
-                  <div className="flex items-center gap-2 text-brand-text text-xs font-semibold">
-                    <Sparkles size={14} />
+                  <div className="flex items-center gap-2 text-brand-text text-xs font-medium">
+                    <UserCheck size={14} />
                     <span>Guest Progress Detected</span>
                   </div>
                   <p className="text-xs text-content-tertiary">
-                    You have <strong>{guestPoints} points</strong> and <strong>{guestHabitsCount} habits</strong> created before signing up.
+                    You have <strong className="figure">{guestPoints} points</strong> and <strong className="figure">{guestHabitsCount} habits</strong> created before signing up.
                   </p>
                   <label className="flex items-center gap-2 cursor-pointer pt-1">
                     <input
@@ -505,7 +505,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-primary-500 hover:bg-primary-600 text-on-brand font-medium text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3 bg-primary-500 hover:bg-primary-600 text-on-brand font-medium text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
                   <>

@@ -3,7 +3,7 @@ import {
   BookOpen,
   Check,
   ArrowRight,
-  Sparkles,
+  Save,
   Brain,
   Calendar,
   CalendarDays,
@@ -55,7 +55,7 @@ function ModuleCard({ icon: Icon, title, onClick, children }: ModuleCardProps) {
       className="flex flex-col justify-between space-y-2"
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs text-content-muted font-medium">{title}</span>
+        <span className="stat-label">{title}</span>
         <span className="w-8 h-8 rounded-lg bg-overlay-subtle text-content-muted flex items-center justify-center">
           <Icon size={16} aria-hidden="true" />
         </span>
@@ -142,10 +142,10 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
         <div className="p-4 rounded-xl bg-primary-500/5 border border-primary-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-primary-500/15 flex items-center justify-center shrink-0 text-brand-text">
-              <Sparkles size={18} />
+              <Save size={18} />
             </div>
             <div>
-              <p className="text-xs font-bold text-content-secondary">
+              <p className="text-xs font-medium text-content-secondary">
                 You are using a Guest Session ({store.state.currentUser.username})
               </p>
               <p className="text-micro text-content-muted">
@@ -162,7 +162,6 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
       {/* Hero: today, the season, and where you stand on the climb */}
       <Reveal index={0}>
         <section className="card p-5 sm:p-6 relative overflow-hidden" aria-label="Today and your season">
-          <div className="hero-glow" />
           <div className="relative grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-10">
             <div className="flex items-center gap-5">
               <ProgressRing
@@ -172,9 +171,9 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                 size={116}
                 thickness={9}
               >
-                <span className="font-display text-2xl font-bold text-content-primary tabular-nums leading-none">
+                <span className="font-serif text-[2rem] text-content-primary tabular-nums leading-none">
                   {completedToday.length}
-                  <span className="text-base font-semibold text-content-muted">/{habits.length}</span>
+                  <span className="text-lg text-content-muted">/{habits.length}</span>
                 </span>
                 <span className="mt-1 text-2xs text-content-muted">habits today</span>
               </ProgressRing>
@@ -188,7 +187,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                   />
                   {todayNet !== 0 && (
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
+                      className={`rounded-full px-2 py-0.5 figure text-xs ${
                         todayNet > 0 ? 'bg-primary-500/15 text-brand-text' : 'bg-warning-soft text-warning-text'
                       }`}
                     >
@@ -199,7 +198,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                 </div>
                 <div className="mt-2.5 flex items-center gap-1.5 text-sm text-content-secondary">
                   <Flame size={15} className="text-brand-text" aria-hidden="true" />
-                  <AutoNum text={currentStreakValue} className="font-semibold tabular-nums" />
+                  <AutoNum text={currentStreakValue} className="figure text-content-primary" />
                   <span className="text-content-muted">streak</span>
                 </div>
               </div>
@@ -253,14 +252,14 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                           >
                             <Check size={18} />
                           </button>
-                          <span className="text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
+                          <span className="item-name text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
                             {isLinked && <BookOpen size={13} className="text-brand-text shrink-0" />}
                             <span>{habit.name}</span>
                           </span>
                           {isLinked && habit.points === 0 ? (
                             <span className="text-xs text-content-subtle">For habit tracking</span>
                           ) : habit.isPreset ? (
-                            <span className="text-xs text-brand-text font-medium">+{habit.points} pts</span>
+                            <span className="figure text-xs text-brand-text">+{habit.points} pts</span>
                           ) : (
                             <span className="text-xs text-content-subtle">No pts</span>
                           )}
@@ -270,7 +269,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                   ) : (
                     <div className="card p-5 text-center">
                       <div className="w-12 h-12 rounded-xl bg-primary-500/15 flex items-center justify-center mx-auto mb-2">
-                        <Sparkles size={22} className="text-brand-text" />
+                        <Check size={22} className="text-brand-text" />
                       </div>
                       <p className="text-sm font-medium text-brand-text">All habits done today!</p>
                       <p className="text-xs text-content-disabled mt-0.5">Great work. See you tomorrow.</p>
@@ -353,35 +352,35 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               <div className="grid-cards gap-3">
                 <ModuleCard icon={Activity} title="Exercise" onClick={() => onViewChange('exercise')}>
                   <div>
-                    <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyExerciseMins} /> <span className="text-xs font-normal text-content-muted">mins this week</span></div>
+                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums"><CountUp value={weeklyExerciseMins} /> <span className="font-sans text-xs text-content-muted">mins this week</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={weeklyWorkouts.length} /> sessions completed</div>
                   </div>
                 </ModuleCard>
 
                 <ModuleCard icon={BookMarked} title="Reading" onClick={() => onViewChange('reading')}>
                   <div>
-                    <div className="text-xl font-bold text-content-primary"><CountUp value={activeBooks} /> <span className="text-xs font-normal text-content-muted">books in progress</span></div>
+                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums"><CountUp value={activeBooks} /> <span className="font-sans text-xs text-content-muted">books in progress</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={finishedBooks} /> finished total</div>
                   </div>
                 </ModuleCard>
 
                 <ModuleCard icon={Zap} title="Skills" onClick={() => onViewChange('skills')}>
                   <div>
-                    <div className="text-xl font-bold text-content-primary"><CountUp value={totalSkillHours} decimals={1} /> <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
+                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums"><CountUp value={totalSkillHours} decimals={1} /> <span className="font-sans text-xs text-content-muted">hrs practice</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={store.state.skills.length} /> skills tracked</div>
                   </div>
                 </ModuleCard>
 
                 <ModuleCard icon={ShieldAlert} title="Bad Habits" onClick={() => onViewChange('bad-habits')}>
                   <div>
-                    <div className="text-xl font-bold text-content-primary"><CountUp value={badHabitCount} /> <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
+                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums"><CountUp value={badHabitCount} /> <span className="font-sans text-xs text-content-muted">habits reduced</span></div>
                     <div className="text-micro text-content-disabled">Escalating penalties enabled</div>
                   </div>
                 </ModuleCard>
 
                 <ModuleCard icon={HeartPulse} title="Recovery" onClick={() => onViewChange('recovery')}>
                   <div>
-                    <div className="text-xl font-bold text-content-primary">
+                    <div className="item-name text-base leading-snug">
                       {activeAddiction ? activeAddiction.title : 'Sobriety Tracker'}
                     </div>
                     <div className="text-micro text-content-disabled">Includes emergency support & breathing</div>
@@ -390,16 +389,16 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
                 <ModuleCard icon={Timer} title="Focus" onClick={() => onViewChange('prefrontal')}>
                   <div>
-                    <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyFocusMins} /> <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
+                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums"><CountUp value={weeklyFocusMins} /> <span className="font-sans text-xs text-content-muted">focus mins this week</span></div>
                     <div className="text-micro text-content-disabled">Pomodoro, decisions & emotions</div>
                   </div>
                 </ModuleCard>
 
                 <ModuleCard icon={Clock} title="Time Tracker" onClick={() => onViewChange('time-tracker')}>
                   <div>
-                    <div className="text-xl font-bold text-content-primary">
+                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums">
                       <AutoNum text={todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'} />{' '}
-                      <span className="text-xs font-normal text-content-muted">planned today</span>
+                      <span className="font-sans text-xs text-content-muted">planned today</span>
                     </div>
                     <div className="text-micro text-content-disabled">
                       {todayBlocks.length > 0 ? (
@@ -445,14 +444,14 @@ function LeagueRow({ type, rank, points }: { type: LeagueType; rank: number; poi
     <div className="flex items-center gap-3 px-4 py-3">
       <Icon size={16} className="shrink-0 text-content-muted" aria-hidden="true" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-content-secondary">{label}</div>
+        <div className="item-name truncate text-sm text-content-secondary">{label}</div>
         <LeagueCountdown type={type} className="block truncate font-mono text-2xs text-content-disabled" />
       </div>
       <div className="text-right">
-        <div className="font-display text-lg font-bold text-content-primary tabular-nums leading-none">
+        <div className="figure text-lg text-content-primary leading-none">
           #<CountUp value={rank} />
         </div>
-        <div className="mt-1 text-2xs text-content-muted tabular-nums"><CountUp value={points} /> pts</div>
+        <div className="mt-1 figure text-2xs text-content-muted"><CountUp value={points} /> pts</div>
       </div>
     </div>
   );
