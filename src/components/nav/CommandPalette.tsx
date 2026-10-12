@@ -130,7 +130,7 @@ export function CommandPalette({ open, onOpenChange, currentView, onViewChange }
   const active = results[Math.min(activeIndex, results.length - 1)];
 
   return (
-    <Dialog open={open} onClose={() => onOpenChange(false)} title="Go to" maxWidth="max-w-lg">
+    <Dialog open={open} onClose={() => onOpenChange(false)} title="Go to" maxWidth="max-w-lg" placement="top">
       <div className="space-y-3">
         <div className="relative">
           <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-content-muted" />

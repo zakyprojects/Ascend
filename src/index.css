@@ -449,6 +449,15 @@
     }
   }
 
+  /* Text selection in the brand colour, readable in both themes. */
+  ::selection {
+    background-color: rgb(52 211 153 / 0.32);
+    color: inherit;
+  }
+  [data-theme='light'] ::selection {
+    background-color: rgb(16 185 129 / 0.22);
+  }
+
   body {
     @apply bg-bg-900 text-content-secondary font-sans antialiased;
     overscroll-behavior-y: none;
@@ -1121,6 +1130,12 @@
     @apply w-full bg-bg-700 border border-overlay-default text-content-primary placeholder:text-content-disabled rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 transition-all;
   }
 
+  /* Fields answer the pointer too: the border lifts on hover (not while focused or disabled). */
+  @media (hover: hover) {
+    :is(.input, .input-field, select):hover:not(:focus):not(:disabled) {
+      border-color: var(--border-overlay-strong);
+    }
+  }
   .input-has-icon {
     padding-left: 2.75rem !important;
   }

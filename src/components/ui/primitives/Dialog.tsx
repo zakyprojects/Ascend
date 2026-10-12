@@ -11,6 +11,8 @@ export interface DialogProps {
   children: React.ReactNode;
   maxWidth?: string;
   preventClose?: boolean;
+  /** 'top' keeps the panel's top edge still while its content changes height (search results). */
+  placement?: 'center' | 'top';
 }
 
 // Matches the longest exit animation (dialog-out / exit-fade, tailwind.config.js).
@@ -30,6 +32,7 @@ export const Dialog: React.FC<DialogProps> = ({
   children,
   maxWidth = 'max-w-md',
   preventClose = false,
+  placement = 'center',
 }) => {
   // Stays mounted for its exit animation after `open` turns false. The last open title and
   // content are shown while it leaves, so a parent clearing its data on close cannot make the
@@ -82,7 +85,16 @@ export const Dialog: React.FC<DialogProps> = ({
 
     previousActiveElement.current = document.activeElement as HTMLElement | null;
 
-    const autofocusEl = panelRef.current?.querySelector<HTMLElement>('[data-autofocus]');
+    // An explicit [data-autofocus] wins; otherwise, with a mouse/keyboard, the first text field of a
+    // form dialog takes focus so typing can start at once. Touch skips this: focusing a field would
+    // throw the on-screen keyboard over the dialog before the user chose to type.
+    const autofocusEl =
+      panelRef.current?.querySelector<HTMLElement>('[data-autofocus]') ??
+      (window.matchMedia('(pointer: fine)').matches
+        ? panelRef.current?.querySelector<HTMLElement>(
+            'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly])'
+          )
+        : null);
     if (autofocusEl) {
       autofocusEl.focus();
     } else if (panelRef.current && !panelRef.current.contains(document.activeElement)) {
@@ -164,7 +176,9 @@ export const Dialog: React.FC<DialogProps> = ({
   return createPortal(
     <div
       className={cx(
-        'fixed inset-0 z-modal flex items-center justify-center p-3 sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]',
+        'fixed inset-0 z-modal flex justify-center p-3 sm:p-4',
+        placement === 'top' ? 'items-start sm:pt-[12vh]' : 'items-center',
+        'pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]',
         exiting && 'pointer-events-none'
       )}
       aria-hidden={exiting || undefined}
