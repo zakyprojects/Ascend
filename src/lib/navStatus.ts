@@ -19,9 +19,6 @@ export type NavStatuses = Partial<Record<View, NavStatus>>;
 /** From this hour, a daily item still open turns to risk (its day is about to close). */
 const RISK_HOUR = 20;
 
-/** Pages in the order "Up next" picks from when several are open. */
-const UP_NEXT_ORDER: View[] = ['habits', 'journal', 'bad-habits', 'time-tracker', 'exercise', 'reading', 'skills'];
-
 /**
  * Today's status for each page that has a clear daily task. Pages without one get no entry
  * (no status is better than a made-up one). Pure and computed on every render, never cached.
@@ -99,13 +96,4 @@ export function getNavStatuses(state: AppState, isHabitDone: (habit: Habit) => b
   }
 
   return statuses;
-}
-
-/** The most pressing open page: any at-risk page first, then the first open one, in UP_NEXT_ORDER. */
-export function getUpNext(statuses: NavStatuses): View | null {
-  return (
-    UP_NEXT_ORDER.find((view) => statuses[view]?.tone === 'risk') ??
-    UP_NEXT_ORDER.find((view) => statuses[view]?.tone === 'pending') ??
-    null
-  );
 }

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { NavGroup } from './navConfig';
-import { UpNextCard } from './UpNextCard';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import type { View } from '@/lib/views';
 import type { NavStatuses } from '@/lib/navStatus';
@@ -20,7 +19,6 @@ interface ZoneSheetProps {
   group: NavGroup | undefined;
   currentView: View;
   statuses: NavStatuses;
-  upNext: View | null;
   partnerBadge: number;
   onNavigate: (view: View) => void;
   onClose: () => void;
@@ -31,7 +29,7 @@ interface ZoneSheetProps {
  * Like an iOS sheet: the page behind is blurred and cannot scroll, and the sheet follows a downward
  * drag and closes when pulled far or flicked.
  */
-export function ZoneSheet({ open, group, currentView, statuses, upNext, partnerBadge, onNavigate, onClose }: ZoneSheetProps) {
+export function ZoneSheet({ open, group, currentView, statuses, partnerBadge, onNavigate, onClose }: ZoneSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [closing, setClosing] = useState(false);
   const [dragY, setDragY] = useState(0);
@@ -158,7 +156,6 @@ export function ZoneSheet({ open, group, currentView, statuses, upNext, partnerB
           <span className="text-xs text-content-muted tabular-nums">{group.items.length} pages</span>
         </div>
 
-        <UpNextCard upNext={upNext} currentView={currentView} statuses={statuses} onNavigate={go} className="mb-3 w-full rounded-2xl px-4 py-3" />
 
         <ul className="zone-sheet-rows space-y-1">
           {group.items.map((item) => {

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { NAV_DASHBOARD, NAV_GROUPS, type NavGroup } from './navConfig';
-import { UpNextCard } from './UpNextCard';
 import { AppLogo } from '@/components/ui/AppLogo';
 import { NavItem, NavSection } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
@@ -28,7 +27,6 @@ interface SidebarProps {
   /** Group of the page on screen (null on Dashboard and Settings); unfolded when it changes. */
   activeGroup: ZoneId | null;
   statuses: NavStatuses;
-  upNext: View | null;
   partnerBadge: number;
   onNavigate: (view: View) => void;
   onSearch: () => void;
@@ -49,7 +47,6 @@ export function Sidebar({
   currentView,
   activeGroup,
   statuses,
-  upNext,
   partnerBadge,
   onNavigate,
   onSearch,
@@ -116,8 +113,6 @@ export function Sidebar({
           <span className="kbd">{shortcut}</span>
         </button>
       </div>
-
-      <UpNextCard upNext={upNext} currentView={currentView} statuses={statuses} onNavigate={onNavigate} className="mx-3 mb-1" />
 
       <nav ref={navRef} aria-label="Pages" className="relative isolate flex-1 overflow-y-auto px-3 pb-3">
         <NavItem

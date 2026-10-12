@@ -21,7 +21,7 @@ import { ZoneSheet } from './nav/ZoneSheet';
 import { QuickLog } from './nav/QuickLog';
 import { useNavShortcuts } from './nav/useNavShortcuts';
 import { CommandPalette } from './nav/CommandPalette';
-import { getNavStatuses, getUpNext } from '@/lib/navStatus';
+import { getNavStatuses } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
 import { RankChip } from './ui/RankChip';
 import { ViewEntrance } from './ViewEntrance';
@@ -83,7 +83,6 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
       if (item) goTo(item.id);
     },
   });
-  const upNext = getUpNext(navStatuses);
 
   // Scroll memory: each view's last position, recorded as the user scrolls (back/forward has
   // already switched the view by the time we could read the old one).
@@ -211,7 +210,6 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           currentView={currentView}
           activeGroup={activeGroupId}
           statuses={navStatuses}
-          upNext={upNext}
           partnerBadge={pendingIncomingInvitesCount}
           onNavigate={goTo}
           onSearch={() => setPaletteOpen(true)}
@@ -317,7 +315,6 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           group={activeGroup}
           currentView={currentView}
           statuses={navStatuses}
-          upNext={upNext}
           partnerBadge={pendingIncomingInvitesCount}
           onNavigate={goTo}
           onClose={closeZoneSheet}
