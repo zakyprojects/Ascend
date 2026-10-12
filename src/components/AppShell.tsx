@@ -243,6 +243,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
 
   return (
     <div className="relative isolate min-h-screen lg:h-dvh bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      <div aria-hidden="true" className="app-atmosphere" />
       {/* Desktop navigation (Basecamp): zone rail + the zone's pages. One click on a zone goes
           straight to the page last open there (Discord/Slack style) and shows its siblings in the
           panel; clicking the zone on screen again hides the panel (as do [ and its own button). */}
