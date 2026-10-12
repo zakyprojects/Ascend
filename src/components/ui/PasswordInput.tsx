@@ -8,6 +8,8 @@ export interface PasswordInputProps
   required?: boolean;
   error?: string;
   leftIcon?: React.ReactNode;
+  /** Called when the show/hide toggle changes whether the password is shown. */
+  onVisibilityChange?: (visible: boolean) => void;
 }
 
 export function PasswordInput({
@@ -19,6 +21,7 @@ export function PasswordInput({
   className = '',
   autoComplete,
   placeholder = '••••••••',
+  onVisibilityChange,
   ...props
 }: PasswordInputProps) {
   const [showPassword, setShowPassword] = useState(false);
@@ -54,7 +57,13 @@ export function PasswordInput({
         <button
           type="button"
           tabIndex={-1}
-          onClick={() => setShowPassword((prev) => !prev)}
+          // Keep focus (and the caret) in the field while toggling.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            const next = !showPassword;
+            setShowPassword(next);
+            onVisibilityChange?.(next);
+          }}
           aria-label={showPassword ? 'Hide password' : 'Show password'}
           className={`absolute inset-y-0 right-0 pr-3 flex items-center text-content-disabled hover:text-content-primary focus:outline-none transition-colors ${TAP_AREA}`}
         >
