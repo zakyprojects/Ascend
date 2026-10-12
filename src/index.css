@@ -162,6 +162,10 @@
     --dialog-scrim: 3 10 9;
     --glide-bg: rgb(255 255 255 / 0.055);
     --glide-ring: rgb(52 211 153 / 0.10);
+    /* Card pointer spotlight (Zakria wants it, kept light): border glint + soft surface glow. */
+    --spot-color: 52 211 153;
+    --spot-alpha: 0.04;
+    --spot-ring-alpha: 0.45;
   }
 
   [data-theme='light'] {
@@ -173,6 +177,9 @@
     --dialog-scrim: 15 30 27;
     --glide-bg: rgb(15 23 42 / 0.05);
     --glide-ring: rgb(16 185 129 / 0.14);
+    --spot-color: 16 185 129;
+    --spot-alpha: 0.035;
+    --spot-ring-alpha: 0.4;
 
     /* Surfaces */
     --color-bg-900: #f6f8f7;  /* page */
@@ -527,6 +534,41 @@
     box-shadow: var(--card-shadow);
   }
 
+  /* Border spotlight: the stretch of border nearest the pointer lights up softly and fades along the
+     edge. A 1px ring cut out of a radial gradient with a mask, laid inside the border (so
+     overflow-hidden cards do not clip it); fades in and out with the hover. */
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: radial-gradient(
+      16rem circle at calc(var(--spot-x, -100rem) - 1px) calc(var(--spot-y, -100rem) - 1px),
+      rgb(var(--spot-color) / var(--spot-ring-alpha)),
+      transparent 70%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    opacity: 0;
+    transition: opacity var(--duration-slow) var(--ease-standard);
+    pointer-events: none;
+  }
+  .card[data-spot]::before {
+    opacity: 1;
+    transition-duration: var(--duration-base);
+  }
+
+  /* Pointer spotlight (lib/cardSpotlight.ts marks the card under the mouse). */
+  .card[data-spot] {
+    background-image: radial-gradient(24rem circle at var(--spot-x, 50%) var(--spot-y, 50%), rgb(var(--spot-color) / var(--spot-alpha)), transparent 70%);
+  }
+
   /* A list item that was just added (or moved to another list) rises in; first paint included.
      React unmounts a deleted item at once (no deleted data kept on screen); its exit is played by
      lib/listExit.ts on an inert copy. */
@@ -573,6 +615,12 @@
     border-color: var(--border-overlay-subtle);
     border-radius: 0.875rem;
     box-shadow: none;
+  }
+  :where(.card) .card::before {
+    content: none;
+  }
+  :where(.card) .card[data-spot] {
+    background-image: none;
   }
   [data-theme='light'] :where(.card) .card {
     background-color: rgb(15 23 42 / 0.025);
