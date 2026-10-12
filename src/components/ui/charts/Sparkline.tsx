@@ -26,7 +26,7 @@ export interface SparklineProps {
 const VIEW_WIDTH = 100;
 
 /**
- * Trend line that fills its container's width. On a view's first visit it wipes in from the
+ * Trend line that fills its container's width. Each time a view opens it wipes in from the
  * left when it comes into view. Pointer or touch shows the nearest point.
  */
 export function Sparkline({

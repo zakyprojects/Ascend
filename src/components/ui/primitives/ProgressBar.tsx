@@ -42,7 +42,7 @@ const sizeClasses: Record<ProgressSize, string> = {
 
 /**
  * The one progress bar. The track is a neutral overlay, so it reads on any surface in both
- * themes. On a view's first visit the fill grows from 0 when it comes into view; afterwards
+ * themes. Each time a view opens, the fill grows from 0 when it comes into view; afterwards
  * value changes glide.
  */
 export function ProgressBar({

@@ -149,8 +149,6 @@ export default {
         // No fill-mode on purpose: a retained transform on the view wrapper would
         // become the containing block for any position:fixed descendant.
         'view-enter': 'enterUp var(--duration-enter) var(--ease-emphasized)',
-        // Revisit: a quick opacity-only fade, so switching pages never feels like a cut.
-        'view-fade': 'enterFade var(--duration-fast) var(--ease-standard)',
         // Dialog (primitives/Dialog): a bottom sheet on phones, a scale-in card from sm up.
         // Enter ends on `transform: none`, so nothing inside is trapped in a containing block.
         'sheet-up': 'sheetUp 320ms var(--ease-emphasized) both',

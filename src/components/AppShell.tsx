@@ -74,13 +74,6 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
 
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
 
-  // Views that already played their entrance this session. Revisits render
-  // instantly: replaying on every tab switch would make navigation feel slow.
-  const enteredViewsRef = useRef<Set<View>>(new Set());
-  useEffect(() => {
-    enteredViewsRef.current.add(currentView);
-  }, [currentView]);
-
   // Scroll memory: each view's last position, recorded as the user scrolls (back/forward has
   // already switched the view by the time we could read the old one).
   const mainRef = useRef<HTMLElement>(null);
@@ -368,7 +361,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
             </div>
           )}
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-            <ViewEntrance key={currentView} animate={!enteredViewsRef.current.has(currentView)}>
+            <ViewEntrance key={currentView}>
               {children}
             </ViewEntrance>
           </div>

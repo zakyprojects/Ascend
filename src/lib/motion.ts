@@ -3,13 +3,13 @@ import { createContext, RefObject, useContext, useEffect, useRef, useState } fro
 /**
  * Motion core: one place that decides whether intro motion (reveal, count-up, bar grow) plays.
  *
- * Intro motion plays only on a view's first visit in the session (ViewEntrance provides the
- * flag); revisits render final values instantly so navigation never feels slow. Changes the user
- * causes (a habit tick raising "2/5" to "3/5") always tween. Reduced motion turns all of it off.
+ * Intro motion plays every time a view is opened (ViewEntrance provides the flag; Zakria,
+ * 2026-10-12: replaying is smoother than a revisit that snaps in). Changes the user causes (a
+ * habit tick raising "2/5" to "3/5") always tween. Reduced motion turns all of it off.
  */
 
-/** True while the current view is on its first visit this session. Default false: anything
- *  rendered outside a view (modals mounted elsewhere, the gallery) shows final values. */
+/** True inside a view (ViewEntrance). Default false: anything rendered outside a view (modals
+ *  mounted elsewhere, the gallery) shows final values. */
 export const IntroMotionContext = createContext(false);
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';

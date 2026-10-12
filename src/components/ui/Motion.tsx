@@ -16,7 +16,7 @@ interface RevealProps {
 }
 
 /**
- * Fades and rises its content the first time it comes into view, on a view's first visit only.
+ * Fades and rises its content the first time it comes into view, each time its view opens.
  * The animation keeps no transform after it ends (no `forwards` fill), so a position:fixed
  * descendant such as a modal is never trapped in a containing block.
  */

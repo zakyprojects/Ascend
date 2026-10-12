@@ -29,7 +29,7 @@ export interface BarChartProps {
 const STAGGER_MS = 40;
 
 /**
- * Column chart (a week, a month). On a view's first visit the bars grow from the baseline in a
+ * Column chart (a week, a month). Each time a view opens, the bars grow from the baseline in a
  * short stagger when the chart comes into view. Each bar is focusable, so the tooltip works by
  * keyboard as well as pointer and touch.
  */

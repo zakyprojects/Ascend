@@ -20,7 +20,7 @@ export interface ProgressRingProps {
 }
 
 /**
- * Circular progress. On a view's first visit it draws in from 0 when it comes into view;
+ * Circular progress. Each time a view opens it draws in from 0 when it comes into view;
  * afterwards value changes glide, like ProgressBar.
  */
 export function ProgressRing({

@@ -35,8 +35,8 @@ function levelOf(value: number, max: number): number {
 }
 
 /**
- * Calendar heatmap (weeks as columns, days as rows), sized to its container's width. On a
- * view's first visit the columns fade in left to right when it comes into view.
+ * Calendar heatmap (weeks as columns, days as rows), sized to its container's width. Each time a
+ * view opens, the columns fade in left to right when it comes into view.
  */
 export function Heatmap({ cells, label, tone = 'brand', max, className }: HeatmapProps) {
   const ref = useRef<HTMLDivElement>(null);
