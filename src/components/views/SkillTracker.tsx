@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Target, Plus, Trash2, Clock, Flame } from 'lucide-react';
+import { Plus, Trash2, Flame } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -191,13 +191,13 @@ export function SkillTracker({ store }: { store: AppStore }) {
   const getLevelBadgeStyle = (level: SkillLevel) => {
     switch (level) {
       case 'beginner':
-        return 'bg-emerald-500/15 text-success-text border-emerald-500/30';
+        return 'badge-neutral';
       case 'intermediate':
         return 'badge-neutral';
       case 'advanced':
         return 'badge-neutral';
       case 'expert':
-        return 'badge-emerald';
+        return 'badge-neutral';
     }
   };
 
@@ -299,8 +299,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     onClick={() => setSelectedCategory(cat)}
                     className={`px-2.5 py-1 rounded-lg text-xs transition-all ${
                       selectedCategory === cat
-                        ? 'bg-primary-500/20 text-brand-text border border-primary-500/40 font-semibold'
-                        : 'bg-bg-800 text-content-disabled hover:text-content-muted border border-overlay-subtle'
+                        ? 'bg-overlay-default text-content-primary font-medium'
+                        : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
                     }`}
                   >
                     {cat}
@@ -312,7 +312,6 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
           {skills.length === 0 ? (
             <EmptyState
-              icon={Target}
               title="No skills added yet"
               description="Add a skill (e.g. Coding, Spanish, Guitar, Design) to log practice sessions and earn points."
               action={
@@ -326,7 +325,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
               <p className="text-sm text-content-disabled">No skills found in category &ldquo;{selectedCategory}&rdquo;</p>
               <button
                 onClick={() => setSelectedCategory('All')}
-                className="text-xs text-brand-text hover:underline mt-2 inline-block font-medium"
+                className="text-xs text-content-secondary hover:text-content-primary hover:underline mt-2 inline-block font-medium"
               >
                 Show all skills
               </button>
@@ -357,14 +356,14 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       </div>
 
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`badge border capitalize font-semibold px-2.5 py-0.5 text-xs ${getLevelBadgeStyle(level)}`}>
+                        <span className={`badge capitalize px-2.5 py-0.5 text-xs ${getLevelBadgeStyle(level)}`}>
                           {level}
                         </span>
                         <div className="flex items-center gap-2 text-xs text-content-disabled">
                           {streak > 0 && (
                             <>
-                              <span className="figure flex items-center gap-1 text-brand-text">
-                                <Flame size={13} className="text-brand-text" />
+                              <span className="figure flex items-center gap-1 text-content-secondary">
+                                <Flame size={13} className="text-content-subtle" />
                                 {streak} day{streak !== 1 ? 's' : ''}
                               </span>
                               <span>•</span>
@@ -414,15 +413,12 @@ export function SkillTracker({ store }: { store: AppStore }) {
                   <div className="stat-label px-1">
                     {group.title}
                   </div>
-                  <div className="space-y-2">
+                  <div className="card overflow-hidden divide-y divide-overlay-subtle">
                     {group.logs.map((log) => {
                       const skill = skills.find((s) => s.id === log.skillId);
                       return (
-                        <div key={log.id} className="card enter-item p-3.5 flex items-start justify-between card-hover">
+                        <div key={log.id} className="enter-item p-3.5 flex items-start justify-between transition-colors hover:bg-overlay-subtle">
                           <div className="flex items-start gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0 mt-0.5">
-                              <Clock size={18} />
-                            </div>
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="item-name text-content-secondary text-sm">{skill?.name || 'Skill'}</span>
@@ -433,7 +429,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="badge-neutral figure text-xs px-2.5 py-1 rounded-full">
+                            <span className="figure text-xs text-success-text">
                               +{log.pointsAwarded} pts
                             </span>
                             <button
@@ -567,9 +563,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
             )}
           </div>
 
-          <div className="card p-3 bg-bg-800 text-xs text-content-muted flex items-center justify-between border border-overlay-subtle">
+          <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between border border-overlay-default">
             <span>Points to earn:</span>
-            <span className="figure text-brand-text">+{skillPreviewPoints} pts</span>
+            <span className="figure text-success-text">+{skillPreviewPoints} pts</span>
           </div>
 
           <div className="flex gap-2 pt-2">

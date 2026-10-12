@@ -1,15 +1,12 @@
 import { useState, useMemo } from 'react';
 import {
-  BookOpen,
   Plus,
   CheckCircle2,
   Trash2,
   BookMarked,
   Search,
   Filter,
-  ListTodo,
   PlayCircle,
-  Library,
   Calendar,
   Clock,
   ChevronRight,
@@ -22,7 +19,7 @@ import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Dialog, EmptyState, PageColumns, ProgressBar, Tabs } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
-import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
+import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
 import { todayKey, formatDateLong, parseDate, getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
@@ -364,9 +361,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
   const renderCategoryBadge = (category?: BookCategory | string, compact = false) => {
     if (!category) return null;
-    const meta = getCategoryMeta(category as BookCategory);
     return (
-      <span className={`badge ${meta.badgeClass} ${compact ? 'text-2xs px-2 py-0.5' : ''}`}>
+      <span className={compact ? 'text-2xs text-content-muted' : 'text-xs text-content-muted'}>
         {category}
       </span>
     );
@@ -384,7 +380,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           {readingHabit ? (
             <button
               onClick={() => setUnlinkConfirmOpen(true)}
-              className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-2 border-emerald-500/30 text-success-text bg-emerald-500/10 hover:bg-emerald-500/20 whitespace-nowrap"
+              className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-2 whitespace-nowrap"
             >
               <Check size={14} className="text-success-text shrink-0" />
               <span className="whitespace-nowrap font-medium">Linked to Habits</span>
@@ -456,10 +452,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
               value={activeTab}
               onChange={(id) => setActiveTab(id as typeof activeTab)}
               items={[
-                { id: 'reading', label: 'Currently Reading', icon: PlayCircle, badge: inProgressBooks.length },
-                { id: 'to-read', label: 'My Library', icon: ListTodo, badge: toReadBooks.length },
-                { id: 'discover', label: 'Discover Books', icon: Library },
-                { id: 'completed', label: 'Completed', icon: CheckCircle2, badge: completedBooks.length },
+                { id: 'reading', label: 'Currently Reading', badge: inProgressBooks.length },
+                { id: 'to-read', label: 'My Library', badge: toReadBooks.length },
+                { id: 'discover', label: 'Discover Books' },
+                { id: 'completed', label: 'Completed', badge: completedBooks.length },
               ]}
             />
 
@@ -510,18 +506,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="space-y-4">
             {filteredInProgress.length === 0 ? (
               <EmptyState
-                icon={BookOpen}
                 title="No books currently in progress"
                 description="Start reading a book from your To Read list, discover foundational titles, or add a custom book."
                 action={
                   <div className="flex items-center justify-center gap-3 pt-2">
-                    <button
-                      onClick={() => setActiveTab('discover')}
-                      className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
-                    >
-                      <Library size={14} />
-                      <span>Discover Books</span>
-                    </button>
                     <button
                       onClick={() => {
                         setCustomStatus('reading');
@@ -546,7 +534,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   return (
                     <div
                       key={book.id}
-                      className="card p-5 space-y-4 border border-primary-500/20 hover:border-primary-500/40 transition-all flex flex-col justify-between"
+                      className="card p-5 space-y-4 flex flex-col justify-between"
                     >
                       <div>
                         <div className="flex items-start justify-between gap-3">
@@ -554,7 +542,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             <div className="flex items-center gap-2 mb-1.5">
                               {renderCategoryBadge(book.category, true)}
                               {book.isCurated && (
-                                <span className="badge badge-neutral text-2xs flex items-center gap-1">
+                                <span className="text-2xs text-content-muted">
                                   Curated
                                 </span>
                               )}
@@ -584,7 +572,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             <span className="figure text-content-muted">
                               {current} / {total} {unit}
                             </span>
-                            <span className="figure text-brand-text">{percent}%</span>
+                            <span className="figure text-content-secondary">{percent}%</span>
                           </div>
                           <ProgressBar value={percent} label="Reading progress" tone="brand" />
                         </div>
@@ -592,7 +580,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         {/* Target Date */}
                         {book.targetFinishDate && (
                           <div className="flex items-center gap-1.5 text-micro text-content-muted mt-2.5">
-                            <Calendar size={12} className="text-brand-text" />
+                            <Calendar size={12} className="text-content-subtle" />
                             <span>Target Finish: {formatDateLong(book.targetFinishDate)}</span>
                           </div>
                         )}
@@ -618,7 +606,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             }}
                             className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5 whitespace-nowrap"
                           >
-                            <CheckCircle2 size={14} className="text-success-text shrink-0" />
+                            <CheckCircle2 size={14} className="shrink-0" />
                             <span>Finish</span>
                           </button>
                         </div>
@@ -647,18 +635,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="space-y-4">
             {filteredToRead.length === 0 ? (
               <EmptyState
-                icon={ListTodo}
                 title="No books in your library"
                 description="Browse our curated self-improvement recommendations or add your own books to your reading library."
                 action={
                   <div className="flex items-center justify-center gap-3 pt-2">
-                    <button
-                      onClick={() => setActiveTab('discover')}
-                      className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
-                    >
-                      <Library size={14} />
-                      <span>Discover Books</span>
-                    </button>
                     <button
                       onClick={() => {
                         setCustomStatus('to-read');
@@ -677,7 +657,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 {filteredToRead.map((book) => (
                   <div
                     key={book.id}
-                    className="card p-4 flex flex-col justify-between space-y-3 border border-overlay-subtle hover:border-overlay-default transition-all"
+                    className="card p-4 flex flex-col justify-between space-y-3"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2">
@@ -726,7 +706,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         {activeTab === 'discover' && (
           <div className="space-y-4">
             {filteredCurated.length === 0 && (
-              <EmptyState size="sm" icon={BookOpen} title="No books match your search" description="Try a different search or category." />
+              <EmptyState size="sm" title="No books match your search" description="Try a different search or category." />
             )}
             <div className="grid-cards gap-4">
               {filteredCurated.map((curated) => {
@@ -735,13 +715,13 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 return (
                   <div
                     key={curated.id}
-                    className="card p-5 flex flex-col justify-between space-y-4 border-overlay-medium shadow-sm hover:border-primary-500/40 transition-all"
+                    className="card p-5 flex flex-col justify-between space-y-4"
                   >
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
                         {renderCategoryBadge(curated.category, true)}
                         <span
-                          className="badge badge-neutral text-2xs flex items-center gap-1"
+                          className="figure text-2xs text-content-muted"
                           title="Requires reading inside Ascend across ≥7 days span and ≥5 logged reading days"
                         >
                           +{READING_POINTS.completionBonus} pts on finish
@@ -767,10 +747,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         <span
                           className={`badge text-2xs px-2 py-0.5 ${
                             userBook.status === 'completed'
-                              ? 'badge-emerald'
+                              ? 'badge-neutral'
                               : userBook.status === 'reading'
                               ? 'badge-neutral'
-                              : 'bg-overlay-subtle text-content-muted border border-overlay-default'
+                              : 'bg-overlay-subtle text-content-muted'
                           }`}
                         >
                           {userBook.status === 'completed'
@@ -803,7 +783,6 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="space-y-4">
             {filteredCompleted.length === 0 ? (
               <EmptyState
-                icon={CheckCircle2}
                 title="No completed books yet"
                 description="Finish reading your first book to log your key insights, takeaways, and earn points rewards."
               />
@@ -812,22 +791,22 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 {filteredCompleted.map((book) => (
                   <div
                     key={book.id}
-                    className="card p-5 space-y-3 border border-emerald-500/20"
+                    className="card p-5 space-y-3"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
                           {renderCategoryBadge(book.category, true)}
-                          <span className="badge badge-emerald text-2xs flex items-center gap-1">
-                            <CheckCircle2 size={10} /> Completed
+                          <span className="badge badge-neutral text-2xs">
+                            Completed
                           </span>
                           {book.pointsAwarded ? (
-                            <span className="badge badge-neutral text-2xs flex items-center gap-1">
+                            <span className="figure text-2xs text-content-muted">
                               +{book.pointsAwarded} pts bonus
                             </span>
                           ) : (
                             <span
-                              className="badge bg-bg-700 text-content-disabled text-2xs flex items-center gap-1"
+                              className="text-2xs text-content-disabled"
                               title="Completion bonus requires reading inside Ascend across ≥7 days span and ≥5 distinct logged reading days"
                             >
                               Completed without bonus
@@ -841,7 +820,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       <div className="flex items-center gap-2 shrink-0">
                         {book.dateCompleted && (
                           <span className="text-xs text-content-muted flex items-center gap-1">
-                            <Calendar size={12} className="text-success-text" />
+                            <Calendar size={12} className="text-content-subtle" />
                             {formatDateLong(book.dateCompleted)}
                           </span>
                         )}
@@ -857,8 +836,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     </div>
 
                     {book.reflection && (
-                      <div className="p-3.5 bg-bg-900/80 rounded-xl border border-emerald-500/15 text-xs text-content-tertiary leading-relaxed space-y-1">
-                        <span className="font-medium text-success-text block text-micro">
+                      <div className="text-xs text-content-tertiary leading-relaxed space-y-1">
+                        <span className="font-medium text-content-muted block text-micro">
                           Key Takeaway / Reflection:
                         </span>
                         <p>{book.reflection}</p>
@@ -871,7 +850,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       </span>
                       <button
                         onClick={() => store.restartBook(book.id)}
-                        className={`text-xs text-brand-text hover:text-brand-text font-medium transition-colors ${TAP_TARGET}`}
+                        className={`text-xs text-content-secondary hover:text-content-primary font-medium transition-colors ${TAP_TARGET}`}
                       >
                         Re-read book →
                       </button>
@@ -1186,10 +1165,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleFinishSubmit} className="space-y-4">
           {finishEligibility?.isEligible ? (
-            <div className="p-3.5 bg-primary-500/15 border border-primary-500/30 rounded-xl flex items-center gap-3 text-brand-text">
-              <CheckCircle2 size={24} className="shrink-0 text-brand-text" />
+            <div className="p-3.5 border border-overlay-default rounded-xl flex items-center gap-3 text-content-secondary">
+              <CheckCircle2 size={18} className="shrink-0 text-success-text" />
               <div className="text-xs space-y-0.5">
-                <span className="font-semibold block">Congratulations on finishing!</span>
+                <span className="font-semibold block text-content-primary">Congratulations on finishing!</span>
                 <span>
                   Eligible for +{READING_POINTS.completionBonus} points completion bonus!
                 </span>
@@ -1199,9 +1178,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
               </div>
             </div>
           ) : (
-            <div className="p-3.5 bg-bg-700/60 border border-overlay-medium rounded-xl flex flex-col gap-3 text-content-secondary">
+            <div className="p-3.5 border border-overlay-default rounded-xl flex flex-col gap-3 text-content-secondary">
               <div className="flex items-center gap-3">
-                <CheckCircle2 size={24} className="shrink-0 text-content-disabled" />
+                <CheckCircle2 size={18} className="shrink-0 text-content-muted" />
                 <div className="text-xs space-y-0.5">
                   <span className="font-semibold block text-content-primary">Finishing Book (+0 bonus points)</span>
                   <p className="text-content-muted leading-relaxed">

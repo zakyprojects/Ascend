@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  ShieldAlert,
   Flame,
   Plus,
   Trash2,
@@ -159,16 +158,16 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       <PageColumns stickyAside
         aside={
           <>
-            <Disclosure icon={AlertTriangle} tone="warning" title="Escalating Penalty & Point Cap System Active">
+            <Disclosure title="Escalating Penalty & Point Cap System Active">
               <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
                 <li>
-                  <span className="text-content-secondary">Daily Resists & Cap:</span> Only the first <span className="text-success-text font-medium"><span className="figure">{BAD_HABIT_POINTS.eligibleSlots}</span> active habits</span> (oldest first) are point-eligible. Each eligible resist earns <span className="figure text-success-text">+{BAD_HABIT_POINTS.resistBase} pts</span> (max <span className="figure">+{BAD_HABIT_POINTS.dailyCap}</span> pts/day). Other habits are tracking-only (streak only, 0 pts for resist, occurred, and missed days).
+                  <span className="text-content-secondary">Daily Resists & Cap:</span> Only the first <span className="text-content-secondary font-medium"><span className="figure">{BAD_HABIT_POINTS.eligibleSlots}</span> active habits</span> (oldest first) are point-eligible. Each eligible resist earns <span className="figure text-content-secondary">+{BAD_HABIT_POINTS.resistBase} pts</span> (max <span className="figure">+{BAD_HABIT_POINTS.dailyCap}</span> pts/day). Other habits are tracking-only (streak only, 0 pts for resist, occurred, and missed days).
                 </li>
                 <li>
-                  <span className="text-content-secondary">Occurred & Miss Penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-rose-theme font-medium">point-eligible habits only</span>. Deleting an eligible habit refunds its resist points and today's Occurred penalty (earlier penalties stay); completing keeps everything. Promoting the next eligible habit recalculates today's resists. Undo is available for today's action.
+                  <span className="text-content-secondary">Occurred & Miss Penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-content-secondary font-medium">point-eligible habits only</span>. Deleting an eligible habit refunds its resist points and today's Occurred penalty (earlier penalties stay); completing keeps everything. Promoting the next eligible habit recalculates today's resists. Undo is available for today's action.
                 </li>
                 <li>
-                  <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="figure text-brand-text">75%</span> of commitment duration. Completing preserves points earned!
+                  <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="figure text-content-secondary">75%</span> of commitment duration. Completing preserves points earned!
                 </li>
               </ul>
             </Disclosure>
@@ -181,7 +180,6 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
           {activeHabits.length === 0 ? (
             <EmptyState
-              icon={ShieldAlert}
               title="No active bad habits being tracked"
               description="Add a bad habit you want to reduce (e.g. Doomscrolling, Junk Food, Late Night Gaming) to log daily resistance."
               action={
@@ -230,11 +228,11 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         <div className="flex items-center gap-2">
                           <h3 className="item-name text-base">{bh.name}</h3>
                           {slotInfo ? (
-                            <span className="text-2xs bg-emerald-500/15 text-success-text border border-emerald-500/30 px-2 py-0.5 rounded font-semibold">
+                            <span className="badge badge-neutral text-2xs">
                               Point-Eligible (Slot {slotInfo.slot}/{slotInfo.total})
                             </span>
                           ) : (
-                            <span className="text-2xs bg-bg-700 text-content-muted border border-overlay-subtle px-2 py-0.5 rounded font-semibold">
+                            <span className="text-xs text-content-muted">
                               Tracking Only
                             </span>
                           )}
@@ -251,8 +249,8 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           disabled={!isCompleteUnlocked}
                           className={`btn text-xs py-1.5 px-3 flex items-center gap-1.5 transition-all ${
                             isCompleteUnlocked
-                              ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40 hover:bg-emerald-500/30'
-                              : 'bg-bg-700/50 text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
+                              ? 'text-success-text border border-overlay-strong hover:bg-overlay-subtle'
+                              : 'text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
                           }`}
                           title={
                             isCompleteUnlocked
@@ -280,14 +278,14 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-content-muted flex items-center gap-1">
-                          <Flame size={14} className="text-success-text" />
+                          <Flame size={14} className="text-content-subtle" />
                           <span className="figure text-content-secondary">{habitStreak}d</span> resisted streak
                         </span>
                         <span className="text-content-disabled">
                           {isCompleteUnlocked ? (
                             <span className="text-success-text font-medium">✓ 75%+ Complete Unlocked ({habitStreak}/{commitmentDays}d)</span>
                           ) : (
-                            <span>Unlocks Complete at <strong className="figure text-brand-text">{unlockThreshold}d</strong> ({habitStreak}/{commitmentDays}d)</span>
+                            <span>Unlocks Complete at <strong className="figure text-content-secondary">{unlockThreshold}d</strong> ({habitStreak}/{commitmentDays}d)</span>
                           )}
                         </span>
                       </div>
@@ -309,10 +307,10 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           disabled={!!todayLog}
                           className={`flex-1 py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 font-medium text-xs transition-all ${
                             status === 'resisted'
-                              ? 'bg-emerald-500/20 border-emerald-500 text-success-text font-bold shadow-sm'
+                              ? 'bg-emerald-500/15 border-emerald-500/50 text-success-text font-semibold'
                               : todayLog
                               ? 'bg-bg-800 border-overlay-subtle text-content-subtle cursor-not-allowed opacity-60'
-                              : 'bg-bg-700/80 border-overlay-default text-content-tertiary hover:bg-emerald-500/10 hover:border-emerald-500/40'
+                              : 'border-overlay-default text-content-tertiary hover:bg-overlay-subtle'
                           }`}
                         >
                           <CheckCircle2 size={16} className={status === 'resisted' ? 'text-success-text' : 'text-content-muted'} />
@@ -326,10 +324,10 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           disabled={!!todayLog}
                           className={`flex-1 py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 font-medium text-xs transition-all ${
                             status === 'occurred'
-                              ? 'bg-rose-500/20 border-rose-500 text-rose-theme font-bold shadow-sm'
+                              ? 'bg-rose-500/15 border-rose-500/50 text-rose-theme font-semibold'
                               : todayLog
                               ? 'bg-bg-800 border-overlay-subtle text-content-subtle cursor-not-allowed opacity-60'
-                              : 'bg-bg-700/80 border-overlay-default text-content-tertiary hover:bg-rose-500/10 hover:border-rose-500/40'
+                              : 'border-overlay-default text-content-tertiary hover:bg-overlay-subtle'
                           }`}
                         >
                           <XCircle size={16} className={status === 'occurred' ? 'text-rose-theme' : 'text-content-muted'} />
@@ -339,7 +337,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
                       {/* Today's Log Status & Undo Bar */}
                       {todayLog && (
-                        <div className="flex items-center justify-between bg-bg-800/80 p-2 px-3 rounded-lg border border-overlay-subtle text-xs">
+                        <div className="flex items-center justify-between gap-2 px-1 text-xs">
                           <span className="text-content-muted flex items-center gap-1.5">
                             <Lock size={12} className="text-content-disabled" />
                             Today's action locked ({todayLog.status === 'resisted' ? 'Resisted' : todayLog.status === 'occurred' ? 'Occurred' : 'No Report Penalty'})
@@ -383,12 +381,12 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                               key={d}
                               className={`w-6 h-6 rounded-md flex items-center justify-center text-2xs font-bold shrink-0 transition-all ${
                                 isResisted
-                                  ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40'
+                                  ? 'bg-emerald-500/20 text-success-text'
                                   : isOccurred
-                                  ? 'bg-rose-500/20 text-rose-theme border border-rose-500/40'
+                                  ? 'bg-rose-500/20 text-rose-theme'
                                   : isNoReport
-                                  ? 'bg-overlay-default text-content-muted border border-overlay-medium'
-                                  : 'bg-bg-700/50 text-content-subtle border border-overlay-subtle'
+                                  ? 'bg-overlay-strong text-content-muted'
+                                  : 'bg-overlay-subtle text-content-subtle'
                               }`}
                               title={`${d}: ${
                                 isResisted
@@ -418,8 +416,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         {/* Completed Bad Habits Section */}
         {completedHabits.length > 0 && (
           <div className="pt-4 space-y-3 border-t border-overlay-default">
-            <h2 className="section-title text-success-text flex items-center gap-2">
-              <CheckCheck size={20} />
+            <h2 className="section-title">
               Completed Bad Habits ({completedHabits.length})
             </h2>
 
@@ -429,16 +426,16 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 const totalResistedCount = bhLogs.filter((l) => l.status === 'resisted').length;
 
                 return (
-                  <div key={bh.id} className="card p-4 bg-bg-800/60 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
+                  <div key={bh.id} className="card p-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="item-name text-content-secondary text-base">{bh.name}</h3>
-                        <span className="badge bg-emerald-500/20 text-success-text text-2xs font-bold">
+                        <span className="badge badge-neutral text-2xs">
                           Completed
                         </span>
                       </div>
                       <p className="text-xs text-content-muted mt-1">
-                        Commitment: {bh.commitmentDays} days • Total days resisted: <strong className="figure text-success-text">{totalResistedCount} days</strong>
+                        Commitment: {bh.commitmentDays} days • Total days resisted: <strong className="figure text-content-secondary">{totalResistedCount} days</strong>
                       </p>
                       {bh.completedAt && (
                         <p className="text-micro text-content-disabled mt-0.5">
@@ -449,7 +446,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
                     <button
                       onClick={() => setDeleteModalHabit(bh)}
-                      className="btn-secondary text-xs py-1.5 px-3 text-rose-theme hover:bg-rose-500/10 border-rose-500/20"
+                      className="btn-secondary text-xs py-1.5 px-3 text-rose-theme hover:bg-rose-500/10"
                       title="Delete permanently (points are not changed)"
                     >
                       Delete Record
@@ -481,13 +478,13 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           <div>
             <label className="block text-xs font-medium text-content-muted mb-1">Commitment Duration</label>
             <div className="relative isolate grid grid-cols-4 gap-2 mb-2">
-              <SlidingPill active={durationMode} className="rounded-xl bg-primary-500/20 border-primary-500 ring-1 ring-primary-500/40 shadow-sm" />
+              <SlidingPill active={durationMode} className="rounded-xl bg-overlay-default border border-overlay-strong" />
               <button
                 type="button"
                 data-pill-id="30"
                 onClick={() => setDurationMode('30')}
                 className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
-                  durationMode === '30' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
+                  durationMode === '30' ? 'border-transparent text-content-primary' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
                 30 Days
@@ -497,7 +494,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 data-pill-id="60"
                 onClick={() => setDurationMode('60')}
                 className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
-                  durationMode === '60' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
+                  durationMode === '60' ? 'border-transparent text-content-primary' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
                 60 Days
@@ -507,7 +504,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 data-pill-id="90"
                 onClick={() => setDurationMode('90')}
                 className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
-                  durationMode === '90' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
+                  durationMode === '90' ? 'border-transparent text-content-primary' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
                 90 Days
@@ -517,7 +514,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 data-pill-id="custom"
                 onClick={() => setDurationMode('custom')}
                 className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
-                  durationMode === 'custom' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
+                  durationMode === 'custom' ? 'border-transparent text-content-primary' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
                 Custom
@@ -568,9 +565,9 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         {deleteModalHabit && (
           <div className="space-y-4">
             {deleteModalHabit.isCompleted ? (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-content-secondary space-y-2">
-                <p className="font-semibold text-success-text flex items-center gap-1.5">
-                  <CheckCheck size={16} />
+              <div className="p-3 border border-overlay-default rounded-xl text-xs text-content-secondary space-y-2">
+                <p className="font-semibold text-content-primary flex items-center gap-1.5">
+                  <CheckCheck size={16} className="text-content-muted" />
                   Mastered Bad Habit
                 </p>
                 <p>
@@ -581,7 +578,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 </p>
               </div>
             ) : (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-content-secondary space-y-2">
+              <div className="p-3 border border-overlay-default rounded-xl text-xs text-content-secondary space-y-2">
                 <p className="font-semibold text-rose-theme flex items-center gap-1.5">
                   <AlertTriangle size={16} />
                   Warning: Earlier Penalties Stay
