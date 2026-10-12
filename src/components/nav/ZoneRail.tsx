@@ -75,7 +75,9 @@ export function ZoneRail({
       </RailButton>
       {bell}
 
-      {/* The route: Dashboard, then the four zones. The line behind them is the season's climb. */}
+      {/* The route: the four zones climb up from Dashboard (basecamp) at the foot of the line, which
+          fills with the season's climb. Dashboard sits at the bottom, round and smaller, so it is
+          never mistaken for the first zone. */}
       <div className="relative mt-3 flex flex-col items-center gap-4 py-1">
         <span aria-hidden="true" className="absolute inset-y-3 left-1/2 w-px -translate-x-1/2 bg-overlay-default" />
         <span
@@ -83,7 +85,6 @@ export function ZoneRail({
           className="rail-altitude absolute bottom-3 left-1/2 w-px -translate-x-1/2 bg-brand-text"
           style={{ height: `calc((100% - 1.5rem) * ${altitude})` }}
         />
-        <ZoneButton icon={NAV_DASHBOARD.icon} label={NAV_DASHBOARD.label} shortcut="G D" active={onDashboard} onClick={onGoDashboard} onHover={() => onZoneHover(null)} />
         {NAV_GROUPS.map((group) => (
           <ZoneButton
             key={group.id}
@@ -97,6 +98,15 @@ export function ZoneRail({
             onHover={() => onZoneHover(group.id)}
           />
         ))}
+        <ZoneButton
+          basecamp
+          icon={NAV_DASHBOARD.icon}
+          label={NAV_DASHBOARD.label}
+          shortcut="G D"
+          active={onDashboard}
+          onClick={onGoDashboard}
+          onHover={() => onZoneHover(null)}
+        />
       </div>
       <span className="sr-only">
         Season: {tier.name}, {seasonPoints.toLocaleString()} points
@@ -140,11 +150,13 @@ interface ZoneButtonProps {
   /** The panel shows this zone while another page is on screen. */
   shown?: boolean;
   badge?: boolean;
+  /** Dashboard: a smaller round node at the foot of the route instead of a zone tile. */
+  basecamp?: boolean;
   onClick: () => void;
   onHover?: () => void;
 }
 
-function ZoneButton({ icon: Icon, label, shortcut, active, shown = false, badge = false, onClick, onHover }: ZoneButtonProps) {
+function ZoneButton({ icon: Icon, label, shortcut, active, shown = false, badge = false, basecamp = false, onClick, onHover }: ZoneButtonProps) {
   return (
     <button
       type="button"
@@ -154,7 +166,8 @@ function ZoneButton({ icon: Icon, label, shortcut, active, shown = false, badge 
       aria-current={active ? 'true' : undefined}
       title={`${label} (${shortcut})`}
       className={cx(
-        'group/zone relative flex h-11 w-11 items-center justify-center rounded-2xl border',
+        'group/zone relative flex items-center justify-center border',
+        basecamp ? 'mt-2 h-9 w-9 rounded-full' : 'h-11 w-11 rounded-2xl',
         active
           ? 'zone-active border-primary-500/40 bg-bg-800 text-brand-text'
           : shown
@@ -164,7 +177,7 @@ function ZoneButton({ icon: Icon, label, shortcut, active, shown = false, badge 
         TRANSITION
       )}
     >
-      <Icon size={19} aria-hidden="true" className="transition-transform duration-base ease-emphasized group-hover/zone:-translate-y-0.5 motion-reduce:transition-none" />
+      <Icon size={basecamp ? 16 : 19} aria-hidden="true" className="transition-transform duration-base ease-emphasized group-hover/zone:-translate-y-0.5 motion-reduce:transition-none" />
       {badge && <span aria-hidden="true" className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500" />}
     </button>
   );
