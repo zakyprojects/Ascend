@@ -1,5 +1,5 @@
 import { ReactNode, useCallback, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { LogIn } from 'lucide-react';
+import { LogIn, Plus } from 'lucide-react';
 import {
   Button,
   Dialog,
@@ -20,6 +20,7 @@ import { ZonePanel } from './nav/ZonePanel';
 import { AccountMenu } from './nav/AccountMenu';
 import { MobileZoneBar } from './nav/MobileZoneBar';
 import { ZoneSheet } from './nav/ZoneSheet';
+import { QuickLog } from './nav/QuickLog';
 import { CommandPalette } from './nav/CommandPalette';
 import { getNavStatuses, getUpNext } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
@@ -62,6 +63,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   const { collapsed: panelCollapsed, setCollapsed: setPanelCollapsed, toggle: togglePanel } = useNavPanel();
   const [zoneSheetOpen, setZoneSheetOpen] = useState(false);
   const closeZoneSheet = useCallback(() => setZoneSheetOpen(false), []);
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [guestLogoutWarningOpen, setGuestLogoutWarningOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
@@ -203,6 +205,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           }}
           onExpandPanel={togglePanel}
           onSearch={() => setPaletteOpen(true)}
+          onQuickLog={() => setQuickLogOpen(true)}
           bell={currentUser ? <NotificationCenter store={store} compact align="sidebar" /> : null}
           account={
             <AccountMenu
@@ -244,6 +247,9 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           </div>
 
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" aria-label="Quick log" onClick={() => setQuickLogOpen(true)}>
+              <Plus size={20} aria-hidden="true" />
+            </Button>
             {currentUser && <NotificationCenter store={store} compact />}
             {!currentUser && (
               <button
@@ -400,6 +406,14 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           )}
         </div>
       </Dialog>
+
+      <QuickLog
+        open={quickLogOpen}
+        onClose={() => setQuickLogOpen(false)}
+        store={store}
+        statuses={navStatuses}
+        onNavigate={goTo}
+      />
 
       <CommandPalette
         open={paletteOpen}

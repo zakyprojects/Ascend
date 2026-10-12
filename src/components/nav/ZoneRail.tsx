@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { PanelLeftOpen, Search } from 'lucide-react';
+import { PanelLeftOpen, Plus, Search } from 'lucide-react';
 import { NAV_DASHBOARD, NAV_GROUPS, type NavGroup } from './navConfig';
 import { AppLogo } from '@/components/ui/AppLogo';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
@@ -21,6 +21,7 @@ interface ZoneRailProps {
   onZone: (zone: ZoneId) => void;
   onExpandPanel: () => void;
   onSearch: () => void;
+  onQuickLog: () => void;
   /** The notification bell. */
   bell: ReactNode;
   /** The account avatar and its menu. */
@@ -42,6 +43,7 @@ export function ZoneRail({
   onZone,
   onExpandPanel,
   onSearch,
+  onQuickLog,
   bell,
   account,
 }: ZoneRailProps) {
@@ -63,6 +65,9 @@ export function ZoneRail({
 
       <RailButton label={`Go to… (${shortcut})`} onClick={onSearch}>
         <Search size={18} aria-hidden="true" />
+      </RailButton>
+      <RailButton label="Quick log" onClick={onQuickLog}>
+        <Plus size={19} aria-hidden="true" />
       </RailButton>
       {bell}
 
