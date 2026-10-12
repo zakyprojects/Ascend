@@ -1,12 +1,9 @@
 import {
   Flame,
-  TrendingUp,
-  Star,
   BookOpen,
   Check,
   ArrowRight,
   Sparkles,
-  Trophy,
   Brain,
   Calendar,
   CalendarDays,
@@ -25,8 +22,7 @@ import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
 import { calculateStreak, todayKey, formatDateLong, parseDate } from '@/lib/dates';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
-import { getCurrentTier, getNextTier } from '@/lib/tiers';
-import { TierBadge, TierProgress } from '@/components/ui/TierBadge';
+import { ProgressRing } from '@/components/ui/charts';
 import { LEAGUE_CONFIG, getSeasonLabel } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { LeagueType } from '@/types';
@@ -37,31 +33,20 @@ import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { dailyHabitCompletions, dailyPoints, lastDayKeys } from '@/lib/weeklyActivity';
 import { WeekActivityCard } from './WeekActivityCard';
+import { AscentProfile } from './AscentProfile';
 
-const LEAGUE_ICONS: Record<string, typeof Trophy> = {
+const LEAGUE_ICONS: Record<string, LucideIcon> = {
   Calendar, CalendarDays, Brain,
 };
 
-const MODULE_TONE_CLASS = {
-  emerald: 'badge-emerald',
-  amber: 'badge-warning',
-  purple: 'badge-neutral',
-  rose: 'badge-rose',
-  red: 'badge-red',
-  sky: 'badge-neutral',
-  cyan: 'badge-neutral',
-  indigo: 'badge-neutral',
-} as const;
-
 interface ModuleCardProps {
-  tone: keyof typeof MODULE_TONE_CLASS;
   icon: LucideIcon;
   title: string;
   onClick: () => void;
   children: React.ReactNode;
 }
 
-function ModuleCard({ tone, icon: Icon, title, onClick, children }: ModuleCardProps) {
+function ModuleCard({ icon: Icon, title, onClick, children }: ModuleCardProps) {
   return (
     <Card
       variant="interactive"
@@ -71,8 +56,8 @@ function ModuleCard({ tone, icon: Icon, title, onClick, children }: ModuleCardPr
     >
       <div className="flex items-center justify-between">
         <span className="text-xs text-content-muted font-medium">{title}</span>
-        <span className={`${MODULE_TONE_CLASS[tone]} w-8 h-8 rounded-lg flex items-center justify-center`}>
-          <Icon size={18} aria-hidden="true" />
+        <span className="w-8 h-8 rounded-lg bg-overlay-subtle text-content-muted flex items-center justify-center">
+          <Icon size={16} aria-hidden="true" />
         </span>
       </div>
       {children}
@@ -90,9 +75,6 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   const habits = store.state.habits;
   const ninetyDayData = store.getLeagueData('ninetyDay');
   const seasonPoints = ninetyDayData.userPoints;
-  const tier = getCurrentTier(seasonPoints);
-  const nextTier = getNextTier(seasonPoints);
-
 
   const todayEntry = store.getTodayJournalEntry();
   const completedToday = habits.filter((h) => store.isHabitDone(h));
@@ -100,7 +82,6 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
   const streakResult = calculateUnifiedStreak(store.state);
 
-  const currentStreakLabel = 'Current Streak';
   const currentStreakValue = streakResult.formattedCurrentStreak;
 
   // Last 7 local days, today last: drives the week chart and the hero's "today" delta.
@@ -109,8 +90,6 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   const weekHabits = dailyHabitCompletions(habits, weekDays);
   const today = weekPoints.days[weekPoints.days.length - 1];
   const todayNet = today.earned - today.lost;
-
-  const completionRate = habits.length > 0 ? Math.round((completedToday.length / habits.length) * 100) : 0;
 
   // Re-render when a league period rolls over, so ranks and the season label never go stale.
   // The per-second countdowns tick inside LeagueCountdown and never re-render the page.
@@ -151,12 +130,9 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <p className="text-sm text-content-disabled">{formatDateLong(todayKey())}</p>
-        <h1 className="page-title mt-0.5">
-          {greeting()}, let's ascend
-        </h1>
+        <h1 className="page-title">{greeting()}, let's ascend</h1>
+        <p className="page-subtitle">{formatDateLong(todayKey())}</p>
       </div>
 
       {/* Guest Mode Banner on Dashboard */}
@@ -175,162 +151,162 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               </p>
             </div>
           </div>
-          <button
-            onClick={onOpenAuthModal}
-            className="btn-primary text-xs shrink-0 w-full sm:w-auto"
-          >
+          <button onClick={onOpenAuthModal} className="btn-primary text-xs shrink-0 w-full sm:w-auto">
             Save Progress / Create Account
           </button>
         </div>
       )}
 
+      {/* Hero: today, the season, and where you stand on the climb */}
+      <Reveal index={0}>
+        <section className="card p-5 sm:p-6 relative overflow-hidden" aria-label="Today and your season">
+          <div className="hero-glow" />
+          <div className="relative grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-10">
+            <div className="flex items-center gap-5">
+              <ProgressRing
+                value={completedToday.length}
+                max={Math.max(habits.length, 1)}
+                label={`Habits done today: ${completedToday.length} of ${habits.length}`}
+                size={116}
+                thickness={9}
+              >
+                <span className="font-display text-2xl font-bold text-content-primary tabular-nums leading-none">
+                  {completedToday.length}
+                  <span className="text-base font-semibold text-content-muted">/{habits.length}</span>
+                </span>
+                <span className="mt-1 text-2xs text-content-muted">habits today</span>
+              </ProgressRing>
+
+              <div className="min-w-0">
+                <div className="stat-label">Season points</div>
+                <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <CountUp
+                    value={seasonPoints}
+                    className="font-display text-4xl font-bold text-content-primary tabular-nums leading-none"
+                  />
+                  {todayNet !== 0 && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
+                        todayNet > 0 ? 'bg-primary-500/15 text-brand-text' : 'bg-warning-soft text-warning-text'
+                      }`}
+                    >
+                      {todayNet > 0 ? '+' : '−'}
+                      {Math.abs(todayNet).toLocaleString()} today
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2.5 flex items-center gap-1.5 text-sm text-content-secondary">
+                  <Flame size={15} className="text-brand-text" aria-hidden="true" />
+                  <AutoNum text={currentStreakValue} className="font-semibold tabular-nums" />
+                  <span className="text-content-muted">streak</span>
+                </div>
+              </div>
+            </div>
+
+            <AscentProfile totalPoints={seasonPoints} />
+          </div>
+        </section>
+      </Reveal>
+
       <PageColumns
         lead={
-          <>
-            {/* Tier + Points hero */}
-            <Reveal index={0}>
-            <div className="card p-5 relative overflow-hidden">
-              <div
-                className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-15 dark:opacity-10 pointer-events-none"
-                style={{ background: `radial-gradient(circle, var(--rank-${tier.name.toLowerCase()}-text), transparent 70%)` }}
-              />
-              <div className="relative flex items-center gap-4">
-                <TierBadge totalPoints={seasonPoints} size="xl" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-display font-bold" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
-                      {tier.name}
-                    </h2>
-                    {nextTier && (
-                      <span className="text-xs text-content-disabled">
-                        → {nextTier.name}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <CountUp
-                      value={ninetyDayData.userPoints}
-                      className="text-3xl font-display font-bold text-content-primary tabular-nums"
-                    />
-                    <span className="text-sm text-content-disabled">points</span>
-                    {todayNet !== 0 && (
-                      <span
-                        className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
-                          todayNet > 0 ? 'bg-primary-500/15 text-brand-text' : 'bg-warning-soft text-warning-text'
-                        }`}
-                      >
-                        {todayNet > 0 ? '+' : '−'}
-                        {Math.abs(todayNet).toLocaleString()} today
-                      </span>
-                    )}
-                  </div>
-                </div>
+          <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+            {/* Today's habits quick-complete: the thing checked every day comes first */}
+            <Reveal index={1}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="section-title">Today's Habits</h2>
+                <button onClick={() => onViewChange('habits')} className="btn-ghost text-xs">
+                  View all <ArrowRight size={14} />
+                </button>
               </div>
-              <div className="mt-4">
-                <TierProgress totalPoints={seasonPoints} />
-              </div>
-            </div>
-            </Reveal>
 
-            {/* Stats grid */}
-            <Reveal index={1} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard icon={<Check size={18} />} label="Done Today" value={`${completedToday.length}/${habits.length}`} tone="emerald" />
-              <StatCard icon={<TrendingUp size={18} />} label="Completion" value={`${completionRate}%`} tone="sky" />
-              <StatCard icon={<Flame size={18} />} label={currentStreakLabel} value={currentStreakValue} tone="amber" />
-              <StatCard icon={<Star size={18} />} label="Habits" value={String(habits.length)} tone="indigo" />
-            </Reveal>
-
-            {/* Last 7 days + today's habits: the two things checked daily */}
-            <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-              <Reveal index={2}>
-                <WeekActivityCard points={weekPoints.days} pointsPartial={weekPoints.partial} habits={weekHabits} />
-              </Reveal>
-
-              {/* Today's habits quick-complete */}
-              <Reveal index={3}>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="section-title">Today's Habits</h2>
-                  <button onClick={() => onViewChange('habits')} className="btn-ghost text-xs">
-                    View all <ArrowRight size={14} />
-                  </button>
-                </div>
-
-                {habits.length === 0 ? (
-                  <EmptyState
-                    surface
-                    size="md"
-                    title="No habits yet. Start building your routine!"
-                    action={
-                      <Button variant="primary" onClick={() => onViewChange('habits')}>
-                        Add Your First Habit
-                      </Button>
-                    }
-                  />
-                ) : (
-                  <div className="space-y-2">
-                    {pendingToday.length > 0 ? (
-                      pendingToday.slice(0, 4).map((habit) => {
-                        const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
-                        return (
-                          <div key={habit.id} className="card p-3 flex items-center gap-3 card-hover">
-                            <button
-                              disabled={isLinked}
-                              title={isLinked ? 'Log reading progress in Reading Hub' : undefined}
-                              aria-label={isLinked ? `${habit.name} (log in Reading Hub)` : `Mark ${habit.name} done`}
-                              onClick={() => !isLinked && store.toggleHabit(habit.id)}
-                              className={`shrink-0 w-9 h-9 rounded-lg border border-overlay-subtle flex items-center justify-center transition-all ${
-                                isLinked
-                                  ? 'bg-bg-600/60 text-content-subtle cursor-default'
-                                  : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary active:scale-90'
-                              } ${TAP_TARGET} ${FOCUS_RING}`}
-                            >
-                              <Check size={18} />
-                            </button>
-                            <span className="text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
-                              {isLinked && <BookOpen size={13} className="text-brand-text shrink-0" />}
-                              <span>{habit.name}</span>
-                            </span>
-                            {isLinked && habit.points === 0 ? (
-                              <span className="text-xs text-content-subtle">For habit tracking</span>
-                            ) : habit.isPreset ? (
-                              <span className="text-xs text-brand-text font-medium">+{habit.points} pts</span>
-                            ) : (
-                              <span className="text-xs text-content-subtle">No pts</span>
-                            )}
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="card p-5 text-center">
-                        <div className="w-12 h-12 rounded-xl bg-primary-500/15 flex items-center justify-center mx-auto mb-2">
-                          <Sparkles size={22} className="text-brand-text" />
+              {habits.length === 0 ? (
+                <EmptyState
+                  surface
+                  size="md"
+                  title="No habits yet. Start building your routine!"
+                  action={
+                    <Button variant="primary" onClick={() => onViewChange('habits')}>
+                      Add Your First Habit
+                    </Button>
+                  }
+                />
+              ) : (
+                <div className="space-y-2">
+                  {pendingToday.length > 0 ? (
+                    pendingToday.slice(0, 4).map((habit) => {
+                      const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
+                      return (
+                        <div key={habit.id} className="card p-3 flex items-center gap-3 card-hover">
+                          <button
+                            disabled={isLinked}
+                            title={isLinked ? 'Log reading progress in Reading Hub' : undefined}
+                            aria-label={isLinked ? `${habit.name} (log in Reading Hub)` : `Mark ${habit.name} done`}
+                            onClick={() => !isLinked && store.toggleHabit(habit.id)}
+                            className={`shrink-0 w-9 h-9 rounded-lg border border-overlay-subtle flex items-center justify-center transition-all ${
+                              isLinked
+                                ? 'bg-bg-600/60 text-content-subtle cursor-default'
+                                : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary active:scale-90'
+                            } ${TAP_TARGET} ${FOCUS_RING}`}
+                          >
+                            <Check size={18} />
+                          </button>
+                          <span className="text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
+                            {isLinked && <BookOpen size={13} className="text-brand-text shrink-0" />}
+                            <span>{habit.name}</span>
+                          </span>
+                          {isLinked && habit.points === 0 ? (
+                            <span className="text-xs text-content-subtle">For habit tracking</span>
+                          ) : habit.isPreset ? (
+                            <span className="text-xs text-brand-text font-medium">+{habit.points} pts</span>
+                          ) : (
+                            <span className="text-xs text-content-subtle">No pts</span>
+                          )}
                         </div>
-                        <p className="text-sm font-medium text-brand-text">All habits done today!</p>
-                        <p className="text-xs text-content-disabled mt-0.5">Great work. See you tomorrow.</p>
+                      );
+                    })
+                  ) : (
+                    <div className="card p-5 text-center">
+                      <div className="w-12 h-12 rounded-xl bg-primary-500/15 flex items-center justify-center mx-auto mb-2">
+                        <Sparkles size={22} className="text-brand-text" />
                       </div>
-                    )}
-                    {completedToday.length > 0 && pendingToday.length > 0 && (
-                      <p className="text-xs text-content-subtle px-1">
-                        {completedToday.length} already completed
-                      </p>
-                    )}
-                  </div>
-                )}
-              </Reveal>
-            </div>
-          </>
+                      <p className="text-sm font-medium text-brand-text">All habits done today!</p>
+                      <p className="text-xs text-content-disabled mt-0.5">Great work. See you tomorrow.</p>
+                    </div>
+                  )}
+                  {completedToday.length > 0 && pendingToday.length > 0 && (
+                    <p className="text-xs text-content-subtle px-1">
+                      {completedToday.length} already completed
+                    </p>
+                  )}
+                </div>
+              )}
+            </Reveal>
+
+            <Reveal index={2}>
+              <WeekActivityCard points={weekPoints.days} pointsPartial={weekPoints.partial} habits={weekHabits} />
+            </Reveal>
+          </div>
         }
         aside={
           <>
-            {/* League ranks */}
-            <Reveal index={4} className="grid grid-cols-3 gap-3">
-              <LeagueRankCard type="weekly" rank={weeklyData.userRank} points={weeklyData.userPoints} />
-              <LeagueRankCard type="monthly" rank={monthlyData.userRank} points={monthlyData.userPoints} />
-              <LeagueRankCard type="ninetyDay" rank={ninetyDayData.userRank} points={ninetyDayData.userPoints} />
+            {/* League ranks: one list instead of three boxes */}
+            <Reveal index={3}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="section-title">Leagues</h2>
+                <button onClick={() => onViewChange('leagues')} className="btn-ghost text-xs">
+                  Standings <ArrowRight size={14} />
+                </button>
+              </div>
+              <div className="card divide-y divide-overlay-subtle">
+                <LeagueRow type="weekly" rank={weeklyData.userRank} points={weeklyData.userPoints} />
+                <LeagueRow type="monthly" rank={monthlyData.userRank} points={monthlyData.userPoints} />
+                <LeagueRow type="ninetyDay" rank={ninetyDayData.userRank} points={ninetyDayData.userPoints} />
+              </div>
             </Reveal>
 
             {/* Journal snapshot */}
-            <Reveal index={5}>
+            <Reveal index={4}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="section-title">Today's Journal</h2>
                 <button onClick={() => onViewChange('journal')} className="btn-ghost text-xs">
@@ -369,71 +345,39 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
         }
         footer={
           <>
-            {/* Activity Summary Widgets Grid */}
-            <Reveal index={6}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="section-title">Self-Improvement Activity Summary</h2>
-              </div>
+            {/* Every module at a glance, one quiet tile each */}
+            <Reveal index={5}>
+              <h2 className="section-title mb-3">Your Modules</h2>
               <div className="grid-cards gap-3">
-                {/* Exercise Summary Widget */}
-                <ModuleCard
-                  tone="emerald"
-                  icon={Activity}
-                  title="Exercise Tracker"
-                  onClick={() => onViewChange('exercise')}
-                >
+                <ModuleCard icon={Activity} title="Exercise" onClick={() => onViewChange('exercise')}>
                   <div>
                     <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyExerciseMins} /> <span className="text-xs font-normal text-content-muted">mins this week</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={weeklyWorkouts.length} /> sessions completed</div>
                   </div>
                 </ModuleCard>
 
-                {/* Reading Summary Widget */}
-                <ModuleCard
-                  tone="amber"
-                  icon={BookMarked}
-                  title="Reading Hub"
-                  onClick={() => onViewChange('reading')}
-                >
+                <ModuleCard icon={BookMarked} title="Reading" onClick={() => onViewChange('reading')}>
                   <div>
                     <div className="text-xl font-bold text-content-primary"><CountUp value={activeBooks} /> <span className="text-xs font-normal text-content-muted">books in progress</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={finishedBooks} /> finished total</div>
                   </div>
                 </ModuleCard>
 
-                {/* Skill Summary Widget */}
-                <ModuleCard
-                  tone="purple"
-                  icon={Zap}
-                  title="Skill Learning"
-                  onClick={() => onViewChange('skills')}
-                >
+                <ModuleCard icon={Zap} title="Skills" onClick={() => onViewChange('skills')}>
                   <div>
                     <div className="text-xl font-bold text-content-primary"><CountUp value={totalSkillHours} decimals={1} /> <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={store.state.skills.length} /> skills tracked</div>
                   </div>
                 </ModuleCard>
 
-                {/* Bad Habit Summary Widget */}
-                <ModuleCard
-                  tone="rose"
-                  icon={ShieldAlert}
-                  title="Bad Habits Reduction"
-                  onClick={() => onViewChange('bad-habits')}
-                >
+                <ModuleCard icon={ShieldAlert} title="Bad Habits" onClick={() => onViewChange('bad-habits')}>
                   <div>
                     <div className="text-xl font-bold text-content-primary"><CountUp value={badHabitCount} /> <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
                     <div className="text-micro text-content-disabled">Escalating penalties enabled</div>
                   </div>
                 </ModuleCard>
 
-                {/* Addiction Recovery Summary Widget */}
-                <ModuleCard
-                  tone="red"
-                  icon={HeartPulse}
-                  title="Addiction Recovery"
-                  onClick={() => onViewChange('recovery')}
-                >
+                <ModuleCard icon={HeartPulse} title="Recovery" onClick={() => onViewChange('recovery')}>
                   <div>
                     <div className="text-xl font-bold text-content-primary">
                       {activeAddiction ? activeAddiction.title : 'Sobriety Tracker'}
@@ -442,26 +386,14 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                   </div>
                 </ModuleCard>
 
-                {/* Deep Focus Summary Widget */}
-                <ModuleCard
-                  tone="cyan"
-                  icon={Timer}
-                  title="Prefrontal / Focus"
-                  onClick={() => onViewChange('prefrontal')}
-                >
+                <ModuleCard icon={Timer} title="Focus" onClick={() => onViewChange('prefrontal')}>
                   <div>
                     <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyFocusMins} /> <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
                     <div className="text-micro text-content-disabled">Pomodoro, decisions & emotions</div>
                   </div>
                 </ModuleCard>
 
-                {/* Time Tracker Blueprint Widget */}
-                <ModuleCard
-                  tone="indigo"
-                  icon={Clock}
-                  title="Time Tracker"
-                  onClick={() => onViewChange('time-tracker')}
-                >
+                <ModuleCard icon={Clock} title="Time Tracker" onClick={() => onViewChange('time-tracker')}>
                   <div>
                     <div className="text-xl font-bold text-content-primary">
                       <AutoNum text={todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'} />{' '}
@@ -502,43 +434,24 @@ function moodColor(mood: string): string {
   return colors[mood] ?? '#94a3b8';
 }
 
-const LEAGUE_TONE: Record<LeagueType, keyof typeof MODULE_TONE_CLASS> = {
-  weekly: 'emerald',
-  monthly: 'sky',
-  ninetyDay: 'purple',
-};
-
-function LeagueRankCard({ type, rank, points }: { type: LeagueType; rank: number; points: number }) {
+function LeagueRow({ type, rank, points }: { type: LeagueType; rank: number; points: number }) {
   const config = LEAGUE_CONFIG[type];
-  const tone = LEAGUE_TONE[type];
   const Icon = LEAGUE_ICONS[config.icon] ?? Calendar;
   const label = type === 'weekly' ? 'Weekly' : type === 'monthly' ? 'Monthly' : `${getSeasonLabel(leagueNow())} (90-Day)`;
 
   return (
-    <div className="card p-3 text-center relative">
-      <div
-        className={`${MODULE_TONE_CLASS[tone]} w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-1.5`}
-      >
-        <Icon size={14} aria-hidden="true" />
+    <div className="flex items-center gap-3 px-4 py-3">
+      <Icon size={16} className="shrink-0 text-content-muted" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium text-content-secondary">{label}</div>
+        <LeagueCountdown type={type} className="block truncate font-mono text-2xs text-content-disabled" />
       </div>
-      <div className="text-xs text-content-muted font-medium mb-0.5">{label}</div>
-      <div className="text-lg font-display font-bold tabular-nums" style={{ color: `var(--badge-${tone}-text)` }}>
-        #<CountUp value={rank} />
+      <div className="text-right">
+        <div className="font-display text-lg font-bold text-content-primary tabular-nums leading-none">
+          #<CountUp value={rank} />
+        </div>
+        <div className="mt-1 text-2xs text-content-muted tabular-nums"><CountUp value={points} /> pts</div>
       </div>
-      <div className="text-2xs text-content-muted tabular-nums"><CountUp value={points} /> pts</div>
-      <LeagueCountdown type={type} className="block text-2xs text-brand-text mt-0.5 truncate font-mono font-medium" />
-    </div>
-  );
-}
-
-function StatCard({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: keyof typeof MODULE_TONE_CLASS }) {
-  return (
-    <div className="card p-4">
-      <div className={`${MODULE_TONE_CLASS[tone]} w-9 h-9 rounded-lg flex items-center justify-center mb-2`}>
-        {icon}
-      </div>
-      <AutoNum text={value} className="stat-value tabular-nums block" />
-      <div className="stat-label mt-0.5">{label}</div>
     </div>
   );
 }
