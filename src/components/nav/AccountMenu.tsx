@@ -20,18 +20,18 @@ const MENU_WIDTH = 240;
 /**
  * The rail's avatar and its menu: one place for the account, Settings, theme and log out
  * (replaces the sidebar's account card with its separate Settings and Log out icons).
- * Opens beside the avatar; Escape, a click outside or choosing an item closes it.
+ * Opens below the avatar; Escape, a click outside or choosing an item closes it.
  */
 export function AccountMenu({ user, settingsActive, isDark, onToggleTheme, onOpenSettings, onOpenAuth, onLogout }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
-  const [anchor, setAnchor] = useState<{ left: number; bottom: number }>({ left: 0, bottom: 0 });
+  const [anchor, setAnchor] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setAnchor({ left: rect.right + 10, bottom: Math.max(12, window.innerHeight - rect.bottom) });
+    setAnchor({ left: Math.max(12, rect.right - MENU_WIDTH), top: rect.bottom + 8 });
   }, [open]);
 
   useEffect(() => {
@@ -82,7 +82,7 @@ export function AccountMenu({ user, settingsActive, isDark, onToggleTheme, onOpe
         title={user ? user.name : 'Account'}
         onClick={() => setOpen((v) => !v)}
         className={cx(
-          'relative flex h-10 w-10 items-center justify-center rounded-full border text-lg',
+          'relative flex h-8 w-8 items-center justify-center rounded-full border text-base',
           open || settingsActive
             ? 'border-primary-500/50 bg-primary-500/15 text-brand-text'
             : 'border-overlay-default bg-bg-800 text-content-muted hover:border-overlay-strong hover:text-content-secondary',
@@ -103,7 +103,7 @@ export function AccountMenu({ user, settingsActive, isDark, onToggleTheme, onOpe
             role="menu"
             aria-label="Account"
             onKeyDown={onMenuKeyDown}
-            style={{ left: anchor.left, bottom: anchor.bottom, width: MENU_WIDTH }}
+            style={{ left: anchor.left, top: anchor.top, width: MENU_WIDTH }}
             className="account-menu fixed z-modal rounded-2xl border border-overlay-default bg-bg-800 p-1.5 shadow-2xl"
           >
             <div className="flex items-center gap-3 px-2.5 pb-2.5 pt-2">

@@ -780,13 +780,9 @@
     padding-left: 2.75rem !important;
   }
 
-  /* Zone panel: a new zone's title and pages fade in quickly; the account menu rises from the avatar. */
-  .zone-title,
-  .zone-pages {
-    animation: fade-in 160ms var(--ease-standard) both;
-  }
+  /* The account menu drops from the avatar. */
   .account-menu {
-    transform-origin: left bottom;
+    transform-origin: right top;
     animation: menu-in 180ms var(--ease-emphasized) both;
   }
   /* Phone zone bar: a floating glass pill; the current zone's slot widens to show its name. */
@@ -805,16 +801,6 @@
   }
   .zone-sheet {
     animation: sheet-up 340ms var(--ease-emphasized) both;
-  }
-  /* Desktop hover peek: the hidden panel slides out over the page from the rail. */
-  .zone-peek {
-    animation: peek-in 200ms var(--ease-emphasized) both;
-  }
-  @keyframes peek-in {
-    from { opacity: 0; transform: translateX(-0.75rem); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .zone-peek { animation: none; }
   }
   /* The page behind a sheet: dimmed and blurred, like iOS. */
   .zone-sheet-backdrop {
@@ -843,10 +829,10 @@
     from { opacity: 0; transform: translateX(-6px); }
   }
   @keyframes menu-in {
-    from { opacity: 0; transform: translateX(-4px) scale(0.97); }
+    from { opacity: 0; transform: translateY(-4px) scale(0.97); }
   }
   @media (prefers-reduced-motion: reduce) {
-    .zone-title, .zone-pages, .account-menu, .zone-slot-active > span, .zone-sheet, .zone-sheet-backdrop, .zone-sheet-closing { animation: none; }
+    .account-menu, .zone-slot-active > span, .zone-sheet, .zone-sheet-backdrop, .zone-sheet-closing { animation: none; }
     .zone-sheet-settle { transition: none; }
     .zone-slot { transition: none; }
   }

@@ -13,20 +13,13 @@ import {
   DEFAULT_GROUP_VIEWS,
   getGroupForView,
   getViewLabel,
-  type NavGroup,
 } from './nav/navConfig';
-import { useNavPanel } from './nav/useNavPanel';
-import { ZoneRail } from './nav/ZoneRail';
-import { ZonePanel } from './nav/ZonePanel';
+import { Sidebar } from './nav/Sidebar';
 import { AccountMenu } from './nav/AccountMenu';
 import { MobileZoneBar } from './nav/MobileZoneBar';
 import { ZoneSheet } from './nav/ZoneSheet';
 import { QuickLog } from './nav/QuickLog';
 import { useNavShortcuts } from './nav/useNavShortcuts';
-
-/** Hover peek: rest this long on a zone before its pages show; they linger this long after leaving. */
-const PEEK_OPEN_MS = 140;
-const PEEK_CLOSE_MS = 220;
 import { CommandPalette } from './nav/CommandPalette';
 import { getNavStatuses, getUpNext } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
@@ -66,7 +59,6 @@ interface AppShellProps {
 }
 
 export function AppShell({ currentView, navigationKind, onViewChange, store, onOpenAuthModal, children }: AppShellProps) {
-  const { collapsed: panelCollapsed, setCollapsed: setPanelCollapsed, toggle: togglePanel } = useNavPanel();
   const [zoneSheetOpen, setZoneSheetOpen] = useState(false);
   const closeZoneSheet = useCallback(() => setZoneSheetOpen(false), []);
   const [quickLogOpen, setQuickLogOpen] = useState(false);
@@ -79,46 +71,15 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   const [lastByGroup, setLastByGroup] = useState(DEFAULT_GROUP_VIEWS);
   const activeGroupId = getGroupForView(currentView);
   useEffect(() => { if (activeGroupId) setLastByGroup(prev => prev[activeGroupId] === currentView ? prev : { ...prev, [activeGroupId]: currentView }); }, [currentView, activeGroupId]);
-  // The desktop panel shows the current page's zone; on Dashboard/Settings it keeps the last one.
-  const [panelZone, setPanelZone] = useState(activeGroupId ?? NAV_GROUPS[0].id);
-  useEffect(() => { if (activeGroupId) setPanelZone(activeGroupId); }, [activeGroupId]);
-
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
-  const panelGroup = NAV_GROUPS.find((g) => g.id === panelZone) ?? NAV_GROUPS[0];
   const navStatuses = getNavStatuses(store.state, store.isHabitDone);
-
-  // Hover peek (desktop, panel hidden): resting on a zone shows its pages floating over the page;
-  // they stay while the pointer is on the rail or the peek, and go a moment after it leaves both.
-  const [peekZone, setPeekZone] = useState<NavGroup['id'] | null>(null);
-  const peekTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const peekGroup = peekZone ? NAV_GROUPS.find((group) => group.id === peekZone) ?? null : null;
-  const onZoneHover = (zone: NavGroup['id'] | null) => {
-    clearTimeout(peekTimer.current);
-    if (!panelCollapsed) return;
-    if (zone) peekTimer.current = setTimeout(() => setPeekZone(zone), peekZone ? 0 : PEEK_OPEN_MS);
-    else peekTimer.current = setTimeout(() => setPeekZone(null), PEEK_CLOSE_MS);
-  };
-  useEffect(() => () => clearTimeout(peekTimer.current), []);
-  useEffect(() => {
-    if (!panelCollapsed) setPeekZone(null);
-  }, [panelCollapsed]);
-  useEffect(() => {
-    if (!peekZone) return;
-    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && setPeekZone(null);
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [peekZone]);
 
   useNavShortcuts({
     onDashboard: () => goTo(NAV_DASHBOARD.id),
     onSettings: () => goTo(NAV_SETTINGS.id),
-    onZone: (zone) => {
-      setPanelZone(zone);
-      setPanelCollapsed(false);
-      onViewChange(lastByGroup[zone]);
-    },
+    onZone: (zone) => onViewChange(lastByGroup[zone]),
     onPageIndex: (index) => {
-      const item = panelGroup.items[index];
+      const item = (activeGroup ?? NAV_GROUPS[0]).items[index];
       if (item) goTo(item.id);
     },
   });
@@ -244,34 +205,19 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   return (
     <div className="relative isolate min-h-screen lg:h-dvh bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div aria-hidden="true" className="app-atmosphere" />
-      {/* Desktop navigation (Basecamp): zone rail + the zone's pages. One click on a zone goes
-          straight to the page last open there (Discord/Slack style) and shows its siblings in the
-          panel; clicking the zone on screen again hides the panel (as do [ and its own button). */}
+      {/* Desktop navigation: one column with every page (nav/Sidebar). */}
       <aside className="relative z-sticky hidden lg:flex h-full glass border-r border-overlay-subtle shrink-0">
-        <ZoneRail
-          onDashboard={currentView === NAV_DASHBOARD.id}
-          activeZone={activeGroupId}
-          panelZone={panelZone}
-          panelCollapsed={panelCollapsed}
-          seasonPoints={seasonPoints}
-          playBadge={pendingIncomingInvitesCount}
-          onGoDashboard={() => goTo(NAV_DASHBOARD.id)}
-          onZoneHover={onZoneHover}
-          onZone={(zone) => {
-            setPeekZone(null);
-            // The zone already on screen with its panel open: a second click hides the panel.
-            if (activeGroupId === zone && panelZone === zone && !panelCollapsed) {
-              setPanelCollapsed(true);
-              return;
-            }
-            setPanelZone(zone);
-            setPanelCollapsed(false);
-            if (activeGroupId !== zone) onViewChange(lastByGroup[zone]);
-          }}
-          onExpandPanel={togglePanel}
+        <Sidebar
+          currentView={currentView}
+          activeGroup={activeGroupId}
+          statuses={navStatuses}
+          upNext={upNext}
+          partnerBadge={pendingIncomingInvitesCount}
+          onNavigate={goTo}
           onSearch={() => setPaletteOpen(true)}
           onQuickLog={() => setQuickLogOpen(true)}
           bell={currentUser ? <NotificationCenter store={store} compact align="sidebar" /> : null}
+          standing={<RankChip seasonPoints={seasonPoints} latestEntryTimestamp={store.state.pointsHistory?.[0]?.timestamp} />}
           account={
             <AccountMenu
               user={currentUser ? { name: username || 'You', avatar: userAvatar, isGuest: Boolean(currentUser.isAnonymous) } : null}
@@ -284,39 +230,6 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
             />
           }
         />
-        {/* Hidden rather than unmounted when collapsed: RankChip inside raises the rank-up toast. */}
-        <div className={panelCollapsed ? 'hidden' : 'contents'}>
-          <ZonePanel
-            group={panelGroup}
-            currentView={currentView}
-            partnerBadge={pendingIncomingInvitesCount}
-            statuses={navStatuses}
-            upNext={upNext}
-            onNavigate={goTo}
-            onCollapse={togglePanel}
-            footer={<RankChip seasonPoints={seasonPoints} latestEntryTimestamp={store.state.pointsHistory?.[0]?.timestamp} />}
-          />
-        </div>
-        {peekGroup && (
-          <div
-            onPointerEnter={() => clearTimeout(peekTimer.current)}
-            onPointerLeave={() => onZoneHover(null)}
-            className="zone-peek absolute inset-y-0 left-full"
-          >
-            <ZonePanel
-              group={peekGroup}
-              currentView={currentView}
-              partnerBadge={pendingIncomingInvitesCount}
-              statuses={navStatuses}
-              upNext={upNext}
-              onNavigate={(view) => {
-                setPeekZone(null);
-                goTo(view);
-              }}
-              className="border-r border-overlay-default bg-bg-800 shadow-2xl"
-            />
-          </div>
-        )}
       </aside>
 
       {/* Mobile view wrapper */}

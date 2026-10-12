@@ -10,7 +10,7 @@ export interface NavItemProps
   active: boolean;
   onClick?: () => void;
   badgeCount?: number;
-  /** row: icon + label; trail: label + today's status note (zone panel); stack: bottom bar. */
+  /** row: icon + label; trail: compact sidebar row with today's status; stack: bottom bar. */
   layout?: 'row' | 'trail' | 'stack';
   density?: 'default' | 'compact';
   /** trail only: today's status of the page (note or small mark on the right). */
@@ -42,7 +42,7 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
           onClick={onClick}
           data-glide-item=""
           className={cx(
-            'relative w-full flex items-center justify-between gap-3 px-3 py-1.5 rounded-lg text-sm font-medium',
+            'relative w-full flex items-center justify-between gap-3 px-2.5 py-1.5 rounded-lg text-sm font-medium',
             active ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary',
             TAP_TARGET,
             FOCUS_RING,
@@ -52,9 +52,12 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
           {...props}
         >
           {active && <span aria-hidden="true" data-nav-pill className="absolute inset-0 rounded-lg bg-overlay-default" />}
-          <span className="relative truncate">
-            {label}
-            {status && <span className="sr-only">, {status.label}</span>}
+          <span className="relative flex min-w-0 items-center gap-2.5">
+            <Icon size={16} aria-hidden="true" className={cx('shrink-0', active ? 'text-content-primary' : 'text-content-muted')} />
+            <span className="truncate">
+              {label}
+              {status && <span className="sr-only">, {status.label}</span>}
+            </span>
           </span>
           {/* Today's status: a short note when there is a count, otherwise a small mark
               (check = done, ring = still open, rose dot = open late in the day). */}
