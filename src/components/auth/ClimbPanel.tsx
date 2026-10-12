@@ -32,12 +32,14 @@ const COPY: Record<ClimbPanelMode, { headline: string; line: string }> = {
 };
 
 // The slope (desktop split only; below lg the panel is a plain band). Facets break it like a ridge.
-// Both sides use six points in the same order so a clip-path transition can morph one into the other.
+// Both sides use the same eight points in the same order: each slope corner on one side pairs with a
+// point on the straight edge of the other, so when the panel swaps sides (AuthPage) the clip-path
+// morphs one edge straight while the other one breaks into the ridge.
 const SLOPE: Record<ClimbPanelSide, string> = {
   left:
-    'lg:pr-28 lg:[clip-path:polygon(0_0,100%_0,calc(100%_-_1.5rem)_38%,calc(100%_-_3rem)_62%,calc(100%_-_5rem)_100%,0_100%)]',
+    'lg:pr-28 lg:[clip-path:polygon(0_0,100%_0,calc(100%_-_1.5rem)_38%,calc(100%_-_3rem)_62%,calc(100%_-_5rem)_100%,0_100%,0_62%,0_38%)]',
   right:
-    'lg:pl-28 lg:[clip-path:polygon(0_0,100%_0,100%_100%,5rem_100%,3rem_62%,1.5rem_38%)]',
+    'lg:pl-28 lg:[clip-path:polygon(0_0,100%_0,100%_38%,100%_62%,100%_100%,5rem_100%,3rem_62%,1.5rem_38%)]',
 };
 
 // Static contour lines: the app background's contour map, in pale emerald, fading away from one corner.
@@ -93,7 +95,7 @@ export function ClimbPanel({
         <span className="text-sm font-semibold tracking-tight">Ascend</span>
       </div>
 
-      <div className="flex-1 flex flex-col justify-center py-6 lg:py-10">
+      <div className="flex-1 flex flex-col justify-center py-4 sm:py-6 lg:py-10">
         <p key={headline} className="font-serif font-normal text-4xl lg:text-6xl leading-none tracking-tight animate-enter-up">
           {headline}
         </p>
@@ -116,7 +118,7 @@ export function ClimbPanel({
         phase={phase}
         variant={mode === 'signup-choice' ? 'routes' : 'climb'}
         hoverTrail={hoverTrail}
-        className="max-w-xl max-h-24 sm:max-h-32 lg:max-h-none"
+        className="max-w-xl max-h-20 sm:max-h-28 lg:max-h-none"
       />
     </div>
   );
