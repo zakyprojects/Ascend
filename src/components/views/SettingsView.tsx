@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { flushSync } from 'react-dom';
+import { toggleThemeWithReveal } from '@/lib/themeTransition';
 import {
   Settings,
   User,
@@ -115,34 +115,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
   // Theme state synced with store
   const isDarkMode = store.state.themePreference !== 'light';
 
-  // Switch theme with a circular reveal growing from the button. Browsers without the
-  // View Transitions API, and reduced-motion users, get the instant switch.
   const handleThemeToggle = (event: React.MouseEvent<HTMLButtonElement>) => {
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (typeof document.startViewTransition !== 'function' || reduceMotion) {
-      store.toggleThemePreference();
-      return;
-    }
-
-    const { left, top, width, height } = event.currentTarget.getBoundingClientRect();
-    const x = left + width / 2;
-    const y = top + height / 2;
-    const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
-
-    // flushSync puts the re-rendered button label inside the new snapshot.
-    const transition = document.startViewTransition(() => {
-      flushSync(() => store.toggleThemePreference());
-    });
-    transition.ready
-      .then(() => {
-        document.documentElement.animate(
-          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-          { duration: 450, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', pseudoElement: '::view-transition-new(root)' }
-        );
-      })
-      .catch(() => {
-        // Skipped by a rapid second click: the theme has already switched.
-      });
+    toggleThemeWithReveal(event.currentTarget, store.toggleThemePreference);
   };
 
   // Account action modals
