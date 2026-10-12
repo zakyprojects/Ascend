@@ -206,7 +206,7 @@ export const Dialog: React.FC<DialogProps> = ({
       >
         <div className="sticky top-0 bg-bg-800 z-10 border-b border-bg-700">
           <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:py-4">
-            <h2 id={titleId} className="min-w-0 text-base sm:text-lg font-bold tracking-wide text-content-primary">
+            <h2 id={titleId} className="min-w-0 text-base sm:text-lg font-semibold text-content-primary">
               {content.title}
             </h2>
             {!preventClose && (

@@ -20,13 +20,13 @@ export function GuestLogoutWarningModal({
   if (!open) return null;
 
   return (
-    <Dialog open={open} onClose={isLoggingOut ? () => {} : onClose} title="Guest Account Warning" maxWidth="max-w-md">
+    <Dialog open={open} onClose={isLoggingOut ? () => {} : onClose} title="Before you log out" maxWidth="max-w-md">
       <div className="space-y-4">
         <div className="p-4 border border-overlay-default rounded-xl">
           <div className="space-y-1">
-            <h3 className="font-serif text-xl leading-tight text-warning-text">Guest Progress Will Be Lost</h3>
+            <h3 className="text-base font-semibold leading-tight text-warning-text">Your guest progress will be lost</h3>
             <p className="text-xs text-content-tertiary leading-relaxed">
-              You are currently using a guest account. Logging out will permanently end your guest session and erase your habits, points, and league rank unless you save your progress first.
+              Logging out ends your guest session and erases your habits, points, and league rank for good. Create an account first to keep them.
             </p>
           </div>
         </div>
@@ -39,7 +39,7 @@ export function GuestLogoutWarningModal({
               onClose();
               onSaveProgressFirst();
             }}
-            className="w-full py-3 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-on-brand font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-on-brand font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             <span>Save Progress First (Create Account)</span>
           </button>

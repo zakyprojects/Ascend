@@ -147,15 +147,15 @@ export function ZoneSheet({ open, group, currentView, statuses, upNext, partnerB
         onClickCapture={onClickCapture}
         style={{ transform: `translateY(${dragY}px)` }}
         className={cx(
-          'zone-sheet absolute inset-x-0 bottom-0 max-h-[88dvh] touch-none select-none overflow-y-auto overscroll-contain rounded-t-3xl border-t border-overlay-default bg-bg-800 px-4 pt-3 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))]',
+          'zone-sheet absolute inset-x-0 bottom-0 max-h-[88dvh] touch-none select-none overflow-y-auto overscroll-contain rounded-t-2xl border-t border-overlay-default bg-bg-800 px-4 pt-3 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))]',
           closing && 'zone-sheet-closing',
           !dragging && !closing && 'zone-sheet-settle'
         )}
       >
         <div aria-hidden="true" className="mx-auto mb-4 h-1 w-10 rounded-full bg-overlay-strong" />
         <div className="mb-3 flex items-baseline justify-between px-1">
-          <h2 className="font-serif text-3xl leading-none text-content-primary">{group.label}</h2>
-          <span className="font-mono text-2xs uppercase tracking-[0.16em] text-content-muted">{group.items.length} pages</span>
+          <h2 className="text-xl font-semibold leading-tight text-content-primary">{group.label}</h2>
+          <span className="text-xs text-content-muted tabular-nums">{group.items.length} pages</span>
         </div>
 
         <UpNextCard upNext={upNext} currentView={currentView} statuses={statuses} onNavigate={go} className="mb-3 w-full rounded-2xl px-4 py-3" />
@@ -193,7 +193,7 @@ export function ZoneSheet({ open, group, currentView, statuses, upNext, partnerB
                     <span
                       aria-hidden="true"
                       className={cx(
-                        'font-mono text-xs tabular-nums',
+                        'text-xs tabular-nums',
                         status.tone === 'risk' ? 'text-warning-text' : status.tone === 'done' ? 'text-brand-text' : 'text-content-muted'
                       )}
                     >

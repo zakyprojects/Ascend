@@ -112,7 +112,7 @@ export function AccountMenu({ user, settingsActive, isDark, onToggleTheme, onOpe
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-sm font-semibold text-content-primary">{user ? user.name : 'Welcome'}</span>
-                <span className="block font-mono text-2xs uppercase tracking-wider text-content-muted">{status}</span>
+                <span className="block text-2xs text-content-muted">{status}</span>
               </span>
             </div>
 

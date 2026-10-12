@@ -48,7 +48,7 @@ export function TierBadge({ totalPoints, size = 'md', showName = false }: TierBa
       {showName && (
         <div>
           <div
-            className={`font-serif leading-none ${s.text}`}
+            className={`font-semibold leading-none ${s.text}`}
             style={{ color: `var(--rank-${tierKey}-text)` }}
           >
             {tier.name}

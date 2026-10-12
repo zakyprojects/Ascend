@@ -25,7 +25,7 @@ export type IconButtonProps = BaseButtonProps & {
 export type ButtonProps = RegularButtonProps | IconButtonProps;
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-primary-500 hover:bg-primary-600 text-on-brand',
+  primary: 'bg-primary-600 hover:bg-primary-700 text-on-brand',
   secondary:
     'bg-bg-600 text-content-secondary border border-overlay-default hover:bg-bg-500 hover:text-content-primary',
   ghost: 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle',

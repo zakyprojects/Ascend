@@ -66,16 +66,16 @@ export function RankChip({ seasonPoints, latestEntryTimestamp }: RankChipProps) 
           }}
         />
       )}
-      {/* Season standing: rank in the serif, points in mono, the climb to the next rank as a thin line. */}
+      {/* Season standing: rank name, points, the climb to the next rank as a thin line. */}
       <div className="relative px-1">
         <div className="flex items-center justify-between gap-2">
           <div key={rankUpId} className={`flex items-center gap-2 min-w-0 ${rankUpId > 0 ? 'animate-celebrate' : ''}`}>
             <TierBadge totalPoints={seasonPoints} size="sm" />
-            <span className="font-serif text-xl leading-none truncate" style={{ color: `var(--rank-${tierKey}-text)` }}>
+            <span className="text-lg font-semibold leading-none truncate" style={{ color: `var(--rank-${tierKey}-text)` }}>
               {tier.name}
             </span>
           </div>
-          <span className="font-mono text-2xs text-content-muted tabular-nums shrink-0">
+          <span className="text-2xs text-content-muted tabular-nums shrink-0">
             {seasonPoints.toLocaleString()} pts
           </span>
         </div>

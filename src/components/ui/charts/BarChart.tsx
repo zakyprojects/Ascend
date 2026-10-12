@@ -64,13 +64,13 @@ export function BarChart({
               onPointerDown={() => setActive(i)}
               onFocus={() => setActive(i)}
               onBlur={clear}
-              className={cx('relative flex h-full flex-1 items-end rounded-md', FOCUS_RING)}
+              className={cx('relative flex h-full flex-1 items-end rounded-lg', FOCUS_RING)}
             >
               {/* Empty days keep a sliver so the week's shape still reads. */}
               <span
                 aria-hidden="true"
                 className={cx(
-                  'block w-full origin-bottom rounded-md bg-current transition-[transform,opacity] duration-slow ease-emphasized motion-reduce:transition-none',
+                  'block w-full origin-bottom rounded-lg bg-current transition-[transform,opacity] duration-slow ease-emphasized motion-reduce:transition-none',
                   soft ? 'opacity-40' : 'opacity-100',
                   active === i && 'opacity-100'
                 )}

@@ -27,7 +27,7 @@ const sizeClasses: Record<BadgeSize, string> = {
 
 const shapeClasses: Record<BadgeShape, string> = {
   pill: 'rounded-full',
-  tag: 'rounded-md',
+  tag: 'rounded-lg',
 };
 
 const baseClasses = 'inline-flex items-center gap-1 font-semibold';

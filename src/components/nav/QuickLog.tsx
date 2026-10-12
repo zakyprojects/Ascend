@@ -33,7 +33,7 @@ export function QuickLog({ open, onClose, store, statuses, onNavigate }: QuickLo
     <Dialog open={open} onClose={onClose} title="Quick log">
       <div className="space-y-5">
         <section aria-label="Today's habits">
-          <h3 className="mb-2 font-mono text-2xs uppercase tracking-[0.16em] text-content-muted">Habits</h3>
+          <h3 className="mb-2 text-xs font-medium text-content-muted">Habits</h3>
           {habits.length === 0 ? (
             <button
               type="button"
@@ -74,7 +74,7 @@ export function QuickLog({ open, onClose, store, statuses, onNavigate }: QuickLo
                       {habit.name}
                     </span>
                     {habit.isPreset && habit.points > 0 && !isLinked && (
-                      <span className={cx('font-mono text-2xs', done ? 'text-content-subtle' : 'text-brand-text')}>+{habit.points}</span>
+                      <span className={cx('text-2xs font-medium tabular-nums', done ? 'text-content-subtle' : 'text-brand-text')}>+{habit.points}</span>
                     )}
                   </li>
                 );
@@ -84,7 +84,7 @@ export function QuickLog({ open, onClose, store, statuses, onNavigate }: QuickLo
         </section>
 
         <section aria-label="Log elsewhere">
-          <h3 className="mb-2 font-mono text-2xs uppercase tracking-[0.16em] text-content-muted">Log</h3>
+          <h3 className="mb-2 text-xs font-medium text-content-muted">Log</h3>
           <div className="grid grid-cols-2 gap-2">
             {JUMPS.map((view) => {
               const item = items.find((i) => i.id === view);

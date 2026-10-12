@@ -750,7 +750,7 @@
   }
 
   .btn-primary {
-    @apply btn bg-primary-500 text-on-brand hover:bg-primary-600;
+    @apply btn bg-primary-600 text-on-brand hover:bg-primary-700;
   }
 
 
@@ -978,12 +978,12 @@
   }
 
   /* Type roles (Design v3). One place for how content text looks, so pages stop hand-rolling bold:
-     section-title  serif heading of a block on a page
+     section-title  heading of a block on a page (sans; serif is kept for page titles and hero numbers)
      item-name      the name of a thing in a list (a user, a rank, a habit), medium not bold
-     figure         points, ranks, counts, timers: mono with even-width digits
+     figure         points, ranks, counts: even-width digits (mono only for running timers)
      stat-value / stat-label   a hero number and its eyebrow */
   .section-title {
-    @apply font-serif font-normal text-[1.5rem] leading-tight tracking-[-0.005em] text-content-primary;
+    @apply text-lg font-semibold leading-snug tracking-[-0.01em] text-content-primary;
   }
 
   .item-name {
@@ -991,7 +991,7 @@
   }
 
   .figure {
-    @apply font-mono font-medium tabular-nums tracking-[-0.02em];
+    @apply font-medium tabular-nums tracking-[-0.01em];
   }
 
   .stat-value {

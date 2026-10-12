@@ -115,7 +115,7 @@ export const Tabs: React.FC<TabsProps> = ({
           data-tab-pill={pageTabs ? '' : undefined}
           className={cx(
             'absolute pointer-events-none',
-            isSegmented ? 'top-1 bottom-1 rounded-lg bg-primary-500 shadow-sm' : 'bottom-0 h-0.5 rounded-full bg-brand-text',
+            isSegmented ? 'top-1 bottom-1 rounded-lg bg-overlay-strong shadow-sm' : 'bottom-0 h-0.5 rounded-full bg-brand-text',
             indicator.animate && 'sliding-pill-move'
           )}
           style={{ left: indicator.left, width: indicator.width }}
@@ -148,7 +148,7 @@ export const Tabs: React.FC<TabsProps> = ({
                 ? cx(
                     'rounded-lg',
                     active
-                      ? 'text-on-brand'
+                      ? 'text-content-primary'
                       : 'text-content-muted hover:text-content-secondary'
                   )
                 : cx(
@@ -190,7 +190,7 @@ export const Tabs: React.FC<TabsProps> = ({
         );
       })}
       {/* Hover highlight that trails the pointer across the tabs (useHoverGlide). */}
-      <span ref={glideRef} aria-hidden="true" className={cx('hover-glide', isSegmented ? 'rounded-lg' : 'rounded-md')} />
+      <span ref={glideRef} aria-hidden="true" className="hover-glide rounded-lg" />
     </div>
   );
 };

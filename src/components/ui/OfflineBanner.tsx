@@ -128,11 +128,11 @@ export function OfflineBanner() {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium text-warning-text flex items-center gap-1.5">
-              <span>You are currently offline</span>
+              <span>You’re offline</span>
               <span className="w-1.5 h-1.5 rounded-full bg-warning-text" />
             </p>
             <p className="text-micro text-warning-text-muted truncate">
-              Actions won't save until connection is restored. Please reconnect.
+              Changes won't save until you're back online.
             </p>
           </div>
         </div>
@@ -150,7 +150,7 @@ export function OfflineBanner() {
           <Wifi size={16} />
         </div>
         <p className="text-xs font-medium text-success-text">
-          Connection restored! Back online.
+          Back online.
         </p>
       </div>
     );

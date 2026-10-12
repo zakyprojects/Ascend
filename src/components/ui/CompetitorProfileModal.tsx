@@ -31,7 +31,7 @@ export function CompetitorProfileModal({
     <Dialog
       open={open}
       onClose={onClose}
-      title="User Profile & Achievements"
+      title="Member profile"
       maxWidth="max-w-lg"
     >
       <div className="space-y-5">
@@ -43,7 +43,7 @@ export function CompetitorProfileModal({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-serif text-2xl leading-tight text-content-primary truncate">{competitor.name}</h3>
+                <h3 className="text-xl font-semibold leading-tight text-content-primary truncate">{competitor.name}</h3>
                 {competitor.isUser && (
                   <span className="text-2xs bg-overlay-default text-content-secondary px-2 py-0.5 rounded-full font-medium shrink-0">
                     You
@@ -64,7 +64,7 @@ export function CompetitorProfileModal({
               )}
 
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-content-muted">League Points:</span>
+                <span className="text-xs text-content-muted">League points:</span>
                 <span className="figure text-xs text-content-primary">
                   {competitor.points.toLocaleString()} pts
                 </span>
@@ -87,20 +87,20 @@ export function CompetitorProfileModal({
 
             {!viewerIsPublic ? (
               <>
-                <h4 className="font-serif text-xl leading-tight text-content-secondary">Reciprocal Privacy Active</h4>
+                <h4 className="text-base font-semibold leading-tight text-content-secondary">Your profile is private</h4>
                 <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
-                  Because you have set your own profile to private, other members' detailed statistics and active habits are hidden from you.
+                  While your profile is private, you can't see other members' stats and habits.
                 </p>
                 <p className="text-micro text-content-tertiary">
-                  Enable your public profile setting in the sidebar to view member achievements.
+                  Make your profile public in the sidebar to see them.
                 </p>
               </>
             ) : (
               <>
-                <h4 className="font-serif text-xl leading-tight text-content-secondary">Private Profile</h4>
+                <h4 className="text-base font-semibold leading-tight text-content-secondary">Private profile</h4>
                 <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
-                  This user has set their detailed statistics and active habits list to private.
-                  Their username, tier rank, and league points remain visible.
+                  This member keeps their stats and habits private. Their username, rank, and league points
+                  are still visible.
                 </p>
               </>
             )}
@@ -111,7 +111,7 @@ export function CompetitorProfileModal({
             {stats && (
               <div>
                 <h4 className="stat-label mb-2.5">
-                  Activity Statistics
+                  Activity
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {(() => {
@@ -122,33 +122,33 @@ export function CompetitorProfileModal({
                       <>
                         <StatCard
                           icon={Flame}
-                          label="Current Streak"
+                          label="Current streak"
                           value={`${cDays} days`}
                           subtitle={cCat || undefined}
                         />
                         <StatCard
                           icon={CheckSquare}
-                          label="Habits Done"
+                          label="Habits done"
                           value={stats.habitsCompletedCount.toLocaleString()}
                         />
                         <StatCard
                           icon={BookOpen}
-                          label="Journal Entries"
+                          label="Journal entries"
                           value={stats.journalEntriesCount.toLocaleString()}
                         />
                         <StatCard
                           icon={Activity}
-                          label="Exercise Mins"
+                          label="Exercise mins"
                           value={`${stats.exerciseMinutes}m`}
                         />
                         <StatCard
                           icon={Book}
-                          label="Books Read"
+                          label="Books read"
                           value={`${stats.booksRead}`}
                         />
                         <StatCard
                           icon={Target}
-                          label="Skills Practiced"
+                          label="Skills practiced"
                           value={`${stats.skillsPracticedCount}`}
                         />
                       </>
@@ -161,7 +161,7 @@ export function CompetitorProfileModal({
             {/* Currently Active Habits */}
             <div>
               <h4 className="stat-label mb-2.5">
-                Active Habits ({competitor.activeHabits?.length || 0})
+                Active habits ({competitor.activeHabits?.length || 0})
               </h4>
               {competitor.activeHabits && competitor.activeHabits.length > 0 ? (
                 <div className="rounded-xl border border-overlay-default divide-y divide-overlay-subtle max-h-48 overflow-y-auto">
@@ -200,7 +200,7 @@ export function CompetitorProfileModal({
             {seasonHistory && seasonHistory.length > 0 && (
               <div>
                 <h4 className="stat-label mb-2.5">
-                  Past Seasons & Trophies ({seasonHistory.length})
+                  Past seasons & trophies ({seasonHistory.length})
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
                   {seasonHistory.map((historyRecord, idx) => {

@@ -77,7 +77,7 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
             <span
               aria-hidden="true"
               className={cx(
-                'relative ml-auto shrink-0 font-mono text-2xs tabular-nums',
+                'relative ml-auto shrink-0 text-2xs tabular-nums',
                 status.tone === 'risk' ? 'text-warning-text' : status.tone === 'done' ? 'text-brand-text' : 'text-content-muted'
               )}
             >
@@ -193,7 +193,7 @@ export const NavSection: React.FC<NavSectionProps> = ({
     return (
       <div
         className={cx(
-          'px-3 pt-2 text-micro font-semibold uppercase tracking-wider text-content-muted',
+          'px-3 pt-2 text-xs font-medium text-content-muted',
           className
         )}
       >
@@ -210,7 +210,7 @@ export const NavSection: React.FC<NavSectionProps> = ({
       onClick={onToggle}
       data-glide-item=""
       className={cx(
-        'w-full flex items-center justify-between px-3 py-2 rounded-lg text-micro font-semibold uppercase tracking-wider text-content-muted hover:text-content-secondary',
+        'w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-content-muted hover:text-content-secondary',
         TAP_TARGET,
         FOCUS_RING,
         TRANSITION,

@@ -19,7 +19,7 @@ export function ConfirmDeleteModal({
   open,
   onClose,
   onConfirm,
-  title = 'Delete Item?',
+  title = 'Delete item?',
   itemName,
   description,
   confirmText = 'Delete',
@@ -34,7 +34,7 @@ export function ConfirmDeleteModal({
     try {
       await onConfirm();
     } catch (err: any) {
-      showErrorToast('Deletion Failed', err?.message || 'Failed to delete item. Please check your connection.');
+      showErrorToast('Couldn’t delete', err?.message || 'Check your connection and try again.');
     } finally {
       setInternalDeleting(false);
     }
@@ -48,7 +48,7 @@ export function ConfirmDeleteModal({
           <p className="text-xs text-content-tertiary leading-relaxed">
             {description || (
               <>
-                Are you sure you want to delete {itemName ? <strong className="text-content-primary font-medium">"{itemName}"</strong> : 'this item'}? This action cannot be undone.
+                Are you sure you want to delete {itemName ? <strong className="text-content-primary font-medium">"{itemName}"</strong> : 'this item'}? This can’t be undone.
               </>
             )}
           </p>
@@ -72,7 +72,7 @@ export function ConfirmDeleteModal({
             {isDeleting ? (
               <>
                 <AscendLoadingIndicator size="sm" />
-                <span>Deleting...</span>
+                <span>Deleting…</span>
               </>
             ) : (
               <>

@@ -16,12 +16,12 @@ export function LogoutConfirmModal({
   isLoggingOut = false,
 }: LogoutConfirmModalProps) {
   return (
-    <Dialog open={open} onClose={onClose} title="Confirm Logout" maxWidth="max-w-md">
+    <Dialog open={open} onClose={onClose} title="Log out?" maxWidth="max-w-md">
       <div className="space-y-4">
         <div className="p-3 bg-warning/10 border border-warning/20 rounded-xl flex items-start gap-3">
           <AlertTriangle size={20} className="text-warning-text shrink-0 mt-0.5" />
           <p className="text-xs text-content-tertiary leading-relaxed">
-            Are you sure you want to log out of your Ascend account? You will need to sign back in to access your growth data and partner sync.
+            You’ll need to sign in again to see your data and partner sync.
           </p>
         </div>
 
@@ -43,7 +43,7 @@ export function LogoutConfirmModal({
             {isLoggingOut ? (
               <>
                 <AscendLoadingIndicator size="sm" />
-                <span>Logging Out...</span>
+                <span>Logging out…</span>
               </>
             ) : (
               <>

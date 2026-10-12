@@ -31,10 +31,10 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="card p-6 border border-rose-500/30 bg-rose-500/10 text-content-secondary rounded-xl my-4 space-y-4">
           <div className="flex items-center gap-3 text-error-text">
             <AlertTriangle size={24} />
-            <h3 className="font-serif text-xl leading-tight">{this.props.fallbackTitle || 'Something went wrong rendering this section'}</h3>
+            <h3 className="text-lg font-semibold leading-tight">{this.props.fallbackTitle || 'This section couldn’t load'}</h3>
           </div>
           <p className="text-xs text-content-muted">
-            {this.state.error?.message || 'An unexpected rendering error occurred.'}
+            {this.state.error?.message || 'Something went wrong while showing it.'}
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}

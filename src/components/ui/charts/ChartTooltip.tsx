@@ -15,7 +15,7 @@ export function ChartTooltip({ x, children, className }: ChartTooltipProps) {
     <div
       role="presentation"
       className={cx(
-        'pointer-events-none absolute bottom-full mb-2 z-10 whitespace-nowrap rounded-lg border border-overlay-default bg-bg-800/95 px-2 py-1 font-mono text-micro font-medium tabular-nums text-content-primary shadow-lg backdrop-blur-md motion-safe:animate-enter-fade',
+        'pointer-events-none absolute bottom-full mb-2 z-10 whitespace-nowrap rounded-lg border border-overlay-default bg-bg-800/95 px-2 py-1 text-micro font-medium tabular-nums text-content-primary shadow-lg backdrop-blur-md motion-safe:animate-enter-fade',
         className
       )}
       style={{ left: `${x}%`, transform: `translateX(${shift})` }}

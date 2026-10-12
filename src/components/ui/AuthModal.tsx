@@ -14,7 +14,7 @@ function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
   return Promise.race([
     promise,
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), ms)
+      setTimeout(() => reject(new Error('This is taking too long. Check your connection and try again.')), ms)
     ),
   ]);
 }
@@ -129,7 +129,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
       onClose();
     } catch (err: unknown) {
       const authErr = err as { message?: string };
-      setErrorMsg(authErr.message || 'Failed to sign in as guest. Please try again.');
+      setErrorMsg(authErr.message || 'Couldn’t sign in as a guest. Try again.');
     } finally {
       setLoading(false);
     }
@@ -141,12 +141,12 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
     setSuccessMsg('');
 
     if (!email || !password || (mode !== 'login' && !confirmPassword)) {
-      setErrorMsg('Please fill in all required fields.');
+      setErrorMsg('Fill in all required fields.');
       return;
     }
 
     if ((mode === 'signup' || mode === 'upgrade') && !avatar) {
-      setErrorMsg('Please select an avatar.');
+      setErrorMsg('Pick an avatar.');
       return;
     }
 
@@ -162,7 +162,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
         if (username.trim()) {
           const check = await isUsernameAvailable(username, guestState.currentUser?.id);
           if (!check.available && username.trim() !== guestState.currentUser?.username) {
-            setErrorMsg(check.reason || 'Please choose a valid available username.');
+            setErrorMsg(check.reason || 'Pick a valid username that isn’t taken.');
             return;
           }
         }
@@ -172,7 +172,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
       } else if (mode === 'signup') {
         const check = await isUsernameAvailable(username);
         if (!check.available) {
-          setErrorMsg(check.reason || 'Please choose a valid available username.');
+          setErrorMsg(check.reason || 'Pick a valid username that isn’t taken.');
           return;
         }
 
@@ -188,7 +188,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
 
         if (result.type === 'email_confirmation') {
           setSuccessMsg(
-            `Account created! Please check ${result.email} for a confirmation link before signing in.`
+            `Account created. Check ${result.email} for a confirmation link, then sign in.`
           );
           return;
         }
@@ -206,10 +206,10 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
         authErr.message?.includes('email rate limit')
       ) {
         setErrorMsg(
-          'Too many sign-up attempts. Please wait a few minutes and try again, or disable "Confirm email" in Supabase Auth settings.'
+          'Too many sign-up attempts. Wait a few minutes and try again.'
         );
       } else {
-        setErrorMsg(authErr.message || 'An error occurred. Please try again.');
+        setErrorMsg(authErr.message || 'Something went wrong. Try again.');
       }
     } finally {
       setLoading(false);
@@ -236,10 +236,10 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
         mode === 'choice'
           ? 'Welcome to Ascend'
           : mode === 'upgrade'
-          ? 'Save Your Progress'
+          ? 'Save your progress'
           : mode === 'signup'
-          ? 'Create Account'
-          : 'Sign In'
+          ? 'Create an account'
+          : 'Sign in'
       }
       maxWidth="max-w-md"
     >
@@ -266,7 +266,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
               <Check size={30} className="text-success-text" />
             </div>
             <p className="mt-4 font-serif text-2xl leading-tight text-content-primary animate-enter-up">{successTitle}</p>
-            <p className="mt-1 text-xs text-content-muted animate-enter-up">Opening your workspace...</p>
+            <p className="mt-1 text-xs text-content-muted animate-enter-up">Opening Ascend…</p>
           </div>
         )}
 
@@ -280,7 +280,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                 Ascend Self-Growth
               </h2>
               <p className="text-xs text-content-muted max-w-xs mx-auto">
-                Track habits, build neuroplasticity, and compete in live leagues. Choose how you'd like to get started:
+                Track habits and compete in leagues. Pick how you want to start.
               </p>
             </div>
 
@@ -289,14 +289,14 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
               <button
                 type="button"
                 onClick={() => { switchMode('signup'); resetForm(); }}
-                className="w-full p-4 bg-primary-500 hover:bg-primary-600 text-on-brand rounded-2xl shadow-sm transition-all flex items-center justify-between group border border-primary-400/30"
+                className="w-full p-4 bg-primary-600 hover:bg-primary-700 text-on-brand rounded-2xl transition-all flex items-center justify-between group"
               >
                 <div className="text-left">
                   <div className="font-semibold text-sm flex items-center gap-2">
                     <span>Sign Up</span>
                   </div>
                   <div className="text-micro text-primary-100/90 mt-0.5">
-                    Create a new account with email & password
+                    Create an account with email and password
                   </div>
                 </div>
                 <UserPlus size={20} className="shrink-0" />
@@ -324,18 +324,18 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                 type="button"
                 onClick={handleGuestSignIn}
                 disabled={loading}
-                className="w-full p-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text rounded-2xl border border-emerald-500/30 transition-all flex items-center justify-between group disabled:opacity-50"
+                className="w-full p-4 hover:bg-overlay-subtle text-content-primary rounded-2xl border border-overlay-default transition-all flex items-center justify-between group disabled:opacity-50"
               >
                 <div className="text-left">
-                  <div className="font-semibold text-sm flex items-center gap-2 text-success-text">
+                  <div className="font-semibold text-sm flex items-center gap-2">
                     <Zap size={15} />
                     <span>Continue as Guest</span>
                   </div>
                   <div className="text-micro opacity-90 mt-0.5">
-                    Instant access — no email or password required
+                    Start now. No email or password needed.
                   </div>
                 </div>
-                <UserCheck size={20} className="text-success-text shrink-0" />
+                <UserCheck size={20} className="text-content-muted group-hover:text-content-secondary transition-colors shrink-0" />
               </button>
             </div>
           </div>
@@ -352,24 +352,24 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                 className="text-xs font-medium text-content-muted hover:text-content-secondary flex items-center gap-1.5 transition-colors py-1"
               >
                 <ArrowLeft size={14} />
-                <span>Back to entry options</span>
+                <span>Back</span>
               </button>
             )}
 
             <div>
               <h2 className="section-title text-center">
                 {mode === 'upgrade'
-                  ? 'Save Your Progress'
+                  ? 'Save your progress'
                   : mode === 'signup'
-                  ? 'Join Ascend Leagues'
-                  : 'Welcome Back'}
+                  ? 'Join the leagues'
+                  : 'Welcome back'}
               </h2>
               <p className="text-xs text-content-muted text-center mt-1">
                 {mode === 'upgrade'
-                  ? 'Convert your guest session to a permanent account while keeping all habits, points, and league rank'
+                  ? 'Turn your guest session into a full account. Your habits, points, and league rank stay.'
                   : mode === 'signup'
-                  ? 'Create your account to compete in Weekly, Monthly & 90-Day Leagues'
-                  : 'Log in to access your habits, rank, and league points'}
+                  ? 'Create an account to compete in weekly, monthly, and 90-day leagues.'
+                  : 'Sign in to see your habits, rank, and league points.'}
               </p>
             </div>
 
@@ -378,7 +378,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                 <>
                   <div>
                     <label className="block text-xs font-medium text-content-tertiary mb-1.5">
-                      Choose Leaderboard Avatar <span className="text-error-text">*</span>
+                      Leaderboard avatar <span className="text-error-text">*</span>
                     </label>
                     <div className="grid grid-cols-8 gap-1.5 p-2 bg-bg-800 rounded-xl border border-overlay-subtle">
                       {EMOJI_AVATARS.map((emoji) => (
@@ -400,7 +400,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
 
                   <div>
                     <label className="block text-xs font-medium text-content-tertiary mb-1">
-                      Leaderboard Username {mode === 'signup' && <span className="text-error-text">*</span>}
+                      Leaderboard username {mode === 'signup' && <span className="text-error-text">*</span>}
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
@@ -417,12 +417,12 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                       {username.trim() && (
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           {usernameStatus?.available ? (
-                            <span className="badge-emerald text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
+                            <span className="badge-emerald text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-lg">
                               <Check size={12} /> Available
                             </span>
                           ) : usernameStatus?.reason ? (
-                            <span className="badge-rose text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-md truncate max-w-[110px]">
-                              Taken / Invalid
+                            <span className="badge-rose text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-lg truncate max-w-[110px]">
+                              Not available
                             </span>
                           ) : null}
                         </div>
@@ -437,7 +437,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
 
               <div>
                 <label className="block text-xs font-medium text-content-tertiary mb-1">
-                  Email Address <span className="text-error-text">*</span>
+                  Email <span className="text-error-text">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
@@ -467,7 +467,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
               {(mode === 'signup' || mode === 'upgrade') && (
                 <PasswordInput
                   key={`auth-confirm-password-${mode}`}
-                  label="Confirm Password"
+                  label="Confirm password"
                   required
                   autoComplete="new-password"
                   placeholder="••••••••"
@@ -485,7 +485,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                 <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-xl space-y-2">
                   <div className="flex items-center gap-2 text-brand-text text-xs font-medium">
                     <UserCheck size={14} />
-                    <span>Guest Progress Detected</span>
+                    <span>You have guest progress</span>
                   </div>
                   <p className="text-xs text-content-tertiary">
                     You have <strong className="figure">{guestPoints} points</strong> and <strong className="figure">{guestHabitsCount} habits</strong> created before signing up.
@@ -497,7 +497,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                       onChange={(e) => setKeepGuestProgress(e.target.checked)}
                       className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500"
                     />
-                    <span className="text-xs text-content-secondary">Keep and attach this progress to my new account</span>
+                    <span className="text-xs text-content-secondary">Move this progress to my new account</span>
                   </label>
                 </div>
               )}
@@ -505,20 +505,20 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-primary-500 hover:bg-primary-600 text-on-brand font-medium text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-on-brand font-medium text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
                   <>
                     <AscendLoadingIndicator size="sm" />
-                    <span>Processing...</span>
+                    <span>Please wait…</span>
                   </>
                 ) : mode === 'upgrade' ? (
                   <>
-                    <Shield size={18} /> Convert to Permanent Account
+                    <Shield size={18} /> Save to Full Account
                   </>
                 ) : mode === 'signup' ? (
                   <>
-                    <UserPlus size={18} /> Create Account & Start Competing
+                    <UserPlus size={18} /> Create Account
                   </>
                 ) : (
                   <>
