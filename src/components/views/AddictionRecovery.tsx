@@ -12,6 +12,7 @@ import { CapMeter } from '@/components/ui/CapMeter';
 import { recoverySeasonCapNote } from '@/lib/capCopy';
 import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { ProgressRing } from '@/components/ui/charts';
 
 const DISTRACTION_ACTIVITIES = [
   'Drink a cold glass of water slowly',
@@ -86,6 +87,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
     { key: '1m', label: '1 Month Clean', requiredHours: 720, points: 25, icon: '🏆' },
     { key: '90d', label: '90 Days Clean', requiredHours: 2160, points: 50, icon: '👑' },
   ];
+
+  // Ring towards the next milestone, from the live counter (whole hours clean).
+  const elapsedHours = timeElapsed.days * 24 + timeElapsed.hours;
+  const nextMilestone = milestones.find((m) => elapsedHours < m.requiredHours);
+  const hoursToNext = nextMilestone ? nextMilestone.requiredHours - elapsedHours : 0;
 
   const handleStartTracker = (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,20 +180,47 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           {/* Live Counter Display */}
           <div className="grid grid-cols-4 gap-2 text-center">
             <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-rose-theme">{timeElapsed.days}</div>
+              <div className="text-3xl sm:text-4xl font-display font-bold text-rose-theme tabular-nums">{timeElapsed.days}</div>
               <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Days</div>
             </div>
             <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary">{timeElapsed.hours}</div>
+              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary tabular-nums">{timeElapsed.hours}</div>
               <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Hours</div>
             </div>
             <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary">{timeElapsed.minutes}</div>
+              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary tabular-nums">{timeElapsed.minutes}</div>
               <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Mins</div>
             </div>
             <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary">{timeElapsed.seconds}</div>
+              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary tabular-nums">{timeElapsed.seconds}</div>
               <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Secs</div>
+            </div>
+          </div>
+
+          {/* Next milestone */}
+          <div className="flex items-center gap-4 p-3 rounded-2xl bg-bg-800/60 border border-overlay-subtle">
+            <ProgressRing
+              value={nextMilestone ? elapsedHours : 1}
+              max={nextMilestone ? nextMilestone.requiredHours : 1}
+              label={nextMilestone ? `Progress to ${nextMilestone.label}` : 'All milestones reached'}
+              tone="warning"
+              size={56}
+              thickness={5}
+            >
+              <span className="text-xl" aria-hidden="true">{nextMilestone ? nextMilestone.icon : '👑'}</span>
+            </ProgressRing>
+            <div className="min-w-0">
+              <div className="text-2xs text-content-disabled uppercase tracking-wider font-bold">Next milestone</div>
+              {nextMilestone ? (
+                <p className="text-sm font-bold text-content-primary">
+                  {nextMilestone.label}{' '}
+                  <span className="font-normal text-content-muted tabular-nums">
+                    in {hoursToNext >= 24 ? `${Math.floor(hoursToNext / 24)}d ${hoursToNext % 24}h` : `${hoursToNext}h`}
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm font-bold text-content-primary">All milestones reached</p>
+              )}
             </div>
           </div>
 
