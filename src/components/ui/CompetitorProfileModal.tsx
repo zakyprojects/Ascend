@@ -280,7 +280,7 @@ function StatCard({
         <p className="text-2xs text-content-muted truncate">{label}</p>
         <p className="text-xs font-bold text-content-secondary truncate">{value}</p>
         {subtitle && (
-          <p className="text-2xs text-orange-400/90 font-medium truncate mt-0.5" title={`Source: ${subtitle}`}>
+          <p className="text-2xs text-[color:var(--badge-orange-text)] font-medium truncate mt-0.5" title={`Source: ${subtitle}`}>
             {subtitle}
           </p>
         )}

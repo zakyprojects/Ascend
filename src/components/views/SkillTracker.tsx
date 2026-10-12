@@ -590,7 +590,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
               className={`input min-h-[80px] ${noteTouched && !note.trim() ? 'border-rose-500 focus:border-rose-500' : ''}`}
             />
             {noteTouched && !note.trim() && (
-              <p className="text-xs text-rose-400 mt-1">Please enter a note describing what you practiced.</p>
+              <p className="text-xs text-error-text mt-1">Please enter a note describing what you practiced.</p>
             )}
           </div>
 

@@ -1439,7 +1439,7 @@ function FocusTimerSubmodule({
                 onClick={handleIgniteSchedule}
                 className="w-full py-3.5 px-6 rounded-xl bg-primary-500 hover:bg-primary-600 text-on-brand font-bold text-sm shadow-sm flex items-center justify-center gap-2.5 transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
-                <Flame size={18} className="fill-current text-amber-500" />
+                <Flame size={18} className="fill-current text-warning-text" />
                 <span>Ignite Today&apos;s Schedule</span>
               </button>
             </div>

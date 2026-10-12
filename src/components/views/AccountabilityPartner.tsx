@@ -886,7 +886,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Current Streak</span>
-                        <span className="text-sm font-display font-bold text-orange-400">{myCurrentStreakDays}d</span>
+                        <span className="text-sm font-display font-bold text-[color:var(--badge-orange-text)]">{myCurrentStreakDays}d</span>
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Habits Done Today</span>
@@ -925,7 +925,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Current Streak</span>
-                        <span className="text-sm font-display font-bold text-orange-400">{partnerCurrentStreakDays}d</span>
+                        <span className="text-sm font-display font-bold text-[color:var(--badge-orange-text)]">{partnerCurrentStreakDays}d</span>
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Habits Done Today</span>
@@ -974,7 +974,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       <span className={`text-2xs font-semibold block ${d.isToday ? 'text-success-text font-bold' : d.isFuture ? 'text-content-subtle' : 'text-content-muted'}`}>
                         {d.dayLabel}
                       </span>
-                      <span className={`text-3xs block ${d.isToday ? 'text-success-text font-bold' : d.isFuture ? 'text-slate-700' : 'text-content-disabled'}`}>
+                      <span className={`text-3xs block ${d.isToday ? 'text-success-text font-bold' : d.isFuture ? 'text-content-subtle' : 'text-content-disabled'}`}>
                         D{d.dayNumber}
                       </span>
                     </div>
@@ -1004,7 +1004,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): Missed pledge ⚠️`;
                       } else {
                         cellContent = '·';
-                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-slate-700';
+                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): No active pacts`;
                       }
                     } else if (d.isToday) {
@@ -1014,12 +1014,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): Pending today`;
                       } else {
                         cellContent = '·';
-                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-slate-700';
+                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): No active pacts`;
                       }
                     } else {
                       cellContent = '·';
-                      cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-slate-700';
+                      cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
                       tooltip = `${d.shortDate} (Day ${d.dayNumber}): Upcoming`;
                     }
 
@@ -1062,7 +1062,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): ${activePartnerUsername} missed pledge ⚠️`;
                       } else {
                         cellContent = '·';
-                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-slate-700';
+                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): No active pacts`;
                       }
                     } else if (d.isToday) {
@@ -1072,12 +1072,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): Pending today`;
                       } else {
                         cellContent = '·';
-                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-slate-700';
+                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
                         tooltip = `${d.shortDate} (Day ${d.dayNumber}): No active pacts`;
                       }
                     } else {
                       cellContent = '·';
-                      cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-slate-700';
+                      cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
                       tooltip = `${d.shortDate} (Day ${d.dayNumber}): Upcoming`;
                     }
 
