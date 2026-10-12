@@ -244,8 +244,9 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   return (
     <div className="relative isolate min-h-screen lg:h-dvh bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div aria-hidden="true" className="app-atmosphere" />
-      {/* Desktop navigation (Basecamp): zone rail + the zone's pages. A zone opens its pages in the
-          panel; clicking the zone the panel already shows hides the panel again. */}
+      {/* Desktop navigation (Basecamp): zone rail + the zone's pages. One click on a zone goes
+          straight to the page last open there (Discord/Slack style) and shows its siblings in the
+          panel; the panel hides with [ or its own button. */}
       <aside className="relative z-sticky hidden lg:flex h-full glass border-r border-overlay-subtle shrink-0">
         <ZoneRail
           onDashboard={currentView === NAV_DASHBOARD.id}
@@ -258,12 +259,9 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           onZoneHover={onZoneHover}
           onZone={(zone) => {
             setPeekZone(null);
-            if (!panelCollapsed && panelZone === zone) {
-              setPanelCollapsed(true);
-            } else {
-              setPanelZone(zone);
-              setPanelCollapsed(false);
-            }
+            setPanelZone(zone);
+            setPanelCollapsed(false);
+            if (activeGroupId !== zone) onViewChange(lastByGroup[zone]);
           }}
           onExpandPanel={togglePanel}
           onSearch={() => setPaletteOpen(true)}
