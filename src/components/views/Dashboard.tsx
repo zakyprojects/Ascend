@@ -56,9 +56,7 @@ function ModuleCard({ icon: Icon, title, onClick, children }: ModuleCardProps) {
     >
       <div className="flex items-center justify-between">
         <span className="stat-label">{title}</span>
-        <span className="w-8 h-8 rounded-lg bg-overlay-subtle text-content-muted flex items-center justify-center">
-          <Icon size={16} aria-hidden="true" />
-        </span>
+        <Icon size={16} className="text-content-subtle" aria-hidden="true" />
       </div>
       {children}
     </Card>
@@ -132,18 +130,16 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
     <div className="space-y-6">
       <div>
         <h1 className="page-title">
-          {greeting()}, let's <em className="text-brand-text">ascend</em>
+          {greeting()}
         </h1>
         <p className="page-subtitle">{formatDateLong(todayKey())}</p>
       </div>
 
       {/* Guest Mode Banner on Dashboard */}
       {store.state.currentUser?.isAnonymous && onOpenAuthModal && (
-        <div className="p-4 rounded-xl bg-primary-500/5 border border-primary-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-xl border border-overlay-default flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary-500/15 flex items-center justify-center shrink-0 text-brand-text">
-              <Save size={18} />
-            </div>
+            <Save size={18} className="shrink-0 text-content-muted" aria-hidden="true" />
             <div>
               <p className="text-xs font-medium text-content-secondary">
                 You are using a Guest Session ({store.state.currentUser.username})
@@ -331,9 +327,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-bg-600 flex items-center justify-center">
-                      <BookOpen size={18} className="text-content-disabled" />
-                    </div>
+                    <BookOpen size={18} className="shrink-0 text-content-subtle" aria-hidden="true" />
                     <div>
                       <p className="text-sm font-medium text-content-tertiary">Write today's entry</p>
                       <p className="text-xs text-content-disabled">How was your day? (+{JOURNAL_POINTS.entryCompleted} pts)</p>
