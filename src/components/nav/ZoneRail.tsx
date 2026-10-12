@@ -5,7 +5,7 @@ import { ZONE_KEYS } from './useNavShortcuts';
 import { AppLogo } from '@/components/ui/AppLogo';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 import { IS_APPLE_PLATFORM } from '@/lib/platform';
-import { TIERS, getCurrentTier, getProgressToNextTier, getTierIndex } from '@/lib/tiers';
+import { getCurrentTier } from '@/lib/tiers';
 
 type ZoneId = NavGroup['id'];
 
@@ -31,10 +31,7 @@ interface ZoneRailProps {
   account: ReactNode;
 }
 
-/**
- * Desktop navigation rail (Basecamp): the zones sit on one climbing line, and the season's climb
- * fills that line from the bottom up, so the rail doubles as an altitude meter.
- */
+/** Desktop navigation rail (Basecamp): logo and tools on top, then Dashboard and the four zones. */
 export function ZoneRail({
   onDashboard,
   activeZone,
@@ -52,7 +49,6 @@ export function ZoneRail({
   account,
 }: ZoneRailProps) {
   const tier = getCurrentTier(seasonPoints);
-  const altitude = Math.min(1, (getTierIndex(seasonPoints) + getProgressToNextTier(seasonPoints).percent / 100) / (TIERS.length - 1));
   const shortcut = IS_APPLE_PLATFORM ? '⌘K' : 'Ctrl K';
 
   return (
@@ -75,18 +71,10 @@ export function ZoneRail({
       </RailButton>
       {bell}
 
-      {/* The route: Dashboard, then the four zones. The line behind them is the season's climb.
-          Dashboard is a smaller round node set apart from the zone tiles, so it is not hit by
-          mistake on the way to Track. */}
-      <div className="relative mt-3 flex flex-col items-center gap-4 py-1">
-        <span aria-hidden="true" className="absolute inset-y-3 left-1/2 w-px -translate-x-1/2 bg-overlay-default" />
-        <span
-          aria-hidden="true"
-          className="rail-altitude absolute bottom-3 left-1/2 w-px -translate-x-1/2 bg-brand-text"
-          style={{ height: `calc((100% - 1.5rem) * ${altitude})` }}
-        />
+      {/* Dashboard and the four zones, set off from the tools by a hairline. */}
+      <span aria-hidden="true" className="my-1 h-px w-6 bg-overlay-default" />
+      <div className="flex flex-col items-center gap-1.5">
         <ZoneButton
-          basecamp
           icon={NAV_DASHBOARD.icon}
           label={NAV_DASHBOARD.label}
           shortcut="G D"
@@ -150,13 +138,11 @@ interface ZoneButtonProps {
   /** The panel shows this zone while another page is on screen. */
   shown?: boolean;
   badge?: boolean;
-  /** Dashboard: a smaller round node set apart from the zone tiles. */
-  basecamp?: boolean;
   onClick: () => void;
   onHover?: () => void;
 }
 
-function ZoneButton({ icon: Icon, label, shortcut, active, shown = false, badge = false, basecamp = false, onClick, onHover }: ZoneButtonProps) {
+function ZoneButton({ icon: Icon, label, shortcut, active, shown = false, badge = false, onClick, onHover }: ZoneButtonProps) {
   return (
     <button
       type="button"
@@ -166,20 +152,17 @@ function ZoneButton({ icon: Icon, label, shortcut, active, shown = false, badge 
       aria-current={active ? 'true' : undefined}
       title={`${label} (${shortcut})`}
       className={cx(
-        'group/zone relative flex items-center justify-center border',
-        basecamp ? 'mb-2 h-9 w-9 rounded-full' : 'h-11 w-11 rounded-2xl',
+        'relative flex h-10 w-10 items-center justify-center rounded-xl',
         active
-          ? 'zone-active border-primary-500/40 bg-bg-800 text-brand-text'
-          : basecamp
-            ? 'border-transparent bg-overlay-default text-content-secondary hover:bg-overlay-strong hover:text-content-primary'
-            : shown
-            ? 'border-transparent bg-overlay-subtle text-content-secondary'
-            : 'border-transparent text-content-muted hover:bg-overlay-subtle hover:text-content-secondary',
+          ? 'bg-overlay-default text-content-primary'
+          : shown
+            ? 'bg-overlay-subtle text-content-secondary'
+            : 'text-content-muted hover:bg-overlay-subtle hover:text-content-secondary',
         FOCUS_RING,
         TRANSITION
       )}
     >
-      <Icon size={basecamp ? 16 : 19} aria-hidden="true" className="transition-transform duration-base ease-emphasized group-hover/zone:-translate-y-0.5 motion-reduce:transition-none" />
+      <Icon size={18} aria-hidden="true" />
       {badge && <span aria-hidden="true" className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500" />}
     </button>
   );

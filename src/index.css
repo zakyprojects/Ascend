@@ -780,46 +780,10 @@
     padding-left: 2.75rem !important;
   }
 
-  /* Sidebar trail (AppShell): a group's pages hang off one hairline like waypoints on a route;
-     NavItem layout="trail" draws its node on this line. */
-  .nav-trail {
-    position: relative;
-    margin-left: 1.25rem;
-    padding-left: 0.5rem;
-  }
-  .nav-trail::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0.5rem;
-    bottom: 0.5rem;
-    width: 1px;
-    background: var(--border-overlay-default);
-  }
-  .nav-node {
-    transition: background-color var(--duration-fast) var(--ease-standard);
-  }
-  .nav-node-active {
-    box-shadow: 0 0 0 3px rgb(16 185 129 / 0.18);
-  }
-  .nav-node-risk {
-    box-shadow: 0 0 0 3px rgb(var(--color-warning-rgb) / 0.18);
-  }
-
-  /* Basecamp rail (nav/ZoneRail): the current zone is outlined; the season climb fills the route line. */
-  .zone-active {
-    box-shadow: 0 0 0 1px rgb(16 185 129 / 0.25);
-  }
-  .rail-altitude {
-    transition: height 900ms var(--ease-emphasized);
-  }
-  /* Zone panel: a new zone's title and pages slide in; the account menu rises from the avatar. */
+  /* Zone panel: a new zone's title and pages fade in quickly; the account menu rises from the avatar. */
   .zone-title,
   .zone-pages {
-    animation: zone-in 320ms var(--ease-emphasized) both;
-  }
-  .zone-pages {
-    animation-delay: 40ms;
+    animation: fade-in 160ms var(--ease-standard) both;
   }
   .account-menu {
     transform-origin: left bottom;
@@ -885,7 +849,6 @@
     .zone-title, .zone-pages, .account-menu, .zone-slot-active > span, .zone-sheet, .zone-sheet-backdrop, .zone-sheet-closing { animation: none; }
     .zone-sheet-settle { transition: none; }
     .zone-slot { transition: none; }
-    .rail-altitude { transition: none; }
   }
 
   /* Keyboard key hint (command palette shortcuts). */
@@ -1058,7 +1021,7 @@ html[data-page-hidden] *::after {
 /* Scroll rise: on every page, every card (nested ones too) and every list row marked .scroll-rise
    rises and fades in as it scrolls into view, tied
    to the scroll itself (a scroll-driven animation, run by the browser off the main thread), so it
-   moves exactly with the finger or wheel and settles once the card is ~260px in. Cards already on
+   moves exactly with the finger or wheel and settles once the card is ~140px in. Cards already on
    screen when a page opens are past the range and use the page's open stagger (Reveal) instead.
    Fill is backwards only: after the range the card keeps no transform, so a fixed-position child
    (a modal) is never trapped. Browsers without scroll timelines show cards as they are. */
@@ -1067,15 +1030,14 @@ html[data-page-hidden] *::after {
     [data-page-area] :is(.card, .scroll-rise):not([class*='animate-']) {
       animation: scroll-rise linear backwards;
       animation-timeline: view();
-      animation-range: entry 0% entry 260px;
+      animation-range: entry 0% entry 140px;
     }
   }
 }
 @keyframes scroll-rise {
   from {
     opacity: 0;
-    translate: 0 40px;
-    scale: 0.97;
+    translate: 0 12px;
     animation-timing-function: cubic-bezier(0.25, 0.5, 0.3, 1);
   }
 }

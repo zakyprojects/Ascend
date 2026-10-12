@@ -25,25 +25,20 @@ export function UpNextCard({ upNext, currentView, statuses, onNavigate, classNam
       type="button"
       onClick={() => onNavigate(item.id)}
       className={cx(
-        'group/up flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left',
-        risk ? 'border-warning/25 bg-warning/[0.06] hover:border-warning/40' : 'border-overlay-subtle bg-bg-800/60 hover:border-overlay-default',
+        'flex items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-overlay-subtle',
         FOCUS_RING,
         TRANSITION,
         className
       )}
     >
       <span className="min-w-0 flex-1">
-        <span className={cx('block text-xs', risk ? 'text-warning-text' : 'text-brand-text')}>Up next</span>
-        <span className="mt-0.5 block truncate text-sm font-semibold text-content-primary">
+        <span className={cx('block text-xs', risk ? 'text-warning-text' : 'text-content-muted')}>Up next</span>
+        <span className="mt-0.5 block truncate text-sm font-medium text-content-primary">
           {item.label}
           <span className="font-normal text-content-muted"> · {status.meta ?? status.label}</span>
         </span>
       </span>
-      <ArrowUpRight
-        size={16}
-        aria-hidden="true"
-        className="shrink-0 text-content-muted transition-transform group-hover/up:-translate-y-0.5 group-hover/up:translate-x-0.5"
-      />
+      <ArrowUpRight size={15} aria-hidden="true" className="shrink-0 text-content-disabled" />
     </button>
   );
 }

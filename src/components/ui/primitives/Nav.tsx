@@ -10,10 +10,10 @@ export interface NavItemProps
   active: boolean;
   onClick?: () => void;
   badgeCount?: number;
-  /** row: icon + label; trail: label on a group's climbing line (sidebar groups); stack: bottom bar. */
+  /** row: icon + label; trail: label + today's status note (zone panel); stack: bottom bar. */
   layout?: 'row' | 'trail' | 'stack';
   density?: 'default' | 'compact';
-  /** trail only: today's status of the page (node style + short note). */
+  /** trail only: today's status of the page (short note on the right). */
   status?: NavStatus;
 }
 
@@ -42,8 +42,8 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
           onClick={onClick}
           data-glide-item=""
           className={cx(
-            'group/nav w-full flex items-center justify-between gap-3 pl-4 pr-3 py-1.5 rounded-lg text-sm',
-            active ? 'font-semibold text-content-primary' : 'font-medium text-content-muted hover:text-content-secondary',
+            'relative w-full flex items-center justify-between gap-3 px-3 py-1.5 rounded-lg text-sm font-medium',
+            active ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary',
             TAP_TARGET,
             FOCUS_RING,
             TRANSITION,
@@ -51,24 +51,7 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
           )}
           {...props}
         >
-          {active && <span aria-hidden="true" data-nav-pill className="absolute inset-0 rounded-lg bg-primary-500/10" />}
-          {/* Node on the zone's line (the parent draws the line): lit on the current page, otherwise
-              today's status: emerald dot = done, ring = open, rose = open late in the day. */}
-          <span
-            aria-hidden="true"
-            className={cx(
-              'nav-node absolute top-1/2 -translate-y-1/2 rounded-full',
-              active
-                ? 'nav-node-active -left-[12px] h-[9px] w-[9px] bg-brand-text'
-                : status?.tone === 'done'
-                  ? '-left-[11px] h-[7px] w-[7px] bg-brand-text'
-                  : status?.tone === 'risk'
-                    ? 'nav-node-risk -left-[11px] h-[7px] w-[7px] bg-warning'
-                    : status?.tone === 'pending'
-                      ? '-left-[11px] h-[7px] w-[7px] border border-content-muted bg-bg-900 group-hover/nav:border-primary-500'
-                      : '-left-[10px] h-[5px] w-[5px] bg-overlay-strong group-hover/nav:bg-primary-500'
-            )}
-          />
+          {active && <span aria-hidden="true" data-nav-pill className="absolute inset-0 rounded-lg bg-overlay-default" />}
           <span className="relative truncate">
             {label}
             {status && <span className="sr-only">, {status.label}</span>}
