@@ -201,7 +201,7 @@
     --glide-ring: rgb(52 211 153 / 0.10);
     --atmo-glow-a: rgb(16 185 129 / 0.11);
     --atmo-glow-b: rgb(45 212 191 / 0.05);
-    --atmo-line: rgb(52 211 153 / 0.09);
+    --atmo-line: rgb(52 211 153 / 0.11);
   }
 
   [data-theme='light'] {
@@ -216,7 +216,7 @@
     --glide-ring: rgb(16 185 129 / 0.14);
     --atmo-glow-a: rgb(16 185 129 / 0.12);
     --atmo-glow-b: rgb(20 184 166 / 0.07);
-    --atmo-line: rgb(4 120 87 / 0.08);
+    --atmo-line: rgb(4 120 87 / 0.1);
 
     /* Surfaces */
     --color-bg-900: #f6f8f7;  /* page */
@@ -1165,32 +1165,36 @@
     }
   }
 
-  /* Page atmosphere behind the app (AppShell): two soft emerald glows and faint contour lines,
-     a quiet nod to the climb. Fixed, so it is painted once and never repaints on scroll. */
+  /* Page atmosphere behind the app (AppShell): two soft emerald glows and a topographic map of the
+     climb: contour rings around a summit off the top-right corner, with a smaller rise in the
+     bottom-left, every fifth line heavier like a real survey map. Static and fixed, so it is painted
+     once and never repaints on scroll; the rings fade out toward the middle where the content sits. */
   .app-atmosphere {
     position: fixed;
     inset: 0;
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(60rem 38rem at 88% -12%, var(--atmo-glow-a), transparent 70%),
-      radial-gradient(50rem 32rem at 4% 112%, var(--atmo-glow-b), transparent 70%);
+      radial-gradient(64rem 42rem at 88% -12%, var(--atmo-glow-a), transparent 70%),
+      radial-gradient(54rem 36rem at 4% 112%, var(--atmo-glow-b), transparent 70%);
   }
   .app-atmosphere::after {
     content: '';
     position: absolute;
     inset: 0;
     background-color: var(--atmo-line);
-    -webkit-mask-image: url('/atmosphere-contours.svg'), radial-gradient(ellipse 70% 80% at 85% 0%, #000 10%, transparent 70%);
-    -webkit-mask-size: cover, 100% 100%;
-    -webkit-mask-position: right top, center;
+    --atmo-mask-a: radial-gradient(ellipse 90% 105% at 82% 0%, #000 20%, transparent 74%);
+    --atmo-mask-b: radial-gradient(ellipse 50% 60% at 0% 100%, #000 15%, transparent 72%);
+    -webkit-mask-image: url('/atmosphere-contours.svg'), var(--atmo-mask-a), var(--atmo-mask-b);
+    -webkit-mask-size: cover, 100% 100%, 100% 100%;
+    -webkit-mask-position: right top, center, center;
     -webkit-mask-repeat: no-repeat;
-    -webkit-mask-composite: source-in;
-    mask-image: url('/atmosphere-contours.svg'), radial-gradient(ellipse 70% 80% at 85% 0%, #000 10%, transparent 70%);
-    mask-size: cover, 100% 100%;
-    mask-position: right top, center;
+    -webkit-mask-composite: source-in, source-over;
+    mask-image: url('/atmosphere-contours.svg'), var(--atmo-mask-a), var(--atmo-mask-b);
+    mask-size: cover, 100% 100%, 100% 100%;
+    mask-position: right top, center, center;
     mask-repeat: no-repeat;
-    mask-composite: intersect;
+    mask-composite: intersect, add;
   }
 
   .section-title {
