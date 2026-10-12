@@ -22,7 +22,7 @@ import { BadHabit } from '@/types';
 import { todayKey, formatDateLong, getNow } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { EmptyState } from '@/components/ui/primitives';
+import { EmptyState, ProgressBar } from '@/components/ui/primitives';
 import { getBadHabitSlot } from '@/lib/badHabitEligibility';
 import { getCapStatus } from '@/lib/capStatus';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
@@ -324,23 +324,13 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                       </span>
                     </div>
 
-                    <div className="w-full h-2.5 bg-bg-700 rounded-full overflow-hidden relative border border-overlay-subtle">
-                      {/* 75% Threshold Marker Line */}
-                      <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-amber-400/70 z-10"
-                        style={{ left: '75%' }}
-                        title={`75% unlock line (${unlockThreshold} days)`}
-                      />
-                      {/* Progress Fill */}
-                      <div
-                        className={`h-full transition-all duration-500 ${
-                          isCompleteUnlocked
-                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                            : 'bg-gradient-to-r from-primary-600 to-primary-400'
-                        }`}
-                        style={{ width: `${progressPercent}%` }}
-                      />
-                    </div>
+                    <ProgressBar
+                      value={progressPercent}
+                      label="Commitment progress"
+                      tone={isCompleteUnlocked ? 'success' : 'brand'}
+                      size="lg"
+                      marker={{ at: 75, label: `75% unlock line (${unlockThreshold} days)` }}
+                    />
                   </div>
 
                   {/* Daily Action & Undo Buttons */}

@@ -1770,18 +1770,13 @@ export function ProjectsGoalsView({
                           </button>
                         )}
 
-                        <div className="flex-1 bg-bg-900 rounded-full h-2.5 overflow-hidden border border-overlay-subtle">
-                          <div
-                            className={`h-2.5 rounded-full transition-all duration-300 ${
-                              prog.percent >= 100
-                                ? 'bg-emerald-500'
-                                : prog.percent > 0
-                                ? 'bg-purple-500'
-                                : 'bg-bg-600'
-                            }`}
-                            style={{ width: `${Math.min(100, Math.max(prog.percent, 0))}%` }}
-                          />
-                        </div>
+                        <ProgressBar
+                          value={prog.percent}
+                          label="Goal progress"
+                          tone={prog.percent >= 100 ? 'success' : 'purple'}
+                          size="lg"
+                          className="flex-1"
+                        />
 
                         {prog.isManual && (
                           <button
@@ -2213,18 +2208,13 @@ export function ProjectsGoalsView({
                           </button>
                         )}
 
-                        <div className="flex-1 bg-bg-900 rounded-full h-2.5 overflow-hidden border border-overlay-subtle">
-                          <div
-                            className={`h-2.5 rounded-full transition-all duration-300 ${
-                              prog.percent >= 100
-                                ? 'bg-emerald-500'
-                                : prog.percent > 0
-                                ? 'bg-cyan-500'
-                                : 'bg-bg-600'
-                            }`}
-                            style={{ width: `${Math.min(100, Math.max(prog.percent, 0))}%` }}
-                          />
-                        </div>
+                        <ProgressBar
+                          value={prog.percent}
+                          label="Project progress"
+                          tone={prog.percent >= 100 ? 'success' : 'cyan'}
+                          size="lg"
+                          className="flex-1"
+                        />
 
                         {prog.isManual && (
                           <button

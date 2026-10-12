@@ -1,4 +1,5 @@
 import { getCurrentTier, getProgressToNextTier, getNextTier } from '@/lib/tiers';
+import { ProgressBar } from './primitives/ProgressBar';
 import { LucideIcon } from 'lucide-react';
 import { Compass, Rocket, BookOpen, Dumbbell, Trophy, Star, Gem, Shield, Crown } from 'lucide-react';
 
@@ -84,15 +85,12 @@ export function TierProgress({ totalPoints }: TierProgressProps) {
           <span className="text-xs text-content-disabled ml-auto">Max tier reached</span>
         )}
       </div>
-      <div className="h-2.5 bg-bg-600 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{
-            width: `${progress.percent}%`,
-            background: `linear-gradient(90deg, var(--rank-${tierKey}-text), var(--rank-${nextKey}-text))`,
-          }}
-        />
-      </div>
+      <ProgressBar
+        value={progress.percent}
+        label={next ? `Progress to ${next.name}` : 'Rank progress'}
+        size="lg"
+        fillStyle={{ backgroundImage: `linear-gradient(90deg, var(--rank-${tierKey}-text), var(--rank-${nextKey}-text))` }}
+      />
       {next && (
         <div className="flex items-center justify-between mt-1.5">
           <span className="text-xs text-content-disabled ml-auto">

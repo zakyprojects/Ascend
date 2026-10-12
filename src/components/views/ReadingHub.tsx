@@ -24,7 +24,7 @@ import {
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { EmptyState, Tabs } from '@/components/ui/primitives';
+import { EmptyState, ProgressBar, Tabs } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
@@ -599,12 +599,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           </span>
                           <span className="font-bold text-warning-text">{percent}%</span>
                         </div>
-                        <div className="h-2 w-full bg-bg-900 rounded-full overflow-hidden border border-overlay-subtle">
-                          <div
-                            className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-300"
-                            style={{ width: `${percent}%` }}
-                          />
-                        </div>
+                        <ProgressBar value={percent} label="Reading progress" tone="warning" />
                       </div>
 
                       {/* Target Date */}

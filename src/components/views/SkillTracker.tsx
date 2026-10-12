@@ -9,7 +9,7 @@ import { Skill, SkillLevel, SkillSessionLog } from '@/types';
 import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate, weekKey } from '@/lib/dates';
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { EmptyState } from '@/components/ui/primitives';
+import { EmptyState, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 export function SkillTracker({ store }: { store: AppStore }) {
@@ -387,12 +387,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                         <span>{progressText}</span>
                         <span className="tabular-nums">{Math.round(progressPercent)}%</span>
                       </div>
-                      <div className="w-full bg-bg-800 rounded-full h-1.5 overflow-hidden border border-overlay-subtle">
-                        <div
-                          className="bg-purple-500 h-1.5 rounded-full transition-all duration-300"
-                          style={{ width: `${progressPercent}%` }}
-                        />
-                      </div>
+                      <ProgressBar value={progressPercent} label="Level progress" tone="purple" size="sm" />
                     </div>
                   </div>
 

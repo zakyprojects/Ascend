@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ProgressBar } from './primitives/ProgressBar';
 
 export interface CapMeterProps {
   variant: 'bar' | 'slots';
@@ -20,7 +21,6 @@ export function CapMeter({
   note,
 }: CapMeterProps) {
   const isCapped = earned >= cap;
-  const displayPercent = cap > 0 ? Math.min(100, Math.max(0, (earned / cap) * 100)) : 0;
 
   // Points-earned feedback. Compares against the previous render (React's
   // "state from previous render" pattern), so it never fires on mount or on a
@@ -50,20 +50,7 @@ export function CapMeter({
       </div>
 
       {variant === 'bar' && (
-        <div
-          role="progressbar"
-          aria-valuenow={earned}
-          aria-valuemin={0}
-          aria-valuemax={cap}
-          className="h-1.5 w-full bg-bg-700 rounded-full overflow-hidden"
-        >
-          <div
-            className={`h-full transition-all duration-300 rounded-full ${
-              isCapped ? 'bg-warning-text' : 'bg-success-text'
-            }`}
-            style={{ width: `${displayPercent}%` }}
-          />
-        </div>
+        <ProgressBar value={earned} max={cap} label={label} tone={isCapped ? 'warning' : 'success'} size="sm" />
       )}
 
       {variant === 'slots' && (

@@ -38,7 +38,7 @@ import { AppStore } from '@/lib/store';
 import { DEFAULT_TIME_TRACKER_ACTIVITIES } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { EmptyState } from '@/components/ui/primitives';
+import { EmptyState, ProgressBar } from '@/components/ui/primitives';
 import {
   todayKey,
   formatDateLong,
@@ -1881,12 +1881,7 @@ function FocusTimerSubmodule({
                     <span>{Math.round(activeBlockProgress)}% elapsed</span>
                     <span>{formatTime12h(activeBlock.endTime)}</span>
                   </div>
-                  <div className="w-full bg-bg-700/80 rounded-full h-2 overflow-hidden border border-overlay-subtle">
-                    <div
-                      className="bg-primary-500 h-full rounded-full transition-all duration-1000"
-                      style={{ width: `${activeBlockProgress}%` }}
-                    />
-                  </div>
+                  <ProgressBar value={activeBlockProgress} label="Focus block elapsed" live />
                 </div>
               </>
             )}

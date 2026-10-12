@@ -21,7 +21,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { weeklyGoalsCapNote } from '@/lib/capCopy';
-import { EmptyState } from '@/components/ui/primitives';
+import { EmptyState, ProgressBar } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { useCompletionPop } from '@/lib/useCompletionPop';
@@ -250,16 +250,7 @@ function GoalItemRow({
               </div>
             </div>
 
-            <div className="w-full bg-bg-800 rounded-full h-2 overflow-hidden border border-overlay-subtle">
-              <div
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  prog.percent >= 100
-                    ? 'bg-emerald-400'
-                    : 'bg-primary-500'
-                }`}
-                style={{ width: `${prog.percent}%` }}
-              />
-            </div>
+            <ProgressBar value={prog.percent} label="Weekly goal progress" tone={prog.percent >= 100 ? 'success' : 'brand'} />
           </>
         )}
       </div>
@@ -657,12 +648,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               </span>
               <span className="text-brand-text font-bold">{goalStats.percent}% Complete ({goalStats.completed}/{goalStats.total})</span>
             </div>
-            <div className="w-full bg-bg-900 rounded-full h-2.5 overflow-hidden border border-overlay-subtle">
-              <div
-                className="bg-primary-500 h-2.5 rounded-full transition-all duration-500"
-                style={{ width: `${goalStats.percent}%` }}
-              />
-            </div>
+            <ProgressBar value={goalStats.percent} label="Weekly target completion" size="lg" />
           </div>
 
           <div className="bg-bg-900/40 p-3.5 rounded-xl border border-overlay-subtle flex items-center justify-around">

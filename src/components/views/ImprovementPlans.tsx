@@ -33,7 +33,7 @@ import {
 import { AppStore } from '@/lib/store';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { EmptyState, Skeleton } from '@/components/ui/primitives';
+import { EmptyState, ProgressBar, Skeleton } from '@/components/ui/primitives';
 import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
 import { getCurrentTier } from '@/lib/tiers';
 import { todayKey } from '@/lib/dates';
@@ -841,12 +841,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             </div>
 
             {/* Progress Bar */}
-            <div className="w-full bg-bg-700 rounded-full h-2 overflow-hidden">
-              <div 
-                className={`${isGoalCompleted ? 'bg-emerald-500' : 'bg-amber-500'} h-full transition-all duration-500`} 
-                style={{ width: `${pct}%` }} 
-              />
-            </div>
+            <ProgressBar value={pct} label="Plan goal progress" tone={isGoalCompleted ? 'success' : 'warning'} />
 
             {plan.targetDate && (
               <div className="text-[11px] text-content-muted flex items-center gap-1">
