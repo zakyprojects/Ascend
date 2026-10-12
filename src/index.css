@@ -1430,6 +1430,48 @@ html.vt-page::view-transition-group(nav-pill) {
   }
 }
 
+/* Sign-in pages (auth/AuthPage.tsx). Desktop split: switching sign in <-> sign up glides the climb
+   panel to the other side (its slope clip-path morphs on the way) while the form column crosses the
+   other way. Only at lg+; below it the panel is a band and nothing moves sideways. */
+@media (min-width: 1024px) {
+  .auth-swap {
+    transition-property: transform, clip-path, padding;
+    transition-duration: 550ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+/* Below lg the panel is a band on top of the page: safe-area insets, the form sheet's side padding,
+   and room at the bottom for the sheet's rounded edge to overlap it. */
+@media (max-width: 1023.98px) {
+  .auth-band {
+    min-height: 26vh;
+    padding-top: max(1.25rem, env(safe-area-inset-top));
+    padding-bottom: 2rem;
+    padding-left: max(1.25rem, env(safe-area-inset-left));
+    padding-right: max(1.25rem, env(safe-area-inset-right));
+  }
+}
+@media (min-width: 640px) and (max-width: 1023.98px) {
+  .auth-band {
+    padding-left: max(2rem, env(safe-area-inset-left));
+    padding-right: max(2rem, env(safe-area-inset-right));
+  }
+}
+/* Success hand-off: the emerald flood (old snapshot) holds still while the app fades and settles in
+   over it. Overrides the root's no-animation default above only while html.vt-auth-handoff is set. */
+html.vt-auth-handoff::view-transition-old(root) {
+  animation: none;
+}
+html.vt-auth-handoff::view-transition-new(root) {
+  animation: vt-auth-emerge 480ms var(--ease-emphasized) both;
+}
+@keyframes vt-auth-emerge {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
 /* Reduced motion: one global switch for every animation and transition in the app.
    Loading spinners keep moving, since a frozen spinner reads as a hung app. The branded loader
    is JS-driven and shows its static logo under reduced motion (AscendLoaderMark). */
