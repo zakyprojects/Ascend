@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog } from '@/components/ui/primitives';
 import { Trophy, Clock, Crown, Brain, Calendar, CalendarDays, ChevronDown, Archive, Sparkles, UserCheck, ChevronRight } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LeagueType, LeagueCompetitor } from '@/types';
-import { LEAGUE_CONFIG, formatCountdown, getTimeUntilReset, getLeaguePeriodLabel, getSeasonLabel, getLocalResetDetail } from '@/lib/leagues';
+import { LEAGUE_CONFIG, getLeaguePeriodLabel, getSeasonLabel, getLocalResetDetail } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { CompetitorProfileModal } from '@/components/ui/CompetitorProfileModal';
+import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
+import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
+import { CountUp, Reveal } from '@/components/ui/Motion';
 
 const LEAGUE_ICONS: Record<string, typeof Trophy> = {
   Calendar, CalendarDays, Brain,
@@ -21,18 +24,12 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
   const [activeLeague, setActiveLeague] = useState<LeagueType>('weekly');
   const [showArchive, setShowArchive] = useState<LeagueType | null>(null);
   const [selectedCompetitor, setSelectedCompetitor] = useState<LeagueCompetitor | null>(null);
-  const [, setTick] = useState(0);
-
-  // Tick every second for live reset countdowns
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // Period labels re-render on rollover; the per-second countdown ticks inside LeagueCountdown.
+  useLeaguePeriodRollover();
 
   const now = leagueNow();
   const leagueData = store.getLeagueData(activeLeague);
   const config = LEAGUE_CONFIG[activeLeague];
-  const countdown = formatCountdown(getTimeUntilReset(activeLeague, now));
   const periodLabel = getLeaguePeriodLabel(activeLeague, now);
   const archives = store.state.leagueArchives.filter((a) => a.type === activeLeague);
 
@@ -147,7 +144,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
             <span className="text-micro text-content-muted">
               {activeLeague === 'ninetyDay' ? 'Season Ends in:' : 'Resets in:'}
             </span>
-            <span className="font-mono font-bold text-brand-text">{countdown}</span>
+            <LeagueCountdown type={activeLeague} className="font-mono font-bold text-brand-text tabular-nums" />
           </div>
         </div>
 
@@ -180,8 +177,8 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
             const medalVarNames = ['var(--medal-gold)', 'var(--medal-silver)', 'var(--medal-bronze)'];
 
             return (
+              <Reveal key={competitor.id || idx} index={idx}>
               <button
-                key={competitor.id || idx}
                 onClick={() => setSelectedCompetitor(competitor)}
                 className={`w-full flex items-center gap-2 sm:gap-4 px-2.5 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all text-left cursor-pointer group ${
                   isUser
@@ -218,13 +215,14 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                 {/* Period Points */}
                 <div className="text-right shrink-0 min-w-[55px] sm:min-w-[70px]">
                   <span className={`text-xs sm:text-sm font-display font-bold ${isUser ? 'text-success-text' : 'text-content-secondary'}`}>
-                    {competitor.points.toLocaleString()}
+                    <CountUp value={competitor.points} className="tabular-nums" />
                   </span>
                   <span className="text-2xs sm:text-xs text-content-disabled ml-0.5 sm:ml-1">pts</span>
                 </div>
 
                 <ChevronRight size={15} className="text-content-subtle group-hover:text-content-tertiary transition-colors shrink-0" />
               </button>
+              </Reveal>
             );
           })}
         </div>

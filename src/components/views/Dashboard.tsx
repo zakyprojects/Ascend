@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   Flame,
   TrendingUp,
@@ -28,12 +27,14 @@ import { calculateStreak, todayKey, formatDateLong, parseDate } from '@/lib/date
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { getCurrentTier, getNextTier } from '@/lib/tiers';
 import { TierBadge, TierProgress } from '@/components/ui/TierBadge';
-import { LEAGUE_CONFIG, formatCountdown, getTimeUntilReset, getSeasonLabel } from '@/lib/leagues';
+import { LEAGUE_CONFIG, getSeasonLabel } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { LeagueType } from '@/types';
 import { calculateBlockDurationMinutes, formatDurationHuman } from '@/lib/timeTracker';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
+import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
+import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { dailyHabitCompletions, dailyPoints, lastDayKeys } from '@/lib/weeklyActivity';
 import { WeekActivityCard } from './WeekActivityCard';
 
@@ -113,13 +114,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
   // Re-render when a league period rolls over, so ranks and the season label never go stale.
   // The per-second countdowns tick inside LeagueCountdown and never re-render the page.
-  const [periodEpoch, setPeriodEpoch] = useState(0);
-  useEffect(() => {
-    const now = leagueNow();
-    const untilNextReset = Math.min(...LEAGUE_TYPES.map((type) => getTimeUntilReset(type, now)));
-    const timer = setTimeout(() => setPeriodEpoch((n) => n + 1), Math.min(untilNextReset + 1000, MAX_TIMEOUT_MS));
-    return () => clearTimeout(timer);
-  }, [periodEpoch]);
+  useLeaguePeriodRollover();
 
   const weeklyData = store.getLeagueData('weekly');
   const monthlyData = store.getLeagueData('monthly');
@@ -495,10 +490,6 @@ function moodColor(mood: string): string {
   return colors[mood] ?? '#94a3b8';
 }
 
-const LEAGUE_TYPES: LeagueType[] = ['weekly', 'monthly', 'ninetyDay'];
-// setTimeout overflows above 2^31-1 ms (~24.8 days); a longer wait just re-arms.
-const MAX_TIMEOUT_MS = 2 ** 31 - 1;
-
 const LEAGUE_TONE: Record<LeagueType, keyof typeof MODULE_TONE_CLASS> = {
   weekly: 'emerald',
   monthly: 'sky',
@@ -523,19 +514,9 @@ function LeagueRankCard({ type, rank, points }: { type: LeagueType; rank: number
         #<CountUp value={rank} />
       </div>
       <div className="text-2xs text-content-muted tabular-nums"><CountUp value={points} /> pts</div>
-      <LeagueCountdown type={type} className="text-2xs text-brand-text mt-0.5 truncate font-mono font-medium" />
+      <LeagueCountdown type={type} className="block text-2xs text-brand-text mt-0.5 truncate font-mono font-medium" />
     </div>
   );
-}
-
-/** Live time-to-reset; owns its 1s tick so only this line re-renders. */
-function LeagueCountdown({ type, className }: { type: LeagueType; className: string }) {
-  const [now, setNow] = useState(leagueNow);
-  useEffect(() => {
-    const timer = setInterval(() => setNow(leagueNow()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  return <div className={className}>{formatCountdown(getTimeUntilReset(type, now))}</div>;
 }
 
 function StatCard({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: keyof typeof MODULE_TONE_CLASS }) {
