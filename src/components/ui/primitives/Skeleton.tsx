@@ -10,5 +10,5 @@ export interface SkeletonProps {
  * loading keeps the branded AscendLoadingIndicator.
  */
 export function Skeleton({ className }: SkeletonProps) {
-  return <div aria-hidden="true" className={cx('rounded-lg bg-bg-700 animate-pulse', className)} />;
+  return <div aria-hidden="true" className={cx('skeleton rounded-lg', className)} />;
 }

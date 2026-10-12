@@ -130,6 +130,8 @@ export default {
         sm: 'var(--shadow-sm)',
         md: 'var(--shadow-md)',
         lg: 'var(--shadow-lg)',
+        // Primary button hover: a soft emerald lift.
+        'brand-glow': '0 6px 20px -8px rgb(16 185 129 / 0.6)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
@@ -149,6 +151,14 @@ export default {
         'view-enter': 'enterUp var(--duration-enter) var(--ease-emphasized)',
         // Revisit: a quick opacity-only fade, so switching pages never feels like a cut.
         'view-fade': 'enterFade var(--duration-fast) var(--ease-standard)',
+        // Dialog (primitives/Dialog): a bottom sheet on phones, a scale-in card from sm up.
+        // Enter ends on `transform: none`, so nothing inside is trapped in a containing block.
+        'sheet-up': 'sheetUp 320ms var(--ease-emphasized) both',
+        'sheet-down': 'sheetDown 200ms var(--ease-standard) forwards',
+        'dialog-in': 'dialogIn var(--duration-enter) var(--ease-emphasized) both',
+        'dialog-out': 'dialogOut 160ms var(--ease-standard) forwards',
+        'exit-fade': 'exitFade 200ms var(--ease-standard) forwards',
+        'toast-out': 'toastOut 180ms var(--ease-standard) forwards',
         // Scroll reveal (Motion.tsx Reveal): `backwards` holds it hidden through its stagger delay
         // without keeping a transform after it ends.
         'reveal': 'enterUp 450ms var(--ease-emphasized) backwards',
@@ -195,6 +205,30 @@ export default {
         enterUp: {
           '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        sheetUp: {
+          '0%': { transform: 'translateY(100%)' },
+          '100%': { transform: 'none' },
+        },
+        sheetDown: {
+          '0%': { transform: 'none' },
+          '100%': { transform: 'translateY(100%)' },
+        },
+        dialogIn: {
+          '0%': { opacity: '0', transform: 'translateY(8px) scale(0.97)' },
+          '100%': { opacity: '1', transform: 'none' },
+        },
+        dialogOut: {
+          '0%': { opacity: '1', transform: 'none' },
+          '100%': { opacity: '0', transform: 'scale(0.97)' },
+        },
+        exitFade: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+        toastOut: {
+          '0%': { opacity: '1', transform: 'none' },
+          '100%': { opacity: '0', transform: 'translateX(16px)' },
         },
         enterFade: {
           '0%': { opacity: '0' },
@@ -254,9 +288,12 @@ export default {
         toast: 'var(--z-toast)',
         blocking: 'var(--z-blocking)',
       },
-      // Provisional: locks after font approval
+      // Small end of the type scale (Tailwind's xs = 12px and up cover the rest). Size only, so
+      // line height keeps following the surrounding text, as the arbitrary sizes they replace did.
       fontSize: {
-        micro: ['0.6875rem', { lineHeight: '1rem' }],
+        '3xs': '0.5625rem', // 9px: tiny chips and counters
+        '2xs': '0.625rem', // 10px: badges, meta labels
+        micro: '0.6875rem', // 11px: captions, helper text, nav labels
       },
     },
   },

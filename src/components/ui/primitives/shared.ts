@@ -6,7 +6,7 @@ export const FOCUS_RING =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-text focus-visible:ring-offset-2 focus-visible:ring-offset-bg-900';
 
 export const TRANSITION =
-  'transition-[background-color,border-color,color,opacity,transform] duration-fast ease-standard motion-reduce:transition-none';
+  'transition-[background-color,border-color,color,opacity,transform,box-shadow] duration-fast ease-standard motion-reduce:transition-none';
 
 export const PRESS = 'active:scale-[0.97] motion-reduce:active:scale-100';
 
