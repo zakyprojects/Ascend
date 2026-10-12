@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal } from '@/components/ui/Modal';
+import { Dialog } from '@/components/ui/primitives';
 import { TimeTrackerActivity } from '@/types';
 import { ActivityIcon } from './ActivityIcon';
 import {
@@ -99,7 +99,7 @@ export function ActivityModal({
   };
 
   return (
-    <Modal
+    <Dialog
       open={open}
       onClose={onClose}
       title={editingActivity ? 'Edit Activity Category' : 'New Activity Category'}
@@ -261,6 +261,6 @@ export function ActivityModal({
           </button>
         </div>
       </form>
-    </Modal>
+    </Dialog>
   );
 }

@@ -27,11 +27,10 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
-import { EmptyState, Skeleton } from '@/components/ui/primitives';
+import { Dialog, EmptyState, Skeleton } from '@/components/ui/primitives';
 import { TAP_TARGET, TAP_AREA } from '@/components/ui/primitives/shared';
 import { getCurrentTier } from '@/lib/tiers';
 import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
@@ -1503,7 +1502,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       )}
 
       {/* INVITE PARTNER MODAL */}
-      <Modal
+      <Dialog
         open={inviteModalOpen}
         onClose={() => {
           setInviteModalOpen(false);
@@ -1561,10 +1560,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* ITEM 1: START MULTI-CATEGORY SHARED CHALLENGE MODAL (PLEDGE JOINT PACT) */}
-      <Modal
+      <Dialog
         open={challengeModalOpen}
         onClose={() => {
           setChallengeModalOpen(false);
@@ -1789,7 +1788,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* END PAIRING CONFIRMATION MODAL */}
       <ConfirmDeleteModal

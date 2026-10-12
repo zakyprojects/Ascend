@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal } from '@/components/ui/Modal';
+import { Dialog } from '@/components/ui/primitives';
 import {
   TimeTrackerActivity,
   TimeTrackerBlock,
@@ -185,7 +185,7 @@ export function TimeBlockModal({
   };
 
   return (
-    <Modal
+    <Dialog
       open={open}
       onClose={onClose}
       title={editingBlock ? 'Edit Time Block' : 'Schedule Time Block'}
@@ -397,6 +397,6 @@ export function TimeBlockModal({
           </button>
         </div>
       </form>
-    </Modal>
+    </Dialog>
   );
 }

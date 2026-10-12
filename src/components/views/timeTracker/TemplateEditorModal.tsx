@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal } from '@/components/ui/Modal';
+import { Dialog } from '@/components/ui/primitives';
 import {
   TimeTrackerActivity,
   TimeTrackerBlock,
@@ -220,7 +220,7 @@ export function TemplateEditorModal({
 
   return (
     <>
-      <Modal
+      <Dialog
         open={open}
         onClose={onClose}
         title={editingTemplate ? 'Edit Template' : 'Create Template'}
@@ -411,7 +411,7 @@ export function TemplateEditorModal({
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* Add / Edit Block Inside Template Modal */}
       {showBlockModal && (
@@ -430,7 +430,7 @@ export function TemplateEditorModal({
 
       {/* Transfer Auto-Apply Day Modal */}
       {conflictState && (
-        <Modal
+        <Dialog
           open={conflictState.isOpen}
           onClose={() => setConflictState(null)}
           title="Transfer Auto-Apply Day?"
@@ -458,7 +458,7 @@ export function TemplateEditorModal({
               Transfer Day
             </button>
           </div>
-        </Modal>
+        </Dialog>
       )}
     </>
   );

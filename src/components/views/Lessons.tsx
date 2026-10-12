@@ -3,8 +3,7 @@ import { BookOpen, Check, Clock, Search, Sparkles } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import { Lesson } from '@/types';
-import { Modal } from '@/components/ui/Modal';
-import { EmptyState } from '@/components/ui/primitives';
+import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { getSeasonNumber, leagueNow } from '@/lib/leagueTime';
 
 export function Lessons({ store }: { store: AppStore }) {
@@ -140,7 +139,7 @@ export function Lessons({ store }: { store: AppStore }) {
       )}
 
       {/* Lesson reader modal */}
-      <Modal
+      <Dialog
         open={!!openLesson}
         onClose={() => setOpenLesson(null)}
         title={openLesson?.title ?? ''}
@@ -178,7 +177,7 @@ export function Lessons({ store }: { store: AppStore }) {
             </div>
           </div>
         )}
-      </Modal>
+      </Dialog>
     </div>
   );
 }

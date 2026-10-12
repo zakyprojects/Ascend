@@ -22,9 +22,8 @@ import {
   Check,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { EmptyState, ProgressBar, Tabs } from '@/components/ui/primitives';
+import { Dialog, EmptyState, ProgressBar, Tabs } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
@@ -897,7 +896,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       )}
 
       {/* MODAL: ADD CUSTOM BOOK */}
-      <Modal
+      <Dialog
         open={addCustomModalOpen}
         onClose={() => setAddCustomModalOpen(false)}
         title="Add Book to Reading Hub"
@@ -1045,10 +1044,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* MODAL: START READING CONFIRMATION */}
-      <Modal
+      <Dialog
         open={Boolean(startReadingModalBook)}
         onClose={() => setStartReadingModalBook(null)}
         title={startReadingModalBook ? `Start Reading: ${startReadingModalBook.title}` : 'Start Reading'}
@@ -1120,10 +1119,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* MODAL: LOG PROGRESS (ABSOLUTE CURRENT PAGE MODEL) */}
-      <Modal
+      <Dialog
         open={Boolean(progressModalBook)}
         onClose={() => setProgressModalBook(null)}
         title={progressModalBook ? `Log Progress: ${progressModalBook.title}` : 'Log Progress'}
@@ -1188,10 +1187,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* MODAL: FINISH BOOK & REFLECTION (COMPULSORY REFLECTION) */}
-      <Modal
+      <Dialog
         open={Boolean(finishModalBook)}
         onClose={() => setFinishModalBook(null)}
         title={finishModalBook ? `Celebrate: ${finishModalBook.title}` : 'Book Finished'}
@@ -1276,10 +1275,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* MODAL: UNLINK READING HABIT */}
-      <Modal
+      <Dialog
         open={unlinkConfirmOpen}
         onClose={() => setUnlinkConfirmOpen(false)}
         title="Unlink Reading Habit?"
@@ -1308,7 +1307,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* CONFIRM DELETE MODAL */}
       <ConfirmDeleteModal

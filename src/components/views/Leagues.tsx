@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
+import { Dialog } from '@/components/ui/primitives';
 import { Trophy, Clock, Crown, Brain, Calendar, CalendarDays, ChevronDown, Archive, Sparkles, UserCheck, ChevronRight } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LeagueType, LeagueCompetitor } from '@/types';
 import { LEAGUE_CONFIG, formatCountdown, getTimeUntilReset, getLeaguePeriodLabel, getSeasonLabel, getLocalResetDetail } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
-import { Modal } from '@/components/ui/Modal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { CompetitorProfileModal } from '@/components/ui/CompetitorProfileModal';
 
@@ -264,7 +264,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
       )}
 
       {/* Archive detail modal */}
-      <Modal
+      <Dialog
         open={!!showArchive}
         onClose={() => setShowArchive(null)}
         title={showArchive ? `${LEAGUE_CONFIG[showArchive].name} — Final Standings` : ''}
@@ -307,7 +307,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
             </div>
           );
         })()}
-      </Modal>
+      </Dialog>
 
       {/* Clickable Profile Detail Modal */}
       <CompetitorProfileModal

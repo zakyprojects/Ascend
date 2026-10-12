@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Target, Zap, Plus, Trash2, Clock, Award, Flame } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
@@ -9,7 +8,7 @@ import { Skill, SkillLevel, SkillSessionLog } from '@/types';
 import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate, weekKey } from '@/lib/dates';
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { EmptyState, ProgressBar } from '@/components/ui/primitives';
+import { Dialog, EmptyState, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 export function SkillTracker({ store }: { store: AppStore }) {
@@ -461,7 +460,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
       )}
 
       {/* Add Skill Modal */}
-      <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Skill">
+      <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Skill">
         <form onSubmit={handleAddSkillSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-name-input">Skill Name</label>
@@ -527,10 +526,10 @@ export function SkillTracker({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* Log Practice Session Modal */}
-      <Modal
+      <Dialog
         open={!!logModalSkill}
         onClose={() => {
           setLogModalSkill(null);
@@ -596,7 +595,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* Confirm Delete Skill Modal */}
       <ConfirmDeleteModal

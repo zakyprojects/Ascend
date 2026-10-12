@@ -4,13 +4,12 @@ import { AppStore } from '@/lib/store';
 import { Habit, HabitFrequency } from '@/types';
 import { calculateStreak, calculateBestStreak, periodKey, getNow, weekKey } from '@/lib/dates';
 import { PRESET_CATEGORIES, PresetHabit } from '@/lib/presets';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habitPenalties';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { EmptyState } from '@/components/ui/primitives';
+import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
@@ -147,7 +146,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
       )}
 
       {/* Add habit modal */}
-      <Modal open={showAdd} onClose={resetModal} title="Add Habit" maxWidth="max-w-lg">
+      <Dialog open={showAdd} onClose={resetModal} title="Add Habit" maxWidth="max-w-lg">
         {addMode === 'choice' && (
           <div className="space-y-3">
             <button
@@ -278,7 +277,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
             </button>
           </div>
         )}
-      </Modal>
+      </Dialog>
 
       {/* Delete confirm */}
       <ConfirmDeleteModal

@@ -1,5 +1,5 @@
-import { Modal } from './Modal';
 import { LogOut, AlertTriangle } from 'lucide-react';
+import { Dialog } from './primitives';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 
 interface LogoutConfirmModalProps {
@@ -16,7 +16,7 @@ export function LogoutConfirmModal({
   isLoggingOut = false,
 }: LogoutConfirmModalProps) {
   return (
-    <Modal open={open} onClose={onClose} title="Confirm Logout" maxWidth="max-w-md">
+    <Dialog open={open} onClose={onClose} title="Confirm Logout" maxWidth="max-w-md">
       <div className="space-y-4">
         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-3">
           <AlertTriangle size={20} className="text-warning-text shrink-0 mt-0.5" />
@@ -54,6 +54,6 @@ export function LogoutConfirmModal({
           </button>
         </div>
       </div>
-    </Modal>
+    </Dialog>
   );
 }

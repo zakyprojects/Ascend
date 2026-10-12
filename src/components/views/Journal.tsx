@@ -24,13 +24,12 @@ import { AppStore } from '@/lib/store';
 import { Mood, JournalEntry } from '@/types';
 import { formatDateLong, todayKey, parseDate } from '@/lib/dates';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { useToast } from '@/components/ui/Toast';
-import { EmptyState, Tabs } from '@/components/ui/primitives';
+import { Dialog, EmptyState, Tabs } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { getDailyPrompt, JournalPrompt } from '@/data/journalPrompts';
 
@@ -989,7 +988,7 @@ export function Journal({ store }: { store: AppStore }) {
       </div>
 
       {/* ENTRY DETAIL MODAL */}
-      <Modal
+      <Dialog
         open={!!selectedEntry}
         onClose={() => setSelectedEntry(null)}
         title={selectedEntry ? `Journal Entry — ${formatDateLong(selectedEntry.date)}` : ''}
@@ -1070,7 +1069,7 @@ export function Journal({ store }: { store: AppStore }) {
             </div>
           );
         })()}
-      </Modal>
+      </Dialog>
 
       {/* CONFIRM DELETE MODAL */}
       <ConfirmDeleteModal

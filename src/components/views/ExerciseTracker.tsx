@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { Activity, Dumbbell, Flame, Plus, Trash2, Calendar, Award } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
 import { todayKey, formatDateLong, parseDate, startOfWeek } from '@/lib/dates';
@@ -10,7 +9,7 @@ import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { EmptyState } from '@/components/ui/primitives';
+import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 const DEFAULT_WORKOUT_TYPES = [
@@ -311,7 +310,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       </div>
 
       {/* Log Workout Modal */}
-      <Modal open={logModalOpen} onClose={() => setLogModalOpen(false)} title="Log Workout Session">
+      <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} title="Log Workout Session">
         <form onSubmit={handleLogSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-type-select">Workout Type</label>
@@ -445,7 +444,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* Confirm Delete Modal */}
       <ConfirmDeleteModal
@@ -467,7 +466,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       />
 
       {/* Target Weekly Goal Modal */}
-      <Modal open={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set Weekly Exercise Target">
+      <Dialog open={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set Weekly Exercise Target">
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -505,7 +504,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
     </div>
   );
 }

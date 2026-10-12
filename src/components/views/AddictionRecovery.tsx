@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { HeartPulse, ShieldCheck, Flame, AlertCircle, Sparkles, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
@@ -11,7 +10,7 @@ import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
 import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS } from '@/lib/pointsConfig';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { recoverySeasonCapNote } from '@/lib/capCopy';
-import { EmptyState } from '@/components/ui/primitives';
+import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 const DISTRACTION_ACTIVITIES = [
@@ -298,7 +297,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       </div>
 
       {/* Emergency Support Modal (Breathing + Distraction) */}
-      <Modal open={emergencyModalOpen} onClose={() => setEmergencyModalOpen(false)} title="Emergency Support & Urge Surfing" maxWidth="max-w-lg">
+      <Dialog open={emergencyModalOpen} onClose={() => setEmergencyModalOpen(false)} title="Emergency Support & Urge Surfing" maxWidth="max-w-lg">
         <div className="space-y-6">
           {/* Guided Breathing Box */}
           <div className="card p-5 text-center bg-bg-800 border border-purple-500/30 space-y-4">
@@ -330,10 +329,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* Log Craving Modal */}
-      <Modal open={cravingModalOpen} onClose={() => setCravingModalOpen(false)} title="Log Craving Instance">
+      <Dialog open={cravingModalOpen} onClose={() => setCravingModalOpen(false)} title="Log Craving Instance">
         <form onSubmit={handleLogCravingSubmit} className="space-y-4">
           <div>
             <div className="flex justify-between text-xs text-content-muted mb-1">
@@ -387,10 +386,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* Setup Tracker Modal */}
-      <Modal open={setupTrackerModalOpen} onClose={() => setSetupTrackerModalOpen(false)} title="Set Up Sobriety Tracker">
+      <Dialog open={setupTrackerModalOpen} onClose={() => setSetupTrackerModalOpen(false)} title="Set Up Sobriety Tracker">
         <form onSubmit={handleStartTracker} className="space-y-4">
           <div>
             <label htmlFor="setup-tracker-title" className="block text-xs font-medium text-content-muted mb-1">What are you abstaining from?</label>
@@ -414,10 +413,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* Reset Confirmation Modal */}
-      <Modal open={resetConfirmOpen} onClose={() => setResetConfirmOpen(false)} title="Reset Sobriety Streak?">
+      <Dialog open={resetConfirmOpen} onClose={() => setResetConfirmOpen(false)} title="Reset Sobriety Streak?">
         <div className="space-y-4 text-xs text-content-tertiary">
           <p>
             Resetting your timer will restart your sobriety clock from 00:00:00. Remember: slipping up is a bump in the road, not the end of your journey.
@@ -438,10 +437,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* Milestone Unlocked Modal */}
-      <Modal open={!!celebrationMilestone} onClose={() => setCelebrationMilestone(null)} title="Milestone Unlocked! 🎉">
+      <Dialog open={!!celebrationMilestone} onClose={() => setCelebrationMilestone(null)} title="Milestone Unlocked! 🎉">
         <div className="text-center space-y-4 py-2">
           <div className="w-16 h-16 rounded-full bg-amber-500/20 text-warning-text border border-amber-500/40 flex items-center justify-center text-3xl mx-auto animate-celebrate">
             🏆
@@ -454,7 +453,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             Awesome!
           </button>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* Delete Tracker Modal */}
       <ConfirmDeleteModal

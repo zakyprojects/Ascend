@@ -14,7 +14,6 @@ import {
   Lock,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
@@ -22,7 +21,7 @@ import { BadHabit } from '@/types';
 import { todayKey, formatDateLong, getNow } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { EmptyState, ProgressBar } from '@/components/ui/primitives';
+import { Dialog, EmptyState, ProgressBar } from '@/components/ui/primitives';
 import { getBadHabitSlot } from '@/lib/badHabitEligibility';
 import { getCapStatus } from '@/lib/capStatus';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
@@ -494,7 +493,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       )}
 
       {/* Add Bad Habit Modal */}
-      <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Bad Habit to Reduce">
+      <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Bad Habit to Reduce">
         <form onSubmit={handleAddSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="bad-habit-name-input">Bad Habit Name</label>
@@ -587,10 +586,10 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* Delete Confirmation Modal */}
-      <Modal open={!!deleteModalHabit} onClose={() => setDeleteModalHabit(null)} title="Delete Bad Habit?">
+      <Dialog open={!!deleteModalHabit} onClose={() => setDeleteModalHabit(null)} title="Delete Bad Habit?">
         {deleteModalHabit && (
           <div className="space-y-4">
             {deleteModalHabit.isCompleted ? (
@@ -648,7 +647,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
             </div>
           </div>
         )}
-      </Modal>
+      </Dialog>
     </div>
   );
 }

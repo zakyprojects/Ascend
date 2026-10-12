@@ -17,11 +17,10 @@ import {
 } from 'lucide-react';
 import { AppStore, isWeeklyReflectionAwarded } from '@/lib/store';
 import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoints } from '@/lib/pointsConfig';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { weeklyGoalsCapNote } from '@/lib/capCopy';
-import { EmptyState, ProgressBar } from '@/components/ui/primitives';
+import { Dialog, EmptyState, ProgressBar } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { useCompletionPop } from '@/lib/useCompletionPop';
@@ -979,7 +978,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       </div>
 
       {/* CREATE / EDIT GOAL MODAL */}
-      <Modal
+      <Dialog
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editingGoal ? 'Edit Weekly Goal' : 'Add Weekly Goal'}
@@ -1207,7 +1206,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* CONFIRM DELETE GOAL MODAL */}
       <ConfirmDeleteModal
@@ -1243,7 +1242,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       />
 
       {/* CARRY OVER PROMPT MODAL (RESUME vs START OVER) */}
-      <Modal
+      <Dialog
         open={Boolean(carryOverPromptModal)}
         onClose={() => setCarryOverPromptModal(null)}
         title="Carry Over Goal"
@@ -1289,7 +1288,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* CONFIRM DELETE REFLECTION MODAL */}
       <ConfirmDeleteModal

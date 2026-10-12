@@ -33,11 +33,10 @@ import {
   changeUserPassword,
   deleteUserProfileAndData,
 } from '@/lib/auth';
-import { Modal } from '@/components/ui/Modal';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
-import { Tabs } from '@/components/ui/primitives';
+import { Dialog, Tabs } from '@/components/ui/primitives';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator, AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
 
@@ -1003,7 +1002,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       />
 
       {/* Delete Account Confirmation Modal */}
-      <Modal open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete Account Permanently" maxWidth="max-w-md">
+      <Dialog open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete Account Permanently" maxWidth="max-w-md">
         <div className="space-y-4">
           <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-theme flex items-center justify-center shrink-0 mt-0.5">
@@ -1042,7 +1041,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
       {/* Loading Overlays for Major Actions */}
       {isDeletingAccount && (
         <AscendLoadingOverlay

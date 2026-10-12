@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { Dialog } from '@/components/ui/primitives';
 import {
   Target,
   FolderKanban,
@@ -33,7 +34,6 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
@@ -2536,7 +2536,7 @@ export function ProjectsGoalsView({
       {/* -------------------------------------------------------------------- */}
       {/* GOAL MODAL (CREATE / EDIT) */}
       {/* -------------------------------------------------------------------- */}
-      <Modal
+      <Dialog
         open={goalModalOpen}
         onClose={() => setGoalModalOpen(false)}
         title={editingGoal ? 'Edit Goal' : 'Create New Goal'}
@@ -2663,12 +2663,12 @@ export function ProjectsGoalsView({
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* -------------------------------------------------------------------- */}
       {/* PROJECT MODAL (CREATE / EDIT) */}
       {/* -------------------------------------------------------------------- */}
-      <Modal
+      <Dialog
         open={projectModalOpen}
         onClose={() => setProjectModalOpen(false)}
         title={editingProject ? 'Edit Project' : 'Create New Project'}
@@ -2779,12 +2779,12 @@ export function ProjectsGoalsView({
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* -------------------------------------------------------------------- */}
       {/* TASK MODAL (CREATE / EDIT) */}
       {/* -------------------------------------------------------------------- */}
-      <Modal
+      <Dialog
         open={taskModalOpen}
         onClose={() => setTaskModalOpen(false)}
         title={editingTask ? 'Edit Task' : 'Create New Task'}
@@ -2938,7 +2938,7 @@ export function ProjectsGoalsView({
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* -------------------------------------------------------------------- */}
       {/* CONFIRM DELETE MODALS */}
@@ -2999,7 +2999,7 @@ export function ProjectsGoalsView({
       {/* -------------------------------------------------------------------- */}
       {/* 4. EDUCATIONAL HIERARCHY GUIDE MODAL */}
       {/* -------------------------------------------------------------------- */}
-      <Modal
+      <Dialog
         open={isGuideModalOpen}
         onClose={() => setIsGuideModalOpen(false)}
         title="How Ascend Hierarchy Works"
@@ -3125,7 +3125,7 @@ export function ProjectsGoalsView({
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
     </div>
   );
 }

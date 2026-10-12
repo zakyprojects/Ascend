@@ -36,9 +36,8 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { DEFAULT_TIME_TRACKER_ACTIVITIES } from '@/types';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { EmptyState, ProgressBar } from '@/components/ui/primitives';
+import { Dialog, EmptyState, ProgressBar } from '@/components/ui/primitives';
 import {
   todayKey,
   formatDateLong,
@@ -2189,7 +2188,7 @@ function FocusTimerSubmodule({
       )}
 
       {/* "About Deep Work" Info Modal */}
-      <Modal open={aboutModalOpen} onClose={() => setAboutModalOpen(false)} title="About Deep Focus & Executive Training">
+      <Dialog open={aboutModalOpen} onClose={() => setAboutModalOpen(false)} title="About Deep Focus & Executive Training">
         <div className="space-y-5 text-content-tertiary text-xs leading-relaxed max-h-[75vh] overflow-y-auto pr-1">
           {/* Section 1 */}
           <div className="p-3.5 bg-cyan-500/10 rounded-xl border border-cyan-500/20 space-y-1.5">
@@ -2243,10 +2242,10 @@ function FocusTimerSubmodule({
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* Take Break Modal in Live Schedule Sync */}
-      <Modal open={showTakeBreakModal} onClose={() => setShowTakeBreakModal(false)} title="Take a Mid-Block Break">
+      <Dialog open={showTakeBreakModal} onClose={() => setShowTakeBreakModal(false)} title="Take a Mid-Block Break">
         <div className="space-y-5">
           <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-success-text">
             <Coffee size={20} className="shrink-0 text-success-text" />
@@ -2350,10 +2349,10 @@ function FocusTimerSubmodule({
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* Confirmation Dialog for Discarding Active Session */}
-      <Modal open={confirmResetOpen} onClose={() => setConfirmResetOpen(false)} title="Discard Active Focus Session?">
+      <Dialog open={confirmResetOpen} onClose={() => setConfirmResetOpen(false)} title="Discard Active Focus Session?">
         <div className="space-y-4 text-xs text-content-tertiary">
           <p>
             You currently have an active focus session in progress. Discarding will stop the timer and no points or logs will be saved.
@@ -2371,10 +2370,10 @@ function FocusTimerSubmodule({
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* Post-Session Reflection Modal */}
-      <Modal open={reflectionModalOpen} onClose={() => setReflectionModalOpen(false)} title="Focus Session Completed! 🎉">
+      <Dialog open={reflectionModalOpen} onClose={() => setReflectionModalOpen(false)} title="Focus Session Completed! 🎉">
         <div className="space-y-4">
           <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-xs text-cyan-hierarchy">
             Great job! You logged <strong>{completedSessionData?.durationMinutes} minutes</strong> of focus on <strong>"{completedSessionData?.taskName}"</strong>.
@@ -2403,7 +2402,7 @@ function FocusTimerSubmodule({
             </button>
           </div>
         </div>
-      </Modal>
+      </Dialog>
 
       {/* Confirm Delete Modal */}
       <ConfirmDeleteModal
@@ -2540,7 +2539,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
       )}
 
       {/* Log Decision Modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Log New Decision">
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} title="Log New Decision">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="pfc-decision-title" className="block text-xs font-medium text-content-muted mb-1">Decision Title</label>
@@ -2600,10 +2599,10 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* Reflect Modal */}
-      <Modal open={!!reflectModalDecision} onClose={() => setReflectModalDecision(null)} title={`Reflect: ${reflectModalDecision?.title}`}>
+      <Dialog open={!!reflectModalDecision} onClose={() => setReflectModalDecision(null)} title={`Reflect: ${reflectModalDecision?.title}`}>
         <form onSubmit={handleReflectionSubmit} className="space-y-4">
           <div>
             <label htmlFor="pfc-decision-reflection-notes" className="block text-xs font-medium text-content-muted mb-1">What actually happened? What did you learn?</label>
@@ -2626,7 +2625,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* Confirm Delete Modal */}
       <ConfirmDeleteModal
@@ -2748,7 +2747,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
       )}
 
       {/* Modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Label Strong Emotion">
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} title="Label Strong Emotion">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="pfc-emotion-select" className="block text-xs font-medium text-content-muted mb-1">Select Emotion</label>
@@ -2809,7 +2808,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* Confirm Delete Modal */}
       <ConfirmDeleteModal

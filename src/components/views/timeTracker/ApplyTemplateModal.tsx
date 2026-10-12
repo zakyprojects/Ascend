@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal } from '@/components/ui/Modal';
+import { Dialog } from '@/components/ui/primitives';
 import { TimeTrackerTemplate } from '@/types';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Layers, Sparkles, RefreshCw, Plus, Calendar } from 'lucide-react';
@@ -43,7 +43,7 @@ export function ApplyTemplateModal({
   };
 
   return (
-    <Modal
+    <Dialog
       open={open}
       onClose={onClose}
       title="Apply Blueprint Template"
@@ -177,6 +177,6 @@ export function ApplyTemplateModal({
           </button>
         </div>
       </form>
-    </Modal>
+    </Dialog>
   );
 }

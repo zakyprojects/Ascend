@@ -31,9 +31,8 @@ import {
   Filter,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { EmptyState, ProgressBar, Skeleton } from '@/components/ui/primitives';
+import { Dialog, EmptyState, ProgressBar, Skeleton } from '@/components/ui/primitives';
 import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
 import { getCurrentTier } from '@/lib/tiers';
 import { todayKey } from '@/lib/dates';
@@ -1543,7 +1542,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       )}
 
       {/* CREATE PLAN MODAL */}
-      <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create Personal Improvement Plan">
+      <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create Personal Improvement Plan">
         <form onSubmit={handleCreateSubmit} className="space-y-4">
           {/* STARTER TEMPLATE ACCELERATOR */}
           <div className="card p-3 space-y-2">
@@ -1876,10 +1875,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* EDIT STRUCTURAL FIELDS MODAL */}
-      <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Plan Structure">
+      <Dialog open={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Plan Structure">
         <form onSubmit={handleEditSubmit} className="space-y-4">
           <div>
             <label htmlFor="pip-edit-title" className="block text-xs font-medium text-content-muted mb-1">Plan Title</label>
@@ -2082,7 +2081,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
 
       {/* Delete Plan Confirm Modal */}
       <ConfirmDeleteModal

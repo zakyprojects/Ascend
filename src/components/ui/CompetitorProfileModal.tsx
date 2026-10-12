@@ -1,7 +1,6 @@
-import { Modal } from './Modal';
 import { LeagueCompetitor } from '@/types';
 import { TierBadge } from './TierBadge';
-import { EmptyState } from '@/components/ui/primitives';
+import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, ShieldCheck, CheckCircle2, EyeOff, Trophy } from 'lucide-react';
 import { getProfileStreakStats } from '@/lib/streakLogic';
 import { getCurrentTier } from '@/lib/tiers';
@@ -29,7 +28,7 @@ export function CompetitorProfileModal({
   const seasonHistory = competitor.season_history || competitor.stats?.season_history;
 
   return (
-    <Modal
+    <Dialog
       open={open}
       onClose={onClose}
       title="User Profile & Achievements"
@@ -252,7 +251,7 @@ export function CompetitorProfileModal({
           </>
         )}
       </div>
-    </Modal>
+    </Dialog>
   );
 }
 

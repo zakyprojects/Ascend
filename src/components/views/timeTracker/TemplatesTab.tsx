@@ -17,9 +17,8 @@ import {
 import { todayKey, formatDateKeyHuman } from '@/lib/dates';
 import { ActivityIcon } from './ActivityIcon';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
-import { EmptyState } from '@/components/ui/primitives';
+import { Dialog, EmptyState } from '@/components/ui/primitives';
 import {
   Layers,
   Plus,
@@ -478,7 +477,7 @@ export function TemplatesTab({
 
       {/* Transfer Auto-Apply Day Modal */}
       {conflictState && (
-        <Modal
+        <Dialog
           open={conflictState.isOpen}
           onClose={() => setConflictState(null)}
           title="Transfer Auto-Apply Day?"
@@ -506,7 +505,7 @@ export function TemplatesTab({
               Transfer Day
             </button>
           </div>
-        </Modal>
+        </Dialog>
       )}
     </div>
   );

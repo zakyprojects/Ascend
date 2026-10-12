@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Modal } from './Modal';
+import { Dialog } from './primitives';
 import { Mail, Lock, User, Check, AlertCircle, Sparkles, LogIn, UserPlus, UserCheck, Shield, Zap, ArrowLeft } from 'lucide-react';
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
@@ -228,7 +228,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
   };
 
   return (
-    <Modal
+    <Dialog
       open={open}
       onClose={onClose}
       preventClose={!isAuthenticated}
@@ -530,6 +530,6 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
           </div>
         )}
       </div>
-    </Modal>
+    </Dialog>
   );
 }

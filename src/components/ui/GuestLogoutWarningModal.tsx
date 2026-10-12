@@ -1,5 +1,5 @@
-import { Modal } from './Modal';
 import { AlertTriangle, Shield, LogOut } from 'lucide-react';
+import { Dialog } from './primitives';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 
 interface GuestLogoutWarningModalProps {
@@ -20,7 +20,7 @@ export function GuestLogoutWarningModal({
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={isLoggingOut ? () => {} : onClose} title="Guest Account Warning" maxWidth="max-w-md">
+    <Dialog open={open} onClose={isLoggingOut ? () => {} : onClose} title="Guest Account Warning" maxWidth="max-w-md">
       <div className="space-y-4">
         <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-warning-text flex items-center justify-center shrink-0 mt-0.5">
@@ -70,6 +70,6 @@ export function GuestLogoutWarningModal({
           </button>
         </div>
       </div>
-    </Modal>
+    </Dialog>
   );
 }
