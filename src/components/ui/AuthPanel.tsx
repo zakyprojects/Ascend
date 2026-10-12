@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, Shield, Zap, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, Shield, ArrowLeft, ArrowRight } from 'lucide-react';
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
@@ -81,6 +81,21 @@ export interface AuthClimbState {
   passwordVisible: boolean;
   errorTick: number;
   upset: boolean;
+}
+
+/**
+ * Guest: a profile with no account behind it. Lucide's circle-user-round with the outer ring dashed
+ * (lucide has no guest icon), drawn in lucide's grid and stroke so it sits with the other icons.
+ */
+function GuestIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {/* pathLength 60 with 3/2 dashes: twelve even dashes, no seam where the ring closes. */}
+      <circle cx="12" cy="12" r="10" pathLength={60} strokeDasharray="3 2" />
+      <circle cx="12" cy="10" r="4" />
+      <path d="M18 20a6 6 0 0 0-12 0" />
+    </svg>
+  );
 }
 
 /** The form's fields by element id, as the page's mascot knows them. */
@@ -612,7 +627,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                 className="group w-full p-4 bg-bg-700 hover:bg-bg-600 border border-overlay-default text-content-primary rounded-xl transition-colors duration-base flex items-center gap-3 text-left disabled:opacity-50"
               >
                 <span className="w-9 h-9 shrink-0 rounded-lg bg-bg-800 border border-overlay-subtle text-brand-text flex items-center justify-center">
-                  <Zap size={18} />
+                  <GuestIcon size={18} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold">Continue as guest</span>
