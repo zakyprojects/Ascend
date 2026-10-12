@@ -79,7 +79,7 @@ export function useSeen(ref: RefObject<Element>, enabled = true): boolean {
   return seen;
 }
 
-const COUNT_DURATION_MS = 700;
+const COUNT_DURATION_MS = 500;
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
 /**

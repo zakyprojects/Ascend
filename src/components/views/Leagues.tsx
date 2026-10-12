@@ -38,14 +38,6 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
           <h1 className="page-title">Leagues</h1>
           <p className="page-subtitle">Compete with real people and climb the table.</p>
         </div>
-        {!currentUser && onOpenAuthModal && (
-          <button
-            onClick={onOpenAuthModal}
-            className="hidden sm:flex shrink-0 items-center gap-1.5 px-3 py-1.5 hover:bg-overlay-subtle border border-overlay-default text-content-secondary text-xs font-medium rounded-lg transition-colors"
-          >
-            <span>Sign Up to Claim Username</span>
-          </button>
-        )}
       </div>
 
       {/* Guest Mode Banner */}
@@ -66,7 +58,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
               onClick={onOpenAuthModal}
               className="px-3.5 py-1.5 bg-primary-600 hover:bg-primary-700 text-on-brand text-xs font-semibold rounded-lg transition-colors shrink-0 w-full sm:w-auto"
             >
-              Save Progress / Create Account
+              Create Account
             </button>
           )}
         </div>

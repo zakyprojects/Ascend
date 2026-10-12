@@ -2,7 +2,7 @@ import { CSSProperties, ReactNode, useEffect, useRef, useState } from 'react';
 import { useCountUp, useIntroMotion, useSeen } from '@/lib/motion';
 import { cx } from './primitives/shared';
 
-const STAGGER_MS = 60;
+const STAGGER_MS = 40;
 const MAX_STAGGER_STEPS = 6;
 // Seen this soon after mounting = it was on screen when the view opened, so it joins the page's
 // stagger. Anything seen later was scrolled to and reveals at once.

@@ -150,7 +150,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             </div>
           </div>
           <button onClick={onOpenAuthModal} className="btn-primary text-xs shrink-0 w-full sm:w-auto">
-            Save Progress / Create Account
+            Create Account
           </button>
         </div>
       )}
