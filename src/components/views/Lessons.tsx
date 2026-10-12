@@ -155,7 +155,7 @@ export function Lessons({ store }: { store: AppStore }) {
               </span>
               <span className="text-brand-text">+{openLesson.points} pts</span>
             </div>
-            <div className="prose prose-invert prose-sm max-w-none">
+            <div>
               {renderLessonContent(openLesson.content)}
             </div>
             <div className="mt-6 pt-4 border-t border-overlay-subtle">
@@ -183,29 +183,93 @@ export function Lessons({ store }: { store: AppStore }) {
   );
 }
 
+// Lesson bodies (lib/lessons.ts) use a small Markdown subset: ``` callouts, blank-line
+// separated blocks, "- " and "1. " lists, and **bold**. Rendered here so no syntax shows.
+type LessonBlock =
+  | { kind: 'p'; text: string }
+  | { kind: 'ul'; items: string[] }
+  | { kind: 'ol'; items: string[]; start: number };
+
+const BULLET = /^- (.*)$/;
+const NUMBERED = /^(\d+)\. (.*)$/;
+
+function parseLessonBlocks(text: string): LessonBlock[] {
+  const blocks: LessonBlock[] = [];
+  for (const line of text.split('\n').map((l) => l.trim())) {
+    const last = blocks[blocks.length - 1];
+    const bullet = BULLET.exec(line);
+    const numbered = NUMBERED.exec(line);
+    if (!line) {
+      blocks.push({ kind: 'p', text: '' });
+    } else if (bullet) {
+      if (last?.kind === 'ul') last.items.push(bullet[1]);
+      else blocks.push({ kind: 'ul', items: [bullet[1]] });
+    } else if (numbered) {
+      if (last?.kind === 'ol') last.items.push(numbered[2]);
+      else blocks.push({ kind: 'ol', items: [numbered[2]], start: Number(numbered[1]) });
+    } else if (last?.kind === 'p' && last.text) {
+      last.text += ` ${line}`;
+    } else {
+      blocks.push({ kind: 'p', text: line });
+    }
+  }
+  return blocks.filter((b) => b.kind !== 'p' || b.text);
+}
+
+function renderInline(text: string) {
+  return text.split(/\*\*(.+?)\*\*/).map((part, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="font-semibold text-content-primary">
+        {part}
+      </strong>
+    ) : (
+      part
+    )
+  );
+}
+
+const LIST_CLASS = 'text-sm text-content-tertiary leading-relaxed mb-3 pl-5 space-y-1.5 marker:text-content-disabled';
+
 function renderLessonContent(content: string) {
-  // Split by code blocks (```...```) and render them as styled callouts
-  const parts = content.split(/```([\s\S]*?)```/);
-  return parts.map((part, idx) => {
+  // Odd parts of the ``` split are callouts.
+  return content.split(/```([\s\S]*?)```/).map((part, idx) => {
     if (idx % 2 === 1) {
-      // Odd indices are code blocks — render as callout
       return (
         <div
           key={idx}
           className="my-3 p-3 rounded-xl bg-bg-700 border-l-2 border-primary-500/50 text-sm text-content-tertiary italic"
         >
-          {part.trim()}
+          {renderInline(part.trim())}
         </div>
       );
     }
-    // Even indices are regular text — render paragraphs
     return (
       <div key={idx}>
-        {part.trim().split('\n\n').map((para, pIdx) => (
-          <p key={pIdx} className="text-sm text-content-tertiary leading-relaxed mb-3">
-            {para.trim()}
-          </p>
-        ))}
+        {parseLessonBlocks(part).map((block, bIdx) => {
+          if (block.kind === 'ul') {
+            return (
+              <ul key={bIdx} className={`list-disc ${LIST_CLASS}`}>
+                {block.items.map((item, i) => (
+                  <li key={i}>{renderInline(item)}</li>
+                ))}
+              </ul>
+            );
+          }
+          if (block.kind === 'ol') {
+            return (
+              <ol key={bIdx} start={block.start} className={`list-decimal ${LIST_CLASS}`}>
+                {block.items.map((item, i) => (
+                  <li key={i}>{renderInline(item)}</li>
+                ))}
+              </ol>
+            );
+          }
+          return (
+            <p key={bIdx} className="text-sm text-content-tertiary leading-relaxed mb-3">
+              {renderInline(block.text)}
+            </p>
+          );
+        })}
       </div>
     );
   });
