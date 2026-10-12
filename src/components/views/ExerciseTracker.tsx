@@ -4,13 +4,15 @@ import { AppStore } from '@/lib/store';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
-import { todayKey, formatDateLong, parseDate, startOfWeek } from '@/lib/dates';
+import { todayKey, formatDateLong, parseDate, startOfWeek, formatWeekdayDate } from '@/lib/dates';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { BarChart } from '@/components/ui/charts';
+import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 
 const DEFAULT_WORKOUT_TYPES = [
   'Running',
@@ -96,8 +98,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
     const points = workouts
       .filter((w) => w.date === key)
       .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
-    return { dayLabel, points, isToday: key === today };
+    return { dayLabel, key, points, isToday: key === today };
   });
+  const todayChartIndex = dailyPoints.findIndex((d) => d.isToday);
 
   const maxPointsInChart = Math.max(WORKOUT_POINTS.dailyCap, ...dailyPoints.map((d) => d.points));
 
@@ -178,7 +181,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       </div>
 
       {/* Hero Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <Reveal index={0} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="card p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
             <Flame size={22} />
@@ -186,7 +189,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           <div>
             <div className="text-xs text-content-disabled">{dominantUnitInfo.label}</div>
             <div className="text-xl font-display font-bold text-content-primary">
-              {dominantUnitInfo.value} <span className="text-xs font-normal text-content-muted">{dominantUnitInfo.unit}</span>
+              <AutoNum text={String(dominantUnitInfo.value)} />{' '}
+              <span className="text-xs font-normal text-content-muted">{dominantUnitInfo.unit}</span>
             </div>
           </div>
         </div>
@@ -198,7 +202,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           <div>
             <div className="text-xs text-content-disabled">Weekly Sessions</div>
             <div className="text-xl font-display font-bold text-content-primary">
-              {totalWeeklySessions} <span className="text-xs font-normal text-content-muted">sessions</span>
+              <CountUp value={totalWeeklySessions} /> <span className="text-xs font-normal text-content-muted">sessions</span>
             </div>
           </div>
         </div>
@@ -210,16 +214,17 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           <div>
             <div className="text-xs text-content-disabled">Points Today</div>
             <div className="text-xl font-display font-bold text-brand-text">
-              {pointsEarnedToday} <span className="text-xs font-normal text-content-disabled">/ {WORKOUT_POINTS.dailyCap} pts cap</span>
+              <CountUp value={pointsEarnedToday} />{' '}
+              <span className="text-xs font-normal text-content-disabled">/ {WORKOUT_POINTS.dailyCap} pts cap</span>
             </div>
           </div>
         </div>
-      </div>
+      </Reveal>
 
       <CapMeterConnected state={store.state} capId="exercise" />
 
       {/* Weekly Activity Chart */}
-      <div className="card p-5">
+      <Reveal index={1} className="card p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="section-title flex items-center gap-2">
             <Calendar size={18} className="text-brand-text" />
@@ -228,32 +233,16 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           <span className="text-xs text-content-disabled">Mon - Sun (Points)</span>
         </div>
 
-        <div className="grid grid-cols-7 gap-2 items-end h-40 pt-6 pb-2 border-b border-overlay-subtle">
-          {dailyPoints.map((d) => {
-            const heightPercent = Math.round((d.points / maxPointsInChart) * 100);
-            return (
-              <div key={d.dayLabel} className="flex flex-col items-center h-full justify-end group relative">
-                {/* Tooltip */}
-                <div className="absolute -top-7 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity bg-bg-700 text-content-secondary text-2xs px-1.5 py-0.5 rounded border border-overlay-default pointer-events-none whitespace-nowrap z-10">
-                  {d.points} pts
-                </div>
-                {/* Bar */}
-                <div className="w-full max-w-[28px] bg-bg-700/60 rounded-t-lg overflow-hidden flex flex-col justify-end h-full">
-                  <div
-                    className={`w-full rounded-t-lg transition-all duration-500 ${
-                      d.isToday ? 'bg-gradient-to-t from-emerald-600 to-emerald-400' : 'bg-primary-500/40 hover:bg-primary-500/60'
-                    }`}
-                    style={{ height: `${Math.max(d.points > 0 ? 10 : 0, heightPercent)}%` }}
-                  />
-                </div>
-                <span className={`text-micro mt-2 font-medium ${d.isToday ? 'text-success-text font-bold' : 'text-content-disabled'}`}>
-                  {d.dayLabel}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+        {/* Scaled to the daily cap so a capped day reads as a full bar. */}
+        <BarChart
+          data={dailyPoints.map((d) => ({ label: d.dayLabel, value: d.points }))}
+          label={`Workout points per day this week, daily cap ${WORKOUT_POINTS.dailyCap}`}
+          highlightIndex={todayChartIndex >= 0 ? todayChartIndex : undefined}
+          max={maxPointsInChart}
+          height={140}
+          formatTooltip={(datum, i) => `${formatWeekdayDate(dailyPoints[i].key)}: ${datum.value} pts`}
+        />
+      </Reveal>
 
       {/* Workout Logs List */}
       <div>
