@@ -346,7 +346,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
         </header>
 
         {/* Main content */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] lg:pb-0">
+        <main ref={mainRef} className="relative flex-1 overflow-y-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] lg:pb-0">
           {activeGroup && (
             <div className="lg:hidden px-4 pt-3">
               <Tabs
