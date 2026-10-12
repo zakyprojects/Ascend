@@ -51,10 +51,10 @@ export function ActivitiesTab({
   return (
     <div className="space-y-6">
       {/* 1. Header & Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle ">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-serif text-xl leading-tight text-content-primary flex items-center gap-2">
-            <Tag className="text-success-text" size={18} />
+            <Tag className="text-content-subtle" size={18} />
             <span>Master Activity Categories</span>
           </h2>
           <p className="text-xs text-content-muted mt-0.5">
@@ -78,18 +78,14 @@ export function ActivitiesTab({
           return (
             <div
               key={act.id}
-              className="scroll-rise p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default transition-all flex items-start justify-between gap-3"
+              className="scroll-rise p-4 rounded-2xl border border-overlay-subtle hover:border-overlay-default transition-colors flex items-start justify-between gap-3"
             >
               <div className="flex items-start gap-3 min-w-0">
                 <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-inner mt-0.5"
-                  style={{
-                    backgroundColor: `${color}25`,
-                    color,
-                    border: `1px solid ${color}40`,
-                  }}
+                  className="flex items-center justify-center shrink-0 mt-0.5"
+                  style={{ color }}
                 >
-                  <ActivityIcon iconName={act.icon} size={22} />
+                  <ActivityIcon iconName={act.icon} size={18} />
                 </div>
 
                 <div className="min-w-0">
@@ -107,8 +103,8 @@ export function ActivitiesTab({
                   </div>
 
                   {act.ascendModule ? (
-                    <div className="flex items-center gap-1 mt-1.5 text-success-text text-micro">
-                      <LinkIcon size={12} className="text-success-text shrink-0" />
+                    <div className="flex items-center gap-1 mt-1.5 text-content-muted text-micro">
+                      <LinkIcon size={12} className="shrink-0" />
                       <span className="truncate">Linked: {act.ascendModule}</span>
                     </div>
                   ) : (

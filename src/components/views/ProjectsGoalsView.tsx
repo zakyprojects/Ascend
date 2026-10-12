@@ -56,7 +56,7 @@ import { CountUp } from '@/components/ui/Motion';
 // Active look of each status filter, worn by the row's SlidingPill.
 const GOAL_FILTER_PILL: Record<string, string> = {
   all: 'bg-overlay-default border-overlay-strong',
-  active: 'bg-emerald-500/20 border-emerald-500/30',
+  active: 'bg-overlay-default border-overlay-strong',
   achieved: 'bg-[var(--badge-neutral-bg)] border-[var(--badge-neutral-border)]',
   abandoned: 'bg-overlay-default border-overlay-default',
 };
@@ -65,7 +65,7 @@ const PROJECT_FILTER_PILL: Record<string, string> = {
   in_progress: 'bg-[var(--badge-neutral-bg)] border-[var(--badge-neutral-border)]',
   not_started: 'bg-overlay-default border-overlay-default',
   on_hold: 'bg-overlay-default border-overlay-medium',
-  completed: 'bg-emerald-500/20 border-emerald-500/30',
+  completed: 'bg-overlay-default border-overlay-strong',
   locked: 'bg-overlay-default border-overlay-medium',
 };
 
@@ -135,12 +135,12 @@ function TaskItemRow({
   return (
     <div
       key={task.id}
-      className={`card enter-item p-4 border transition-all rounded-2xl space-y-3 ${
+      className={`enter-item p-4 transition-colors space-y-3 ${
         projectLock.isLocked
-          ? 'bg-bg-800/80 border-overlay-default'
+          ? 'bg-overlay-subtle'
           : task.completed
-          ? 'bg-bg-800/50 border-overlay-subtle opacity-75'
-          : 'bg-bg-800 border-overlay-default hover:border-emerald-500/30'
+          ? 'opacity-75'
+          : 'hover:bg-overlay-subtle'
       }`}
     >
       {/* Main Row */}
@@ -256,7 +256,7 @@ function TaskItemRow({
                 onStartFocusSession(task.title);
               }
             }}
-            className="px-2.5 py-1.5 rounded-xl bg-primary-500/15 hover:bg-primary-500/25 border border-primary-500/30 text-content-secondary text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+            className="px-2.5 py-1.5 rounded-xl hover:bg-overlay-subtle border border-overlay-default text-content-secondary text-xs font-medium flex items-center gap-1.5 transition-colors"
             title="Start Deep Focus Session with this task"
           >
             <Timer size={13} />
@@ -1239,7 +1239,7 @@ export function ProjectsGoalsView({
   const goalStatusBadge = (status: GoalStatus) => {
     switch (status) {
       case 'active':
-        return <span className="badge bg-emerald-500/15 text-success-text border border-emerald-500/30 text-2xs">Active</span>;
+        return <span className="badge bg-overlay-default text-content-secondary border border-overlay-medium text-2xs">Active</span>;
       case 'achieved':
         return <span className="badge badge-neutral text-2xs">Achieved</span>;
       case 'abandoned':
@@ -1275,7 +1275,7 @@ export function ProjectsGoalsView({
   return (
     <div className="space-y-6">
       {/* HEADER & TOP NAVIGATION */}
-      <div className="card p-5 space-y-4 border border-overlay-default bg-bg-800/80">
+      <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -1283,59 +1283,12 @@ export function ProjectsGoalsView({
               <button
                 type="button"
                 onClick={() => setIsGuideModalOpen(true)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-default text-xs font-medium transition-all"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-overlay-subtle text-content-muted hover:text-content-primary text-xs font-medium transition-colors"
                 title="Learn the hierarchy framework: Goal → Project → Task"
               >
-                <HelpCircle size={13} className="text-brand-text" />
+                <HelpCircle size={13} />
                 <span>How it works</span>
               </button>
-            </div>
-            <div className="mt-2 flex items-center gap-2 bg-bg-900/60 border border-overlay-subtle px-2 sm:px-3 py-1.5 rounded-xl text-2xs sm:text-xs font-medium overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] w-full">
-              {tabOrder === 'taskFirst' && (
-                <>
-                  <div className="flex items-center gap-1.5 text-content-secondary">
-                    <CheckSquare size={12} /> <span>1. Tasks</span>
-                  </div>
-                  <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-content-secondary">
-                    <FolderKanban size={12} /> <span>2. Projects</span>
-                  </div>
-                  <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-content-secondary">
-                    <Target size={12} /> <span>3. Goals</span>
-                  </div>
-                </>
-              )}
-              {tabOrder === 'projectFirst' && (
-                <>
-                  <div className="flex items-center gap-1.5 text-content-secondary">
-                    <FolderKanban size={12} /> <span>1. Projects</span>
-                  </div>
-                  <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-content-secondary">
-                    <CheckSquare size={12} /> <span>2. Tasks</span>
-                  </div>
-                  <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-content-secondary">
-                    <Target size={12} /> <span>3. Goals</span>
-                  </div>
-                </>
-              )}
-              {tabOrder === 'goalFirst' && (
-                <>
-                  <div className="flex items-center gap-1.5 text-content-secondary">
-                    <Target size={12} /> <span>1. Goals</span>
-                  </div>
-                  <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-content-secondary">
-                    <FolderKanban size={12} /> <span>2. Projects</span>
-                  </div>
-                  <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-content-secondary">
-                    <CheckSquare size={12} /> <span>3. Tasks</span>
-                  </div>
-                </>
-              )}
             </div>
           </div>
 
@@ -1376,87 +1329,78 @@ export function ProjectsGoalsView({
         </div>
 
         {/* STATS OVERVIEW BAR */}
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-overlay-subtle">
+        <div className="grid grid-cols-3 divide-x divide-overlay-subtle py-1">
           {tabOrder === 'taskFirst' && (
             <>
-              <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
+              <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Pending Tasks</span>
                   <CountUp value={hierarchyStats.pendingTasks} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <CheckSquare size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
 
-              <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
+              <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Projects</span>
                   <CountUp value={hierarchyStats.activeProjects} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <FolderKanban size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
 
-              <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
+              <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Goals</span>
                   <CountUp value={hierarchyStats.activeGoals} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <Target size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
             </>
           )}
 
           {tabOrder === 'projectFirst' && (
             <>
-              <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
+              <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Projects</span>
                   <CountUp value={hierarchyStats.activeProjects} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <FolderKanban size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
 
-              <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
+              <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Pending Tasks</span>
                   <CountUp value={hierarchyStats.pendingTasks} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <CheckSquare size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
 
-              <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
+              <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Goals</span>
                   <CountUp value={hierarchyStats.activeGoals} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <Target size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
             </>
           )}
 
           {tabOrder === 'goalFirst' && (
             <>
-              <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
+              <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Goals</span>
                   <CountUp value={hierarchyStats.activeGoals} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <Target size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
 
-              <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
+              <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Projects</span>
                   <CountUp value={hierarchyStats.activeProjects} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <FolderKanban size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
 
-              <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
+              <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Pending Tasks</span>
                   <CountUp value={hierarchyStats.pendingTasks} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <CheckSquare size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
             </>
           )}
@@ -1491,7 +1435,7 @@ export function ProjectsGoalsView({
                   id={`tab-${tab.id}-view`}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-1 sm:gap-2 px-1.5 sm:px-4 py-1 sm:py-2.5 rounded-xl font-medium text-2xs sm:text-xs transition-all shrink-0 ${
-                    isActive ? 'badge-neutral border' : 'text-content-muted hover:bg-overlay-subtle'
+                    isActive ? 'bg-overlay-default text-content-primary' : 'text-content-muted hover:bg-overlay-subtle'
                   }`}
                 >
                   <TabIcon size={14} className="sm:w-4 sm:h-4" />
@@ -1527,14 +1471,14 @@ export function ProjectsGoalsView({
             }
             className={`flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-xs font-semibold transition-all shrink-0 ${
               goals.length === 0
-                ? 'opacity-50 cursor-not-allowed bg-overlay-subtle border-overlay-subtle text-content-disabled'
-                : 'bg-overlay-subtle hover:bg-primary-500/20 text-content-tertiary hover:text-brand-text border-overlay-default hover:border-primary-500/30 cursor-pointer'
+                ? 'opacity-50 cursor-not-allowed border-transparent text-content-disabled'
+                : 'border-transparent hover:bg-overlay-subtle text-content-muted hover:text-content-primary cursor-pointer'
             }`}
           >
-            <ArrowDownUp size={13} className={goals.length === 0 ? 'text-content-disabled' : 'text-brand-text'} />
+            <ArrowDownUp size={13} />
             <span className="hidden sm:inline">
               {goals.length === 0
-                ? '🔒 Sort View'
+                ? 'Sort View'
                 : tabOrder === 'taskFirst'
                 ? 'Tasks First'
                 : tabOrder === 'projectFirst'
@@ -1551,7 +1495,7 @@ export function ProjectsGoalsView({
       {activeTab === 'goals' && (
         <div className="space-y-4">
           {/* Goals Control Bar with Two-Tier Filter & Search */}
-          <div className="p-3 sm:p-4 bg-bg-900/60 border border-overlay-subtle rounded-2xl flex flex-col gap-3">
+          <div className="flex flex-col gap-3">
             {/* Top Row: Search */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
               <div className="flex-1 relative w-full">
@@ -1587,7 +1531,7 @@ export function ProjectsGoalsView({
                 data-pill-id="active"
                 onClick={() => setGoalStatusFilter('active')}
                 className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
-                  goalStatusFilter === 'active' ? 'text-success-text' : 'text-content-muted hover:text-content-secondary'
+                  goalStatusFilter === 'active' ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
                 Active ({goalStatusCounts.active})
@@ -1630,7 +1574,7 @@ export function ProjectsGoalsView({
                 return (
                   <div
                     key={goal.id}
-                    className="card enter-item p-4 sm:p-4.5 border border-overlay-default bg-bg-800 rounded-2xl space-y-3.5 hover:border-primary-500/30 transition-all shadow-sm group"
+                    className="card enter-item p-4 sm:p-4.5 border border-overlay-default bg-bg-800 rounded-2xl space-y-3.5 hover:border-overlay-medium transition-all shadow-sm group"
                   >
                     {/* Top Row: Info & Metadata (Left) + Actions & Controls (Right) */}
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -1646,13 +1590,13 @@ export function ProjectsGoalsView({
                           )}
                           {goal.category && (
                             <span className="badge bg-overlay-subtle text-content-tertiary border border-overlay-default text-2xs flex items-center gap-1">
-                              <Tag size={10} className="text-brand-text shrink-0" />
+                              <Tag size={10} className="text-content-subtle shrink-0" />
                               <span className="truncate max-w-[140px]">{goal.category}</span>
                             </span>
                           )}
                           {goal.targetDate ? (
                             <span className="badge bg-overlay-subtle text-content-tertiary border border-overlay-default text-2xs flex items-center gap-1">
-                              <Calendar size={10} className="text-brand-text shrink-0" />
+                              <Calendar size={10} className="text-content-subtle shrink-0" />
                               <span>Target: {formatDateShort(goal.targetDate)}</span>
                             </span>
                           ) : (
@@ -1689,7 +1633,7 @@ export function ProjectsGoalsView({
                               setFilterGoalId(goal.id);
                               setActiveTab('projects');
                             }}
-                            className="text-xs text-brand-text hover:text-brand-text font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-primary-500/10 hover:bg-primary-500/20 border border-primary-500/30 transition-colors shrink-0 whitespace-nowrap"
+                            className="text-xs text-content-secondary hover:text-content-primary font-medium flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-overlay-subtle border border-overlay-default transition-colors shrink-0 whitespace-nowrap"
                             title="View linked projects"
                           >
                             <span>Projects</span>
@@ -1698,7 +1642,7 @@ export function ProjectsGoalsView({
                         ) : (
                           <button
                             onClick={() => openCreateProjectModal(goal.id)}
-                            className="text-xs text-content-muted hover:text-brand-text font-medium flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-overlay-subtle border border-overlay-default transition-colors shrink-0 whitespace-nowrap"
+                            className="text-xs text-content-muted hover:text-content-primary font-medium flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-overlay-subtle border border-overlay-default transition-colors shrink-0 whitespace-nowrap"
                             title="Create first project for this goal"
                           >
                             <Plus size={12} />
@@ -1729,12 +1673,12 @@ export function ProjectsGoalsView({
 
                     {/* Goal Nudge: 0 Linked Projects */}
                     {prog.linkedProjectsCount === 0 && (
-                      <div className="badge-neutral p-3 rounded-lg text-xs flex items-center justify-between mt-3">
+                      <div className="pt-3 border-t border-overlay-subtle text-content-muted text-xs flex items-center justify-between mt-3">
                         <span className="leading-relaxed">A goal without a plan is just a wish. Link a project to define your action phases.</span>
                         <button
                           type="button"
                           onClick={() => openCreateProjectModal(goal.id)}
-                          className="px-2.5 py-1 rounded-lg bg-primary-500/20 hover:bg-primary-500/30 text-brand-text font-semibold border border-primary-500/30 transition-colors shrink-0 ml-3 whitespace-nowrap"
+                          className="px-2.5 py-1 rounded-lg hover:bg-overlay-subtle text-content-primary font-medium border border-overlay-default transition-colors shrink-0 ml-3 whitespace-nowrap"
                         >
                           + Link Project
                         </button>
@@ -1821,12 +1765,12 @@ export function ProjectsGoalsView({
         <div className="space-y-4">
           {/* Breadcrumb if filtered by Goal */}
           {filterGoalId && (
-            <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-2xl flex items-center justify-between gap-3">
+            <div className="p-3 border border-overlay-default rounded-2xl flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                <Target size={16} className="text-brand-text shrink-0" />
+                <Target size={16} className="text-content-subtle shrink-0" />
                 <span className="text-xs text-content-tertiary">
                   Showing projects linked to Goal:{' '}
-                  <strong className="text-brand-text font-medium">{getGoalName(filterGoalId)}</strong>
+                  <strong className="text-content-primary font-medium">{getGoalName(filterGoalId)}</strong>
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -1835,7 +1779,7 @@ export function ProjectsGoalsView({
                     setFilterGoalId(null);
                     setActiveTab('goals');
                   }}
-                  className="text-xs text-brand-text hover:text-brand-text underline font-medium"
+                  className="text-xs text-content-secondary hover:text-content-primary underline font-medium"
                 >
                   ← Back to all Goals
                 </button>
@@ -1851,7 +1795,7 @@ export function ProjectsGoalsView({
           )}
 
           {/* Projects Control Bar with Two-Tier Filter & Search */}
-          <div className="p-3 sm:p-4 bg-bg-900/60 border border-overlay-subtle rounded-2xl flex flex-col gap-3">
+          <div className="flex flex-col gap-3">
             {/* Top Row: Search & Goal Dropdown Filter */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
               <div className="flex-1 relative w-full">
@@ -1936,7 +1880,7 @@ export function ProjectsGoalsView({
                 data-pill-id="completed"
                 onClick={() => setProjectStatusFilter('completed')}
                 className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
-                  projectStatusFilter === 'completed' ? 'text-success-text' : 'text-content-muted hover:text-content-secondary'
+                  projectStatusFilter === 'completed' ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
                 Completed ({projectStatusCounts.completed})
@@ -1984,7 +1928,7 @@ export function ProjectsGoalsView({
                     className={`card enter-item p-4 sm:p-4.5 border rounded-2xl space-y-3.5 transition-all shadow-sm group ${
                       lockStatus.isLocked
                         ? 'border-overlay-default bg-bg-800/80 hover:border-overlay-strong'
-                        : 'border-overlay-default bg-bg-800 hover:border-primary-500/30'
+                        : 'border-overlay-default bg-bg-800 hover:border-overlay-medium'
                     }`}
                   >
                     {/* Locked Banner if Locked */}
@@ -2009,7 +1953,7 @@ export function ProjectsGoalsView({
                                 setFilterGoalId(project.goalId || null);
                                 setActiveTab('goals');
                               }}
-                              className="badge bg-primary-500/10 text-brand-text hover:bg-primary-500/20 border border-primary-500/20 text-2xs truncate flex items-center gap-1 transition-colors"
+                              className="badge bg-overlay-subtle text-content-secondary hover:bg-overlay-default border border-overlay-default text-2xs truncate flex items-center gap-1 transition-colors"
                               title={`Linked to Goal: ${getGoalName(project.goalId)}`}
                             >
                               <Target size={10} className="shrink-0" />
@@ -2129,7 +2073,7 @@ export function ProjectsGoalsView({
                             setFilterProjectId(project.id);
                             setActiveTab('tasks');
                           }}
-                          className="text-xs text-content-secondary hover:text-content-secondary font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-primary-500/10 hover:bg-primary-500/20 border border-primary-500/30 transition-colors shrink-0 whitespace-nowrap"
+                          className="text-xs text-content-secondary hover:text-content-primary font-medium flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-overlay-subtle border border-overlay-default transition-colors shrink-0 whitespace-nowrap"
                           title="View project tasks"
                         >
                           <span>Tasks</span>
@@ -2159,7 +2103,7 @@ export function ProjectsGoalsView({
 
                     {/* Project Nudge: 0 Linked Tasks */}
                     {prog.total === 0 && (
-                      <div className="badge-neutral p-3 rounded-lg text-xs flex items-center justify-between mt-3">
+                      <div className="pt-3 border-t border-overlay-subtle text-content-muted text-xs flex items-center justify-between mt-3">
                         <span className="leading-relaxed">This project is stalled. Break it down and add an atomic task to start the engine.</span>
                         <button
                           type="button"
@@ -2171,7 +2115,7 @@ export function ProjectsGoalsView({
                               quickTaskInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-primary-500/20 hover:bg-primary-500/30 text-content-secondary font-semibold border border-primary-500/30 transition-colors shrink-0 ml-3 whitespace-nowrap"
+                          className="px-2.5 py-1 rounded-lg hover:bg-overlay-subtle text-content-primary font-medium border border-overlay-default transition-colors shrink-0 ml-3 whitespace-nowrap"
                         >
                           + Add Task
                         </button>
@@ -2259,9 +2203,9 @@ export function ProjectsGoalsView({
             const filterLock = getProjectLockStatus(filterProjectId);
             return (
               <div className="space-y-2">
-                <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-2xl flex items-center justify-between gap-3">
+                <div className="p-3 border border-overlay-default rounded-2xl flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <FolderKanban size={16} className="text-content-secondary shrink-0" />
+                    <FolderKanban size={16} className="text-content-subtle shrink-0" />
                     <span className="text-xs text-content-tertiary">
                       Showing tasks for Project:{' '}
                       <strong className="text-content-secondary font-medium">{getProjectName(filterProjectId)}</strong>
@@ -2302,7 +2246,7 @@ export function ProjectsGoalsView({
           {/* QUICK-ADD TASK BAR */}
           <form
             onSubmit={handleQuickAddTask}
-            className="card p-3.5 border border-overlay-default bg-bg-800 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shadow-sm"
+            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
           >
             <div className="flex-1 relative">
               <CheckSquare className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" size={16} />
@@ -2358,7 +2302,7 @@ export function ProjectsGoalsView({
           </form>
 
           {/* FILTERS & SEARCH */}
-          <div className="p-3 sm:p-4 bg-bg-900/60 border border-overlay-subtle rounded-2xl flex flex-col gap-3">
+          <div className="flex flex-col gap-3">
             {/* Top Row: Search & Dropdown Selects */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
               <div className="flex-1 relative w-full">
@@ -2423,7 +2367,7 @@ export function ProjectsGoalsView({
                     taskViewFilter === f.id
                       ? f.id === 'locked'
                         ? 'bg-overlay-default text-content-secondary border border-overlay-medium'
-                        : 'bg-emerald-500/20 text-success-text border border-emerald-500/30'
+                        : 'bg-overlay-default text-content-primary'
                       : f.id === 'locked'
                       ? 'text-content-muted hover:text-content-secondary'
                       : 'text-content-muted hover:text-content-secondary'
@@ -2439,55 +2383,24 @@ export function ProjectsGoalsView({
           {filteredTasks.length === 0 ? (
             goals.length === 0 ? (
               /* The 'Wake-Up Call' Intervention: No Goals Set Yet */
-              <div className="card p-8 sm:p-10 text-center border-overlay-medium space-y-5 shadow-sm relative overflow-hidden">
-                <div className="flex flex-col items-center gap-3 relative z-10">
-                  <span className="badge badge-neutral">
-                    Vision-First Architecture
-                  </span>
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center badge-neutral">
-                    <Target size={32} />
-                  </div>
-                </div>
-
-                <div className="max-w-md mx-auto space-y-2 relative z-10">
-                  <h3 className="font-serif text-2xl sm:text-[1.75rem] leading-tight text-content-primary">
+              <div className="py-16 px-6 text-center border border-dashed border-overlay-default rounded-2xl space-y-5">
+                <div className="max-w-md mx-auto space-y-2">
+                  <h3 className="text-lg font-semibold text-content-primary">
                     Don&apos;t just be busy, be effective.
                   </h3>
-                  <p className="text-2xs sm:text-sm text-content-secondary leading-relaxed">
+                  <p className="text-sm text-content-muted leading-relaxed">
                     A task without a goal is just a distraction. Set your north star first, then build the daily habits to reach it.
                   </p>
-                  <p className="font-serif text-xs sm:text-sm italic text-content-tertiary pt-1">
-                    “Dreams without goals are just dreams.” – Denzel Washington
-                  </p>
                 </div>
 
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 relative z-10">
-                  <button
-                    type="button"
-                    onClick={openCreateGoalModal}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-semibold text-micro sm:text-sm bg-primary-600 hover:bg-primary-500 text-white shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Plus size={16} />
-                    <span>+ Set Your First Life Goal</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (quickTaskInputRef.current) {
-                        quickTaskInputRef.current.focus();
-                      }
-                    }}
-                    className="w-full sm:w-auto px-4 py-2 sm:py-3 rounded-xl font-medium text-micro sm:text-xs text-content-muted hover:text-content-secondary bg-overlay-subtle hover:bg-overlay-default border border-overlay-subtle transition-all"
-                  >
-                    Or log a quick task above
-                  </button>
-                </div>
-
-                <div className="pt-4 mt-2 border-t border-overlay-default w-full relative z-10">
-                  <p className="text-xs text-content-muted">
-                    <strong className="text-content-tertiary font-medium">What comes next?</strong> Once your Goal is set, this space will become your daily engine. Tasks are the small, actionable steps you&apos;ll take every day to achieve it.
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={openCreateGoalModal}
+                  className="btn-primary text-sm px-5 py-2.5 inline-flex items-center gap-2"
+                >
+                  <Plus size={16} />
+                  <span>Set Your First Life Goal</span>
+                </button>
               </div>
             ) : (
               <EmptyState
@@ -2505,16 +2418,17 @@ export function ProjectsGoalsView({
               />
             )
           ) : (
-            <div className="space-y-2.5">
+            <div>
               {/* Task Level Nudge: Low Data Catalyst */}
               {tasks.length > 0 && tasks.length <= 3 && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 text-success-text p-3 rounded-xl text-xs flex items-center gap-2 mb-4">
+                <div className="text-content-muted px-1 text-xs flex items-center gap-2 mb-4">
                   <span className="leading-relaxed">
                     Momentum check: Consistent execution requires daily input. Add a few more atomic tasks to build your workflow.
                   </span>
                 </div>
               )}
 
+              <div className="card p-0 overflow-hidden divide-y divide-overlay-subtle">
               {filteredTasks.map((task) => (
                 <TaskItemRow
                   key={task.id}
@@ -2538,6 +2452,7 @@ export function ProjectsGoalsView({
                   handleAddInlineSubtask={handleAddInlineSubtask}
                 />
               ))}
+              </div>
             </div>
           )}
         </div>
@@ -2595,7 +2510,7 @@ export function ProjectsGoalsView({
                   key={cat}
                   type="button"
                   onClick={() => setGoalFormCategory(cat)}
-                  className="text-2xs px-2 py-0.5 rounded-full bg-overlay-subtle hover:bg-primary-500/20 text-content-muted hover:text-brand-text border border-overlay-subtle transition-all"
+                  className="text-2xs px-2 py-0.5 rounded-full bg-overlay-subtle hover:bg-overlay-default text-content-muted hover:text-content-primary border border-overlay-subtle transition-colors"
                 >
                   {cat}
                 </button>
@@ -3019,110 +2934,78 @@ export function ProjectsGoalsView({
             Ascend uses a 3-tier execution framework designed to bridge the gap between high-level ambition and daily action.
           </p>
 
-          <div className="space-y-3 pt-1">
+          <div className="divide-y divide-overlay-subtle border-y border-overlay-subtle">
             {/* 1. Goal */}
-            <div className="p-3.5 rounded-2xl bg-primary-500/10 border border-primary-500/25 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-md bg-primary-500/20 text-brand-text border border-primary-500/30 flex items-center justify-center figure text-xs">
-                    3
-                  </span>
-                  <h4 className="item-name text-xs sm:text-sm !text-brand-text flex items-center gap-1.5">
-                    <Target size={14} /> Goal (Long Term)
-                  </h4>
-                </div>
-                <span className="badge-neutral text-2xs px-2 py-0.5 rounded-md">
-                  North Star
-                </span>
+            <div className="py-3.5 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="w-6 figure text-xs text-content-muted text-center">3</span>
+                <h4 className="item-name text-xs sm:text-sm flex items-center gap-1.5">
+                  <Target size={14} className="text-content-subtle" /> Goal (Long Term)
+                </h4>
               </div>
               <p className="text-xs text-content-tertiary leading-relaxed pl-8">
                 The final destination. What you want your life to look like in the future.
               </p>
-              <div className="pl-8 pt-1 text-micro text-brand-text font-medium">
-                <span className="text-content-muted font-normal">Examples:</span> Financial Freedom, Peak Physical Health, Fluent in a New Language, Become Debt-Free.
+              <div className="pl-8 pt-1 text-micro text-content-secondary">
+                <span className="text-content-muted">Examples:</span> Financial Freedom, Peak Physical Health, Fluent in a New Language, Become Debt-Free.
               </div>
             </div>
 
             {/* 2. Project */}
-            <div className="p-3.5 rounded-2xl bg-primary-500/10 border border-primary-500/25 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-md bg-primary-500/20 text-content-secondary border border-primary-500/30 flex items-center justify-center figure text-xs">
-                    2
-                  </span>
-                  <h4 className="item-name text-xs sm:text-sm !text-content-secondary flex items-center gap-1.5">
-                    <FolderKanban size={14} /> Project (Medium Term)
-                  </h4>
-                </div>
-                <span className="badge-neutral text-2xs px-2 py-0.5 rounded-md">
-                  Action Phase
-                </span>
+            <div className="py-3.5 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="w-6 figure text-xs text-content-muted text-center">2</span>
+                <h4 className="item-name text-xs sm:text-sm flex items-center gap-1.5">
+                  <FolderKanban size={14} className="text-content-subtle" /> Project (Medium Term)
+                </h4>
               </div>
               <p className="text-xs text-content-tertiary leading-relaxed pl-8">
                 The vehicle. A short-term mission linked directly to your Goal to get you closer.
               </p>
-              <div className="pl-8 pt-1 text-micro text-content-secondary font-medium">
-                <span className="text-content-muted font-normal">Examples:</span> 90-Day Gym Bootcamp, Launch Shopify Store, 30-Day Speaking Course, Pay off Credit Card.
+              <div className="pl-8 pt-1 text-micro text-content-secondary">
+                <span className="text-content-muted">Examples:</span> 90-Day Gym Bootcamp, Launch Shopify Store, 30-Day Speaking Course, Pay off Credit Card.
               </div>
             </div>
 
             {/* 3. Task */}
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-md bg-emerald-500/20 text-success-text border border-emerald-500/30 flex items-center justify-center figure text-xs">
-                    1
-                  </span>
-                  <h4 className="item-name text-xs sm:text-sm !text-success-text flex items-center gap-1.5">
-                    <CheckSquare size={14} /> Task (Daily)
-                  </h4>
-                </div>
-                <span className="badge-emerald text-2xs px-2 py-0.5 rounded-md">
-                  Atomic Action
-                </span>
+            <div className="py-3.5 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="w-6 figure text-xs text-content-muted text-center">1</span>
+                <h4 className="item-name text-xs sm:text-sm flex items-center gap-1.5">
+                  <CheckSquare size={14} className="text-content-subtle" /> Task (Daily)
+                </h4>
               </div>
               <p className="text-xs text-content-tertiary leading-relaxed pl-8">
                 The daily fuel. The actual, physical small work you do <em>today</em>.
               </p>
-              <div className="pl-8 pt-1 text-micro text-success-text font-medium">
-                <span className="text-content-muted font-normal">Examples:</span> Do 50 Pushups today, List 5 new products, Read 10 pages out loud, Transfer $50 to savings.
+              <div className="pl-8 pt-1 text-micro text-content-secondary">
+                <span className="text-content-muted">Examples:</span> Do 50 Pushups today, List 5 new products, Read 10 pages out loud, Transfer $50 to savings.
               </div>
             </div>
 
             {/* Sequential Mode Feature */}
-            <div className="p-3.5 rounded-2xl bg-overlay-subtle border border-overlay-default space-y-1.5 mt-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-md bg-overlay-default text-content-secondary border border-overlay-medium flex items-center justify-center figure text-xs">
-                    <Lock size={12} />
-                  </span>
-                  <h4 className="item-name text-xs sm:text-sm !text-content-secondary flex items-center gap-1.5">
-                    Sequential Mode (Goal Setting)
-                  </h4>
-                </div>
-                <span className="badge-neutral text-2xs px-2 py-0.5 rounded-md">
-                  Advanced
+            <div className="py-3.5 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="w-6 flex justify-center text-content-subtle">
+                  <Lock size={13} />
                 </span>
+                <h4 className="item-name text-xs sm:text-sm flex items-center gap-1.5">
+                  Sequential Mode (Goal Setting)
+                </h4>
               </div>
               <p className="text-micro sm:text-xs text-content-tertiary leading-relaxed pl-8">
                 Available when creating a Goal. It forces absolute focus by locking projects so you can only execute them one by one. Project B remains locked until Project A is completed.
               </p>
-              <div className="pl-8 pt-1 text-micro sm:text-xs text-content-muted font-medium space-y-1">
-                <p><span className="text-content-muted font-normal">How it helps:</span> Kills overwhelm and multi-tasking. Builds momentum.</p>
-                <p className="pt-0.5"><span className="text-content-muted font-normal">Example (Goal: Start a Business):</span></p>
+              <div className="pl-8 pt-1 text-micro sm:text-xs text-content-muted space-y-1">
+                <p><span className="text-content-muted">How it helps:</span> Kills overwhelm and multi-tasking. Builds momentum.</p>
+                <p className="pt-0.5"><span className="text-content-muted">Example (Goal: Start a Business):</span></p>
                 <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
-                  <li>Project 1: Market Research <span className="text-success-text no-underline not-italic">(Active)</span></li>
-                  <li>Project 2: Build MVP <span className="text-content-muted no-underline not-italic">(🔒 Locked)</span></li>
-                  <li>Project 3: Launch <span className="text-content-muted no-underline not-italic">(🔒 Locked)</span></li>
+                  <li>Project 1: Market Research <span className="text-content-secondary">(Active)</span></li>
+                  <li>Project 2: Build MVP <span className="text-content-muted">(Locked)</span></li>
+                  <li>Project 3: Launch <span className="text-content-muted">(Locked)</span></li>
                 </ul>
               </div>
             </div>
-          </div>
-
-          <div className="p-3 bg-bg-900 border border-overlay-default rounded-xl text-center">
-            <p className="text-xs italic text-content-muted">
-              “Dreams without goals are just dreams. Goals without daily tasks are just illusions.”
-            </p>
           </div>
 
           <div className="flex justify-end pt-2 border-t border-overlay-subtle">

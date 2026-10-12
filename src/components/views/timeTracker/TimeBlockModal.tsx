@@ -224,15 +224,15 @@ export function TimeBlockModal({
                   onClick={() => handleActivityClick(act.id)}
                   className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all relative ${
                     isPrimary
-                      ? 'bg-emerald-500/15 border-emerald-500/60 shadow-md text-content-primary ring-1 ring-emerald-500/40'
+                      ? 'bg-primary-500/5 border-primary-500/60 text-content-primary'
                       : isSecondary
-                      ? 'bg-overlay-default border-emerald-500/40 text-content-primary shadow-xs'
-                      : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:bg-overlay-default hover:border-overlay-default hover:text-content-secondary'
+                      ? 'bg-overlay-default border-overlay-strong text-content-primary'
+                      : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle hover:border-overlay-default hover:text-content-secondary'
                   }`}
                 >
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${resolvedColor}25`, color: resolvedColor }}
+                    className="w-5 flex items-center justify-center shrink-0"
+                    style={{ color: resolvedColor }}
                   >
                     <ActivityIcon iconName={act.icon} size={15} />
                   </div>
@@ -240,15 +240,15 @@ export function TimeBlockModal({
                     <p className="item-name text-xs !text-current truncate">{act.name}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       {isPrimary ? (
-                        <span className="text-2xs font-medium text-success-text bg-emerald-500/20 px-1.5 py-0.5 rounded">
+                        <span className="text-2xs font-medium text-success-text">
                           Primary
                         </span>
                       ) : isSecondary ? (
-                        <span className="text-2xs font-medium text-success-text bg-overlay-default px-1.5 py-0.5 rounded">
+                        <span className="text-2xs font-medium text-content-secondary">
                           Secondary
                         </span>
                       ) : act.ascendModule ? (
-                        <span className="text-2xs text-success-text block truncate">
+                        <span className="text-2xs text-content-muted block truncate">
                           {act.ascendModule}
                         </span>
                       ) : null}
@@ -304,12 +304,12 @@ export function TimeBlockModal({
         </div>
 
         {/* Read-Only Computed Duration Indicator */}
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-bg-800/60 border border-overlay-subtle">
+        <div className="flex items-center justify-between py-2.5 border-y border-overlay-subtle">
           <div className="flex items-center gap-2 text-xs text-content-muted">
-            <Clock size={13} className="text-success-text" />
+            <Clock size={13} className="text-content-subtle" />
             <span>Calculated Duration:</span>
           </div>
-          <span className="figure text-xs text-success-text bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg">
+          <span className="figure text-xs text-content-primary">
             {formatDurationHuman(calculatedDuration)} ({calculatedDuration} mins)
           </span>
         </div>

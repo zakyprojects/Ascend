@@ -37,17 +37,17 @@ export function Lessons({ store }: { store: AppStore }) {
       </div>
 
       {/* Stats */}
-      <Reveal className="grid grid-cols-2 gap-3">
-        <div className="card p-4">
+      <Reveal className="card p-0 grid grid-cols-2 divide-x divide-overlay-subtle">
+        <div className="p-4">
           <div className="stat-label">Lessons Read (Season {activeSeasonNum})</div>
           <div className="stat-value mt-1 tabular-nums">
             <CountUp value={readCount} />
             <span className="figure text-base text-content-disabled">/{LESSONS.length}</span>
           </div>
         </div>
-        <div className="card p-4">
+        <div className="p-4">
           <div className="stat-label">Points Earned</div>
-          <div className="stat-value mt-1 text-brand-text tabular-nums">
+          <div className="stat-value mt-1 tabular-nums">
             <CountUp value={earnedPoints} />
             <span className="figure text-base text-content-disabled">/{totalPoints}</span>
           </div>
@@ -74,8 +74,8 @@ export function Lessons({ store }: { store: AppStore }) {
           onClick={() => setSelectedCategory(null)}
           className={`badge px-3 py-1.5 transition-all ${
             selectedCategory === null
-              ? 'bg-primary-500/15 text-brand-text'
-              : 'bg-bg-700 text-content-muted hover:bg-bg-600'
+              ? 'bg-overlay-default text-content-primary'
+              : 'text-content-muted hover:bg-overlay-subtle'
           }`}
         >
           All
@@ -86,8 +86,8 @@ export function Lessons({ store }: { store: AppStore }) {
             onClick={() => setSelectedCategory(cat)}
             className={`badge px-3 py-1.5 transition-all ${
               selectedCategory === cat
-                ? 'bg-primary-500/15 text-brand-text'
-                : 'bg-bg-700 text-content-muted hover:bg-bg-600'
+                ? 'bg-overlay-default text-content-primary'
+                : 'text-content-muted hover:bg-overlay-subtle'
             }`}
           >
             {cat}
@@ -105,15 +105,11 @@ export function Lessons({ store }: { store: AppStore }) {
               onClick={() => setOpenLesson(lesson)}
               className="card p-4 card-hover w-full flex items-center gap-3 text-left"
             >
-              <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  isRead ? 'bg-primary-500/15' : 'bg-bg-600'
-                }`}
-              >
+              <div className="w-5 flex items-center justify-center shrink-0">
                 {isRead ? (
-                  <Check size={18} className="text-brand-text" />
+                  <Check size={18} className="text-success-text" />
                 ) : (
-                  <BookOpen size={18} className="text-content-disabled" />
+                  <BookOpen size={18} className="text-content-subtle" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -123,7 +119,7 @@ export function Lessons({ store }: { store: AppStore }) {
                   <span className="figure text-xs text-content-subtle flex items-center gap-0.5">
                     <Clock size={11} /> {lesson.readTime} min
                   </span>
-                  <span className="figure text-xs text-brand-text">+{lesson.points} pts</span>
+                  <span className="figure text-xs text-content-muted">+{lesson.points} pts</span>
                 </div>
               </div>
             </button>
@@ -149,11 +145,11 @@ export function Lessons({ store }: { store: AppStore }) {
         {openLesson && (
           <div>
             <div className="flex items-center gap-3 mb-4 text-xs text-content-disabled">
-              <span className="badge bg-bg-600 text-content-muted">{openLesson.category}</span>
+              <span className="text-content-muted">{openLesson.category}</span>
               <span className="flex items-center gap-0.5">
                 <Clock size={11} /> {openLesson.readTime} min read
               </span>
-              <span className="text-brand-text">+{openLesson.points} pts</span>
+              <span className="text-content-muted">+{openLesson.points} pts</span>
             </div>
             <div>
               {renderLessonContent(openLesson.content)}
@@ -237,7 +233,7 @@ function renderLessonContent(content: string) {
       return (
         <div
           key={idx}
-          className="my-3 p-3 rounded-xl bg-bg-700 border-l-2 border-primary-500/50 text-sm text-content-tertiary italic"
+          className="my-3 pl-3 border-l-2 border-overlay-medium text-sm text-content-tertiary italic"
         >
           {renderInline(part.trim())}
         </div>

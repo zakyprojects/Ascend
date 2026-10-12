@@ -71,10 +71,8 @@ function GoalItemRow({
   return (
     <div
       key={item.id}
-      className={`enter-item p-4 rounded-xl border transition-all space-y-3 ${
-        isDone
-          ? 'bg-emerald-500/5 border-emerald-500/20'
-          : 'bg-bg-900/60 border-overlay-default hover:border-overlay-strong'
+      className={`enter-item py-4 first:pt-0 last:pb-0 transition-colors space-y-3 ${
+        isDone ? 'opacity-80' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -606,7 +604,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       {/* HEADER & WEEK NAVIGATION CARD */}
-      <div className="card p-5 space-y-4 border border-overlay-default bg-bg-800/80">
+      <div className="space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-overlay-subtle pb-4">
           <div>
             <h1 className="page-title">Weekly Goals</h1>
@@ -645,7 +643,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             {selectedWeekKey !== currentWeekKey && (
               <button
                 onClick={() => setSelectedWeekKey(currentWeekKey)}
-                className="ml-1 text-micro font-medium text-brand-text hover:opacity-80 bg-primary-500/10 px-2 py-1 rounded-lg border border-primary-500/20 transition-all"
+                className="ml-1 text-micro font-medium text-content-secondary hover:text-content-primary hover:bg-overlay-subtle px-2 py-1 rounded-lg border border-overlay-default transition-colors"
               >
                 Today
               </button>
@@ -655,20 +653,20 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
         {/* OVERALL WEEK PROGRESS BAR & SUMMARY BADGES */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-          <div className="md:col-span-2 bg-bg-900/40 p-3.5 rounded-xl border border-overlay-subtle space-y-2">
+          <div className="md:col-span-2 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-content-tertiary flex items-center gap-1.5">
-                <BarChart2 size={14} className="text-brand-text" />
+                <BarChart2 size={14} className="text-content-subtle" />
                 Weekly Target Completion
               </span>
-              <span className="figure text-brand-text">
+              <span className="figure text-content-secondary">
                 <AutoNum text={`${goalStats.percent}%`} /> Complete ({goalStats.completed}/{goalStats.total})
               </span>
             </div>
             <ProgressBar value={goalStats.percent} label="Weekly target completion" size="lg" />
           </div>
 
-          <div className="bg-bg-900/40 p-3.5 rounded-xl border border-overlay-subtle flex items-center justify-around">
+          <div className="flex items-center justify-around md:border-l md:border-overlay-subtle">
             <div className="text-center">
               <CountUp value={goalStats.total} className="font-serif text-[1.75rem] leading-none text-content-primary block tabular-nums" />
               <span className="stat-label mt-1 block">Total Goals</span>
@@ -680,7 +678,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </div>
             <div className="w-px h-8 bg-overlay-default" />
             <div className="text-center">
-              <CountUp value={goalStats.highPriorityCompleted} className="font-serif text-[1.75rem] leading-none text-rose-theme block tabular-nums" />
+              <CountUp value={goalStats.highPriorityCompleted} className="font-serif text-[1.75rem] leading-none text-content-primary block tabular-nums" />
               <span className="stat-label mt-1 block">High Pri Done</span>
             </div>
           </div>
@@ -724,11 +722,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-1">
+                <div className="divide-y divide-overlay-subtle pt-1">
                   {unaddressedPastGoals.map(({ weekKey: pastWeek, goal }) => (
                     <div
                       key={`${pastWeek}-${goal.id}`}
-                      className="scroll-rise flex items-center justify-between p-2.5 bg-bg-900/70 border border-overlay-default rounded-lg"
+                      className="scroll-rise flex items-center justify-between py-2.5"
                     >
                       <div className="space-y-0.5">
                         <span className="item-name text-xs text-content-secondary block">{goal.title}</span>
@@ -760,11 +758,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             <div className="card p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-overlay-subtle pb-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <Target size={18} className="text-brand-text shrink-0" />
+                  <Target size={16} className="text-content-subtle shrink-0" />
                   <h3 className="section-title">
                     Target Priorities for {selectedWeekKey}
                   </h3>
-                  <span className="badge badge-primary figure text-2xs">
+                  <span className="figure text-2xs text-content-muted">
                     {calculateWeeklyGoalsPoints(activeGoalDoc.goals).pointsAwarded}/{WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts
                   </span>
                 </div>
@@ -818,7 +816,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                   }
                 />
               ) : (
-                <div className="space-y-3">
+                <div className="divide-y divide-overlay-subtle">
                   {activeGoalDoc.goals.filter((g) => !g.archived).map((item) => (
                     <GoalItemRow
                       key={item.id}
@@ -846,7 +844,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
                 <div>
                   <h3 className="section-title flex items-center gap-2">
-                    <PenLine size={16} className="text-brand-text" />
+                    <PenLine size={16} className="text-content-subtle" />
                     Weekly Reflections
                   </h3>
                   <p className="text-xs text-content-muted mt-0.5">
@@ -903,7 +901,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               )}
 
               {/* LIST OF REFLECTIONS */}
-              <div className="space-y-3">
+              <div className="divide-y divide-overlay-subtle">
                 {(() => {
                   const reflectionCutoff = getWeekReflectionCutoff(selectedWeekKey);
                   const isBeforeCutoff = getNow() < reflectionCutoff;
@@ -932,7 +930,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
                         if (isEditingThis) {
                           return (
-                            <div key={ref.id} className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
+                            <div key={ref.id} className="py-3.5 first:pt-0 space-y-3">
                               <label htmlFor="edit-reflection-content" className="block text-xs font-medium text-content-tertiary">
                                 Edit Reflection
                               </label>
@@ -965,7 +963,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                         return (
                           <div
                             key={ref.id}
-                            className="p-3.5 bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default rounded-xl space-y-2 transition-all"
+                            className="py-3.5 first:pt-0 space-y-2"
                           >
                             <div className="flex items-center justify-between text-micro text-content-muted">
                               <div className="flex items-center gap-2">
@@ -1300,7 +1298,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           </p>
           <div className="card p-3 space-y-1">
             <span className="text-micro text-content-muted block">Current Progress in {carryOverPromptModal?.pastWeek}:</span>
-            <span className="figure text-sm text-brand-text block">
+            <span className="figure text-sm text-content-primary block">
               {carryOverPromptModal?.goal.manualProgress || 0} / {carryOverPromptModal?.goal.targetValue} {carryOverPromptModal?.goal.unit || 'times'}
             </span>
           </div>

@@ -154,10 +154,10 @@ export function TemplatesTab({
   return (
     <div className="space-y-6">
       {/* 1. Header and Action */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle ">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-serif text-xl leading-tight text-content-primary flex items-center gap-2">
-            <Layers className="text-success-text" size={18} />
+            <Layers className="text-content-subtle" size={18} />
             <span>Recurring Templates</span>
           </h2>
           <p className="text-xs text-content-muted mt-0.5">
@@ -172,7 +172,7 @@ export function TemplatesTab({
                 store.restoreTimeTrackerTemplate('template-default-weekday');
                 showSuccessToast('Template Restored', 'Standard Productive Day blueprint has been restored.');
               }}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-success-text bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-content-secondary hover:text-content-primary hover:bg-overlay-subtle border border-overlay-default rounded-xl transition-colors cursor-pointer"
             >
               <RotateCcw size={13} />
               <span>Restore Default Blueprint</span>
@@ -190,19 +190,17 @@ export function TemplatesTab({
       </div>
 
       {/* Blueprint Philosophy / 8-8-8 Guide */}
-      <div className="p-4 rounded-2xl bg-bg-800 border border-overlay-subtle flex flex-col xl:flex-row gap-4 items-start">
-        <div className="w-12 h-12 rounded-xl bg-overlay-subtle flex items-center justify-center shrink-0 border border-overlay-default">
-          <Compass className="text-success-text" size={24} />
-        </div>
+      <div className="p-4 rounded-2xl border border-overlay-subtle flex flex-col xl:flex-row gap-3 items-start">
+        <Compass className="text-content-subtle shrink-0 mt-1" size={18} />
         <div className="flex-1 w-full">
           <h3 className="font-serif text-lg leading-tight text-content-primary mb-1.5">The Balance Sheet of Life: 8+8+8 Rule</h3>
           <p className="text-xs text-content-tertiary leading-relaxed mb-3 max-w-3xl">
             Distribute your 24 hours intentionally to maintain a perfect balance sheet of your life. Ascend Blueprints are built on this foundational philosophy.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-0 md:divide-x md:divide-overlay-subtle">
             {/* Hard Work */}
-            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
+            <div className="md:px-4 md:first:pl-0">
               <h4 className="item-name text-xs text-content-secondary mb-1 flex items-center gap-1.5">
                 <Brain className="text-content-muted" size={13} /> 
                 8 Hours: Hard Work
@@ -211,7 +209,7 @@ export function TemplatesTab({
             </div>
 
             {/* Life & Balance */}
-            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
+            <div className="md:px-4 md:first:pl-0">
               <h4 className="item-name text-xs text-content-secondary mb-1.5 flex items-center gap-1.5">
                 <Heart className="text-content-muted" size={13} /> 
                 8 Hours: 3Fs, 3Hs, & 3Ss
@@ -224,7 +222,7 @@ export function TemplatesTab({
             </div>
 
             {/* Sleep */}
-            <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
+            <div className="md:px-4 md:first:pl-0">
               <h4 className="item-name text-xs text-content-secondary mb-1 flex items-center gap-1.5">
                 <Moon className="text-content-muted" size={13} /> 
                 8 Hours: Good Sleep
@@ -259,7 +257,7 @@ export function TemplatesTab({
                   }}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-secondary border border-overlay-default text-xs font-semibold transition-all cursor-pointer"
                 >
-                  <RotateCcw size={14} className="text-success-text" />
+                  <RotateCcw size={14} />
                   <span>Restore Default Blueprint</span>
                 </button>
               )}
@@ -281,7 +279,7 @@ export function TemplatesTab({
             return (
               <div
                 key={tpl.id}
-                className="scroll-rise p-5 rounded-2xl bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default transition-all space-y-4 flex flex-col justify-between"
+                className="scroll-rise p-5 rounded-2xl border border-overlay-subtle hover:border-overlay-default transition-colors space-y-4 flex flex-col justify-between"
               >
                 <div className="space-y-3">
                   {/* Title & Actions */}
@@ -293,7 +291,7 @@ export function TemplatesTab({
                           {sortedBlocks.length} block(s)
                         </span>
                         <span>·</span>
-                        <span className="figure text-success-text">
+                        <span className="figure text-content-tertiary">
                           {formatDurationHuman(totalMinutes)} planned
                         </span>
                       </div>
@@ -348,7 +346,7 @@ export function TemplatesTab({
                             className={`px-2 py-0.5 rounded-md text-2xs font-medium transition-all cursor-pointer ${
                               isDayActive
                                 ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30 hover:bg-emerald-500/30'
-                                : 'bg-bg-900/40 text-content-subtle border border-overlay-subtle hover:text-content-muted hover:border-overlay-default'
+                                : 'text-content-subtle border border-overlay-subtle hover:text-content-muted hover:border-overlay-default'
                             }`}
                           >
                             {day.slice(0, 3)}
@@ -391,14 +389,14 @@ export function TemplatesTab({
                   )}
 
                   {/* Compact Block Timeline List */}
-                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                  <div className="divide-y divide-overlay-subtle max-h-44 overflow-y-auto pr-1">
                     {sortedBlocks.map((block) => {
                       const act = activityMap.get(block.activityId);
                       const color = getActivityDisplayColor(act, theme);
                       return (
                         <div
                           key={block.id}
-                          className="flex items-center justify-between p-2 rounded-xl bg-bg-900/40 border border-overlay-subtle text-xs"
+                          className="flex items-center justify-between py-2 text-xs"
                         >
                           <div className="flex flex-wrap items-center gap-2 min-w-0">
                             <div
@@ -451,7 +449,7 @@ export function TemplatesTab({
 
                   <button
                     onClick={() => onOpenApplyTemplateModal(tpl.id)}
-                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-success-text border border-emerald-500/30 text-xs font-semibold transition-all cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl hover:bg-overlay-subtle text-content-secondary border border-overlay-default text-xs font-medium transition-colors cursor-pointer"
                     title="Apply to custom target date or replace"
                   >
                     <Calendar size={13} />

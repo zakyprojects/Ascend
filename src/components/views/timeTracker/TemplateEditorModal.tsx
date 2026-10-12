@@ -270,8 +270,8 @@ export function TemplateEditorModal({
                     onClick={() => toggleDay(day)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-emerald-600/20 border-emerald-500/70 text-success-text shadow-sm'
-                        : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:bg-overlay-default'
+                        ? 'bg-overlay-default border-overlay-strong text-content-primary'
+                        : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
                     }`}
                   >
                     {day}
@@ -290,7 +290,7 @@ export function TemplateEditorModal({
               <button
                 type="button"
                 onClick={handleOpenAddBlock}
-                className="flex items-center gap-1 text-xs font-semibold text-success-text hover:opacity-80 cursor-pointer"
+                className="flex items-center gap-1 text-xs font-medium text-content-secondary hover:text-content-primary cursor-pointer"
               >
                 <Plus size={13} />
                 <span>Add Block</span>
@@ -303,7 +303,7 @@ export function TemplateEditorModal({
                 No blocks in this template yet. Click &ldquo;Add Block&rdquo; to build the template schedule.
               </div>
             ) : (
-              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              <div className="divide-y divide-overlay-subtle max-h-56 overflow-y-auto pr-1">
                 {blocks.map((block) => {
                   const act = activities.find((a) => a.id === block.activityId);
                   const duration = calculateBlockDurationMinutes(block.startTime, block.endTime);
@@ -312,15 +312,12 @@ export function TemplateEditorModal({
                   return (
                     <div
                       key={block.id}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors"
+                      className="flex items-center justify-between py-2.5"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                          style={{
-                            backgroundColor: `${resolvedColor}25`,
-                            color: resolvedColor,
-                          }}
+                          className="w-5 flex items-center justify-center shrink-0"
+                          style={{ color: resolvedColor }}
                         >
                           <ActivityIcon iconName={act?.icon || 'Clock'} size={16} />
                         </div>
