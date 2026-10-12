@@ -246,7 +246,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
       <div aria-hidden="true" className="app-atmosphere" />
       {/* Desktop navigation (Basecamp): zone rail + the zone's pages. One click on a zone goes
           straight to the page last open there (Discord/Slack style) and shows its siblings in the
-          panel; the panel hides with [ or its own button. */}
+          panel; clicking the zone on screen again hides the panel (as do [ and its own button). */}
       <aside className="relative z-sticky hidden lg:flex h-full glass border-r border-overlay-subtle shrink-0">
         <ZoneRail
           onDashboard={currentView === NAV_DASHBOARD.id}
@@ -259,6 +259,11 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           onZoneHover={onZoneHover}
           onZone={(zone) => {
             setPeekZone(null);
+            // The zone already on screen with its panel open: a second click hides the panel.
+            if (activeGroupId === zone && panelZone === zone && !panelCollapsed) {
+              setPanelCollapsed(true);
+              return;
+            }
             setPanelZone(zone);
             setPanelCollapsed(false);
             if (activeGroupId !== zone) onViewChange(lastByGroup[zone]);
