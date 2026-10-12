@@ -129,7 +129,7 @@ export default {
         'toast-out': 'toastOut 180ms var(--ease-standard) forwards',
         // Scroll reveal (Motion.tsx Reveal): `backwards` holds it hidden through its stagger delay
         // without keeping a transform after it ends.
-        'reveal': 'enterUp 300ms var(--ease-emphasized) backwards',
+        'reveal': 'revealUp 450ms var(--ease-emphasized) backwards',
         'pop': 'pop 320ms var(--ease-emphasized)',
         'slide-in-right': 'slideInRight var(--duration-enter) var(--ease-emphasized) both',
         // Uses the individual `translate` property so it composes with the
@@ -162,9 +162,14 @@ export default {
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         celebrate: {
-          '0%': { transform: 'scale(0.5) rotate(-10deg)', opacity: '0' },
-          '50%': { transform: 'scale(1.15) rotate(5deg)', opacity: '1' },
-          '100%': { transform: 'scale(1) rotate(0)', opacity: '1' },
+          '0%': { transform: 'scale(0.6)', opacity: '0' },
+          '55%': { transform: 'scale(1.08)', opacity: '1' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        // Page stagger (Reveal): a touch more travel than enterUp so the open reads as one settle.
+        revealUp: {
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         enterUp: {
           '0%': { opacity: '0', transform: 'translateY(8px)' },
