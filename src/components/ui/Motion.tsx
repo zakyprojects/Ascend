@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode, useRef, useState } from 'react';
+import { CSSProperties, ReactNode, useEffect, useRef, useState } from 'react';
 import { useCountUp, useIntroMotion, useSeen } from '@/lib/motion';
 import { cx } from './primitives/shared';
 
@@ -7,6 +7,10 @@ const MAX_STAGGER_STEPS = 6;
 // Seen this soon after mounting = it was on screen when the view opened, so it joins the page's
 // stagger. Anything seen later was scrolled to and reveals at once.
 const ON_OPEN_WINDOW_MS = 400;
+// Where the browser runs scroll-driven animations, cards rise with the scroll (index.css "Scroll
+// rise"), so content scrolled to later shows plainly here instead of animating twice.
+const SCROLL_RISE =
+  typeof CSS !== 'undefined' && CSS.supports('animation-timeline: view()');
 
 interface RevealProps {
   children: ReactNode;
@@ -16,7 +20,8 @@ interface RevealProps {
 }
 
 /**
- * Fades and rises its content the first time it comes into view, each time its view opens.
+ * Fades and rises its content the first time it comes into view, each time its view opens. Where
+ * scroll rise is supported, only content on screen at open animates here (the page's stagger).
  * The animation keeps no transform after it ends (no `forwards` fill), so a position:fixed
  * descendant such as a modal is never trapped in a containing block.
  */
@@ -26,13 +31,21 @@ export function Reveal({ children, index = 0, className }: RevealProps) {
   const [mountedAt] = useState(() => performance.now());
   const seen = useSeen(ref, intro);
   const [delay, setDelay] = useState<number | null>(null);
+  const [late, setLate] = useState(false);
 
-  if (intro && seen && delay === null) {
+  useEffect(() => {
+    if (!intro || !SCROLL_RISE) return;
+    const timer = window.setTimeout(() => setLate(true), ON_OPEN_WINDOW_MS);
+    return () => window.clearTimeout(timer);
+  }, [intro]);
+
+  if (intro && seen && delay === null && !late) {
     const onOpen = performance.now() - mountedAt < ON_OPEN_WINDOW_MS;
     setDelay(onOpen ? Math.min(index, MAX_STAGGER_STEPS) * STAGGER_MS : 0);
   }
 
-  if (!intro) return <div className={className}>{children}</div>;
+  // Not on screen when the view opened: scroll rise animates its cards instead.
+  if (!intro || (late && delay === null)) return <div ref={ref} className={className}>{children}</div>;
 
   const style: CSSProperties | undefined = delay ? { animationDelay: `${delay}ms` } : undefined;
   return (

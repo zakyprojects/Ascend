@@ -1258,6 +1258,30 @@ html[data-page-hidden] *::after {
   mix-blend-mode: normal;
 }
 
+/* Scroll rise: on every page, each top-level card rises and fades in as it scrolls into view, tied
+   to the scroll itself (a scroll-driven animation, run by the browser off the main thread), so it
+   moves exactly with the finger or wheel and settles once the card is ~260px in. Cards already on
+   screen when a page opens are past the range and use the page's open stagger (Reveal) instead.
+   Fill is backwards only: after the range the card keeps no transform, so a fixed-position child
+   (a modal) is never trapped. Browsers without scroll timelines show cards as they are. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    [data-page-area] .card:not(.card .card):not([class*='animate-']) {
+      animation: scroll-rise linear backwards;
+      animation-timeline: view();
+      animation-range: entry 0% entry 260px;
+    }
+  }
+}
+@keyframes scroll-rise {
+  from {
+    opacity: 0;
+    translate: 0 40px;
+    scale: 0.97;
+    animation-timing-function: cubic-bezier(0.25, 0.5, 0.3, 1);
+  }
+}
+
 /* Sliding active pill (Tabs indicator, SlidingPill): glides between options at the nav pill's pace. */
 .sliding-pill-move {
   transition-property: left, top, width, height, background-color, border-color, box-shadow, color;

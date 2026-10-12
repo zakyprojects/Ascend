@@ -361,8 +361,9 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           </div>
         </header>
 
-        {/* Main content */}
-        <main ref={mainRef} data-page-area className="relative flex-1 overflow-y-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] lg:pb-0">
+        {/* Main content. Below lg the window scrolls, so main must not be a scroll container there
+            (the scroll-rise timeline would bind to it and never move); it only clips sideways. */}
+        <main ref={mainRef} data-page-area className="relative flex-1 max-lg:overflow-x-clip lg:overflow-y-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] lg:pb-0">
           {activeGroup && (
             <div className="lg:hidden px-4 pt-3">
               <Tabs
