@@ -34,6 +34,7 @@ export const Tabs: React.FC<TabsProps> = ({
   const isSm = size === 'sm';
   const tabRefs = React.useRef<Map<string, HTMLButtonElement>>(new Map());
   const listRef = React.useRef<HTMLDivElement>(null);
+  const indicator = useActiveIndicator(listRef, tabRefs, value, items);
 
   React.useLayoutEffect(() => {
     if (!scrollable) return;
@@ -86,6 +87,7 @@ export const Tabs: React.FC<TabsProps> = ({
       aria-label={ariaLabel}
       onKeyDown={handleKeyDown}
       className={cx(
+        'relative',
         isSegmented
           ? 'inline-flex items-center gap-1 p-1 rounded-xl bg-bg-700'
           : 'flex items-center gap-4 border-b border-overlay-subtle',
@@ -94,6 +96,19 @@ export const Tabs: React.FC<TabsProps> = ({
         className
       )}
     >
+      {/* One indicator that slides to the active tab, painted under the tab labels. */}
+      {indicator && (
+        <span
+          aria-hidden="true"
+          className={cx(
+            'absolute pointer-events-none',
+            isSegmented ? 'top-1 bottom-1 rounded-lg bg-primary-500 shadow-sm' : 'bottom-0 h-0.5 rounded-full bg-brand-text',
+            indicator.animate &&
+              'transition-[left,width] duration-base ease-emphasized motion-reduce:transition-none'
+          )}
+          style={{ left: indicator.left, width: indicator.width }}
+        />
+      )}
       {items.map((item) => {
         const active = item.id === value;
         const Icon = item.icon;
@@ -120,14 +135,12 @@ export const Tabs: React.FC<TabsProps> = ({
                 ? cx(
                     'rounded-lg',
                     active
-                      ? 'bg-primary-500 text-on-brand'
+                      ? 'text-on-brand'
                       : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
                   )
                 : cx(
-                    'border-b-2 -mb-px',
-                    active
-                      ? 'border-brand-text text-content-primary'
-                      : 'border-transparent text-content-muted hover:text-content-secondary'
+                    'border-b-2 border-transparent',
+                    active ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary'
                   ),
               TAP_TARGET,
               FOCUS_RING,
@@ -152,3 +165,43 @@ export const Tabs: React.FC<TabsProps> = ({
     </div>
   );
 };
+
+interface IndicatorBox {
+  left: number;
+  width: number;
+  /** False for the first placement, so the indicator appears in place instead of sliding in. */
+  animate: boolean;
+}
+
+/** Position of the active tab inside the list, kept current through resizes and font loads. */
+function useActiveIndicator(
+  listRef: React.RefObject<HTMLDivElement>,
+  tabRefs: React.RefObject<Map<string, HTMLButtonElement>>,
+  value: string,
+  items: TabItem[]
+): IndicatorBox | null {
+  const [box, setBox] = React.useState<IndicatorBox | null>(null);
+  // Re-measure when the tabs' text changes (labels, badges), not on every new items array.
+  const itemsKey = items.map((item) => `${item.id}:${item.label}:${item.badge ?? ''}`).join('|');
+
+  React.useLayoutEffect(() => {
+    const list = listRef.current;
+    const tab = tabRefs.current?.get(value);
+    if (!list || !tab) {
+      setBox(null);
+      return;
+    }
+    const measure = () =>
+      setBox((prev) => {
+        const next = { left: tab.offsetLeft, width: tab.offsetWidth, animate: prev !== null };
+        return prev && prev.left === next.left && prev.width === next.width ? prev : next;
+      });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    observer.observe(tab);
+    return () => observer.disconnect();
+  }, [listRef, tabRefs, value, itemsKey]);
+
+  return box;
+}

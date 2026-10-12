@@ -147,6 +147,8 @@ export default {
         // No fill-mode on purpose: a retained transform on the view wrapper would
         // become the containing block for any position:fixed descendant.
         'view-enter': 'enterUp var(--duration-enter) var(--ease-emphasized)',
+        // Revisit: a quick opacity-only fade, so switching pages never feels like a cut.
+        'view-fade': 'enterFade var(--duration-fast) var(--ease-standard)',
         // Scroll reveal (Motion.tsx Reveal): `backwards` holds it hidden through its stagger delay
         // without keeping a transform after it ends.
         'reveal': 'enterUp 450ms var(--ease-emphasized) backwards',

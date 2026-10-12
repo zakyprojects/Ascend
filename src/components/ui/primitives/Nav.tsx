@@ -50,6 +50,14 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
           )}
           {...props}
         >
+          {/* Active accent: grows in on the item that becomes current. */}
+          <span
+            aria-hidden="true"
+            className={cx(
+              'absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand-text transition-transform duration-base ease-emphasized motion-reduce:transition-none',
+              active ? 'scale-y-100' : 'scale-y-0'
+            )}
+          />
           <span className="flex items-center gap-3">
             <Icon size={20} aria-hidden="true" />
             <span>{label}</span>
@@ -79,7 +87,15 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
         )}
         {...props}
       >
-        <Icon size={20} aria-hidden="true" />
+        {/* Active pill behind the icon (bottom bar). */}
+        <span
+          className={cx(
+            'flex items-center justify-center w-12 h-7 rounded-full transition-colors duration-base ease-standard',
+            active ? 'bg-primary-500/15' : 'bg-transparent'
+          )}
+        >
+          <Icon size={20} aria-hidden="true" />
+        </span>
         <span className="text-micro font-medium">{label}</span>
         {Boolean(badgeCount && badgeCount > 0) && (
           <span
