@@ -25,7 +25,8 @@ import { ActivityIcon } from './ActivityIcon';
 import { LiveCountdown } from './LiveCountdown';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
-import { EmptyState } from '@/components/ui/primitives';
+import { EmptyState, ProgressBar } from '@/components/ui/primitives';
+import { AutoNum } from '@/components/ui/Motion';
 import {
   Clock,
   Plus,
@@ -467,17 +468,17 @@ export function ScheduleTab({
           {/* Active Block Progress Bar */}
           {liveStats.activeBlock && (
             <div className="mt-3">
-              <div className="w-full h-1.5 bg-bg-700 rounded-full overflow-hidden border border-overlay-subtle">
-                <div
-                  className="h-full bg-primary-500 transition-all duration-500 rounded-full"
-                  style={{
-                    width: `${liveStats.activeBlockProgressPercent}%`,
-                    ...(liveStats.activeBlockActivity
-                      ? { backgroundColor: getActivityDisplayColor(liveStats.activeBlockActivity, theme) }
-                      : {}),
-                  }}
-                />
-              </div>
+              <ProgressBar
+                value={liveStats.activeBlockProgressPercent}
+                label="Current block progress"
+                size="sm"
+                live
+                fillStyle={
+                  liveStats.activeBlockActivity
+                    ? { backgroundColor: getActivityDisplayColor(liveStats.activeBlockActivity, theme) }
+                    : undefined
+                }
+              />
             </div>
           )}
         </div>
@@ -491,7 +492,7 @@ export function ScheduleTab({
             <Clock size={14} className="text-success-text" />
           </div>
           <p className="text-lg font-bold text-content-primary">
-            {formatDurationHuman(liveStats.totalScheduledMinutesToday)}
+            <AutoNum text={formatDurationHuman(liveStats.totalScheduledMinutesToday)} />
           </p>
           <p className="text-micro text-content-disabled">{dailyBlocks.length} scheduled block(s)</p>
         </div>
@@ -502,7 +503,7 @@ export function ScheduleTab({
             <CheckCircle2 size={14} className="text-success-text" />
           </div>
           <p className="text-lg font-bold text-success-text">
-            {liveStats.dayScheduledProgressPercent}%
+            <AutoNum text={`${liveStats.dayScheduledProgressPercent}%`} />
           </p>
           <p className="text-micro text-content-disabled">
             {formatDurationHuman(liveStats.completedScheduledMinutesToday)} completed
@@ -515,7 +516,7 @@ export function ScheduleTab({
             <BrainCircuit size={14} className="text-info-text" />
           </div>
           <p className="text-lg font-bold text-info-text">
-            {formatDurationHuman(liveStats.deepWorkMinutesToday)}
+            <AutoNum text={formatDurationHuman(liveStats.deepWorkMinutesToday)} />
           </p>
           <p className="text-micro text-content-disabled">Focus & High-leverage</p>
         </div>
@@ -526,7 +527,7 @@ export function ScheduleTab({
             <Activity size={14} className="text-warning-text" />
           </div>
           <p className="text-lg font-bold text-warning-text">
-            {formatDurationHuman(liveStats.exerciseMinutesToday + liveStats.readingMinutesToday)}
+            <AutoNum text={formatDurationHuman(liveStats.exerciseMinutesToday + liveStats.readingMinutesToday)} />
           </p>
           <p className="text-micro text-content-disabled">Exercise & Reading</p>
         </div>

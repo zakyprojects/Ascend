@@ -23,6 +23,7 @@ import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { Dialog, EmptyState, ProgressBar } from '@/components/ui/primitives';
 import { getBadHabitSlot } from '@/lib/badHabitEligibility';
+import { CountUp, Reveal } from '@/components/ui/Motion';
 import { getCapStatus } from '@/lib/capStatus';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
@@ -146,7 +147,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       </div>
 
       {/* Hero Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <Reveal index={0} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="card p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
             <Flame size={22} />
@@ -154,7 +155,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           <div>
             <div className="text-xs text-content-disabled">Overall Resisted Streak</div>
             <div className="text-xl font-display font-bold text-content-primary">
-              {overallStreak} <span className="text-xs font-normal text-content-muted">consecutive days</span>
+              <CountUp value={overallStreak} /> <span className="text-xs font-normal text-content-muted">consecutive days</span>
             </div>
           </div>
         </div>
@@ -166,7 +167,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           <div>
             <div className="text-xs text-content-disabled">Resist Success Rate</div>
             <div className="text-xl font-display font-bold text-content-primary">
-              {resistRate}% <span className="text-xs font-normal text-content-muted">({totalResisted} vs {totalOccurred})</span>
+              <CountUp value={resistRate} />% <span className="text-xs font-normal text-content-muted">({totalResisted} vs {totalOccurred})</span>
             </div>
           </div>
         </div>
@@ -178,11 +179,11 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           <div>
             <div className="text-xs text-content-disabled">Active Bad Habits</div>
             <div className="text-xl font-display font-bold text-content-primary">
-              {activeHabits.length}
+              <CountUp value={activeHabits.length} />
             </div>
           </div>
         </div>
-      </div>
+      </Reveal>
 
       <CapMeterConnected state={store.state} capId="badHabitsResisted" />
 
