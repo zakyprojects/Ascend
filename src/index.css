@@ -1262,7 +1262,8 @@ html[data-page-hidden] *::after {
   mix-blend-mode: normal;
 }
 
-/* Scroll rise: on every page, each top-level card rises and fades in as it scrolls into view, tied
+/* Scroll rise: on every page, every card (nested ones too) and every list row marked .scroll-rise
+   rises and fades in as it scrolls into view, tied
    to the scroll itself (a scroll-driven animation, run by the browser off the main thread), so it
    moves exactly with the finger or wheel and settles once the card is ~260px in. Cards already on
    screen when a page opens are past the range and use the page's open stagger (Reveal) instead.
@@ -1270,7 +1271,7 @@ html[data-page-hidden] *::after {
    (a modal) is never trapped. Browsers without scroll timelines show cards as they are. */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
-    [data-page-area] .card:not(.card .card):not([class*='animate-']) {
+    [data-page-area] :is(.card, .scroll-rise):not([class*='animate-']) {
       animation: scroll-rise linear backwards;
       animation-timeline: view();
       animation-range: entry 0% entry 260px;

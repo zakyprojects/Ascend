@@ -730,7 +730,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                   {unaddressedPastGoals.map(({ weekKey: pastWeek, goal }) => (
                     <div
                       key={`${pastWeek}-${goal.id}`}
-                      className="flex items-center justify-between p-2.5 bg-bg-900/70 border border-overlay-default rounded-lg"
+                      className="scroll-rise flex items-center justify-between p-2.5 bg-bg-900/70 border border-overlay-default rounded-lg"
                     >
                       <div className="space-y-0.5">
                         <span className="text-xs font-bold text-content-secondary block">{goal.title}</span>

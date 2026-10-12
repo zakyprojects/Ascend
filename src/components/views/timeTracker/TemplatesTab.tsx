@@ -281,7 +281,7 @@ export function TemplatesTab({
             return (
               <div
                 key={tpl.id}
-                className="p-5 rounded-2xl bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default transition-all space-y-4 flex flex-col justify-between"
+                className="scroll-rise p-5 rounded-2xl bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default transition-all space-y-4 flex flex-col justify-between"
               >
                 <div className="space-y-3">
                   {/* Title & Actions */}

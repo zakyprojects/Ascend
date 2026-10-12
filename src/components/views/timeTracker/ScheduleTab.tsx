@@ -807,7 +807,7 @@ export function ScheduleTab({
               return (
                 <div
                   key={block.id}
-                  className={`group relative p-4 rounded-2xl border transition-all ${
+                  className={`scroll-rise group relative p-4 rounded-2xl border transition-all ${
                     block.skipped
                       ? 'bg-bg-900/20 border-overlay-subtle opacity-60'
                       : isBlockActive

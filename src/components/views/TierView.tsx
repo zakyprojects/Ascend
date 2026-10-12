@@ -164,7 +164,7 @@ export function TierView({ store }: { store: AppStore }) {
             <h2 className="section-title mb-3">Recent Points</h2>
             <div className="card divide-y divide-overlay-subtle">
               {store.state.pointsHistory.slice(0, 10).map((entry) => (
-                <div key={entry.id} className="flex items-center gap-3 p-3.5">
+                <div key={entry.id} className="scroll-rise flex items-center gap-3 p-3.5">
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                       entry.amount > 0 ? 'bg-primary-500/15' : 'bg-error/15'

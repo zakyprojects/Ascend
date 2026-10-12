@@ -78,7 +78,7 @@ export function ActivitiesTab({
           return (
             <div
               key={act.id}
-              className="p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default transition-all flex items-start justify-between gap-3"
+              className="scroll-rise p-4 rounded-2xl bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default transition-all flex items-start justify-between gap-3"
             >
               <div className="flex items-start gap-3 min-w-0">
                 <div

@@ -287,7 +287,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                 {archive.competitors.map((c, idx) => (
                   <div
                     key={idx}
-                    className={`flex items-center gap-3 p-3 rounded-xl ${
+                    className={`scroll-rise flex items-center gap-3 p-3 rounded-xl ${
                       c.isUser
                         ? 'league-user-row border'
                         : 'bg-bg-700/50 border border-overlay-subtle'
