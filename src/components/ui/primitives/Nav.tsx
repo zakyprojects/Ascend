@@ -37,12 +37,12 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
           type="button"
           aria-current={active ? 'page' : undefined}
           onClick={onClick}
+          data-glide-item=""
           className={cx(
             'group/nav w-full flex items-center justify-between gap-3 px-3 rounded-xl text-sm font-medium',
             density === 'compact' ? 'py-1.5' : 'py-2.5',
-            active
-              ? 'text-brand-text'
-              : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle',
+            // Hover background comes from the list's trailing glide (useHoverGlide).
+            active ? 'text-brand-text' : 'text-content-muted hover:text-content-secondary',
             TAP_TARGET,
             FOCUS_RING,
             TRANSITION,
@@ -145,8 +145,9 @@ export const NavSection: React.FC<NavSectionProps> = ({
       aria-expanded={expanded}
       aria-controls={controlsId}
       onClick={onToggle}
+      data-glide-item=""
       className={cx(
-        'w-full flex items-center justify-between px-3 py-2 rounded-lg text-micro font-semibold uppercase tracking-wider text-content-muted hover:text-content-secondary hover:bg-overlay-subtle',
+        'w-full flex items-center justify-between px-3 py-2 rounded-lg text-micro font-semibold uppercase tracking-wider text-content-muted hover:text-content-secondary',
         TAP_TARGET,
         FOCUS_RING,
         TRANSITION,

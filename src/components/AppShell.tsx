@@ -23,6 +23,7 @@ import {
 import { useSidebarGroups } from './nav/useSidebarGroups';
 import { CommandPalette } from './nav/CommandPalette';
 import { IS_APPLE_PLATFORM } from '@/lib/platform';
+import { useHoverGlide } from '@/lib/useHoverGlide';
 import { RankChip } from './ui/RankChip';
 import { ViewEntrance } from './ViewEntrance';
 import { AppStore } from '@/lib/store';
@@ -77,6 +78,9 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   // Scroll memory: each view's last position, recorded as the user scrolls (back/forward has
   // already switched the view by the time we could read the old one).
   const mainRef = useRef<HTMLElement>(null);
+  const sidebarNavRef = useRef<HTMLElement>(null);
+  const sidebarGlideRef = useRef<HTMLSpanElement>(null);
+  useHoverGlide(sidebarNavRef, sidebarGlideRef);
   const scrollByView = useRef(new Map<View, number>());
   const scrollOwnerRef = useRef(currentView);
   useEffect(() => {
@@ -248,7 +252,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           </button>
         </div>
 
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+        <nav ref={sidebarNavRef} className="relative isolate flex-1 px-3 space-y-1 overflow-y-auto">
           <NavItemPrimitive
             icon={NAV_DASHBOARD.icon}
             label={NAV_DASHBOARD.label}
@@ -294,6 +298,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               density="compact"
             />
           </div>
+          <span ref={sidebarGlideRef} aria-hidden="true" className="hover-glide rounded-xl" />
         </nav>
 
         <div className="p-3 border-t border-overlay-subtle">

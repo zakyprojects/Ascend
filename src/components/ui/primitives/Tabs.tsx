@@ -1,5 +1,6 @@
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { useHoverGlide } from '@/lib/useHoverGlide';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
 
 export interface TabItem {
@@ -35,6 +36,8 @@ export const Tabs: React.FC<TabsProps> = ({
   const tabRefs = React.useRef<Map<string, HTMLButtonElement>>(new Map());
   const listRef = React.useRef<HTMLDivElement>(null);
   const indicator = useActiveIndicator(listRef, tabRefs, value, items);
+  const glideRef = React.useRef<HTMLSpanElement>(null);
+  useHoverGlide(listRef, glideRef);
 
   React.useLayoutEffect(() => {
     if (!scrollable) return;
@@ -87,7 +90,7 @@ export const Tabs: React.FC<TabsProps> = ({
       aria-label={ariaLabel}
       onKeyDown={handleKeyDown}
       className={cx(
-        'relative',
+        'relative isolate',
         isSegmented
           ? 'inline-flex items-center gap-1 p-1 rounded-xl bg-bg-700'
           : 'flex items-center gap-4 border-b border-overlay-subtle',
@@ -125,6 +128,7 @@ export const Tabs: React.FC<TabsProps> = ({
             }}
             type="button"
             role="tab"
+            data-glide-item=""
             aria-selected={active}
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(item.id)}
@@ -136,7 +140,7 @@ export const Tabs: React.FC<TabsProps> = ({
                     'rounded-lg',
                     active
                       ? 'text-on-brand'
-                      : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
+                      : 'text-content-muted hover:text-content-secondary'
                   )
                 : cx(
                     'border-b-2 border-transparent',
@@ -162,6 +166,8 @@ export const Tabs: React.FC<TabsProps> = ({
           </button>
         );
       })}
+      {/* Hover highlight that trails the pointer across the tabs (useHoverGlide). */}
+      <span ref={glideRef} aria-hidden="true" className={cx('hover-glide', isSegmented ? 'rounded-lg' : 'rounded-md')} />
     </div>
   );
 };

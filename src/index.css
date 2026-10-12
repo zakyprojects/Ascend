@@ -197,6 +197,8 @@
     --spot-alpha: 0.075;
     --spot-ring-alpha: 0.8;
     --dialog-scrim: 3 10 9;
+    --glide-bg: rgb(255 255 255 / 0.055);
+    --glide-ring: rgb(52 211 153 / 0.10);
     --atmo-glow-a: rgb(16 185 129 / 0.11);
     --atmo-glow-b: rgb(45 212 191 / 0.05);
     --atmo-line: rgb(52 211 153 / 0.09);
@@ -210,6 +212,8 @@
     --spot-alpha: 0.07;
     --spot-ring-alpha: 0.7;
     --dialog-scrim: 15 30 27;
+    --glide-bg: rgb(15 23 42 / 0.05);
+    --glide-ring: rgb(16 185 129 / 0.14);
     --atmo-glow-a: rgb(16 185 129 / 0.12);
     --atmo-glow-b: rgb(20 184 166 / 0.07);
     --atmo-line: rgb(4 120 87 / 0.08);
@@ -669,6 +673,25 @@
   [data-theme='light'] .card {
     border-color: var(--border-overlay-medium);
     box-shadow: var(--shadow-md);
+  }
+
+  /* Hover glide (lib/useHoverGlide.ts): the trailing hover highlight of a list. Placed by the hook
+     with transform/size; only its fade is CSS. Sits under the items (the list is `isolate`). */
+  .hover-glide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    margin: 0 !important;
+    pointer-events: none;
+    opacity: 0;
+    background: var(--glide-bg);
+    box-shadow: inset 0 0 0 1px var(--glide-ring);
+    transition: opacity 220ms var(--ease-standard);
+    will-change: transform;
+  }
+  .hover-glide[data-visible] {
+    opacity: 1;
   }
 
   /* Dialog backdrop: the page dims and goes soft-focus behind an open dialog. */
