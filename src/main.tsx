@@ -11,6 +11,8 @@ import './index.css';
 import { installPageVisibilityFlag, installWindowFocusFlag } from './lib/motion';
 import { installCardSpotlight } from './lib/cardSpotlight';
 import { installListExit } from './lib/listExit';
+import { viewFromLocation } from './lib/routes';
+import { installPagePrefetch, preloadView } from './components/views/lazyViews';
 
 installPageVisibilityFlag();
 installWindowFocusFlag();
@@ -32,6 +34,9 @@ if (import.meta.env.DEV && devParams.has('splash-preview')) {
     )
   );
 } else {
+  // The page in the address bar starts loading now, alongside the session check behind the splash.
+  preloadView(viewFromLocation()).catch(() => undefined);
+  installPagePrefetch();
   root.render(
     <StrictMode>
       <App />
