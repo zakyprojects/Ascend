@@ -42,8 +42,6 @@ function sideFor(screen: AuthScreen): ClimbPanelSide {
   return screen === 'login' ? 'left' : 'right';
 }
 
-const DEFAULT_STEPS: Record<ClimbPanelMode, number> = { login: 2, 'signup-choice': 0, signup: 5, upgrade: 5 };
-
 /**
  * What the panel shows. The form reports its state a render after a route change, so a report
  * that belongs to the previous page is ignored until the new one arrives.
@@ -57,11 +55,34 @@ function panelState(screen: AuthScreen, climb: AuthClimbState | null) {
   const fits =
     reported !== null &&
     (screen === 'signup' ? reported === 'signup' || reported === 'signup-choice' : reported === screen);
+  // The error count is not per screen: it always passes through, so a route change never looks
+  // like a new error.
+  const errorTick = climb?.errorTick ?? 0;
   if (climb && fits && reported) {
-    return { mode: reported, progress: climb.progress, steps: climb.steps, phase: climb.phase, hoverTrail: climb.hoverTrail, preview: climb.preview };
+    return {
+      mode: reported,
+      progress: climb.progress,
+      phase: climb.phase,
+      hoverTrail: climb.hoverTrail,
+      avatar: climb.preview.avatar,
+      focus: climb.focus,
+      caret: climb.caret,
+      passwordVisible: climb.passwordVisible,
+      errorTick,
+    };
   }
   const mode: ClimbPanelMode = screen === 'signup' ? 'signup-choice' : screen;
-  return { mode, progress: 0, steps: DEFAULT_STEPS[mode], phase: 'idle' as const, hoverTrail: null, preview: undefined };
+  return {
+    mode,
+    progress: 0,
+    phase: 'idle' as const,
+    hoverTrail: null,
+    avatar: '',
+    focus: null,
+    caret: 0,
+    passwordVisible: false,
+    errorTick,
+  };
 }
 
 /**
@@ -136,7 +157,7 @@ export function AuthPage({ screen, search, guestState, onAuthSuccess, onDone, on
 
   // ---- Success hand-off -------------------------------------------------------------------
   // When the success screen is done, an emerald layer grows from the panel's outline to the whole
-  // screen (the panel stays on top with its summit), then the app fades in over it as a view
+  // screen (the panel, with Ember cheering, stays on top), then the app fades in over it as a view
   // transition. onDone runs inside that transition, so the first frame the app renders is already
   // the new snapshot: no app shell before the flood, and the success screen is never cut short
   // (this only starts at onDone time). Guest starts (no success screen), reduced motion and the
@@ -217,10 +238,13 @@ export function AuthPage({ screen, search, guestState, onAuthSuccess, onDone, on
         <ClimbPanel
           mode={panel.mode}
           progress={panel.progress}
-          steps={panel.steps}
           phase={panel.phase}
           hoverTrail={panel.hoverTrail}
-          preview={panel.preview}
+          avatar={panel.avatar}
+          focus={panel.focus}
+          caret={panel.caret}
+          passwordVisible={panel.passwordVisible}
+          errorTick={panel.errorTick}
           side={side}
           className="auth-swap auth-band h-full lg:min-h-0"
         />

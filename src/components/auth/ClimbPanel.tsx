@@ -1,21 +1,24 @@
 import type { CSSProperties } from 'react';
-import { ClimbPhase, ClimbRoute, ClimbTrail } from './ClimbTrail';
-import { LeaguePreviewCard } from './LeaguePreviewCard';
+import { Ember, EmberFocus, EmberPhase, EmberRoute } from './Ember';
 
 export type ClimbPanelMode = 'login' | 'signup' | 'signup-choice' | 'upgrade';
 export type ClimbPanelSide = 'left' | 'right';
 
 export interface ClimbPanelProps {
   mode: ClimbPanelMode;
-  /** Valid fields so far, 0..steps: the climber's step. */
+  /** Valid fields so far: Ember nods when it goes up. */
   progress: number;
-  /** Fields the form needs (the climb's step count). */
-  steps: number;
-  phase: ClimbPhase;
-  /** Signup choice: the route the pointer or focus is on. */
-  hoverTrail?: ClimbRoute | null;
-  /** Signup: what the user has typed so far, shown as a leaderboard row (desktop only). */
-  preview?: { username: string; avatar: string };
+  phase: EmberPhase;
+  /** Signup choice: the option the pointer or focus is on. */
+  hoverTrail?: EmberRoute | null;
+  /** Signup form: the chosen avatar, which Ember holds up on a badge. */
+  avatar?: string;
+  /** The focused form field, its caret (0..1) and whether a focused password is shown. */
+  focus?: EmberFocus;
+  caret?: number;
+  passwordVisible?: boolean;
+  /** Goes up by one per error the form shows. */
+  errorTick?: number;
   /** The side of the page the panel sits on; its slanted edge faces the form on the other side. */
   side: ClimbPanelSide;
   className?: string;
@@ -60,18 +63,21 @@ const CONTOURS: CSSProperties = {
 };
 
 /**
- * The brand side of the sign-in pages ("The Climb"): dark emerald with contour lines, the torch
- * chip, a serif headline and the climb, which rises one step per valid field. Size and placement
+ * The brand side of the sign-in pages: dark emerald with contour lines, the torch chip, a serif
+ * headline and Ember, the mascot, which reacts to the form. Size and placement
  * come from the page (`className`); the panel fills the box it is given. Everything here repeats
  * or decorates the form, so none of it is needed to sign in.
  */
 export function ClimbPanel({
   mode,
   progress,
-  steps,
   phase,
   hoverTrail = null,
-  preview,
+  avatar = '',
+  focus = null,
+  caret = 0,
+  passwordVisible = false,
+  errorTick = 0,
   side,
   className = '',
 }: ClimbPanelProps) {
@@ -95,31 +101,30 @@ export function ClimbPanel({
         <span className="text-sm font-semibold tracking-tight">Ascend</span>
       </div>
 
-      <div className="flex-1 flex flex-col justify-center py-4 sm:py-6 lg:py-10">
-        <p key={headline} className="font-serif font-normal text-4xl lg:text-6xl leading-none tracking-tight animate-enter-up">
-          {headline}
-        </p>
-        <p key={line} className="mt-3 lg:mt-4 max-w-sm text-sm lg:text-base text-primary-100/70 animate-enter-fade">
-          {line}
-        </p>
-      </div>
+      {/* Phones: headline and Ember side by side in the band. Desktop: headline centred, Ember below. */}
+      <div className="flex-1 flex items-end gap-3 lg:flex-col lg:items-start lg:gap-0">
+        <div className="flex-1 min-w-0 self-center flex flex-col justify-center py-4 sm:py-6 lg:self-stretch lg:py-10">
+          <p key={headline} className="font-serif font-normal text-4xl lg:text-6xl leading-none tracking-tight animate-enter-up">
+            {headline}
+          </p>
+          <p key={line} className="mt-3 lg:mt-4 max-w-sm text-sm lg:text-base text-primary-100/70 animate-enter-fade">
+            {line}
+          </p>
+        </div>
 
-      {mode === 'signup' && preview && (
-        <LeaguePreviewCard
-          username={preview.username}
-          avatar={preview.avatar}
-          className="hidden lg:block w-full max-w-sm mb-8"
+        <Ember
+          formSide={side === 'left' ? 'right' : 'left'}
+          phase={phase}
+          focus={focus}
+          caret={caret}
+          passwordVisible={passwordVisible}
+          errorTick={errorTick}
+          progress={progress}
+          hoverTrail={mode === 'signup-choice' ? hoverTrail : null}
+          badge={mode === 'signup' && avatar ? avatar : undefined}
+          className="shrink-0 w-24 sm:w-28 lg:w-52"
         />
-      )}
-
-      <ClimbTrail
-        steps={steps}
-        progress={progress}
-        phase={phase}
-        variant={mode === 'signup-choice' ? 'routes' : 'climb'}
-        hoverTrail={hoverTrail}
-        className="max-w-xl max-h-20 sm:max-h-28 lg:max-h-none"
-      />
+      </div>
     </div>
   );
 }
