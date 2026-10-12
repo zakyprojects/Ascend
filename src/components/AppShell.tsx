@@ -13,6 +13,7 @@ import {
   DEFAULT_GROUP_VIEWS,
   getGroupForView,
   getViewLabel,
+  type NavGroup,
 } from './nav/navConfig';
 import { useNavPanel } from './nav/useNavPanel';
 import { ZoneRail } from './nav/ZoneRail';
@@ -22,6 +23,10 @@ import { MobileZoneBar } from './nav/MobileZoneBar';
 import { ZoneSheet } from './nav/ZoneSheet';
 import { QuickLog } from './nav/QuickLog';
 import { useNavShortcuts } from './nav/useNavShortcuts';
+
+/** Hover peek: rest this long on a zone before its pages show; they linger this long after leaving. */
+const PEEK_OPEN_MS = 140;
+const PEEK_CLOSE_MS = 220;
 import { CommandPalette } from './nav/CommandPalette';
 import { getNavStatuses, getUpNext } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
@@ -81,6 +86,28 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
   const panelGroup = NAV_GROUPS.find((g) => g.id === panelZone) ?? NAV_GROUPS[0];
   const navStatuses = getNavStatuses(store.state, store.isHabitDone);
+
+  // Hover peek (desktop, panel hidden): resting on a zone shows its pages floating over the page;
+  // they stay while the pointer is on the rail or the peek, and go a moment after it leaves both.
+  const [peekZone, setPeekZone] = useState<NavGroup['id'] | null>(null);
+  const peekTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const peekGroup = peekZone ? NAV_GROUPS.find((group) => group.id === peekZone) ?? null : null;
+  const onZoneHover = (zone: NavGroup['id'] | null) => {
+    clearTimeout(peekTimer.current);
+    if (!panelCollapsed) return;
+    if (zone) peekTimer.current = setTimeout(() => setPeekZone(zone), peekZone ? 0 : PEEK_OPEN_MS);
+    else peekTimer.current = setTimeout(() => setPeekZone(null), PEEK_CLOSE_MS);
+  };
+  useEffect(() => () => clearTimeout(peekTimer.current), []);
+  useEffect(() => {
+    if (!panelCollapsed) setPeekZone(null);
+  }, [panelCollapsed]);
+  useEffect(() => {
+    if (!peekZone) return;
+    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && setPeekZone(null);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [peekZone]);
 
   useNavShortcuts({
     onDashboard: () => goTo(NAV_DASHBOARD.id),
@@ -219,7 +246,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
       <div aria-hidden="true" className="app-atmosphere" />
       {/* Desktop navigation (Basecamp): zone rail + the zone's pages. A zone opens its pages in the
           panel; clicking the zone the panel already shows hides the panel again. */}
-      <aside className="hidden lg:flex h-full glass border-r border-overlay-subtle shrink-0">
+      <aside className="relative z-sticky hidden lg:flex h-full glass border-r border-overlay-subtle shrink-0">
         <ZoneRail
           onDashboard={currentView === NAV_DASHBOARD.id}
           activeZone={activeGroupId}
@@ -228,7 +255,9 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           seasonPoints={seasonPoints}
           playBadge={pendingIncomingInvitesCount}
           onGoDashboard={() => goTo(NAV_DASHBOARD.id)}
+          onZoneHover={onZoneHover}
           onZone={(zone) => {
+            setPeekZone(null);
             if (!panelCollapsed && panelZone === zone) {
               setPanelCollapsed(true);
             } else {
@@ -265,6 +294,26 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
             footer={<RankChip seasonPoints={seasonPoints} latestEntryTimestamp={store.state.pointsHistory?.[0]?.timestamp} />}
           />
         </div>
+        {peekGroup && (
+          <div
+            onPointerEnter={() => clearTimeout(peekTimer.current)}
+            onPointerLeave={() => onZoneHover(null)}
+            className="zone-peek absolute inset-y-0 left-full"
+          >
+            <ZonePanel
+              group={peekGroup}
+              currentView={currentView}
+              partnerBadge={pendingIncomingInvitesCount}
+              statuses={navStatuses}
+              upNext={upNext}
+              onNavigate={(view) => {
+                setPeekZone(null);
+                goTo(view);
+              }}
+              className="border-r border-overlay-default bg-bg-800 shadow-2xl"
+            />
+          </div>
+        )}
       </aside>
 
       {/* Mobile view wrapper */}

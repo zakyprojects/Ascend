@@ -16,25 +16,28 @@ interface ZonePanelProps {
   /** The most pressing open page across all zones (lib/navStatus getUpNext). */
   upNext: View | null;
   onNavigate: (view: View) => void;
-  onCollapse: () => void;
+  /** Hide-panel button; left out in the hover peek, which closes on its own. */
+  onCollapse?: () => void;
   /** Bottom slot: the season standing. */
-  footer: ReactNode;
+  footer?: ReactNode;
+  className?: string;
 }
 
 /** The zone's pages, hung on one line like waypoints (NavItem layout="trail"). */
-export function ZonePanel({ group, currentView, partnerBadge, statuses, upNext, onNavigate, onCollapse, footer }: ZonePanelProps) {
+export function ZonePanel({ group, currentView, partnerBadge, statuses, upNext, onNavigate, onCollapse, footer, className }: ZonePanelProps) {
 
   const navRef = useRef<HTMLElement>(null);
   const glideRef = useRef<HTMLSpanElement>(null);
   useHoverGlide(navRef, glideRef);
 
   return (
-    <div className="flex h-full w-60 flex-col border-l border-overlay-subtle">
+    <div className={cx('flex h-full w-60 flex-col border-l border-overlay-subtle', className)}>
       <div className="flex items-start justify-between gap-2 px-5 pb-4 pt-6">
         <div key={group.id} className="zone-title min-w-0">
           <div className="font-mono text-2xs uppercase tracking-[0.16em] text-content-muted">{group.items.length} pages</div>
           <h2 className="mt-1 font-serif text-3xl leading-none text-content-primary">{group.label}</h2>
         </div>
+        {onCollapse && (
         <button
           type="button"
           onClick={onCollapse}
@@ -44,6 +47,7 @@ export function ZonePanel({ group, currentView, partnerBadge, statuses, upNext, 
         >
           <PanelLeftClose size={16} aria-hidden="true" />
         </button>
+        )}
       </div>
 
       <UpNextCard upNext={upNext} currentView={currentView} statuses={statuses} onNavigate={onNavigate} className="mx-3 mb-3" />
@@ -66,7 +70,7 @@ export function ZonePanel({ group, currentView, partnerBadge, statuses, upNext, 
         <span ref={glideRef} aria-hidden="true" className="hover-glide rounded-lg" />
       </nav>
 
-      <div className="border-t border-overlay-subtle p-4">{footer}</div>
+      {footer && <div className="border-t border-overlay-subtle p-4">{footer}</div>}
     </div>
   );
 }

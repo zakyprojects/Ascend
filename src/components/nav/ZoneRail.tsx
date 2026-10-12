@@ -20,6 +20,8 @@ interface ZoneRailProps {
   playBadge: number;
   onGoDashboard: () => void;
   onZone: (zone: ZoneId) => void;
+  /** Pointer resting on a zone button (null: it left the rail). Drives the hover peek. */
+  onZoneHover: (zone: ZoneId | null) => void;
   onExpandPanel: () => void;
   onSearch: () => void;
   onQuickLog: () => void;
@@ -42,6 +44,7 @@ export function ZoneRail({
   playBadge,
   onGoDashboard,
   onZone,
+  onZoneHover,
   onExpandPanel,
   onSearch,
   onQuickLog,
@@ -53,7 +56,7 @@ export function ZoneRail({
   const shortcut = IS_APPLE_PLATFORM ? '⌘K' : 'Ctrl K';
 
   return (
-    <div className="flex h-full w-[4.25rem] shrink-0 flex-col items-center gap-2 py-4">
+    <div onPointerLeave={() => onZoneHover(null)} className="flex h-full w-[4.25rem] shrink-0 flex-col items-center gap-2 py-4">
       <button
         type="button"
         onClick={onGoDashboard}
@@ -80,7 +83,7 @@ export function ZoneRail({
           className="rail-altitude absolute bottom-3 left-1/2 w-px -translate-x-1/2 bg-brand-text"
           style={{ height: `calc((100% - 1.5rem) * ${altitude})` }}
         />
-        <ZoneButton icon={NAV_DASHBOARD.icon} label={NAV_DASHBOARD.label} shortcut="G D" active={onDashboard} onClick={onGoDashboard} />
+        <ZoneButton icon={NAV_DASHBOARD.icon} label={NAV_DASHBOARD.label} shortcut="G D" active={onDashboard} onClick={onGoDashboard} onHover={() => onZoneHover(null)} />
         {NAV_GROUPS.map((group) => (
           <ZoneButton
             key={group.id}
@@ -91,6 +94,7 @@ export function ZoneRail({
             shown={!panelCollapsed && panelZone === group.id && activeZone !== group.id}
             badge={group.id === 'play' && playBadge > 0}
             onClick={() => onZone(group.id)}
+            onHover={() => onZoneHover(group.id)}
           />
         ))}
       </div>
@@ -137,13 +141,15 @@ interface ZoneButtonProps {
   shown?: boolean;
   badge?: boolean;
   onClick: () => void;
+  onHover?: () => void;
 }
 
-function ZoneButton({ icon: Icon, label, shortcut, active, shown = false, badge = false, onClick }: ZoneButtonProps) {
+function ZoneButton({ icon: Icon, label, shortcut, active, shown = false, badge = false, onClick, onHover }: ZoneButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
+      onPointerEnter={(event) => event.pointerType === 'mouse' && onHover?.()}
       aria-label={label}
       aria-current={active ? 'true' : undefined}
       title={`${label} (${shortcut})`}

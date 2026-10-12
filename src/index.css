@@ -950,6 +950,16 @@
   .zone-sheet {
     animation: sheet-up 340ms var(--ease-emphasized) both;
   }
+  /* Desktop hover peek: the hidden panel slides out over the page from the rail. */
+  .zone-peek {
+    animation: peek-in 200ms var(--ease-emphasized) both;
+  }
+  @keyframes peek-in {
+    from { opacity: 0; transform: translateX(-0.75rem); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .zone-peek { animation: none; }
+  }
   /* The page behind a sheet: dimmed and blurred, like iOS. */
   .zone-sheet-backdrop {
     background: rgb(0 0 0 / 0.42);
