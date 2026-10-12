@@ -882,6 +882,60 @@
     padding-left: 2.75rem !important;
   }
 
+  /* Sidebar trail (AppShell): a group's pages hang off one hairline like waypoints on a route;
+     NavItem layout="trail" draws its node on this line. */
+  .nav-trail {
+    position: relative;
+    margin-left: 1.25rem;
+    padding-left: 0.5rem;
+  }
+  .nav-trail::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 1px;
+    background: var(--border-overlay-default);
+  }
+  .nav-node {
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+  .nav-node-active {
+    box-shadow: 0 0 0 3px rgb(16 185 129 / 0.18), 0 0 12px rgb(16 185 129 / 0.45);
+  }
+
+  /* Basecamp rail (nav/ZoneRail): the current zone glows; the season climb fills the route line. */
+  .zone-active {
+    box-shadow: 0 0 0 1px rgb(16 185 129 / 0.25), 0 6px 18px -6px rgb(16 185 129 / 0.45);
+  }
+  .rail-altitude {
+    box-shadow: 0 0 8px rgb(16 185 129 / 0.6);
+    transition: height 900ms var(--ease-emphasized);
+  }
+  /* Zone panel: a new zone's title and pages slide in; the account menu rises from the avatar. */
+  .zone-title,
+  .zone-pages {
+    animation: zone-in 320ms var(--ease-emphasized) both;
+  }
+  .zone-pages {
+    animation-delay: 40ms;
+  }
+  .account-menu {
+    transform-origin: left bottom;
+    animation: menu-in 180ms var(--ease-emphasized) both;
+  }
+  @keyframes zone-in {
+    from { opacity: 0; transform: translateX(-6px); }
+  }
+  @keyframes menu-in {
+    from { opacity: 0; transform: translateX(-4px) scale(0.97); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .zone-title, .zone-pages, .account-menu { animation: none; }
+    .rail-altitude { transition: none; }
+  }
+
   /* Keyboard key hint (command palette shortcuts). */
   .kbd {
     @apply inline-flex min-w-[1.25rem] items-center justify-center rounded-md border border-overlay-default bg-bg-700 px-1 py-px font-mono text-3xs font-semibold text-content-muted;

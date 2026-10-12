@@ -9,7 +9,8 @@ export interface NavItemProps
   active: boolean;
   onClick?: () => void;
   badgeCount?: number;
-  layout?: 'row' | 'stack';
+  /** row: icon + label; trail: label on a group's climbing line (sidebar groups); stack: bottom bar. */
+  layout?: 'row' | 'trail' | 'stack';
   density?: 'default' | 'compact';
 }
 
@@ -28,9 +29,46 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
     },
     ref
   ) => {
-    const isRow = layout === 'row';
+    if (layout === 'trail') {
+      return (
+        <button
+          ref={ref}
+          type="button"
+          aria-current={active ? 'page' : undefined}
+          onClick={onClick}
+          data-glide-item=""
+          className={cx(
+            'group/nav w-full flex items-center justify-between gap-3 pl-4 pr-3 py-1.5 rounded-lg text-sm',
+            active ? 'font-semibold text-content-primary' : 'font-medium text-content-muted hover:text-content-secondary',
+            TAP_TARGET,
+            FOCUS_RING,
+            TRANSITION,
+            className
+          )}
+          {...props}
+        >
+          {active && <span aria-hidden="true" data-nav-pill className="absolute inset-0 rounded-lg bg-primary-500/10" />}
+          {/* Node on the group's line (the parent draws the line): a waypoint, lit on the current page. */}
+          <span
+            aria-hidden="true"
+            className={cx(
+              'nav-node absolute top-1/2 -translate-y-1/2 rounded-full',
+              active
+                ? 'nav-node-active -left-[12px] h-[9px] w-[9px] bg-brand-text'
+                : '-left-[10px] h-[5px] w-[5px] bg-overlay-strong group-hover/nav:bg-primary-500'
+            )}
+          />
+          <span className="relative truncate">{label}</span>
+          {Boolean(badgeCount && badgeCount > 0) && (
+            <span className="relative w-5 h-5 rounded-full bg-rose-500 text-white text-micro font-bold flex items-center justify-center">
+              {badgeCount}
+            </span>
+          )}
+        </button>
+      );
+    }
 
-    if (isRow) {
+    if (layout === 'row') {
       return (
         <button
           ref={ref}

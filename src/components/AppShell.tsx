@@ -1,15 +1,9 @@
 import { ReactNode, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import {
-  LogIn,
-  LogOut,
-  Search,
-  Settings,
-} from 'lucide-react';
+import { LogIn } from 'lucide-react';
 import {
   Button,
   Dialog,
   NavItem as NavItemPrimitive,
-  NavSection,
   Tabs,
 } from '@/components/ui/primitives';
 import {
@@ -20,10 +14,11 @@ import {
   getGroupForView,
   getViewLabel,
 } from './nav/navConfig';
-import { useSidebarGroups } from './nav/useSidebarGroups';
+import { useNavPanel } from './nav/useNavPanel';
+import { ZoneRail } from './nav/ZoneRail';
+import { ZonePanel } from './nav/ZonePanel';
+import { AccountMenu } from './nav/AccountMenu';
 import { CommandPalette } from './nav/CommandPalette';
-import { IS_APPLE_PLATFORM } from '@/lib/platform';
-import { useHoverGlide } from '@/lib/useHoverGlide';
 import { prefersReducedMotion } from '@/lib/motion';
 import { RankChip } from './ui/RankChip';
 import { ViewEntrance } from './ViewEntrance';
@@ -33,7 +28,6 @@ import { LogoutConfirmModal } from './ui/LogoutConfirmModal';
 import { NotificationCenter } from './ui/NotificationCenter';
 import { AppLogo } from './ui/AppLogo';
 import { ThemeToggle } from './ui/ThemeToggle';
-import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import type { View } from '@/lib/views';
 import type { NavigationKind } from '@/lib/useViewRoute';
 
@@ -62,7 +56,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ currentView, navigationKind, onViewChange, store, onOpenAuthModal, children }: AppShellProps) {
-  const { isOpen, toggle, open } = useSidebarGroups();
+  const { collapsed: panelCollapsed, toggle: togglePanel } = useNavPanel();
   const [accountOpen, setAccountOpen] = useState(false);
   const [guestLogoutWarningOpen, setGuestLogoutWarningOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
@@ -72,16 +66,16 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   const [lastByGroup, setLastByGroup] = useState(DEFAULT_GROUP_VIEWS);
   const activeGroupId = getGroupForView(currentView);
   useEffect(() => { if (activeGroupId) setLastByGroup(prev => prev[activeGroupId] === currentView ? prev : { ...prev, [activeGroupId]: currentView }); }, [currentView, activeGroupId]);
-  useEffect(() => { if (activeGroupId) open(activeGroupId); }, [activeGroupId, open]);
+  // The desktop panel shows the current page's zone; on Dashboard/Settings it keeps the last one.
+  const [panelZone, setPanelZone] = useState(activeGroupId ?? NAV_GROUPS[0].id);
+  useEffect(() => { if (activeGroupId) setPanelZone(activeGroupId); }, [activeGroupId]);
 
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
+  const panelGroup = NAV_GROUPS.find((g) => g.id === panelZone) ?? NAV_GROUPS[0];
 
   // Scroll memory: each view's last position, recorded as the user scrolls (back/forward has
   // already switched the view by the time we could read the old one).
   const mainRef = useRef<HTMLElement>(null);
-  const sidebarNavRef = useRef<HTMLElement>(null);
-  const sidebarGlideRef = useRef<HTMLSpanElement>(null);
-  useHoverGlide(sidebarNavRef, sidebarGlideRef);
   const scrollByView = useRef(new Map<View, number>());
   const scrollOwnerRef = useRef(currentView);
   useEffect(() => {
@@ -181,147 +175,45 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   return (
     <div className="relative isolate min-h-screen lg:h-dvh bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div aria-hidden="true" className="app-atmosphere" />
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 h-full glass border-r border-overlay-subtle shrink-0 overflow-y-auto">
-        <div className="p-6 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <AppLogo className="w-9 h-9 rounded-[22%] object-cover shrink-0" />
-            <div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <div className="font-display font-bold text-content-primary text-lg leading-none">Ascend</div>
-                <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md badge-neutral text-3xs font-bold uppercase tracking-wider">
-                  Beta
-                </span>
-              </div>
-            </div>
-          </div>
-          <ThemeToggle isDark={isDarkTheme} onToggle={store.toggleThemePreference} />
-        </div>
-
-        {/* User Account / Login Card in Sidebar */}
-        <div className="px-3 mb-4">
-          {currentUser ? (
-            <div className="card p-3 bg-bg-800/80 border border-overlay-default space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-lg bg-primary-500/20 border border-primary-500/30 flex items-center justify-center text-lg shrink-0">
-                  {userAvatar}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-content-secondary truncate">{username}</p>
-                  <p className={`text-2xs font-medium truncate ${currentUser.isAnonymous ? 'text-content-muted' : 'text-brand-text'}`}>
-                    {currentUser.isAnonymous ? 'Guest Account' : 'Account Active'}
-                  </p>
-                </div>
-                <NotificationCenter store={store} compact align="sidebar" />
-                <button
-                  onClick={() => onViewChange('settings')}
-                  title="Settings & Preferences"
-                  className={`p-1.5 rounded-lg transition-all ${
-                    currentView === 'settings'
-                      ? 'bg-primary-500/20 text-brand-text border border-primary-500/30'
-                      : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
-                  } ${TAP_TARGET_Y}`}
-                >
-                  <Settings size={15} />
-                </button>
-                <button
-                  onClick={handleLogoutClick}
-                  title="Log Out"
-                  className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET_Y}`}
-                >
-                  <LogOut size={15} />
-                </button>
-              </div>
-
-              {currentUser.isAnonymous && (
-                <button
-                  onClick={onOpenAuthModal}
-                  className="w-full py-1.5 px-2 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-brand-text font-semibold text-micro rounded-lg transition-all flex items-center justify-center gap-1.5"
-                >
-                  <span>Save Progress — Create Account</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <button
-              onClick={onOpenAuthModal}
-              className="w-full card p-3 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 flex items-center justify-center gap-2 text-brand-text font-medium text-xs rounded-xl transition-all"
-            >
-              <LogIn size={16} />
-              <span>Sign In / Register</span>
-            </button>
-          )}
-        </div>
-
-        <div className="px-3 pb-2">
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            aria-keyshortcuts={IS_APPLE_PLATFORM ? 'Meta+K' : 'Control+K'}
-            className="w-full flex items-center gap-2 rounded-xl border border-overlay-subtle bg-bg-800/60 px-3 py-2 text-xs text-content-muted hover:text-content-secondary hover:border-overlay-default transition-colors"
-          >
-            <Search size={14} aria-hidden="true" />
-            <span className="flex-1 text-left">Go to…</span>
-            <span className="inline-flex gap-0.5" aria-hidden="true">
-              <kbd className="kbd">{IS_APPLE_PLATFORM ? '⌘' : 'Ctrl'}</kbd>
-              <kbd className="kbd">K</kbd>
-            </span>
-          </button>
-        </div>
-
-        <nav ref={sidebarNavRef} className="relative isolate flex-1 px-3 space-y-1 overflow-y-auto">
-          <NavItemPrimitive
-            icon={NAV_DASHBOARD.icon}
-            label={NAV_DASHBOARD.label}
-            active={currentView === NAV_DASHBOARD.id}
-            onClick={() => goTo(NAV_DASHBOARD.id)}
-            layout="row"
-            density="compact"
-          />
-          {NAV_GROUPS.map((group) => (
-            <div key={group.id} className="space-y-1">
-              <NavSection
-                label={group.label}
-                expanded={isOpen(group.id)}
-                onToggle={() => toggle(group.id)}
-                badgeCount={group.id === 'play' ? pendingIncomingInvitesCount : undefined}
-                controlsId={`nav-group-${group.id}`}
-              />
-              {isOpen(group.id) && (
-                <div id={`nav-group-${group.id}`} className="space-y-1">
-                  {group.items.map((item) => (
-                    <NavItemPrimitive
-                      key={item.id}
-                      icon={item.icon}
-                      label={item.label}
-                      active={currentView === item.id}
-                      onClick={() => goTo(item.id)}
-                      layout="row"
-                      density="compact"
-                      badgeCount={item.id === 'partner' ? pendingIncomingInvitesCount : undefined}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-          <div className="border-t border-overlay-subtle pt-2 mt-2">
-            <NavItemPrimitive
-              icon={NAV_SETTINGS.icon}
-              label={NAV_SETTINGS.label}
-              active={currentView === NAV_SETTINGS.id}
-              onClick={() => goTo(NAV_SETTINGS.id)}
-              layout="row"
-              density="compact"
+      {/* Desktop navigation (Basecamp): zone rail + the zone's pages. With the panel hidden, a zone
+          opens its last page directly; with it shown, a zone first shows its pages. */}
+      <aside className="hidden lg:flex h-full glass border-r border-overlay-subtle shrink-0">
+        <ZoneRail
+          onDashboard={currentView === NAV_DASHBOARD.id}
+          activeZone={activeGroupId}
+          panelZone={panelZone}
+          panelCollapsed={panelCollapsed}
+          seasonPoints={seasonPoints}
+          playBadge={pendingIncomingInvitesCount}
+          onGoDashboard={() => goTo(NAV_DASHBOARD.id)}
+          onZone={(zone) => {
+            if (panelCollapsed) onViewChange(lastByGroup[zone]);
+            else setPanelZone(zone);
+          }}
+          onExpandPanel={togglePanel}
+          onSearch={() => setPaletteOpen(true)}
+          bell={currentUser ? <NotificationCenter store={store} compact align="sidebar" /> : null}
+          account={
+            <AccountMenu
+              user={currentUser ? { name: username || 'You', avatar: userAvatar, isGuest: Boolean(currentUser.isAnonymous) } : null}
+              settingsActive={currentView === NAV_SETTINGS.id}
+              isDark={isDarkTheme}
+              onToggleTheme={store.toggleThemePreference}
+              onOpenSettings={() => goTo(NAV_SETTINGS.id)}
+              onOpenAuth={onOpenAuthModal}
+              onLogout={handleLogoutClick}
             />
-          </div>
-          <span ref={sidebarGlideRef} aria-hidden="true" className="hover-glide rounded-xl" />
-        </nav>
-
-        <div className="p-3 border-t border-overlay-subtle">
-          <RankChip
-            seasonPoints={seasonPoints}
-            latestEntryTimestamp={store.state.pointsHistory?.[0]?.timestamp}
+          }
+        />
+        {/* Hidden rather than unmounted when collapsed: RankChip inside raises the rank-up toast. */}
+        <div className={panelCollapsed ? 'hidden' : 'contents'}>
+          <ZonePanel
+            group={panelGroup}
+            currentView={currentView}
+            partnerBadge={pendingIncomingInvitesCount}
+            onNavigate={goTo}
+            onCollapse={togglePanel}
+            footer={<RankChip seasonPoints={seasonPoints} latestEntryTimestamp={store.state.pointsHistory?.[0]?.timestamp} />}
           />
         </div>
       </aside>

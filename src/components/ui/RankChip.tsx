@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { TierBadge } from './TierBadge';
 import { useToast } from './Toast';
-import { getCurrentTier, getTierIndex } from '@/lib/tiers';
+import { getCurrentTier, getNextTier, getProgressToNextTier, getTierIndex } from '@/lib/tiers';
+import { ProgressBar } from './primitives/ProgressBar';
 import { leagueNow } from '@/lib/leagueTime';
 
 /**
@@ -22,6 +23,8 @@ export function RankChip({ seasonPoints, latestEntryTimestamp }: RankChipProps) 
   const tierIndex = getTierIndex(seasonPoints);
   const tier = getCurrentTier(seasonPoints);
   const tierKey = tier.name.toLowerCase();
+  const next = getNextTier(seasonPoints);
+  const progress = getProgressToNextTier(seasonPoints);
 
   // Compare against the previous render so nothing fires on mount.
   const [prevTierIndex, setPrevTierIndex] = useState(tierIndex);
@@ -63,13 +66,28 @@ export function RankChip({ seasonPoints, latestEntryTimestamp }: RankChipProps) 
           }}
         />
       )}
-      <div className="relative card px-3 py-2 flex items-center justify-between">
-        <div key={rankUpId} className={rankUpId > 0 ? 'animate-celebrate' : undefined}>
-          <TierBadge totalPoints={seasonPoints} size="sm" showName />
+      {/* Season standing: rank in the serif, points in mono, the climb to the next rank as a thin line. */}
+      <div className="relative px-1">
+        <div className="flex items-center justify-between gap-2">
+          <div key={rankUpId} className={`flex items-center gap-2 min-w-0 ${rankUpId > 0 ? 'animate-celebrate' : ''}`}>
+            <TierBadge totalPoints={seasonPoints} size="sm" />
+            <span className="font-serif text-xl leading-none truncate" style={{ color: `var(--rank-${tierKey}-text)` }}>
+              {tier.name}
+            </span>
+          </div>
+          <span className="font-mono text-2xs text-content-muted tabular-nums shrink-0">
+            {seasonPoints.toLocaleString()} pts
+          </span>
         </div>
-        <span className="text-xs text-content-disabled tabular-nums">
-          {seasonPoints.toLocaleString()} points
-        </span>
+        <ProgressBar
+          value={progress.percent}
+          label={next ? `Progress to ${next.name}` : 'Top rank reached'}
+          size="sm"
+          className="mt-2.5"
+        />
+        <div className="mt-1.5 text-micro text-content-muted">
+          {next ? `${(progress.needed - progress.current).toLocaleString()} to ${next.name}` : 'Top rank this season'}
+        </div>
       </div>
     </div>
   );
