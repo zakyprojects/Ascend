@@ -1,5 +1,4 @@
 import {
-  Flame,
   BookOpen,
   Check,
   ArrowRight,
@@ -21,7 +20,6 @@ import { TAP_TARGET, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
 import { calculateStreak, todayKey, formatDateLong, parseDate } from '@/lib/dates';
-import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { ProgressRing } from '@/components/ui/charts';
 import { LEAGUE_CONFIG, getSeasonLabel } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
@@ -92,16 +90,10 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   const completedToday = habits.filter((h) => store.isHabitDone(h));
   const pendingToday = habits.filter((h) => !store.isHabitDone(h));
 
-  const streakResult = calculateUnifiedStreak(store.state);
-
-  const currentStreakValue = streakResult.formattedCurrentStreak;
-
-  // Last 7 local days, today last: drives the week chart and the hero's "today" delta.
+  // Last 7 local days, today last: drives the week chart.
   const weekDays = lastDayKeys(7);
   const weekPoints = dailyPoints(store.state.pointsHistory || [], weekDays);
   const weekHabits = dailyHabitCompletions(habits, weekDays);
-  const today = weekPoints.days[weekPoints.days.length - 1];
-  const todayNet = today.earned - today.lost;
 
   // Re-render when a league period rolls over, so ranks and the season label never go stale.
   // The per-second countdowns tick inside LeagueCountdown and never re-render the page.
@@ -198,21 +190,6 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                     value={seasonPoints}
                     className="font-serif text-5xl text-content-primary tabular-nums leading-none"
                   />
-                  {todayNet !== 0 && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 figure text-xs ${
-                        todayNet > 0 ? 'bg-primary-500/15 text-brand-text' : 'bg-warning-soft text-warning-text'
-                      }`}
-                    >
-                      {todayNet > 0 ? '+' : '−'}
-                      {Math.abs(todayNet).toLocaleString()} today
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2.5 flex items-center gap-1.5 text-sm text-content-secondary">
-                  <Flame size={15} className="text-brand-text" aria-hidden="true" />
-                  <AutoNum text={currentStreakValue} className="figure text-content-primary" />
-                  <span className="text-content-muted">streak</span>
                 </div>
               </div>
             </div>
