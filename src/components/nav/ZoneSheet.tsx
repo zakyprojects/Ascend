@@ -1,10 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { NavGroup } from './navConfig';
 import { UpNextCard } from './UpNextCard';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import type { View } from '@/lib/views';
 import type { NavStatuses } from '@/lib/navStatus';
+import { prefersReducedMotion } from '@/lib/motion';
+
+/** Slide-down time when the sheet closes (matches .zone-sheet-closing). */
+const CLOSE_MS = 260;
+/** A drag counts once it moves this far; it then never becomes a tap on a row. */
+const DRAG_SLOP = 6;
+/** Released past this share of its height, or flicked down faster than this (px/ms), it closes. */
+const CLOSE_DISTANCE = 0.3;
+const CLOSE_VELOCITY = 0.5;
 
 interface ZoneSheetProps {
   open: boolean;
@@ -17,40 +26,131 @@ interface ZoneSheetProps {
   onClose: () => void;
 }
 
-/** Phone: the current zone's pages as large rows with today's status, rising from the zone bar. */
+/**
+ * Phone: the current zone's pages as large rows with today's status, rising from the zone bar.
+ * Like an iOS sheet: the page behind is blurred and cannot scroll, and the sheet follows a downward
+ * drag and closes when pulled far or flicked.
+ */
 export function ZoneSheet({ open, group, currentView, statuses, upNext, partnerBadge, onNavigate, onClose }: ZoneSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const [closing, setClosing] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [sheetHeight, setSheetHeight] = useState(1);
+  const drag = useRef<{ id: number; startY: number; lastY: number; lastT: number; velocity: number; moved: boolean } | null>(null);
+
+  const requestClose = useCallback(() => {
+    if (prefersReducedMotion()) {
+      onClose();
+      return;
+    }
+    setClosing(true);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!closing) return;
+    const timer = setTimeout(() => {
+      setClosing(false);
+      setDragY(0);
+      onClose();
+    }, CLOSE_MS);
+    return () => clearTimeout(timer);
+  }, [closing, onClose]);
 
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
-    sheetRef.current?.querySelector<HTMLElement>('[aria-current="page"], button')?.focus();
+    sheetRef.current?.querySelector<HTMLElement>('[aria-current="page"], button')?.focus({ preventScroll: true });
+    // Scroll lock: the window is the scroller on phones. overflow on <html> (not a fixed body) keeps
+    // the page where it is, so nothing has to be scrolled back afterwards.
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
+    root.style.overflow = 'hidden';
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') requestClose();
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      previous?.focus();
+      root.style.overflow = previousOverflow;
+      previous?.focus({ preventScroll: true });
     };
-  }, [open, onClose]);
+  }, [open, requestClose]);
 
   if (!open || !group) return null;
 
   const go = (view: View) => {
-    onClose();
     onNavigate(view);
+    requestClose();
   };
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (closing || event.button !== 0) return;
+    drag.current = { id: event.pointerId, startY: event.clientY, lastY: event.clientY, lastT: event.timeStamp, velocity: 0, moved: false };
+  };
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || d.id !== event.pointerId) return;
+    const dy = event.clientY - d.startY;
+    if (!d.moved) {
+      if (Math.abs(dy) < DRAG_SLOP) return;
+      d.moved = true;
+      setDragging(true);
+      setSheetHeight(event.currentTarget.offsetHeight || 1);
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    const dt = event.timeStamp - d.lastT;
+    if (dt > 0) d.velocity = (event.clientY - d.lastY) / dt;
+    d.lastY = event.clientY;
+    d.lastT = event.timeStamp;
+    // Down follows the finger; up resists (rubber band), as the sheet is already fully open.
+    setDragY(dy > 0 ? dy : dy * 0.15);
+  };
+  const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || d.id !== event.pointerId) return;
+    drag.current = null;
+    if (!d.moved) return;
+    setDragging(false);
+    if (event.type === 'pointerup' && (dragY > sheetHeight * CLOSE_DISTANCE || d.velocity > CLOSE_VELOCITY)) requestClose();
+    else setDragY(0);
+  };
+  // A drag must not end as a tap on the row it started on.
+  const onClickCapture = (event: ReactMouseEvent) => {
+    if (dragging || dragY !== 0) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+  };
+
+  const backdropOpacity = closing ? 0 : Math.max(0, 1 - Math.max(0, dragY) / sheetHeight);
 
   return createPortal(
     <div className="lg:hidden fixed inset-0 z-modal">
-      <button type="button" aria-label="Close" tabIndex={-1} onClick={onClose} className="zone-sheet-backdrop absolute inset-0 bg-black/50" />
+      <button
+        type="button"
+        aria-label="Close"
+        tabIndex={-1}
+        onClick={requestClose}
+        style={{ opacity: backdropOpacity }}
+        className={cx('zone-sheet-backdrop absolute inset-0 touch-none', !dragging && 'transition-opacity duration-base')}
+      />
       <div
         ref={sheetRef}
         role="dialog"
         aria-modal="true"
         aria-label={`${group.label} pages`}
-        className="zone-sheet absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-overlay-default bg-bg-800 px-4 pt-3 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))]"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerEnd}
+        onClickCapture={onClickCapture}
+        style={{ transform: `translateY(${dragY}px)` }}
+        className={cx(
+          'zone-sheet absolute inset-x-0 bottom-0 max-h-[88dvh] touch-none select-none overflow-y-auto overscroll-contain rounded-t-3xl border-t border-overlay-default bg-bg-800 px-4 pt-3 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))]',
+          closing && 'zone-sheet-closing',
+          !dragging && !closing && 'zone-sheet-settle'
+        )}
       >
         <div aria-hidden="true" className="mx-auto mb-4 h-1 w-10 rounded-full bg-overlay-strong" />
         <div className="mb-3 flex items-baseline justify-between px-1">
