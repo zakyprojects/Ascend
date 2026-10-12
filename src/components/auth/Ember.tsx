@@ -51,6 +51,8 @@ const C = {
 
 const EYE_L = { x: 84, y: 118 };
 const EYE_R = { x: 116, y: 118 };
+/** The eyes' height as a fraction of the drawing (viewBox height 230), for aiming the gaze. */
+const EYE_Y_FRAC = EYE_L.y / 230;
 const SHOULDER = { x: 60, y: 152 };
 const HAND_R = 14.5;
 
@@ -103,8 +105,11 @@ interface Pose {
   brows: Brows;
   mouth: Mouth;
   badge: boolean;
-  /** Where the pupils look, -1..1 each way, or 'pointer' to follow the mouse. */
-  gaze: { x: number; y: number } | 'pointer';
+  /**
+   * Where the pupils look: -1..1 each way, 'pointer' to follow the mouse, or 'field' to look at the
+   * focused input on screen (at the caret), wherever the form sits relative to Ember.
+   */
+  gaze: { x: number; y: number } | 'pointer' | 'field';
 }
 
 const SPLIT_QUERY = '(min-width: 1024px)';
@@ -169,12 +174,14 @@ function poseFor(
       faceBias: 0,
       faceFollow: false,
       mouth: 'o',
-      gaze: { x: split ? fx : 0.2, y: split ? 0.4 : 0.9 },
+      gaze: split ? 'field' : { x: 0.2, y: 0.9 },
     };
   } else if (textFocus) {
     // Left at the start of the field, right at the end, with the range shifted toward the form.
-    const x = fx * 0.3 + (clamp(p.caret, 0, 1) * 2 - 1) * 0.7;
-    pose = { ...base, tilt: fx * 5, faceBias: fx * 2, gaze: { x, y: split ? 0.35 : 0.85 } };
+    // Desktop: aim at the field itself (the form may sit above or beside Ember). Phones: the form is
+    // straight below, so sweep left to right with the caret.
+    const x = (clamp(p.caret, 0, 1) * 2 - 1) * 0.7;
+    pose = { ...base, tilt: fx * 5, faceBias: fx * 2, gaze: split ? 'field' : { x, y: 0.85 } };
   } else if (p.hoverTrail === 'account') {
     pose = {
       ...base,
@@ -407,12 +414,28 @@ export function Ember({
 
   // ---- Gaze: a target from the pose, or the mouse pointer (desktop, no reduced motion) ----
   const gaze = pose.gaze;
-  const gazeX = gaze === 'pointer' ? null : gaze.x;
-  const gazeY = gaze === 'pointer' ? null : gaze.y;
+  const gazeX = typeof gaze === 'string' ? null : gaze.x;
+  const gazeY = typeof gaze === 'string' ? null : gaze.y;
   const followPointer = gaze === 'pointer' && !reduced;
+  const followField = gaze === 'field';
   useLayoutEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
+    if (followField) {
+      // Look from the eyes to the caret's spot in the focused input.
+      const field = document.activeElement;
+      if (field instanceof HTMLInputElement) {
+        const box = svg.getBoundingClientRect();
+        const r = field.getBoundingClientRect();
+        const pad = Math.min(16, r.width / 4);
+        const dx = r.left + pad + clamp(caret, 0, 1) * (r.width - pad * 2) - (box.left + box.width * 0.5);
+        const dy = r.top + r.height / 2 - (box.top + box.height * EYE_Y_FRAC);
+        const dist = Math.hypot(dx, dy) || 1;
+        svg.style.setProperty('--ember-gx', (dx / dist).toFixed(3));
+        svg.style.setProperty('--ember-gy', (dy / dist).toFixed(3));
+        return;
+      }
+    }
     if (gazeX !== null && gazeY !== null) {
       svg.style.setProperty('--ember-gx', gazeX.toFixed(3));
       svg.style.setProperty('--ember-gy', gazeY.toFixed(3));
@@ -451,7 +474,7 @@ export function Ember({
       document.documentElement.removeEventListener('pointerleave', onLeave);
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [gazeX, gazeY, followPointer]);
+  }, [gazeX, gazeY, followPointer, followField, caret, focus, formSide]);
 
   const tiltK = gaze === 'pointer' && !reduced ? 1 : 0;
   const leanStyle: CSSProperties = {
