@@ -33,6 +33,7 @@ import { leagueNow } from '@/lib/leagueTime';
 import { LeagueType } from '@/types';
 import { calculateBlockDurationMinutes, formatDurationHuman } from '@/lib/timeTracker';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
+import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 
 const LEAGUE_ICONS: Record<string, typeof Trophy> = {
   Calendar, CalendarDays, Brain,
@@ -101,12 +102,15 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
   const completionRate = habits.length > 0 ? Math.round((completedToday.length / habits.length) * 100) : 0;
 
-  // Tick every second for live league countdowns
-  const [leagueNowTick, setLeagueNowTick] = useState(leagueNow());
+  // Re-render when a league period rolls over, so ranks and the season label never go stale.
+  // The per-second countdowns tick inside LeagueCountdown and never re-render the page.
+  const [periodEpoch, setPeriodEpoch] = useState(0);
   useEffect(() => {
-    const timer = setInterval(() => setLeagueNowTick(leagueNow()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    const now = leagueNow();
+    const untilNextReset = Math.min(...LEAGUE_TYPES.map((type) => getTimeUntilReset(type, now)));
+    const timer = setTimeout(() => setPeriodEpoch((n) => n + 1), Math.min(untilNextReset + 1000, MAX_TIMEOUT_MS));
+    return () => clearTimeout(timer);
+  }, [periodEpoch]);
 
   const weeklyData = store.getLeagueData('weekly');
   const monthlyData = store.getLeagueData('monthly');
@@ -125,7 +129,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   const activeBooks = (store.state.libraryBooks || []).filter((b) => b.status === 'reading').length;
   const finishedBooks = (store.state.libraryBooks || []).filter((b) => b.status === 'completed').length;
 
-  const totalSkillHours = (store.state.skillLogs.reduce((sum, l) => sum + l.durationMinutes, 0) / 60).toFixed(1);
+  const totalSkillHours = Math.round(store.state.skillLogs.reduce((sum, l) => sum + l.durationMinutes, 0) / 6) / 10;
 
   const weeklyFocusMins = store.state.focusLogs
     .filter((l) => (parseDate(l.date) || new Date(0)) >= startOfWeek)
@@ -177,6 +181,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
       )}
 
       {/* Tier + Points hero */}
+      <Reveal index={0}>
       <div className="card p-5 relative overflow-hidden">
         <div
           className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-15 dark:opacity-10 pointer-events-none"
@@ -196,9 +201,10 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               )}
             </div>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-3xl font-display font-bold text-content-primary tabular-nums">
-                {ninetyDayData.userPoints.toLocaleString()}
-              </span>
+              <CountUp
+                value={ninetyDayData.userPoints}
+                className="text-3xl font-display font-bold text-content-primary tabular-nums"
+              />
               <span className="text-sm text-content-disabled">points</span>
             </div>
           </div>
@@ -207,42 +213,25 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           <TierProgress totalPoints={seasonPoints} />
         </div>
       </div>
+      </Reveal>
 
       {/* League ranks */}
-      <div className="grid grid-cols-3 gap-3">
-        <LeagueRankCard
-          type="weekly"
-          rank={weeklyData.userRank}
-          points={weeklyData.userPoints}
-          countdown={formatCountdown(getTimeUntilReset('weekly', leagueNowTick))}
-          now={leagueNowTick}
-        />
-        <LeagueRankCard
-          type="monthly"
-          rank={monthlyData.userRank}
-          points={monthlyData.userPoints}
-          countdown={formatCountdown(getTimeUntilReset('monthly', leagueNowTick))}
-          now={leagueNowTick}
-        />
-        <LeagueRankCard
-          type="ninetyDay"
-          rank={ninetyDayData.userRank}
-          points={ninetyDayData.userPoints}
-          countdown={formatCountdown(getTimeUntilReset('ninetyDay', leagueNowTick))}
-          now={leagueNowTick}
-        />
-      </div>
+      <Reveal index={1} className="grid grid-cols-3 gap-3">
+        <LeagueRankCard type="weekly" rank={weeklyData.userRank} points={weeklyData.userPoints} />
+        <LeagueRankCard type="monthly" rank={monthlyData.userRank} points={monthlyData.userPoints} />
+        <LeagueRankCard type="ninetyDay" rank={ninetyDayData.userRank} points={ninetyDayData.userPoints} />
+      </Reveal>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <Reveal index={2} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard icon={<Check size={18} />} label="Done Today" value={`${completedToday.length}/${habits.length}`} tone="emerald" />
         <StatCard icon={<TrendingUp size={18} />} label="Completion" value={`${completionRate}%`} tone="sky" />
         <StatCard icon={<Flame size={18} />} label={currentStreakLabel} value={currentStreakValue} tone="amber" />
         <StatCard icon={<Star size={18} />} label="Habits" value={String(habits.length)} tone="indigo" />
-      </div>
+      </Reveal>
 
       {/* Activity Summary Widgets Grid */}
-      <div>
+      <Reveal index={3}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="section-title">Self-Improvement Activity Summary</h2>
         </div>
@@ -255,8 +244,8 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             onClick={() => onViewChange('exercise')}
           >
             <div>
-              <div className="text-xl font-bold text-content-primary">{weeklyExerciseMins} <span className="text-xs font-normal text-content-muted">mins this week</span></div>
-              <div className="text-[11px] text-content-disabled">{weeklyWorkouts.length} sessions completed</div>
+              <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyExerciseMins} /> <span className="text-xs font-normal text-content-muted">mins this week</span></div>
+              <div className="text-[11px] text-content-disabled"><CountUp value={weeklyWorkouts.length} /> sessions completed</div>
             </div>
           </ModuleCard>
 
@@ -268,8 +257,8 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             onClick={() => onViewChange('reading')}
           >
             <div>
-              <div className="text-xl font-bold text-content-primary">{activeBooks} <span className="text-xs font-normal text-content-muted">books in progress</span></div>
-              <div className="text-[11px] text-content-disabled">{finishedBooks} finished total</div>
+              <div className="text-xl font-bold text-content-primary"><CountUp value={activeBooks} /> <span className="text-xs font-normal text-content-muted">books in progress</span></div>
+              <div className="text-[11px] text-content-disabled"><CountUp value={finishedBooks} /> finished total</div>
             </div>
           </ModuleCard>
 
@@ -281,8 +270,8 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             onClick={() => onViewChange('skills')}
           >
             <div>
-              <div className="text-xl font-bold text-content-primary">{totalSkillHours} <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
-              <div className="text-[11px] text-content-disabled">{store.state.skills.length} skills tracked</div>
+              <div className="text-xl font-bold text-content-primary"><CountUp value={totalSkillHours} decimals={1} /> <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
+              <div className="text-[11px] text-content-disabled"><CountUp value={store.state.skills.length} /> skills tracked</div>
             </div>
           </ModuleCard>
 
@@ -294,7 +283,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             onClick={() => onViewChange('bad-habits')}
           >
             <div>
-              <div className="text-xl font-bold text-content-primary">{badHabitCount} <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
+              <div className="text-xl font-bold text-content-primary"><CountUp value={badHabitCount} /> <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
               <div className="text-[11px] text-content-disabled">Escalating penalties enabled</div>
             </div>
           </ModuleCard>
@@ -322,7 +311,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             onClick={() => onViewChange('prefrontal')}
           >
             <div>
-              <div className="text-xl font-bold text-content-primary">{weeklyFocusMins} <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
+              <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyFocusMins} /> <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
               <div className="text-[11px] text-content-disabled">Pomodoro, decisions & emotions</div>
             </div>
           </ModuleCard>
@@ -336,21 +325,23 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           >
             <div>
               <div className="text-xl font-bold text-content-primary">
-                {todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'}{' '}
+                <AutoNum text={todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'} />{' '}
                 <span className="text-xs font-normal text-content-muted">planned today</span>
               </div>
               <div className="text-[11px] text-content-disabled">
-                {todayBlocks.length > 0
-                  ? `${todayCompletedBlocksCount}/${todayBlocks.length} blocks completed`
-                  : 'No scheduled blocks yet'}
+                {todayBlocks.length > 0 ? (
+                  <AutoNum text={`${todayCompletedBlocksCount}/${todayBlocks.length} blocks completed`} />
+                ) : (
+                  'No scheduled blocks yet'
+                )}
               </div>
             </div>
           </ModuleCard>
         </div>
-      </div>
+      </Reveal>
 
       {/* Today's habits quick-complete */}
-      <div>
+      <Reveal index={4}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="section-title">Today's Habits</h2>
           <button onClick={() => onViewChange('habits')} className="btn-ghost text-xs">
@@ -419,10 +410,10 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             )}
           </div>
         )}
-      </div>
+      </Reveal>
 
       {/* Journal snapshot */}
-      <div>
+      <Reveal index={5}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="section-title">Today's Journal</h2>
           <button onClick={() => onViewChange('journal')} className="btn-ghost text-xs">
@@ -456,7 +447,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             </div>
           )}
         </Card>
-      </div>
+      </Reveal>
     </div>
   );
 }
@@ -478,29 +469,21 @@ function moodColor(mood: string): string {
   return colors[mood] ?? '#94a3b8';
 }
 
+const LEAGUE_TYPES: LeagueType[] = ['weekly', 'monthly', 'ninetyDay'];
+// setTimeout overflows above 2^31-1 ms (~24.8 days); a longer wait just re-arms.
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+
 const LEAGUE_TONE: Record<LeagueType, keyof typeof MODULE_TONE_CLASS> = {
   weekly: 'emerald',
   monthly: 'sky',
   ninetyDay: 'purple',
 };
 
-function LeagueRankCard({
-  type,
-  rank,
-  points,
-  countdown,
-  now,
-}: {
-  type: LeagueType;
-  rank: number;
-  points: number;
-  countdown: string;
-  now: Date;
-}) {
+function LeagueRankCard({ type, rank, points }: { type: LeagueType; rank: number; points: number }) {
   const config = LEAGUE_CONFIG[type];
   const tone = LEAGUE_TONE[type];
   const Icon = LEAGUE_ICONS[config.icon] ?? Calendar;
-  const label = type === 'weekly' ? 'Weekly' : type === 'monthly' ? 'Monthly' : `${getSeasonLabel(now)} (90-Day)`;
+  const label = type === 'weekly' ? 'Weekly' : type === 'monthly' ? 'Monthly' : `${getSeasonLabel(leagueNow())} (90-Day)`;
 
   return (
     <div className="card p-3 text-center relative">
@@ -511,12 +494,22 @@ function LeagueRankCard({
       </div>
       <div className="text-xs text-content-muted font-medium mb-0.5">{label}</div>
       <div className="text-lg font-display font-bold tabular-nums" style={{ color: `var(--badge-${tone}-text)` }}>
-        #{rank}
+        #<CountUp value={rank} />
       </div>
-      <div className="text-[10px] text-content-muted tabular-nums">{points.toLocaleString()} pts</div>
-      <div className="text-[10px] text-brand-text mt-0.5 truncate font-mono font-medium">{countdown}</div>
+      <div className="text-[10px] text-content-muted tabular-nums"><CountUp value={points} /> pts</div>
+      <LeagueCountdown type={type} className="text-[10px] text-brand-text mt-0.5 truncate font-mono font-medium" />
     </div>
   );
+}
+
+/** Live time-to-reset; owns its 1s tick so only this line re-renders. */
+function LeagueCountdown({ type, className }: { type: LeagueType; className: string }) {
+  const [now, setNow] = useState(leagueNow);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(leagueNow()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return <div className={className}>{formatCountdown(getTimeUntilReset(type, now))}</div>;
 }
 
 function StatCard({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: keyof typeof MODULE_TONE_CLASS }) {
@@ -525,7 +518,7 @@ function StatCard({ icon, label, value, tone }: { icon: React.ReactNode; label: 
       <div className={`${MODULE_TONE_CLASS[tone]} w-9 h-9 rounded-lg flex items-center justify-center mb-2`}>
         {icon}
       </div>
-      <div className="stat-value tabular-nums">{value}</div>
+      <AutoNum text={value} className="stat-value tabular-nums block" />
       <div className="stat-label mt-0.5">{label}</div>
     </div>
   );
