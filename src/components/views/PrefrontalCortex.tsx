@@ -43,7 +43,12 @@ import {
   formatDateLong,
   parseDate,
   startOfWeek as getStartOfWeek,
+  formatWeekdayDate,
+  formatWeekdayShort,
 } from '@/lib/dates';
+import { BarChart } from '@/components/ui/charts';
+import { CountUp, Reveal } from '@/components/ui/Motion';
+import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
 import {
   timeStringToMinutes,
   formatTime12h,
@@ -710,6 +715,9 @@ function FocusTimerSubmodule({
   const weekStart = getStartOfWeek(now);
   const weeklyFocusLogs = focusLogs.filter((l) => (parseDate(l.date) || new Date(0)) >= weekStart);
   const weeklyFocusMinutes = weeklyFocusLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
+  const focusDays = lastDayKeys(7);
+  const focusMinutesByDay = sumPerDay(focusLogs, focusDays, (l) => l.durationMinutes);
+  const focusLast7Total = focusMinutesByDay.reduce((sum, m) => sum + m, 0);
 
   // Initialize notification state & resume active session from localStorage on mount (BUG 1 FIX)
   useEffect(() => {
@@ -1082,7 +1090,7 @@ function FocusTimerSubmodule({
             <div>
               <div className="text-xs text-content-disabled">Weekly Focus Minutes</div>
               <div className="text-xl font-display font-bold text-content-primary">
-                {weeklyFocusMinutes} <span className="text-xs font-normal text-content-muted">mins</span>
+                <CountUp value={weeklyFocusMinutes} /> <span className="text-xs font-normal text-content-muted">mins</span>
               </div>
             </div>
           </div>
@@ -1105,7 +1113,7 @@ function FocusTimerSubmodule({
             <div>
               <div className="text-xs text-content-disabled">Completed Sessions</div>
               <div className="text-xl font-display font-bold text-purple-hierarchy">
-                {weeklyFocusLogs.length} <span className="text-xs font-normal text-content-muted">sessions</span>
+                <CountUp value={weeklyFocusLogs.length} /> <span className="text-xs font-normal text-content-muted">sessions</span>
               </div>
             </div>
           </div>
@@ -2142,6 +2150,25 @@ function FocusTimerSubmodule({
             )}
           </div>
         )
+      )}
+
+      {/* Focus, last 7 days */}
+      {focusLogs.length > 0 && (
+        <Reveal className="card p-4 space-y-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="section-title">Focus, Last 7 Days</h2>
+            <span className="text-xs text-content-muted tabular-nums">
+              <CountUp value={focusLast7Total} /> mins
+            </span>
+          </div>
+          <BarChart
+            data={focusDays.map((day, i) => ({ label: formatWeekdayShort(day), value: focusMinutesByDay[i] }))}
+            label={`Focus minutes per day, last 7 days: ${focusLast7Total} total`}
+            tone="cyan"
+            highlightIndex={focusDays.length - 1}
+            formatTooltip={(datum, i) => `${formatWeekdayDate(focusDays[i])}: ${datum.value} mins`}
+          />
+        </Reveal>
       )}
 
       {/* Focus History */}
