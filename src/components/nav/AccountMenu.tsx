@@ -13,6 +13,8 @@ interface AccountMenuProps {
   onOpenSettings: () => void;
   onOpenAuth: () => void;
   onLogout: () => void;
+  /** below: opens under the avatar, right-aligned (top row). side: opens to its right, bottom-aligned (rail foot). */
+  placement?: 'below' | 'side';
 }
 
 const MENU_WIDTH = 240;
@@ -22,17 +24,21 @@ const MENU_WIDTH = 240;
  * (replaces the sidebar's account card with its separate Settings and Log out icons).
  * Opens below the avatar; Escape, a click outside or choosing an item closes it.
  */
-export function AccountMenu({ user, settingsActive, isDark, onToggleTheme, onOpenSettings, onOpenAuth, onLogout }: AccountMenuProps) {
+export function AccountMenu({ user, settingsActive, isDark, onToggleTheme, onOpenSettings, onOpenAuth, onLogout, placement = 'below' }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
-  const [anchor, setAnchor] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const [anchor, setAnchor] = useState<{ left: number; top?: number; bottom?: number }>({ left: 0, top: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setAnchor({ left: Math.max(12, rect.right - MENU_WIDTH), top: rect.bottom + 8 });
-  }, [open]);
+    setAnchor(
+      placement === 'side'
+        ? { left: rect.right + 8, bottom: Math.max(12, window.innerHeight - rect.bottom) }
+        : { left: Math.max(12, rect.right - MENU_WIDTH), top: rect.bottom + 8 }
+    );
+  }, [open, placement]);
 
   useEffect(() => {
     if (!open) return;
@@ -103,7 +109,7 @@ export function AccountMenu({ user, settingsActive, isDark, onToggleTheme, onOpe
             role="menu"
             aria-label="Account"
             onKeyDown={onMenuKeyDown}
-            style={{ left: anchor.left, top: anchor.top, width: MENU_WIDTH }}
+            style={{ left: anchor.left, top: anchor.top, bottom: anchor.bottom, width: MENU_WIDTH }}
             className="account-menu fixed z-modal rounded-2xl border border-overlay-default bg-bg-800 p-1.5 shadow-2xl"
           >
             <div className="flex items-center gap-3 px-2.5 pb-2.5 pt-2">

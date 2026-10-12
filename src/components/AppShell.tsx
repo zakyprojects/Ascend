@@ -20,6 +20,7 @@ import { MobileZoneBar } from './nav/MobileZoneBar';
 import { ZoneSheet } from './nav/ZoneSheet';
 import { QuickLog } from './nav/QuickLog';
 import { useNavShortcuts } from './nav/useNavShortcuts';
+import { useSidebarCollapsed } from './nav/useSidebarCollapsed';
 import { CommandPalette } from './nav/CommandPalette';
 import { getNavStatuses } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
@@ -67,6 +68,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
 
   const [lastByGroup, setLastByGroup] = useState(DEFAULT_GROUP_VIEWS);
   const activeGroupId = getGroupForView(currentView);
@@ -204,20 +206,23 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   return (
     <div className="relative isolate min-h-screen lg:h-dvh bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div aria-hidden="true" className="app-atmosphere" />
-      {/* Desktop navigation: one column with every page (nav/Sidebar). */}
+      {/* Desktop navigation: one column with every page, or its icon rail (nav/Sidebar). */}
       <aside className="relative z-sticky hidden lg:flex h-full glass border-r border-overlay-subtle shrink-0">
         <Sidebar
           currentView={currentView}
           activeGroup={activeGroupId}
           statuses={navStatuses}
           partnerBadge={pendingIncomingInvitesCount}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={toggleSidebar}
           onNavigate={goTo}
           onSearch={() => setPaletteOpen(true)}
           onQuickLog={() => setQuickLogOpen(true)}
           bell={currentUser ? <NotificationCenter store={store} compact align="sidebar" /> : null}
           standing={<RankChip seasonPoints={seasonPoints} latestEntryTimestamp={store.state.pointsHistory?.[0]?.timestamp} />}
-          account={
+          renderAccount={(placement) => (
             <AccountMenu
+              placement={placement}
               user={currentUser ? { name: username || 'You', avatar: userAvatar, isGuest: Boolean(currentUser.isAnonymous) } : null}
               settingsActive={currentView === NAV_SETTINGS.id}
               isDark={isDarkTheme}
@@ -226,7 +231,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               onOpenAuth={onOpenAuthModal}
               onLogout={handleLogoutClick}
             />
-          }
+          )}
         />
       </aside>
 
