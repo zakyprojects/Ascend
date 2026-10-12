@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, Shield, Zap, ArrowLeft } from 'lucide-react';
+import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, Shield, Zap, ArrowLeft, ArrowRight } from 'lucide-react';
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
@@ -7,6 +7,30 @@ import { PasswordInput } from './PasswordInput';
 
 /** How long the sign-in/sign-up success screen shows before `onDone` runs. */
 const AUTH_SUCCESS_MS = 900;
+/** How long the submit button shows its check before the success screen replaces the form. */
+const SUBMIT_CHECK_MS = 280;
+
+/** The plain status line under the submit button, per form screen and state. */
+const STATUS_LINES: Record<'login' | 'signup-form' | 'upgrade', Record<'empty' | 'ready' | 'submitting' | 'success', string>> = {
+  login: {
+    empty: 'Enter your email and password.',
+    ready: 'Ready.',
+    submitting: 'Signing you in…',
+    success: 'Signed in.',
+  },
+  'signup-form': {
+    empty: 'Fill in each field to create your account.',
+    ready: 'Ready.',
+    submitting: 'Creating your account…',
+    success: 'Account created.',
+  },
+  upgrade: {
+    empty: 'Fill in each field to save your progress.',
+    ready: 'Ready.',
+    submitting: 'Saving your progress…',
+    success: 'Progress saved.',
+  },
+};
 
 /** Wraps a promise with an 8-second hard timeout. */
 function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
@@ -183,6 +207,10 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [successTitle, setSuccessTitle] = useState('');
+  // Set when the request succeeded: the submit button turns into a check just before the success screen.
+  const [submitDone, setSubmitDone] = useState(false);
+  // Which route option on the choice screen is hovered or focused.
+  const [hoverTrail, setHoverTrail] = useState<'account' | 'guest' | null>(null);
 
   // Screen switches slide in (direction from MODE_ORDER); the first screen does not. Derived
   // during render so a new screen's first frame animates.
@@ -214,6 +242,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     setErrorMsg('');
     setSuccessMsg('');
     setLoading(false);
+    setSubmitDone(false);
   }, [mode]);
 
   // Live username availability check
@@ -240,10 +269,6 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     return () => clearTimeout(timer);
   }, [username, mode, guestState.currentUser]);
 
-  // Which route option on the choice screen is hovered or focused.
-  const [hoverTrail, setHoverTrail] = useState<'account' | 'guest' | null>(null);
-  // Set when the request succeeded: the submit button turns into a check just before the success screen.
-  const [submitDone, setSubmitDone] = useState(false);
 
   // Field validity, using the form's own rules (required fields, type="email", matching confirm).
   const isNewAccount = mode === 'signup' || mode === 'upgrade';
@@ -300,6 +325,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       return;
     }
     onAuthSuccess?.();
+    setSubmitDone(true);
+    await new Promise((resolve) => setTimeout(resolve, SUBMIT_CHECK_MS));
     setSuccessTitle(title);
     await new Promise((resolve) => setTimeout(resolve, AUTH_SUCCESS_MS));
     next();
@@ -402,25 +429,21 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     }
   };
 
-  const guestButton = (
-    <button
-      type="button"
-      onClick={handleGuestSignIn}
-      disabled={loading}
-      className="w-full p-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text rounded-2xl border border-emerald-500/30 transition-all flex items-center justify-between group disabled:opacity-50"
-    >
-      <div className="text-left">
-        <div className="font-semibold text-sm flex items-center gap-2 text-success-text">
-          <Zap size={15} />
-          <span>Continue as Guest</span>
-        </div>
-        <div className="text-micro opacity-90 mt-0.5">
-          Start now. No email or password needed.
-        </div>
-      </div>
-      <UserCheck size={20} className="text-success-text shrink-0" />
-    </button>
-  );
+  /** Hover/focus handlers that tell the page which route on the choice screen is being considered. */
+  const trailHandlers = (trail: 'account' | 'guest') => {
+    const clear = () => setHoverTrail((current) => (current === trail ? null : current));
+    return {
+      onMouseEnter: () => setHoverTrail(trail),
+      onMouseLeave: clear,
+      onFocus: () => setHoverTrail(trail),
+      onBlur: clear,
+    };
+  };
+
+  const formScreen = screen === 'signup-choice' ? null : screen;
+  const statusLine = formScreen
+    ? STATUS_LINES[formScreen][phase === 'idle' ? (formReady ? 'ready' : 'empty') : phase]
+    : '';
 
   return (
     <div className="space-y-4">
@@ -471,16 +494,43 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
           </div>
 
           {screen === 'signup-choice' ? (
-            <div className="space-y-4 pt-1">
+            <div className="space-y-3 pt-1">
               <button
                 type="button"
                 onClick={() => setSignupStep('form')}
                 disabled={loading}
-                className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-on-brand font-medium text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                {...trailHandlers('account')}
+                className="group w-full p-4 bg-primary-600 hover:bg-primary-700 text-on-brand rounded-xl shadow-sm transition-colors duration-base flex items-center gap-3 text-left disabled:opacity-50"
               >
-                <UserPlus size={18} /> Create Account
+                <span className="w-9 h-9 shrink-0 rounded-lg bg-white/15 flex items-center justify-center">
+                  <UserPlus size={18} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">Create account</span>
+                  <span className="block text-micro opacity-90 mt-0.5">Compete in weekly, monthly, and 90-day leagues.</span>
+                </span>
+                <ArrowRight size={18} className="shrink-0 transition-transform duration-base group-hover:translate-x-0.5" />
               </button>
-              {guestButton}
+              <button
+                type="button"
+                onClick={handleGuestSignIn}
+                disabled={loading}
+                {...trailHandlers('guest')}
+                className="group w-full p-4 bg-bg-700 hover:bg-bg-600 border border-overlay-default text-content-primary rounded-xl transition-colors duration-base flex items-center gap-3 text-left disabled:opacity-50"
+              >
+                <span className="w-9 h-9 shrink-0 rounded-lg bg-bg-800 border border-overlay-subtle text-brand-text flex items-center justify-center">
+                  <Zap size={18} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">Continue as guest</span>
+                  <span className="block text-micro text-content-muted mt-0.5">Start now. No email or password needed.</span>
+                </span>
+                {loading ? (
+                  <AscendLoadingIndicator size="sm" />
+                ) : (
+                  <ArrowRight size={18} className="shrink-0 text-content-muted transition-transform duration-base group-hover:translate-x-0.5" />
+                )}
+              </button>
               <p className="text-xs text-content-muted text-center">
                 Already have an account?{' '}
                 <a href={pageLinks.login} onClick={inAppClick(pageLinks.login, pageLinks.navigate)} className={PAGE_LINK_CLASS}>
@@ -641,16 +691,24 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
               </div>
             )}
 
+            {/* Muted until every required field is valid, then primary. Always clickable, so the
+                form's own messages still show for a missing field. */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-on-brand font-medium text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className={`w-full h-11 border font-medium text-sm rounded-xl shadow-sm transition-colors duration-base flex items-center justify-center gap-2 disabled:cursor-default ${
+                formReady || loading || submitDone
+                  ? 'bg-primary-600 hover:bg-primary-700 border-transparent text-on-brand'
+                  : 'bg-bg-600 hover:bg-bg-500 border-overlay-default text-content-secondary'
+              }`}
             >
-              {loading ? (
-                <>
+              {submitDone ? (
+                <Check key="done" size={20} strokeWidth={2.5} className="animate-pop" aria-hidden="true" />
+              ) : loading ? (
+                <span key="loading" className="inline-flex animate-enter-fade">
                   <AscendLoadingIndicator size="sm" />
-                  <span>Please wait…</span>
-                </>
+                  <span className="sr-only">Please wait…</span>
+                </span>
               ) : mode === 'upgrade' ? (
                 <>
                   <Shield size={18} /> Save to Full Account
@@ -665,6 +723,14 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                 </>
               )}
             </button>
+            <p
+              aria-live="polite"
+              className={`text-xs text-center transition-colors duration-base ${
+                phase === 'success' || (phase === 'idle' && formReady) ? 'text-brand-text' : 'text-content-muted'
+              }`}
+            >
+              {statusLine}
+            </p>
           </form>
 
           {mode === 'login' && (
