@@ -5,6 +5,7 @@ import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import type { View } from '@/lib/views';
 import type { NavStatuses } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
+import { pageLinkProps } from '@/lib/pageLink';
 
 /** Slide-down time when the sheet closes (matches .zone-sheet-closing). */
 const CLOSE_MS = 260;
@@ -58,7 +59,7 @@ export function ZoneSheet({ open, group, currentView, statuses, partnerBadge, on
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
-    sheetRef.current?.querySelector<HTMLElement>('[aria-current="page"], button')?.focus({ preventScroll: true });
+    sheetRef.current?.querySelector<HTMLElement>('[aria-current="page"], a, button')?.focus({ preventScroll: true });
     // Scroll lock: the window is the scroller on phones. overflow on <html> (not a fixed body) keeps
     // the page where it is, so nothing has to be scrolled back afterwards.
     const root = document.documentElement;
@@ -164,9 +165,9 @@ export function ZoneSheet({ open, group, currentView, statuses, partnerBadge, on
             const badge = item.id === 'partner' ? partnerBadge : 0;
             return (
               <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => go(item.id)}
+                <a
+                  {...pageLinkProps(item.id, go)}
+                  draggable={false}
                   aria-current={active ? 'page' : undefined}
                   className={cx(
                     'flex min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left',
@@ -211,7 +212,7 @@ export function ZoneSheet({ open, group, currentView, statuses, partnerBadge, on
                       )}
                     />
                   )}
-                </button>
+                </a>
               </li>
             );
           })}

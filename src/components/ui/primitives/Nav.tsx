@@ -8,7 +8,9 @@ export interface NavItemProps
   icon: LucideIcon;
   label: string;
   active: boolean;
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void;
+  /** Renders a real link (`<a href>`) instead of a button: the page can be opened in a new tab. */
+  href?: string;
   badgeCount?: number;
   /** row: icon + label; trail: compact sidebar row with today's status; stack: bottom bar. */
   layout?: 'row' | 'trail' | 'stack';
@@ -17,7 +19,7 @@ export interface NavItemProps
   status?: NavStatus;
 }
 
-export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
+export const NavItem = React.forwardRef<HTMLElement, NavItemProps>(
   (
     {
       icon: Icon,
@@ -28,16 +30,19 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
       layout = 'row',
       density = 'default',
       status,
+      href,
       className,
       ...props
     },
     ref
   ) => {
+    const Root = (href ? 'a' : 'button') as React.ElementType;
+    const rootProps = href ? { href } : { type: 'button' };
     if (layout === 'trail') {
       return (
-        <button
+        <Root
           ref={ref}
-          type="button"
+          {...rootProps}
           aria-current={active ? 'page' : undefined}
           onClick={onClick}
           data-glide-item=""
@@ -88,15 +93,15 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
               {badgeCount}
             </span>
           )}
-        </button>
+        </Root>
       );
     }
 
     if (layout === 'row') {
       return (
-        <button
+        <Root
           ref={ref}
-          type="button"
+          {...rootProps}
           aria-current={active ? 'page' : undefined}
           onClick={onClick}
           data-glide-item=""
@@ -132,14 +137,14 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
               {badgeCount}
             </span>
           )}
-        </button>
+        </Root>
       );
     }
 
     return (
-      <button
+      <Root
         ref={ref}
-        type="button"
+        {...rootProps}
         aria-current={active ? 'page' : undefined}
         onClick={onClick}
         className={cx(
@@ -164,7 +169,7 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
             className="absolute top-1 right-2 w-2.5 h-2.5 rounded-full bg-rose-500"
           />
         )}
-      </button>
+      </Root>
     );
   }
 );

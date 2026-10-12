@@ -7,6 +7,7 @@ import { NavItem, NavSection } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 import { IS_APPLE_PLATFORM } from '@/lib/platform';
 import { useHoverGlide } from '@/lib/useHoverGlide';
+import { pageLinkProps } from '@/lib/pageLink';
 import type { View } from '@/lib/views';
 import type { NavStatus, NavStatuses } from '@/lib/navStatus';
 
@@ -133,7 +134,7 @@ export function Sidebar({
       named={collapsed}
       status={status}
       badge={badge}
-      onClick={() => onNavigate(view)}
+      {...pageLinkProps(view, onNavigate)}
       {...tipProps(label, status?.meta ?? status?.label)}
     />
   );
@@ -179,14 +180,13 @@ export function Sidebar({
         <div className="flex items-center gap-1 px-3 pb-3 pt-4">
           {/* Room for the toggle, which floats above this row. */}
           <span aria-hidden="true" className="h-8 w-8 shrink-0" />
-          <button
-            type="button"
-            onClick={() => onNavigate(NAV_DASHBOARD.id)}
+          <a
+            {...pageLinkProps(NAV_DASHBOARD.id, onNavigate)}
             className={cx('flex min-w-0 flex-1 items-center gap-2 rounded-lg pl-0.5', FOCUS_RING)}
           >
             <AppLogo className="h-7 w-7 shrink-0 rounded-[22%] object-cover" />
             <span className="truncate text-sm font-semibold text-content-primary">Ascend</span>
-          </button>
+          </a>
           <button
             type="button"
             onClick={onQuickLog}
@@ -222,7 +222,7 @@ export function Sidebar({
             icon={NAV_DASHBOARD.icon}
             label={NAV_DASHBOARD.label}
             active={!collapsed && currentView === NAV_DASHBOARD.id}
-            onClick={() => onNavigate(NAV_DASHBOARD.id)}
+            {...pageLinkProps(NAV_DASHBOARD.id, onNavigate)}
             layout="trail"
           />
           {NAV_GROUPS.map((group) => {
@@ -246,7 +246,7 @@ export function Sidebar({
                         icon={item.icon}
                         label={item.label}
                         active={!collapsed && currentView === item.id}
-                        onClick={() => onNavigate(item.id)}
+                        {...pageLinkProps(item.id, onNavigate)}
                         layout="trail"
                         badgeCount={item.id === 'partner' ? partnerBadge : undefined}
                         status={statuses[item.id]}
@@ -318,7 +318,9 @@ export function Sidebar({
 interface RailButtonProps {
   icon: LucideIcon;
   label: string;
-  onClick: () => void;
+  onClick: (event: React.MouseEvent<HTMLElement>) => void;
+  /** A page link (`<a href>`) rather than an action button. */
+  href?: string;
   active?: boolean;
   /** Carries the named nav pill (page-change glide); only the visible rail does. */
   named?: boolean;
@@ -330,11 +332,12 @@ interface RailButtonProps {
   onBlur?: () => void;
 }
 
-function RailButton({ icon: Icon, label, onClick, active = false, named = false, status, badge = 0, ...tipHandlers }: RailButtonProps) {
+function RailButton({ icon: Icon, label, onClick, href, active = false, named = false, status, badge = 0, ...tipHandlers }: RailButtonProps) {
   const spoken = [label, status?.label, badge > 0 ? `${badge} new` : null].filter(Boolean).join(', ');
+  const Root: React.ElementType = href ? 'a' : 'button';
   return (
-    <button
-      type="button"
+    <Root
+      {...(href ? { href } : { type: 'button' })}
       onClick={onClick}
       aria-label={spoken}
       aria-current={active ? 'page' : undefined}
@@ -361,6 +364,6 @@ function RailButton({ icon: Icon, label, onClick, active = false, named = false,
           )}
         />
       ) : null}
-    </button>
+    </Root>
   );
 }

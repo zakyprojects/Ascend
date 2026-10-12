@@ -5,6 +5,7 @@ import { cx, FOCUS_RING, TAP_TARGET, TRANSITION } from '@/components/ui/primitiv
 import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
 import type { NavStatuses } from '@/lib/navStatus';
+import { pageLinkProps } from '@/lib/pageLink';
 
 /** Pages Quick log jumps to: their logging needs the page's own form. */
 const JUMPS: View[] = ['journal', 'exercise', 'reading', 'time-tracker'];
@@ -35,13 +36,12 @@ export function QuickLog({ open, onClose, store, statuses, onNavigate }: QuickLo
         <section aria-label="Today's habits">
           <h3 className="mb-2 text-xs font-medium text-content-muted">Habits</h3>
           {habits.length === 0 ? (
-            <button
-              type="button"
-              onClick={() => go('habits')}
-              className={cx('w-full rounded-xl border border-dashed border-overlay-default px-4 py-3 text-left text-sm text-content-muted hover:text-content-secondary', FOCUS_RING, TRANSITION)}
+            <a
+              {...pageLinkProps('habits', go)}
+              className={cx('block w-full rounded-xl border border-dashed border-overlay-default px-4 py-3 text-left text-sm text-content-muted hover:text-content-secondary', FOCUS_RING, TRANSITION)}
             >
               No habits yet. Add your first one.
-            </button>
+            </a>
           ) : (
             <ul className="space-y-1.5">
               {habits.map((habit) => {
@@ -91,10 +91,9 @@ export function QuickLog({ open, onClose, store, statuses, onNavigate }: QuickLo
               if (!item) return null;
               const status = statuses[view];
               return (
-                <button
+                <a
                   key={view}
-                  type="button"
-                  onClick={() => go(view)}
+                  {...pageLinkProps(view, go)}
                   className={cx(
                     'flex items-center gap-2.5 rounded-xl border border-overlay-subtle bg-bg-900/40 px-3 py-2.5 text-left hover:border-overlay-default',
                     FOCUS_RING,
@@ -107,7 +106,7 @@ export function QuickLog({ open, onClose, store, statuses, onNavigate }: QuickLo
                     {status && <span className="sr-only">, {status.label}</span>}
                   </span>
                   {status?.tone === 'done' && <Check size={14} aria-hidden="true" className="shrink-0 text-brand-text" />}
-                </button>
+                </a>
               );
             })}
           </div>

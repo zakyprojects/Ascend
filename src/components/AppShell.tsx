@@ -24,6 +24,7 @@ import { useSidebarCollapsed } from './nav/useSidebarCollapsed';
 import { CommandPalette } from './nav/CommandPalette';
 import { getNavStatuses } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
+import { pageLinkProps } from '@/lib/pageLink';
 import { RankChip } from './ui/RankChip';
 import { ViewEntrance } from './ViewEntrance';
 import { AppStore } from '@/lib/store';
@@ -312,6 +313,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           activeZone={activeGroupId}
           playBadge={pendingIncomingInvitesCount}
           sheetOpen={zoneSheetOpen}
+          zoneViews={lastByGroup}
           onGoDashboard={() => goTo(NAV_DASHBOARD.id)}
           onZone={(zone) => (activeGroupId === zone ? setZoneSheetOpen((v) => !v) : onViewChange(lastByGroup[zone]))}
         />
@@ -383,10 +385,10 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
             label={NAV_SETTINGS.label}
             layout="row"
             active={currentView === 'settings'}
-            onClick={() => {
+            {...pageLinkProps('settings', (view) => {
               setAccountOpen(false);
-              onViewChange('settings');
-            }}
+              onViewChange(view);
+            })}
           />
           <div className="flex items-center justify-between rounded-xl px-3 py-1">
             <span className="text-sm font-medium text-content-secondary">{isDarkTheme ? 'Dark theme' : 'Light theme'}</span>
