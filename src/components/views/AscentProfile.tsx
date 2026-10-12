@@ -54,7 +54,7 @@ export function AscentProfile({ totalPoints }: { totalPoints: number }) {
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <div className="stat-label">Rank</div>
-          <div className="font-display text-lg font-bold" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
+          <div className="font-serif text-2xl leading-tight" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
             {tier.name}
           </div>
         </div>

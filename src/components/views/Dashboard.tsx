@@ -131,7 +131,9 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="page-title">{greeting()}, let's ascend</h1>
+        <h1 className="page-title">
+          {greeting()}, let's <em className="text-brand-text">ascend</em>
+        </h1>
         <p className="page-subtitle">{formatDateLong(todayKey())}</p>
       </div>
 
@@ -182,7 +184,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                 <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <CountUp
                     value={seasonPoints}
-                    className="font-display text-4xl font-bold text-content-primary tabular-nums leading-none"
+                    className="font-serif text-5xl text-content-primary tabular-nums leading-none"
                   />
                   {todayNet !== 0 && (
                     <span

@@ -912,7 +912,8 @@
   }
 
   .page-title {
-    @apply font-display font-bold text-content-primary tracking-tight text-[1.375rem] sm:text-[1.75rem] leading-tight;
+    /* Design v3: page titles are the serif moment; one weight, set large. */
+    @apply font-serif font-normal text-content-primary tracking-[-0.01em] text-[1.875rem] sm:text-[2.5rem] leading-[1.05];
   }
 
   /* One plain line under every page title (Design v3). */
@@ -971,15 +972,15 @@
   }
 
   .section-title {
-    @apply text-lg font-display font-bold text-content-primary;
+    @apply text-lg font-display font-semibold tracking-tight text-content-primary;
   }
 
   .stat-value {
-    @apply text-2xl font-display font-bold text-content-primary;
+    @apply text-2xl font-display font-semibold tracking-tight text-content-primary tabular-nums;
   }
 
   .stat-label {
-    @apply text-xs text-content-disabled uppercase tracking-wide font-medium;
+    @apply font-mono text-2xs uppercase tracking-[0.08em] font-medium text-content-muted;
   }
 }
 

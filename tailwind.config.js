@@ -104,8 +104,12 @@ export default {
         'brand-glow': '0 6px 20px -8px rgb(16 185 129 / 0.6)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        // Design v3: Geist runs the interface (and bold display numbers); Instrument Serif is reserved
+        // for the big moments via font-serif; Geist Mono carries labels, timers and counters.
+        sans: ['Geist Variable', 'system-ui', 'sans-serif'],
+        display: ['Geist Variable', 'system-ui', 'sans-serif'],
+        serif: ['Instrument Serif', 'Georgia', 'serif'],
+        mono: ['Geist Mono Variable', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
