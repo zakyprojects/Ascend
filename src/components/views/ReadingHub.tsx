@@ -1327,7 +1327,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 store.toggleReadingHabit();
                 setUnlinkConfirmOpen(false);
               }}
-              className="btn-primary text-xs bg-rose-500 hover:bg-rose-600 border-none"
+              className="btn-primary text-xs bg-rose-500 hover:bg-rose-600 hover:shadow-rose-600/60 border-none"
             >
               Unlink & Delete Habit
             </button>

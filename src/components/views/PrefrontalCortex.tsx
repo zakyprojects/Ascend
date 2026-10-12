@@ -2392,7 +2392,7 @@ function FocusTimerSubmodule({
             <button onClick={() => setConfirmResetOpen(false)} className="btn-secondary flex-1">
               Cancel
             </button>
-            <button onClick={handleConfirmDiscardSession} className="btn-primary bg-rose-500 hover:bg-rose-600 text-white flex-1">
+            <button onClick={handleConfirmDiscardSession} className="btn-primary bg-rose-500 hover:bg-rose-600 hover:shadow-rose-600/60 text-white flex-1">
               Discard Session
             </button>
           </div>

@@ -1526,7 +1526,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               type="submit"
               disabled={isSubmittingInvite}
               className={`btn-primary text-xs flex items-center gap-1.5 ${
-                isSubmittingInvite ? 'opacity-50 cursor-not-allowed' : ''
+                isSubmittingInvite ? 'opacity-50 cursor-not-allowed hover:shadow-none' : ''
               }`}
             >
               {isSubmittingInvite ? (
@@ -1754,7 +1754,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
               type="submit"
               disabled={isSubmittingChallenge}
               className={`btn-primary text-xs flex items-center gap-1.5 ${
-                isSubmittingChallenge ? 'opacity-50 cursor-not-allowed' : ''
+                isSubmittingChallenge ? 'opacity-50 cursor-not-allowed hover:shadow-none' : ''
               }`}
             >
               {isSubmittingChallenge ? (

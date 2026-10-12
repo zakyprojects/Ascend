@@ -805,7 +805,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                 setEditingNoteId({ ...editingNoteId, [noteKey]: false });
                               }
                             }}
-                            className="btn-primary text-2xs py-0.5 px-2 bg-purple-600 hover:bg-purple-500"
+                            className="btn-primary text-2xs py-0.5 px-2 bg-purple-600 hover:bg-purple-500 hover:shadow-purple-500/60"
                           >
                             Save
                           </button>
@@ -979,7 +979,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           store.markHabitJourneyDone(planId);
                         }
                       }}
-                      className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white"
+                      className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 hover:shadow-rose-500/60 text-white"
                     >
                       <CheckCircle2 size={14} /> Mark Done for {cadenceText}
                     </button>
@@ -1515,7 +1515,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           disabled={isAlreadyCopied || isKeyLoading(`copy_plan_${plan.id}`)}
                           className={`btn-primary text-xs py-1 px-3 flex items-center gap-1.5 ${
                             isAlreadyCopied || isKeyLoading(`copy_plan_${plan.id}`)
-                              ? 'opacity-50 cursor-not-allowed bg-bg-600 text-content-muted'
+                              ? 'opacity-50 cursor-not-allowed bg-bg-600 text-content-muted hover:shadow-none'
                               : ''
                           }`}
                         >

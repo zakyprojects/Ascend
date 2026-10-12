@@ -634,7 +634,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 type="button"
                 disabled={isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
                 onClick={handleConfirmDelete}
-                className="btn-primary bg-rose-600 hover:bg-rose-500 flex-1 flex items-center justify-center gap-2"
+                className="btn-primary bg-rose-600 hover:bg-rose-500 hover:shadow-rose-500/60 flex-1 flex items-center justify-center gap-2"
               >
                 {isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`) ? (
                   <>
