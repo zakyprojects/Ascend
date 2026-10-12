@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, type LucideIcon } from 'lucide-react';
+import { Check, ChevronRight, type LucideIcon } from 'lucide-react';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
 import type { NavStatus } from '@/lib/navStatus';
 
@@ -13,7 +13,7 @@ export interface NavItemProps
   /** row: icon + label; trail: label + today's status note (zone panel); stack: bottom bar. */
   layout?: 'row' | 'trail' | 'stack';
   density?: 'default' | 'compact';
-  /** trail only: today's status of the page (short note on the right). */
+  /** trail only: today's status of the page (note or small mark on the right). */
   status?: NavStatus;
 }
 
@@ -56,7 +56,9 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
             {label}
             {status && <span className="sr-only">, {status.label}</span>}
           </span>
-          {status?.meta && (
+          {/* Today's status: a short note when there is a count, otherwise a small mark
+              (check = done, ring = still open, rose dot = open late in the day). */}
+          {status?.meta ? (
             <span
               aria-hidden="true"
               className={cx(
@@ -66,7 +68,17 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
             >
               {status.meta}
             </span>
-          )}
+          ) : status?.tone === 'done' ? (
+            <Check size={14} aria-hidden="true" className="relative ml-auto shrink-0 text-brand-text" />
+          ) : status ? (
+            <span
+              aria-hidden="true"
+              className={cx(
+                'relative ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full',
+                status.tone === 'risk' ? 'bg-warning' : 'border border-content-muted'
+              )}
+            />
+          ) : null}
           {Boolean(badgeCount && badgeCount > 0) && (
             <span className="relative w-5 h-5 rounded-full bg-rose-500 text-white text-micro font-bold flex items-center justify-center">
               {badgeCount}
