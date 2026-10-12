@@ -48,4 +48,18 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Libraries in their own chunks: they change far less often than the app, so a deploy
+        // leaves them cached (assets are immutable for a year, vercel.json).
+        manualChunks(id) {
+          if (!id.includes('/node_modules/')) return undefined;
+          if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'vendor-react';
+          if (id.includes('/node_modules/@supabase/')) return 'vendor-supabase';
+          return undefined;
+        },
+      },
+    },
+  },
 });
