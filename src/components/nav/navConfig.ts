@@ -105,6 +105,15 @@ export const DEFAULT_GROUP_VIEWS: Record<NavGroup['id'], View> = NAV_GROUPS.redu
   {} as Record<NavGroup['id'], View>
 );
 
+const NAV_LABELS = new Map<View, string>(
+  [NAV_DASHBOARD, NAV_SETTINGS, ...NAV_GROUPS.flatMap((group) => group.items)].map((entry) => [entry.id, entry.label])
+);
+
+/** The page's name as the navigation shows it (used for the document title). */
+export function getViewLabel(view: View): string {
+  return NAV_LABELS.get(view) ?? 'Ascend';
+}
+
 export function getGroupForView(view: View): NavGroup['id'] | null {
   for (const group of NAV_GROUPS) {
     if (group.items.some((item) => item.id === view)) {

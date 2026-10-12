@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppState } from '@/lib/store';
-import { AppShell, View } from '@/components/AppShell';
+import { useViewRoute } from '@/lib/useViewRoute';
+import { AppShell } from '@/components/AppShell';
 import { Dashboard } from '@/components/views/Dashboard';
 import { HabitTracker } from '@/components/views/HabitTracker';
 import { TimeTrackerView } from '@/components/views/TimeTrackerView';
@@ -30,7 +31,7 @@ import { UpdateBanner } from '@/components/ui/UpdateBanner';
 
 function App() {
   const store = useAppState();
-  const [view, setView] = useState<View>('dashboard');
+  const { view, navigationKind, navigate: setView } = useViewRoute();
   const [userOpenedAuthModal, setUserOpenedAuthModal] = useState(false);
 
   // Blocking loader: the initial session check, then any later sign-in that is still loading
@@ -74,6 +75,7 @@ function App() {
           <OfflineBanner />
           <AppShell
             currentView={view}
+            navigationKind={navigationKind}
             onViewChange={setView}
             store={store}
             onOpenAuthModal={() => setUserOpenedAuthModal(true)}
@@ -94,7 +96,7 @@ function App() {
               )}
               {view === 'journal' && <Journal store={store} />}
               {view === 'exercise' && <ExerciseTracker store={store} />}
-              {(view === 'reading' || view === 'books') && <ReadingHub store={store} />}
+              {view === 'reading' && <ReadingHub store={store} />}
               {view === 'skills' && <SkillTracker store={store} />}
               {view === 'bad-habits' && <BadHabitTracker store={store} />}
               {view === 'recovery' && <AddictionRecovery store={store} />}

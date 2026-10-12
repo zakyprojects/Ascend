@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useRef } from 'react';
+import { ReactNode, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   LogIn,
   LogOut,
@@ -17,6 +17,7 @@ import {
   NAV_GROUPS,
   DEFAULT_GROUP_VIEWS,
   getGroupForView,
+  getViewLabel,
 } from './nav/navConfig';
 import { useSidebarGroups } from './nav/useSidebarGroups';
 import { RankChip } from './ui/RankChip';
@@ -26,39 +27,36 @@ import { GuestLogoutWarningModal } from './ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from './ui/LogoutConfirmModal';
 import { NotificationCenter } from './ui/NotificationCenter';
 import { AppLogo } from './ui/AppLogo';
+import { ThemeToggle } from './ui/ThemeToggle';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
+import type { View } from '@/lib/views';
+import type { NavigationKind } from '@/lib/useViewRoute';
 
-export type View =
-  | 'dashboard'
-  | 'habits'
-  | 'time-tracker'
-  | 'weekly-goals'
-  | 'projects-goals'
-  | 'journal'
-  | 'exercise'
-  | 'reading'
-  | 'books'
-  | 'skills'
-  | 'bad-habits'
-  | 'recovery'
-  | 'prefrontal'
-  | 'neuroplasticity'
-  | 'lessons'
-  | 'plans'
-  | 'partner'
-  | 'leagues'
-  | 'tiers'
-  | 'settings';
+// Below lg the window scrolls; from lg up the shell is viewport-high and <main> scrolls.
+const DESKTOP_QUERY = '(min-width: 1024px)';
+
+function readScroll(main: HTMLElement): number {
+  return window.matchMedia(DESKTOP_QUERY).matches ? main.scrollTop : window.scrollY;
+}
+
+function writeScroll(main: HTMLElement, top: number): void {
+  if (window.matchMedia(DESKTOP_QUERY).matches) main.scrollTo({ top, behavior: 'instant' });
+  else window.scrollTo({ top, behavior: 'instant' });
+}
+
+export type { View } from '@/lib/views';
 
 interface AppShellProps {
   currentView: View;
+  /** How the current view was reached: back/forward restores its scroll, a new visit starts at the top. */
+  navigationKind: NavigationKind;
   onViewChange: (view: View) => void;
   store: AppStore;
   onOpenAuthModal: () => void;
   children: ReactNode;
 }
 
-export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, children }: AppShellProps) {
+export function AppShell({ currentView, navigationKind, onViewChange, store, onOpenAuthModal, children }: AppShellProps) {
   const { isOpen, toggle, open } = useSidebarGroups();
   const [accountOpen, setAccountOpen] = useState(false);
   const [guestLogoutWarningOpen, setGuestLogoutWarningOpen] = useState(false);
@@ -79,6 +77,42 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
     enteredViewsRef.current.add(currentView);
   }, [currentView]);
 
+  // Scroll memory: each view's last position, recorded as the user scrolls (back/forward has
+  // already switched the view by the time we could read the old one).
+  const mainRef = useRef<HTMLElement>(null);
+  const scrollByView = useRef(new Map<View, number>());
+  const scrollOwnerRef = useRef(currentView);
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const record = () => scrollByView.current.set(scrollOwnerRef.current, readScroll(main));
+    main.addEventListener('scroll', record, { passive: true });
+    window.addEventListener('scroll', record, { passive: true });
+    return () => {
+      main.removeEventListener('scroll', record);
+      window.removeEventListener('scroll', record);
+    };
+  }, []);
+  // Before paint: a new visit opens at the top, back/forward returns to where the user was.
+  useLayoutEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    scrollOwnerRef.current = currentView;
+    const target = navigationKind === 'pop' ? scrollByView.current.get(currentView) ?? 0 : 0;
+    writeScroll(main, target);
+    if (target === 0) return;
+    // Content that grows a frame later (measured lists) can clamp the first attempt.
+    const frame = requestAnimationFrame(() => {
+      if (readScroll(main) < target) writeScroll(main, target);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [currentView, navigationKind]);
+
+  useEffect(() => {
+    document.title = currentView === 'dashboard' ? 'Ascend - Self-Improvement' : `${getViewLabel(currentView)} · Ascend`;
+  }, [currentView]);
+
+  const isDarkTheme = store.state.themePreference !== 'light';
   const currentUser = store.state.currentUser;
   const username = store.state.username;
   const totalPoints = store.state.totalPoints;
@@ -130,7 +164,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
     <div className="min-h-screen lg:h-dvh bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-64 h-full glass border-r border-overlay-subtle shrink-0 overflow-y-auto">
-        <div className="p-6">
+        <div className="p-6 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <AppLogo className="w-9 h-9 rounded-[22%] object-cover shrink-0" />
             <div>
@@ -142,6 +176,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
               </div>
             </div>
           </div>
+          <ThemeToggle isDark={isDarkTheme} onToggle={store.toggleThemePreference} />
         </div>
 
         {/* User Account / Login Card in Sidebar */}
@@ -268,6 +303,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle isDark={isDarkTheme} onToggle={store.toggleThemePreference} />
             {currentUser && <NotificationCenter store={store} compact />}
             {!currentUser && (
               <button
@@ -290,7 +326,7 @@ export function AppShell({ currentView, onViewChange, store, onOpenAuthModal, ch
         </header>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] lg:pb-0">
+        <main ref={mainRef} className="flex-1 overflow-y-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] lg:pb-0">
           {activeGroup && (
             <div className="lg:hidden px-4 pt-3">
               <Tabs
