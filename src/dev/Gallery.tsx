@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { BarChart, Heatmap, ProgressRing, Sparkline } from '@/components/ui/charts';
+import { IntroMotionContext } from '@/lib/motion';
 import {
   Plus,
   Inbox,
@@ -378,6 +380,55 @@ function NavDemo() {
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+// Charts kit demo. Intro motion is forced on so the draw-in can be replayed here.
+const CHART_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, i) => ({
+  label,
+  value: [3, 5, 2, 6, 4, 0, 1][i],
+}));
+const CHART_TREND = [120, 135, 128, 150, 170, 165, 190, 210, 205, 230, 250, 245, 270, 300].map((value, i) => ({
+  label: `Day ${i + 1}`,
+  value,
+}));
+// 12 weeks, starting mid-week (two empty leading cells), deterministic values.
+const CHART_HEAT = [null, null, ...Array.from({ length: 82 }, (_, i) => {
+  const value = (i * 7) % 11 < 3 ? 0 : ((i * 5) % 6) + 1;
+  return { label: `Day ${i + 1}: ${value}`, value };
+})];
+
+function ChartsDemo() {
+  const [run, setRun] = useState(0);
+  return (
+    <div className="space-y-4">
+      <Button size="sm" variant="secondary" onClick={() => setRun((n) => n + 1)}>
+        Replay draw-in
+      </Button>
+      <IntroMotionContext.Provider value={true}>
+        <div key={run} className="grid gap-4 md:grid-cols-2">
+          <div className="card p-4 space-y-2">
+            <p className="text-micro text-content-muted">Sparkline</p>
+            <Sparkline points={CHART_TREND} label="Points, last 14 days" />
+          </div>
+          <div className="card p-4 space-y-2">
+            <p className="text-micro text-content-muted">Bar week (today = Sun)</p>
+            <BarChart data={CHART_WEEK} label="Habits per day this week" highlightIndex={6} />
+          </div>
+          <div className="card p-4 space-y-2">
+            <p className="text-micro text-content-muted">12-week heatmap</p>
+            <Heatmap cells={CHART_HEAT} label="Activity, last 12 weeks" />
+          </div>
+          <div className="card p-4 flex items-center gap-4">
+            <ProgressRing value={64} label="Ring brand" />
+            <ProgressRing value={9} max={30} label="Ring success" tone="success">
+              <span className="font-display text-sm font-bold text-content-primary">9d</span>
+            </ProgressRing>
+            <ProgressRing value={0} label="Ring empty" tone="purple" size={56} thickness={5} />
+          </div>
+        </div>
+      </IntroMotionContext.Provider>
     </div>
   );
 }
@@ -942,6 +993,10 @@ export function Gallery() {
         {/* Section 7: Tabs */}
         <Section title="Tabs">
           <TabsDemo />
+        </Section>
+
+        <Section title="Charts">
+          <ChartsDemo />
         </Section>
 
         {/* Section 8: Navigation */}
