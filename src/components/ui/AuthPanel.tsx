@@ -60,7 +60,14 @@ export type AuthScreen = 'login' | 'signup-choice' | 'signup-form' | 'upgrade';
  *   sign-in / sign-up / upgrade succeeds until onDone.
  * - hoverTrail: which choice-screen route is hovered or focused (null elsewhere).
  * - preview: the username and avatar being entered (signup form / upgrade; empty elsewhere).
+ * - focus: the form field that has focus (null for none, or for a control that is not a text field).
+ * - caret: where the caret sits in the focused email/username field, 0 (start) to 1 (end of the
+ *   field's visible width), in steps of 1/40 so small moves do not report.
+ * - passwordVisible: the focused password field shows its text (show/hide toggle).
+ * - errorTick: goes up by one each time the form shows an error message.
  */
+export type AuthFocus = 'email' | 'password' | 'confirm' | 'username' | null;
+
 export interface AuthClimbState {
   screen: AuthScreen;
   progress: number;
@@ -68,6 +75,41 @@ export interface AuthClimbState {
   phase: 'idle' | 'submitting' | 'success';
   hoverTrail: 'account' | 'guest' | null;
   preview: { username: string; avatar: string };
+  focus: AuthFocus;
+  caret: number;
+  passwordVisible: boolean;
+  errorTick: number;
+}
+
+/** The form's fields by element id, as the page's mascot knows them. */
+const FIELD_FOCUS: Record<string, Exclude<AuthFocus, null>> = {
+  'auth-email': 'email',
+  'auth-password': 'password',
+  'auth-confirm-password': 'confirm',
+  'auth-username': 'username',
+};
+
+let measureContext: CanvasRenderingContext2D | null | undefined;
+
+/**
+ * The caret's position across a text field's visible width, 0..1: the width of the text before
+ * the caret (email fields have no selection API, so their caret counts as the end), measured in
+ * the field's own font.
+ */
+function caretFraction(input: HTMLInputElement): number {
+  if (measureContext === undefined) measureContext = document.createElement('canvas').getContext('2d');
+  const style = getComputedStyle(input);
+  const inner = input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  if (!measureContext || inner <= 0) return 0;
+  let at = input.value.length;
+  try {
+    at = input.selectionStart ?? at;
+  } catch {
+    // type="email" in some browsers throws instead of returning null.
+  }
+  measureContext.font = style.font;
+  const width = measureContext.measureText(input.value.slice(0, at)).width - input.scrollLeft;
+  return Math.round(Math.min(1, Math.max(0, width / inner)) * 40) / 40;
 }
 
 /** The browser's own `type="email"` rule (HTML spec), so "valid" here matches what the form accepts. */
@@ -95,6 +137,11 @@ interface AuthPanelProps {
   pageLinks: { login: string; signup: string; dismiss: string; navigate: (href: string) => void };
   /** Called whenever the climb state changes (screen, valid-field count, phase, hovered route, preview). */
   onClimbChange?: (state: AuthClimbState) => void;
+}
+
+/** Whether a screen shows the form (the signup choice does not). */
+function formScreenFor(screen: AuthScreen): boolean {
+  return screen !== 'signup-choice';
 }
 
 /** A plain left click follows the link in-app; modified/middle clicks keep the browser's own behaviour. */
@@ -211,6 +258,12 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const [submitDone, setSubmitDone] = useState(false);
   // Which route option on the choice screen is hovered or focused.
   const [hoverTrail, setHoverTrail] = useState<'account' | 'guest' | null>(null);
+  // For the page's mascot: which field has focus, where its caret is, whether a password is
+  // shown, and a count of errors shown.
+  const [focus, setFocus] = useState<AuthFocus>(null);
+  const [caret, setCaret] = useState(0);
+  const [shownPasswords, setShownPasswords] = useState({ password: false, confirm: false });
+  const [errorTick, setErrorTick] = useState(0);
 
   // Screen switches slide in (direction from MODE_ORDER); the first screen does not. Derived
   // during render so a new screen's first frame animates.
@@ -243,7 +296,40 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     setSuccessMsg('');
     setLoading(false);
     setSubmitDone(false);
+    // The password fields remount per mode (their key), so they start hidden again.
+    setShownPasswords({ password: false, confirm: false });
   }, [mode]);
+
+  // A new screen mounts new fields; nothing has focus until one of them takes it.
+  useEffect(() => {
+    setFocus(null);
+  }, [screen]);
+
+  /** Shows an error message (and counts it, so the page can react to each one). */
+  const showError = (message: string) => {
+    setErrorMsg(message);
+    setErrorTick((tick) => tick + 1);
+  };
+
+  const trackCaret = (target: EventTarget) => {
+    if (!(target instanceof HTMLInputElement)) return;
+    const field = FIELD_FOCUS[target.id];
+    if (field === 'email' || field === 'username') setCaret(caretFraction(target));
+  };
+  const formFocusHandlers = {
+    onFocus: (event: React.FocusEvent<HTMLFormElement>) => {
+      setFocus(FIELD_FOCUS[event.target.id] ?? null);
+      trackCaret(event.target);
+    },
+    onBlur: (event: React.FocusEvent<HTMLFormElement>) => {
+      // Moving straight to another field: its own focus event sets the new value.
+      const next = event.relatedTarget;
+      if (next instanceof HTMLElement && FIELD_FOCUS[next.id]) return;
+      setFocus(null);
+    },
+    onSelect: (event: React.SyntheticEvent<HTMLFormElement>) => trackCaret(event.target),
+    onInput: (event: React.FormEvent<HTMLFormElement>) => trackCaret(event.target),
+  };
 
   // Live username availability check
   useEffect(() => {
@@ -296,6 +382,10 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const showsPreview = screen === 'signup-form' || screen === 'upgrade';
   const previewUsername = showsPreview ? trimmedUsername : '';
   const previewAvatar = showsPreview ? avatar : '';
+  const shownFocus: AuthFocus = formScreenFor(screen) ? focus : null;
+  const passwordVisible =
+    shownFocus === 'password' ? shownPasswords.password : shownFocus === 'confirm' ? shownPasswords.confirm : false;
+  const shownCaret = shownFocus === 'email' || shownFocus === 'username' ? caret : 0;
 
   // Report the climb state upward. The callback lives in a ref so a new function from the parent
   // on every render never re-fires this (no render loops); only real changes do.
@@ -311,8 +401,12 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       phase,
       hoverTrail: shownTrail,
       preview: { username: previewUsername, avatar: previewAvatar },
+      focus: shownFocus,
+      caret: shownCaret,
+      passwordVisible,
+      errorTick,
     });
-  }, [screen, progress, steps, phase, shownTrail, previewUsername, previewAvatar]);
+  }, [screen, progress, steps, phase, shownTrail, previewUsername, previewAvatar, shownFocus, shownCaret, passwordVisible, errorTick]);
 
   const guestPoints = guestState.seasonPoints ?? guestState.totalPoints ?? 0;
   const guestHabitsCount = guestState.habits.length;
@@ -342,7 +436,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       onDone();
     } catch (err: unknown) {
       const authErr = err as { message?: string };
-      setErrorMsg(authErr.message || 'Couldn’t sign in as a guest. Try again.');
+      showError(authErr.message || 'Couldn’t sign in as a guest. Try again.');
     } finally {
       setLoading(false);
     }
@@ -354,17 +448,17 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     setSuccessMsg('');
 
     if (!email || !password || (mode !== 'login' && !confirmPassword)) {
-      setErrorMsg('Fill in all required fields.');
+      showError('Fill in all required fields.');
       return;
     }
 
     if ((mode === 'signup' || mode === 'upgrade') && !avatar) {
-      setErrorMsg('Pick an avatar.');
+      showError('Pick an avatar.');
       return;
     }
 
     if (mode !== 'login' && password !== confirmPassword) {
-      setErrorMsg('Passwords do not match.');
+      showError('Passwords do not match.');
       return;
     }
 
@@ -375,7 +469,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
         if (username.trim()) {
           const check = await isUsernameAvailable(username, guestState.currentUser?.id);
           if (!check.available && username.trim() !== guestState.currentUser?.username) {
-            setErrorMsg(check.reason || 'Pick a valid username that isn’t taken.');
+            showError(check.reason || 'Pick a valid username that isn’t taken.');
             return;
           }
         }
@@ -385,7 +479,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       } else if (mode === 'signup') {
         const check = await isUsernameAvailable(username);
         if (!check.available) {
-          setErrorMsg(check.reason || 'Pick a valid username that isn’t taken.');
+          showError(check.reason || 'Pick a valid username that isn’t taken.');
           return;
         }
 
@@ -418,11 +512,9 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
         authErr.status === 429 ||
         authErr.message?.includes('email rate limit')
       ) {
-        setErrorMsg(
-          'Too many sign-up attempts. Wait a few minutes and try again.'
-        );
+        showError('Too many sign-up attempts. Wait a few minutes and try again.');
       } else {
-        setErrorMsg(authErr.message || 'Something went wrong. Try again.');
+        showError(authErr.message || 'Something went wrong. Try again.');
       }
     } finally {
       setLoading(false);
@@ -532,7 +624,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
             </div>
           ) : (
           <>
-          <form onSubmit={handleSubmit} className="space-y-3.5">
+          <form onSubmit={handleSubmit} className="space-y-3.5" {...formFocusHandlers}>
             {(mode === 'signup' || mode === 'upgrade') && (
               <>
                 <div>
@@ -631,6 +723,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onVisibilityChange={(visible) => setShownPasswords((shown) => ({ ...shown, password: visible }))}
                 />
                 <FocusLine />
               </div>
@@ -651,6 +744,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    onVisibilityChange={(visible) => setShownPasswords((shown) => ({ ...shown, confirm: visible }))}
                   />
                   <FocusLine />
                 </div>
