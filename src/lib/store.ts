@@ -2678,14 +2678,20 @@ export function useAppState() {
           }
           const finalSharedChallenges = Array.from(challengeMap.values());
 
-          return {
-            ...prev,
+          const next = {
             partnerInvites: validInvites,
             partnerships: finalPartnerships,
             partnership: finalPartnerships[0] || null,
             sharedChallenges: finalSharedChallenges,
             notifications: mergedNotifs,
           };
+          // The fallback poll runs every 10 s: when the server has nothing new, keep the same
+          // state object so the whole app does not re-render for nothing.
+          const unchanged = (Object.keys(next) as (keyof typeof next)[]).every(
+            (key) => JSON.stringify(prev[key] ?? null) === JSON.stringify(next[key] ?? null)
+          );
+          if (unchanged) return prev;
+          return { ...prev, ...next };
         });
       } catch (e) {
         /* ignore background sync error */

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { NavGroup } from './navConfig';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
@@ -30,7 +30,7 @@ interface ZoneSheetProps {
  * Like an iOS sheet: the page behind is blurred and cannot scroll, and the sheet follows a downward
  * drag and closes when pulled far or flicked.
  */
-export function ZoneSheet({ open, group, currentView, statuses, partnerBadge, onNavigate, onClose }: ZoneSheetProps) {
+export const ZoneSheet = memo(function ZoneSheet({ open, group, currentView, statuses, partnerBadge, onNavigate, onClose }: ZoneSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [closing, setClosing] = useState(false);
   const [dragY, setDragY] = useState(0);
@@ -221,4 +221,4 @@ export function ZoneSheet({ open, group, currentView, statuses, partnerBadge, on
     </div>,
     document.body
   );
-}
+});

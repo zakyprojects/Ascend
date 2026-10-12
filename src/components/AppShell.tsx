@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { ReactNode, useCallback, useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { LogIn, Plus } from 'lucide-react';
 import {
   Button,
@@ -75,7 +75,12 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   const activeGroupId = getGroupForView(currentView);
   useEffect(() => { if (activeGroupId) setLastByGroup(prev => prev[activeGroupId] === currentView ? prev : { ...prev, [activeGroupId]: currentView }); }, [currentView, activeGroupId]);
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
-  const navStatuses = getNavStatuses(store.state, store.isHabitDone);
+  // Derived once per data change (and at most once a minute for their time-of-day parts), not on
+  // every shell render (a dialog opening, a sheet toggling).
+  const minute = Math.floor(Date.now() / 60_000);
+  const { state: appState, isHabitDone, getLeagueData } = store;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `minute` refreshes the time-of-day status
+  const navStatuses = useMemo(() => getNavStatuses(appState, isHabitDone), [appState, isHabitDone, minute]);
 
   useNavShortcuts({
     onDashboard: () => goTo(NAV_DASHBOARD.id),
@@ -142,15 +147,26 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
     return () => cancelAnimationFrame(frame);
   }, [currentView, navigationKind]);
 
-  // iOS tab bar: choosing the page you are already on glides back to its top.
-  const goTo = (view: View) => {
-    if (view !== currentView) return onViewChange(view);
-    const main = mainRef.current;
-    if (!main) return;
-    const behavior: ScrollBehavior = prefersReducedMotion() ? 'instant' : 'smooth';
-    if (window.matchMedia(DESKTOP_QUERY).matches) main.scrollTo({ top: 0, behavior });
-    else window.scrollTo({ top: 0, behavior });
-  };
+  // iOS tab bar: choosing the page you are already on glides back to its top. Stable across
+  // renders (reads the page from a ref), so the memoized nav below keeps its props.
+  const currentViewRef = useRef(currentView);
+  currentViewRef.current = currentView;
+  const goTo = useCallback(
+    (view: View) => {
+      if (view !== currentViewRef.current) return onViewChange(view);
+      const main = mainRef.current;
+      if (!main) return;
+      const behavior: ScrollBehavior = prefersReducedMotion() ? 'instant' : 'smooth';
+      if (window.matchMedia(DESKTOP_QUERY).matches) main.scrollTo({ top: 0, behavior });
+      else window.scrollTo({ top: 0, behavior });
+    },
+    [onViewChange]
+  );
+  const goDashboard = useCallback(() => goTo(NAV_DASHBOARD.id), [goTo]);
+  const openZone = useCallback(
+    (zone: keyof typeof lastByGroup) => (activeGroupId === zone ? setZoneSheetOpen((v) => !v) : onViewChange(lastByGroup[zone])),
+    [activeGroupId, lastByGroup, onViewChange]
+  );
 
   useEffect(() => {
     document.title = currentView === 'dashboard' ? 'Ascend - Self-Improvement' : `${getViewLabel(currentView)} · Ascend`;
@@ -160,7 +176,8 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   const currentUser = store.state.currentUser;
   const username = store.state.username;
   const totalPoints = store.state.totalPoints;
-  const seasonPoints = store.getLeagueData('ninetyDay').userPoints;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `minute` follows the season clock
+  const seasonPoints = useMemo(() => getLeagueData('ninetyDay').userPoints, [getLeagueData, minute]);
   const userAvatar = currentUser?.avatar || '🧑';
 
   const handleLogoutClick = () => {
@@ -314,8 +331,8 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           playBadge={pendingIncomingInvitesCount}
           sheetOpen={zoneSheetOpen}
           zoneViews={lastByGroup}
-          onGoDashboard={() => goTo(NAV_DASHBOARD.id)}
-          onZone={(zone) => (activeGroupId === zone ? setZoneSheetOpen((v) => !v) : onViewChange(lastByGroup[zone]))}
+          onGoDashboard={goDashboard}
+          onZone={openZone}
         />
         <ZoneSheet
           open={zoneSheetOpen}

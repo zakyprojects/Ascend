@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { NAV_DASHBOARD, NAV_GROUPS, type NavGroup } from './navConfig';
 import { cx, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { pageLinkProps } from '@/lib/pageLink';
@@ -21,7 +22,7 @@ interface MobileZoneBarProps {
  * Phone navigation (Basecamp): a floating pill above the home indicator. The current zone wears
  * an emerald pill with its name; the others are icons only.
  */
-export function MobileZoneBar({ onDashboard, activeZone, playBadge, sheetOpen, zoneViews, onGoDashboard, onZone }: MobileZoneBarProps) {
+export const MobileZoneBar = memo(function MobileZoneBar({ onDashboard, activeZone, playBadge, sheetOpen, zoneViews, onGoDashboard, onZone }: MobileZoneBarProps) {
   const slots = [
     { id: 'dashboard' as const, icon: NAV_DASHBOARD.icon, label: 'Today', active: onDashboard, view: NAV_DASHBOARD.id, onClick: onGoDashboard, badge: false },
     ...NAV_GROUPS.map((group) => ({
@@ -68,4 +69,4 @@ export function MobileZoneBar({ onDashboard, activeZone, playBadge, sheetOpen, z
       </div>
     </nav>
   );
-}
+});
