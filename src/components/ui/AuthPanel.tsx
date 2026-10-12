@@ -476,22 +476,14 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       {/* Sign in / sign up / save progress */}
       {!successTitle && (
         <div key={screen} className={`space-y-4 ${slideClass}`}>
-          <div>
-            <h2 className="section-title text-center">
-              {mode === 'upgrade'
-                ? 'Save your progress'
-                : mode === 'signup'
-                ? 'Join the leagues'
-                : 'Welcome back'}
-            </h2>
-            <p className="text-xs text-content-muted text-center mt-1">
-              {mode === 'upgrade'
-                ? 'Turn your guest session into a full account. Your habits, points, and league rank stay.'
-                : mode === 'signup'
-                ? 'Create an account to compete in weekly, monthly, and 90-day leagues.'
-                : 'Sign in to see your habits, rank, and league points.'}
-            </p>
-          </div>
+          {/* The page's own h1 names the screen; this line says what it is for. */}
+          <p className="text-sm text-content-muted">
+            {mode === 'upgrade'
+              ? 'Turn your guest session into a full account. Your habits, points, and league rank stay.'
+              : mode === 'signup'
+              ? 'Create an account to compete in weekly, monthly, and 90-day leagues.'
+              : 'Sign in to see your habits, rank, and league points.'}
+          </p>
 
           {screen === 'signup-choice' ? (
             <div className="space-y-3 pt-1">
