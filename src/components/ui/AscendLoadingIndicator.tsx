@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useSyncExternalStore } from 'react';
 import { getRibbonFrames, subscribeRibbonFrames } from './ascendLoaderRibbon';
-import { runGrowthTrace } from './growthTrace';
+import { growthTraceFirstFrame, runGrowthTrace } from './growthTrace';
 
 /** Static logo swoosh (0-100 mark space), shown when reduced motion is on. */
 const SWOOSH_PATH =
@@ -180,14 +180,32 @@ export interface AscendLoadingOverlayProps {
 
 /** The growth line along the bottom of the overlay (growthTrace.ts; styles in index.html). */
 const GrowthTrace: React.FC<{ fromPageStart: boolean }> = ({ fromPageStart }) => {
-  const ref = React.useRef<SVGSVGElement>(null);
-  React.useEffect(() => (ref.current ? runGrowthTrace(ref.current, fromPageStart) : undefined), [fromPageStart]);
+  const root = React.useRef<HTMLDivElement>(null);
+  const [first] = React.useState(() => growthTraceFirstFrame(fromPageStart));
+  React.useEffect(() => {
+    const el = root.current;
+    const level = el?.querySelector<SVGLineElement>('.gt-level');
+    const path = el?.querySelector<SVGPathElement>('.gt-line');
+    const reveal = el?.querySelector<HTMLElement>('.gt-reveal');
+    const revealInner = el?.querySelector<HTMLElement>('.gt-reveal-inner');
+    const dot = el?.querySelector<HTMLElement>('.gt-dot');
+    if (!el || !level || !path || !reveal || !revealInner || !dot) return;
+    return runGrowthTrace({ root: el, level, path, reveal, revealInner, dot }, fromPageStart);
+  }, [fromPageStart]);
   return (
-    <svg ref={ref} className="growth-trace" aria-hidden="true">
-      <line className="gt-level" />
-      <path className="gt-line" />
-      <circle className="gt-head" r="3.5" />
-    </svg>
+    <div ref={root} className="growth-trace" aria-hidden="true">
+      <svg viewBox={first.viewBox}>
+        <line className="gt-level" x1="0" x2={first.w} y1={first.level} y2={first.level} />
+      </svg>
+      <div className="gt-reveal" style={{ transform: first.reveal }}>
+        <div className="gt-reveal-inner" style={{ transform: first.revealInner }}>
+          <svg viewBox={first.viewBox}>
+            <path className="gt-line" d={first.d} />
+          </svg>
+        </div>
+      </div>
+      <span className="gt-dot" style={first.dot ? { transform: first.dot } : undefined} />
+    </div>
   );
 };
 

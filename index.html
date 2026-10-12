@@ -85,19 +85,35 @@
       .sp-mark { position:relative; display:flex; }
       .sp-bar-track { width:144px; height:4px; background:var(--splash-track); border-radius:9999px; overflow:hidden; margin-top:20px; position:relative; }
       .sp-bar { position:absolute; top:0; bottom:0; left:0; width:50%; border-radius:9999px; background:linear-gradient(to right, #10b981, #34d399); animation:spLoadingBar 1.2s ease-in-out infinite; }
-      /* Entrance: the stack rises in once. AscendLoadingOverlay (entrance="boot") resumes this on the same clock. */
       /* Growth trace (src/components/ui/growthTrace.ts): shared by this splash and the React boot
          overlay, which keeps using these rules after it takes over. */
-      .growth-trace { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
+      .growth-trace { position:absolute; inset:0; pointer-events:none; }
       .growth-trace .gt-level { stroke:#94a3b8; stroke-opacity:.22; stroke-width:1; stroke-dasharray:2 6; }
       .growth-trace .gt-line { fill:none; stroke:#34d399; stroke-opacity:.6; stroke-width:1.6; stroke-linejoin:round; stroke-linecap:round; }
-      .growth-trace .gt-head { fill:#6ee7b7; opacity:0; filter:drop-shadow(0 0 6px rgba(52,211,153,.9)); transform-box:fill-box; transform-origin:center; }
-      .growth-trace[data-done] .gt-head { animation:gtBreathe 2.2s ease-in-out infinite; }
-      [data-theme="light"] .growth-trace .gt-level { stroke:#556275; stroke-opacity:.25; }
-      [data-theme="light"] .growth-trace .gt-line { stroke:#059669; stroke-opacity:.65; }
-      [data-theme="light"] .growth-trace .gt-head { fill:#059669; filter:drop-shadow(0 0 5px rgba(5,150,105,.6)); }
-      @keyframes gtBreathe { 50% { transform:scale(1.45); } }
-      @media (prefers-reduced-motion: reduce) { .growth-trace[data-done] .gt-head { animation:none; } }
+      .growth-trace .gt-reveal, .growth-trace .gt-reveal-inner { position:absolute; inset:0; will-change:transform; }
+      .growth-trace .gt-reveal { overflow:hidden; transform:translateX(-100%); }
+      .growth-trace svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+      .gt-dot { position:absolute; left:0; top:0; display:block; width:7px; height:7px; border-radius:50%; background:#6ee7b7; box-shadow:0 0 6px rgba(52,211,153,.9); will-change:transform; }
+      .growth-trace .gt-dot { transform:translateX(-20px); }
+      .growth-trace[data-done] .gt-dot { animation:gtBreathe 2.2s ease-in-out infinite; }
+      [data-theme="light"] .gt-dot { background:#059669; box-shadow:0 0 5px rgba(5,150,105,.6); }
+      @keyframes gtBreathe { 50% { scale:1.45; } }
+      @media (prefers-reduced-motion: reduce) { .growth-trace[data-done] .gt-dot { animation:none; } }
+      /* Splash half: the straight run as plain HTML moved by transforms, so it glides on the compositor even
+         while the bundle is parsing. Easing = 1 - e^(-t/1600ms) over 8s (TRACE_TAU_MS / TRACE_SPLASH_MS). */
+      .gt-splash { position:absolute; inset:0; pointer-events:none; --gt-y:84vh; --gt-x1:42vw; }
+      .gt-splash i { position:absolute; left:0; display:block; }
+      .gt-s-level { right:0; top:var(--gt-y); height:1px; margin-top:-.5px; background:repeating-linear-gradient(90deg, rgba(148,163,184,.22) 0 2px, transparent 2px 8px); }
+      .gt-s-line { top:var(--gt-y); width:var(--gt-x1); height:1.6px; margin-top:-.8px; border-radius:1px; background:rgba(52,211,153,.6); transform-origin:0 50%; transform:scaleX(0); }
+      .gt-s-head { top:var(--gt-y); left:0; margin:-3.5px 0 0 -3.5px; }
+      .gt-s-line, .gt-s-head { animation:8s ease-out .25s both; animation-timing-function:ease-out; animation-timing-function:linear(0.000 0%, 0.096 2%, 0.223 5%, 0.332 8%, 0.454 12%, 0.554 16%, 0.636 20%, 0.718 25%, 0.782 30%, 0.840 36%, 0.890 43%, 0.924 50%, 0.957 60%, 0.979 72%, 0.992 85%, 1.000 100%); will-change:transform; }
+      .gt-s-line { animation-name:gtStraight; } .gt-s-head { animation-name:gtHead; }
+      [data-theme="light"] .gt-s-level { background:repeating-linear-gradient(90deg, rgba(85,98,117,.25) 0 2px, transparent 2px 8px); }
+      [data-theme="light"] .gt-s-line { background:rgba(5,150,105,.65); }
+      @keyframes gtStraight { to { transform:scaleX(1); } }
+      @keyframes gtHead { to { transform:translateX(var(--gt-x1)); } }
+      @media (prefers-reduced-motion: reduce) { .gt-s-line, .gt-s-head { animation-duration:1ms; animation-delay:0s; } }
+      /* Entrance: the stack rises in once. AscendLoadingOverlay (entrance="boot") resumes this on the same clock. */
       .sp-enter { animation:spEnter 400ms cubic-bezier(0.16,1,0.3,1) both; }
       @keyframes spEnter { 0% { opacity:0; transform:translateY(12px) scale(0.96); } 100% { opacity:1; transform:none; } }
       @keyframes spLoadingBar { 0% { left:-50%; width:50%; } 50% { left:25%; width:50%; } 100% { left:100%; width:50%; } }
@@ -110,7 +126,11 @@
     <div id="root">
       <!-- Instant Inlined Shell (Displays before React/JS bundle parses) -->
       <div style="position:fixed;inset:0;z-index:9999;background-color:var(--splash-bg,#0a0b0f);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;user-select:none;">
-        <svg id="splash-trace" class="growth-trace" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><line class="gt-level"/><path class="gt-line"/><circle class="gt-head" r="3.5"/></svg>
+        <div id="splash-trace" class="gt-splash" aria-hidden="true"><i class="gt-s-level"></i><i class="gt-s-line"></i><i class="gt-dot gt-s-head"></i></div>
+        <script>
+          // Pin the trace to the same pixel geometry the React overlay's SVG uses (growthTrace.ts).
+          (function() { var el = document.getElementById('splash-trace'); el.style.setProperty('--gt-y', (innerHeight * 0.84) + 'px'); el.style.setProperty('--gt-x1', (innerWidth * 0.42) + 'px'); })();
+        </script>
         <!-- Background ambient glow aura -->
         <div class="sp-glow"></div>
         <div class="sp-enter" style="position:relative;display:flex;flex-direction:column;align-items:center;max-width:384px;">
@@ -153,10 +173,10 @@
 
           <!-- Loading Label -->
           <p style="font-size:14px;font-weight:600;color:var(--splash-text,#e2e8f0);margin:4px 0 0 0;">
-            Verifying session...
+            Opening Ascend...
           </p>
           <p style="font-size:12px;color:var(--splash-subtext,#94a3b8);margin:4px 0 0 0;">
-            Preparing your personal growth workspace
+            Getting the app ready
           </p>
 
           <!-- Animated loader bar -->
@@ -164,33 +184,6 @@
         </div>
       </div>
     </div>
-    <script>
-      // Growth trace for the splash: only the straight part. KEEP IN SYNC with src/components/ui/growthTrace.ts
-      // (same clock: performance.now() from page start; the React overlay continues from where this got to).
-      (function() {
-        var svg = document.getElementById('splash-trace');
-        if (!svg || !window.requestAnimationFrame) return;
-        var DELAY = 250, STRAIGHT = 1400, LIFT_AT = 0.42;
-        var level = svg.querySelector('.gt-level'), line = svg.querySelector('.gt-line'), head = svg.querySelector('.gt-head');
-        var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var w = window.innerWidth, h = window.innerHeight, y0 = h * 0.84, x1 = w * LIFT_AT;
-        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
-        line.setAttribute('d', 'M0 ' + y0.toFixed(1) + ' H' + x1.toFixed(1));
-        level.setAttribute('x1', 0); level.setAttribute('x2', w); level.setAttribute('y1', y0); level.setAttribute('y2', y0);
-        line.style.strokeDasharray = x1;
-        head.setAttribute('cy', y0);
-        function draw(now) {
-          if (!svg.isConnected) return; // React has replaced the splash
-          var t = still ? 1 : Math.min(1, Math.max(0, (now - DELAY) / STRAIGHT));
-          var drawn = x1 * (1 - Math.pow(1 - t, 3));
-          line.style.strokeDashoffset = x1 - drawn;
-          head.setAttribute('cx', drawn);
-          head.style.opacity = drawn > 0 ? 1 : 0;
-          if (t < 1) requestAnimationFrame(draw);
-        }
-        draw(performance.now());
-      })();
-    </script>
     <script>
       // Figure-8 swoosh for the splash. KEEP IN SYNC with src/components/ui/ascendLoaderRibbon.ts.
       // Without JS, or with reduced motion, the static logo swoosh stays.

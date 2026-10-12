@@ -57,7 +57,7 @@ function App() {
   const loaderOverlay = (showLoader || loaderExiting) && (
     <AscendLoadingOverlay
       message={loaderKind === 'boot' ? 'Verifying session...' : 'Loading your workspace...'}
-      submessage={loaderKind === 'boot' ? 'Preparing your personal growth workspace' : 'Syncing your data'}
+      submessage={loaderKind === 'boot' ? 'Checking your account' : 'Syncing your data'}
       entrance={loaderKind === 'boot' ? 'boot' : 'fade'}
       exiting={!showLoader}
     />

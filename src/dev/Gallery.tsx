@@ -601,7 +601,7 @@ export function Gallery() {
                   <div className="relative h-[420px] overflow-hidden rounded-xl border border-bg-700 [transform:translateZ(0)]">
                     <AscendLoadingOverlay
                       message="Verifying session..."
-                      submessage="Preparing your personal growth workspace"
+                      submessage="Checking your account"
                     />
                   </div>
                   <p className="text-micro text-content-muted">
