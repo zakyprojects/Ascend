@@ -169,7 +169,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
     const groups: { title: string; logs: SkillSessionLog[] }[] = [
       { title: 'Today', logs: [] },
       { title: 'Yesterday', logs: [] },
-      { title: 'This Week', logs: [] },
+      { title: 'This week', logs: [] },
       { title: 'Older', logs: [] },
     ];
 
@@ -268,7 +268,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
             {skillLogs.length > 0 && (
               <Reveal index={1} className="card p-4 space-y-3">
                 <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="section-title">Practice, Last 7 Days</h2>
+                  <h2 className="section-title">Practice, last 7 days</h2>
                   <span className="figure text-xs text-content-muted">
                     <CountUp value={practiceWeekTotal} /> mins
                   </span>
@@ -288,7 +288,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
         {/* Skills Grid */}
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-            <h2 className="section-title">Your Active Skills</h2>
+            <h2 className="section-title">Active skills</h2>
 
             {/* Category Filter Chips */}
             {categories.length > 1 && (
@@ -313,7 +313,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           {skills.length === 0 ? (
             <EmptyState
               title="No skills added yet"
-              description="Add a skill (e.g. Coding, Spanish, Guitar, Design) to log practice sessions and earn points."
+              description="Add a skill (e.g. coding, Spanish, guitar, design) to log practice and earn points."
               action={
                 <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
                   Add Your First Skill
@@ -349,7 +349,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                           onClick={() => setDeleteModalSkill(skill)}
                           aria-label="Delete skill"
                           className={`text-content-subtle hover:text-rose-theme p-1 ${TAP_TARGET}`}
-                          title="Delete Skill"
+                          title="Delete skill"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -394,7 +394,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       className="btn-primary text-xs py-2 w-full flex items-center justify-center gap-1.5 mt-1"
                     >
                       <Plus size={14} />
-                      <span>Log Practice Session</span>
+                      <span>Log Practice</span>
                     </button>
                   </div>
                 );
@@ -406,7 +406,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
         {/* Practice Log History */}
         {skillLogs.length > 0 && (
           <div>
-            <h2 className="section-title mb-3">Practice History Log</h2>
+            <h2 className="section-title mb-3">Practice history</h2>
             <div className="space-y-4">
               {groupedHistoryLogs.map((group) => (
                 <div key={group.title} className="space-y-2">
@@ -436,7 +436,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                               onClick={() => setDeleteModalLog(log)}
                               aria-label="Delete practice log"
                               className={`text-content-subtle hover:text-rose-theme p-1 transition-colors ${TAP_TARGET}`}
-                              title="Delete Practice Session Log"
+                              title="Delete practice log"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -453,10 +453,10 @@ export function SkillTracker({ store }: { store: AppStore }) {
       </PageColumns>
 
       {/* Add Skill Modal */}
-      <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Skill">
+      <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Skill">
         <form onSubmit={handleAddSkillSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-name-input">Skill Name</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-name-input">Skill name</label>
             <input
               id="skill-name-input"
               type="text"
@@ -469,7 +469,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           </div>
 
           <div className="relative">
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-category-input">Category (Optional)</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-category-input">Category (optional)</label>
             <input
               id="skill-category-input"
               type="text"
@@ -489,7 +489,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
             {categorySuggestionsOpen && categorySuggestions.length > 0 && (
               <div className="absolute z-50 left-0 right-0 mt-1 bg-bg-750 border border-overlay-medium rounded-xl shadow-lg max-h-36 overflow-y-auto p-1 space-y-0.5">
                 <div className="stat-label px-2.5 py-1">
-                  Existing Categories
+                  Existing categories
                 </div>
                 {categorySuggestions.map((sug) => (
                   <button
@@ -532,7 +532,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleLogPracticeSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-duration-input">Practice Duration (Minutes)</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-duration-input">Practice time (minutes)</label>
             <input
               id="skill-duration-input"
               type="number"
@@ -546,7 +546,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-note-input">Short Note / What did you practice?</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-note-input">What did you practice?</label>
             <textarea
               id="skill-note-input"
               autoFocus
@@ -555,7 +555,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                 setNote(e.target.value);
                 if (noteTouched && e.target.value.trim()) setNoteTouched(false);
               }}
-              placeholder="e.g. Practiced React hooks state management and custom components"
+              placeholder="e.g. React hooks and custom components"
               className={`input min-h-[80px] ${noteTouched && !note.trim() ? 'border-rose-500 focus:border-rose-500' : ''}`}
             />
             {noteTouched && !note.trim() && (
@@ -607,7 +607,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
         isDeleting={deleteModalSkill ? isKeyLoading(`delete_skill_${deleteModalSkill.id}`) : false}
         title="Delete Skill?"
         itemName={deleteModalSkill?.name}
-        description={`Are you sure you want to delete "${deleteModalSkill?.name}"? This will remove the skill and its recorded practice history.${
+        description={`Delete "${deleteModalSkill?.name}"? This removes the skill and its practice history.${
           linkedSkillGoalsCount > 0
             ? ` Deleting this skill will also delete ${linkedSkillGoalsCount} linked Weekly Goal${linkedSkillGoalsCount > 1 ? 's' : ''} from this week and upcoming weeks (past weeks are kept).`
             : ''
@@ -633,9 +633,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
           }
         }}
         isDeleting={deleteModalLog ? isKeyLoading(`delete_skill_log_${deleteModalLog.id}`) : false}
-        title="Delete Practice Session Log?"
+        title="Delete Practice Log?"
         itemName={skills.find((s) => s.id === deleteModalLog?.skillId)?.name}
-        description={`Are you sure you want to delete this ${deleteModalLog?.durationMinutes}-minute practice log? Any points awarded (+${deleteModalLog?.pointsAwarded || 0} pts) will be reversed.`}
+        description={`Delete this ${deleteModalLog?.durationMinutes}-minute practice log? Any points awarded (+${deleteModalLog?.pointsAwarded || 0} pts) will be reversed.`}
       />
     </div>
   );

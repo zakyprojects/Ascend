@@ -383,7 +383,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-2 whitespace-nowrap"
             >
               <Check size={14} className="text-success-text shrink-0" />
-              <span className="whitespace-nowrap font-medium">Linked to Habits</span>
+              <span className="whitespace-nowrap font-medium">Linked to habits</span>
             </button>
           ) : (
             <button
@@ -423,7 +423,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             {readingLogs.length > 0 && (
               <Reveal index={1} className="card p-4 space-y-3">
                 <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="section-title">Pages, Last 7 Days</h2>
+                  <h2 className="section-title">Pages, last 7 days</h2>
                   <span className="figure text-xs text-content-muted">
                     <CountUp value={pagesThisWeek} /> pages
                   </span>
@@ -452,9 +452,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
               value={activeTab}
               onChange={(id) => setActiveTab(id as typeof activeTab)}
               items={[
-                { id: 'reading', label: 'Currently Reading', badge: inProgressBooks.length },
-                { id: 'to-read', label: 'My Library', badge: toReadBooks.length },
-                { id: 'discover', label: 'Discover Books' },
+                { id: 'reading', label: 'Currently reading', badge: inProgressBooks.length },
+                { id: 'to-read', label: 'My library', badge: toReadBooks.length },
+                { id: 'discover', label: 'Discover' },
                 { id: 'completed', label: 'Completed', badge: completedBooks.length },
               ]}
             />
@@ -468,7 +468,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search title or author..."
+                  placeholder="Search title or author"
                   className="input pl-8 py-1.5 text-xs w-full"
                 />
               </div>
@@ -479,7 +479,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   onChange={(e) => setCategoryFilter(e.target.value as BookCategory | 'all')}
                   className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-44"
                 >
-                  <option value="all">All Categories</option>
+                  <option value="all">All categories</option>
                   {BOOK_CATEGORIES.map((cat) => (
                     <option key={cat.name} value={cat.name}>
                       {cat.name}
@@ -493,7 +493,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-36"
                 >
                   <option value="trending">Trending</option>
-                  <option value="bestsellers">Best Sellers</option>
+                  <option value="bestsellers">Bestsellers</option>
                   <option value="az">Alphabetical (A-Z)</option>
                 </select>
               </div>
@@ -506,8 +506,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="space-y-4">
             {filteredInProgress.length === 0 ? (
               <EmptyState
-                title="No books currently in progress"
-                description="Start reading a book from your To Read list, discover foundational titles, or add a custom book."
+                title="Nothing in progress"
+                description="Start a book from your library, pick one from Discover, or add your own."
                 action={
                   <div className="flex items-center justify-center gap-3 pt-2">
                     <button
@@ -554,7 +554,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             onClick={() => setDeleteModalBook(book)}
                             aria-label="Remove book"
                             className={`p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all shrink-0 ${TAP_TARGET}`}
-                            title="Remove Book"
+                            title="Remove book"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -618,7 +618,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           className="input text-xs py-1 px-2 bg-bg-900 border-overlay-default text-content-tertiary w-fit shrink-0 cursor-pointer"
                         >
                           <option value="to-read">Move to Library</option>
-                          <option value="reading">Currently Reading</option>
+                          <option value="reading">Currently reading</option>
                           <option value="completed">Completed</option>
                         </select>
                       </div>
@@ -636,7 +636,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             {filteredToRead.length === 0 ? (
               <EmptyState
                 title="No books in your library"
-                description="Browse our curated self-improvement recommendations or add your own books to your reading library."
+                description="Pick from the recommended books or add your own."
                 action={
                   <div className="flex items-center justify-center gap-3 pt-2">
                     <button
@@ -670,7 +670,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           onClick={() => setDeleteModalBook(book)}
                           aria-label="Remove book"
                           className={`p-1 text-content-disabled hover:text-rose-theme rounded transition-all ${TAP_TARGET}`}
-                          title="Remove Book"
+                          title="Remove book"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -722,7 +722,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         {renderCategoryBadge(curated.category, true)}
                         <span
                           className="figure text-2xs text-content-muted"
-                          title="Requires reading inside Ascend across ≥7 days span and ≥5 logged reading days"
+                          title="Needs reading in Ascend over at least 7 days, with at least 5 logged reading days"
                         >
                           +{READING_POINTS.completionBonus} pts on finish
                         </span>
@@ -756,8 +756,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           {userBook.status === 'completed'
                             ? 'Completed'
                             : userBook.status === 'reading'
-                            ? 'Currently Reading'
-                            : 'In Library'}
+                            ? 'Currently reading'
+                            : 'In library'}
                         </span>
                       ) : (
                         <div className="flex flex-wrap items-center gap-2">
@@ -784,7 +784,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             {filteredCompleted.length === 0 ? (
               <EmptyState
                 title="No completed books yet"
-                description="Finish reading your first book to log your key insights, takeaways, and earn points rewards."
+                description="Finish a book to log what you learned and earn points."
               />
             ) : (
               <div className="space-y-3">
@@ -807,7 +807,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           ) : (
                             <span
                               className="text-2xs text-content-disabled"
-                              title="Completion bonus requires reading inside Ascend across ≥7 days span and ≥5 distinct logged reading days"
+                              title="The completion bonus needs reading in Ascend over at least 7 days, with at least 5 separate logged reading days"
                             >
                               Completed without bonus
                             </span>
@@ -828,7 +828,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           onClick={() => setDeleteModalBook(book)}
                           aria-label="Remove book"
                           className={`p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
-                          title="Remove Book"
+                          title="Remove book"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -838,7 +838,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     {book.reflection && (
                       <div className="text-xs text-content-tertiary leading-relaxed space-y-1">
                         <span className="font-medium text-content-muted block text-micro">
-                          Key Takeaway / Reflection:
+                          Key takeaway
                         </span>
                         <p>{book.reflection}</p>
                       </div>
@@ -852,7 +852,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         onClick={() => store.restartBook(book.id)}
                         className={`text-xs text-content-secondary hover:text-content-primary font-medium transition-colors ${TAP_TARGET}`}
                       >
-                        Re-read book →
+                        Re-read book
                       </button>
                     </div>
                   </div>
@@ -867,7 +867,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       <Dialog
         open={addCustomModalOpen}
         onClose={() => setAddCustomModalOpen(false)}
-        title="Add Book to Reading Hub"
+        title="Add Book"
       >
         <form onSubmit={handleAddCustomSubmit} className="space-y-4">
           <div>
@@ -911,7 +911,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 onChange={(e) => setCustomCategory(e.target.value as BookCategory)}
                 className="input w-full bg-bg-800"
               >
-                <option value="">Select category...</option>
+                <option value="">Select category</option>
                 {BOOK_CATEGORIES.map((cat) => (
                   <option key={cat.name} value={cat.name}>
                     {cat.name}
@@ -922,7 +922,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
             <div>
               <label htmlFor="rh-add-status" className="block text-xs font-medium text-content-tertiary mb-1">
-                Initial Status
+                Status
               </label>
               <select
                 id="rh-add-status"
@@ -930,9 +930,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 onChange={(e) => setCustomStatus(e.target.value as UserBookStatus)}
                 className="input w-full bg-bg-800"
               >
-                <option value="reading">Currently Reading</option>
+                <option value="reading">Currently reading</option>
                 <option value="to-read">Add to Library</option>
-                <option value="completed">Already Completed</option>
+                <option value="completed">Already finished</option>
               </select>
             </div>
           </div>
@@ -940,7 +940,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="rh-add-total" className="block text-xs font-medium text-content-tertiary mb-1">
-                Total Length
+                Length
               </label>
               <input
                 id="rh-add-total"
@@ -970,7 +970,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div>
             <label htmlFor="rh-add-date" className="block text-xs font-medium text-content-tertiary mb-1">
-              Target Finish Date (Optional)
+              Target finish date (optional)
             </label>
             <input
               id="rh-add-date"
@@ -983,13 +983,13 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div>
             <label htmlFor="rh-add-notes" className="block text-xs font-medium text-content-tertiary mb-1">
-              Description / Notes (Optional)
+              Notes (optional)
             </label>
             <textarea
               id="rh-add-notes"
               value={customDescription}
               onChange={(e) => setCustomDescription(e.target.value)}
-              placeholder="Why are you reading this book? What topics does it cover?"
+              placeholder="Why are you reading it? What is it about?"
               className="input min-h-[70px] text-xs"
             />
           </div>
@@ -1022,7 +1022,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleStartReadingSubmit} className="space-y-4">
           <p className="text-xs text-content-muted">
-            Confirm book length and set an optional target finish date before starting.
+            Confirm the length and, if you like, set a target finish date.
           </p>
 
           <div className="grid grid-cols-2 gap-3">
@@ -1059,7 +1059,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div>
             <label htmlFor="rh-start-date" className="block text-xs font-medium text-content-tertiary mb-1">
-              Target Finish Date (Optional)
+              Target finish date (optional)
             </label>
             <input
               id="rh-start-date"
@@ -1121,7 +1121,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div>
             <label className="block text-micro font-medium text-content-muted mb-1.5">
-              Quick Add
+              Quick add
             </label>
             <div className="grid grid-cols-4 gap-2">
               {[1, 5, 10, 20].map((amount) => (
@@ -1161,16 +1161,16 @@ export function ReadingHub({ store }: { store: AppStore }) {
       <Dialog
         open={Boolean(finishModalBook)}
         onClose={() => setFinishModalBook(null)}
-        title={finishModalBook ? `Celebrate: ${finishModalBook.title}` : 'Book Finished'}
+        title={finishModalBook ? `Finish: ${finishModalBook.title}` : 'Finish Book'}
       >
         <form onSubmit={handleFinishSubmit} className="space-y-4">
           {finishEligibility?.isEligible ? (
             <div className="p-3.5 border border-overlay-default rounded-xl flex items-center gap-3 text-content-secondary">
               <CheckCircle2 size={18} className="shrink-0 text-success-text" />
               <div className="text-xs space-y-0.5">
-                <span className="font-semibold block text-content-primary">Congratulations on finishing!</span>
+                <span className="font-semibold block text-content-primary">Nice work finishing it.</span>
                 <span>
-                  Eligible for +{READING_POINTS.completionBonus} points completion bonus!
+                  You get the +{READING_POINTS.completionBonus} point completion bonus.
                 </span>
                 <p className="text-micro text-content-muted">
                   Span: {finishEligibility.spanDays} days (req. ≥7) • Reading days logged: {finishEligibility.loggedDays} (req. ≥5)
@@ -1182,11 +1182,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
               <div className="flex items-center gap-3">
                 <CheckCircle2 size={18} className="shrink-0 text-content-muted" />
                 <div className="text-xs space-y-0.5">
-                  <span className="font-semibold block text-content-primary">Finishing Book (+0 bonus points)</span>
+                  <span className="font-semibold block text-content-primary">Finishing without the bonus (+0 points)</span>
                   <p className="text-content-muted leading-relaxed">
                     {finishEligibility?.alreadyAwarded
                       ? 'Completion bonus was already awarded for this book.'
-                      : `The 15pt bonus requires reading inside Ascend across ≥7 days (current: ${finishEligibility?.spanDays ?? 0}d) and ≥5 distinct logged reading days (current: ${finishEligibility?.loggedDays ?? 0}d). Daily page points already earned remain intact.`}
+                      : `The 15 pt bonus needs reading in Ascend over at least 7 days (now ${finishEligibility?.spanDays ?? 0}d) and at least 5 separate logged reading days (now ${finishEligibility?.loggedDays ?? 0}d). Daily page points you already earned stay.`}
                   </p>
                 </div>
               </div>
@@ -1212,14 +1212,14 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div>
             <label htmlFor="rh-finish-insights" className="block text-xs font-medium text-content-tertiary mb-1">
-              Key Insights & Reflections <span className="text-rose-theme">*</span>
+              Key takeaways <span className="text-rose-theme">*</span>
             </label>
             <textarea
               id="rh-finish-insights"
               required
               value={reflectionInput}
               onChange={(e) => setReflectionInput(e.target.value)}
-              placeholder="What core frameworks or actionable habits did you learn? How will you apply this to your life?"
+              placeholder="What did you learn, and how will you use it?"
               className="input min-h-[100px] text-xs leading-relaxed"
               autoFocus
             />
@@ -1239,7 +1239,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               className="btn-primary text-xs flex items-center gap-1.5"
             >
               {isFinishing ? <AscendLoadingIndicator size="sm" /> : <CheckCircle2 size={14} />}
-              <span>Complete & Archive</span>
+              <span>Mark Finished</span>
             </button>
           </div>
         </form>
@@ -1253,7 +1253,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       >
         <div className="space-y-4">
           <p className="text-xs text-content-muted leading-relaxed">
-            Are you sure you want to unlink and remove the automatic Reading habit from your Habit Tracker?
+            Unlink and remove the automatic Reading habit from your Habit Tracker?
           </p>
           <div className="flex items-center justify-end gap-2.5 pt-2">
             <button
@@ -1271,7 +1271,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               }}
               className="btn-primary text-xs bg-rose-500 hover:bg-rose-600 border-none"
             >
-              Unlink & Delete Habit
+              Unlink and Delete Habit
             </button>
           </div>
         </div>
@@ -1290,7 +1290,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         }}
         title="Remove Book from Library?"
         itemName={deleteModalBook?.title}
-        description={`Are you sure you want to remove "${deleteModalBook?.title}" from your library?${
+        description={`Remove "${deleteModalBook?.title}" from your library?${
           linkedBookGoalsCount > 0
             ? ` Removing this book will also delete ${linkedBookGoalsCount} linked Weekly Goal${linkedBookGoalsCount > 1 ? 's' : ''} from this week and upcoming weeks (past weeks are kept).`
             : ''

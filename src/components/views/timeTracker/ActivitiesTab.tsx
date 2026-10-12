@@ -53,18 +53,18 @@ export function ActivitiesTab({
       {/* 1. Header & Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-serif text-xl leading-tight text-content-primary flex items-center gap-2">
+          <h2 className="section-title text-xl leading-tight flex items-center gap-2">
             <Tag className="text-content-subtle" size={18} />
-            <span>Master Activity Categories</span>
+            <span>Activity categories</span>
           </h2>
           <p className="text-xs text-content-muted mt-0.5">
-            Configure custom activities and map them to Ascend ecosystem modules for automated cross-module handoffs and discipline XP.
+            Set up your activities and link them to other Ascend sections to earn discipline XP.
           </p>
         </div>
 
         <button
           onClick={onOpenCreateActivityModal}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-sm transition-all shrink-0 cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-brand bg-primary-600 hover:bg-primary-700 rounded-xl shadow-sm transition-all shrink-0 cursor-pointer"
         >
           <Plus size={15} />
           <span>New Category</span>

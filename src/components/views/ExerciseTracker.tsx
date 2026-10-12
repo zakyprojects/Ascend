@@ -164,7 +164,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             }}
             className="btn-secondary flex items-center gap-2 text-xs"
           >
-            <span>{exerciseGoal ? `Goal: ${exerciseGoal.targetWeeklySessions}/wk` : 'Set Target Goal'}</span>
+            <span>{exerciseGoal ? `Goal: ${exerciseGoal.targetWeeklySessions}/wk` : 'Set Weekly Goal'}</span>
           </button>
           <button
             onClick={() => setLogModalOpen(true)}
@@ -215,9 +215,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             <Reveal index={1} className="card p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="section-title">
-                  Weekly Activity Summary
+                  This week
                 </h2>
-                <span className="text-xs text-content-disabled">Mon - Sun (Points)</span>
+                <span className="text-xs text-content-disabled">Mon–Sun, points</span>
               </div>
 
               {/* Scaled to the daily cap so a capped day reads as a full bar. */}
@@ -235,12 +235,12 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       >
         {/* Workout Logs List */}
         <div>
-          <h2 className="section-title mb-3">Recent Workout Logs</h2>
+          <h2 className="section-title mb-3">Recent workouts</h2>
 
           {workouts.length === 0 ? (
             <EmptyState
               title="No workouts logged yet"
-              description="Start logging your physical activity to earn points and stay fit."
+              description="Log a workout to start earning points."
               action={
                 <button onClick={() => setLogModalOpen(true)} className="btn-primary mx-auto">
                   Log Your First Workout
@@ -272,7 +272,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                       onClick={() => setDeleteModalWorkout(w)}
                       aria-label="Delete workout"
                       className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
-                      title="Delete Workout"
+                      title="Delete workout"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -285,10 +285,10 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       </PageColumns>
 
       {/* Log Workout Modal */}
-      <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} title="Log Workout Session">
+      <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} title="Log Workout">
         <form onSubmit={handleLogSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-type-select">Workout Type</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-type-select">Workout type</label>
             <select
               id="workout-type-select"
               value={workoutType}
@@ -298,7 +298,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               {availableWorkoutTypes.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
-              <option value="Other">Custom / Other...</option>
+              <option value="Other">Other…</option>
             </select>
 
             {workoutType === 'Other' && (
@@ -306,7 +306,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                 type="text"
                 value={customType}
                 onChange={(e) => setCustomType(e.target.value)}
-                placeholder="Enter workout name..."
+                placeholder="Workout name"
                 className="input"
                 required
               />
@@ -316,7 +316,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           {metricType === 'mins' ? (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-metric-type">Metric Type</label>
+                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-metric-type">Measure</label>
                 <select
                   id="workout-metric-type"
                   value={metricType}
@@ -339,7 +339,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
 
               <div>
                 <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-duration-input">
-                  Duration (Minutes)
+                  Duration (minutes)
                 </label>
                 <input
                   id="workout-duration-input"
@@ -360,7 +360,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-metric-type">Metric Type</label>
+                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-metric-type">Measure</label>
                 <select
                   id="workout-metric-type"
                   value={metricType}
@@ -437,11 +437,11 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         }}
         title="Delete Workout Log?"
         itemName={deleteModalWorkout ? `${deleteModalWorkout.type} (${deleteModalWorkout.amount && deleteModalWorkout.unit && deleteModalWorkout.unit !== 'mins' ? `${deleteModalWorkout.amount} ${deleteModalWorkout.unit}` : `${deleteModalWorkout.durationMinutes} mins`})` : ''}
-        description={`Are you sure you want to delete this ${deleteModalWorkout?.type} workout log? Any points awarded (+${deleteModalWorkout?.pointsAwarded || 0} pts) will be reversed.`}
+        description={`Delete this ${deleteModalWorkout?.type} workout? Any points awarded (+${deleteModalWorkout?.pointsAwarded || 0} pts) will be reversed.`}
       />
 
       {/* Target Weekly Goal Modal */}
-      <Dialog open={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set Weekly Exercise Target">
+      <Dialog open={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set Weekly Goal">
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -453,10 +453,10 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           className="space-y-4"
         >
           <p className="text-xs text-content-muted">
-            Set a target number of workout sessions per week. If you complete fewer sessions than your target by the end of the week, a miss penalty will be applied.
+            Set how many workouts you aim for each week. Finishing the week below your target applies a miss penalty.
           </p>
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="target-sessions-input">Target Workout Sessions / Week</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="target-sessions-input">Workouts per week</label>
             <input
               id="target-sessions-input"
               type="number"
@@ -467,7 +467,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               className="input"
               required
             />
-            <span className="text-micro text-content-disabled mt-1 block">Set to 0 to disable weekly target penalty checks.</span>
+            <span className="text-micro text-content-disabled mt-1 block">Set to 0 to turn off the weekly penalty.</span>
           </div>
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setGoalModalOpen(false)} className="btn-secondary flex-1">

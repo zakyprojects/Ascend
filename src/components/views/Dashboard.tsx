@@ -142,10 +142,10 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
             <Save size={18} className="shrink-0 text-content-muted" aria-hidden="true" />
             <div>
               <p className="text-xs font-medium text-content-secondary">
-                You are using a Guest Session ({store.state.currentUser.username})
+                You're in a guest session ({store.state.currentUser.username})
               </p>
               <p className="text-micro text-content-muted">
-                Save your progress — convert to a permanent account so you never lose your habits, points, and league rank.
+                Create an account to keep your habits, points, and league rank.
               </p>
             </div>
           </div>
@@ -167,7 +167,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                 size={116}
                 thickness={9}
               >
-                <span className="font-serif text-[2rem] text-content-primary tabular-nums leading-none">
+                <span className="text-4xl font-medium text-content-primary tabular-nums leading-none">
                   {completedToday.length}
                   <span className="text-lg text-content-muted">/{habits.length}</span>
                 </span>
@@ -221,7 +221,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                 <EmptyState
                   surface
                   size="md"
-                  title="No habits yet. Start building your routine!"
+                  title="No habits yet. Add one to get started."
                   action={
                     <Button variant="primary" onClick={() => onViewChange('habits')}>
                       Add Your First Habit
@@ -346,28 +346,28 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               <div className="grid-cards gap-3">
                 <ModuleCard icon={Activity} title="Exercise" onClick={() => onViewChange('exercise')}>
                   <div>
-                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums"><CountUp value={weeklyExerciseMins} /> <span className="font-sans text-xs text-content-muted">mins this week</span></div>
+                    <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={weeklyExerciseMins} /> <span className="font-sans text-xs text-content-muted">mins this week</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={weeklyWorkouts.length} /> sessions completed</div>
                   </div>
                 </ModuleCard>
 
                 <ModuleCard icon={BookMarked} title="Reading" onClick={() => onViewChange('reading')}>
                   <div>
-                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums"><CountUp value={activeBooks} /> <span className="font-sans text-xs text-content-muted">books in progress</span></div>
+                    <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={activeBooks} /> <span className="font-sans text-xs text-content-muted">books in progress</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={finishedBooks} /> finished total</div>
                   </div>
                 </ModuleCard>
 
                 <ModuleCard icon={Zap} title="Skills" onClick={() => onViewChange('skills')}>
                   <div>
-                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums"><CountUp value={totalSkillHours} decimals={1} /> <span className="font-sans text-xs text-content-muted">hrs practice</span></div>
+                    <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={totalSkillHours} decimals={1} /> <span className="font-sans text-xs text-content-muted">hrs practice</span></div>
                     <div className="text-micro text-content-disabled"><CountUp value={store.state.skills.length} /> skills tracked</div>
                   </div>
                 </ModuleCard>
 
                 <ModuleCard icon={ShieldAlert} title="Bad Habits" onClick={() => onViewChange('bad-habits')}>
                   <div>
-                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums"><CountUp value={badHabitCount} /> <span className="font-sans text-xs text-content-muted">habits reduced</span></div>
+                    <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={badHabitCount} /> <span className="font-sans text-xs text-content-muted">habits reduced</span></div>
                     <div className="text-micro text-content-disabled">Escalating penalties enabled</div>
                   </div>
                 </ModuleCard>
@@ -383,14 +383,14 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
 
                 <ModuleCard icon={Timer} title="Focus" onClick={() => onViewChange('prefrontal')}>
                   <div>
-                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums"><CountUp value={weeklyFocusMins} /> <span className="font-sans text-xs text-content-muted">focus mins this week</span></div>
+                    <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={weeklyFocusMins} /> <span className="font-sans text-xs text-content-muted">focus mins this week</span></div>
                     <div className="text-micro text-content-disabled">Pomodoro, decisions & emotions</div>
                   </div>
                 </ModuleCard>
 
                 <ModuleCard icon={Clock} title="Time Tracker" onClick={() => onViewChange('time-tracker')}>
                   <div>
-                    <div className="font-serif text-[1.5rem] leading-tight text-content-primary tabular-nums">
+                    <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums">
                       <AutoNum text={todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'} />{' '}
                       <span className="font-sans text-xs text-content-muted">planned today</span>
                     </div>

@@ -156,7 +156,7 @@ export function TemplatesTab({
       {/* 1. Header and Action */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-serif text-xl leading-tight text-content-primary flex items-center gap-2">
+          <h2 className="section-title text-xl leading-tight flex items-center gap-2">
             <Layers className="text-content-subtle" size={18} />
             <span>Recurring Templates</span>
           </h2>
@@ -181,7 +181,7 @@ export function TemplatesTab({
 
           <button
             onClick={onOpenCreateTemplateModal}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-sm transition-all shrink-0 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-brand bg-primary-600 hover:bg-primary-700 rounded-xl shadow-sm transition-all shrink-0 cursor-pointer"
           >
             <Plus size={15} />
             <span>Create Template</span>
@@ -193,9 +193,9 @@ export function TemplatesTab({
       <div className="p-4 rounded-2xl border border-overlay-subtle flex flex-col xl:flex-row gap-3 items-start">
         <Compass className="text-content-subtle shrink-0 mt-1" size={18} />
         <div className="flex-1 w-full">
-          <h3 className="font-serif text-lg leading-tight text-content-primary mb-1.5">The Balance Sheet of Life: 8+8+8 Rule</h3>
+          <h3 className="section-title mb-1.5">The 8+8+8 rule</h3>
           <p className="text-xs text-content-tertiary leading-relaxed mb-3 max-w-3xl">
-            Distribute your 24 hours intentionally to maintain a perfect balance sheet of your life. Ascend Blueprints are built on this foundational philosophy.
+            Split your 24 hours into three equal parts. Ascend blueprints are built around this.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-0 md:divide-x md:divide-overlay-subtle">
@@ -205,7 +205,7 @@ export function TemplatesTab({
                 <Brain className="text-content-muted" size={13} /> 
                 8 Hours: Hard Work
               </h4>
-              <p className="text-2xs text-content-muted leading-snug">Deep focus, career progression, and building your empire.</p>
+              <p className="text-2xs text-content-muted leading-snug">Deep focus and your career.</p>
             </div>
 
             {/* Life & Balance */}
@@ -227,7 +227,7 @@ export function TemplatesTab({
                 <Moon className="text-content-muted" size={13} /> 
                 8 Hours: Good Sleep
               </h4>
-              <p className="text-2xs text-content-muted leading-snug">High-quality recovery to repair the prefrontal cortex and body.</p>
+              <p className="text-2xs text-content-muted leading-snug">Rest for your mind and body.</p>
             </div>
           </div>
         </div>
@@ -238,12 +238,12 @@ export function TemplatesTab({
         <EmptyState
           icon={Layers}
           title="No Blueprint Templates Yet"
-          description="Save time every day by building recurring 24-hour routine blueprints. Days assigned to these blueprints will automatically apply each morning."
+          description="Build a daily routine once and reuse it. Blueprints apply automatically on the days you assign."
           action={
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 onClick={onOpenCreateTemplateModal}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
               >
                 <Plus size={14} />
                 <span>Create Your First Blueprint</span>
@@ -343,7 +343,7 @@ export function TemplatesTab({
                               handleToggleDay(tpl, day);
                             }}
                             title={`Toggle ${day} auto-apply for ${tpl.title}`}
-                            className={`px-2 py-0.5 rounded-md text-2xs font-medium transition-all cursor-pointer ${
+                            className={`px-2 py-0.5 rounded-lg text-2xs font-medium transition-all cursor-pointer ${
                               isDayActive
                                 ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30 hover:bg-emerald-500/30'
                                 : 'text-content-subtle border border-overlay-subtle hover:text-content-muted hover:border-overlay-default'
@@ -450,7 +450,7 @@ export function TemplatesTab({
                   <button
                     onClick={() => onOpenApplyTemplateModal(tpl.id)}
                     className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl hover:bg-overlay-subtle text-content-secondary border border-overlay-default text-xs font-medium transition-colors cursor-pointer"
-                    title="Apply to custom target date or replace"
+                    title="Apply to another date"
                   >
                     <Calendar size={13} />
                     <span>Apply to Date</span>

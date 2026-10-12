@@ -207,8 +207,8 @@ export function Journal({ store }: { store: AppStore }) {
   const handleSave = async () => {
     if (!hasEnoughContent) {
       showErrorToast(
-        'More Content Needed',
-        `Please write at least ${MIN_JOURNAL_CONTENT_LENGTH} characters before saving (even a sentence helps).`
+        'Write a little more',
+        `Write at least ${MIN_JOURNAL_CONTENT_LENGTH} characters before saving. One sentence is enough.`
       );
       return;
     }
@@ -220,10 +220,10 @@ export function Journal({ store }: { store: AppStore }) {
 
         if (!wasAwarded) {
           setJustCelebrated(true);
-          showSuccessToast('Journal Saved', `Earned +${JOURNAL_POINTS.entryCompleted} points for today's reflection! 🎉`);
+          showSuccessToast('Journal Saved', `+${JOURNAL_POINTS.entryCompleted} points for today's entry.`);
           setTimeout(() => setJustCelebrated(false), 4500);
         } else {
-          showSuccessToast('Journal Updated', 'Your reflection has been updated.');
+          showSuccessToast('Journal Updated', 'Your entry has been updated.');
         }
       });
       setIsEditingToday(false);
@@ -330,9 +330,9 @@ export function Journal({ store }: { store: AppStore }) {
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
                   <Calendar size={16} className="text-content-subtle" />
-                  <h2 className="section-title">Today's Journal Entry</h2>
+                  <h2 className="section-title">Today's entry</h2>
                 </div>
-                <span className="font-mono text-xs text-content-muted">
+                <span className="text-xs text-content-muted tabular-nums">
                   {formatDateLong(todayKey())}
                 </span>
               </div>
@@ -348,10 +348,10 @@ export function Journal({ store }: { store: AppStore }) {
                       <CheckCircle2 size={18} className={`text-success-text shrink-0 ${justCelebrated ? 'animate-celebrate' : ''}`} />
                       <div>
                         <p className="text-xs text-content-primary font-medium">
-                          {justCelebrated ? "Reflection saved! Great work today." : "Today's entry saved and confirmed"}
+                          {justCelebrated ? "Entry saved. Nice work today." : "Today's entry is saved"}
                         </p>
                         <p className="text-micro text-content-muted">
-                          Your mood and daily notes have been recorded in history.
+                          Your mood and notes are in your history.
                         </p>
                       </div>
                     </div>
@@ -371,7 +371,7 @@ export function Journal({ store }: { store: AppStore }) {
                         <TodayMoodIcon size={18} style={{ color: todayMoodConfig.color }} className="shrink-0" />
                         <div>
                           <span className="stat-label block">
-                            Recorded Mood
+                            Mood
                           </span>
                           <span
                             className="text-sm font-medium flex items-center gap-1.5"
@@ -393,7 +393,7 @@ export function Journal({ store }: { store: AppStore }) {
 
                     <div>
                       <span className="stat-label block mb-1.5">
-                        Your Daily Notes
+                        Notes
                       </span>
                       <div className="text-xs text-content-secondary leading-relaxed whitespace-pre-wrap min-h-[60px]">
                         {existingToday.content ? (
@@ -464,7 +464,7 @@ export function Journal({ store }: { store: AppStore }) {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <label htmlFor="journal-notes" className="label mb-0 flex items-center gap-1.5 whitespace-nowrap">
                         <BookOpen size={14} className="text-content-muted" />
-                        <span>Your Journal Notes</span>
+                        <span>Notes</span>
                       </label>
 
                       {/* Prompt / Free Write Toggle */}
@@ -475,8 +475,8 @@ export function Journal({ store }: { store: AppStore }) {
                         value={showGuidedPrompt ? 'guided' : 'free'}
                         onChange={(id) => toggleGuidedPrompt(id === 'guided')}
                         items={[
-                          { id: 'guided', label: 'Guided Prompt', icon: Sparkles },
-                          { id: 'free', label: 'Free Write' },
+                          { id: 'guided', label: 'Guided prompt', icon: Sparkles },
+                          { id: 'free', label: 'Free write' },
                         ]}
                       />
                     </div>
@@ -495,11 +495,11 @@ export function Journal({ store }: { store: AppStore }) {
                             title="Show another prompt"
                           >
                             <RotateCcw size={12} />
-                            <span>Shuffle Prompt</span>
+                            <span>Shuffle</span>
                           </button>
                         </div>
-                        <p className="font-serif italic text-base sm:text-lg text-content-primary leading-snug">
-                          "{currentDailyPrompt.prompt}"
+                        <p className="text-base font-medium text-content-primary leading-snug">
+                          {currentDailyPrompt.prompt}
                         </p>
                       </div>
                     )}
@@ -595,10 +595,10 @@ export function Journal({ store }: { store: AppStore }) {
                 <div>
                   <h2 className="section-title flex items-center gap-2">
                     <TrendingUp size={16} className="text-content-subtle" />
-                    Mood Trend & Overview
+                    Mood trend
                   </h2>
                   <p className="text-xs text-content-disabled mt-0.5">
-                    Emotional awareness trajectory mapped across your reflections
+                    How your mood has changed across entries.
                   </p>
                 </div>
 
@@ -610,8 +610,8 @@ export function Journal({ store }: { store: AppStore }) {
                   value={chartRange}
                   onChange={(id) => setChartRange(id as typeof chartRange)}
                   items={[
-                    { id: '7d', label: 'Last 7 Days' },
-                    { id: '30d', label: 'Last 30 Days' },
+                    { id: '7d', label: 'Last 7 days' },
+                    { id: '30d', label: 'Last 30 days' },
                   ]}
                 />
               </div>
@@ -622,7 +622,7 @@ export function Journal({ store }: { store: AppStore }) {
                   surface={false}
                   icon={TrendingUp}
                   title="Not enough data yet"
-                  description="Keep journaling for a couple of days to unlock your interactive mood trend graph and emotional awareness insights."
+                  description="Journal for a couple of days to see your mood trend."
                 />
               ) : (
                 <div className="space-y-4 animate-fade-in">
@@ -801,7 +801,7 @@ export function Journal({ store }: { store: AppStore }) {
                     </div>
 
                     {/* X-Axis Day Labels */}
-                    <div className="flex justify-between items-center px-4 pl-24 font-mono text-2xs text-content-muted mt-2">
+                    <div className="flex justify-between items-center px-4 pl-24 text-2xs text-content-muted tabular-nums mt-2">
                       {chartRange === '7d' ? (
                         chartData.map((d) => (
                           <span
@@ -827,7 +827,7 @@ export function Journal({ store }: { store: AppStore }) {
                         className="p-2.5 border border-overlay-default rounded-xl space-y-1 animate-fade-in"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-xs text-content-secondary">
+                          <span className="text-xs text-content-secondary tabular-nums">
                             {formatDateLong(hoveredChartPoint.date)}
                           </span>
                           <span
@@ -877,13 +877,13 @@ export function Journal({ store }: { store: AppStore }) {
                   {averageScore && (
                     <div className="pt-3 border-t border-overlay-subtle flex flex-wrap items-center justify-between gap-2 text-xs">
                       <div className="flex items-center gap-2 text-content-muted">
-                        <span>Journaling Consistency:</span>
+                        <span>Days journaled:</span>
                         <span className="figure text-content-secondary">
                           {recordedPointsInRange.length} of {chartDaysCount} days ({Math.round((recordedPointsInRange.length / chartDaysCount) * 100)}%)
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-content-muted">
-                        <span>Average Mood Score:</span>
+                        <span>Average mood:</span>
                         <span className="figure text-content-secondary">
                           {averageScore} / 4.0
                         </span>
@@ -902,10 +902,10 @@ export function Journal({ store }: { store: AppStore }) {
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <h2 className="section-title flex items-center gap-2">
                   <Calendar size={16} className="text-content-subtle" />
-                  <span>Journal History ({entries.length})</span>
+                  <span>History ({entries.length})</span>
                 </h2>
                 <span className="text-xs text-content-disabled">
-                  Click any entry to view full reflection
+                  Click an entry to read it
                 </span>
               </div>
 
@@ -913,7 +913,7 @@ export function Journal({ store }: { store: AppStore }) {
                 <EmptyState
                   icon={BookOpen}
                   title="No journal entries yet"
-                  description="Write today's entry to start your journal history!"
+                  description="Write today's entry to start your history."
                 />
               ) : (
                 <div className="card divide-y divide-overlay-subtle overflow-hidden">
@@ -979,7 +979,7 @@ export function Journal({ store }: { store: AppStore }) {
                               setDeleteModalEntry(entry);
                             }}
                             className={`text-content-subtle hover:text-rose-theme p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
-                            title="Delete Journal Entry"
+                            title="Delete journal entry"
                             aria-label="Delete journal entry"
                           >
                             <Trash2 size={16} />
@@ -1004,7 +1004,7 @@ export function Journal({ store }: { store: AppStore }) {
       <Dialog
         open={!!selectedEntry}
         onClose={() => setSelectedEntry(null)}
-        title={selectedEntry ? `Journal Entry — ${formatDateLong(selectedEntry.date)}` : ''}
+        title={selectedEntry ? `Journal entry, ${formatDateLong(selectedEntry.date)}` : ''}
         maxWidth="max-w-lg"
       >
         {selectedEntry && (() => {
@@ -1019,7 +1019,7 @@ export function Journal({ store }: { store: AppStore }) {
                   <Icon size={18} style={{ color: moodMeta.color }} className="shrink-0" />
                   <div>
                     <p className="stat-label">
-                      Recorded Mood
+                      Mood
                     </p>
                     <p className="text-sm font-medium" style={{ color: moodMeta.color }}>
                       {moodMeta.label}
@@ -1029,7 +1029,7 @@ export function Journal({ store }: { store: AppStore }) {
 
                 {selectedEntry.pointsAwarded ? (
                   <span className="figure text-xs text-success-text flex items-center gap-1.5">
-                    <Award size={14} /> +{JOURNAL_POINTS.entryCompleted} pts Earned
+                    <Award size={14} /> +{JOURNAL_POINTS.entryCompleted} pts earned
                   </span>
                 ) : (
                   <span className="text-xs text-content-disabled">
@@ -1040,7 +1040,7 @@ export function Journal({ store }: { store: AppStore }) {
 
               <div>
                 <h4 className="stat-label mb-2">
-                  Daily Notes
+                  Notes
                 </h4>
                 <div className="text-sm text-content-secondary leading-relaxed whitespace-pre-wrap min-h-[100px]">
                   {hasNotes ? (
@@ -1064,7 +1064,7 @@ export function Journal({ store }: { store: AppStore }) {
                   className="btn-ghost text-xs text-rose-theme flex items-center gap-1.5"
                 >
                   <Trash2 size={14} />
-                  <span>Delete Entry</span>
+                  <span>Delete</span>
                 </button>
 
                 <button
@@ -1097,8 +1097,8 @@ export function Journal({ store }: { store: AppStore }) {
         itemName={`Journal Entry (${deleteModalEntry?.date})`}
         description={
           deleteModalEntry?.pointsAwarded
-            ? `Are you sure you want to delete your journal entry for ${deleteModalEntry.date}? This will reverse the +${JOURNAL_POINTS.entryCompleted} points awarded.`
-            : `Are you sure you want to delete your journal entry for ${deleteModalEntry?.date}?`
+            ? `Delete your journal entry for ${deleteModalEntry.date}? This reverses the +${JOURNAL_POINTS.entryCompleted} points awarded.`
+            : `Delete your journal entry for ${deleteModalEntry?.date}?`
         }
       />
     </div>

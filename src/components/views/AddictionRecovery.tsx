@@ -130,7 +130,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <div className="rounded-2xl p-4 border border-overlay-default flex items-start gap-3">
         <AlertCircle size={16} className="text-content-subtle shrink-0 mt-0.5" />
         <div className="text-xs text-content-tertiary leading-relaxed">
-          <span className="font-semibold text-warning-text">Important Medical Disclaimer:</span> This module is a self-management support tool designed to complement — but <span className="underline">not replace</span> — professional medical treatment or therapy. If you are experiencing severe addiction, physical withdrawal, or crisis, please seek immediate assistance from a licensed healthcare professional or hotline (e.g. SAMHSA Helpline: 1-800-662-4357).
+          <span className="font-semibold text-warning-text">Medical disclaimer:</span> This is a self-help tool. It does <span className="underline">not replace</span> medical treatment or therapy. If you are in crisis, have severe withdrawal, or a serious addiction, contact a licensed professional or a helpline (e.g. SAMHSA Helpline: 1-800-662-4357).
         </div>
       </div>
 
@@ -141,8 +141,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             {!tracker ? (
               <EmptyState
                 icon={ShieldCheck}
-                title="Set Up Your Sobriety Tracker"
-                description="Choose what you are recovering from (e.g., Alcohol, Smoking, Sugar, Social Media) and start tracking your milestone achievements today."
+                title="Set up your sobriety tracker"
+                description="Pick what you're recovering from (e.g. alcohol, smoking, sugar, social media) and start tracking milestones."
                 action={
                   <button onClick={() => setSetupTrackerModalOpen(true)} className="btn-primary">
                     Start Sobriety Tracker
@@ -153,7 +153,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               <div className="card p-6 relative overflow-hidden space-y-6">
                 <div className="flex items-center justify-between flex-wrap gap-2 border-b border-overlay-subtle pb-4">
                   <div>
-                    <span className="stat-label">Sobriety Counter</span>
+                    <span className="stat-label">Sobriety counter</span>
                     <h2 className="section-title mt-1">{tracker.title}</h2>
                   </div>
                   <div className="flex items-center gap-2">
@@ -167,7 +167,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                     <button
                       onClick={() => setDeleteTrackerConfirmOpen(true)}
                       className="btn-ghost text-xs text-content-muted hover:text-rose-theme flex items-center gap-1.5"
-                      title="Delete Sobriety Tracker Entirely"
+                      title="Delete sobriety tracker"
                     >
                       <Trash2 size={14} />
                       <span>Delete Tracker</span>
@@ -232,9 +232,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                     note={recoverySeasonCapNote()}
                   />
 
-                  <div className="font-serif text-xl leading-tight text-content-primary mb-3 flex items-center gap-2">
+                  <div className="section-title mb-3 flex items-center gap-2">
                     <Award size={16} className="text-content-subtle" />
-                    Milestone Celebrations & Badges
+                    Milestones and badges
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {milestones.map((m) => {
@@ -263,7 +263,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                             <div className="item-name text-xs !text-current">{m.label}</div>
                             <div className="text-2xs text-content-muted">
                               {isUnlocked
-                                ? `Unlocked! (+${m.points} pts)`
+                                ? `Unlocked (+${m.points} pts)`
                                 : isCapped
                                 ? 'Season cap reached'
                                 : `Requires ${m.requiredHours}h`}
@@ -284,8 +284,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             <div className="card p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="section-title">Craving Log & Trigger Analysis</h2>
-                  <p className="text-xs text-content-disabled">Record craving intensity (1-10), triggers, and successful coping strategies</p>
+                  <h2 className="section-title">Craving log and triggers</h2>
+                  <p className="text-xs text-content-disabled">Log intensity (1-10), triggers and what helped.</p>
                 </div>
                 <button onClick={() => setCravingModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5 shrink-0">
                   <Activity size={14} />
@@ -297,7 +297,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                 <EmptyState
                   icon={Activity}
                   title="No cravings logged yet"
-                  description="Logging cravings helps identify environmental triggers and effective coping mechanisms."
+                  description="Logging cravings shows you what triggers them and what helps."
                 />
               ) : (
                 <div className="space-y-3">
@@ -310,11 +310,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                             Intensity: <span className={`figure ${log.intensity >= 7 ? 'text-rose-theme' : 'text-content-primary'}`}>{log.intensity}/10</span>
                           </span>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-content-disabled text-2xs">{formatDateLong(log.date)}</span>
+                            <span className="text-content-disabled text-2xs tabular-nums">{formatDateLong(log.date)}</span>
                             <button
                               onClick={() => setDeleteCravingModalLog(log)}
                               className={`text-content-subtle hover:text-rose-theme p-0.5 transition-colors ${TAP_TARGET}`}
-                              title="Delete Craving Log"
+                              title="Delete craving log"
                               aria-label="Delete craving log"
                             >
                               <Trash2 size={14} />
@@ -334,12 +334,12 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       />
 
       {/* Emergency Support Modal (Breathing + Distraction) */}
-      <Dialog open={emergencyModalOpen} onClose={() => setEmergencyModalOpen(false)} title="Emergency Support & Urge Surfing" maxWidth="max-w-lg">
+      <Dialog open={emergencyModalOpen} onClose={() => setEmergencyModalOpen(false)} title="Emergency support" maxWidth="max-w-lg">
         <div className="space-y-6">
           {/* Guided Breathing Box */}
           <div className="text-center space-y-4">
-            <h3 className="font-serif text-xl leading-tight text-content-primary flex items-center justify-center gap-2">
-              Guided 4-4-4-4 Box Breathing
+            <h3 className="section-title flex items-center justify-center gap-2">
+              4-4-4-4 box breathing
             </h3>
             <BreathingCircle />
           </div>
@@ -347,7 +347,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           {/* Quick Distraction Activity Suggestion */}
           <div className="pt-4 space-y-3 border-t border-overlay-subtle">
             <div className="flex items-center justify-between">
-              <h4 className="item-name text-sm">Quick Distraction Activity</h4>
+              <h4 className="item-name text-sm">Quick distraction</h4>
               <button
                 onClick={() => setDistractionIdx((prev) => (prev + 1) % DISTRACTION_ACTIVITIES.length)}
                 className="btn-ghost text-micro text-content-muted flex items-center gap-1"
@@ -355,8 +355,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                 <RefreshCw size={12} /> Next Suggestion
               </button>
             </div>
-            <div className="p-3 font-serif italic text-lg leading-snug text-content-primary text-center">
-              "{DISTRACTION_ACTIVITIES[distractionIdx]}"
+            <div className="p-3 text-base font-medium leading-snug text-content-primary text-center">
+              {DISTRACTION_ACTIVITIES[distractionIdx]}
             </div>
           </div>
 
@@ -369,11 +369,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       </Dialog>
 
       {/* Log Craving Modal */}
-      <Dialog open={cravingModalOpen} onClose={() => setCravingModalOpen(false)} title="Log Craving Instance">
+      <Dialog open={cravingModalOpen} onClose={() => setCravingModalOpen(false)} title="Log a craving">
         <form onSubmit={handleLogCravingSubmit} className="space-y-4">
           <div>
             <div className="flex justify-between text-xs text-content-muted mb-1">
-              <span>Craving Intensity</span>
+              <span>Intensity</span>
               <span className="figure text-warning-text">{intensity} / 10</span>
             </div>
             <input
@@ -402,7 +402,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="craving-coping" className="block text-xs font-medium text-content-muted mb-1">Coping strategy used / planned</label>
+            <label htmlFor="craving-coping" className="block text-xs font-medium text-content-muted mb-1">Coping strategy (used or planned)</label>
             <input
               type="text"
               id="craving-coping"
@@ -426,7 +426,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       </Dialog>
 
       {/* Setup Tracker Modal */}
-      <Dialog open={setupTrackerModalOpen} onClose={() => setSetupTrackerModalOpen(false)} title="Set Up Sobriety Tracker">
+      <Dialog open={setupTrackerModalOpen} onClose={() => setSetupTrackerModalOpen(false)} title="Set up sobriety tracker">
         <form onSubmit={handleStartTracker} className="space-y-4">
           <div>
             <label htmlFor="setup-tracker-title" className="block text-xs font-medium text-content-muted mb-1">What are you abstaining from?</label>
@@ -456,7 +456,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <Dialog open={resetConfirmOpen} onClose={() => setResetConfirmOpen(false)} title="Reset Sobriety Streak?">
         <div className="space-y-4 text-xs text-content-tertiary">
           <p>
-            Resetting your timer will restart your sobriety clock from 00:00:00. Remember: slipping up is a bump in the road, not the end of your journey.
+            This restarts your sobriety clock from 00:00:00. A slip is a setback, not the end.
           </p>
 
           <div className="flex gap-2 pt-2">
@@ -477,17 +477,17 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       </Dialog>
 
       {/* Milestone Unlocked Modal */}
-      <Dialog open={!!celebrationMilestone} onClose={() => setCelebrationMilestone(null)} title="Milestone Unlocked!">
+      <Dialog open={!!celebrationMilestone} onClose={() => setCelebrationMilestone(null)} title="Milestone unlocked">
         <div className="text-center space-y-4 py-2">
-          <div className="text-4xl mx-auto animate-celebrate">
-            🏆
+          <div className="mx-auto w-fit animate-celebrate">
+            <Award size={36} className="text-content-subtle" />
           </div>
-          <h3 className="font-serif text-[1.75rem] leading-tight text-content-primary">{celebrationMilestone}</h3>
+          <h3 className="text-2xl font-semibold leading-tight text-content-primary">{celebrationMilestone}</h3>
           <p className="text-xs text-content-muted max-w-sm mx-auto">
-            Incredible determination and discipline! Keep holding fast and rewiring your neural circuits day by day.
+            Well done. Keep going one day at a time.
           </p>
           <button onClick={() => setCelebrationMilestone(null)} className="btn-primary mx-auto">
-            Awesome!
+            Done
           </button>
         </div>
       </Dialog>
@@ -506,7 +506,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         isDeleting={isKeyLoading('delete_addiction_tracker')}
         title="Delete Sobriety Tracker?"
         itemName={tracker?.title}
-        description={`Are you sure you want to delete your "${tracker?.title}" sobriety counter entirely? This will clear the active streak counter and remove all logged craving data. Any milestone points earned will be deducted.`}
+        description={`Delete your "${tracker?.title}" sobriety counter? This clears the current streak and all logged cravings. Any milestone points earned will be deducted.`}
         confirmText="Delete Tracker"
       />
 
@@ -526,7 +526,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         }}
         isDeleting={deleteCravingModalLog ? isKeyLoading(`delete_craving_log_${deleteCravingModalLog.id}`) : false}
         title="Delete Craving Log?"
-        description="Are you sure you want to delete this craving log entry?"
+        description="Delete this craving log entry?"
       />
     </div>
   );
@@ -582,7 +582,7 @@ function BreathingCircle() {
         <div
           className={`w-28 h-28 rounded-full border-2 transition-all duration-1000 flex flex-col items-center justify-center ${getCircleScale()}`}
         >
-          <span className="font-mono text-2xs uppercase tracking-[0.08em] font-medium text-content-muted">{phase}</span>
+          <span className="text-xs font-medium text-content-muted">{phase}</span>
           <span className="figure text-2xl text-content-primary mt-0.5">{seconds}s</span>
         </div>
       </div>

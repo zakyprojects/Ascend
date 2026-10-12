@@ -124,7 +124,7 @@ export function ApplyTemplateModal({
                 <span>Merge Safely</span>
               </div>
               <p className="text-2xs text-content-muted font-normal leading-tight">
-                Add non-colliding blueprint blocks without removing existing ones.
+                Adds blocks that don't overlap, and keeps the ones already there.
               </p>
             </button>
 
@@ -161,7 +161,7 @@ export function ApplyTemplateModal({
           <button
             type="submit"
             disabled={isApplying || !selectedTemplateId}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
           >
             {isApplying ? (
               <>

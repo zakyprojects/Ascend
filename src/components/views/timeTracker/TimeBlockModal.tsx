@@ -362,7 +362,7 @@ export function TimeBlockModal({
             id="tt-block-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Key objectives, location, or constraints..."
+            placeholder="Notes, location..."
             rows={2}
             className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500 resize-none"
           />
@@ -381,7 +381,7 @@ export function TimeBlockModal({
           <button
             type="submit"
             disabled={isSaving || isZeroDuration}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
           >
             {isSaving ? (
               <>

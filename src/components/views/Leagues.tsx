@@ -54,17 +54,17 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
           <div className="flex items-center gap-3">
             <div>
               <p className="item-name text-xs">
-                You are competing as Guest ({currentUser?.username || store.state.username})
+                You're competing as a guest ({currentUser?.username || store.state.username})
               </p>
               <p className="text-micro text-content-muted">
-                Save your progress — create a permanent account to lock in your rank and pick a custom username.
+                Create an account to keep your rank and choose your own username.
               </p>
             </div>
           </div>
           {onOpenAuthModal && (
             <button
               onClick={onOpenAuthModal}
-              className="px-3.5 py-1.5 bg-primary-500 hover:bg-primary-600 text-on-brand text-xs font-semibold rounded-lg transition-colors shrink-0 w-full sm:w-auto"
+              className="px-3.5 py-1.5 bg-primary-600 hover:bg-primary-700 text-on-brand text-xs font-semibold rounded-lg transition-colors shrink-0 w-full sm:w-auto"
             >
               Save Progress / Create Account
             </button>
@@ -117,14 +117,14 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
                 <div className="flex items-center gap-1.5 text-xs text-content-tertiary self-start sm:self-auto">
                   <span className="text-micro text-content-muted">
-                    {activeLeague === 'ninetyDay' ? 'Season Ends in:' : 'Resets in:'}
+                    {activeLeague === 'ninetyDay' ? 'Season ends in' : 'Resets in'}
                   </span>
                   <LeagueCountdown type={activeLeague} className="font-mono font-medium text-content-primary tabular-nums" />
                 </div>
               </div>
 
               <p className="text-xs text-content-muted mb-4">
-                Current Cycle: {periodLabel}
+                Current cycle: {periodLabel}
               </p>
 
               {/* 90-Day League neuroplasticity explanation */}
@@ -132,10 +132,10 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                 <div className="rounded-xl border border-overlay-default p-4 mb-4">
                   <div className="flex items-start gap-2">
                     <div>
-                      <p className="item-name text-sm mb-1">90 Days to Rewire Your Brain</p>
+                      <p className="item-name text-sm mb-1">Why 90 days</p>
                       <p className="text-xs text-content-muted leading-relaxed">
-                        Neuroscience research reveals it takes roughly 66–90 days of consistent repetition for a new habit
-                        to form automated neural pathways in your brain. This 90-Day League tests long-term grit and consistency.
+                        A new habit usually takes about 66–90 days of steady repetition to become automatic. This league
+                        rewards that long-term consistency.
                       </p>
                     </div>
                   </div>
@@ -191,7 +191,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                         <span className="figure text-xs sm:text-sm text-content-primary">
                           <CountUp value={competitor.points} className="tabular-nums" />
                         </span>
-                        <span className="font-mono text-2xs text-content-disabled ml-1">pts</span>
+                        <span className="text-2xs text-content-disabled ml-1">pts</span>
                       </div>
 
                       <ChevronRight size={15} className="text-content-subtle group-hover:text-content-tertiary transition-colors shrink-0" />
@@ -208,7 +208,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
           archives.length > 0 && (
             <div>
               <h2 className="section-title mb-3">
-                Past Standings Archives
+                Past standings
               </h2>
               <div className="card divide-y divide-overlay-subtle overflow-hidden">
                 {archives.map((archive, idx) => (
@@ -236,7 +236,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
       <Dialog
         open={!!showArchive}
         onClose={() => setShowArchive(null)}
-        title={showArchive ? `${LEAGUE_CONFIG[showArchive].name} — Final Standings` : ''}
+        title={showArchive ? `${LEAGUE_CONFIG[showArchive].name}: final standings` : ''}
         maxWidth="max-w-lg"
       >
         {showArchive && (() => {

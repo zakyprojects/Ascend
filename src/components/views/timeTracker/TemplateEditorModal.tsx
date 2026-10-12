@@ -258,7 +258,7 @@ export function TemplateEditorModal({
               Auto-Apply Days
             </label>
             <p className="text-micro text-content-muted mb-2">
-              On the selected days, opening the schedule for an empty day will automatically apply this template.
+              On these days, an empty schedule gets this template automatically.
             </p>
             <div className="flex flex-wrap gap-1.5">
               {DAYS_OF_WEEK.map((day) => {
@@ -392,7 +392,7 @@ export function TemplateEditorModal({
             <button
               type="submit"
               disabled={isSaving}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
             >
               {isSaving ? (
                 <>

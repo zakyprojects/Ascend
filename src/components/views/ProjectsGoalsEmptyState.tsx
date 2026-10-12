@@ -6,23 +6,22 @@ interface EmptyStateProps {
   tier: HierarchyTier;
   onCreate: () => void;
   isFiltered?: boolean;
-  onTabSwitch?: (tier: HierarchyTier) => void;
 }
 
 const TIER_CONFIG = {
   goals: {
-    title: 'Define Your Vision',
-    text: 'Goals are your ultimate long-term targets. Set a north star to align your daily actions.',
+    title: 'No goals yet',
+    text: 'Goals are your long-term targets. Your daily tasks build toward them.',
     buttonText: 'Create Your First Goal',
   },
   projects: {
-    title: 'Bridge the Gap',
-    text: 'Projects group related tasks together to achieve your broader goals. Break down your vision into actionable phases.',
+    title: 'No projects yet',
+    text: 'Projects group related tasks and move a goal forward.',
     buttonText: 'Create Your First Project',
   },
   tasks: {
-    title: 'Start the Engine',
-    text: 'Tasks are the atomic, daily actions that move the needle. Link them to projects to maintain focus.',
+    title: 'No tasks yet',
+    text: 'Tasks are the small things you do each day. Link them to a project to keep them organized.',
     buttonText: 'Create Your First Task',
   },
 };
@@ -36,7 +35,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false }: EmptyStatePro
         <div className="max-w-sm mx-auto space-y-1">
           <h3 className="item-name text-sm text-content-secondary">No {tier.charAt(0).toUpperCase() + tier.slice(1)} Found</h3>
           <p className="text-xs text-content-muted leading-relaxed">
-            No items match your active search or filter criteria.
+            Nothing matches your search or filters.
           </p>
         </div>
         <button

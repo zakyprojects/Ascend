@@ -657,7 +657,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             <div className="flex items-center justify-between text-xs">
               <span className="text-content-tertiary flex items-center gap-1.5">
                 <BarChart2 size={14} className="text-content-subtle" />
-                Weekly Target Completion
+                Weekly goal completion
               </span>
               <span className="figure text-content-secondary">
                 <AutoNum text={`${goalStats.percent}%`} /> Complete ({goalStats.completed}/{goalStats.total})
@@ -668,17 +668,17 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           <div className="flex items-center justify-around md:border-l md:border-overlay-subtle">
             <div className="text-center">
-              <CountUp value={goalStats.total} className="font-serif text-[1.75rem] leading-none text-content-primary block tabular-nums" />
+              <CountUp value={goalStats.total} className="font-medium text-3xl leading-none text-content-primary block tabular-nums" />
               <span className="stat-label mt-1 block">Total Goals</span>
             </div>
             <div className="w-px h-8 bg-overlay-default" />
             <div className="text-center">
-              <CountUp value={goalStats.completed} className="font-serif text-[1.75rem] leading-none text-success-text block tabular-nums" />
+              <CountUp value={goalStats.completed} className="font-medium text-3xl leading-none text-success-text block tabular-nums" />
               <span className="stat-label mt-1 block">Completed</span>
             </div>
             <div className="w-px h-8 bg-overlay-default" />
             <div className="text-center">
-              <CountUp value={goalStats.highPriorityCompleted} className="font-serif text-[1.75rem] leading-none text-content-primary block tabular-nums" />
+              <CountUp value={goalStats.highPriorityCompleted} className="font-medium text-3xl leading-none text-content-primary block tabular-nums" />
               <span className="stat-label mt-1 block">High Pri Done</span>
             </div>
           </div>
@@ -802,7 +802,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 <EmptyState
                   icon={Target}
                   title="No Weekly Goals Set Yet"
-                  description="Define 1-3 measurable, high-leverage priorities to align your effort this week."
+                  description="Pick 1-3 measurable priorities for this week."
                   size="sm"
                   surface={false}
                   action={
@@ -877,7 +877,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                     id="new-reflection-content"
                     value={newReflectionContent}
                     onChange={(e) => setNewReflectionContent(e.target.value)}
-                    placeholder="What went exceptionally well? What friction did you encounter? What key adjustment will you make next week?"
+                    placeholder="What went well? What got in the way? What will you change next week?"
                     className="input min-h-[90px] text-xs leading-relaxed"
                     autoFocus
                   />
@@ -919,7 +919,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                         <EmptyState
                           icon={PenLine}
                           title={selectedWeekKey === currentWeekKey ? `No reflections added for ${selectedWeekKey} yet.` : `No reflections added for ${selectedWeekKey}.`}
-                          description={selectedWeekKey === currentWeekKey ? 'Click "+ Add Reflection" above to add your insights.' : undefined}
+                          description={selectedWeekKey === currentWeekKey ? 'Use "+ Add Reflection" above to write one.' : undefined}
                           size="sm"
                           surface={false}
                         />
@@ -1046,13 +1046,13 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           <div>
             <label htmlFor="goal-description" className="block text-xs font-medium text-content-tertiary mb-1">
-              Target Description & Strategy
+              Description
             </label>
             <textarea
               id="goal-description"
               value={targetDescription}
               onChange={(e) => setTargetDescription(e.target.value)}
-              placeholder="Why is this high leverage? How will you schedule this?"
+              placeholder="Why it matters and when you'll do it"
               className="input min-h-[70px] text-xs"
             />
           </div>
@@ -1346,7 +1346,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         description={
           deleteReflectionModal && isWeeklyReflectionAwarded(selectedWeekKey, deleteReflectionModal.id, store.state)
             ? `Are you sure you want to delete this reflection? Since it earned points, ${WEEKLY_REFLECTION_POINTS.awarded} pts will be deducted. (Your weekly goals will remain untouched).`
-            : 'Are you sure you want to delete this reflection entry? (Your weekly goals will remain untouched).'
+            : 'Delete this reflection? Your weekly goals stay as they are.'
         }
         confirmText="Delete Reflection"
       />

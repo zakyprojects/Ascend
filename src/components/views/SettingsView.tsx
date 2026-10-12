@@ -196,7 +196,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       try {
         const nowIso = await updateUsernameWithCooldown(userId, trimmed);
         store.updateProfileUsername(trimmed, nowIso);
-        setUsernameMsg({ type: 'success', text: 'Username updated successfully!' });
+        setUsernameMsg({ type: 'success', text: 'Username updated.' });
         setUsernameStatus(null);
       } catch (err: unknown) {
         const error = err as { message?: string };
@@ -240,7 +240,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
     await executePasswordSave(async () => {
       try {
         await changeUserPassword(newPassword);
-        setPasswordMsg({ type: 'success', text: 'Password changed successfully!' });
+        setPasswordMsg({ type: 'success', text: 'Password changed.' });
         setNewPassword('');
         setConfirmPassword('');
         setShowPasswordForm(false);
@@ -337,10 +337,10 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
             <div className="flex items-center gap-3">
             <div>
               <p className="text-xs font-medium text-content-secondary">
-                Temporary Guest Account ({currentUser?.username})
+                Guest account ({currentUser?.username})
               </p>
               <p className="text-micro text-content-muted">
-                Save your progress to convert to a permanent account so you never lose habits or points.
+                Create an account to keep your habits and points.
               </p>
             </div>
           </div>
@@ -401,7 +401,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           </div>
 
           <div className="pt-4 border-t border-overlay-subtle px-3">
-            <p className="text-2xs text-content-disabled font-mono">Ascend v{__APP_VERSION__}</p>
+            <p className="text-2xs text-content-disabled tabular-nums">Ascend v{__APP_VERSION__}</p>
           </div>
         </aside>
 
@@ -415,17 +415,17 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {activeSection === 'profile' && (
             <div className="card p-5 space-y-5">
               <h2 className="section-title border-b border-overlay-subtle pb-3">
-                Profile Identity
+                Profile
               </h2>
 
               {/* Permanent 6-Digit User UID */}
               <div className="p-3 rounded-xl border border-overlay-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <label className="block text-xs font-medium text-content-tertiary">
-                    Your Unique User ID (UID)
+                    Your user ID (UID)
                   </label>
                   <p className="text-micro text-content-muted">
-                    Share this permanent 6-digit ID with friends to connect as Accountability Partners.
+                    Share this 6-digit ID with friends to add them as accountability partners.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -453,10 +453,10 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               <form onSubmit={handleSaveUsername} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label htmlFor="settings-username" className="block text-xs font-medium text-content-tertiary">
-                    Leaderboard Username
+                    Leaderboard username
                   </label>
                   {isCooldownActive && (
-                    <span className="badge-neutral text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
+                    <span className="badge-neutral text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-lg">
                       <Clock size={12} />
                       Cooldown: {hoursLeft}h {minsLeft}m left
                     </span>
@@ -484,7 +484,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                         </span>
                       ) : usernameStatus?.reason ? (
                         <span className="text-micro font-medium text-rose-theme flex items-center gap-1 truncate max-w-[110px]">
-                          Taken / Invalid
+                          Not available
                         </span>
                       ) : null}
                     </div>
@@ -504,7 +504,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
                 <div className="flex items-center justify-between pt-1">
                   <p className="text-micro text-content-disabled">
-                    Username changes are limited to 1 per rolling 24-hour period.
+                    You can change your username once every 24 hours.
                   </p>
                   <button
                     type="submit"
@@ -514,7 +514,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       usernameInput.trim() === currentUser?.username ||
                       (usernameStatus !== null && !usernameStatus.available)
                     }
-                    className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-on-brand font-semibold text-xs rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-on-brand font-semibold text-xs rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     {usernameSaving ? 'Saving...' : 'Update Username'}
                   </button>
@@ -525,7 +525,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               <div className="space-y-2 pt-2 border-t border-overlay-subtle">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-medium text-content-tertiary">
-                    Leaderboard Avatar Emoji (32 Choices)
+                    Leaderboard avatar
                   </label>
                   {avatarMsg && (
                     <span className="text-micro text-success-text font-medium flex items-center gap-1 animate-fade-in">
@@ -557,7 +557,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   })}
                 </div>
                 <p className="text-micro text-content-disabled">
-                  Click any avatar to update immediately. Changes propagate instantly to leaderboards and cards.
+                  Tap an avatar to use it. It updates everywhere right away.
                 </p>
               </div>
             </div>
@@ -573,7 +573,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               {/* Read-only Email display */}
               <div>
                 <label htmlFor="settings-email" className="block text-xs font-medium text-content-tertiary mb-1">
-                  Registered Email Address
+                  Email
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
@@ -583,8 +583,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     id="settings-email"
                     type="email"
                     disabled
-                    value={currentUser?.email || (isGuest ? 'Guest User (No Email)' : '')}
-                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800/60 border border-overlay-subtle rounded-xl text-sm text-content-muted font-mono disabled:opacity-80"
+                    value={currentUser?.email || (isGuest ? 'Guest (no email)' : '')}
+                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800/60 border border-overlay-subtle rounded-xl text-sm text-content-muted disabled:opacity-80"
                   />
                 </div>
               </div>
@@ -594,8 +594,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                 <div className="pt-2 border-t border-overlay-subtle space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="item-name text-xs text-content-secondary">Account Password</p>
-                      <p className="text-micro text-content-disabled">Update your login password securely</p>
+                      <p className="item-name text-xs text-content-secondary">Password</p>
+                      <p className="text-micro text-content-disabled">Change the password you log in with.</p>
                     </div>
                     <button
                       type="button"
@@ -609,7 +609,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   {showPasswordForm && (
                     <form onSubmit={handleChangePassword} className="space-y-3 pt-1">
                       <PasswordInput
-                        label="New Password"
+                        label="New password"
                         required
                         autoComplete="new-password"
                         placeholder="••••••••"
@@ -617,7 +617,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                         onChange={(e) => setNewPassword(e.target.value)}
                       />
                       <PasswordInput
-                        label="Confirm New Password"
+                        label="Confirm new password"
                         required
                         autoComplete="new-password"
                         placeholder="••••••••"
@@ -639,7 +639,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                       <button
                         type="submit"
                         disabled={passwordSaving}
-                        className="w-full py-2 bg-primary-500 hover:bg-primary-600 text-on-brand font-semibold text-xs rounded-lg transition-colors disabled:opacity-50"
+                        className="w-full py-2 bg-primary-600 hover:bg-primary-700 text-on-brand font-semibold text-xs rounded-lg transition-colors disabled:opacity-50"
                       >
                         {passwordSaving ? 'Updating Password...' : 'Save New Password'}
                       </button>
@@ -654,19 +654,19 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {activeSection === 'notifications' && (
             <div className="card p-5 space-y-4">
               <h2 className="section-title border-b border-overlay-subtle pb-3">
-                Notification Preferences
+                Notifications
               </h2>
 
               <p className="text-xs text-content-muted">
-                Choose which notifications and alerts you wish to receive across Ascend features.
+                Choose which notifications you get.
               </p>
 
               <div className="space-y-4">
               <div className="divide-y divide-overlay-subtle">
                 <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                   <div>
-                    <span className="item-name text-xs text-content-secondary block">Daily Habit Reminders</span>
-                    <span className="text-micro text-content-muted">Receive daily reminders to check off active habits</span>
+                    <span className="item-name text-xs text-content-secondary block">Daily habit reminders</span>
+                    <span className="text-micro text-content-muted">A daily nudge to check off your habits.</span>
                   </div>
                   <input
                     type="checkbox"
@@ -681,8 +681,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
                 <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                   <div>
-                    <span className="item-name text-xs text-content-secondary block">Accountability Partner Activity Alerts</span>
-                    <span className="text-micro text-content-muted">Get notified when partners complete habits or challenges</span>
+                    <span className="item-name text-xs text-content-secondary block">Partner activity</span>
+                    <span className="text-micro text-content-muted">When a partner completes a habit or challenge.</span>
                   </div>
                   <input
                     type="checkbox"
@@ -697,8 +697,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
                 <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                   <div>
-                    <span className="item-name text-xs text-content-secondary block">Weekly League Reset & Rank Updates</span>
-                    <span className="text-micro text-content-muted">Receive weekly summaries of league placement and division promotions</span>
+                    <span className="item-name text-xs text-content-secondary block">Weekly league updates</span>
+                    <span className="text-micro text-content-muted">A weekly summary of your league placement and promotions.</span>
                   </div>
                   <input
                     type="checkbox"
@@ -713,8 +713,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
                 <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                   <div>
-                    <span className="item-name text-xs text-content-secondary block">Sunday Evening Goal Planning Reminders</span>
-                    <span className="text-micro text-content-muted">Receive a Sunday 7 PM notification to review past weekly goals and plan high-leverage priorities</span>
+                    <span className="item-name text-xs text-content-secondary block">Sunday planning reminder</span>
+                    <span className="text-micro text-content-muted">Sundays at 7 PM: review last week's goals and plan the next.</span>
                   </div>
                   <input
                     type="checkbox"
@@ -729,8 +729,8 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
                 <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                   <div>
-                    <span className="item-name text-xs text-content-secondary block">Focus Session Completion Alerts</span>
-                    <span className="text-micro text-content-muted">App-level preference to attempt system alerts when focus sessions finish</span>
+                    <span className="item-name text-xs text-content-secondary block">Focus session alerts</span>
+                    <span className="text-micro text-content-muted">Try to send a system alert when a focus session ends.</span>
                   </div>
                   <input
                     type="checkbox"
@@ -758,9 +758,9 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   <div className="p-3 border border-overlay-default rounded-xl flex items-start gap-2.5 text-xs">
                     <BellOff size={16} className="text-content-subtle shrink-0 mt-0.5" />
                     <div className="space-y-1">
-                      <p className="font-medium text-rose-theme">Browser Notification Permission Denied</p>
+                      <p className="font-medium text-rose-theme">Notifications are blocked by your browser</p>
                       <p className="text-micro text-content-muted leading-relaxed">
-                        Notifications are blocked by your browser settings. Even with this preference enabled, alerts cannot fire until you allow notification permissions for this website in your browser's site settings.
+                        Allow notifications for this site in your browser settings, or these alerts won't show.
                       </p>
                     </div>
                   </div>
@@ -773,7 +773,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {activeSection === 'privacy' && (
             <div className="card p-5 space-y-4">
               <h2 className="section-title border-b border-overlay-subtle pb-3">
-                Privacy & Visibility
+                Privacy
               </h2>
 
               <div className="divide-y divide-overlay-subtle -mt-1">
@@ -782,7 +782,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               <div className="flex items-start justify-between gap-4 py-3.5">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="item-name text-xs text-content-secondary">Public Leaderboard Profile & Stats</span>
+                    <span className="item-name text-xs text-content-secondary">Public profile</span>
                     {(currentUser?.isProfilePublic ?? true) ? (
                       <span className="text-2xs text-content-muted">
                         Public
@@ -794,10 +794,10 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                     )}
                   </div>
                   <p className="text-micro text-content-muted leading-relaxed">
-                    Show your habit streak and detailed statistics to competitors on public leaderboards.
+                    Show your streak and stats to others on the leaderboards.
                     <br />
                     <em className="text-content-disabled">
-                      (Reciprocal Rule: Hiding your statistics also hides other members' detailed stats from your view).
+                      Hiding your stats also hides other members' stats from you.
                     </em>
                   </p>
                 </div>
@@ -814,22 +814,22 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               <div className="flex items-start justify-between gap-4 py-3.5">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="item-name text-xs text-content-secondary">Accept Partnership Invites</span>
+                    <span className="item-name text-xs text-content-secondary">Partner invites</span>
                     {acceptsInvites ? (
                       <span className="text-2xs text-content-muted">
-                        Accepting Invites
+                        Accepting
                       </span>
                     ) : (
                       <span className="text-2xs text-content-muted">
-                        Blocking Invites
+                        Blocked
                       </span>
                     )}
                   </div>
                   <p className="text-micro text-content-muted leading-relaxed">
-                    Allow other users to search your User ID (UID) and send you accountability partner invites.
+                    Let others find you by your user ID (UID) and send you partner invites.
                     <br />
                     <em className="text-content-disabled">
-                      When turned off, incoming invites are blocked. Existing active partnerships remain unaffected.
+                      Turning this off blocks new invites. Current partners stay connected.
                     </em>
                   </p>
                 </div>
@@ -849,16 +849,16 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
           {activeSection === 'appearance' && (
             <div className="card p-5 space-y-4">
               <h2 className="section-title border-b border-overlay-subtle pb-3">
-                Appearance Theme
+                Appearance
               </h2>
 
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   {isDarkMode ? <Moon size={18} className="text-content-subtle" /> : <Sun size={18} className="text-content-subtle" />}
                   <div>
-                    <p className="item-name text-xs text-content-secondary">Visual Theme Mode</p>
+                    <p className="item-name text-xs text-content-secondary">Theme</p>
                     <p className="text-micro text-content-muted">
-                      {isDarkMode ? 'Dark Glassmorphism Theme (Default)' : 'Light Clean Mode'}
+                      {isDarkMode ? 'Dark (default)' : 'Light'}
                     </p>
                   </div>
                 </div>
@@ -883,7 +883,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               </h2>
 
               <p className="text-xs text-content-muted">
-                Manage your session or permanently delete your account data.
+                Log out, or delete your account and all its data.
               </p>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
@@ -893,7 +893,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   className="px-4 py-2.5 hover:bg-overlay-subtle text-content-secondary font-semibold text-xs rounded-xl border border-overlay-default transition-all flex items-center justify-center gap-2"
                 >
                   <LogOut size={16} className="text-content-muted" />
-                  <span>Log Out of Account</span>
+                  <span>Log Out</span>
                 </button>
 
                 <button
@@ -902,7 +902,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   className="px-4 py-2.5 hover:bg-overlay-subtle text-rose-theme font-medium text-xs rounded-xl border border-overlay-default transition-colors flex items-center justify-center gap-2"
                 >
                   <Trash2 size={16} />
-                  <span>Delete Account & Purge Data</span>
+                  <span>Delete Account</span>
                 </button>
               </div>
             </div>
@@ -917,17 +917,17 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
 
               <div className="space-y-3">
                 <div>
-                  <p className="item-name text-sm text-content-secondary">Ascend Self-Growth Platform</p>
+                  <p className="item-name text-sm text-content-secondary">Ascend</p>
                   <p className="text-xs text-content-muted mt-0.5">Version {__APP_VERSION__} • Build {__APP_BUILD__}</p>
                   <p className="text-xs text-content-disabled mt-2 leading-relaxed">
-                    Ascend empowers habit tracking, accountability partnerships, leagues, and self-improvement goals across exercise, reading, and skill mastery.
+                    Track habits, exercise, reading, and skills, compete in leagues, and keep each other on track with partners.
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2 pt-2 border-t border-overlay-subtle">
                   <button
                     type="button"
-                    onClick={() => alert('Ascend Feedback & Support: Contact support@ascendgrowth.app')}
+                    onClick={() => alert('Questions or feedback? Email support@ascendgrowth.app')}
                     className="px-3.5 py-2 hover:bg-overlay-subtle text-content-tertiary text-xs font-medium rounded-xl border border-overlay-default flex items-center gap-1.5 transition-colors"
                   >
                     <MessageSquare size={14} />
@@ -935,7 +935,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert('Ascend Documentation & Guide: See Help section in sidebar.')}
+                    onClick={() => alert('See the Help section in the sidebar.')}
                     className="px-3.5 py-2 hover:bg-overlay-subtle text-content-tertiary text-xs font-medium rounded-xl border border-overlay-default flex items-center gap-1.5 transition-colors"
                   >
                     <HelpCircle size={14} />
@@ -968,13 +968,13 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       />
 
       {/* Delete Account Confirmation Modal */}
-      <Dialog open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete Account Permanently" maxWidth="max-w-md">
+      <Dialog open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete account" maxWidth="max-w-md">
         <div className="space-y-4">
           <div className="p-4 border border-overlay-default rounded-xl">
             <div className="space-y-1">
-              <h3 className="font-serif text-xl leading-tight text-rose-theme">Permanent Action</h3>
+              <h3 className="text-base font-semibold leading-tight text-rose-theme">This can't be undone</h3>
               <p className="text-xs text-content-tertiary leading-relaxed">
-                This will permanently remove your profile, habits, journal entries, points, league rank, and partner links from Supabase. This action cannot be undone.
+                This permanently deletes your profile, habits, journal entries, points, league rank, and partner links.
               </p>
             </div>
           </div>
@@ -996,7 +996,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
               {isDeletingAccount ? (
                 <>
                   <AscendLoadingIndicator size="sm" />
-                  <span>Purging Data...</span>
+                  <span>Deleting...</span>
                 </>
               ) : (
                 'Confirm Delete'
@@ -1008,14 +1008,14 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
       {/* Loading Overlays for Major Actions */}
       {isDeletingAccount && (
         <AscendLoadingOverlay
-          message="Purging account & data..."
-          submessage="Permanently removing all profile records"
+          message="Deleting your account..."
+          submessage="Removing all your data"
         />
       )}
       {isLoggingOut && (
         <AscendLoadingOverlay
           message="Logging out..."
-          submessage="Securing your account session"
+          submessage="Ending your session"
         />
       )}
     </div>

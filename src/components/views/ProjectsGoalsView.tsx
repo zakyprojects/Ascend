@@ -175,7 +175,7 @@ function TaskItemRow({
               projectLock.isLocked
                 ? (projectLock.reason || 'Project is locked by sequence order')
                 : hasSubtasks
-                ? 'Auto-synced: completion is driven by subtasks'
+                ? 'Completes automatically when all subtasks are done'
                 : task.completed
                 ? 'Mark incomplete'
                 : 'Mark complete'
@@ -257,7 +257,7 @@ function TaskItemRow({
               }
             }}
             className="px-2.5 py-1.5 rounded-xl hover:bg-overlay-subtle border border-overlay-default text-content-secondary text-xs font-medium flex items-center gap-1.5 transition-colors"
-            title="Start Deep Focus Session with this task"
+            title="Start a focus session with this task"
           >
             <Timer size={13} />
             <span className="hidden sm:inline">Focus</span>
@@ -1284,7 +1284,7 @@ export function ProjectsGoalsView({
                 type="button"
                 onClick={() => setIsGuideModalOpen(true)}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-overlay-subtle text-content-muted hover:text-content-primary text-xs font-medium transition-colors"
-                title="Learn the hierarchy framework: Goal → Project → Task"
+                title="How goals, projects and tasks fit together"
               >
                 <HelpCircle size={13} />
                 <span>How it works</span>
@@ -1335,21 +1335,21 @@ export function ProjectsGoalsView({
               <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Pending Tasks</span>
-                  <CountUp value={hierarchyStats.pendingTasks} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
+                  <CountUp value={hierarchyStats.pendingTasks} className="block font-medium text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
               </div>
 
               <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Projects</span>
-                  <CountUp value={hierarchyStats.activeProjects} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
+                  <CountUp value={hierarchyStats.activeProjects} className="block font-medium text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
               </div>
 
               <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Goals</span>
-                  <CountUp value={hierarchyStats.activeGoals} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
+                  <CountUp value={hierarchyStats.activeGoals} className="block font-medium text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
               </div>
             </>
@@ -1360,21 +1360,21 @@ export function ProjectsGoalsView({
               <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Projects</span>
-                  <CountUp value={hierarchyStats.activeProjects} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
+                  <CountUp value={hierarchyStats.activeProjects} className="block font-medium text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
               </div>
 
               <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Pending Tasks</span>
-                  <CountUp value={hierarchyStats.pendingTasks} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
+                  <CountUp value={hierarchyStats.pendingTasks} className="block font-medium text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
               </div>
 
               <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Goals</span>
-                  <CountUp value={hierarchyStats.activeGoals} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
+                  <CountUp value={hierarchyStats.activeGoals} className="block font-medium text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
               </div>
             </>
@@ -1385,21 +1385,21 @@ export function ProjectsGoalsView({
               <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Goals</span>
-                  <CountUp value={hierarchyStats.activeGoals} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
+                  <CountUp value={hierarchyStats.activeGoals} className="block font-medium text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
               </div>
 
               <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Active Projects</span>
-                  <CountUp value={hierarchyStats.activeProjects} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
+                  <CountUp value={hierarchyStats.activeProjects} className="block font-medium text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
               </div>
 
               <div className="px-3 sm:px-4 first:pl-0">
                 <div>
                   <span className="stat-label">Pending Tasks</span>
-                  <CountUp value={hierarchyStats.pendingTasks} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
+                  <CountUp value={hierarchyStats.pendingTasks} className="block font-medium text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
               </div>
             </>
@@ -1462,12 +1462,12 @@ export function ProjectsGoalsView({
             }}
             title={
               goals.length === 0
-                ? '🔒 Add your first Goal to unlock hierarchy sorting.'
+                ? 'Add a goal to change the sort order.'
                 : tabOrder === 'taskFirst'
-                ? 'Sort: Switch to Projects First (Project → Task → Goal)'
+                ? 'Sort: projects first (Project → Task → Goal)'
                 : tabOrder === 'projectFirst'
-                ? 'Sort: Switch to Goals First (Goal → Project → Task)'
-                : 'Sort: Switch to Tasks First (Task → Project → Goal)'
+                ? 'Sort: goals first (Goal → Project → Task)'
+                : 'Sort: tasks first (Task → Project → Goal)'
             }
             className={`flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-xs font-semibold transition-all shrink-0 ${
               goals.length === 0
@@ -1565,7 +1565,6 @@ export function ProjectsGoalsView({
               tier="goals"
               isFiltered={goals.length > 0}
               onCreate={openCreateGoalModal}
-              onTabSwitch={setActiveTab}
             />
           ) : (
             <div className="grid-cards-xl gap-3 items-start">
@@ -1604,7 +1603,7 @@ export function ProjectsGoalsView({
                           )}
                         </div>
 
-                        <h4 className="font-serif text-lg sm:text-xl leading-tight text-content-primary" title={goal.title}>
+                        <h4 className="font-semibold text-lg sm:text-xl leading-tight text-content-primary" title={goal.title}>
                           {goal.title}
                         </h4>
 
@@ -1904,7 +1903,6 @@ export function ProjectsGoalsView({
             <EmptyState
               tier="projects"
               isFiltered={projects.length > 0}
-              onTabSwitch={setActiveTab}
               onCreate={() =>
                 openCreateProjectModal(
                   undefined,
@@ -1936,7 +1934,7 @@ export function ProjectsGoalsView({
                       <div className="p-2.5 bg-overlay-subtle border border-overlay-default rounded-xl flex items-center gap-2 text-xs text-content-secondary">
                         <Lock size={13} className="shrink-0 text-content-secondary" />
                         <span className="font-medium">
-                          {lockStatus.reason || 'This project is locked until prior projects in sequence are completed.'}
+                          {lockStatus.reason || 'Locked until the earlier projects in this goal are done.'}
                         </span>
                       </div>
                     )}
@@ -2235,7 +2233,7 @@ export function ProjectsGoalsView({
                   <div className="p-2.5 bg-overlay-subtle border border-overlay-default rounded-xl flex items-center gap-2 text-xs text-content-secondary">
                     <Lock size={13} className="shrink-0 text-content-secondary" />
                     <span className="font-medium">
-                      {filterLock.reason || 'This project is locked by sequential goal order. Finish prior projects to unlock tasks.'}
+                      {filterLock.reason || 'Locked by the goal\'s order. Finish the earlier projects to unlock these tasks.'}
                     </span>
                   </div>
                 )}
@@ -2386,10 +2384,10 @@ export function ProjectsGoalsView({
               <div className="py-16 px-6 text-center border border-dashed border-overlay-default rounded-2xl space-y-5">
                 <div className="max-w-md mx-auto space-y-2">
                   <h3 className="text-lg font-semibold text-content-primary">
-                    Don&apos;t just be busy, be effective.
+                    Start with a goal
                   </h3>
                   <p className="text-sm text-content-muted leading-relaxed">
-                    A task without a goal is just a distraction. Set your north star first, then build the daily habits to reach it.
+                    Set a goal first, then add the daily tasks that get you there.
                   </p>
                 </div>
 
@@ -2399,14 +2397,13 @@ export function ProjectsGoalsView({
                   className="btn-primary text-sm px-5 py-2.5 inline-flex items-center gap-2"
                 >
                   <Plus size={16} />
-                  <span>Set Your First Life Goal</span>
+                  <span>Create Your First Goal</span>
                 </button>
               </div>
             ) : (
               <EmptyState
                 tier="tasks"
                 isFiltered={tasks.length > 0}
-                onTabSwitch={setActiveTab}
                 onCreate={() => {
                   if (quickTaskInputRef.current) {
                     quickTaskInputRef.current.focus();
@@ -2423,7 +2420,7 @@ export function ProjectsGoalsView({
               {tasks.length > 0 && tasks.length <= 3 && (
                 <div className="text-content-muted px-1 text-xs flex items-center gap-2 mb-4">
                   <span className="leading-relaxed">
-                    Momentum check: Consistent execution requires daily input. Add a few more atomic tasks to build your workflow.
+                    Add a few more tasks to fill out your day.
                   </span>
                 </div>
               )}
@@ -2486,7 +2483,7 @@ export function ProjectsGoalsView({
             <textarea
               id="pg-goal-description"
               rows={2}
-              placeholder="Why this goal matters and what high-level success looks like..."
+              placeholder="Why this goal matters and what success looks like..."
               value={goalFormDescription}
               onChange={(e) => setGoalFormDescription(e.target.value)}
               className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50"
@@ -2526,7 +2523,7 @@ export function ProjectsGoalsView({
                 <span>Sequential Mode</span>
               </label>
               <p className="text-micro text-content-muted">
-                Enforce step-by-step completion: linked projects must be finished in sequential order.
+                Linked projects must be finished in order, one at a time.
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -2927,11 +2924,11 @@ export function ProjectsGoalsView({
       <Dialog
         open={isGuideModalOpen}
         onClose={() => setIsGuideModalOpen(false)}
-        title="How Ascend Hierarchy Works"
+        title="How goals, projects and tasks work"
       >
         <div className="space-y-4">
           <p className="text-xs sm:text-sm text-content-tertiary leading-relaxed">
-            Ascend uses a 3-tier execution framework designed to bridge the gap between high-level ambition and daily action.
+            Ascend has three levels that connect big goals to what you do today.
           </p>
 
           <div className="divide-y divide-overlay-subtle border-y border-overlay-subtle">
@@ -2944,10 +2941,10 @@ export function ProjectsGoalsView({
                 </h4>
               </div>
               <p className="text-xs text-content-tertiary leading-relaxed pl-8">
-                The final destination. What you want your life to look like in the future.
+                What you want your life to look like in the future.
               </p>
               <div className="pl-8 pt-1 text-micro text-content-secondary">
-                <span className="text-content-muted">Examples:</span> Financial Freedom, Peak Physical Health, Fluent in a New Language, Become Debt-Free.
+                <span className="text-content-muted">Examples:</span> Financial freedom, get fit, speak a new language, become debt-free.
               </div>
             </div>
 
@@ -2960,10 +2957,10 @@ export function ProjectsGoalsView({
                 </h4>
               </div>
               <p className="text-xs text-content-tertiary leading-relaxed pl-8">
-                The vehicle. A short-term mission linked directly to your Goal to get you closer.
+                A shorter piece of work, linked to a goal, that gets you closer to it.
               </p>
               <div className="pl-8 pt-1 text-micro text-content-secondary">
-                <span className="text-content-muted">Examples:</span> 90-Day Gym Bootcamp, Launch Shopify Store, 30-Day Speaking Course, Pay off Credit Card.
+                <span className="text-content-muted">Examples:</span> 90-day gym plan, launch a Shopify store, 30-day speaking course, pay off a credit card.
               </div>
             </div>
 
@@ -2976,10 +2973,10 @@ export function ProjectsGoalsView({
                 </h4>
               </div>
               <p className="text-xs text-content-tertiary leading-relaxed pl-8">
-                The daily fuel. The actual, physical small work you do <em>today</em>.
+                The small piece of work you do <em>today</em>.
               </p>
               <div className="pl-8 pt-1 text-micro text-content-secondary">
-                <span className="text-content-muted">Examples:</span> Do 50 Pushups today, List 5 new products, Read 10 pages out loud, Transfer $50 to savings.
+                <span className="text-content-muted">Examples:</span> Do 50 pushups, list 5 new products, read 10 pages out loud, move $50 to savings.
               </div>
             </div>
 
@@ -2994,10 +2991,10 @@ export function ProjectsGoalsView({
                 </h4>
               </div>
               <p className="text-micro sm:text-xs text-content-tertiary leading-relaxed pl-8">
-                Available when creating a Goal. It forces absolute focus by locking projects so you can only execute them one by one. Project B remains locked until Project A is completed.
+                An option when creating a goal. Projects unlock one at a time: Project B stays locked until Project A is done.
               </p>
               <div className="pl-8 pt-1 text-micro sm:text-xs text-content-muted space-y-1">
-                <p><span className="text-content-muted">How it helps:</span> Kills overwhelm and multi-tasking. Builds momentum.</p>
+                <p><span className="text-content-muted">How it helps:</span> You work on one thing at a time.</p>
                 <p className="pt-0.5"><span className="text-content-muted">Example (Goal: Start a Business):</span></p>
                 <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
                   <li>Project 1: Market Research <span className="text-content-secondary">(Active)</span></li>

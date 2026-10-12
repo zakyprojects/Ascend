@@ -37,7 +37,7 @@ export function WeekActivityCard({ points, pointsPartial, habits }: WeekActivity
   return (
     <div className="card p-4 space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="section-title">Last 7 Days</h2>
+        <h2 className="section-title">Last 7 days</h2>
         <Tabs
           items={METRIC_TABS}
           value={metric}
@@ -50,7 +50,7 @@ export function WeekActivityCard({ points, pointsPartial, habits }: WeekActivity
       {metric === 'points' ? (
         <>
           <div className="flex items-baseline gap-1.5">
-            <CountUp value={earned} className="font-serif text-[2rem] leading-none text-content-primary tabular-nums" />
+            <CountUp value={earned} className="text-4xl font-medium leading-none text-content-primary tabular-nums" />
             <span className="text-sm text-content-muted">pts earned</span>
             {lost > 0 && (
               <span className="figure ml-auto text-xs text-warning-text">−{lost.toLocaleString()} penalties</span>
@@ -74,7 +74,7 @@ export function WeekActivityCard({ points, pointsPartial, habits }: WeekActivity
       ) : (
         <>
           <div className="flex items-baseline gap-1.5">
-            <CountUp value={habitRate} className="font-serif text-[2rem] leading-none text-content-primary tabular-nums" />
+            <CountUp value={habitRate} className="text-4xl font-medium leading-none text-content-primary tabular-nums" />
             <span className="text-sm text-content-muted">% of daily habits done</span>
           </div>
           <BarChart

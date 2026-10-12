@@ -34,7 +34,7 @@ export function TierView({ store }: { store: AppStore }) {
                     return <Icon size={32} strokeWidth={1.5} style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }} />;
                   })()}
                 </div>
-                <h2 className="font-serif text-[2.75rem] leading-none" style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }}>
+                <h2 className="font-serif text-5xl leading-none" style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }}>
                   {currentTier.name}
                 </h2>
                 <p className="text-sm text-content-muted mt-1">
@@ -101,7 +101,7 @@ export function TierView({ store }: { store: AppStore }) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h3
-                        className="font-serif text-[1.5rem] leading-none"
+                        className="text-lg font-semibold leading-none"
                         style={{ color: isUnlocked ? `var(--rank-${tierKey}-text)` : 'var(--color-content-disabled)' }}
                       >
                         {tier.name}

@@ -108,12 +108,12 @@ export function HabitTracker({ store }: { store: AppStore }) {
             {hasDailyHabits && <WeekConsistencyCard habits={habits} />}
 
             {/* Missed Habit Penalty Info */}
-            <Disclosure title="Tier-Scaled Missed Habit Penalties">
+            <Disclosure title="Missed habit penalties by tier">
               <p>
                 Missing a preset habit deducts points equal to its value (1st miss = -1x).
                 For <span className="text-content-secondary font-medium">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="figure text-content-secondary">1.5x</span>.
                 For <span className="text-content-secondary font-medium">Performer tier and above</span>, escalation caps at <span className="figure text-content-secondary">2.5x</span>.
-                Completing the habit breaks the miss streak and resets the penalty to 1x!
+                Completing the habit breaks the miss streak and resets the penalty to 1x.
               </p>
             </Disclosure>
           </>
@@ -134,7 +134,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
             {todayHabits.length > 0 && (
               <div>
                 <h2 className="section-title mb-3">
-                  To Do
+                  To do
                 </h2>
                 <div className="space-y-2.5">
                   {todayHabits.map((habit) => (
@@ -147,7 +147,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
             {completedToday.length > 0 && (
               <div>
                 <h2 className="section-title mb-3">
-                  Completed Today
+                  Completed today
                 </h2>
                 <div className="space-y-2.5">
                   {completedToday.map((habit) => (
@@ -170,8 +170,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
             >
               <BookMarked size={18} className="text-content-muted shrink-0" />
               <div className="flex-1">
-                <h3 className="item-name">Browse Preset Habits</h3>
-                <p className="text-xs text-content-disabled mt-0.5">Choose from a curated library. Preset habits earn points.</p>
+                <h3 className="item-name">Browse preset habits</h3>
+                <p className="text-xs text-content-disabled mt-0.5">Pick from the library. Preset habits earn points.</p>
               </div>
             </button>
             <button
@@ -180,7 +180,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
             >
               <Pencil size={18} className="text-content-muted shrink-0" />
               <div className="flex-1">
-                <h3 className="item-name">Create Custom Habit</h3>
+                <h3 className="item-name">Create a custom habit</h3>
                 <p className="text-xs text-content-disabled mt-0.5">Track personal goals. Custom habits don't earn points.</p>
               </div>
             </button>
@@ -238,7 +238,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
               ← Back
             </button>
             <div>
-              <label className="label" htmlFor="habit-name-input">Habit Name</label>
+              <label className="label" htmlFor="habit-name-input">Habit name</label>
               <input
                 id="habit-name-input"
                 type="text"
@@ -279,8 +279,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
             <div className="rounded-xl border border-overlay-default p-3 flex items-start gap-2">
               <Info size={14} className="text-content-disabled mt-0.5 shrink-0" />
               <p className="text-xs text-content-muted leading-relaxed">
-                Custom habits help you track personal goals but <span className="text-content-tertiary font-medium">don't earn points</span>.
-                Only preset habits from the library award points. This keeps the points system fair.
+                Custom habits <span className="text-content-tertiary font-medium">don't earn points</span>.
+                Only preset habits from the library do, which keeps points fair.
               </p>
             </div>
             <button onClick={handleAddCustom} className="btn-secondary w-full">
@@ -303,7 +303,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
         }}
         title="Delete Habit?"
         itemName={confirmDelete?.name}
-        description={`Are you sure you want to delete this habit? This will permanently remove its completion history and streak count.${
+        description={`Delete this habit? This permanently removes its history and streak.${
           linkedGoalsCount > 0
             ? ` Deleting this habit will also delete ${linkedGoalsCount} linked Weekly Goal${linkedGoalsCount > 1 ? 's' : ''} from this week and upcoming weeks (past weeks are kept).`
             : ''
@@ -323,7 +323,7 @@ function WeekConsistencyCard({ habits }: { habits: Habit[] }) {
   return (
     <div className="card p-4 flex flex-col justify-between gap-2">
       <div className="flex items-baseline justify-between gap-2">
-        <div className="stat-label">Last 7 Days</div>
+        <div className="stat-label">Last 7 days</div>
         <span className="figure text-2xs text-content-muted">
           <CountUp value={activeDays} />/{WEEK_DAYS} active
         </span>

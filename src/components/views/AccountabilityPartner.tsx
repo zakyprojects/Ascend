@@ -324,7 +324,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     }
 
     if (partnerships.length >= 5) {
-      setInviteError("You've reached the maximum limit of 5 accountability partners. Remove one to add another.");
+      setInviteError("You already have 5 partners, the maximum. Remove one to add another.");
       return;
     }
 
@@ -335,11 +335,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         setInviteModalOpen(false);
         setPartnerUidInput('');
         setInviteError(null);
-        showSuccessToast('Invite Sent!', 'Accountability invite dispatched.');
+        showSuccessToast('Invite sent', 'Your partner invite is on its way.');
       } catch (err: any) {
         const errorMessage = err?.message || 'Failed to send invite.';
         setInviteError(errorMessage);
-        showErrorToast('Invite Failed', errorMessage);
+        showErrorToast('Invite failed', errorMessage);
       }
     });
   };
@@ -374,7 +374,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       } catch (err: any) {
         const errorMessage = err?.message || 'Failed to create pact.';
         setChallengeError(errorMessage);
-        showErrorToast('Could Not Create Pact', errorMessage);
+        showErrorToast('Could not create pact', errorMessage);
       }
     });
   };
@@ -384,7 +384,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     await executeWithKey(`accept_invite_${inviteId}`, async () => {
       try {
         await store.acceptPartnerInvite(inviteId);
-        showSuccessToast('Partner Connected!', 'You are now accountability partners.');
+        showSuccessToast('Partner connected', "You're now accountability partners.");
       } catch (err: any) {
         setInviteError(err.message || 'Failed to accept invite.');
       }
@@ -416,7 +416,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
       if (now < existingCooldown) {
         const remainingMinutes = Math.ceil((existingCooldown - now) / 60000);
-        showInfoToast('Nudge on Cooldown', `You can nudge ${activePartnerUsername} again in ${remainingMinutes}m.`);
+        showInfoToast('Nudge on cooldown', `You can nudge ${activePartnerUsername} again in ${remainingMinutes}m.`);
         return;
       }
 
@@ -434,7 +434,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           } catch {
             // ignore
           }
-          showInfoToast('Nudge on Cooldown', `A nudge was already sent to @${activePartnerUsername} within the last 2 hours.`);
+          showInfoToast('Nudge on cooldown', `You already nudged @${activePartnerUsername} in the last 2 hours.`);
           return;
         }
 
@@ -466,7 +466,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             // ignore localStorage err
           }
 
-          showSuccessToast('⚡ Nudge Sent!', `Prompted @${activePartnerUsername} to complete today's pledge.`);
+          showSuccessToast('Nudge sent', `Reminded @${activePartnerUsername} about today's pledge.`);
         } catch (err: any) {
           showErrorToast('Failed to send nudge', err.message || 'Please try again later.');
         }
@@ -627,7 +627,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             </button>
           ) : (
             <button disabled className="btn-secondary opacity-50 cursor-not-allowed text-xs py-2 px-3">
-              Partner Limit Reached (5/5)
+              Partner limit reached (5/5)
             </button>
           )}
         </div>
@@ -649,28 +649,28 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       {/* PENDING INVITES SECTION (INCOMING & SENT) */}
       {(incomingInvites.length > 0 || sentInvites.length > 0) && (
         <div className="card p-4 space-y-3">
-          <h2 className="font-serif text-xl leading-tight text-content-primary">
-            Partner Requests & Invites
+          <h2 className="section-title">
+            Partner requests
           </h2>
 
           {/* Incoming Requests */}
           {incomingInvites.length > 0 && (
             <div className="space-y-2">
-              <span className="stat-label block">Incoming Partner Invites:</span>
+              <span className="stat-label block">Incoming invites</span>
               {incomingInvites.map((invite) => (
                 <div key={invite.id} className="flex items-center justify-between py-3 border-t border-overlay-subtle text-xs">
                   <div className="flex items-center gap-2.5">
                     <span className="text-xl">{invite.fromAvatar || '🧑'}</span>
                     <div>
                       <span className="item-name">{invite.fromUsername}</span>
-                      <span className="text-content-muted ml-1.5">wants to connect as accountability partners</span>
+                      <span className="text-content-muted ml-1.5">wants to be your accountability partner</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       disabled={isKeyLoading(`accept_invite_${invite.id}`)}
                       onClick={() => handleAcceptInvite(invite.id)}
-                      className="px-3 py-1 bg-primary-500 hover:bg-primary-600 disabled:opacity-60 disabled:cursor-not-allowed text-on-brand font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+                      className="px-3 py-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed text-on-brand font-semibold rounded-lg transition-colors flex items-center gap-1.5"
                     >
                       {isKeyLoading(`accept_invite_${invite.id}`) ? (
                         <AscendLoadingIndicator size="sm" />
@@ -692,7 +692,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           {/* Sent Invites */}
           {sentInvites.length > 0 && (
             <div className="space-y-2 pt-1">
-              <span className="stat-label block">Sent Invites (Pending):</span>
+              <span className="stat-label block">Sent invites (pending)</span>
               {sentInvites.map((invite) => (
                 <div key={invite.id} className="flex items-center justify-between py-2.5 border-t border-overlay-subtle text-xs">
                   <div className="flex items-center gap-2 text-content-tertiary">
@@ -716,7 +716,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       {partnerships.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="section-title">Active Partner Connections ({partnerships.length}/5)</h2>
+            <h2 className="section-title">Partners ({partnerships.length}/5)</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -737,7 +737,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-overlay-default text-content-secondary flex items-center justify-center font-serif text-lg leading-none">
+                      <div className="w-8 h-8 rounded-full bg-overlay-default text-content-secondary flex items-center justify-center text-sm font-semibold leading-none">
                         {pUsername.charAt(0).toUpperCase()}
                       </div>
                       <span className="item-name text-sm truncate max-w-[100px]">{pUsername}</span>
@@ -745,7 +745,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   </div>
 
                   <div className="flex items-center justify-between text-micro text-content-muted pt-2 border-t border-overlay-subtle">
-                    <span>Active Pacts:</span>
+                    <span>Active pacts</span>
                     <span className="figure text-content-primary">{pChallenges.length}</span>
                   </div>
                 </button>
@@ -762,7 +762,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           <div className="card p-5 space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-overlay-subtle pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-overlay-subtle flex items-center justify-center text-content-secondary font-serif text-2xl leading-none">
+                <div className="w-12 h-12 rounded-2xl bg-overlay-subtle flex items-center justify-center text-content-secondary text-lg font-semibold leading-none">
                   {activePartnerUsername?.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -818,7 +818,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             ) : (
               <div className="pt-1 space-y-4 relative">
                 {isStatsLoading && (
-                  <div className="absolute top-0 right-0 flex items-center gap-1.5 text-micro text-content-muted bg-bg-900/80 px-2 py-1 rounded-md">
+                  <div className="absolute top-0 right-0 flex items-center gap-1.5 text-micro text-content-muted bg-bg-900/80 px-2 py-1 rounded-lg">
                     <AscendLoadingIndicator size="sm" />
                     <span>Updating...</span>
                   </div>
@@ -826,7 +826,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                 {/* Versus Header */}
                 <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-serif text-xl leading-tight text-content-primary">Head-to-Head Comparison</span>
+                    <span className="section-title">Head-to-head</span>
                   </div>
 
                   <div className="text-xs font-medium">
@@ -871,15 +871,15 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         <CountUp value={mySeasonPoints} className="figure text-base text-content-primary" />
                       </div>
                       <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Current Streak</span>
+                        <span className="stat-label block mb-0.5">Current streak</span>
                         <span className="figure text-base text-content-primary">{myCurrentStreakDays}d</span>
                       </div>
                       <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Habits Done Today</span>
+                        <span className="stat-label block mb-0.5">Habits done today</span>
                         <span className="figure text-base text-content-primary">{myHabitsCompletedToday}</span>
                       </div>
                       <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Total Habits</span>
+                        <span className="stat-label block mb-0.5">Total habits</span>
                         <span className="figure text-base text-content-primary">{myHabitsCompletedTotal}</span>
                       </div>
                     </div>
@@ -910,15 +910,15 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         <CountUp value={partnerSeasonPoints} className="figure text-base text-content-primary" />
                       </div>
                       <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Current Streak</span>
+                        <span className="stat-label block mb-0.5">Current streak</span>
                         <span className="figure text-base text-content-primary">{partnerCurrentStreakDays}d</span>
                       </div>
                       <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Habits Done Today</span>
+                        <span className="stat-label block mb-0.5">Habits done today</span>
                         <span className="figure text-base text-content-primary">{partnerHabitsCompletedToday}</span>
                       </div>
                       <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Total Habits</span>
+                        <span className="stat-label block mb-0.5">Total habits</span>
                         <span className="figure text-base text-content-primary">{partnerHabitsCompleted}</span>
                       </div>
                     </div>
@@ -931,19 +931,19 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             <div className="pt-4 border-t border-overlay-subtle space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-overlay-subtle pb-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="font-serif text-xl leading-tight text-content-primary">
-                    {matrixTimeline.length > 0 ? `${matrixTimeline.length}-Day` : '14-Day'} Consistency Matrix
+                  <span className="section-title">
+                    {matrixTimeline.length > 0 ? `${matrixTimeline.length}-day` : '14-day'} consistency
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-micro flex-wrap">
                   <span className="text-content-muted">
-                    Joint Sync Rate: <strong className="figure text-success-text">{jointSyncRate}%</strong> <span className="tabular-nums">({jointSyncCount}/{elapsedDaysCount} active {elapsedDaysCount === 1 ? 'day' : 'days'})</span>
+                    Both done: <strong className="figure text-success-text">{jointSyncRate}%</strong> <span className="tabular-nums">({jointSyncCount}/{elapsedDaysCount} active {elapsedDaysCount === 1 ? 'day' : 'days'})</span>
                   </span>
                   <div className="flex items-center gap-2 text-2xs text-content-muted flex-wrap">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" /> Both Locked In</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-primary-500/80 inline-block" /> You Only</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-primary-500/80 inline-block" /> Partner Only</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-rose-500/15 border border-rose-500/40 text-rose-theme font-semibold text-3xs inline-flex items-center justify-center leading-none">!</span> Missed Day</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" /> Both done</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-primary-500/80 inline-block" /> You only</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-primary-500/80 inline-block" /> Partner only</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-rose-500/15 border border-rose-500/40 text-rose-theme font-semibold text-3xs inline-flex items-center justify-center leading-none">!</span> Missed day</span>
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-bg-900 border border-primary-500/40 text-brand-text text-3xs inline-flex items-center justify-center">·</span> Pending</span>
                   </div>
                 </div>
@@ -959,7 +959,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       <span className={`text-2xs font-medium block ${d.isToday ? 'text-content-primary font-semibold' : d.isFuture ? 'text-content-subtle' : 'text-content-muted'}`}>
                         {d.dayLabel}
                       </span>
-                      <span className={`font-mono tabular-nums text-3xs block ${d.isToday ? 'text-content-primary font-semibold' : d.isFuture ? 'text-content-subtle' : 'text-content-disabled'}`}>
+                      <span className={`tabular-nums text-3xs block ${d.isToday ? 'text-content-primary font-semibold' : d.isFuture ? 'text-content-subtle' : 'text-content-disabled'}`}>
                         D{d.dayNumber}
                       </span>
                     </div>
@@ -981,12 +981,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       } else {
                         cellStyle = 'bg-primary-500/80 text-white';
                       }
-                      tooltip = `${d.shortDate} (Day ${d.dayNumber}): You completed pledge ✓`;
+                      tooltip = `${d.shortDate} (Day ${d.dayNumber}): You completed your pledge`;
                     } else if (d.isPast) {
                       if (d.hasActivePacts) {
                         cellContent = '!';
                         cellStyle = 'bg-rose-500/15 border border-rose-500/40 text-rose-theme';
-                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): Missed pledge ⚠️`;
+                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): Missed pledge`;
                       } else {
                         cellContent = '·';
                         cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
@@ -1039,12 +1039,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       } else {
                         cellStyle = 'bg-primary-500/80 text-white';
                       }
-                      tooltip = `${d.shortDate} (Day ${d.dayNumber}): ${activePartnerUsername} completed pledge ✓`;
+                      tooltip = `${d.shortDate} (Day ${d.dayNumber}): ${activePartnerUsername} completed their pledge`;
                     } else if (d.isPast) {
                       if (d.hasActivePacts) {
                         cellContent = '!';
                         cellStyle = 'bg-rose-500/15 border border-rose-500/40 text-rose-theme';
-                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): ${activePartnerUsername} missed pledge ⚠️`;
+                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): ${activePartnerUsername} missed their pledge`;
                       } else {
                         cellContent = '·';
                         cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
@@ -1089,7 +1089,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="section-title">
-                <span>Active Joint Pacts with {activePartnerUsername} ({activePacts.length})</span>
+                <span>Active pacts with {activePartnerUsername} ({activePacts.length})</span>
               </h2>
               <button onClick={() => setChallengeModalOpen(true)} className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5">
                 <Plus size={14} />
@@ -1152,10 +1152,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       {/* Header + Joint Streak Progress Ring */}
                       <div className="flex items-start justify-between gap-4 pr-6">
                         <div className="space-y-1">
-                          <h3 className="font-serif text-xl leading-tight text-content-primary">{challenge.title}</h3>
+                          <h3 className="section-title">{challenge.title}</h3>
                           <div className="flex items-center gap-2 text-xs text-content-muted">
                             <span className="figure text-content-muted">
-                              Current Streak: {challenge.jointStreak}d · Total Locked In: {totalCompleted} of {challenge.durationDays} Days
+                              Streak {challenge.jointStreak}d · {totalCompleted} of {challenge.durationDays} days done
                             </span>
                           </div>
                         </div>
@@ -1171,17 +1171,17 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           <span className="figure text-sm text-content-primary leading-none">
                             {challenge.jointStreak}d
                           </span>
-                          <span className="text-3xs text-content-muted font-mono mt-0.5">streak</span>
+                          <span className="text-3xs text-content-muted mt-0.5">streak</span>
                         </ProgressRing>
                       </div>
 
                       {/* Milestone Checkpoints */}
                       <div className="grid grid-cols-4 gap-1.5 pt-1">
                         {[
-                          { pct: 25, label: '25% Lock' },
+                          { pct: 25, label: 'Quarter' },
                           { pct: 50, label: 'Halfway' },
                           { pct: 75, label: 'Mastery' },
-                          { pct: 100, label: 'Pact Won' },
+                          { pct: 100, label: 'Done' },
                         ].map((m) => {
                           const achieved = totalProgressPercent >= m.pct;
                           return (
@@ -1204,7 +1204,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       <div className="grid grid-cols-2 gap-2.5 text-xs">
                         {/* Your Commitment */}
                         <div className="space-y-1.5">
-                          <span className="block text-micro text-content-muted">Your Daily Pledge ({myCategory}):</span>
+                          <span className="block text-micro text-content-muted">Your pledge ({myCategory})</span>
                           <span className="item-name text-content-secondary block truncate">{myTarget}</span>
                           <div className="pt-0.5">
                             {myDone ? (
@@ -1213,7 +1213,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                               </span>
                             ) : (
                               <span className="text-content-muted font-medium flex items-center gap-1 text-micro">
-                                <Clock size={12} /> Pending Today
+                                <Clock size={12} /> Pending today
                               </span>
                             )}
                           </div>
@@ -1221,7 +1221,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
                         {/* Partner Commitment + Nudge Button */}
                         <div className="space-y-1.5 border-l border-overlay-subtle pl-2.5">
-                          <span className="block text-micro text-content-muted">{activePartnerUsername}'s Pledge ({partnerCategory}):</span>
+                          <span className="block text-micro text-content-muted">{activePartnerUsername}'s pledge ({partnerCategory})</span>
                           <span className="item-name text-content-secondary block truncate">{partnerTarget}</span>
                           <div className="pt-0.5">
                             {partnerDone ? (
@@ -1263,19 +1263,19 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         <div>
                           {myDone && partnerDone ? (
                             <div className="inline-flex items-center gap-1.5 text-xs font-medium text-success-text">
-                              <CheckCircle2 size={13} /> Both Locked In Today
+                              <CheckCircle2 size={13} /> Both locked in today
                             </div>
                           ) : myDone && !partnerDone ? (
                             <div className="inline-flex items-center gap-1.5 text-xs text-content-muted">
-                              <Clock size={13} /> You Locked In · Waiting on {activePartnerUsername}
+                              <Clock size={13} /> You locked in · waiting on {activePartnerUsername}
                             </div>
                           ) : !myDone && partnerDone ? (
                             <div className="inline-flex items-center gap-1.5 text-xs font-medium text-content-secondary">
-                              <Clock size={13} /> {activePartnerUsername} Locked In · Log your pledge!
+                              <Clock size={13} /> {activePartnerUsername} locked in · log your pledge
                             </div>
                           ) : (
                             <div className="inline-flex items-center gap-1.5 text-xs text-content-muted">
-                              <Clock size={13} /> Awaiting Today's Pledges
+                              <Clock size={13} /> Waiting on today's pledges
                             </div>
                           )}
                         </div>
@@ -1288,7 +1288,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                               try {
                                 await store.logSharedChallengeHabit(challenge.id);
                               } catch (err: any) {
-                                showErrorToast('Failed to log pledge', err.message || 'Could not save your progress in the database.');
+                                showErrorToast('Failed to log pledge', err.message || 'Your progress could not be saved.');
                               }
                             });
                           }}
@@ -1299,7 +1299,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           } ${
                             myDone
                               ? 'text-content-muted border border-overlay-default hover:bg-overlay-subtle'
-                              : 'bg-primary-500 hover:bg-primary-600 text-on-brand'
+                              : 'bg-primary-600 hover:bg-primary-700 text-on-brand'
                           }`}
                         >
                           {isKeyLoading(`log_pledge_${challenge.id}`) ? (
@@ -1331,7 +1331,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   className="w-full flex items-center justify-between py-2 text-content-tertiary hover:text-content-primary transition-colors cursor-pointer select-none"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="font-serif text-xl leading-tight">Past Joint Pacts ({pastPacts.length})</span>
+                    <span className="text-lg font-semibold leading-snug">Past joint pacts ({pastPacts.length})</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-content-muted">
                     <span>{showPastPacts ? 'Hide' : 'Show'}</span>
@@ -1374,7 +1374,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           <div className="flex items-start justify-between gap-3 pr-6">
                             <div className="space-y-1.5">
                               <div className="flex items-center gap-2">
-                                <h3 className="font-serif text-xl leading-tight text-content-secondary">{challenge.title}</h3>
+                                <h3 className="text-lg font-semibold leading-snug text-content-secondary">{challenge.title}</h3>
                                 {isCompleted ? (
                                   <span className="px-2 py-0.5 rounded-full text-2xs font-medium bg-overlay-subtle text-success-text">
                                     Completed
@@ -1387,8 +1387,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                               </div>
                               <p className="text-xs text-content-muted">
                                 {isCompleted
-                                  ? `Locked in all ${challenge.durationDays} of ${challenge.durationDays} days!`
-                                  : `Reached ${totalCompleted} of ${challenge.durationDays} total days locked in.`}
+                                  ? `Locked in all ${challenge.durationDays} of ${challenge.durationDays} days.`
+                                  : `Locked in ${totalCompleted} of ${challenge.durationDays} days.`}
                               </p>
                             </div>
                           </div>
@@ -1396,11 +1396,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           {/* Multi-Category Targets Info (Read-Only) */}
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             <div>
-                              <span className="block text-2xs text-content-muted">Your Pledge ({myCategory}):</span>
+                              <span className="block text-2xs text-content-muted">Your pledge ({myCategory})</span>
                               <span className="item-name text-content-tertiary block truncate">{myTarget}</span>
                             </div>
                             <div className="border-l border-overlay-subtle pl-2">
-                              <span className="block text-2xs text-content-muted">{activePartnerUsername}'s Pledge ({partnerCategory}):</span>
+                              <span className="block text-2xs text-content-muted">{activePartnerUsername}'s pledge ({partnerCategory})</span>
                               <span className="item-name text-content-tertiary block truncate">{partnerTarget}</span>
                             </div>
                           </div>
@@ -1408,7 +1408,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                           {/* Action: Pledge New Pact if expired */}
                           <div className="flex items-center justify-between pt-1 border-t border-overlay-subtle text-xs text-content-muted">
                             <span className="text-micro italic">
-                              {isCompleted ? 'Pact successfully fulfilled' : 'Pact duration ended'}
+                              {isCompleted ? 'Pact completed' : 'Pact ended'}
                             </span>
                             {isExpired && (
                               <button
@@ -1441,8 +1441,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       ) : (
         /* NO ACTIVE PARTNERS EMPTY STATE */
         <EmptyState
-          title="No Active Accountability Partners"
-          description="Enter a partner's 6-digit User ID to send an invite. You can connect with up to 5 partners simultaneously!"
+          title="No partners yet"
+          description="Enter a friend's 6-digit user ID to send an invite. You can have up to 5 partners."
         />
       )}
 
@@ -1457,11 +1457,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleSendInviteSubmit} className="space-y-4">
           <p className="text-xs text-content-muted">
-            Enter your partner's 6-digit User ID (found in their Settings page) to send them an accountability invite. You can have up to 5 active partners.
+            Enter your partner's 6-digit user ID (it's in their Settings). You can have up to 5 partners.
           </p>
 
           <div>
-            <label htmlFor="partner-invite-uid" className="block text-xs font-medium text-content-tertiary mb-1">Partner's 6-digit User ID</label>
+            <label htmlFor="partner-invite-uid" className="block text-xs font-medium text-content-tertiary mb-1">Partner's user ID</label>
             <input
               id="partner-invite-uid"
               type="text"
@@ -1520,11 +1520,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         <form onSubmit={handleCreateChallengeSubmit} className="space-y-5">
           {/* Title */}
           <div>
-            <label htmlFor="pact-create-title" className="block text-xs font-medium text-content-tertiary mb-1">Pact Title</label>
+            <label htmlFor="pact-create-title" className="block text-xs font-medium text-content-tertiary mb-1">Pact title</label>
             <input
               id="pact-create-title"
               type="text"
-              placeholder="e.g. 14-Day Morning Mastery Sprint"
+              placeholder="e.g. 14-day morning routine"
               value={challengeTitle}
               onChange={(e) => {
                 setChallengeTitle(e.target.value);
@@ -1542,7 +1542,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
           {/* Duration Selector: Visual Pill Segments */}
           <div>
-            <label className="block text-xs font-medium text-content-tertiary mb-1.5">Pact Duration</label>
+            <label className="block text-xs font-medium text-content-tertiary mb-1.5">Duration</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {DURATION_OPTIONS.map((opt) => {
                 const isSelected = challengeDuration === opt.days;
@@ -1568,10 +1568,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           {/* User 1 (Your Pledge) Section */}
           <div className="rounded-xl border border-overlay-default p-4 space-y-3.5">
             <div className="flex items-center justify-between">
-              <label className="block font-serif text-lg leading-tight text-content-primary">
-                Your Daily Pledge
+              <label className="block text-base font-semibold leading-tight text-content-primary">
+                Your daily pledge
               </label>
-              <span className="text-micro text-content-disabled">Pick category & target</span>
+              <span className="text-micro text-content-disabled">Pick a category and target</span>
             </div>
 
             {/* Visual Category Grid */}
@@ -1604,7 +1604,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
             {/* Target Input & Smart Suggestions */}
             <div className="space-y-1.5">
-              <label htmlFor="pact-create-user1-target" className="block text-micro text-content-muted font-medium">Target Objective</label>
+              <label htmlFor="pact-create-user1-target" className="block text-micro text-content-muted font-medium">Target</label>
               <input
                 id="pact-create-user1-target"
                 type="text"
@@ -1616,7 +1616,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
               {/* Suggestions chips */}
               <div className="space-y-1 pt-1">
-                <span className="text-2xs text-content-disabled block">Quick Suggestions:</span>
+                <span className="text-2xs text-content-disabled block">Suggestions</span>
                 <div className="flex flex-wrap gap-1.5">
                   {(user1Category === 'habit' && userHabitNames.length > 0
                     ? userHabitNames
@@ -1643,8 +1643,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           {/* User 2 (Partner's Pledge) Section */}
           <div className="rounded-xl border border-overlay-default p-4 space-y-3.5">
             <div className="flex items-center justify-between">
-              <label className="block font-serif text-lg leading-tight text-content-primary">
-                {activePartnerUsername}'s Daily Pledge
+              <label className="block text-base font-semibold leading-tight text-content-primary">
+                {activePartnerUsername}'s daily pledge
               </label>
               <span className="text-micro text-content-disabled">Partner objective</span>
             </div>
@@ -1679,7 +1679,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
             {/* Partner Target Input & Suggestions */}
             <div className="space-y-1.5">
-              <label htmlFor="pact-create-user2-target" className="block text-micro text-content-muted font-medium">Target Objective</label>
+              <label htmlFor="pact-create-user2-target" className="block text-micro text-content-muted font-medium">Target</label>
               <input
                 id="pact-create-user2-target"
                 type="text"
@@ -1691,7 +1691,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
               {/* Suggestions chips */}
               <div className="space-y-1 pt-1">
-                <span className="text-2xs text-content-disabled block">Quick Suggestions:</span>
+                <span className="text-2xs text-content-disabled block">Suggestions</span>
                 <div className="flex flex-wrap gap-1.5">
                   {SUGGESTIONS_BY_CATEGORY[user2Category].slice(0, 5).map((suggestion) => (
                     <button
@@ -1744,10 +1744,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             await executeWithKey(`end_partnership_${activePartnership.id}`, async () => {
               try {
                 await store.endPartnership(activePartnership.id);
-                showSuccessToast('Pairing Ended', `Ended accountability partnership with ${activePartnerUsername}.`);
+                showSuccessToast('Pairing ended', `You're no longer partners with ${activePartnerUsername}.`);
                 setEndConfirmOpen(false);
               } catch (err: any) {
-                showErrorToast('Failed to End Pairing', err.message || 'Database error: Could not end partnership.');
+                showErrorToast('Could not end pairing', err.message || 'Please try again.');
               }
             });
           }
@@ -1755,7 +1755,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         isDeleting={activePartnership ? isKeyLoading(`end_partnership_${activePartnership.id}`) : false}
         title={`End Pairing with ${activePartnerUsername || 'Partner'}?`}
         itemName={activePartnerUsername || undefined}
-        description={`Are you sure you want to end your accountability partnership with ${activePartnerUsername}? All joint pacts with this partner will be removed.`}
+        description={`End your partnership with ${activePartnerUsername}? All joint pacts with them will be removed.`}
         confirmText="End Partnership"
       />
 
@@ -1769,12 +1769,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             const challengeTitle = challengeToDelete.title;
             setChallengeToDelete(null);
             store.deleteSharedChallenge(challengeId);
-            showSuccessToast('Pact Removed', `Deleted joint challenge "${challengeTitle}".`, `challenge_${challengeId}`);
+            showSuccessToast('Pact removed', `Deleted "${challengeTitle}".`, `challenge_${challengeId}`);
           }
         }}
         title="Delete Joint Pact?"
         itemName={challengeToDelete?.title}
-        description={`Are you sure you want to delete "${challengeToDelete?.title}"? This will permanently remove the joint pact for both partners.`}
+        description={`Delete "${challengeToDelete?.title}"? This removes the pact for both of you, for good.`}
         confirmText="Delete Pact"
       />
 
@@ -1788,12 +1788,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             const toUser = inviteToCancel.toUsername;
             setInviteToCancel(null);
             store.cancelPartnerInvite(inviteId);
-            showSuccessToast('Invite Cancelled', `Cancelled invite to ${toUser}.`, `invite_${inviteId}`);
+            showSuccessToast('Invite cancelled', `Cancelled invite to ${toUser}.`, `invite_${inviteId}`);
           }
         }}
         title="Cancel Partner Invite?"
         itemName={`Invite to ${inviteToCancel?.toUsername}`}
-        description={`Are you sure you want to cancel the pending invite sent to ${inviteToCancel?.toUsername}?`}
+        description={`Cancel your invite to ${inviteToCancel?.toUsername}?`}
         confirmText="Cancel Invite"
       />
     </div>

@@ -670,7 +670,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     const renderReviewDueBadge = () => {
       if (!isReviewDue) return null;
       return (
-        <div className="badge-neutral flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md mb-2">
+        <div className="badge-neutral flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg mb-2">
           <CalendarClock size={13} className="shrink-0" />
           <span>Review Due ({effectiveCadence === 'monthly' ? 'Monthly' : 'Weekly'} Check-in)</span>
         </div>
@@ -705,7 +705,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   type="text"
                   value={reflectionInput[planId] || ''}
                   onChange={(e) => setReflectionInput({ ...reflectionInput, [planId]: e.target.value })}
-                  placeholder="Add dated check-in reflection note..."
+                  placeholder="Add a check-in note..."
                   className="input text-xs flex-1 py-1"
                 />
                 <button
@@ -966,7 +966,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           }
                         }}
                         className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1.5"
-                        title="Undo today's completion and re-enable mark done"
+                        title="Undo today's completion"
                       >
                         <RotateCcw size={13} /> Undo Today's Mark
                       </button>
@@ -1123,7 +1123,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             {myCreatedPlans.length === 0 ? (
               <EmptyState
                 title="You haven't created any plans yet."
-                description={'Click "Create Plan" above to start building!'}
+                description={'Use "Create Plan" above to make one.'}
               />
             ) : (
               <div className="grid-cards-lg gap-4">
@@ -1230,7 +1230,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             {followedPlans.length === 0 ? (
               <EmptyState
                 title="You haven't copied any public plans yet."
-                description={'Visit the "Discover Public Plans" tab to browse and copy plans!'}
+                description={'Browse the "Discover Public Plans" tab to copy one.'}
               />
             ) : (
               <div className="grid-cards-lg gap-4">
@@ -1283,7 +1283,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     setDiscoverSearch(val);
                     loadPlans(val, discoverCategory, discoverPlanType, discoverSortBy);
                   }}
-                  placeholder="Search public plans by title, description, or keyword..."
+                  placeholder="Search public plans..."
                   className="input text-xs pl-9 py-2 w-full"
                 />
               </div>
@@ -1542,7 +1542,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       )}
 
       {/* CREATE PLAN MODAL */}
-      <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create Personal Improvement Plan">
+      <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create Improvement Plan">
         <form onSubmit={handleCreateSubmit} className="space-y-4">
           {/* STARTER TEMPLATE ACCELERATOR */}
           <div className="card p-3 space-y-2">
@@ -1662,7 +1662,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               id="pip-create-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the objective and core outcome of this plan..."
+              placeholder="What this plan is for and the result you want..."
               className="input min-h-[70px] text-xs"
               required
             />
@@ -1859,7 +1859,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   id="pip-create-initial-reflection-note"
                   value={initialReflectionNote}
                   onChange={(e) => setInitialReflectionNote(e.target.value)}
-                  placeholder="First check-in note on your vision..."
+                  placeholder="Your first check-in note..."
                   className="input min-h-[60px] text-xs"
                 />
               </div>

@@ -22,56 +22,54 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             {/* Hero */}
             <Reveal index={0} className="card p-6 relative overflow-hidden">
               <div className="relative">
-                <h2 className="font-serif font-normal text-[1.75rem] leading-tight tracking-[-0.01em] text-content-primary mb-2">
+                <h2 className="section-title mb-2">
                   Your brain is not fixed.
                 </h2>
                 <p className="text-sm text-content-muted leading-relaxed">
-                  For decades, scientists believed the adult brain stopped changing after childhood. We now know
-                  this is completely wrong. Your brain is constantly rewiring itself — every habit you repeat,
-                  every skill you practice, every experience you have physically changes its structure.
+                  Scientists used to think the adult brain stopped changing after childhood. It doesn't. Every habit
+                  you repeat and every skill you practice changes its structure.
                 </p>
                 <p className="text-sm text-content-muted leading-relaxed mt-3">
-                  This is called <span className="text-content-primary font-medium">neuroplasticity</span>, and it means
-                  you are never stuck with who you are. Change is always possible — it just requires the right approach.
+                  This is called <span className="text-content-primary font-medium">neuroplasticity</span>. It means you
+                  can always change, with the right approach.
                 </p>
               </div>
             </Reveal>
 
             {/* Core principle */}
             <Reveal index={1} className="card p-5">
-              <p className="font-serif italic text-xl leading-snug text-content-primary mb-2">
+              <p className="italic text-lg font-medium leading-snug text-content-primary mb-2">
                 "Neurons that fire together, wire together."
               </p>
               <p className="text-sm text-content-muted">
-                This is the foundational law of neuroplasticity (Hebb's Law). Every time you repeat a behavior,
-                the neural pathway involved gets stronger and faster. Over time, it becomes automatic —
-                you don't have to think about it anymore. This is how habits are literally built into your brain.
+                This is Hebb's Law. Each time you repeat a behavior, its neural pathway gets stronger and faster,
+                until the behavior is automatic. That is how habits form.
               </p>
             </Reveal>
 
             {/* Key principles */}
             <Reveal index={2}>
-              <h2 className="section-title mb-3">The Four Pillars of Brain Change</h2>
+              <h2 className="section-title mb-3">Four principles of brain change</h2>
               <div className="grid-cards-lg gap-3">
                 <PillarCard
                   icon={<Repeat size={18} />}
-                  title="Repetition Over Intensity"
-                  description="A 10-minute daily habit beats a 2-hour weekly session. Brain rewiring happens through repeated, spaced activation — not marathon sessions. The daily repetition keeps neurons firing together, wiring them into a permanent pathway."
+                  title="Repetition over intensity"
+                  description="A 10-minute daily habit beats a 2-hour weekly session. The brain rewires through short, spaced repeats, not marathons."
                 />
                 <PillarCard
                   icon={<Moon size={18} />}
-                  title="Sleep Consolidates Learning"
-                  description="Practice is the input, but sleep is where the brain actually does the rewiring. During sleep, your brain replays the day's experiences, strengthens important connections, and prunes unnecessary ones. Without good sleep, your daily repetitions don't consolidate effectively."
+                  title="Sleep locks in learning"
+                  description="Sleep is when the brain strengthens the day's useful connections and prunes the rest. Without it, practice doesn't stick as well."
                 />
                 <PillarCard
                   icon={<Sparkles size={18} />}
-                  title="Novelty Triggers Growth"
-                  description="Routine builds efficiency, but novelty builds capacity. When you encounter something new, your brain releases dopamine and activates neuroplasticity. It's literally telling itself to pay attention and learn. This is why trying new things keeps your brain plastic and adaptable."
+                  title="New things drive growth"
+                  description="Routine builds efficiency; new experiences build capacity. Something new releases dopamine, which tells the brain to pay attention and learn."
                 />
                 <PillarCard
                   icon={<Clock size={18} />}
-                  title="The 90-Day Window"
-                  description="Research suggests it takes roughly 66–90 days of consistent repetition for a new behavior to become automatic — to literally wire itself into your brain's default circuitry. This is why the 90-Day League exists: it's a scientifically grounded window for real neurological change."
+                  title="The 90-day window"
+                  description="Research suggests a new behavior takes roughly 66–90 days of steady repetition to become automatic. That's why the 90-Day League is 90 days long."
                 />
               </div>
             </Reveal>
@@ -81,13 +79,13 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
           <>
             {/* Practical tips */}
             <Reveal index={3}>
-              <h2 className="section-title mb-3">How to Leverage Neuroplasticity</h2>
+              <h2 className="section-title mb-3">How to use it</h2>
               <div className="card p-5 space-y-3">
-                <Tip num="1" text="Start small and repeat daily. Even 5 minutes of consistent practice rewires your brain more than sporadic intense effort." />
-                <Tip num="2" text="Protect your sleep. 7-8 hours isn't just rest — it's when your brain consolidates everything you practiced that day." />
-                <Tip num="3" text="Try something new regularly. Novel experiences keep your brain plastic and prevent it from getting stuck in rigid patterns." />
-                <Tip num="4" text="Don't miss twice. One missed day is fine, but two in a row starts to weaken the pathway you've been building." />
-                <Tip num="5" text="Be patient. You're not building a habit — you're building a neural pathway. That takes weeks, not days." />
+                <Tip num="1" text="Start small and repeat daily. Five steady minutes beat the occasional big effort." />
+                <Tip num="2" text="Protect your sleep. 7–8 hours is when the brain locks in what you practiced that day." />
+                <Tip num="3" text="Try something new regularly. It keeps your brain adaptable." />
+                <Tip num="4" text="Don't miss twice. One missed day is fine; two in a row starts to weaken the pathway." />
+                <Tip num="5" text="Be patient. A new pathway takes weeks, not days." />
               </div>
             </Reveal>
 
@@ -96,11 +94,9 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
               <div className="flex items-start gap-3">
                 <Target size={18} className="text-content-subtle shrink-0 mt-1" />
                 <div className="flex-1">
-                  <h3 className="font-serif text-xl leading-tight text-content-primary mb-1">The 90-Day League</h3>
+                  <h3 className="section-title mb-1">The 90-Day League</h3>
                   <p className="text-sm text-content-muted leading-relaxed mb-3">
-                    This league is designed around the neuroscience of habit formation. 90 days of sustained
-                    effort is enough time for new behaviors to physically rewire your brain. It's not just a
-                    competition — it's a window for real, measurable change.
+                    A 90-day competition, long enough for new habits to become automatic.
                   </p>
                   {onViewChange && (
                     <button
@@ -116,9 +112,9 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
 
             {/* Deep dive lessons */}
             <Reveal index={3}>
-              <h2 className="section-title mb-3">Deep Dive</h2>
+              <h2 className="section-title mb-3">Further reading</h2>
               <p className="text-sm text-content-disabled mb-3">
-                Read these lessons in the Lessons section for a deeper understanding of neuroplasticity:
+                These lessons go deeper:
               </p>
               <div className="card divide-y divide-overlay-subtle">
                 {[

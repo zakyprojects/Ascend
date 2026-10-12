@@ -158,16 +158,16 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       <PageColumns stickyAside
         aside={
           <>
-            <Disclosure title="Escalating Penalty & Point Cap System Active">
+            <Disclosure title="Penalties and point cap">
               <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
                 <li>
-                  <span className="text-content-secondary">Daily Resists & Cap:</span> Only the first <span className="text-content-secondary font-medium"><span className="figure">{BAD_HABIT_POINTS.eligibleSlots}</span> active habits</span> (oldest first) are point-eligible. Each eligible resist earns <span className="figure text-content-secondary">+{BAD_HABIT_POINTS.resistBase} pts</span> (max <span className="figure">+{BAD_HABIT_POINTS.dailyCap}</span> pts/day). Other habits are tracking-only (streak only, 0 pts for resist, occurred, and missed days).
+                  <span className="text-content-secondary">Daily resists and cap:</span> Only the first <span className="text-content-secondary font-medium"><span className="figure">{BAD_HABIT_POINTS.eligibleSlots}</span> active habits</span> (oldest first) are point-eligible. Each eligible resist earns <span className="figure text-content-secondary">+{BAD_HABIT_POINTS.resistBase} pts</span> (max <span className="figure">+{BAD_HABIT_POINTS.dailyCap}</span> pts/day). Other habits are tracking-only (streak only, 0 pts for resist, occurred, and missed days).
                 </li>
                 <li>
-                  <span className="text-content-secondary">Occurred & Miss Penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-content-secondary font-medium">point-eligible habits only</span>. Deleting an eligible habit refunds its resist points and today's Occurred penalty (earlier penalties stay); completing keeps everything. Promoting the next eligible habit recalculates today's resists. Undo is available for today's action.
+                  <span className="text-content-secondary">Occurred and missed-day penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-content-secondary font-medium">point-eligible habits only</span>. Deleting an eligible habit refunds its resist points and today's Occurred penalty (earlier penalties stay); completing keeps everything. Promoting the next eligible habit recalculates today's resists. Undo is available for today's action.
                 </li>
                 <li>
-                  <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="figure text-content-secondary">75%</span> of commitment duration. Completing preserves points earned!
+                  <span className="text-content-secondary">Completion unlock:</span> Unlocks when resisted streak reaches <span className="figure text-content-secondary">75%</span> of commitment duration. Completing keeps the points you earned.
                 </li>
               </ul>
             </Disclosure>
@@ -176,15 +176,15 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       >
         {/* Active Bad Habits List */}
         <div>
-          <h2 className="section-title mb-3">Active Bad Habits (Today: {formatDateLong(today)})</h2>
+          <h2 className="section-title mb-3">Active bad habits (today: {formatDateLong(today)})</h2>
 
           {activeHabits.length === 0 ? (
             <EmptyState
-              title="No active bad habits being tracked"
-              description="Add a bad habit you want to reduce (e.g. Doomscrolling, Junk Food, Late Night Gaming) to log daily resistance."
+              title="No bad habits tracked yet"
+              description="Add a habit you want to cut back on (e.g. doomscrolling, junk food, late-night gaming) and log each day you resist it."
               action={
                 <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
-                  Add a Bad Habit
+                  Add Bad Habit
                 </button>
               }
             />
@@ -229,11 +229,11 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           <h3 className="item-name text-base">{bh.name}</h3>
                           {slotInfo ? (
                             <span className="badge badge-neutral text-2xs">
-                              Point-Eligible (Slot {slotInfo.slot}/{slotInfo.total})
+                              Earns points (slot {slotInfo.slot}/{slotInfo.total})
                             </span>
                           ) : (
                             <span className="text-xs text-content-muted">
-                              Tracking Only
+                              Tracking only
                             </span>
                           )}
                         </div>
@@ -254,8 +254,8 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           }`}
                           title={
                             isCompleteUnlocked
-                              ? 'Streak reached 75%+ threshold! Click to complete habit.'
-                              : `Requires ${unlockThreshold}d streak (75% of ${commitmentDays}d commitment) to unlock complete.`
+                              ? 'Streak is at 75% or more. Click to complete the habit.'
+                              : `Needs a ${unlockThreshold}d streak (75% of the ${commitmentDays}d commitment) to complete.`
                           }
                         >
                           {isCompleteUnlocked ? <CheckCheck size={14} /> : <Lock size={14} />}
@@ -267,7 +267,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           onClick={() => setDeleteModalHabit(bh)}
                           aria-label="Delete bad habit"
                           className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
-                          title="Delete Bad Habit (resist points and today's Occurred penalty are reversed; earlier penalties stay)"
+                          title="Delete bad habit (resist points and today's Occurred penalty are reversed; earlier penalties stay)"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -283,9 +283,9 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         </span>
                         <span className="text-content-disabled">
                           {isCompleteUnlocked ? (
-                            <span className="text-success-text font-medium">✓ 75%+ Complete Unlocked ({habitStreak}/{commitmentDays}d)</span>
+                            <span className="text-success-text font-medium">Complete unlocked at 75% ({habitStreak}/{commitmentDays}d)</span>
                           ) : (
-                            <span>Unlocks Complete at <strong className="figure text-content-secondary">{unlockThreshold}d</strong> ({habitStreak}/{commitmentDays}d)</span>
+                            <span>Complete unlocks at <strong className="figure text-content-secondary">{unlockThreshold}d</strong> ({habitStreak}/{commitmentDays}d)</span>
                           )}
                         </span>
                       </div>
@@ -315,7 +315,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         >
                           <CheckCircle2 size={16} className={status === 'resisted' ? 'text-success-text' : 'text-content-muted'} />
                           <span>
-                            Resisted Today {status === 'resisted' ? `(${todayLog?.pointsAwardedOrDeducted && todayLog.pointsAwardedOrDeducted > 0 ? `+${todayLog.pointsAwardedOrDeducted} pts` : '0 pts'})` : !slotInfo ? '(0 pts, Tracking Only)' : isResistCapped ? '(0 pts, Cap Reached)' : `(+${BAD_HABIT_POINTS.resistBase} pts)`}
+                            Resisted today {status === 'resisted' ? `(${todayLog?.pointsAwardedOrDeducted && todayLog.pointsAwardedOrDeducted > 0 ? `+${todayLog.pointsAwardedOrDeducted} pts` : '0 pts'})` : !slotInfo ? '(0 pts, tracking only)' : isResistCapped ? '(0 pts, cap reached)' : `(+${BAD_HABIT_POINTS.resistBase} pts)`}
                           </span>
                         </button>
 
@@ -331,7 +331,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           }`}
                         >
                           <XCircle size={16} className={status === 'occurred' ? 'text-rose-theme' : 'text-content-muted'} />
-                          <span>{slotInfo ? 'Occurred Today (Deduct Pts)' : 'Occurred Today (Tracking Only)'}</span>
+                          <span>{slotInfo ? 'Occurred today (deducts pts)' : 'Occurred today (tracking only)'}</span>
                         </button>
                       </div>
 
@@ -340,7 +340,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         <div className="flex items-center justify-between gap-2 px-1 text-xs">
                           <span className="text-content-muted flex items-center gap-1.5">
                             <Lock size={12} className="text-content-disabled" />
-                            Today's action locked ({todayLog.status === 'resisted' ? 'Resisted' : todayLog.status === 'occurred' ? 'Occurred' : 'No Report Penalty'})
+                            Today's action locked ({todayLog.status === 'resisted' ? 'Resisted' : todayLog.status === 'occurred' ? 'Occurred' : 'No-report penalty'})
                             {todayLog.pointsAwardedOrDeducted !== 0 && (
                               <span className={todayLog.pointsAwardedOrDeducted > 0 ? 'figure text-success-text' : 'figure text-rose-theme'}>
                                 ({todayLog.pointsAwardedOrDeducted > 0 ? `+${todayLog.pointsAwardedOrDeducted}` : todayLog.pointsAwardedOrDeducted} pts)
@@ -354,7 +354,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                               className="text-content-secondary hover:text-content-primary flex items-center gap-1 text-micro font-semibold transition-colors"
                             >
                               <RotateCcw size={12} />
-                              <span>Undo Today's Action</span>
+                              <span>Undo today</span>
                             </button>
                           ) : (
                             <span className="text-2xs text-content-disabled italic">No-report penalties cannot be undone</span>
@@ -366,7 +366,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                     {/* 14-day Trend Matrix */}
                     <div className="pt-2 border-t border-overlay-subtle">
                       <div className="text-2xs text-content-disabled mb-1 flex items-center justify-between">
-                        <span>14-Day Trend History</span>
+                        <span>Last 14 days</span>
                         <span className="text-content-subtle">✓ Resisted • ✕ Occurred • ! Missed</span>
                       </div>
                       <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -379,7 +379,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                           return (
                             <div
                               key={d}
-                              className={`w-6 h-6 rounded-md flex items-center justify-center text-2xs font-bold shrink-0 transition-all ${
+                              className={`w-6 h-6 rounded-lg flex items-center justify-center text-2xs font-bold shrink-0 transition-all ${
                                 isResisted
                                   ? 'bg-emerald-500/20 text-success-text'
                                   : isOccurred
@@ -395,9 +395,9 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                                   ? `Occurred (${log?.pointsAwardedOrDeducted ?? 0} pts)`
                                   : isNoReport
                                   ? (log?.pointsAwardedOrDeducted ?? 0) === 0
-                                    ? 'No-Report Missed (0 pts, tracking only)'
-                                    : `No-Report Missed (${log?.pointsAwardedOrDeducted ?? 0} pts penalty)`
-                                  : 'Not Logged'
+                                    ? 'Missed, no report (0 pts, tracking only)'
+                                    : `Missed, no report (${log?.pointsAwardedOrDeducted ?? 0} pts penalty)`
+                                  : 'Not logged'
                               }`}
                             >
                               {isResisted ? '✓' : isOccurred ? '✕' : isNoReport ? '!' : '-'}
@@ -417,7 +417,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         {completedHabits.length > 0 && (
           <div className="pt-4 space-y-3 border-t border-overlay-default">
             <h2 className="section-title">
-              Completed Bad Habits ({completedHabits.length})
+              Completed bad habits ({completedHabits.length})
             </h2>
 
             <div className="space-y-3">
@@ -439,7 +439,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                       </p>
                       {bh.completedAt && (
                         <p className="text-micro text-content-disabled mt-0.5">
-                          Completed on {new Date(bh.completedAt).toLocaleDateString()} (Points earned preserved)
+                          Completed on {new Date(bh.completedAt).toLocaleDateString()} (points kept)
                         </p>
                       )}
                     </div>
@@ -460,23 +460,23 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       </PageColumns>
 
       {/* Add Bad Habit Modal */}
-      <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Bad Habit to Reduce">
+      <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Bad Habit">
         <form onSubmit={handleAddSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="bad-habit-name-input">Bad Habit Name</label>
+            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="bad-habit-name-input">Habit name</label>
             <input
               id="bad-habit-name-input"
               type="text"
               value={habitName}
               onChange={(e) => setHabitName(e.target.value)}
-              placeholder="e.g. Doomscrolling, Junk Food, Late Night Gaming"
+              placeholder="e.g. Doomscrolling, junk food, late-night gaming"
               className="input"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Commitment Duration</label>
+            <label className="block text-xs font-medium text-content-muted mb-1">Commitment length</label>
             <div className="relative isolate grid grid-cols-4 gap-2 mb-2">
               <SlidingPill active={durationMode} className="rounded-xl bg-overlay-default border border-overlay-strong" />
               <button
@@ -523,7 +523,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
             {durationMode === 'custom' && (
               <div className="mt-2">
-                <label className="block text-micro text-content-disabled mb-1" htmlFor="bad-habit-custom-days-input">Custom Duration (Minimum 30 days)</label>
+                <label className="block text-micro text-content-disabled mb-1" htmlFor="bad-habit-custom-days-input">Custom length (at least 30 days)</label>
                 <input
                   id="bad-habit-custom-days-input"
                   type="number"
@@ -568,7 +568,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               <div className="p-3 border border-overlay-default rounded-xl text-xs text-content-secondary space-y-2">
                 <p className="font-semibold text-content-primary flex items-center gap-1.5">
                   <CheckCheck size={16} className="text-content-muted" />
-                  Mastered Bad Habit
+                  Completed habit
                 </p>
                 <p>
                   Deleting <strong className="text-content-primary">"{deleteModalHabit.name}"</strong> will permanently remove all logs and streak history.
@@ -581,7 +581,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               <div className="p-3 border border-overlay-default rounded-xl text-xs text-content-secondary space-y-2">
                 <p className="font-semibold text-rose-theme flex items-center gap-1.5">
                   <AlertTriangle size={16} />
-                  Warning: Earlier Penalties Stay
+                  Earlier penalties stay
                 </p>
                 <p>
                   Deleting <strong className="text-content-primary">"{deleteModalHabit.name}"</strong> will permanently remove all logs and streak history.

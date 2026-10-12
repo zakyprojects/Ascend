@@ -324,7 +324,7 @@ export function ScheduleTab({
           <button
             onClick={() => onOpenAddBlockModal()}
             disabled={isPastDate}
-            className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-on-brand bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-on-brand bg-primary-600 hover:bg-primary-700 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={15} className="shrink-0" />
             <span className="whitespace-nowrap">Schedule Block</span>
@@ -368,7 +368,7 @@ export function ScheduleTab({
                 {liveStats.activeBlock && liveStats.activeBlockActivity ? (
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-serif text-xl leading-tight text-content-primary truncate">
+                      <h3 className="section-title text-xl leading-tight truncate">
                         {liveStats.activeBlock.customTitle || liveStats.activeBlockActivity.name}
                       </h3>
                       {liveStats.activeBlock.secondaryActivityIds &&
@@ -398,7 +398,7 @@ export function ScheduleTab({
                 ) : (
                   <div>
                     <h3 className="item-name text-sm text-content-tertiary">
-                      Free / Unscheduled Window
+                      Free time
                     </h3>
                     {liveStats.nextBlock ? (
                       <p className="text-xs text-content-muted">
@@ -583,7 +583,7 @@ export function ScheduleTab({
                       setSelectedStripBlockId((cur) => (cur === block.id ? null : block.id));
                     }
                   }}
-                  className={`absolute top-1 bottom-1 rounded-md cursor-pointer transition-all flex items-center justify-center px-1 overflow-hidden z-1 shadow-sm ${
+                  className={`absolute top-1 bottom-1 rounded-lg cursor-pointer transition-all flex items-center justify-center px-1 overflow-hidden z-1 shadow-sm ${
                     isBlockActive
                       ? 'ring-2 ring-content-primary ring-offset-1 ring-offset-bg-900 shadow-md'
                       : isBlockPast
@@ -687,7 +687,7 @@ export function ScheduleTab({
       {/* 5. Scheduled Blocks List with Live Status Sync */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-serif text-xl leading-tight text-content-primary">
+          <h3 className="section-title text-xl leading-tight">
             Scheduled Timeline ({dailyBlocks.length})
           </h3>
           {dailyBlocks.length > 0 && (
@@ -710,7 +710,7 @@ export function ScheduleTab({
           <EmptyState
             icon={Clock}
             title="No Blocks Scheduled"
-            description="Construct your daily blueprint by adding time blocks or applying one of your saved templates."
+            description="Add time blocks or apply one of your saved templates."
             action={
               <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                 {templates.length > 0 && (
@@ -726,7 +726,7 @@ export function ScheduleTab({
                 <button
                   onClick={() => onOpenAddBlockModal()}
                   disabled={isPastDate}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-on-brand text-xs font-semibold whitespace-nowrap shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-on-brand text-xs font-semibold whitespace-nowrap shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus size={14} />
                   <span>Add Time Block</span>
@@ -830,7 +830,7 @@ export function ScheduleTab({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap min-w-0">
                           <span
-                            className="px-2 py-0.5 rounded-md text-2xs font-medium truncate max-w-full"
+                            className="px-2 py-0.5 rounded-lg text-2xs font-medium truncate max-w-full"
                             style={{
                               backgroundColor: `${color}20`,
                               color,
@@ -917,7 +917,7 @@ export function ScheduleTab({
                                 key={item.moduleId}
                                 onClick={() => handleLaunchModuleHandoff(block, item.moduleId)}
                                 title={`Open ${item.moduleId} (${item.activityName})`}
-                                className="text-micro font-semibold px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity flex items-center gap-1 cursor-pointer"
+                                className="text-micro font-semibold px-2 py-0.5 rounded-lg hover:opacity-80 transition-opacity flex items-center gap-1 cursor-pointer"
                                 style={categoryTintStyle(getActivityDisplayColor(activityMap.get(item.activityId), theme))}
                               >
                                 <span>Open {item.moduleId}</span>
