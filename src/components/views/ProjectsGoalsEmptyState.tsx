@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Plus, Target, FolderKanban, CheckSquare } from 'lucide-react';
 
 export type HierarchyTier = 'goals' | 'projects' | 'tasks';
 
@@ -12,26 +12,39 @@ const TIER_CONFIG = {
   goals: {
     title: 'No goals yet',
     text: 'Goals are your long-term targets. Your daily tasks build toward them.',
+    icon: Target,
+    iconBg: 'badge-purple',
+    btnClass: 'bg-purple-600 hover:bg-purple-500 text-white',
     buttonText: 'Create Your First Goal',
   },
   projects: {
     title: 'No projects yet',
     text: 'Projects group related tasks and move a goal forward.',
+    icon: FolderKanban,
+    iconBg: 'badge-cyan',
+    btnClass: 'bg-cyan-600 hover:bg-cyan-500 text-white',
     buttonText: 'Create Your First Project',
   },
   tasks: {
     title: 'No tasks yet',
     text: 'Tasks are the small things you do each day. Link them to a project to keep them organized.',
+    icon: CheckSquare,
+    iconBg: 'badge-emerald',
+    btnClass: '',
     buttonText: 'Create Your First Task',
   },
 };
 
 export function EmptyState({ tier, onCreate, isFiltered = false }: EmptyStateProps) {
   const config = TIER_CONFIG[tier];
+  const Icon = config.icon;
 
   if (isFiltered) {
     return (
       <div className="py-12 text-center border border-dashed border-overlay-default rounded-2xl space-y-3">
+        <div className={`w-11 h-11 rounded-xl border flex items-center justify-center mx-auto ${config.iconBg}`}>
+          <Icon size={20} />
+        </div>
         <div className="max-w-sm mx-auto space-y-1">
           <h3 className="item-name text-sm text-content-secondary">No {tier.charAt(0).toUpperCase() + tier.slice(1)} Found</h3>
           <p className="text-xs text-content-muted leading-relaxed">
@@ -41,7 +54,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false }: EmptyStatePro
         <button
           type="button"
           onClick={onCreate}
-          className="btn-primary text-xs px-4 py-2 inline-flex items-center gap-1.5"
+          className={`btn-primary text-xs px-4 py-2 inline-flex items-center gap-1.5 ${config.btnClass}`}
         >
           <Plus size={14} />
           <span>{config.buttonText}</span>
@@ -52,6 +65,9 @@ export function EmptyState({ tier, onCreate, isFiltered = false }: EmptyStatePro
 
   return (
     <div className="py-16 px-6 text-center border border-dashed border-overlay-default rounded-2xl space-y-5">
+      <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center mx-auto ${config.iconBg}`}>
+        <Icon size={26} />
+      </div>
       <div className="max-w-md mx-auto space-y-2">
         <h3 className="text-lg font-semibold text-content-primary">
           {config.title}
@@ -63,7 +79,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false }: EmptyStatePro
       <button
         type="button"
         onClick={onCreate}
-        className="btn-primary text-sm px-5 py-2.5 inline-flex items-center gap-2"
+        className={`btn-primary text-sm px-5 py-2.5 inline-flex items-center gap-2 ${config.btnClass}`}
       >
         <Plus size={16} />
         <span>{config.buttonText}</span>

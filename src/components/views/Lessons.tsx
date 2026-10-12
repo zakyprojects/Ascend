@@ -47,7 +47,7 @@ export function Lessons({ store }: { store: AppStore }) {
         </div>
         <div className="p-4">
           <div className="stat-label">Points Earned</div>
-          <div className="stat-value mt-1 tabular-nums">
+          <div className="stat-value mt-1 text-brand-text tabular-nums">
             <CountUp value={earnedPoints} />
             <span className="figure text-base text-content-disabled">/{totalPoints}</span>
           </div>
@@ -74,7 +74,7 @@ export function Lessons({ store }: { store: AppStore }) {
           onClick={() => setSelectedCategory(null)}
           className={`badge px-3 py-1.5 transition-all ${
             selectedCategory === null
-              ? 'bg-overlay-default text-content-primary'
+              ? 'bg-primary-500/15 text-brand-text'
               : 'text-content-muted hover:bg-overlay-subtle'
           }`}
         >
@@ -86,7 +86,7 @@ export function Lessons({ store }: { store: AppStore }) {
             onClick={() => setSelectedCategory(cat)}
             className={`badge px-3 py-1.5 transition-all ${
               selectedCategory === cat
-                ? 'bg-overlay-default text-content-primary'
+                ? 'bg-primary-500/15 text-brand-text'
                 : 'text-content-muted hover:bg-overlay-subtle'
             }`}
           >
@@ -105,9 +105,9 @@ export function Lessons({ store }: { store: AppStore }) {
               onClick={() => setOpenLesson(lesson)}
               className="card p-4 card-hover w-full flex items-center gap-3 text-left"
             >
-              <div className="w-5 flex items-center justify-center shrink-0">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isRead ? 'bg-primary-500/15' : 'bg-overlay-subtle'}`}>
                 {isRead ? (
-                  <Check size={18} className="text-success-text" />
+                  <Check size={18} className="text-brand-text" />
                 ) : (
                   <BookOpen size={18} className="text-content-subtle" />
                 )}
@@ -119,7 +119,7 @@ export function Lessons({ store }: { store: AppStore }) {
                   <span className="figure text-xs text-content-subtle flex items-center gap-0.5">
                     <Clock size={11} /> {lesson.readTime} min
                   </span>
-                  <span className="figure text-xs text-content-muted">+{lesson.points} pts</span>
+                  <span className="figure text-xs text-brand-text">+{lesson.points} pts</span>
                 </div>
               </div>
             </button>
@@ -149,7 +149,7 @@ export function Lessons({ store }: { store: AppStore }) {
               <span className="flex items-center gap-0.5">
                 <Clock size={11} /> {openLesson.readTime} min read
               </span>
-              <span className="text-content-muted">+{openLesson.points} pts</span>
+              <span className="text-brand-text">+{openLesson.points} pts</span>
             </div>
             <div>
               {renderLessonContent(openLesson.content)}
@@ -233,7 +233,7 @@ function renderLessonContent(content: string) {
       return (
         <div
           key={idx}
-          className="my-3 pl-3 border-l-2 border-overlay-medium text-sm text-content-tertiary italic"
+          className="my-3 pl-3 border-l-2 border-primary-500/50 text-sm text-content-tertiary italic"
         >
           {renderInline(part.trim())}
         </div>

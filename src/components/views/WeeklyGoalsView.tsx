@@ -144,13 +144,13 @@ function GoalItemRow({
               </span>
 
               {item.carriedOverFromWeekKey && (
-                <span className="badge badge-neutral text-2xs">
+                <span className="badge badge-purple text-2xs">
                   Carried over from {item.carriedOverFromWeekKey}
                 </span>
               )}
 
               {item.linkedModule && item.linkedModule !== 'none' && (
-                <span className="badge badge-neutral text-2xs flex items-center gap-1">
+                <span className="badge badge-cyan text-2xs flex items-center gap-1">
                   <Zap size={10} /> Linked: <span className="capitalize">{item.linkedModule}</span>
                 </span>
               )}
@@ -595,7 +595,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       case 'high':
         return 'bg-rose-500/15 text-rose-theme border-rose-500/30';
       case 'medium':
-        return 'bg-overlay-default text-content-secondary border-overlay-medium';
+        return 'bg-amber-500/15 text-warning-text border-amber-500/30';
       case 'low':
         return 'bg-overlay-subtle text-content-tertiary border-overlay-default';
     }
@@ -643,7 +643,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             {selectedWeekKey !== currentWeekKey && (
               <button
                 onClick={() => setSelectedWeekKey(currentWeekKey)}
-                className="ml-1 text-micro font-medium text-content-secondary hover:text-content-primary hover:bg-overlay-subtle px-2 py-1 rounded-lg border border-overlay-default transition-colors"
+                className="bg-primary-500/10 ml-1 text-micro font-medium text-brand-text hover:text-content-primary hover:bg-overlay-subtle px-2 py-1 rounded-lg border border-primary-500/20 transition-colors"
               >
                 Today
               </button>
@@ -656,10 +656,10 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           <div className="md:col-span-2 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-content-tertiary flex items-center gap-1.5">
-                <BarChart2 size={14} className="text-content-subtle" />
+                <BarChart2 size={14} className="text-brand-text" />
                 Weekly goal completion
               </span>
-              <span className="figure text-content-secondary">
+              <span className="figure text-brand-text">
                 <AutoNum text={`${goalStats.percent}%`} /> Complete ({goalStats.completed}/{goalStats.total})
               </span>
             </div>
@@ -678,7 +678,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </div>
             <div className="w-px h-8 bg-overlay-default" />
             <div className="text-center">
-              <CountUp value={goalStats.highPriorityCompleted} className="font-medium text-3xl leading-none text-content-primary block tabular-nums" />
+              <CountUp value={goalStats.highPriorityCompleted} className="font-medium text-3xl leading-none text-rose-theme block tabular-nums" />
               <span className="stat-label mt-1 block">High Pri Done</span>
             </div>
           </div>
@@ -758,11 +758,11 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             <div className="card p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-overlay-subtle pb-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <Target size={16} className="text-content-subtle shrink-0" />
+                  <Target size={16} className="text-brand-text shrink-0" />
                   <h3 className="section-title">
                     Target Priorities for {selectedWeekKey}
                   </h3>
-                  <span className="figure text-2xs text-content-muted">
+                  <span className="badge badge-emerald figure text-2xs">
                     {calculateWeeklyGoalsPoints(activeGoalDoc.goals).pointsAwarded}/{WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts
                   </span>
                 </div>
@@ -844,7 +844,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
                 <div>
                   <h3 className="section-title flex items-center gap-2">
-                    <PenLine size={16} className="text-content-subtle" />
+                    <PenLine size={16} className="text-warning-text" />
                     Weekly Reflections
                   </h3>
                   <p className="text-xs text-content-muted mt-0.5">
@@ -976,7 +976,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                                   </span>
                                 ) : isBeforeCutoff && latestReflection?.id === ref.id ? (
                                   <span
-                                    className="badge badge-neutral figure text-2xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                                    className="badge badge-amber figure text-2xs px-2 py-0.5 rounded-full flex items-center gap-1"
                                     title="Points will be awarded when cutoff passes on Sunday 17:00"
                                   >
                                     <Clock size={11} /> Pending +{WEEKLY_REFLECTION_POINTS.awarded} pts
@@ -1298,7 +1298,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           </p>
           <div className="card p-3 space-y-1">
             <span className="text-micro text-content-muted block">Current Progress in {carryOverPromptModal?.pastWeek}:</span>
-            <span className="figure text-sm text-content-primary block">
+            <span className="figure text-sm text-warning-text block">
               {carryOverPromptModal?.goal.manualProgress || 0} / {carryOverPromptModal?.goal.targetValue} {carryOverPromptModal?.goal.unit || 'times'}
             </span>
           </div>
