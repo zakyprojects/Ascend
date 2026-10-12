@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Dialog } from '@/components/ui/primitives';
+import { Dialog, ProgressBar } from '@/components/ui/primitives';
 import {
   Target,
   FolderKanban,
