@@ -1,5 +1,5 @@
 import { Habit, PointsEntry } from '@/types';
-import { addDays, parseDate, todayKey } from './dates';
+import { addDays, parseDate, startOfWeek, todayKey } from './dates';
 
 /** The ledger keeps only the newest entries (pointsLedger.ts caps it at 500). */
 const POINTS_HISTORY_CAP = 500;
@@ -7,6 +7,19 @@ const POINTS_HISTORY_CAP = 500;
 /** The last `count` local date keys, oldest first, ending today. */
 export function lastDayKeys(count: number, today = todayKey()): string[] {
   return Array.from({ length: count }, (_, i) => addDays(today, i - (count - 1)));
+}
+
+/**
+ * Day keys for a calendar grid of `weeks` Monday-start weeks ending with the current one,
+ * oldest first, column by column. Days after today are `null` so the grid keeps its shape.
+ */
+export function weekGridDayKeys(weeks: number, now = new Date()): (string | null)[] {
+  const today = todayKey(now);
+  const firstMonday = addDays(todayKey(startOfWeek(now)), -(weeks - 1) * 7);
+  return Array.from({ length: weeks * 7 }, (_, i) => {
+    const key = addDays(firstMonday, i);
+    return key > today ? null : key;
+  });
 }
 
 export interface DayPoints {
@@ -64,4 +77,18 @@ export function dailyHabitCompletions(habits: Habit[], days: string[]): DayHabit
     }
     return { day, done, total };
   });
+}
+
+/**
+ * A per-day total from any log dated with a YYYY-MM-DD key (skill minutes, pages read,
+ * workout minutes), one number per entry of `days`.
+ */
+export function sumPerDay<T extends { date: string }>(logs: T[], days: string[], amount: (log: T) => number): number[] {
+  const byDay = new Map(days.map((day) => [day, 0]));
+  for (const log of logs) {
+    const current = log ? byDay.get(log.date) : undefined;
+    const value = current === undefined ? NaN : amount(log);
+    if (current !== undefined && Number.isFinite(value)) byDay.set(log.date, current + value);
+  }
+  return days.map((day) => byDay.get(day)!);
 }

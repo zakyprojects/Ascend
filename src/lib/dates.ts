@@ -399,3 +399,13 @@ export function formatDateKeyHuman(dateKey: string): string {
 }
 
 
+
+/** "Mon" for a YYYY-MM-DD key (local), for chart axes. */
+export function formatWeekdayShort(dateKey: string): string {
+  return parseDate(dateKey)?.toLocaleDateString('en-US', { weekday: 'short' }) ?? dateKey;
+}
+
+/** "Mon, Oct 12" for a YYYY-MM-DD key (local), for chart tooltips. */
+export function formatWeekdayDate(dateKey: string): string {
+  return parseDate(dateKey)?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) ?? dateKey;
+}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Tabs } from '@/components/ui/primitives';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp } from '@/components/ui/Motion';
-import { parseDate } from '@/lib/dates';
+import { formatWeekdayDate as fullDay, formatWeekdayShort as weekday } from '@/lib/dates';
 import type { DayHabits, DayPoints } from '@/lib/weeklyActivity';
 
 type Metric = 'points' | 'habits';
@@ -19,10 +19,6 @@ interface WeekActivityCardProps {
   pointsPartial: boolean;
   habits: DayHabits[];
 }
-
-const weekday = (day: string) => parseDate(day)?.toLocaleDateString('en-US', { weekday: 'short' }) ?? day;
-const fullDay = (day: string) =>
-  parseDate(day)?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) ?? day;
 
 /**
  * The last seven days at a glance: points (everything that earns, across modules) or daily
