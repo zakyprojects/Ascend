@@ -9,7 +9,7 @@ import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { Dialog, EmptyState } from '@/components/ui/primitives';
+import { Dialog, EmptyState, PageColumns } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
@@ -221,82 +221,88 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         </div>
       </Reveal>
 
-      <CapMeterConnected state={store.state} capId="exercise" />
+      <PageColumns
+        aside={
+          <>
+            <CapMeterConnected state={store.state} capId="exercise" />
 
-      {/* Weekly Activity Chart */}
-      <Reveal index={1} className="card p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="section-title flex items-center gap-2">
-            <Calendar size={18} className="text-brand-text" />
-            Weekly Activity Summary
-          </h2>
-          <span className="text-xs text-content-disabled">Mon - Sun (Points)</span>
-        </div>
-
-        {/* Scaled to the daily cap so a capped day reads as a full bar. */}
-        <BarChart
-          data={dailyPoints.map((d) => ({ label: d.dayLabel, value: d.points }))}
-          label={`Workout points per day this week, daily cap ${WORKOUT_POINTS.dailyCap}`}
-          highlightIndex={todayChartIndex >= 0 ? todayChartIndex : undefined}
-          max={maxPointsInChart}
-          height={140}
-          formatTooltip={(datum, i) => `${formatWeekdayDate(dailyPoints[i].key)}: ${datum.value} pts`}
-        />
-      </Reveal>
-
-      {/* Workout Logs List */}
-      <div>
-        <h2 className="section-title mb-3">Recent Workout Logs</h2>
-
-        {workouts.length === 0 ? (
-          <EmptyState
-            icon={Dumbbell}
-            title="No workouts logged yet"
-            description="Start logging your physical activity to earn points and stay fit."
-            action={
-              <button onClick={() => setLogModalOpen(true)} className="btn-primary mx-auto">
-                Log Your First Workout
-              </button>
-            }
-          />
-        ) : (
-          <div className="space-y-2.5">
-            {workouts.map((w) => (
-              <div key={w.id} className="card p-3.5 flex items-center justify-between card-hover">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
-                    <Activity size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-content-secondary">{w.type}</h3>
-                    <p className="text-xs text-content-disabled">
-                      {formatDateLong(w.date)} • {w.amount !== undefined && w.unit && w.unit !== 'mins' ? (
-                        <span className="text-success-text font-medium">{w.amount} {w.unit}</span>
-                      ) : (
-                        <span className="text-content-muted">{w.amount ?? w.durationMinutes} mins</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 tabular-nums">
-                    +{w.pointsAwarded} pts
-                  </span>
-                  <button
-                    onClick={() => setDeleteModalWorkout(w)}
-                    aria-label="Delete workout"
-                    className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
-                    title="Delete Workout"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+            {/* Weekly Activity Chart */}
+            <Reveal index={1} className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="section-title flex items-center gap-2">
+                  <Calendar size={18} className="text-brand-text" />
+                  Weekly Activity Summary
+                </h2>
+                <span className="text-xs text-content-disabled">Mon - Sun (Points)</span>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              {/* Scaled to the daily cap so a capped day reads as a full bar. */}
+              <BarChart
+                data={dailyPoints.map((d) => ({ label: d.dayLabel, value: d.points }))}
+                label={`Workout points per day this week, daily cap ${WORKOUT_POINTS.dailyCap}`}
+                highlightIndex={todayChartIndex >= 0 ? todayChartIndex : undefined}
+                max={maxPointsInChart}
+                height={140}
+                formatTooltip={(datum, i) => `${formatWeekdayDate(dailyPoints[i].key)}: ${datum.value} pts`}
+              />
+            </Reveal>
+          </>
+        }
+      >
+        {/* Workout Logs List */}
+        <div>
+          <h2 className="section-title mb-3">Recent Workout Logs</h2>
+
+          {workouts.length === 0 ? (
+            <EmptyState
+              icon={Dumbbell}
+              title="No workouts logged yet"
+              description="Start logging your physical activity to earn points and stay fit."
+              action={
+                <button onClick={() => setLogModalOpen(true)} className="btn-primary mx-auto">
+                  Log Your First Workout
+                </button>
+              }
+            />
+          ) : (
+            <div className="space-y-2.5">
+              {workouts.map((w) => (
+                <div key={w.id} className="card p-3.5 flex items-center justify-between card-hover">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
+                      <Activity size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-content-secondary">{w.type}</h3>
+                      <p className="text-xs text-content-disabled">
+                        {formatDateLong(w.date)} • {w.amount !== undefined && w.unit && w.unit !== 'mins' ? (
+                          <span className="text-success-text font-medium">{w.amount} {w.unit}</span>
+                        ) : (
+                          <span className="text-content-muted">{w.amount ?? w.durationMinutes} mins</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 tabular-nums">
+                      +{w.pointsAwarded} pts
+                    </span>
+                    <button
+                      onClick={() => setDeleteModalWorkout(w)}
+                      aria-label="Delete workout"
+                      className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
+                      title="Delete Workout"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </PageColumns>
 
       {/* Log Workout Modal */}
       <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} title="Log Workout Session">

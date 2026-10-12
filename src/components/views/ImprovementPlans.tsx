@@ -1127,7 +1127,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 description={'Click "Create Plan" above to start building!'}
               />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid-cards-lg gap-4">
                 {myCreatedPlans.map((plan) => {
                   const remoteMatch = remotePublicPlans.find((r) => r.id === plan.id);
                   const displayCopyCount = remoteMatch
@@ -1234,7 +1234,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 description={'Visit the "Discover Public Plans" tab to browse and copy plans!'}
               />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid-cards-lg gap-4">
                 {followedPlans.map((follow) => (
                   <div key={follow.id} className="card p-4 space-y-3 flex flex-col justify-between hover:border-overlay-default transition-all">
                     <div>
@@ -1359,7 +1359,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           </div>
 
           {isLoadingPlans ? (
-            <div role="status" aria-label="Loading public plans" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div role="status" aria-label="Loading public plans" className="grid-cards-lg gap-4">
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} className="card p-4 space-y-3">
                   <div className="flex items-center gap-2">
@@ -1399,7 +1399,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               }
             />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid-cards-lg gap-4">
               {remotePublicPlans.map((plan) => {
                 const creatorLifetimePts = plan.creatorPoints || getProfilePointsByUsername(plan.creatorUsername) || 0;
                 const creatorSeasonPts = getProfileSeasonPointsByUsername(plan.creatorUsername, 'ninetyDay', leagueNow()) || 0;

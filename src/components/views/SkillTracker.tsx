@@ -8,7 +8,7 @@ import { Skill, SkillLevel, SkillSessionLog } from '@/types';
 import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { Dialog, EmptyState, ProgressBar } from '@/components/ui/primitives';
+import { Dialog, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
@@ -293,195 +293,201 @@ export function SkillTracker({ store }: { store: AppStore }) {
         </div>
       </Reveal>
 
-      {skillLogs.length > 0 && (
-        <Reveal index={1} className="card p-4 space-y-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="section-title">Practice, Last 7 Days</h2>
-            <span className="text-xs text-content-muted tabular-nums">
-              <CountUp value={practiceWeekTotal} /> mins
-            </span>
+      <PageColumns
+        aside={
+          <>
+            {skillLogs.length > 0 && (
+              <Reveal index={1} className="card p-4 space-y-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 className="section-title">Practice, Last 7 Days</h2>
+                  <span className="text-xs text-content-muted tabular-nums">
+                    <CountUp value={practiceWeekTotal} /> mins
+                  </span>
+                </div>
+                <BarChart
+                  data={practiceDays.map((day, i) => ({ label: formatWeekdayShort(day), value: practiceMinutes[i] }))}
+                  label={`Skill practice minutes per day, last 7 days: ${practiceWeekTotal} total`}
+                  tone="purple"
+                  highlightIndex={practiceDays.length - 1}
+                  formatTooltip={(datum, i) => `${formatWeekdayDate(practiceDays[i])}: ${datum.value} mins`}
+                />
+              </Reveal>
+            )}
+
+            <CapMeterConnected state={store.state} capId="skills" />
+          </>
+        }
+      >
+        {/* Skills Grid */}
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <h2 className="section-title">Your Active Skills</h2>
+
+            {/* Category Filter Chips */}
+            {categories.length > 1 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-2.5 py-1 rounded-lg text-xs transition-all ${
+                      selectedCategory === cat
+                        ? 'bg-purple-500/20 text-purple-hierarchy border border-purple-500/40 font-semibold'
+                        : 'bg-bg-800 text-content-disabled hover:text-content-muted border border-overlay-subtle'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <BarChart
-            data={practiceDays.map((day, i) => ({ label: formatWeekdayShort(day), value: practiceMinutes[i] }))}
-            label={`Skill practice minutes per day, last 7 days: ${practiceWeekTotal} total`}
-            tone="purple"
-            highlightIndex={practiceDays.length - 1}
-            formatTooltip={(datum, i) => `${formatWeekdayDate(practiceDays[i])}: ${datum.value} mins`}
-          />
-        </Reveal>
-      )}
 
-      <CapMeterConnected state={store.state} capId="skills" />
-
-      {/* Skills Grid */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-          <h2 className="section-title">Your Active Skills</h2>
-
-          {/* Category Filter Chips */}
-          {categories.length > 1 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-2.5 py-1 rounded-lg text-xs transition-all ${
-                    selectedCategory === cat
-                      ? 'bg-purple-500/20 text-purple-hierarchy border border-purple-500/40 font-semibold'
-                      : 'bg-bg-800 text-content-disabled hover:text-content-muted border border-overlay-subtle'
-                  }`}
-                >
-                  {cat}
+          {skills.length === 0 ? (
+            <EmptyState
+              icon={Target}
+              title="No skills added yet"
+              description="Add a skill (e.g. Coding, Spanish, Guitar, Design) to log practice sessions and earn points."
+              action={
+                <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
+                  Add Your First Skill
                 </button>
-              ))}
+              }
+            />
+          ) : filteredSkills.length === 0 ? (
+            <div className="card p-6 text-center">
+              <p className="text-sm text-content-disabled">No skills found in category &ldquo;{selectedCategory}&rdquo;</p>
+              <button
+                onClick={() => setSelectedCategory('All')}
+                className="text-xs text-purple-hierarchy hover:underline mt-2 inline-block font-medium"
+              >
+                Show all skills
+              </button>
+            </div>
+          ) : (
+            <div className="grid-cards-lg gap-3">
+              {filteredSkills.map((skill) => {
+                const { level, hours, progressPercent, progressText } = getEffectiveSkillLevel(skill);
+                const lastPracticed = getLastPracticedText(skill.id);
+                const skillDates = skillLogs.filter((l) => l.skillId === skill.id).map((l) => l.date);
+                const streak = calculateStreak(skillDates, 'daily');
+                return (
+                  <div key={skill.id} className="card p-4 flex flex-col justify-between space-y-3">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold text-content-secondary text-base">{skill.name}</h3>
+                          {skill.category && <p className="text-xs text-content-disabled">{skill.category}</p>}
+                        </div>
+                        <button
+                          onClick={() => setDeleteModalSkill(skill)}
+                          aria-label="Delete skill"
+                          className={`text-content-subtle hover:text-rose-theme p-1 ${TAP_TARGET}`}
+                          title="Delete Skill"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`badge border capitalize font-semibold px-2.5 py-0.5 text-xs ${getLevelBadgeStyle(level)}`}>
+                          {level}
+                        </span>
+                        <div className="flex items-center gap-2 text-xs text-content-disabled">
+                          {streak > 0 && (
+                            <>
+                              <span className="flex items-center gap-1 text-secondary-400 font-medium tabular-nums">
+                                <Flame size={13} className="text-secondary-500" />
+                                {streak} day{streak !== 1 ? 's' : ''}
+                              </span>
+                              <span>•</span>
+                            </>
+                          )}
+                          <span className="tabular-nums">{hours.toFixed(1)} hrs</span>
+                          <span>•</span>
+                          <span>Last: {lastPracticed}</span>
+                        </div>
+                      </div>
+
+                      {/* Level Progress Bar */}
+                      <div className="space-y-1 pt-0.5">
+                        <div className="flex justify-between items-center text-micro text-content-disabled">
+                          <span>{progressText}</span>
+                          <span className="tabular-nums">{Math.round(progressPercent)}%</span>
+                        </div>
+                        <ProgressBar value={progressPercent} label="Level progress" tone="purple" size="sm" />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setLogModalSkill(skill);
+                        setDuration(30);
+                        setNote('');
+                      }}
+                      className="btn-primary text-xs py-2 w-full flex items-center justify-center gap-1.5 mt-1"
+                    >
+                      <Plus size={14} />
+                      <span>Log Practice Session</span>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
-        {skills.length === 0 ? (
-          <EmptyState
-            icon={Target}
-            title="No skills added yet"
-            description="Add a skill (e.g. Coding, Spanish, Guitar, Design) to log practice sessions and earn points."
-            action={
-              <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
-                Add Your First Skill
-              </button>
-            }
-          />
-        ) : filteredSkills.length === 0 ? (
-          <div className="card p-6 text-center">
-            <p className="text-sm text-content-disabled">No skills found in category &ldquo;{selectedCategory}&rdquo;</p>
-            <button
-              onClick={() => setSelectedCategory('All')}
-              className="text-xs text-purple-hierarchy hover:underline mt-2 inline-block font-medium"
-            >
-              Show all skills
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {filteredSkills.map((skill) => {
-              const { level, hours, progressPercent, progressText } = getEffectiveSkillLevel(skill);
-              const lastPracticed = getLastPracticedText(skill.id);
-              const skillDates = skillLogs.filter((l) => l.skillId === skill.id).map((l) => l.date);
-              const streak = calculateStreak(skillDates, 'daily');
-              return (
-                <div key={skill.id} className="card p-4 flex flex-col justify-between space-y-3">
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-content-secondary text-base">{skill.name}</h3>
-                        {skill.category && <p className="text-xs text-content-disabled">{skill.category}</p>}
-                      </div>
-                      <button
-                        onClick={() => setDeleteModalSkill(skill)}
-                        aria-label="Delete skill"
-                        className={`text-content-subtle hover:text-rose-theme p-1 ${TAP_TARGET}`}
-                        title="Delete Skill"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`badge border capitalize font-semibold px-2.5 py-0.5 text-xs ${getLevelBadgeStyle(level)}`}>
-                        {level}
-                      </span>
-                      <div className="flex items-center gap-2 text-xs text-content-disabled">
-                        {streak > 0 && (
-                          <>
-                            <span className="flex items-center gap-1 text-secondary-400 font-medium tabular-nums">
-                              <Flame size={13} className="text-secondary-500" />
-                              {streak} day{streak !== 1 ? 's' : ''}
-                            </span>
-                            <span>•</span>
-                          </>
-                        )}
-                        <span className="tabular-nums">{hours.toFixed(1)} hrs</span>
-                        <span>•</span>
-                        <span>Last: {lastPracticed}</span>
-                      </div>
-                    </div>
-
-                    {/* Level Progress Bar */}
-                    <div className="space-y-1 pt-0.5">
-                      <div className="flex justify-between items-center text-micro text-content-disabled">
-                        <span>{progressText}</span>
-                        <span className="tabular-nums">{Math.round(progressPercent)}%</span>
-                      </div>
-                      <ProgressBar value={progressPercent} label="Level progress" tone="purple" size="sm" />
-                    </div>
+        {/* Practice Log History */}
+        {skillLogs.length > 0 && (
+          <div>
+            <h2 className="section-title mb-3">Practice History Log</h2>
+            <div className="space-y-4">
+              {groupedHistoryLogs.map((group) => (
+                <div key={group.title} className="space-y-2">
+                  <div className="text-xs font-semibold text-content-disabled uppercase tracking-wider px-1">
+                    {group.title}
                   </div>
-
-                  <button
-                    onClick={() => {
-                      setLogModalSkill(skill);
-                      setDuration(30);
-                      setNote('');
-                    }}
-                    className="btn-primary text-xs py-2 w-full flex items-center justify-center gap-1.5 mt-1"
-                  >
-                    <Plus size={14} />
-                    <span>Log Practice Session</span>
-                  </button>
+                  <div className="space-y-2">
+                    {group.logs.map((log) => {
+                      const skill = skills.find((s) => s.id === log.skillId);
+                      return (
+                        <div key={log.id} className="card p-3.5 flex items-start justify-between card-hover">
+                          <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0 mt-0.5">
+                              <Clock size={18} />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-content-secondary text-sm">{skill?.name || 'Skill'}</span>
+                                <span className="text-xs text-content-disabled tabular-nums">({log.durationMinutes} mins)</span>
+                              </div>
+                              {log.note && <p className="text-xs text-content-muted mt-0.5">{log.note}</p>}
+                              <p className="text-2xs text-content-disabled mt-1">{formatDateLong(log.date)}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="badge-purple text-xs font-bold px-2.5 py-1 rounded-full tabular-nums">
+                              +{log.pointsAwarded} pts
+                            </span>
+                            <button
+                              onClick={() => setDeleteModalLog(log)}
+                              aria-label="Delete practice log"
+                              className={`text-content-subtle hover:text-rose-theme p-1 transition-colors ${TAP_TARGET}`}
+                              title="Delete Practice Session Log"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         )}
-      </div>
-
-      {/* Practice Log History */}
-      {skillLogs.length > 0 && (
-        <div>
-          <h2 className="section-title mb-3">Practice History Log</h2>
-          <div className="space-y-4">
-            {groupedHistoryLogs.map((group) => (
-              <div key={group.title} className="space-y-2">
-                <div className="text-xs font-semibold text-content-disabled uppercase tracking-wider px-1">
-                  {group.title}
-                </div>
-                <div className="space-y-2">
-                  {group.logs.map((log) => {
-                    const skill = skills.find((s) => s.id === log.skillId);
-                    return (
-                      <div key={log.id} className="card p-3.5 flex items-start justify-between card-hover">
-                        <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0 mt-0.5">
-                            <Clock size={18} />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-content-secondary text-sm">{skill?.name || 'Skill'}</span>
-                              <span className="text-xs text-content-disabled tabular-nums">({log.durationMinutes} mins)</span>
-                            </div>
-                            {log.note && <p className="text-xs text-content-muted mt-0.5">{log.note}</p>}
-                            <p className="text-2xs text-content-disabled mt-1">{formatDateLong(log.date)}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="badge-purple text-xs font-bold px-2.5 py-1 rounded-full tabular-nums">
-                            +{log.pointsAwarded} pts
-                          </span>
-                          <button
-                            onClick={() => setDeleteModalLog(log)}
-                            aria-label="Delete practice log"
-                            className={`text-content-subtle hover:text-rose-theme p-1 transition-colors ${TAP_TARGET}`}
-                            title="Delete Practice Session Log"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      </PageColumns>
 
       {/* Add Skill Modal */}
       <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add New Skill">

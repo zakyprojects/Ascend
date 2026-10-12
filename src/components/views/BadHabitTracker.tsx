@@ -21,7 +21,7 @@ import { BadHabit } from '@/types';
 import { todayKey, formatDateLong, getNow } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { Dialog, EmptyState, ProgressBar } from '@/components/ui/primitives';
+import { Dialog, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
 import { getBadHabitSlot } from '@/lib/badHabitEligibility';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { getCapStatus } from '@/lib/capStatus';
@@ -185,313 +185,319 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         </div>
       </Reveal>
 
-      <CapMeterConnected state={store.state} capId="badHabitsResisted" />
+      <PageColumns
+        aside={
+          <>
+            <CapMeterConnected state={store.state} capId="badHabitsResisted" />
 
-        <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-500/5 flex items-start gap-3">
-        <AlertTriangle size={20} className="text-warning-text shrink-0 mt-0.5" />
-        <div className="text-xs text-content-tertiary leading-relaxed space-y-1">
-          <div>
-            <span className="font-bold text-warning-text">Escalating Penalty & Point Cap System Active:</span>
-          </div>
-          <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
-            <li>
-              <span className="text-content-secondary">Daily Resists & Cap:</span> Only the first <span className="text-success-text font-semibold">{BAD_HABIT_POINTS.eligibleSlots} active habits</span> (oldest first) are point-eligible. Each eligible resist earns <span className="text-success-text font-semibold">+{BAD_HABIT_POINTS.resistBase} pts</span> (max +{BAD_HABIT_POINTS.dailyCap} pts/day). Other habits are tracking-only (streak only, 0 pts for resist, occurred, and missed days).
-            </li>
-            <li>
-              <span className="text-content-secondary">Occurred & Miss Penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-rose-theme font-semibold">point-eligible habits only</span>. Deleting an eligible habit refunds its resist points and today's Occurred penalty (earlier penalties stay); completing keeps everything. Promoting the next eligible habit recalculates today's resists. Undo is available for today's action.
-            </li>
-            <li>
-              <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="text-brand-text font-semibold">75%</span> of commitment duration. Completing preserves points earned!
-            </li>
-          </ul>
-        </div>
-      </div>
+            <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-500/5 flex items-start gap-3">
+              <AlertTriangle size={20} className="text-warning-text shrink-0 mt-0.5" />
+              <div className="text-xs text-content-tertiary leading-relaxed space-y-1">
+                <div>
+                  <span className="font-bold text-warning-text">Escalating Penalty & Point Cap System Active:</span>
+                </div>
+                <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
+                  <li>
+                    <span className="text-content-secondary">Daily Resists & Cap:</span> Only the first <span className="text-success-text font-semibold">{BAD_HABIT_POINTS.eligibleSlots} active habits</span> (oldest first) are point-eligible. Each eligible resist earns <span className="text-success-text font-semibold">+{BAD_HABIT_POINTS.resistBase} pts</span> (max +{BAD_HABIT_POINTS.dailyCap} pts/day). Other habits are tracking-only (streak only, 0 pts for resist, occurred, and missed days).
+                  </li>
+                  <li>
+                    <span className="text-content-secondary">Occurred & Miss Penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-rose-theme font-semibold">point-eligible habits only</span>. Deleting an eligible habit refunds its resist points and today's Occurred penalty (earlier penalties stay); completing keeps everything. Promoting the next eligible habit recalculates today's resists. Undo is available for today's action.
+                  </li>
+                  <li>
+                    <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="text-brand-text font-semibold">75%</span> of commitment duration. Completing preserves points earned!
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </>
+        }
+      >
+        {/* Active Bad Habits List */}
+        <div>
+          <h2 className="section-title mb-3">Active Bad Habits (Today: {formatDateLong(today)})</h2>
 
-      {/* Active Bad Habits List */}
-      <div>
-        <h2 className="section-title mb-3">Active Bad Habits (Today: {formatDateLong(today)})</h2>
-
-        {activeHabits.length === 0 ? (
-          <EmptyState
-            icon={ShieldAlert}
-            title="No active bad habits being tracked"
-            description="Add a bad habit you want to reduce (e.g. Doomscrolling, Junk Food, Late Night Gaming) to log daily resistance."
-            action={
-              <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
-                Add a Bad Habit
-              </button>
-            }
-          />
-        ) : (
-          <div className="space-y-4">
-            {activeHabits.map((bh) => {
-              const todayLog = badHabitLogs
-                .filter((l) => l.badHabitId === bh.id && l.date === today)
-                .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
-              const status = todayLog?.status;
-
-              // Calculate habit-specific resisted streak
-              let habitStreak = 0;
-              let c = new Date();
-              while (true) {
-                const k = todayKey(c);
-                const l = badHabitLogs.find((log) => log.badHabitId === bh.id && log.date === k);
-                if (l && l.status === 'resisted') {
-                  habitStreak++;
-                  c.setDate(c.getDate() - 1);
-                } else if (k === today && !l) {
-                  // Today not logged yet, skip to yesterday
-                  c.setDate(c.getDate() - 1);
-                } else {
-                  break;
-                }
+          {activeHabits.length === 0 ? (
+            <EmptyState
+              icon={ShieldAlert}
+              title="No active bad habits being tracked"
+              description="Add a bad habit you want to reduce (e.g. Doomscrolling, Junk Food, Late Night Gaming) to log daily resistance."
+              action={
+                <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
+                  Add a Bad Habit
+                </button>
               }
+            />
+          ) : (
+            <div className="space-y-4">
+              {activeHabits.map((bh) => {
+                const todayLog = badHabitLogs
+                  .filter((l) => l.badHabitId === bh.id && l.date === today)
+                  .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+                const status = todayLog?.status;
 
-              // Commitment progress
-              const commitmentDays = bh.commitmentDays || 30;
-              const unlockThreshold = Math.ceil(0.75 * commitmentDays);
-              const isCompleteUnlocked = habitStreak >= unlockThreshold;
-              const progressPercent = Math.min(100, Math.round((habitStreak / commitmentDays) * 100));
-              const slotInfo = getBadHabitSlot(badHabits, bh.id);
+                // Calculate habit-specific resisted streak
+                let habitStreak = 0;
+                let c = new Date();
+                while (true) {
+                  const k = todayKey(c);
+                  const l = badHabitLogs.find((log) => log.badHabitId === bh.id && log.date === k);
+                  if (l && l.status === 'resisted') {
+                    habitStreak++;
+                    c.setDate(c.getDate() - 1);
+                  } else if (k === today && !l) {
+                    // Today not logged yet, skip to yesterday
+                    c.setDate(c.getDate() - 1);
+                  } else {
+                    break;
+                  }
+                }
 
-              return (
-                <div key={bh.id} className="card p-4 space-y-4">
-                  {/* Top Bar */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-overlay-subtle pb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-content-primary text-base">{bh.name}</h3>
-                        {slotInfo ? (
-                          <span className="text-2xs bg-emerald-500/15 text-success-text border border-emerald-500/30 px-2 py-0.5 rounded font-semibold">
-                            Point-Eligible (Slot {slotInfo.slot}/{slotInfo.total})
-                          </span>
-                        ) : (
-                          <span className="text-2xs bg-bg-700 text-content-muted border border-overlay-subtle px-2 py-0.5 rounded font-semibold">
-                            Tracking Only
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-content-disabled mt-0.5">
-                        Commitment: <span className="text-content-tertiary font-semibold">{commitmentDays} days</span> • Created: {new Date(bh.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
+                // Commitment progress
+                const commitmentDays = bh.commitmentDays || 30;
+                const unlockThreshold = Math.ceil(0.75 * commitmentDays);
+                const isCompleteUnlocked = habitStreak >= unlockThreshold;
+                const progressPercent = Math.min(100, Math.round((habitStreak / commitmentDays) * 100));
+                const slotInfo = getBadHabitSlot(badHabits, bh.id);
 
-                    <div className="flex items-center gap-2">
-                      {/* Complete Habit Button */}
-                      <button
-                        onClick={() => store.completeBadHabit(bh.id)}
-                        disabled={!isCompleteUnlocked}
-                        className={`btn text-xs py-1.5 px-3 flex items-center gap-1.5 transition-all ${
-                          isCompleteUnlocked
-                            ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40 hover:bg-emerald-500/30'
-                            : 'bg-bg-700/50 text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
-                        }`}
-                        title={
-                          isCompleteUnlocked
-                            ? 'Streak reached 75%+ threshold! Click to complete habit.'
-                            : `Requires ${unlockThreshold}d streak (75% of ${commitmentDays}d commitment) to unlock complete.`
-                        }
-                      >
-                        {isCompleteUnlocked ? <CheckCheck size={14} /> : <Lock size={14} />}
-                        <span>Complete Habit</span>
-                      </button>
-
-                      {/* Delete Button */}
-                      <button
-                        onClick={() => setDeleteModalHabit(bh)}
-                        aria-label="Delete bad habit"
-                        className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
-                        title="Delete Bad Habit (resist points and today's Occurred penalty are reversed; earlier penalties stay)"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Streak & Commitment Progress Bar */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-content-muted flex items-center gap-1">
-                        <Flame size={14} className="text-success-text" />
-                        <span className="font-bold text-content-secondary tabular-nums">{habitStreak}d</span> resisted streak
-                      </span>
-                      <span className="text-content-disabled">
-                        {isCompleteUnlocked ? (
-                          <span className="text-success-text font-semibold">✓ 75%+ Complete Unlocked ({habitStreak}/{commitmentDays}d)</span>
-                        ) : (
-                          <span>Unlocks Complete at <strong className="text-warning-text">{unlockThreshold}d</strong> ({habitStreak}/{commitmentDays}d)</span>
-                        )}
-                      </span>
-                    </div>
-
-                    <ProgressBar
-                      value={progressPercent}
-                      label="Commitment progress"
-                      tone={isCompleteUnlocked ? 'success' : 'brand'}
-                      size="lg"
-                      marker={{ at: 75, label: `75% unlock line (${unlockThreshold} days)` }}
-                    />
-                  </div>
-
-                  {/* Daily Action & Undo Buttons */}
-                  <div className="space-y-2 pt-1">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => store.logBadHabitDay(bh.id, today, 'resisted')}
-                        disabled={!!todayLog}
-                        className={`flex-1 py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 font-medium text-xs transition-all ${
-                          status === 'resisted'
-                            ? 'bg-emerald-500/20 border-emerald-500 text-success-text font-bold shadow-lg shadow-emerald-500/10'
-                            : todayLog
-                            ? 'bg-bg-800 border-overlay-subtle text-content-subtle cursor-not-allowed opacity-60'
-                            : 'bg-bg-700/80 border-overlay-default text-content-tertiary hover:bg-emerald-500/10 hover:border-emerald-500/40'
-                        }`}
-                      >
-                        <CheckCircle2 size={16} className={status === 'resisted' ? 'text-success-text' : 'text-content-muted'} />
-                        <span>
-                          Resisted Today {status === 'resisted' ? `(${todayLog?.pointsAwardedOrDeducted && todayLog.pointsAwardedOrDeducted > 0 ? `+${todayLog.pointsAwardedOrDeducted} pts` : '0 pts'})` : !slotInfo ? '(0 pts, Tracking Only)' : isResistCapped ? '(0 pts, Cap Reached)' : `(+${BAD_HABIT_POINTS.resistBase} pts)`}
-                        </span>
-                      </button>
-
-                      <button
-                        onClick={() => store.logBadHabitDay(bh.id, today, 'occurred')}
-                        disabled={!!todayLog}
-                        className={`flex-1 py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 font-medium text-xs transition-all ${
-                          status === 'occurred'
-                            ? 'bg-rose-500/20 border-rose-500 text-rose-theme font-bold shadow-lg shadow-rose-500/10'
-                            : todayLog
-                            ? 'bg-bg-800 border-overlay-subtle text-content-subtle cursor-not-allowed opacity-60'
-                            : 'bg-bg-700/80 border-overlay-default text-content-tertiary hover:bg-rose-500/10 hover:border-rose-500/40'
-                        }`}
-                      >
-                        <XCircle size={16} className={status === 'occurred' ? 'text-rose-theme' : 'text-content-muted'} />
-                        <span>{slotInfo ? 'Occurred Today (Deduct Pts)' : 'Occurred Today (Tracking Only)'}</span>
-                      </button>
-                    </div>
-
-                    {/* Today's Log Status & Undo Bar */}
-                    {todayLog && (
-                      <div className="flex items-center justify-between bg-bg-800/80 p-2 px-3 rounded-lg border border-overlay-subtle text-xs">
-                        <span className="text-content-muted flex items-center gap-1.5">
-                          <Lock size={12} className="text-content-disabled" />
-                          Today's action locked ({todayLog.status === 'resisted' ? 'Resisted' : todayLog.status === 'occurred' ? 'Occurred' : 'No Report Penalty'})
-                          {todayLog.pointsAwardedOrDeducted !== 0 && (
-                            <span className={todayLog.pointsAwardedOrDeducted > 0 ? 'text-success-text font-bold tabular-nums' : 'text-rose-theme font-bold tabular-nums'}>
-                              ({todayLog.pointsAwardedOrDeducted > 0 ? `+${todayLog.pointsAwardedOrDeducted}` : todayLog.pointsAwardedOrDeducted} pts)
+                return (
+                  <div key={bh.id} className="card p-4 space-y-4">
+                    {/* Top Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-overlay-subtle pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-content-primary text-base">{bh.name}</h3>
+                          {slotInfo ? (
+                            <span className="text-2xs bg-emerald-500/15 text-success-text border border-emerald-500/30 px-2 py-0.5 rounded font-semibold">
+                              Point-Eligible (Slot {slotInfo.slot}/{slotInfo.total})
+                            </span>
+                          ) : (
+                            <span className="text-2xs bg-bg-700 text-content-muted border border-overlay-subtle px-2 py-0.5 rounded font-semibold">
+                              Tracking Only
                             </span>
                           )}
-                        </span>
-
-                        {todayLog.status !== 'no_report' ? (
-                          <button
-                            onClick={() => store.undoTodayBadHabitLog(bh.id)}
-                            className="text-warning-text hover:opacity-80 flex items-center gap-1 text-micro font-semibold transition-colors"
-                          >
-                            <RotateCcw size={12} />
-                            <span>Undo Today's Action</span>
-                          </button>
-                        ) : (
-                          <span className="text-2xs text-content-disabled italic">No-report penalties cannot be undone</span>
-                        )}
+                        </div>
+                        <p className="text-xs text-content-disabled mt-0.5">
+                          Commitment: <span className="text-content-tertiary font-semibold">{commitmentDays} days</span> • Created: {new Date(bh.createdAt).toLocaleDateString()}
+                        </p>
                       </div>
-                    )}
-                  </div>
 
-                  {/* 14-day Trend Matrix */}
-                  <div className="pt-2 border-t border-overlay-subtle">
-                    <div className="text-2xs text-content-disabled mb-1 font-medium flex items-center justify-between">
-                      <span>14-Day Trend History</span>
-                      <span className="text-content-subtle">✓ Resisted • ✕ Occurred • ! Missed</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                      {last14Days.map((d) => {
-                        const log = badHabitLogs.find((l) => l.badHabitId === bh.id && l.date === d);
-                        const isResisted = log?.status === 'resisted';
-                        const isOccurred = log?.status === 'occurred';
-                        const isNoReport = log?.status === 'no_report';
+                      <div className="flex items-center gap-2">
+                        {/* Complete Habit Button */}
+                        <button
+                          onClick={() => store.completeBadHabit(bh.id)}
+                          disabled={!isCompleteUnlocked}
+                          className={`btn text-xs py-1.5 px-3 flex items-center gap-1.5 transition-all ${
+                            isCompleteUnlocked
+                              ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40 hover:bg-emerald-500/30'
+                              : 'bg-bg-700/50 text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
+                          }`}
+                          title={
+                            isCompleteUnlocked
+                              ? 'Streak reached 75%+ threshold! Click to complete habit.'
+                              : `Requires ${unlockThreshold}d streak (75% of ${commitmentDays}d commitment) to unlock complete.`
+                          }
+                        >
+                          {isCompleteUnlocked ? <CheckCheck size={14} /> : <Lock size={14} />}
+                          <span>Complete Habit</span>
+                        </button>
 
-                        return (
-                          <div
-                            key={d}
-                            className={`w-6 h-6 rounded-md flex items-center justify-center text-2xs font-bold shrink-0 transition-all ${
-                              isResisted
-                                ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40'
-                                : isOccurred
-                                ? 'bg-rose-500/20 text-rose-theme border border-rose-500/40'
-                                : isNoReport
-                                ? 'bg-amber-500/20 text-warning-text border border-amber-500/40'
-                                : 'bg-bg-700/50 text-content-subtle border border-overlay-subtle'
-                            }`}
-                            title={`${d}: ${
-                              isResisted
-                                ? `Resisted (${log?.pointsAwardedOrDeducted ?? 0} pts)`
-                                : isOccurred
-                                ? `Occurred (${log?.pointsAwardedOrDeducted ?? 0} pts)`
-                                : isNoReport
-                                ? (log?.pointsAwardedOrDeducted ?? 0) === 0
-                                  ? 'No-Report Missed (0 pts, tracking only)'
-                                  : `No-Report Missed (${log?.pointsAwardedOrDeducted ?? 0} pts penalty)`
-                                : 'Not Logged'
-                            }`}
-                          >
-                            {isResisted ? '✓' : isOccurred ? '✕' : isNoReport ? '!' : '-'}
-                          </div>
-                        );
-                      })}
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => setDeleteModalHabit(bh)}
+                          aria-label="Delete bad habit"
+                          className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
+                          title="Delete Bad Habit (resist points and today's Occurred penalty are reversed; earlier penalties stay)"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Streak & Commitment Progress Bar */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-content-muted flex items-center gap-1">
+                          <Flame size={14} className="text-success-text" />
+                          <span className="font-bold text-content-secondary tabular-nums">{habitStreak}d</span> resisted streak
+                        </span>
+                        <span className="text-content-disabled">
+                          {isCompleteUnlocked ? (
+                            <span className="text-success-text font-semibold">✓ 75%+ Complete Unlocked ({habitStreak}/{commitmentDays}d)</span>
+                          ) : (
+                            <span>Unlocks Complete at <strong className="text-warning-text">{unlockThreshold}d</strong> ({habitStreak}/{commitmentDays}d)</span>
+                          )}
+                        </span>
+                      </div>
+
+                      <ProgressBar
+                        value={progressPercent}
+                        label="Commitment progress"
+                        tone={isCompleteUnlocked ? 'success' : 'brand'}
+                        size="lg"
+                        marker={{ at: 75, label: `75% unlock line (${unlockThreshold} days)` }}
+                      />
+                    </div>
+
+                    {/* Daily Action & Undo Buttons */}
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => store.logBadHabitDay(bh.id, today, 'resisted')}
+                          disabled={!!todayLog}
+                          className={`flex-1 py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 font-medium text-xs transition-all ${
+                            status === 'resisted'
+                              ? 'bg-emerald-500/20 border-emerald-500 text-success-text font-bold shadow-lg shadow-emerald-500/10'
+                              : todayLog
+                              ? 'bg-bg-800 border-overlay-subtle text-content-subtle cursor-not-allowed opacity-60'
+                              : 'bg-bg-700/80 border-overlay-default text-content-tertiary hover:bg-emerald-500/10 hover:border-emerald-500/40'
+                          }`}
+                        >
+                          <CheckCircle2 size={16} className={status === 'resisted' ? 'text-success-text' : 'text-content-muted'} />
+                          <span>
+                            Resisted Today {status === 'resisted' ? `(${todayLog?.pointsAwardedOrDeducted && todayLog.pointsAwardedOrDeducted > 0 ? `+${todayLog.pointsAwardedOrDeducted} pts` : '0 pts'})` : !slotInfo ? '(0 pts, Tracking Only)' : isResistCapped ? '(0 pts, Cap Reached)' : `(+${BAD_HABIT_POINTS.resistBase} pts)`}
+                          </span>
+                        </button>
+
+                        <button
+                          onClick={() => store.logBadHabitDay(bh.id, today, 'occurred')}
+                          disabled={!!todayLog}
+                          className={`flex-1 py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 font-medium text-xs transition-all ${
+                            status === 'occurred'
+                              ? 'bg-rose-500/20 border-rose-500 text-rose-theme font-bold shadow-lg shadow-rose-500/10'
+                              : todayLog
+                              ? 'bg-bg-800 border-overlay-subtle text-content-subtle cursor-not-allowed opacity-60'
+                              : 'bg-bg-700/80 border-overlay-default text-content-tertiary hover:bg-rose-500/10 hover:border-rose-500/40'
+                          }`}
+                        >
+                          <XCircle size={16} className={status === 'occurred' ? 'text-rose-theme' : 'text-content-muted'} />
+                          <span>{slotInfo ? 'Occurred Today (Deduct Pts)' : 'Occurred Today (Tracking Only)'}</span>
+                        </button>
+                      </div>
+
+                      {/* Today's Log Status & Undo Bar */}
+                      {todayLog && (
+                        <div className="flex items-center justify-between bg-bg-800/80 p-2 px-3 rounded-lg border border-overlay-subtle text-xs">
+                          <span className="text-content-muted flex items-center gap-1.5">
+                            <Lock size={12} className="text-content-disabled" />
+                            Today's action locked ({todayLog.status === 'resisted' ? 'Resisted' : todayLog.status === 'occurred' ? 'Occurred' : 'No Report Penalty'})
+                            {todayLog.pointsAwardedOrDeducted !== 0 && (
+                              <span className={todayLog.pointsAwardedOrDeducted > 0 ? 'text-success-text font-bold tabular-nums' : 'text-rose-theme font-bold tabular-nums'}>
+                                ({todayLog.pointsAwardedOrDeducted > 0 ? `+${todayLog.pointsAwardedOrDeducted}` : todayLog.pointsAwardedOrDeducted} pts)
+                              </span>
+                            )}
+                          </span>
+
+                          {todayLog.status !== 'no_report' ? (
+                            <button
+                              onClick={() => store.undoTodayBadHabitLog(bh.id)}
+                              className="text-warning-text hover:opacity-80 flex items-center gap-1 text-micro font-semibold transition-colors"
+                            >
+                              <RotateCcw size={12} />
+                              <span>Undo Today's Action</span>
+                            </button>
+                          ) : (
+                            <span className="text-2xs text-content-disabled italic">No-report penalties cannot be undone</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 14-day Trend Matrix */}
+                    <div className="pt-2 border-t border-overlay-subtle">
+                      <div className="text-2xs text-content-disabled mb-1 font-medium flex items-center justify-between">
+                        <span>14-Day Trend History</span>
+                        <span className="text-content-subtle">✓ Resisted • ✕ Occurred • ! Missed</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                        {last14Days.map((d) => {
+                          const log = badHabitLogs.find((l) => l.badHabitId === bh.id && l.date === d);
+                          const isResisted = log?.status === 'resisted';
+                          const isOccurred = log?.status === 'occurred';
+                          const isNoReport = log?.status === 'no_report';
+
+                          return (
+                            <div
+                              key={d}
+                              className={`w-6 h-6 rounded-md flex items-center justify-center text-2xs font-bold shrink-0 transition-all ${
+                                isResisted
+                                  ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40'
+                                  : isOccurred
+                                  ? 'bg-rose-500/20 text-rose-theme border border-rose-500/40'
+                                  : isNoReport
+                                  ? 'bg-amber-500/20 text-warning-text border border-amber-500/40'
+                                  : 'bg-bg-700/50 text-content-subtle border border-overlay-subtle'
+                              }`}
+                              title={`${d}: ${
+                                isResisted
+                                  ? `Resisted (${log?.pointsAwardedOrDeducted ?? 0} pts)`
+                                  : isOccurred
+                                  ? `Occurred (${log?.pointsAwardedOrDeducted ?? 0} pts)`
+                                  : isNoReport
+                                  ? (log?.pointsAwardedOrDeducted ?? 0) === 0
+                                    ? 'No-Report Missed (0 pts, tracking only)'
+                                    : `No-Report Missed (${log?.pointsAwardedOrDeducted ?? 0} pts penalty)`
+                                  : 'Not Logged'
+                              }`}
+                            >
+                              {isResisted ? '✓' : isOccurred ? '✕' : isNoReport ? '!' : '-'}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Completed Bad Habits Section */}
+        {completedHabits.length > 0 && (
+          <div className="pt-4 space-y-3 border-t border-overlay-default">
+            <h2 className="section-title text-success-text flex items-center gap-2">
+              <CheckCheck size={20} />
+              Completed Bad Habits ({completedHabits.length})
+            </h2>
+
+            <div className="space-y-3">
+              {completedHabits.map((bh) => {
+                const bhLogs = badHabitLogs.filter((l) => l.badHabitId === bh.id);
+                const totalResistedCount = bhLogs.filter((l) => l.status === 'resisted').length;
+
+                return (
+                  <div key={bh.id} className="card p-4 bg-bg-800/60 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-content-secondary text-base">{bh.name}</h3>
+                        <span className="badge bg-emerald-500/20 text-success-text text-2xs font-bold">
+                          Completed
+                        </span>
+                      </div>
+                      <p className="text-xs text-content-muted mt-1">
+                        Commitment: {bh.commitmentDays} days • Total days resisted: <strong className="text-success-text tabular-nums">{totalResistedCount} days</strong>
+                      </p>
+                      {bh.completedAt && (
+                        <p className="text-micro text-content-disabled mt-0.5">
+                          Completed on {new Date(bh.completedAt).toLocaleDateString()} (Points earned preserved)
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => setDeleteModalHabit(bh)}
+                      className="btn-secondary text-xs py-1.5 px-3 text-rose-theme hover:bg-rose-500/10 border-rose-500/20"
+                      title="Delete permanently (points are not changed)"
+                    >
+                      Delete Record
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
-      </div>
-
-      {/* Completed Bad Habits Section */}
-      {completedHabits.length > 0 && (
-        <div className="pt-4 space-y-3 border-t border-overlay-default">
-          <h2 className="section-title text-success-text flex items-center gap-2">
-            <CheckCheck size={20} />
-            Completed Bad Habits ({completedHabits.length})
-          </h2>
-
-          <div className="space-y-3">
-            {completedHabits.map((bh) => {
-              const bhLogs = badHabitLogs.filter((l) => l.badHabitId === bh.id);
-              const totalResistedCount = bhLogs.filter((l) => l.status === 'resisted').length;
-
-              return (
-                <div key={bh.id} className="card p-4 bg-bg-800/60 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-content-secondary text-base">{bh.name}</h3>
-                      <span className="badge bg-emerald-500/20 text-success-text text-2xs font-bold">
-                        Completed
-                      </span>
-                    </div>
-                    <p className="text-xs text-content-muted mt-1">
-                      Commitment: {bh.commitmentDays} days • Total days resisted: <strong className="text-success-text tabular-nums">{totalResistedCount} days</strong>
-                    </p>
-                    {bh.completedAt && (
-                      <p className="text-micro text-content-disabled mt-0.5">
-                        Completed on {new Date(bh.completedAt).toLocaleDateString()} (Points earned preserved)
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => setDeleteModalHabit(bh)}
-                    className="btn-secondary text-xs py-1.5 px-3 text-rose-theme hover:bg-rose-500/10 border-rose-500/20"
-                    title="Delete permanently (points are not changed)"
-                  >
-                    Delete Record
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      </PageColumns>
 
       {/* Add Bad Habit Modal */}
       <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Bad Habit to Reduce">

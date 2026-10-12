@@ -360,7 +360,9 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               />
             </div>
           )}
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+          {/* Page width: fills wide screens instead of a fixed narrow column (pages split into
+              PageColumns from xl up); the cap stops lines growing past comfortable reading. */}
+          <div className="max-w-[88rem] mx-auto px-4 sm:px-6 xl:px-8 2xl:px-10 py-6 xl:py-8">
             <ViewEntrance key={currentView}>
               {children}
             </ViewEntrance>

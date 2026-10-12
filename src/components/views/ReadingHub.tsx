@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Dialog, EmptyState, ProgressBar, Tabs } from '@/components/ui/primitives';
+import { Dialog, EmptyState, PageColumns, ProgressBar, Tabs } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
@@ -462,464 +462,470 @@ export function ReadingHub({ store }: { store: AppStore }) {
         </div>
       </Reveal>
 
-      {readingLogs.length > 0 && (
-        <Reveal index={1} className="card p-4 space-y-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="section-title">Pages, Last 7 Days</h2>
-            <span className="text-xs text-content-muted tabular-nums">
-              <CountUp value={pagesThisWeek} /> pages
-            </span>
-          </div>
-          <BarChart
-            data={pageDays.map((day, i) => ({ label: formatWeekdayShort(day), value: pagesByDay[i] }))}
-            label={`Pages read per day, last 7 days: ${pagesThisWeek} total`}
-            tone="warning"
-            highlightIndex={pageDays.length - 1}
-            formatTooltip={(datum, i) => `${formatWeekdayDate(pageDays[i])}: ${datum.value} pages`}
-          />
-        </Reveal>
-      )}
+      <PageColumns
+        aside={
+          <>
+            {readingLogs.length > 0 && (
+              <Reveal index={1} className="card p-4 space-y-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 className="section-title">Pages, Last 7 Days</h2>
+                  <span className="text-xs text-content-muted tabular-nums">
+                    <CountUp value={pagesThisWeek} /> pages
+                  </span>
+                </div>
+                <BarChart
+                  data={pageDays.map((day, i) => ({ label: formatWeekdayShort(day), value: pagesByDay[i] }))}
+                  label={`Pages read per day, last 7 days: ${pagesThisWeek} total`}
+                  tone="warning"
+                  highlightIndex={pageDays.length - 1}
+                  formatTooltip={(datum, i) => `${formatWeekdayDate(pageDays[i])}: ${datum.value} pages`}
+                />
+              </Reveal>
+            )}
 
-      <CapMeterConnected state={store.state} capId="reading" />
+            <CapMeterConnected state={store.state} capId="reading" />
+          </>
+        }
+      >
+        {/* Tabs & Filters */}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
+            {/* Main Navigation Tabs */}
+            <Tabs
+              ariaLabel="Reading Hub sections"
+              variant="segmented"
+              size="sm"
+              scrollable
+              value={activeTab}
+              onChange={(id) => setActiveTab(id as typeof activeTab)}
+              items={[
+                { id: 'reading', label: 'Currently Reading', icon: PlayCircle, badge: inProgressBooks.length },
+                { id: 'to-read', label: 'My Library', icon: ListTodo, badge: toReadBooks.length },
+                { id: 'discover', label: 'Discover Books', icon: Library },
+                { id: 'completed', label: 'Completed', icon: CheckCircle2, badge: completedBooks.length },
+              ]}
+            />
 
-      {/* Tabs & Filters */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
-          {/* Main Navigation Tabs */}
-          <Tabs
-            ariaLabel="Reading Hub sections"
-            variant="segmented"
-            size="sm"
-            scrollable
-            value={activeTab}
-            onChange={(id) => setActiveTab(id as typeof activeTab)}
-            items={[
-              { id: 'reading', label: 'Currently Reading', icon: PlayCircle, badge: inProgressBooks.length },
-              { id: 'to-read', label: 'My Library', icon: ListTodo, badge: toReadBooks.length },
-              { id: 'discover', label: 'Discover Books', icon: Library },
-              { id: 'completed', label: 'Completed', icon: CheckCircle2, badge: completedBooks.length },
-            ]}
-          />
-
-          {/* Search & Category Filter */}
-          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full">
-            <div className="relative w-full sm:flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" />
-              <input
-                aria-label="Search books"
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search title or author..."
-                className="input pl-8 py-1.5 text-xs w-full"
-              />
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <select
-                aria-label="Filter books by category"
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value as BookCategory | 'all')}
-                className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-44"
-              >
-                <option value="all">All Categories</option>
-                {BOOK_CATEGORIES.map((cat) => (
-                  <option key={cat.name} value={cat.name}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Sort books"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'trending' | 'bestsellers' | 'az')}
-                className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-36"
-              >
-                <option value="trending">Trending</option>
-                <option value="bestsellers">Best Sellers</option>
-                <option value="az">Alphabetical (A-Z)</option>
-              </select>
+            {/* Search & Category Filter */}
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full">
+              <div className="relative w-full sm:flex-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" />
+                <input
+                  aria-label="Search books"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search title or author..."
+                  className="input pl-8 py-1.5 text-xs w-full"
+                />
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <select
+                  aria-label="Filter books by category"
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value as BookCategory | 'all')}
+                  className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-44"
+                >
+                  <option value="all">All Categories</option>
+                  {BOOK_CATEGORIES.map((cat) => (
+                    <option key={cat.name} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Sort books"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'trending' | 'bestsellers' | 'az')}
+                  className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-36"
+                >
+                  <option value="trending">Trending</option>
+                  <option value="bestsellers">Best Sellers</option>
+                  <option value="az">Alphabetical (A-Z)</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* TAB 1: CURRENTLY READING */}
-      {activeTab === 'reading' && (
-        <div className="space-y-4">
-          {filteredInProgress.length === 0 ? (
-            <EmptyState
-              icon={BookOpen}
-              title="No books currently in progress"
-              description="Start reading a book from your To Read list, discover foundational titles, or add a custom book."
-              action={
-                <div className="flex items-center justify-center gap-3 pt-2">
-                  <button
-                    onClick={() => setActiveTab('discover')}
-                    className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
-                  >
-                    <Library size={14} />
-                    <span>Discover Books</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCustomStatus('reading');
-                      setAddCustomModalOpen(true);
-                    }}
-                    className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
-                  >
-                    <Plus size={14} />
-                    <span>Add Book</span>
-                  </button>
-                </div>
-              }
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredInProgress.map((book) => {
-                const current = book.currentAmount ?? book.currentPage ?? 0;
-                const total = book.totalAmount ?? book.totalPages ?? 250;
-                const unit = book.unit || 'pages';
-                const percent = Math.min(100, Math.round((current / total) * 100));
+        {/* TAB 1: CURRENTLY READING */}
+        {activeTab === 'reading' && (
+          <div className="space-y-4">
+            {filteredInProgress.length === 0 ? (
+              <EmptyState
+                icon={BookOpen}
+                title="No books currently in progress"
+                description="Start reading a book from your To Read list, discover foundational titles, or add a custom book."
+                action={
+                  <div className="flex items-center justify-center gap-3 pt-2">
+                    <button
+                      onClick={() => setActiveTab('discover')}
+                      className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
+                    >
+                      <Library size={14} />
+                      <span>Discover Books</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCustomStatus('reading');
+                        setAddCustomModalOpen(true);
+                      }}
+                      className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
+                    >
+                      <Plus size={14} />
+                      <span>Add Book</span>
+                    </button>
+                  </div>
+                }
+              />
+            ) : (
+              <div className="grid-cards-lg gap-4">
+                {filteredInProgress.map((book) => {
+                  const current = book.currentAmount ?? book.currentPage ?? 0;
+                  const total = book.totalAmount ?? book.totalPages ?? 250;
+                  const unit = book.unit || 'pages';
+                  const percent = Math.min(100, Math.round((current / total) * 100));
 
-                return (
+                  return (
+                    <div
+                      key={book.id}
+                      className="card p-5 space-y-4 border border-amber-500/20 bg-gradient-to-br from-bg-800 to-amber-950/10 hover:border-amber-500/40 transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              {renderCategoryBadge(book.category, true)}
+                              {book.isCurated && (
+                                <span className="badge badge-amber text-2xs flex items-center gap-1">
+                                  <Sparkles size={10} /> Curated
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-base font-bold text-content-primary truncate">{book.title}</h3>
+                            <p className="text-xs text-content-muted mt-0.5">by {book.author}</p>
+                          </div>
+                          <button
+                            onClick={() => setDeleteModalBook(book)}
+                            aria-label="Remove book"
+                            className={`p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all shrink-0 ${TAP_TARGET}`}
+                            title="Remove Book"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+
+                        {book.description && (
+                          <p className="text-xs text-content-muted mt-2.5 line-clamp-2 leading-relaxed">
+                            {book.description}
+                          </p>
+                        )}
+
+                        {/* Progress bar */}
+                        <div className="mt-4 space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-content-muted">
+                              {current} / {total} {unit}
+                            </span>
+                            <span className="font-bold text-warning-text">{percent}%</span>
+                          </div>
+                          <ProgressBar value={percent} label="Reading progress" tone="warning" />
+                        </div>
+
+                        {/* Target Date */}
+                        {book.targetFinishDate && (
+                          <div className="flex items-center gap-1.5 text-micro text-content-muted mt-2.5">
+                            <Calendar size={12} className="text-warning-text" />
+                            <span>Target Finish: {formatDateLong(book.targetFinishDate)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Controls */}
+                      <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-2 pt-3 border-t border-overlay-subtle">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setProgressModalBook(book);
+                              setProgressInput(book.currentAmount ?? book.currentPage ?? 0);
+                            }}
+                            className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5 whitespace-nowrap"
+                          >
+                            <Plus size={14} className="shrink-0" />
+                            <span>Log Pages</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setFinishModalBook(book);
+                              setReflectionInput('');
+                            }}
+                            className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5 whitespace-nowrap"
+                          >
+                            <CheckCircle2 size={14} className="text-success-text shrink-0" />
+                            <span>Finish</span>
+                          </button>
+                        </div>
+
+                        <select
+                          aria-label="Update book reading status"
+                          value={book.status}
+                          onChange={(e) => store.updateUserBookStatus(book.id, e.target.value as UserBookStatus)}
+                          className="input text-xs py-1 px-2 bg-bg-900 border-overlay-default text-content-tertiary w-fit shrink-0 cursor-pointer"
+                        >
+                          <option value="to-read">Move to Library</option>
+                          <option value="reading">Currently Reading</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: MY LIBRARY */}
+        {activeTab === 'to-read' && (
+          <div className="space-y-4">
+            {filteredToRead.length === 0 ? (
+              <EmptyState
+                icon={ListTodo}
+                title="No books in your library"
+                description="Browse our curated self-improvement recommendations or add your own books to your reading library."
+                action={
+                  <div className="flex items-center justify-center gap-3 pt-2">
+                    <button
+                      onClick={() => setActiveTab('discover')}
+                      className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
+                    >
+                      <Library size={14} />
+                      <span>Discover Books</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCustomStatus('to-read');
+                        setAddCustomModalOpen(true);
+                      }}
+                      className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
+                    >
+                      <Plus size={14} />
+                      <span>Add to Library</span>
+                    </button>
+                  </div>
+                }
+              />
+            ) : (
+              <div className="grid-cards gap-3.5">
+                {filteredToRead.map((book) => (
                   <div
                     key={book.id}
-                    className="card p-5 space-y-4 border border-amber-500/20 bg-gradient-to-br from-bg-800 to-amber-950/10 hover:border-amber-500/40 transition-all flex flex-col justify-between"
+                    className="card p-4 flex flex-col justify-between space-y-3 border border-overlay-subtle hover:border-overlay-default transition-all"
                   >
                     <div>
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            {renderCategoryBadge(book.category, true)}
-                            {book.isCurated && (
-                              <span className="badge badge-amber text-2xs flex items-center gap-1">
-                                <Sparkles size={10} /> Curated
-                              </span>
-                            )}
-                          </div>
-                          <h3 className="text-base font-bold text-content-primary truncate">{book.title}</h3>
-                          <p className="text-xs text-content-muted mt-0.5">by {book.author}</p>
+                          {renderCategoryBadge(book.category, true)}
+                          <h3 className="text-sm font-bold text-content-primary mt-1 truncate">{book.title}</h3>
+                          <p className="text-xs text-content-muted">by {book.author}</p>
                         </div>
                         <button
                           onClick={() => setDeleteModalBook(book)}
                           aria-label="Remove book"
-                          className={`p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all shrink-0 ${TAP_TARGET}`}
+                          className={`p-1 text-content-disabled hover:text-rose-theme rounded transition-all ${TAP_TARGET}`}
                           title="Remove Book"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
 
                       {book.description && (
-                        <p className="text-xs text-content-muted mt-2.5 line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-content-muted mt-2 line-clamp-2 leading-relaxed">
                           {book.description}
                         </p>
                       )}
-
-                      {/* Progress bar */}
-                      <div className="mt-4 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-content-muted">
-                            {current} / {total} {unit}
-                          </span>
-                          <span className="font-bold text-warning-text">{percent}%</span>
-                        </div>
-                        <ProgressBar value={percent} label="Reading progress" tone="warning" />
-                      </div>
-
-                      {/* Target Date */}
-                      {book.targetFinishDate && (
-                        <div className="flex items-center gap-1.5 text-micro text-content-muted mt-2.5">
-                          <Calendar size={12} className="text-warning-text" />
-                          <span>Target Finish: {formatDateLong(book.targetFinishDate)}</span>
-                        </div>
-                      )}
                     </div>
 
-                    {/* Action Controls */}
-                    <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-2 pt-3 border-t border-overlay-subtle">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          onClick={() => {
-                            setProgressModalBook(book);
-                            setProgressInput(book.currentAmount ?? book.currentPage ?? 0);
-                          }}
-                          className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5 whitespace-nowrap"
+                    <div className="flex items-center justify-between pt-2 border-t border-overlay-subtle gap-2">
+                      <span className="text-micro text-content-disabled">
+                        {book.totalAmount || book.totalPages || 250} {book.unit || 'pages'}
+                      </span>
+                      <button
+                        onClick={() => openStartReadingModal(book)}
+                        className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
+                      >
+                        <PlayCircle size={14} />
+                        <span>Start Reading</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: DISCOVER BOOKS */}
+        {activeTab === 'discover' && (
+          <div className="space-y-4">
+            {filteredCurated.length === 0 && (
+              <EmptyState size="sm" icon={BookOpen} title="No books match your search" description="Try a different search or category." />
+            )}
+            <div className="grid-cards gap-4">
+              {filteredCurated.map((curated) => {
+                const userBook = getUserBookForCurated(curated.id);
+
+                return (
+                  <div
+                    key={curated.id}
+                    className="card p-5 flex flex-col justify-between space-y-4 border-overlay-medium shadow-sm hover:border-amber-500/40 transition-all"
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        {renderCategoryBadge(curated.category, true)}
+                        <span
+                          className="badge badge-amber text-2xs flex items-center gap-1"
+                          title="Requires reading inside Ascend across ≥7 days span and ≥5 logged reading days"
                         >
-                          <Plus size={14} className="shrink-0" />
-                          <span>Log Pages</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setFinishModalBook(book);
-                            setReflectionInput('');
-                          }}
-                          className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5 whitespace-nowrap"
-                        >
-                          <CheckCircle2 size={14} className="text-success-text shrink-0" />
-                          <span>Finish</span>
-                        </button>
+                          <Sparkles size={10} /> +{READING_POINTS.completionBonus} pts on finish
+                        </span>
                       </div>
 
-                      <select
-                        aria-label="Update book reading status"
-                        value={book.status}
-                        onChange={(e) => store.updateUserBookStatus(book.id, e.target.value as UserBookStatus)}
-                        className="input text-xs py-1 px-2 bg-bg-900 border-overlay-default text-content-tertiary w-fit shrink-0 cursor-pointer"
-                      >
-                        <option value="to-read">Move to Library</option>
-                        <option value="reading">Currently Reading</option>
-                        <option value="completed">Completed</option>
-                      </select>
+                      <div>
+                        <h3 className="text-base font-bold text-content-primary">{curated.title}</h3>
+                        <p className="text-xs text-content-muted mt-0.5">by {curated.author}</p>
+                      </div>
+
+                      <p className="text-xs text-content-muted line-clamp-3 leading-relaxed">
+                        {curated.description}
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-overlay-subtle flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
+                      <span className="text-micro text-content-disabled">
+                        {curated.totalPages || 250} pages
+                      </span>
+
+                      {userBook ? (
+                        <span
+                          className={`badge text-2xs px-2 py-0.5 ${
+                            userBook.status === 'completed'
+                              ? 'badge-emerald'
+                              : userBook.status === 'reading'
+                              ? 'badge-amber'
+                              : 'bg-overlay-subtle text-content-muted border border-overlay-default'
+                          }`}
+                        >
+                          {userBook.status === 'completed'
+                            ? 'Completed'
+                            : userBook.status === 'reading'
+                            ? 'Currently Reading'
+                            : 'In Library'}
+                        </span>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            onClick={() => store.addCuratedBookToLibrary(curated, 'to-read')}
+                            className="btn-primary text-xs py-1.5 px-2.5 w-fit flex items-center gap-1 whitespace-nowrap"
+                          >
+                            <Plus size={13} className="shrink-0" />
+                            <span>Add to Library</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* TAB 2: MY LIBRARY */}
-      {activeTab === 'to-read' && (
-        <div className="space-y-4">
-          {filteredToRead.length === 0 ? (
-            <EmptyState
-              icon={ListTodo}
-              title="No books in your library"
-              description="Browse our curated self-improvement recommendations or add your own books to your reading library."
-              action={
-                <div className="flex items-center justify-center gap-3 pt-2">
-                  <button
-                    onClick={() => setActiveTab('discover')}
-                    className="btn-secondary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
+        {/* TAB 4: COMPLETED & REFLECTIONS */}
+        {activeTab === 'completed' && (
+          <div className="space-y-4">
+            {filteredCompleted.length === 0 ? (
+              <EmptyState
+                icon={CheckCircle2}
+                title="No completed books yet"
+                description="Finish reading your first book to log your key insights, takeaways, and earn points rewards."
+              />
+            ) : (
+              <div className="space-y-3">
+                {filteredCompleted.map((book) => (
+                  <div
+                    key={book.id}
+                    className="card p-5 space-y-3 border border-emerald-500/20 bg-gradient-to-r from-bg-800 to-emerald-950/10"
                   >
-                    <Library size={14} />
-                    <span>Discover Books</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCustomStatus('to-read');
-                      setAddCustomModalOpen(true);
-                    }}
-                    className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
-                  >
-                    <Plus size={14} />
-                    <span>Add to Library</span>
-                  </button>
-                </div>
-              }
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {filteredToRead.map((book) => (
-                <div
-                  key={book.id}
-                  className="card p-4 flex flex-col justify-between space-y-3 border border-overlay-subtle hover:border-overlay-default transition-all"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        {renderCategoryBadge(book.category, true)}
-                        <h3 className="text-sm font-bold text-content-primary mt-1 truncate">{book.title}</h3>
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          {renderCategoryBadge(book.category, true)}
+                          <span className="badge badge-emerald text-2xs flex items-center gap-1">
+                            <CheckCircle2 size={10} /> Completed
+                          </span>
+                          {book.pointsAwarded ? (
+                            <span className="badge badge-amber text-2xs flex items-center gap-1">
+                              <Sparkles size={10} /> +{book.pointsAwarded} pts bonus
+                            </span>
+                          ) : (
+                            <span
+                              className="badge bg-bg-700 text-content-disabled text-2xs flex items-center gap-1"
+                              title="Completion bonus requires reading inside Ascend across ≥7 days span and ≥5 distinct logged reading days"
+                            >
+                              Completed without bonus
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="text-base font-bold text-content-primary mt-1">{book.title}</h3>
                         <p className="text-xs text-content-muted">by {book.author}</p>
                       </div>
-                      <button
-                        onClick={() => setDeleteModalBook(book)}
-                        aria-label="Remove book"
-                        className={`p-1 text-content-disabled hover:text-rose-theme rounded transition-all ${TAP_TARGET}`}
-                        title="Remove Book"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
 
-                    {book.description && (
-                      <p className="text-xs text-content-muted mt-2 line-clamp-2 leading-relaxed">
-                        {book.description}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-overlay-subtle gap-2">
-                    <span className="text-micro text-content-disabled">
-                      {book.totalAmount || book.totalPages || 250} {book.unit || 'pages'}
-                    </span>
-                    <button
-                      onClick={() => openStartReadingModal(book)}
-                      className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5"
-                    >
-                      <PlayCircle size={14} />
-                      <span>Start Reading</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 3: DISCOVER BOOKS */}
-      {activeTab === 'discover' && (
-        <div className="space-y-4">
-          {filteredCurated.length === 0 && (
-            <EmptyState size="sm" icon={BookOpen} title="No books match your search" description="Try a different search or category." />
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCurated.map((curated) => {
-              const userBook = getUserBookForCurated(curated.id);
-
-              return (
-                <div
-                  key={curated.id}
-                  className="card p-5 flex flex-col justify-between space-y-4 border-overlay-medium shadow-sm hover:border-amber-500/40 transition-all"
-                >
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between gap-2">
-                      {renderCategoryBadge(curated.category, true)}
-                      <span
-                        className="badge badge-amber text-2xs flex items-center gap-1"
-                        title="Requires reading inside Ascend across ≥7 days span and ≥5 logged reading days"
-                      >
-                        <Sparkles size={10} /> +{READING_POINTS.completionBonus} pts on finish
-                      </span>
-                    </div>
-
-                    <div>
-                      <h3 className="text-base font-bold text-content-primary">{curated.title}</h3>
-                      <p className="text-xs text-content-muted mt-0.5">by {curated.author}</p>
-                    </div>
-
-                    <p className="text-xs text-content-muted line-clamp-3 leading-relaxed">
-                      {curated.description}
-                    </p>
-                  </div>
-
-                  <div className="pt-3 border-t border-overlay-subtle flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
-                    <span className="text-micro text-content-disabled">
-                      {curated.totalPages || 250} pages
-                    </span>
-
-                    {userBook ? (
-                      <span
-                        className={`badge text-2xs px-2 py-0.5 ${
-                          userBook.status === 'completed'
-                            ? 'badge-emerald'
-                            : userBook.status === 'reading'
-                            ? 'badge-amber'
-                            : 'bg-overlay-subtle text-content-muted border border-overlay-default'
-                        }`}
-                      >
-                        {userBook.status === 'completed'
-                          ? 'Completed'
-                          : userBook.status === 'reading'
-                          ? 'Currently Reading'
-                          : 'In Library'}
-                      </span>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          onClick={() => store.addCuratedBookToLibrary(curated, 'to-read')}
-                          className="btn-primary text-xs py-1.5 px-2.5 w-fit flex items-center gap-1 whitespace-nowrap"
-                        >
-                          <Plus size={13} className="shrink-0" />
-                          <span>Add to Library</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: COMPLETED & REFLECTIONS */}
-      {activeTab === 'completed' && (
-        <div className="space-y-4">
-          {filteredCompleted.length === 0 ? (
-            <EmptyState
-              icon={CheckCircle2}
-              title="No completed books yet"
-              description="Finish reading your first book to log your key insights, takeaways, and earn points rewards."
-            />
-          ) : (
-            <div className="space-y-3">
-              {filteredCompleted.map((book) => (
-                <div
-                  key={book.id}
-                  className="card p-5 space-y-3 border border-emerald-500/20 bg-gradient-to-r from-bg-800 to-emerald-950/10"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        {renderCategoryBadge(book.category, true)}
-                        <span className="badge badge-emerald text-2xs flex items-center gap-1">
-                          <CheckCircle2 size={10} /> Completed
-                        </span>
-                        {book.pointsAwarded ? (
-                          <span className="badge badge-amber text-2xs flex items-center gap-1">
-                            <Sparkles size={10} /> +{book.pointsAwarded} pts bonus
-                          </span>
-                        ) : (
-                          <span
-                            className="badge bg-bg-700 text-content-disabled text-2xs flex items-center gap-1"
-                            title="Completion bonus requires reading inside Ascend across ≥7 days span and ≥5 distinct logged reading days"
-                          >
-                            Completed without bonus
+                      <div className="flex items-center gap-2 shrink-0">
+                        {book.dateCompleted && (
+                          <span className="text-xs text-content-muted flex items-center gap-1">
+                            <Calendar size={12} className="text-success-text" />
+                            {formatDateLong(book.dateCompleted)}
                           </span>
                         )}
+                        <button
+                          onClick={() => setDeleteModalBook(book)}
+                          aria-label="Remove book"
+                          className={`p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
+                          title="Remove Book"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
-                      <h3 className="text-base font-bold text-content-primary mt-1">{book.title}</h3>
-                      <p className="text-xs text-content-muted">by {book.author}</p>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      {book.dateCompleted && (
-                        <span className="text-xs text-content-muted flex items-center gap-1">
-                          <Calendar size={12} className="text-success-text" />
-                          {formatDateLong(book.dateCompleted)}
+                    {book.reflection && (
+                      <div className="p-3.5 bg-bg-900/80 rounded-xl border border-emerald-500/15 text-xs text-content-tertiary leading-relaxed space-y-1">
+                        <span className="font-semibold text-success-text block text-micro">
+                          Key Takeaway / Reflection:
                         </span>
-                      )}
+                        <p>{book.reflection}</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2 text-xs text-content-disabled border-t border-overlay-subtle">
+                      <span>
+                        {book.totalAmount || book.totalPages || 250} {book.unit || 'pages'} read
+                      </span>
                       <button
-                        onClick={() => setDeleteModalBook(book)}
-                        aria-label="Remove book"
-                        className={`p-1.5 text-content-disabled hover:text-rose-theme rounded-lg hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
-                        title="Remove Book"
+                        onClick={() => store.restartBook(book.id)}
+                        className={`text-xs text-warning-text hover:text-warning-text-muted font-medium transition-colors ${TAP_TARGET}`}
                       >
-                        <Trash2 size={16} />
+                        Re-read book →
                       </button>
                     </div>
                   </div>
-
-                  {book.reflection && (
-                    <div className="p-3.5 bg-bg-900/80 rounded-xl border border-emerald-500/15 text-xs text-content-tertiary leading-relaxed space-y-1">
-                      <span className="font-semibold text-success-text block text-micro">
-                        Key Takeaway / Reflection:
-                      </span>
-                      <p>{book.reflection}</p>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-2 text-xs text-content-disabled border-t border-overlay-subtle">
-                    <span>
-                      {book.totalAmount || book.totalPages || 250} {book.unit || 'pages'} read
-                    </span>
-                    <button
-                      onClick={() => store.restartBook(book.id)}
-                      className={`text-xs text-warning-text hover:text-warning-text-muted font-medium transition-colors ${TAP_TARGET}`}
-                    >
-                      Re-read book →
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </PageColumns>
 
       {/* MODAL: ADD CUSTOM BOOK */}
       <Dialog

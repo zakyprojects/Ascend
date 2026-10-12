@@ -59,3 +59,6 @@ export type { SkeletonProps } from './Skeleton';
 
 export { Switch } from './Switch';
 export type { SwitchProps } from './Switch';
+
+export { PageColumns } from './PageColumns';
+export type { PageColumnsProps } from './PageColumns';

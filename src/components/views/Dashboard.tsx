@@ -19,7 +19,7 @@ import {
   Clock,
   type LucideIcon,
 } from 'lucide-react';
-import { Card, EmptyState, Button } from '@/components/ui/primitives';
+import { Card, EmptyState, Button, PageColumns } from '@/components/ui/primitives';
 import { TAP_TARGET, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
@@ -184,291 +184,300 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
         </div>
       )}
 
-      {/* Tier + Points hero */}
-      <Reveal index={0}>
-      <div className="card p-5 relative overflow-hidden">
-        <div
-          className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-15 dark:opacity-10 pointer-events-none"
-          style={{ background: `radial-gradient(circle, var(--rank-${tier.name.toLowerCase()}-text), transparent 70%)` }}
-        />
-        <div className="relative flex items-center gap-4">
-          <TierBadge totalPoints={seasonPoints} size="xl" />
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-display font-bold" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
-                {tier.name}
-              </h2>
-              {nextTier && (
-                <span className="text-xs text-content-disabled">
-                  → {nextTier.name}
-                </span>
-              )}
-            </div>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <CountUp
-                value={ninetyDayData.userPoints}
-                className="text-3xl font-display font-bold text-content-primary tabular-nums"
+      <PageColumns
+        lead={
+          <>
+            {/* Tier + Points hero */}
+            <Reveal index={0}>
+            <div className="card p-5 relative overflow-hidden">
+              <div
+                className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-15 dark:opacity-10 pointer-events-none"
+                style={{ background: `radial-gradient(circle, var(--rank-${tier.name.toLowerCase()}-text), transparent 70%)` }}
               />
-              <span className="text-sm text-content-disabled">points</span>
-              {todayNet !== 0 && (
-                <span
-                  className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
-                    todayNet > 0 ? 'bg-primary-500/15 text-brand-text' : 'bg-warning-soft text-warning-text'
-                  }`}
-                >
-                  {todayNet > 0 ? '+' : '−'}
-                  {Math.abs(todayNet).toLocaleString()} today
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="mt-4">
-          <TierProgress totalPoints={seasonPoints} />
-        </div>
-      </div>
-      </Reveal>
-
-      {/* Stats grid */}
-      <Reveal index={1} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard icon={<Check size={18} />} label="Done Today" value={`${completedToday.length}/${habits.length}`} tone="emerald" />
-        <StatCard icon={<TrendingUp size={18} />} label="Completion" value={`${completionRate}%`} tone="sky" />
-        <StatCard icon={<Flame size={18} />} label={currentStreakLabel} value={currentStreakValue} tone="amber" />
-        <StatCard icon={<Star size={18} />} label="Habits" value={String(habits.length)} tone="indigo" />
-      </Reveal>
-
-      {/* Last 7 days + today's habits: the two things checked daily */}
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <Reveal index={2}>
-          <WeekActivityCard points={weekPoints.days} pointsPartial={weekPoints.partial} habits={weekHabits} />
-        </Reveal>
-
-        {/* Today's habits quick-complete */}
-        <Reveal index={3}>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="section-title">Today's Habits</h2>
-            <button onClick={() => onViewChange('habits')} className="btn-ghost text-xs">
-              View all <ArrowRight size={14} />
-            </button>
-          </div>
-
-          {habits.length === 0 ? (
-            <EmptyState
-              surface
-              size="md"
-              title="No habits yet. Start building your routine!"
-              action={
-                <Button variant="primary" onClick={() => onViewChange('habits')}>
-                  Add Your First Habit
-                </Button>
-              }
-            />
-          ) : (
-            <div className="space-y-2">
-              {pendingToday.length > 0 ? (
-                pendingToday.slice(0, 4).map((habit) => {
-                  const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
-                  return (
-                    <div key={habit.id} className="card p-3 flex items-center gap-3 card-hover">
-                      <button
-                        disabled={isLinked}
-                        title={isLinked ? 'Log reading progress in Reading Hub' : undefined}
-                        aria-label={isLinked ? `${habit.name} (log in Reading Hub)` : `Mark ${habit.name} done`}
-                        onClick={() => !isLinked && store.toggleHabit(habit.id)}
-                        className={`shrink-0 w-9 h-9 rounded-lg border border-overlay-subtle flex items-center justify-center transition-all ${
-                          isLinked
-                            ? 'bg-bg-600/60 text-content-subtle cursor-default'
-                            : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary active:scale-90'
-                        } ${TAP_TARGET} ${FOCUS_RING}`}
-                      >
-                        <Check size={18} />
-                      </button>
-                      <span className="text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
-                        {isLinked && <BookOpen size={13} className="text-warning-text shrink-0" />}
-                        <span>{habit.name}</span>
+              <div className="relative flex items-center gap-4">
+                <TierBadge totalPoints={seasonPoints} size="xl" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-display font-bold" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
+                      {tier.name}
+                    </h2>
+                    {nextTier && (
+                      <span className="text-xs text-content-disabled">
+                        → {nextTier.name}
                       </span>
-                      {isLinked && habit.points === 0 ? (
-                        <span className="text-xs text-content-subtle">For habit tracking</span>
-                      ) : habit.isPreset ? (
-                        <span className="text-xs text-brand-text font-medium">+{habit.points} pts</span>
-                      ) : (
-                        <span className="text-xs text-content-subtle">No pts</span>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="card p-5 text-center">
-                  <div className="w-12 h-12 rounded-xl bg-primary-500/15 flex items-center justify-center mx-auto mb-2">
-                    <Sparkles size={22} className="text-brand-text" />
+                    )}
                   </div>
-                  <p className="text-sm font-medium text-brand-text">All habits done today!</p>
-                  <p className="text-xs text-content-disabled mt-0.5">Great work. See you tomorrow.</p>
+                  <div className="flex items-baseline gap-1.5 mt-0.5">
+                    <CountUp
+                      value={ninetyDayData.userPoints}
+                      className="text-3xl font-display font-bold text-content-primary tabular-nums"
+                    />
+                    <span className="text-sm text-content-disabled">points</span>
+                    {todayNet !== 0 && (
+                      <span
+                        className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
+                          todayNet > 0 ? 'bg-primary-500/15 text-brand-text' : 'bg-warning-soft text-warning-text'
+                        }`}
+                      >
+                        {todayNet > 0 ? '+' : '−'}
+                        {Math.abs(todayNet).toLocaleString()} today
+                      </span>
+                    )}
+                  </div>
                 </div>
-              )}
-              {completedToday.length > 0 && pendingToday.length > 0 && (
-                <p className="text-xs text-content-subtle px-1">
-                  {completedToday.length} already completed
-                </p>
-              )}
-            </div>
-          )}
-        </Reveal>
-      </div>
-
-      {/* League ranks */}
-      <Reveal index={4} className="grid grid-cols-3 gap-3">
-        <LeagueRankCard type="weekly" rank={weeklyData.userRank} points={weeklyData.userPoints} />
-        <LeagueRankCard type="monthly" rank={monthlyData.userRank} points={monthlyData.userPoints} />
-        <LeagueRankCard type="ninetyDay" rank={ninetyDayData.userRank} points={ninetyDayData.userPoints} />
-      </Reveal>
-
-      {/* Journal snapshot */}
-      <Reveal index={5}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="section-title">Today's Journal</h2>
-          <button onClick={() => onViewChange('journal')} className="btn-ghost text-xs">
-            {todayEntry ? 'Edit' : 'Write'} <ArrowRight size={14} />
-          </button>
-        </div>
-        <Card
-          variant="interactive"
-          padding="md"
-          onClick={() => onViewChange('journal')}
-        >
-          {todayEntry ? (
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: moodColor(todayEntry.mood) }} />
-                <span className="text-xs text-content-muted capitalize">{todayEntry.mood}</span>
               </div>
-              <p className="text-sm text-content-tertiary line-clamp-2">
-                {todayEntry.content || 'No content written'}
-              </p>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-bg-600 flex items-center justify-center">
-                <BookOpen size={18} className="text-content-disabled" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-content-tertiary">Write today's entry</p>
-                <p className="text-xs text-content-disabled">How was your day? (+{JOURNAL_POINTS.entryCompleted} pts)</p>
+              <div className="mt-4">
+                <TierProgress totalPoints={seasonPoints} />
               </div>
             </div>
-          )}
-        </Card>
-      </Reveal>
+            </Reveal>
 
-      {/* Activity Summary Widgets Grid */}
-      <Reveal index={6}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="section-title">Self-Improvement Activity Summary</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {/* Exercise Summary Widget */}
-          <ModuleCard
-            tone="emerald"
-            icon={Activity}
-            title="Exercise Tracker"
-            onClick={() => onViewChange('exercise')}
-          >
-            <div>
-              <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyExerciseMins} /> <span className="text-xs font-normal text-content-muted">mins this week</span></div>
-              <div className="text-micro text-content-disabled"><CountUp value={weeklyWorkouts.length} /> sessions completed</div>
-            </div>
-          </ModuleCard>
+            {/* Stats grid */}
+            <Reveal index={1} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatCard icon={<Check size={18} />} label="Done Today" value={`${completedToday.length}/${habits.length}`} tone="emerald" />
+              <StatCard icon={<TrendingUp size={18} />} label="Completion" value={`${completionRate}%`} tone="sky" />
+              <StatCard icon={<Flame size={18} />} label={currentStreakLabel} value={currentStreakValue} tone="amber" />
+              <StatCard icon={<Star size={18} />} label="Habits" value={String(habits.length)} tone="indigo" />
+            </Reveal>
 
-          {/* Reading Summary Widget */}
-          <ModuleCard
-            tone="amber"
-            icon={BookMarked}
-            title="Reading Hub"
-            onClick={() => onViewChange('reading')}
-          >
-            <div>
-              <div className="text-xl font-bold text-content-primary"><CountUp value={activeBooks} /> <span className="text-xs font-normal text-content-muted">books in progress</span></div>
-              <div className="text-micro text-content-disabled"><CountUp value={finishedBooks} /> finished total</div>
-            </div>
-          </ModuleCard>
+            {/* Last 7 days + today's habits: the two things checked daily */}
+            <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+              <Reveal index={2}>
+                <WeekActivityCard points={weekPoints.days} pointsPartial={weekPoints.partial} habits={weekHabits} />
+              </Reveal>
 
-          {/* Skill Summary Widget */}
-          <ModuleCard
-            tone="purple"
-            icon={Zap}
-            title="Skill Learning"
-            onClick={() => onViewChange('skills')}
-          >
-            <div>
-              <div className="text-xl font-bold text-content-primary"><CountUp value={totalSkillHours} decimals={1} /> <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
-              <div className="text-micro text-content-disabled"><CountUp value={store.state.skills.length} /> skills tracked</div>
-            </div>
-          </ModuleCard>
+              {/* Today's habits quick-complete */}
+              <Reveal index={3}>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="section-title">Today's Habits</h2>
+                  <button onClick={() => onViewChange('habits')} className="btn-ghost text-xs">
+                    View all <ArrowRight size={14} />
+                  </button>
+                </div>
 
-          {/* Bad Habit Summary Widget */}
-          <ModuleCard
-            tone="rose"
-            icon={ShieldAlert}
-            title="Bad Habits Reduction"
-            onClick={() => onViewChange('bad-habits')}
-          >
-            <div>
-              <div className="text-xl font-bold text-content-primary"><CountUp value={badHabitCount} /> <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
-              <div className="text-micro text-content-disabled">Escalating penalties enabled</div>
-            </div>
-          </ModuleCard>
-
-          {/* Addiction Recovery Summary Widget */}
-          <ModuleCard
-            tone="red"
-            icon={HeartPulse}
-            title="Addiction Recovery"
-            onClick={() => onViewChange('recovery')}
-          >
-            <div>
-              <div className="text-xl font-bold text-content-primary">
-                {activeAddiction ? activeAddiction.title : 'Sobriety Tracker'}
-              </div>
-              <div className="text-micro text-content-disabled">Includes emergency support & breathing</div>
-            </div>
-          </ModuleCard>
-
-          {/* Deep Focus Summary Widget */}
-          <ModuleCard
-            tone="cyan"
-            icon={Timer}
-            title="Prefrontal / Focus"
-            onClick={() => onViewChange('prefrontal')}
-          >
-            <div>
-              <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyFocusMins} /> <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
-              <div className="text-micro text-content-disabled">Pomodoro, decisions & emotions</div>
-            </div>
-          </ModuleCard>
-
-          {/* Time Tracker Blueprint Widget */}
-          <ModuleCard
-            tone="indigo"
-            icon={Clock}
-            title="Time Tracker"
-            onClick={() => onViewChange('time-tracker')}
-          >
-            <div>
-              <div className="text-xl font-bold text-content-primary">
-                <AutoNum text={todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'} />{' '}
-                <span className="text-xs font-normal text-content-muted">planned today</span>
-              </div>
-              <div className="text-micro text-content-disabled">
-                {todayBlocks.length > 0 ? (
-                  <AutoNum text={`${todayCompletedBlocksCount}/${todayBlocks.length} blocks completed`} />
+                {habits.length === 0 ? (
+                  <EmptyState
+                    surface
+                    size="md"
+                    title="No habits yet. Start building your routine!"
+                    action={
+                      <Button variant="primary" onClick={() => onViewChange('habits')}>
+                        Add Your First Habit
+                      </Button>
+                    }
+                  />
                 ) : (
-                  'No scheduled blocks yet'
+                  <div className="space-y-2">
+                    {pendingToday.length > 0 ? (
+                      pendingToday.slice(0, 4).map((habit) => {
+                        const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
+                        return (
+                          <div key={habit.id} className="card p-3 flex items-center gap-3 card-hover">
+                            <button
+                              disabled={isLinked}
+                              title={isLinked ? 'Log reading progress in Reading Hub' : undefined}
+                              aria-label={isLinked ? `${habit.name} (log in Reading Hub)` : `Mark ${habit.name} done`}
+                              onClick={() => !isLinked && store.toggleHabit(habit.id)}
+                              className={`shrink-0 w-9 h-9 rounded-lg border border-overlay-subtle flex items-center justify-center transition-all ${
+                                isLinked
+                                  ? 'bg-bg-600/60 text-content-subtle cursor-default'
+                                  : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary active:scale-90'
+                              } ${TAP_TARGET} ${FOCUS_RING}`}
+                            >
+                              <Check size={18} />
+                            </button>
+                            <span className="text-sm text-content-tertiary flex-1 truncate flex items-center gap-1.5">
+                              {isLinked && <BookOpen size={13} className="text-warning-text shrink-0" />}
+                              <span>{habit.name}</span>
+                            </span>
+                            {isLinked && habit.points === 0 ? (
+                              <span className="text-xs text-content-subtle">For habit tracking</span>
+                            ) : habit.isPreset ? (
+                              <span className="text-xs text-brand-text font-medium">+{habit.points} pts</span>
+                            ) : (
+                              <span className="text-xs text-content-subtle">No pts</span>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="card p-5 text-center">
+                        <div className="w-12 h-12 rounded-xl bg-primary-500/15 flex items-center justify-center mx-auto mb-2">
+                          <Sparkles size={22} className="text-brand-text" />
+                        </div>
+                        <p className="text-sm font-medium text-brand-text">All habits done today!</p>
+                        <p className="text-xs text-content-disabled mt-0.5">Great work. See you tomorrow.</p>
+                      </div>
+                    )}
+                    {completedToday.length > 0 && pendingToday.length > 0 && (
+                      <p className="text-xs text-content-subtle px-1">
+                        {completedToday.length} already completed
+                      </p>
+                    )}
+                  </div>
                 )}
-              </div>
+              </Reveal>
             </div>
-          </ModuleCard>
-        </div>
-      </Reveal>
+          </>
+        }
+        aside={
+          <>
+            {/* League ranks */}
+            <Reveal index={4} className="grid grid-cols-3 gap-3">
+              <LeagueRankCard type="weekly" rank={weeklyData.userRank} points={weeklyData.userPoints} />
+              <LeagueRankCard type="monthly" rank={monthlyData.userRank} points={monthlyData.userPoints} />
+              <LeagueRankCard type="ninetyDay" rank={ninetyDayData.userRank} points={ninetyDayData.userPoints} />
+            </Reveal>
+
+            {/* Journal snapshot */}
+            <Reveal index={5}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="section-title">Today's Journal</h2>
+                <button onClick={() => onViewChange('journal')} className="btn-ghost text-xs">
+                  {todayEntry ? 'Edit' : 'Write'} <ArrowRight size={14} />
+                </button>
+              </div>
+              <Card
+                variant="interactive"
+                padding="md"
+                onClick={() => onViewChange('journal')}
+              >
+                {todayEntry ? (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: moodColor(todayEntry.mood) }} />
+                      <span className="text-xs text-content-muted capitalize">{todayEntry.mood}</span>
+                    </div>
+                    <p className="text-sm text-content-tertiary line-clamp-2">
+                      {todayEntry.content || 'No content written'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-bg-600 flex items-center justify-center">
+                      <BookOpen size={18} className="text-content-disabled" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-content-tertiary">Write today's entry</p>
+                      <p className="text-xs text-content-disabled">How was your day? (+{JOURNAL_POINTS.entryCompleted} pts)</p>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            </Reveal>
+          </>
+        }
+      >
+        {/* Activity Summary Widgets Grid */}
+        <Reveal index={6}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="section-title">Self-Improvement Activity Summary</h2>
+          </div>
+          <div className="grid-cards gap-3">
+            {/* Exercise Summary Widget */}
+            <ModuleCard
+              tone="emerald"
+              icon={Activity}
+              title="Exercise Tracker"
+              onClick={() => onViewChange('exercise')}
+            >
+              <div>
+                <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyExerciseMins} /> <span className="text-xs font-normal text-content-muted">mins this week</span></div>
+                <div className="text-micro text-content-disabled"><CountUp value={weeklyWorkouts.length} /> sessions completed</div>
+              </div>
+            </ModuleCard>
+
+            {/* Reading Summary Widget */}
+            <ModuleCard
+              tone="amber"
+              icon={BookMarked}
+              title="Reading Hub"
+              onClick={() => onViewChange('reading')}
+            >
+              <div>
+                <div className="text-xl font-bold text-content-primary"><CountUp value={activeBooks} /> <span className="text-xs font-normal text-content-muted">books in progress</span></div>
+                <div className="text-micro text-content-disabled"><CountUp value={finishedBooks} /> finished total</div>
+              </div>
+            </ModuleCard>
+
+            {/* Skill Summary Widget */}
+            <ModuleCard
+              tone="purple"
+              icon={Zap}
+              title="Skill Learning"
+              onClick={() => onViewChange('skills')}
+            >
+              <div>
+                <div className="text-xl font-bold text-content-primary"><CountUp value={totalSkillHours} decimals={1} /> <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
+                <div className="text-micro text-content-disabled"><CountUp value={store.state.skills.length} /> skills tracked</div>
+              </div>
+            </ModuleCard>
+
+            {/* Bad Habit Summary Widget */}
+            <ModuleCard
+              tone="rose"
+              icon={ShieldAlert}
+              title="Bad Habits Reduction"
+              onClick={() => onViewChange('bad-habits')}
+            >
+              <div>
+                <div className="text-xl font-bold text-content-primary"><CountUp value={badHabitCount} /> <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
+                <div className="text-micro text-content-disabled">Escalating penalties enabled</div>
+              </div>
+            </ModuleCard>
+
+            {/* Addiction Recovery Summary Widget */}
+            <ModuleCard
+              tone="red"
+              icon={HeartPulse}
+              title="Addiction Recovery"
+              onClick={() => onViewChange('recovery')}
+            >
+              <div>
+                <div className="text-xl font-bold text-content-primary">
+                  {activeAddiction ? activeAddiction.title : 'Sobriety Tracker'}
+                </div>
+                <div className="text-micro text-content-disabled">Includes emergency support & breathing</div>
+              </div>
+            </ModuleCard>
+
+            {/* Deep Focus Summary Widget */}
+            <ModuleCard
+              tone="cyan"
+              icon={Timer}
+              title="Prefrontal / Focus"
+              onClick={() => onViewChange('prefrontal')}
+            >
+              <div>
+                <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyFocusMins} /> <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
+                <div className="text-micro text-content-disabled">Pomodoro, decisions & emotions</div>
+              </div>
+            </ModuleCard>
+
+            {/* Time Tracker Blueprint Widget */}
+            <ModuleCard
+              tone="indigo"
+              icon={Clock}
+              title="Time Tracker"
+              onClick={() => onViewChange('time-tracker')}
+            >
+              <div>
+                <div className="text-xl font-bold text-content-primary">
+                  <AutoNum text={todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'} />{' '}
+                  <span className="text-xs font-normal text-content-muted">planned today</span>
+                </div>
+                <div className="text-micro text-content-disabled">
+                  {todayBlocks.length > 0 ? (
+                    <AutoNum text={`${todayCompletedBlocksCount}/${todayBlocks.length} blocks completed`} />
+                  ) : (
+                    'No scheduled blocks yet'
+                  )}
+                </div>
+              </div>
+            </ModuleCard>
+          </div>
+        </Reveal>
+      </PageColumns>
     </div>
   );
 }

@@ -1611,7 +1611,7 @@ export function ProjectsGoalsView({
               onTabSwitch={setActiveTab}
             />
           ) : (
-            <div className="space-y-3">
+            <div className="grid-cards-xl gap-3 items-start">
               {filteredGoals.map((goal) => {
                 const prog = getGoalProgress(goal.id);
                 return (
@@ -1960,7 +1960,7 @@ export function ProjectsGoalsView({
               }
             />
           ) : (
-            <div className="space-y-3">
+            <div className="grid-cards-xl gap-3 items-start">
               {filteredProjects.map((project) => {
                 const prog = getProjectProgress(project.id);
                 const isOverdue = project.dueDate && project.dueDate < currentToday && project.status !== 'completed';

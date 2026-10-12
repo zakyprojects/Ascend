@@ -9,7 +9,7 @@ import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habit
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { Dialog, EmptyState } from '@/components/ui/primitives';
+import { Dialog, EmptyState, PageColumns } from '@/components/ui/primitives';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
@@ -98,63 +98,70 @@ export function HabitTracker({ store }: { store: AppStore }) {
         {hasDailyHabits && <WeekConsistencyCard habits={habits} />}
       </Reveal>
 
-      <CapMeterConnected state={store.state} capId="presetHabits" />
+      <PageColumns
+        aside={
+          <>
+            <CapMeterConnected state={store.state} capId="presetHabits" />
 
-      {/* Missed Habit Penalty Info Banner */}
-      <div className="card p-3.5 flex items-start gap-2.5 text-xs text-content-muted">
-        <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
-        <div className="space-y-0.5">
-          <p className="font-bold text-content-secondary">Tier-Scaled Missed Habit Penalties:</p>
-          <p className="leading-relaxed">
-            Missing a preset habit deducts points equal to its value (1st miss = -1x).
-            For <span className="text-content-secondary font-semibold">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="text-warning-text font-semibold">1.5x</span>.
-            For <span className="text-brand-text font-semibold">Performer tier and above</span>, escalation caps at <span className="text-rose-theme font-semibold">2.5x</span>.
-            Completing the habit breaks the miss streak and resets the penalty to 1x!
-          </p>
-        </div>
-      </div>
-      {habits.length === 0 ? (
-        <EmptyState
-          icon={Check}
-          title="No habits yet"
-          description="Browse the preset library or create your own to start building streaks."
-          action={
-            <button onClick={() => { setShowAdd(true); setAddMode('choice'); }} className="btn-primary mx-auto">
-              <Plus size={18} /> Add Your First Habit
-            </button>
-          }
-        />
-      ) : (
-        <div className="space-y-3">
-          {todayHabits.length > 0 && (
-            <div>
-              <h2 className="section-title mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-secondary-500" />
-                To Do
-              </h2>
-              <div className="space-y-2.5">
-                {todayHabits.map((habit) => (
-                  <HabitCard key={habit.id} habit={habit} store={store} onDelete={() => setConfirmDelete(habit)} />
-                ))}
+            {/* Missed Habit Penalty Info Banner */}
+            <div className="card p-3.5 flex items-start gap-2.5 text-xs text-content-muted">
+              <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="font-bold text-content-secondary">Tier-Scaled Missed Habit Penalties:</p>
+                <p className="leading-relaxed">
+                  Missing a preset habit deducts points equal to its value (1st miss = -1x).
+                  For <span className="text-content-secondary font-semibold">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="text-warning-text font-semibold">1.5x</span>.
+                  For <span className="text-brand-text font-semibold">Performer tier and above</span>, escalation caps at <span className="text-rose-theme font-semibold">2.5x</span>.
+                  Completing the habit breaks the miss streak and resets the penalty to 1x!
+                </p>
               </div>
             </div>
-          )}
-
-          {completedToday.length > 0 && (
-            <div>
-              <h2 className="section-title mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-primary-500" />
-                Completed Today
-              </h2>
-              <div className="space-y-2.5">
-                {completedToday.map((habit) => (
-                  <HabitCard key={habit.id} habit={habit} store={store} onDelete={() => setConfirmDelete(habit)} />
-                ))}
+          </>
+        }
+      >
+        {habits.length === 0 ? (
+          <EmptyState
+            icon={Check}
+            title="No habits yet"
+            description="Browse the preset library or create your own to start building streaks."
+            action={
+              <button onClick={() => { setShowAdd(true); setAddMode('choice'); }} className="btn-primary mx-auto">
+                <Plus size={18} /> Add Your First Habit
+              </button>
+            }
+          />
+        ) : (
+          <div className="space-y-3">
+            {todayHabits.length > 0 && (
+              <div>
+                <h2 className="section-title mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-secondary-500" />
+                  To Do
+                </h2>
+                <div className="space-y-2.5">
+                  {todayHabits.map((habit) => (
+                    <HabitCard key={habit.id} habit={habit} store={store} onDelete={() => setConfirmDelete(habit)} />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+
+            {completedToday.length > 0 && (
+              <div>
+                <h2 className="section-title mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary-500" />
+                  Completed Today
+                </h2>
+                <div className="space-y-2.5">
+                  {completedToday.map((habit) => (
+                    <HabitCard key={habit.id} habit={habit} store={store} onDelete={() => setConfirmDelete(habit)} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </PageColumns>
 
       {/* Add habit modal */}
       <Dialog open={showAdd} onClose={resetModal} title="Add Habit" maxWidth="max-w-lg">

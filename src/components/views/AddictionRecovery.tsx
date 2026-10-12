@@ -10,7 +10,7 @@ import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
 import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS } from '@/lib/pointsConfig';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { recoverySeasonCapNote } from '@/lib/capCopy';
-import { Dialog, EmptyState } from '@/components/ui/primitives';
+import { Dialog, EmptyState, PageColumns } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { ProgressRing } from '@/components/ui/charts';
 
@@ -139,195 +139,204 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         </div>
       </div>
 
-      {/* Main Sobriety Streak Card */}
-      {!tracker ? (
-        <EmptyState
-          icon={ShieldCheck}
-          title="Set Up Your Sobriety Tracker"
-          description="Choose what you are recovering from (e.g., Alcohol, Smoking, Sugar, Social Media) and start tracking your milestone achievements today."
-          action={
-            <button onClick={() => setSetupTrackerModalOpen(true)} className="btn-primary">
-              Start Sobriety Tracker
-            </button>
-          }
-        />
-      ) : (
-        <div className="card p-6 relative overflow-hidden space-y-6">
-          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-overlay-subtle pb-4">
-            <div>
-              <span className="text-xs text-content-disabled uppercase tracking-wider font-bold">Sobriety Counter</span>
-              <h2 className="text-xl font-bold text-content-primary">{tracker.title}</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setResetConfirmOpen(true)}
-                className="btn-ghost text-xs text-content-muted hover:text-warning-text flex items-center gap-1.5"
-              >
-                <RefreshCw size={14} />
-                <span>Reset Timer</span>
-              </button>
-              <button
-                onClick={() => setDeleteTrackerConfirmOpen(true)}
-                className="btn-ghost text-xs text-content-muted hover:text-rose-theme flex items-center gap-1.5"
-                title="Delete Sobriety Tracker Entirely"
-              >
-                <Trash2 size={14} />
-                <span>Delete Tracker</span>
-              </button>
-            </div>
-          </div>
+      <PageColumns
+        lead={
+          <>
+            {/* Main Sobriety Streak Card */}
+            {!tracker ? (
+              <EmptyState
+                icon={ShieldCheck}
+                title="Set Up Your Sobriety Tracker"
+                description="Choose what you are recovering from (e.g., Alcohol, Smoking, Sugar, Social Media) and start tracking your milestone achievements today."
+                action={
+                  <button onClick={() => setSetupTrackerModalOpen(true)} className="btn-primary">
+                    Start Sobriety Tracker
+                  </button>
+                }
+              />
+            ) : (
+              <div className="card p-6 relative overflow-hidden space-y-6">
+                <div className="flex items-center justify-between flex-wrap gap-2 border-b border-overlay-subtle pb-4">
+                  <div>
+                    <span className="text-xs text-content-disabled uppercase tracking-wider font-bold">Sobriety Counter</span>
+                    <h2 className="text-xl font-bold text-content-primary">{tracker.title}</h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setResetConfirmOpen(true)}
+                      className="btn-ghost text-xs text-content-muted hover:text-warning-text flex items-center gap-1.5"
+                    >
+                      <RefreshCw size={14} />
+                      <span>Reset Timer</span>
+                    </button>
+                    <button
+                      onClick={() => setDeleteTrackerConfirmOpen(true)}
+                      className="btn-ghost text-xs text-content-muted hover:text-rose-theme flex items-center gap-1.5"
+                      title="Delete Sobriety Tracker Entirely"
+                    >
+                      <Trash2 size={14} />
+                      <span>Delete Tracker</span>
+                    </button>
+                  </div>
+                </div>
 
-          {/* Live Counter Display */}
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-rose-theme tabular-nums">{timeElapsed.days}</div>
-              <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Days</div>
-            </div>
-            <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary tabular-nums">{timeElapsed.hours}</div>
-              <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Hours</div>
-            </div>
-            <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary tabular-nums">{timeElapsed.minutes}</div>
-              <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Mins</div>
-            </div>
-            <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
-              <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary tabular-nums">{timeElapsed.seconds}</div>
-              <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Secs</div>
-            </div>
-          </div>
+                {/* Live Counter Display */}
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
+                    <div className="text-3xl sm:text-4xl font-display font-bold text-rose-theme tabular-nums">{timeElapsed.days}</div>
+                    <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Days</div>
+                  </div>
+                  <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
+                    <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary tabular-nums">{timeElapsed.hours}</div>
+                    <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Hours</div>
+                  </div>
+                  <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
+                    <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary tabular-nums">{timeElapsed.minutes}</div>
+                    <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Mins</div>
+                  </div>
+                  <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
+                    <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary tabular-nums">{timeElapsed.seconds}</div>
+                    <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Secs</div>
+                  </div>
+                </div>
 
-          {/* Next milestone */}
-          <div className="flex items-center gap-4 p-3 rounded-2xl bg-bg-800/60 border border-overlay-subtle">
-            <ProgressRing
-              value={nextMilestone ? elapsedHours : 1}
-              max={nextMilestone ? nextMilestone.requiredHours : 1}
-              label={nextMilestone ? `Progress to ${nextMilestone.label}` : 'All milestones reached'}
-              tone="warning"
-              size={56}
-              thickness={5}
-            >
-              <span className="text-xl" aria-hidden="true">{nextMilestone ? nextMilestone.icon : '👑'}</span>
-            </ProgressRing>
-            <div className="min-w-0">
-              <div className="text-2xs text-content-disabled uppercase tracking-wider font-bold">Next milestone</div>
-              {nextMilestone ? (
-                <p className="text-sm font-bold text-content-primary">
-                  {nextMilestone.label}{' '}
-                  <span className="font-normal text-content-muted tabular-nums">
-                    in {hoursToNext >= 24 ? `${Math.floor(hoursToNext / 24)}d ${hoursToNext % 24}h` : `${hoursToNext}h`}
-                  </span>
-                </p>
+                {/* Next milestone */}
+                <div className="flex items-center gap-4 p-3 rounded-2xl bg-bg-800/60 border border-overlay-subtle">
+                  <ProgressRing
+                    value={nextMilestone ? elapsedHours : 1}
+                    max={nextMilestone ? nextMilestone.requiredHours : 1}
+                    label={nextMilestone ? `Progress to ${nextMilestone.label}` : 'All milestones reached'}
+                    tone="warning"
+                    size={56}
+                    thickness={5}
+                  >
+                    <span className="text-xl" aria-hidden="true">{nextMilestone ? nextMilestone.icon : '👑'}</span>
+                  </ProgressRing>
+                  <div className="min-w-0">
+                    <div className="text-2xs text-content-disabled uppercase tracking-wider font-bold">Next milestone</div>
+                    {nextMilestone ? (
+                      <p className="text-sm font-bold text-content-primary">
+                        {nextMilestone.label}{' '}
+                        <span className="font-normal text-content-muted tabular-nums">
+                          in {hoursToNext >= 24 ? `${Math.floor(hoursToNext / 24)}d ${hoursToNext % 24}h` : `${hoursToNext}h`}
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="text-sm font-bold text-content-primary">All milestones reached</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Milestones Celebrations */}
+                <div className="space-y-3">
+                  <CapMeter
+                    variant="bar"
+                    label="Recovery points this season"
+                    earned={heldSeasonPoints}
+                    cap={RECOVERY_POINTS.seasonCap}
+                    note={recoverySeasonCapNote()}
+                  />
+
+                  <div className="text-xs font-bold text-content-tertiary mb-3 flex items-center gap-2">
+                    <Award size={16} className="text-warning-text" />
+                    Milestone Celebrations & Badges
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {milestones.map((m) => {
+                      const isUnlocked = tracker.milestonesUnlocked.includes(m.key);
+                      const isAwarded = (tracker.awardedMilestones || []).some(
+                        (a) => !revokedSet.has(getAwardKey(a)) && a.milestone === m.key && a.seasonNumber === activeSeasonNum
+                      );
+                      const isCapped = !isAwarded && wouldExceedRecoverySeasonCap(heldSeasonPoints, m.points);
+
+                      return (
+                        <button
+                          key={m.key}
+                          onClick={() => {
+                            if (isUnlocked) setCelebrationMilestone(m.label);
+                          }}
+                          className={`card p-3 flex items-center gap-3 text-left transition-all ${
+                            isUnlocked
+                              ? 'bg-amber-500/10 border-amber-500/40 text-content-secondary cursor-pointer hover:bg-amber-500/20'
+                              : isCapped
+                              ? 'bg-bg-800/40 border-overlay-subtle text-content-disabled opacity-50'
+                              : 'bg-bg-800/40 border-overlay-subtle text-content-disabled opacity-60'
+                          }`}
+                        >
+                          <span className="text-2xl">{m.icon}</span>
+                          <div>
+                            <div className="text-xs font-bold">{m.label}</div>
+                            <div className="text-2xs text-content-muted">
+                              {isUnlocked
+                                ? `Unlocked! (+${m.points} pts)`
+                                : isCapped
+                                ? 'Season cap reached'
+                                : `Requires ${m.requiredHours}h`}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        }
+        aside={
+          <>
+            {/* Craving Log Section */}
+            <div className="card p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="section-title">Craving Log & Trigger Analysis</h2>
+                  <p className="text-xs text-content-disabled">Record craving intensity (1-10), triggers, and successful coping strategies</p>
+                </div>
+                <button onClick={() => setCravingModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5 shrink-0">
+                  <Activity size={14} />
+                  <span>Log Craving</span>
+                </button>
+              </div>
+
+              {cravingLogs.length === 0 ? (
+                <EmptyState
+                  icon={Activity}
+                  title="No cravings logged yet"
+                  description="Logging cravings helps identify environmental triggers and effective coping mechanisms."
+                />
               ) : (
-                <p className="text-sm font-bold text-content-primary">All milestones reached</p>
+                <div className="space-y-3">
+                  {/* Craving History */}
+                  <div className="space-y-2">
+                    {cravingLogs.slice(0, 10).map((log) => (
+                      <div key={log.id} className="card p-3 bg-bg-800/60 border border-overlay-subtle space-y-1 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-content-secondary flex items-center gap-2">
+                            Intensity: <span className={`px-2 py-0.5 rounded font-mono ${log.intensity >= 7 ? 'bg-rose-500/20 text-rose-theme' : 'bg-amber-500/20 text-warning-text'}`}>{log.intensity}/10</span>
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-content-disabled text-2xs">{formatDateLong(log.date)}</span>
+                            <button
+                              onClick={() => setDeleteCravingModalLog(log)}
+                              className={`text-content-subtle hover:text-rose-theme p-0.5 transition-colors ${TAP_TARGET}`}
+                              title="Delete Craving Log"
+                              aria-label="Delete craving log"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                        {log.trigger && <p className="text-content-muted"><span className="text-content-disabled font-medium">Trigger:</span> {log.trigger}</p>}
+                        {log.copingStrategy && <p className="text-success-text"><span className="text-content-disabled font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-
-          {/* Milestones Celebrations */}
-          <div className="space-y-3">
-            <CapMeter
-              variant="bar"
-              label="Recovery points this season"
-              earned={heldSeasonPoints}
-              cap={RECOVERY_POINTS.seasonCap}
-              note={recoverySeasonCapNote()}
-            />
-
-            <div className="text-xs font-bold text-content-tertiary mb-3 flex items-center gap-2">
-              <Award size={16} className="text-warning-text" />
-              Milestone Celebrations & Badges
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {milestones.map((m) => {
-                const isUnlocked = tracker.milestonesUnlocked.includes(m.key);
-                const isAwarded = (tracker.awardedMilestones || []).some(
-                  (a) => !revokedSet.has(getAwardKey(a)) && a.milestone === m.key && a.seasonNumber === activeSeasonNum
-                );
-                const isCapped = !isAwarded && wouldExceedRecoverySeasonCap(heldSeasonPoints, m.points);
-
-                return (
-                  <button
-                    key={m.key}
-                    onClick={() => {
-                      if (isUnlocked) setCelebrationMilestone(m.label);
-                    }}
-                    className={`card p-3 flex items-center gap-3 text-left transition-all ${
-                      isUnlocked
-                        ? 'bg-amber-500/10 border-amber-500/40 text-content-secondary cursor-pointer hover:bg-amber-500/20'
-                        : isCapped
-                        ? 'bg-bg-800/40 border-overlay-subtle text-content-disabled opacity-50'
-                        : 'bg-bg-800/40 border-overlay-subtle text-content-disabled opacity-60'
-                    }`}
-                  >
-                    <span className="text-2xl">{m.icon}</span>
-                    <div>
-                      <div className="text-xs font-bold">{m.label}</div>
-                      <div className="text-2xs text-content-muted">
-                        {isUnlocked
-                          ? `Unlocked! (+${m.points} pts)`
-                          : isCapped
-                          ? 'Season cap reached'
-                          : `Requires ${m.requiredHours}h`}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Craving Log Section */}
-      <div className="card p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="section-title">Craving Log & Trigger Analysis</h2>
-            <p className="text-xs text-content-disabled">Record craving intensity (1-10), triggers, and successful coping strategies</p>
-          </div>
-          <button onClick={() => setCravingModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5">
-            <Activity size={14} />
-            <span>Log Craving</span>
-          </button>
-        </div>
-
-        {cravingLogs.length === 0 ? (
-          <EmptyState
-            icon={Activity}
-            title="No cravings logged yet"
-            description="Logging cravings helps identify environmental triggers and effective coping mechanisms."
-          />
-        ) : (
-          <div className="space-y-3">
-            {/* Craving History */}
-            <div className="space-y-2">
-              {cravingLogs.slice(0, 10).map((log) => (
-                <div key={log.id} className="card p-3 bg-bg-800/60 border border-overlay-subtle space-y-1 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-content-secondary flex items-center gap-2">
-                      Intensity: <span className={`px-2 py-0.5 rounded font-mono ${log.intensity >= 7 ? 'bg-rose-500/20 text-rose-theme' : 'bg-amber-500/20 text-warning-text'}`}>{log.intensity}/10</span>
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-content-disabled text-2xs">{formatDateLong(log.date)}</span>
-                      <button
-                        onClick={() => setDeleteCravingModalLog(log)}
-                        className={`text-content-subtle hover:text-rose-theme p-0.5 transition-colors ${TAP_TARGET}`}
-                        title="Delete Craving Log"
-                        aria-label="Delete craving log"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  {log.trigger && <p className="text-content-muted"><span className="text-content-disabled font-medium">Trigger:</span> {log.trigger}</p>}
-                  {log.copingStrategy && <p className="text-success-text"><span className="text-content-disabled font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+          </>
+        }
+      />
 
       {/* Emergency Support Modal (Breathing + Distraction) */}
       <Dialog open={emergencyModalOpen} onClose={() => setEmergencyModalOpen(false)} title="Emergency Support & Urge Surfing" maxWidth="max-w-lg">

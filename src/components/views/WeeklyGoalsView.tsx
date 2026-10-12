@@ -20,7 +20,7 @@ import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoin
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { weeklyGoalsCapNote } from '@/lib/capCopy';
-import { Dialog, EmptyState, ProgressBar } from '@/components/ui/primitives';
+import { Dialog, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { useCompletionPop } from '@/lib/useCompletionPop';
@@ -689,333 +689,342 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         </div>
       </div>
 
-      {/* LAST 8 WEEKS TREND (needs at least two planned weeks to say anything) */}
-      {trendWeeksWithGoals >= 2 && (
-        <Reveal className="card p-4 space-y-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="section-title">Last {TREND_WEEKS} Weeks</h2>
-            <span className="text-xs text-content-muted">Weekly target completion</span>
-          </div>
-          <BarChart
-            data={weekTrend.map((w) => ({ label: formatWeekRange(w.key).split(' –')[0], value: w.percent }))}
-            label={`Weekly goal completion, last ${TREND_WEEKS} weeks`}
-            max={100}
-            highlightIndex={selectedTrendIndex >= 0 ? selectedTrendIndex : undefined}
-            formatTooltip={(_, i) => {
-              const w = weekTrend[i];
-              return w.goals ? `${formatWeekRange(w.key)}: ${w.percent}% of ${w.goals} goal${w.goals > 1 ? 's' : ''}` : `${formatWeekRange(w.key)}: no goals`;
-            }}
-          />
-        </Reveal>
-      )}
-
-      {/* CARRY-OVER PROMPT BANNER FOR INCOMPLETE PAST GOALS */}
-      {unaddressedPastGoals.length > 0 && selectedWeekKey === currentWeekKey && (
-        <div className="card p-4 space-y-3">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle size={18} className="text-warning-text shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-xs font-bold text-warning-text">Unresolved Goals from Previous Weeks</h3>
-              <p className="text-xs text-content-secondary mt-0.5">
-                You have {unaddressedPastGoals.length} incomplete priority goal{unaddressedPastGoals.length > 1 ? 's' : ''} from earlier weeks.
-                Select whether to carry them over into this week or dismiss them.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-2 pt-1">
-            {unaddressedPastGoals.map(({ weekKey: pastWeek, goal }) => (
-              <div
-                key={`${pastWeek}-${goal.id}`}
-                className="flex items-center justify-between p-2.5 bg-bg-900/70 border border-overlay-default rounded-lg"
-              >
-                <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-content-secondary block">{goal.title}</span>
-                  <span className="text-2xs text-warning-text font-medium">
-                    From {pastWeek} ({goal.priority.toUpperCase()} Priority)
-                  </span>
+      <PageColumns
+        lead={
+          <>
+            {/* LAST 8 WEEKS TREND (needs at least two planned weeks to say anything) */}
+            {trendWeeksWithGoals >= 2 && (
+              <Reveal className="card p-4 space-y-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 className="section-title">Last {TREND_WEEKS} Weeks</h2>
+                  <span className="text-xs text-content-muted">Weekly target completion</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleCarryOverClick(pastWeek, goal)}
-                    className="btn-primary text-micro py-1 px-2.5 flex items-center gap-1"
-                  >
-                    <ArrowRight size={12} /> Carry Over
-                  </button>
-                  <button
-                    onClick={() => setDismissPastGoalModal({ pastWeek, goal })}
-                    className="btn-secondary text-micro py-1 px-2 text-content-muted hover:text-content-secondary"
-                  >
-                    Dismiss
-                  </button>
+                <BarChart
+                  data={weekTrend.map((w) => ({ label: formatWeekRange(w.key).split(' –')[0], value: w.percent }))}
+                  label={`Weekly goal completion, last ${TREND_WEEKS} weeks`}
+                  max={100}
+                  highlightIndex={selectedTrendIndex >= 0 ? selectedTrendIndex : undefined}
+                  formatTooltip={(_, i) => {
+                    const w = weekTrend[i];
+                    return w.goals ? `${formatWeekRange(w.key)}: ${w.percent}% of ${w.goals} goal${w.goals > 1 ? 's' : ''}` : `${formatWeekRange(w.key)}: no goals`;
+                  }}
+                />
+              </Reveal>
+            )}
+
+            {/* CARRY-OVER PROMPT BANNER FOR INCOMPLETE PAST GOALS */}
+            {unaddressedPastGoals.length > 0 && selectedWeekKey === currentWeekKey && (
+              <div className="card p-4 space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle size={18} className="text-warning-text shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-xs font-bold text-warning-text">Unresolved Goals from Previous Weeks</h3>
+                    <p className="text-xs text-content-secondary mt-0.5">
+                      You have {unaddressedPastGoals.length} incomplete priority goal{unaddressedPastGoals.length > 1 ? 's' : ''} from earlier weeks.
+                      Select whether to carry them over into this week or dismiss them.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  {unaddressedPastGoals.map(({ weekKey: pastWeek, goal }) => (
+                    <div
+                      key={`${pastWeek}-${goal.id}`}
+                      className="flex items-center justify-between p-2.5 bg-bg-900/70 border border-overlay-default rounded-lg"
+                    >
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-content-secondary block">{goal.title}</span>
+                        <span className="text-2xs text-warning-text font-medium">
+                          From {pastWeek} ({goal.priority.toUpperCase()} Priority)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleCarryOverClick(pastWeek, goal)}
+                          className="btn-primary text-micro py-1 px-2.5 flex items-center gap-1"
+                        >
+                          <ArrowRight size={12} /> Carry Over
+                        </button>
+                        <button
+                          onClick={() => setDismissPastGoalModal({ pastWeek, goal })}
+                          className="btn-secondary text-micro py-1 px-2 text-content-muted hover:text-content-secondary"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            )}
 
-      {/* WEEKLY GOALS LIST SECTION */}
-      <div className="card p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
-          <div className="flex items-center gap-2">
-            <Target size={18} className="text-brand-text" />
-            <h3 className="text-sm font-bold text-content-secondary">
-              Target Priorities for {selectedWeekKey}
-            </h3>
-            <span className="badge badge-primary text-2xs font-bold">
-              {calculateWeeklyGoalsPoints(activeGoalDoc.goals).pointsAwarded}/{WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts
-            </span>
-          </div>
+            {/* WEEKLY GOALS LIST SECTION */}
+            <div className="card p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
+                <div className="flex items-center gap-2">
+                  <Target size={18} className="text-brand-text" />
+                  <h3 className="text-sm font-bold text-content-secondary">
+                    Target Priorities for {selectedWeekKey}
+                  </h3>
+                  <span className="badge badge-primary text-2xs font-bold">
+                    {calculateWeeklyGoalsPoints(activeGoalDoc.goals).pointsAwarded}/{WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts
+                  </span>
+                </div>
 
-          <button
-            onClick={openCreateModal}
-            disabled={isPastWeek}
-            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus size={14} /> Add Weekly Goal
-          </button>
-        </div>
+                <button
+                  onClick={openCreateModal}
+                  disabled={isPastWeek}
+                  className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus size={14} /> Add Weekly Goal
+                </button>
+              </div>
 
-        {isPastWeek && (
-          <p className="text-micro text-content-muted">Past weeks are read-only.</p>
-        )}
-        {isFutureWeek && (
-          <p className="text-micro text-content-muted">
-            Future weeks are for planning: goals can't be completed and reflections can't be written yet.
-          </p>
-        )}
+              {isPastWeek && (
+                <p className="text-micro text-content-muted">Past weeks are read-only.</p>
+              )}
+              {isFutureWeek && (
+                <p className="text-micro text-content-muted">
+                  Future weeks are for planning: goals can't be completed and reflections can't be written yet.
+                </p>
+              )}
 
-        {selectedWeekKey === currentWeekKey && (() => {
-          const weeklyGoalsScore = calculateWeeklyGoalsPoints(activeGoalDoc.goals);
-          return (
-            <CapMeter
-              variant="bar"
-              label={`Weekly goals points (${weeklyGoalsScore.completedGoalsCount} achieved, ${weeklyGoalsScore.countedGoalsCount} counted)`}
-              earned={weeklyGoalsScore.pointsAwarded}
-              cap={WEEKLY_GOALS_POINTS.maxWeeklyPoints}
-              note={weeklyGoalsCapNote(getWeekReflectionCutoff(selectedWeekKey))}
-            />
-          );
-        })()}
-
-        {activeGoalDoc.goals.filter((g) => !g.archived).length === 0 ? (
-          <EmptyState
-            icon={Target}
-            title="No Weekly Goals Set Yet"
-            description="Define 1-3 measurable, high-leverage priorities to align your effort this week."
-            size="sm"
-            surface={false}
-            action={
-              <button
-                onClick={openCreateModal}
-                disabled={isPastWeek}
-                className="btn-secondary text-xs inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Plus size={14} /> Set First Goal
-              </button>
-            }
-          />
-        ) : (
-          <div className="space-y-3">
-            {activeGoalDoc.goals.filter((g) => !g.archived).map((item) => (
-              <GoalItemRow
-                key={item.id}
-                item={item}
-                selectedWeekKey={selectedWeekKey}
-                isPastWeek={isPastWeek}
-                isFutureWeek={isFutureWeek}
-                getGoalProgress={getGoalProgress}
-                store={store}
-                showErrorToast={showErrorToast}
-                priorityColor={priorityColor}
-                openEditModal={openEditModal}
-                setDeleteGoalModal={setDeleteGoalModal}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* SUNDAY EVENING REVIEW & REFLECTIONS CARD */}
-      <div className="card p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
-          <div>
-            <h3 className="text-sm font-bold text-content-secondary flex items-center gap-2">
-              <Sparkles size={16} className="text-warning-text" />
-              Weekly Reflections
-            </h3>
-            <p className="text-xs text-content-muted mt-0.5">
-              Reflect on wins, friction, and execution velocity. The first reflection each week awards +{WEEKLY_REFLECTION_POINTS.awarded} pts.
-            </p>
-          </div>
-
-          {!showAddReflection && (
-            <button
-              onClick={() => {
-                setShowAddReflection(true);
-                setNewReflectionContent('');
-              }}
-              disabled={isPastWeek || isFutureWeek}
-              className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Plus size={14} />
-              <span>Add Reflection</span>
-            </button>
-          )}
-        </div>
-
-        {/* ADD REFLECTION FORM */}
-        {showAddReflection && (
-          <div className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
-            <label htmlFor="new-reflection-content" className="block text-xs font-semibold text-content-secondary">
-              New Reflection Entry
-            </label>
-            <textarea
-              id="new-reflection-content"
-              value={newReflectionContent}
-              onChange={(e) => setNewReflectionContent(e.target.value)}
-              placeholder="What went exceptionally well? What friction did you encounter? What key adjustment will you make next week?"
-              className="input min-h-[90px] text-xs leading-relaxed"
-              autoFocus
-            />
-            <div className="flex items-center justify-end gap-2">
-              <button
-                onClick={() => setShowAddReflection(false)}
-                className="btn-secondary text-xs py-1.5 px-3"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateReflection}
-                disabled={isPastWeek || isFutureWeek}
-                className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Sparkles size={14} />
-                <span>Save Reflection</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* LIST OF REFLECTIONS */}
-        <div className="space-y-3">
-          {(() => {
-            const reflectionCutoff = getWeekReflectionCutoff(selectedWeekKey);
-            const isBeforeCutoff = getNow() < reflectionCutoff;
-            const reflections = activeGoalDoc.reflections || [];
-            const latestReflection = reflections.length > 0
-              ? reflections.reduce(
-                  (prevMax, curr) => (new Date(curr.createdAt).getTime() > new Date(prevMax.createdAt).getTime() ? curr : prevMax),
-                  reflections[0]
-                )
-              : null;
-
-            return (
-              <>
-                {reflections.length === 0 && !showAddReflection && (
-                  <EmptyState
-                    icon={Sparkles}
-                    title={selectedWeekKey === currentWeekKey ? `No reflections added for ${selectedWeekKey} yet.` : `No reflections added for ${selectedWeekKey}.`}
-                    description={selectedWeekKey === currentWeekKey ? 'Click "+ Add Reflection" above to add your insights.' : undefined}
-                    size="sm"
-                    surface={false}
+              {selectedWeekKey === currentWeekKey && (() => {
+                const weeklyGoalsScore = calculateWeeklyGoalsPoints(activeGoalDoc.goals);
+                return (
+                  <CapMeter
+                    variant="bar"
+                    label={`Weekly goals points (${weeklyGoalsScore.completedGoalsCount} achieved, ${weeklyGoalsScore.countedGoalsCount} counted)`}
+                    earned={weeklyGoalsScore.pointsAwarded}
+                    cap={WEEKLY_GOALS_POINTS.maxWeeklyPoints}
+                    note={weeklyGoalsCapNote(getWeekReflectionCutoff(selectedWeekKey))}
                   />
-                )}
+                );
+              })()}
 
-                {reflections.map((ref) => {
-                  const isEditingThis = editingReflection?.id === ref.id;
-
-                  if (isEditingThis) {
-                    return (
-                      <div key={ref.id} className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
-                        <label htmlFor="edit-reflection-content" className="block text-xs font-semibold text-content-secondary">
-                          Edit Reflection
-                        </label>
-                        <textarea
-                          id="edit-reflection-content"
-                          value={editReflectionContent}
-                          onChange={(e) => setEditReflectionContent(e.target.value)}
-                          className="input min-h-[90px] text-xs leading-relaxed"
-                          autoFocus
-                        />
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setEditingReflection(null)}
-                            className="btn-secondary text-xs py-1.5 px-3"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={handleUpdateReflection}
-                            disabled={isPastWeek || isFutureWeek}
-                            className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Save Changes
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div
-                      key={ref.id}
-                      className="p-3.5 bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default rounded-xl space-y-2 transition-all"
-                    >
-                      <div className="flex items-center justify-between text-micro text-content-muted">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-content-tertiary">
-                            {new Date(ref.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          {isWeeklyReflectionAwarded(selectedWeekKey, ref.id, store.state) ? (
-                            <span className="badge badge-emerald text-2xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <Sparkles size={11} /> +{WEEKLY_REFLECTION_POINTS.awarded} pts
-                            </span>
-                          ) : isBeforeCutoff && latestReflection?.id === ref.id ? (
-                            <span
-                              className="badge badge-amber text-2xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
-                              title="Points will be awarded when cutoff passes on Sunday 17:00"
-                            >
-                              <Sparkles size={11} /> Pending +{WEEKLY_REFLECTION_POINTS.awarded} pts
-                            </span>
-                          ) : null}
-                        </div>
-                  <div className="flex items-center gap-1">
+              {activeGoalDoc.goals.filter((g) => !g.archived).length === 0 ? (
+                <EmptyState
+                  icon={Target}
+                  title="No Weekly Goals Set Yet"
+                  description="Define 1-3 measurable, high-leverage priorities to align your effort this week."
+                  size="sm"
+                  surface={false}
+                  action={
                     <button
-                      onClick={() => {
-                        setEditingReflection(ref);
-                        setEditReflectionContent(ref.content);
-                      }}
-                      disabled={isPastWeek || isFutureWeek}
-                      className={`p-1 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
-                      title="Edit reflection"
-                      aria-label="Edit reflection"
+                      onClick={openCreateModal}
+                      disabled={isPastWeek}
+                      className="btn-secondary text-xs inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Edit3 size={14} />
+                      <Plus size={14} /> Set First Goal
+                    </button>
+                  }
+                />
+              ) : (
+                <div className="space-y-3">
+                  {activeGoalDoc.goals.filter((g) => !g.archived).map((item) => (
+                    <GoalItemRow
+                      key={item.id}
+                      item={item}
+                      selectedWeekKey={selectedWeekKey}
+                      isPastWeek={isPastWeek}
+                      isFutureWeek={isFutureWeek}
+                      getGoalProgress={getGoalProgress}
+                      store={store}
+                      showErrorToast={showErrorToast}
+                      priorityColor={priorityColor}
+                      openEditModal={openEditModal}
+                      setDeleteGoalModal={setDeleteGoalModal}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        }
+        aside={
+          <>
+            {/* SUNDAY EVENING REVIEW & REFLECTIONS CARD */}
+            <div className="card p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-content-secondary flex items-center gap-2">
+                    <Sparkles size={16} className="text-warning-text" />
+                    Weekly Reflections
+                  </h3>
+                  <p className="text-xs text-content-muted mt-0.5">
+                    Reflect on wins, friction, and execution velocity. The first reflection each week awards +{WEEKLY_REFLECTION_POINTS.awarded} pts.
+                  </p>
+                </div>
+
+                {!showAddReflection && (
+                  <button
+                    onClick={() => {
+                      setShowAddReflection(true);
+                      setNewReflectionContent('');
+                    }}
+                    disabled={isPastWeek || isFutureWeek}
+                    className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus size={14} />
+                    <span>Add Reflection</span>
+                  </button>
+                )}
+              </div>
+
+              {/* ADD REFLECTION FORM */}
+              {showAddReflection && (
+                <div className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
+                  <label htmlFor="new-reflection-content" className="block text-xs font-semibold text-content-secondary">
+                    New Reflection Entry
+                  </label>
+                  <textarea
+                    id="new-reflection-content"
+                    value={newReflectionContent}
+                    onChange={(e) => setNewReflectionContent(e.target.value)}
+                    placeholder="What went exceptionally well? What friction did you encounter? What key adjustment will you make next week?"
+                    className="input min-h-[90px] text-xs leading-relaxed"
+                    autoFocus
+                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => setShowAddReflection(false)}
+                      className="btn-secondary text-xs py-1.5 px-3"
+                    >
+                      Cancel
                     </button>
                     <button
-                      onClick={() => setDeleteReflectionModal(ref)}
+                      onClick={handleCreateReflection}
                       disabled={isPastWeek || isFutureWeek}
-                      className={`p-1 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
-                      title="Delete reflection"
-                      aria-label="Delete reflection"
+                      className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Trash2 size={14} />
+                      <Sparkles size={14} />
+                      <span>Save Reflection</span>
                     </button>
                   </div>
                 </div>
-                <p className="text-xs text-content-secondary leading-relaxed whitespace-pre-wrap">
-                  {ref.content}
-                </p>
-              </div>
+              )}
+
+              {/* LIST OF REFLECTIONS */}
+              <div className="space-y-3">
+                {(() => {
+                  const reflectionCutoff = getWeekReflectionCutoff(selectedWeekKey);
+                  const isBeforeCutoff = getNow() < reflectionCutoff;
+                  const reflections = activeGoalDoc.reflections || [];
+                  const latestReflection = reflections.length > 0
+                    ? reflections.reduce(
+                        (prevMax, curr) => (new Date(curr.createdAt).getTime() > new Date(prevMax.createdAt).getTime() ? curr : prevMax),
+                        reflections[0]
+                      )
+                    : null;
+
+                  return (
+                    <>
+                      {reflections.length === 0 && !showAddReflection && (
+                        <EmptyState
+                          icon={Sparkles}
+                          title={selectedWeekKey === currentWeekKey ? `No reflections added for ${selectedWeekKey} yet.` : `No reflections added for ${selectedWeekKey}.`}
+                          description={selectedWeekKey === currentWeekKey ? 'Click "+ Add Reflection" above to add your insights.' : undefined}
+                          size="sm"
+                          surface={false}
+                        />
+                      )}
+
+                      {reflections.map((ref) => {
+                        const isEditingThis = editingReflection?.id === ref.id;
+
+                        if (isEditingThis) {
+                          return (
+                            <div key={ref.id} className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
+                              <label htmlFor="edit-reflection-content" className="block text-xs font-semibold text-content-secondary">
+                                Edit Reflection
+                              </label>
+                              <textarea
+                                id="edit-reflection-content"
+                                value={editReflectionContent}
+                                onChange={(e) => setEditReflectionContent(e.target.value)}
+                                className="input min-h-[90px] text-xs leading-relaxed"
+                                autoFocus
+                              />
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => setEditingReflection(null)}
+                                  className="btn-secondary text-xs py-1.5 px-3"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={handleUpdateReflection}
+                                  disabled={isPastWeek || isFutureWeek}
+                                  className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  Save Changes
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={ref.id}
+                            className="p-3.5 bg-bg-800/60 border border-overlay-subtle hover:border-overlay-default rounded-xl space-y-2 transition-all"
+                          >
+                            <div className="flex items-center justify-between text-micro text-content-muted">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-content-tertiary">
+                                  {new Date(ref.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {isWeeklyReflectionAwarded(selectedWeekKey, ref.id, store.state) ? (
+                                  <span className="badge badge-emerald text-2xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <Sparkles size={11} /> +{WEEKLY_REFLECTION_POINTS.awarded} pts
+                                  </span>
+                                ) : isBeforeCutoff && latestReflection?.id === ref.id ? (
+                                  <span
+                                    className="badge badge-amber text-2xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+                                    title="Points will be awarded when cutoff passes on Sunday 17:00"
+                                  >
+                                    <Sparkles size={11} /> Pending +{WEEKLY_REFLECTION_POINTS.awarded} pts
+                                  </span>
+                                ) : null}
+                              </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              setEditingReflection(ref);
+                              setEditReflectionContent(ref.content);
+                            }}
+                            disabled={isPastWeek || isFutureWeek}
+                            className={`p-1 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
+                            title="Edit reflection"
+                            aria-label="Edit reflection"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteReflectionModal(ref)}
+                            disabled={isPastWeek || isFutureWeek}
+                            className={`p-1 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
+                            title="Delete reflection"
+                            aria-label="Delete reflection"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-content-secondary leading-relaxed whitespace-pre-wrap">
+                        {ref.content}
+                      </p>
+                    </div>
+                  );
+                })}
+              </>
             );
-          })}
-        </>
-      );
-    })()}
-        </div>
-      </div>
+          })()}
+              </div>
+            </div>
+          </>
+        }
+      />
 
       {/* CREATE / EDIT GOAL MODAL */}
       <Dialog

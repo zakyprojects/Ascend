@@ -377,6 +377,16 @@
     }
   }
 
+  /* Fluid UI scale on wide screens: every rem-based size (type, spacing, cards, sidebar) grows
+     gently from 16px at 1280px wide to 18px at ~1880px, so large monitors get the same layout,
+     a little larger, instead of small content in a sea of empty space. Percentages keep the
+     user's own browser font-size setting as the base. Below 1280px nothing changes. */
+  @media (min-width: 1280px) {
+    html {
+      font-size: clamp(100%, calc(0.6875rem + 0.390625vw), 112.5%);
+    }
+  }
+
   body {
     @apply bg-bg-900 text-content-secondary font-sans antialiased;
     overscroll-behavior-y: none;
@@ -548,6 +558,23 @@
 
   .card {
     @apply bg-bg-800 border border-overlay-default rounded-2xl shadow-sm;
+  }
+
+  /* Fluid card grids: as many columns as the container fits, each at least the minimum wide, so
+     a list fills a wide main column and drops to one column on phones without breakpoints.
+     auto-fill keeps a lone card at card width instead of stretching it across the row. */
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  }
+  .grid-cards-lg {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  }
+  /* Rich row cards (title, badges and actions side by side): two columns only when each is wide. */
+  .grid-cards-xl {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 30rem), 1fr));
   }
 
   [data-theme='light'] .card {

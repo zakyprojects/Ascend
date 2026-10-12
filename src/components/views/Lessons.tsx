@@ -96,7 +96,7 @@ export function Lessons({ store }: { store: AppStore }) {
       </div>
 
       {/* Lesson list */}
-      <div className="space-y-2.5">
+      <div className="grid-cards-lg gap-2.5">
         {filtered.map((lesson) => {
           const isRead = isLessonReadThisSeason(lesson.id);
           return (

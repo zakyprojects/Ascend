@@ -326,7 +326,7 @@ export function SettingsView({ store, onOpenAuthModal }: SettingsViewProps) {
   const acceptsInvites = currentUser?.acceptPartnerInvites ?? true;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5 pb-12">
+    <div className="max-w-6xl mx-auto space-y-5 pb-12">
       {/* Top Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-2xl bg-primary-500/20 border border-primary-500/30 flex items-center justify-center shrink-0">

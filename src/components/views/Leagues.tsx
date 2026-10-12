@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog } from '@/components/ui/primitives';
+import { Dialog, PageColumns } from '@/components/ui/primitives';
 import { Trophy, Clock, Crown, Brain, Calendar, CalendarDays, ChevronDown, Archive, Sparkles, UserCheck, ChevronRight } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LeagueType, LeagueCompetitor } from '@/types';
@@ -80,186 +80,193 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
         </div>
       )}
 
-      {/* League tabs */}
-      <div className="grid grid-cols-3 gap-2">
-        {(Object.keys(LEAGUE_CONFIG) as LeagueType[]).map((type) => {
-          const cfg = LEAGUE_CONFIG[type];
-          const Icon = LEAGUE_ICONS[cfg.icon] ?? Calendar;
-          const active = activeLeague === type;
-          const data = store.getLeagueData(type);
-          return (
-            <button
-              key={type}
-              onClick={() => setActiveLeague(type)}
-              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all ${
-                active
-                  ? 'glass-strong border-2'
-                  : 'card card-hover border-2 border-transparent'
-              }`}
-              style={active ? { borderColor: `${cfg.color}50` } : {}}
-            >
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: `${cfg.color}15` }}
-              >
-                <Icon size={20} style={{ color: cfg.color }} />
-              </div>
-              <span
-                className="text-xs font-display font-bold"
-                style={{ color: active ? cfg.color : 'var(--color-content-muted)' }}
-              >
-                {type === 'ninetyDay' ? `90-Day (${getSeasonLabel(now)})` : type === 'monthly' ? 'Monthly' : 'Weekly'}
-              </span>
-              <span className="text-2xs text-content-disabled">Rank #{data.userRank}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Active league leaderboard */}
-      <div className="card p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ backgroundColor: `${config.color}15` }}
-            >
-              {(() => {
-                const Icon = LEAGUE_ICONS[config.icon] ?? Calendar;
-                return <Icon size={16} style={{ color: config.color }} />;
-              })()}
+      <PageColumns
+        lead={
+          <>
+            {/* League tabs */}
+            <div className="grid grid-cols-3 gap-2">
+              {(Object.keys(LEAGUE_CONFIG) as LeagueType[]).map((type) => {
+                const cfg = LEAGUE_CONFIG[type];
+                const Icon = LEAGUE_ICONS[cfg.icon] ?? Calendar;
+                const active = activeLeague === type;
+                const data = store.getLeagueData(type);
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setActiveLeague(type)}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all ${
+                      active
+                        ? 'glass-strong border-2'
+                        : 'card card-hover border-2 border-transparent'
+                    }`}
+                    style={active ? { borderColor: `${cfg.color}50` } : {}}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: `${cfg.color}15` }}
+                    >
+                      <Icon size={20} style={{ color: cfg.color }} />
+                    </div>
+                    <span
+                      className="text-xs font-display font-bold"
+                      style={{ color: active ? cfg.color : 'var(--color-content-muted)' }}
+                    >
+                      {type === 'ninetyDay' ? `90-Day (${getSeasonLabel(now)})` : type === 'monthly' ? 'Monthly' : 'Weekly'}
+                    </span>
+                    <span className="text-2xs text-content-disabled">Rank #{data.userRank}</span>
+                  </button>
+                );
+              })}
             </div>
+
+            {/* Active league leaderboard */}
+            <div className="card p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: `${config.color}15` }}
+                  >
+                    {(() => {
+                      const Icon = LEAGUE_ICONS[config.icon] ?? Calendar;
+                      return <Icon size={16} style={{ color: config.color }} />;
+                    })()}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="section-title">
+                        {activeLeague === 'ninetyDay' ? `${getSeasonLabel(now)} — 90-Day League` : config.name}
+                      </h2>
+                    </div>
+                    <p className="text-micro text-content-muted">{getLocalResetDetail(activeLeague, now)}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-bg-800 rounded-lg border border-overlay-subtle text-xs text-content-tertiary self-start sm:self-auto">
+                  <Clock size={13} className="text-content-muted" />
+                  <span className="text-micro text-content-muted">
+                    {activeLeague === 'ninetyDay' ? 'Season Ends in:' : 'Resets in:'}
+                  </span>
+                  <LeagueCountdown type={activeLeague} className="font-mono font-bold text-brand-text tabular-nums" />
+                </div>
+              </div>
+
+              <p className="text-xs font-medium text-content-muted mb-4 bg-bg-800/50 px-3 py-1.5 rounded-lg border border-overlay-subtle inline-block">
+                Current Cycle: {periodLabel}
+              </p>
+
+              {/* 90-Day League neuroplasticity explanation */}
+              {activeLeague === 'ninetyDay' && (
+                <div className="card bg-bg-700/60 p-4 mb-4 border-l-2" style={{ borderColor: config.color }}>
+                  <div className="flex items-start gap-2">
+                    <Brain size={16} className="text-purple-hierarchy mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm text-content-secondary font-bold mb-1">90 Days to Rewire Your Brain</p>
+                      <p className="text-xs text-content-muted leading-relaxed">
+                        Neuroscience research reveals it takes roughly 66–90 days of consistent repetition for a new habit
+                        to form automated neural pathways in your brain. This 90-Day League tests long-term grit and consistency.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Leaderboard list */}
+              <div className="space-y-2">
+                {leagueData.competitors.map((competitor, idx) => {
+                  const rank = idx + 1;
+                  const isUser = competitor.isUser;
+                  const isTop3 = rank <= 3;
+                  const medalVarNames = ['var(--medal-gold)', 'var(--medal-silver)', 'var(--medal-bronze)'];
+
+                  return (
+                    <Reveal key={competitor.id || idx} index={idx}>
+                    <button
+                      onClick={() => setSelectedCompetitor(competitor)}
+                      className={`w-full flex items-center gap-2 sm:gap-4 px-2.5 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all text-left cursor-pointer group ${
+                        isUser
+                          ? 'league-user-row border-2 hover:border-emerald-400'
+                          : 'bg-bg-700/50 hover:bg-bg-700 border border-overlay-subtle'
+                      }`}
+                    >
+                      {/* Rank Position */}
+                      <div className="w-5 sm:w-7 text-center shrink-0">
+                        {isTop3 ? (
+                          <Crown size={15} className="mx-auto" style={{ color: medalVarNames[rank - 1] }} />
+                        ) : (
+                          <span className="text-xs sm:text-sm font-bold text-content-disabled">{rank}</span>
+                        )}
+                      </div>
+
+                      {/* Avatar */}
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-bg-600 flex items-center justify-center text-base sm:text-lg shrink-0 border border-overlay-subtle">
+                        {competitor.avatar}
+                      </div>
+
+                      {/* Name */}
+                      <div className="flex-1 min-w-0">
+                        <span className={`text-xs sm:text-sm font-medium truncate block ${isUser ? 'text-success-text font-bold' : 'text-content-tertiary'}`}>
+                          {competitor.name}
+                        </span>
+                      </div>
+
+                      {/* Tier Badge visible for EVERY entry */}
+                      <div className="shrink-0">
+                        <TierBadge totalPoints={competitor.points} size="sm" showName={false} />
+                      </div>
+
+                      {/* Period Points */}
+                      <div className="text-right shrink-0 min-w-[55px] sm:min-w-[70px]">
+                        <span className={`text-xs sm:text-sm font-display font-bold ${isUser ? 'text-success-text' : 'text-content-secondary'}`}>
+                          <CountUp value={competitor.points} className="tabular-nums" />
+                        </span>
+                        <span className="text-2xs sm:text-xs text-content-disabled ml-0.5 sm:ml-1">pts</span>
+                      </div>
+
+                      <ChevronRight size={15} className="text-content-subtle group-hover:text-content-tertiary transition-colors shrink-0" />
+                    </button>
+                    </Reveal>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        }
+        aside={
+          // Archives
+          archives.length > 0 && (
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="section-title">
-                  {activeLeague === 'ninetyDay' ? `${getSeasonLabel(now)} — 90-Day League` : config.name}
-                </h2>
-              </div>
-              <p className="text-micro text-content-muted">{getLocalResetDetail(activeLeague, now)}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-bg-800 rounded-lg border border-overlay-subtle text-xs text-content-tertiary self-start sm:self-auto">
-            <Clock size={13} className="text-content-muted" />
-            <span className="text-micro text-content-muted">
-              {activeLeague === 'ninetyDay' ? 'Season Ends in:' : 'Resets in:'}
-            </span>
-            <LeagueCountdown type={activeLeague} className="font-mono font-bold text-brand-text tabular-nums" />
-          </div>
-        </div>
-
-        <p className="text-xs font-medium text-content-muted mb-4 bg-bg-800/50 px-3 py-1.5 rounded-lg border border-overlay-subtle inline-block">
-          Current Cycle: {periodLabel}
-        </p>
-
-        {/* 90-Day League neuroplasticity explanation */}
-        {activeLeague === 'ninetyDay' && (
-          <div className="card bg-bg-700/60 p-4 mb-4 border-l-2" style={{ borderColor: config.color }}>
-            <div className="flex items-start gap-2">
-              <Brain size={16} className="text-purple-hierarchy mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm text-content-secondary font-bold mb-1">90 Days to Rewire Your Brain</p>
-                <p className="text-xs text-content-muted leading-relaxed">
-                  Neuroscience research reveals it takes roughly 66–90 days of consistent repetition for a new habit
-                  to form automated neural pathways in your brain. This 90-Day League tests long-term grit and consistency.
-                </p>
+              <h2 className="section-title mb-3 flex items-center gap-2">
+                <Archive size={16} className="text-content-disabled" />
+                Past Standings Archives
+              </h2>
+              <div className="space-y-2">
+                {archives.map((archive, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setShowArchive(archive.type)}
+                    className="card p-4 card-hover w-full flex items-center gap-3 text-left"
+                  >
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${LEAGUE_CONFIG[archive.type].color}15` }}
+                    >
+                      <Trophy size={18} style={{ color: LEAGUE_CONFIG[archive.type].color }} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-content-secondary">{archive.periodLabel}</p>
+                      <p className="text-xs text-content-disabled">
+                        Finished #{archive.userRank} with {archive.userPoints.toLocaleString()} pts
+                      </p>
+                    </div>
+                    <ChevronDown size={16} className="text-content-subtle" />
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Leaderboard list */}
-        <div className="space-y-2">
-          {leagueData.competitors.map((competitor, idx) => {
-            const rank = idx + 1;
-            const isUser = competitor.isUser;
-            const isTop3 = rank <= 3;
-            const medalVarNames = ['var(--medal-gold)', 'var(--medal-silver)', 'var(--medal-bronze)'];
-
-            return (
-              <Reveal key={competitor.id || idx} index={idx}>
-              <button
-                onClick={() => setSelectedCompetitor(competitor)}
-                className={`w-full flex items-center gap-2 sm:gap-4 px-2.5 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all text-left cursor-pointer group ${
-                  isUser
-                    ? 'league-user-row border-2 hover:border-emerald-400'
-                    : 'bg-bg-700/50 hover:bg-bg-700 border border-overlay-subtle'
-                }`}
-              >
-                {/* Rank Position */}
-                <div className="w-5 sm:w-7 text-center shrink-0">
-                  {isTop3 ? (
-                    <Crown size={15} className="mx-auto" style={{ color: medalVarNames[rank - 1] }} />
-                  ) : (
-                    <span className="text-xs sm:text-sm font-bold text-content-disabled">{rank}</span>
-                  )}
-                </div>
-
-                {/* Avatar */}
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-bg-600 flex items-center justify-center text-base sm:text-lg shrink-0 border border-overlay-subtle">
-                  {competitor.avatar}
-                </div>
-
-                {/* Name */}
-                <div className="flex-1 min-w-0">
-                  <span className={`text-xs sm:text-sm font-medium truncate block ${isUser ? 'text-success-text font-bold' : 'text-content-tertiary'}`}>
-                    {competitor.name}
-                  </span>
-                </div>
-
-                {/* Tier Badge visible for EVERY entry */}
-                <div className="shrink-0">
-                  <TierBadge totalPoints={competitor.points} size="sm" showName={false} />
-                </div>
-
-                {/* Period Points */}
-                <div className="text-right shrink-0 min-w-[55px] sm:min-w-[70px]">
-                  <span className={`text-xs sm:text-sm font-display font-bold ${isUser ? 'text-success-text' : 'text-content-secondary'}`}>
-                    <CountUp value={competitor.points} className="tabular-nums" />
-                  </span>
-                  <span className="text-2xs sm:text-xs text-content-disabled ml-0.5 sm:ml-1">pts</span>
-                </div>
-
-                <ChevronRight size={15} className="text-content-subtle group-hover:text-content-tertiary transition-colors shrink-0" />
-              </button>
-              </Reveal>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Archives */}
-      {archives.length > 0 && (
-        <div>
-          <h2 className="section-title mb-3 flex items-center gap-2">
-            <Archive size={16} className="text-content-disabled" />
-            Past Standings Archives
-          </h2>
-          <div className="space-y-2">
-            {archives.map((archive, idx) => (
-              <button
-                key={idx}
-                onClick={() => setShowArchive(archive.type)}
-                className="card p-4 card-hover w-full flex items-center gap-3 text-left"
-              >
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: `${LEAGUE_CONFIG[archive.type].color}15` }}
-                >
-                  <Trophy size={18} style={{ color: LEAGUE_CONFIG[archive.type].color }} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-content-secondary">{archive.periodLabel}</p>
-                  <p className="text-xs text-content-disabled">
-                    Finished #{archive.userRank} with {archive.userPoints.toLocaleString()} pts
-                  </p>
-                </div>
-                <ChevronDown size={16} className="text-content-subtle" />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+          )
+        }
+      />
 
       {/* Archive detail modal */}
       <Dialog
