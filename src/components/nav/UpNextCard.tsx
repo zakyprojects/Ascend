@@ -33,7 +33,7 @@ export function UpNextCard({ upNext, currentView, statuses, onNavigate, classNam
       )}
     >
       <span className="min-w-0 flex-1">
-        <span className={cx('block font-mono text-2xs uppercase tracking-[0.16em]', risk ? 'text-warning-text' : 'text-brand-text')}>Up next</span>
+        <span className={cx('block text-xs', risk ? 'text-warning-text' : 'text-brand-text')}>Up next</span>
         <span className="mt-0.5 block truncate text-sm font-semibold text-content-primary">
           {item.label}
           <span className="font-normal text-content-muted"> · {status.meta ?? status.label}</span>

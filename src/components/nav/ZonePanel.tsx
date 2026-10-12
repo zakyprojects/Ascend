@@ -34,8 +34,7 @@ export function ZonePanel({ group, currentView, partnerBadge, statuses, upNext, 
     <div className={cx('flex h-full w-60 flex-col border-l border-overlay-subtle', className)}>
       <div className="flex items-start justify-between gap-2 px-5 pb-4 pt-6">
         <div key={group.id} className="zone-title min-w-0">
-          <div className="font-mono text-2xs uppercase tracking-[0.16em] text-content-muted">{group.items.length} pages</div>
-          <h2 className="mt-1 font-serif text-3xl leading-none text-content-primary">{group.label}</h2>
+          <h2 className="font-serif text-3xl leading-none text-content-primary">{group.label}</h2>
         </div>
         {onCollapse && (
         <button

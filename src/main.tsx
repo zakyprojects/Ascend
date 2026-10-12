@@ -9,12 +9,10 @@ import '@fontsource/instrument-serif/400.css';
 import '@fontsource/instrument-serif/400-italic.css';
 import './index.css';
 import { installPageVisibilityFlag, installWindowFocusFlag } from './lib/motion';
-import { installCardSpotlight } from './lib/cardSpotlight';
 import { installListExit } from './lib/listExit';
 
 installPageVisibilityFlag();
 installWindowFocusFlag();
-installCardSpotlight();
 installListExit();
 
 const root = createRoot(document.getElementById('root')!);

@@ -29,7 +29,6 @@ function playExit(item: HTMLElement, parent: Node, next: Node | null): void {
 
   const ghost = item.cloneNode(true) as HTMLElement;
   ghost.classList.remove('enter-item');
-  ghost.removeAttribute('data-spot');
   ghost.removeAttribute('id');
   ghost.setAttribute('aria-hidden', 'true');
   ghost.inert = true;
