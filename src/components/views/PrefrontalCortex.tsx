@@ -9,7 +9,6 @@ import {
   RotateCcw,
   Plus,
   CheckCircle2,
-  Award,
   Calendar,
   Trash2,
   HelpCircle,
@@ -245,16 +244,14 @@ export function PrefrontalCortex({
           active={activeTab}
           className={cx(
             'rounded-xl',
-            activeTab === 'focus' && 'bg-primary-500/15 border-primary-500/30',
-            activeTab === 'decision' && 'bg-primary-500/15 border-primary-500/30',
-            activeTab === 'emotion' && 'bg-rose-500/15 border-rose-500/30'
+            'bg-overlay-default'
           )}
         />
         <button
           data-pill-id="focus"
           onClick={() => setActiveTab('focus')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border border-transparent font-medium text-xs transition-colors shrink-0 ${
-            activeTab === 'focus' ? 'text-content-secondary' : 'text-content-muted hover:bg-overlay-subtle'
+            activeTab === 'focus' ? 'text-content-primary' : 'text-content-muted hover:bg-overlay-subtle'
           }`}
         >
           <Timer size={16} />
@@ -265,7 +262,7 @@ export function PrefrontalCortex({
           data-pill-id="decision"
           onClick={() => setActiveTab('decision')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border border-transparent font-medium text-xs transition-colors shrink-0 ${
-            activeTab === 'decision' ? 'text-brand-text' : 'text-content-muted hover:bg-overlay-subtle'
+            activeTab === 'decision' ? 'text-content-primary' : 'text-content-muted hover:bg-overlay-subtle'
           }`}
         >
           <Scale size={16} />
@@ -276,7 +273,7 @@ export function PrefrontalCortex({
           data-pill-id="emotion"
           onClick={() => setActiveTab('emotion')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border border-transparent font-medium text-xs transition-colors shrink-0 ${
-            activeTab === 'emotion' ? 'text-rose-theme' : 'text-content-muted hover:bg-overlay-subtle'
+            activeTab === 'emotion' ? 'text-content-primary' : 'text-content-muted hover:bg-overlay-subtle'
           }`}
         >
           <HeartHandshake size={16} />
@@ -1084,9 +1081,6 @@ function FocusTimerSubmodule({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="card p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-content-secondary shrink-0">
-              <Timer size={22} />
-            </div>
             <div>
               <div className="stat-label">Weekly Focus Minutes</div>
               <div className="figure text-xl text-content-primary mt-0.5">
@@ -1098,21 +1092,18 @@ function FocusTimerSubmodule({
           <button
             onClick={() => setAboutModalOpen(true)}
             aria-label="About Deep Focus"
-            className="btn-ghost text-xs text-content-secondary hover:bg-primary-500/10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary-500/20"
+            className="btn-ghost text-content-subtle hover:text-content-secondary flex items-center p-1.5 rounded-lg"
+            title="About Deep Focus"
           >
-            <HelpCircle size={15} />
-            <span className="hidden sm:inline">About Deep Focus</span>
+            <HelpCircle size={16} />
           </button>
         </div>
 
         <div className="card p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
-              <Award size={22} />
-            </div>
             <div>
               <div className="stat-label">Completed Sessions</div>
-              <div className="figure text-xl text-brand-text mt-0.5">
+              <div className="figure text-xl text-content-primary mt-0.5">
                 <CountUp value={weeklyFocusLogs.length} /> <span className="font-sans text-xs font-normal text-content-muted">sessions</span>
               </div>
             </div>
@@ -1130,15 +1121,15 @@ function FocusTimerSubmodule({
               }
             >
               {notificationPerm === 'denied' ? (
-                <span className="text-rose-theme flex items-center gap-1.5 bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/20 font-medium text-micro">
+                <span className="text-rose-theme flex items-center gap-1.5 text-micro">
                   <BellOff size={12} /> Notifs Blocked
                 </span>
               ) : notificationPerm === 'granted' ? (
-                <span className="badge-emerald flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium text-micro">
+                <span className="text-content-subtle flex items-center gap-1.5 text-micro">
                   <Bell size={12} /> Notifs Allowed
                 </span>
               ) : (
-                <span className="text-content-secondary flex items-center gap-1.5 bg-primary-500/10 px-2.5 py-1 rounded-md border border-primary-500/20 font-medium text-micro">
+                <span className="text-content-muted hover:text-content-primary flex items-center gap-1.5 text-micro">
                   <Bell size={12} /> Enable Notifs
                 </span>
               )}
@@ -1173,17 +1164,17 @@ function FocusTimerSubmodule({
 
       {/* Timer Mode Switcher (Manual Focus Timer vs Live Schedule Sync) */}
       <div className="flex justify-center pt-1">
-        <div className="inline-flex w-full max-w-sm sm:w-auto p-1 rounded-2xl bg-bg-800/90 border border-overlay-default shadow-sm gap-1">
+        <div className="inline-flex w-full max-w-sm sm:w-auto gap-1">
           <button
             type="button"
             onClick={() => setTimerMode('manual')}
             className={`flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               timerMode === 'manual'
-                ? 'badge-neutral shadow-sm'
-                : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle border border-transparent'
+                ? 'bg-overlay-default text-content-primary'
+                : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
             }`}
           >
-            <Timer size={14} className={timerMode === 'manual' ? 'text-content-secondary' : 'text-content-muted'} />
+            <Timer size={14} className={timerMode === 'manual' ? 'text-content-secondary' : 'text-content-subtle'} />
             <span className="whitespace-nowrap">Manual Timer</span>
           </button>
 
@@ -1192,14 +1183,14 @@ function FocusTimerSubmodule({
             onClick={() => setTimerMode('sync')}
             className={`flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               timerMode === 'sync'
-                ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40 shadow-sm'
-                : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle border border-transparent'
+                ? 'bg-overlay-default text-content-primary'
+                : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
             }`}
           >
-            <Radio size={14} className={timerMode === 'sync' ? 'text-success-text animate-pulse' : 'text-content-muted'} />
+            <Radio size={14} className={timerMode === 'sync' ? 'text-content-secondary' : 'text-content-subtle'} />
             <span className="whitespace-nowrap">Live Schedule Sync</span>
             {isScheduleIgnited && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             )}
           </button>
         </div>
@@ -1207,7 +1198,7 @@ function FocusTimerSubmodule({
 
       {timerMode === 'manual' ? (
         /* Main Focus Timer Card (Manual Mode) */
-        <div className="card p-6 text-center space-y-6 bg-bg-800 border border-primary-500/30 relative overflow-hidden">
+        <div className="card p-6 text-center space-y-6 relative overflow-hidden">
           {/* Header Preset Selectors */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-content-muted border-b border-overlay-subtle pb-4">
             <div className="flex items-center justify-between w-full sm:w-auto gap-2">
@@ -1228,7 +1219,7 @@ function FocusTimerSubmodule({
                 className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all justify-center cursor-pointer ${
                   !isCustom && focusMinutes === 25
                     ? 'badge-neutral font-semibold'
-                    : 'bg-bg-700 text-content-muted hover:bg-bg-600'
+                    : 'text-content-muted hover:bg-overlay-subtle'
                 } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 25 / 5 min
@@ -1239,7 +1230,7 @@ function FocusTimerSubmodule({
                 className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all justify-center cursor-pointer ${
                   !isCustom && focusMinutes === 50
                     ? 'badge-neutral font-semibold'
-                    : 'bg-bg-700 text-content-muted hover:bg-bg-600'
+                    : 'text-content-muted hover:bg-overlay-subtle'
                 } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 50 / 10 min
@@ -1250,7 +1241,7 @@ function FocusTimerSubmodule({
                 className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all justify-center cursor-pointer ${
                   !isCustom && focusMinutes === 90
                     ? 'badge-neutral font-semibold'
-                    : 'bg-bg-700 text-content-muted hover:bg-bg-600'
+                    : 'text-content-muted hover:bg-overlay-subtle'
                 } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 90 / 15 min
@@ -1261,7 +1252,7 @@ function FocusTimerSubmodule({
                 className={`badge px-2.5 sm:px-3 py-2 sm:py-1.5 text-xs transition-all flex items-center justify-center gap-1 cursor-pointer ${
                   isCustom
                     ? 'badge-neutral font-semibold'
-                    : 'bg-bg-700 text-content-muted hover:bg-bg-600'
+                    : 'text-content-muted hover:bg-overlay-subtle'
                 } ${activeSession ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Sliders size={12} className="shrink-0" />
@@ -1272,7 +1263,7 @@ function FocusTimerSubmodule({
 
           {/* Custom Duration Configurator */}
           {isCustom && !activeSession && (
-            <div className="p-4 bg-bg-900/60 rounded-xl border border-primary-500/20 max-w-md mx-auto text-left space-y-3">
+            <div className="p-4 rounded-xl border border-overlay-default max-w-md mx-auto text-left space-y-3">
               <div className="flex items-center justify-between">
                 <span className="item-name text-xs flex items-center gap-1.5">
                   <Sliders size={14} /> Custom Duration Settings
@@ -1309,7 +1300,7 @@ function FocusTimerSubmodule({
               </div>
 
               {customError && (
-                <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-theme text-micro flex items-center gap-2">
+                <div className="text-rose-theme text-micro flex items-center gap-2">
                   <AlertTriangle size={14} className="shrink-0" />
                   <span>{customError}</span>
                 </div>
@@ -1324,7 +1315,7 @@ function FocusTimerSubmodule({
             </div>
             {activeSession && (
               <p className="text-xs text-content-muted mt-2 flex items-center justify-center gap-1.5">
-                <Clock size={13} className="text-content-secondary" />
+                <Clock size={13} className="text-content-subtle" />
                 <span>
                   Timestamp-persisted session ({activeSession.totalSessionMinutes} mins) • Survives backgrounding & reloads
                 </span>
@@ -1409,11 +1400,8 @@ function FocusTimerSubmodule({
         /* Live Schedule HUD View (Sync Mode) */
         !isScheduleIgnited ? (
           /* State A: Not Ignited */
-          <div className="card p-8 text-center space-y-6 bg-bg-800 border border-emerald-500/30 rounded-2xl relative overflow-hidden shadow-sm">
+          <div className="card p-8 text-center space-y-6 relative overflow-hidden">
             <div className="max-w-md mx-auto space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-success-text flex items-center justify-center mx-auto">
-                <Flame size={32} />
-              </div>
 
               <div>
                 <h2 className="section-title mb-1">
@@ -1424,12 +1412,12 @@ function FocusTimerSubmodule({
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-overlay-subtle border border-overlay-subtle text-xs text-content-tertiary flex items-center justify-between">
+              <div className="py-3 border-y border-overlay-subtle text-xs text-content-tertiary flex items-center justify-between">
                 <div className="flex items-center gap-2 text-content-muted">
-                  <CalendarDays size={15} className="text-success-text" />
+                  <CalendarDays size={15} className="text-content-subtle" />
                   <span>Today&apos;s Blocks ({todayBlocks.length})</span>
                 </div>
-                <span className="figure text-success-text">
+                <span className="figure text-content-primary">
                   {formatDurationHuman(liveSchedule.totalScheduledMinutesToday)} total
                 </span>
               </div>
@@ -1437,20 +1425,17 @@ function FocusTimerSubmodule({
               <button
                 type="button"
                 onClick={handleIgniteSchedule}
-                className="w-full py-3.5 px-6 rounded-xl bg-primary-500 hover:bg-primary-600 text-on-brand font-semibold text-sm shadow-sm flex items-center justify-center gap-2.5 transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                className="w-full py-3.5 px-6 rounded-xl bg-primary-500 hover:bg-primary-600 text-on-brand font-semibold text-sm shadow-sm flex items-center justify-center gap-2.5 transition-colors cursor-pointer"
               >
-                <Flame size={18} className="fill-current text-brand-text" />
+                <Flame size={18} />
                 <span>Ignite Today&apos;s Schedule</span>
               </button>
             </div>
           </div>
         ) : showStopConfirm ? (
           /* State: Custom Stop Confirmation UI */
-          <div className="card p-8 text-center space-y-6 bg-bg-800 border border-rose-500/50 rounded-2xl relative overflow-hidden shadow-sm">
+          <div className="card p-8 text-center space-y-6 relative overflow-hidden">
             <div className="max-w-md mx-auto space-y-5 py-4">
-              <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-theme flex items-center justify-center mx-auto">
-                <PowerOff size={32} />
-              </div>
 
               <div className="space-y-2">
                 <h2 className="font-serif text-[1.75rem] leading-tight text-content-primary">Disengage Live Sync?</h2>
@@ -1463,7 +1448,7 @@ function FocusTimerSubmodule({
                 <button
                   type="button"
                   onClick={() => setShowStopConfirm(false)}
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-bg-700 hover:bg-bg-600 text-content-tertiary font-semibold border border-overlay-default transition-all cursor-pointer"
+                  className="w-full sm:w-auto btn-secondary px-6 py-3"
                 >
                   Cancel, Keep Tracking
                 </button>
@@ -1479,9 +1464,9 @@ function FocusTimerSubmodule({
           </div>
         ) : overdueBlock ? (
           /* State D: The Accountability Lock (Overdue Block) */
-          <div className="card p-6 sm:p-8 text-center space-y-6 bg-bg-800 border-2 border-rose-500/60 relative overflow-hidden rounded-2xl shadow-sm">
+          <div className="card p-6 sm:p-8 text-center space-y-6 relative overflow-hidden">
             {/* Warning Indicator Banner */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-error-text border-b border-rose-500/20 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-error-text border-b border-overlay-subtle pb-4">
               <div className="flex items-center gap-2">
                 <span className="badge bg-rose-500/20 text-error-text border border-rose-500/40 font-mono text-2xs font-medium uppercase tracking-[0.08em] flex items-center gap-1.5 px-3 py-1">
                   <AlertTriangle size={13} className="text-rose-theme" />
@@ -1498,7 +1483,7 @@ function FocusTimerSubmodule({
                   onClick={(e) => handleStopSync(e)}
                   title="Stop Schedule Sync"
                   aria-label="Stop schedule sync"
-                  className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-error-text hover:bg-rose-500/20 border border-rose-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-content-primary hover:bg-overlay-subtle flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <PowerOff size={13} />
                   <span className="hidden sm:inline">Stop Sync</span>
@@ -1508,10 +1493,6 @@ function FocusTimerSubmodule({
 
             {/* Warning Icon & Heading */}
             <div className="space-y-3">
-              <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-theme flex items-center justify-center mx-auto">
-                <AlertTriangle size={32} className="animate-pulse text-rose-theme" />
-              </div>
-
               <div className="space-y-1">
                 <h2 className="font-serif text-[1.75rem] sm:text-[2.25rem] leading-tight tracking-[-0.01em] text-content-primary">
                   Action Required: Block Overdue
@@ -1522,7 +1503,7 @@ function FocusTimerSubmodule({
               </div>
 
               {/* Block Details Pill */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-xs">
+              <div className="inline-flex items-center gap-2 text-xs">
                 {(() => {
                   const resolvedOverdueColor = getActivityDisplayColor(overdueBlockActivity, theme, '#f43f5e');
                   return (
@@ -1546,11 +1527,11 @@ function FocusTimerSubmodule({
 
             {/* Locked Timer Display */}
             <div className="py-2 space-y-2">
-              <div className="figure text-6xl sm:text-8xl text-rose-theme">
+              <div className="figure text-6xl sm:text-8xl text-content-disabled">
                 00:00
               </div>
-              <p className="text-xs text-rose-theme-muted flex items-center justify-center gap-1.5 font-mono">
-                <Clock size={13} className="text-rose-theme" />
+              <p className="text-xs text-content-muted flex items-center justify-center gap-1.5 font-mono">
+                <Clock size={13} className="text-content-subtle" />
                 <span>HUD locked. Awaiting completion confirmation to resume schedule.</span>
               </p>
             </div>
@@ -1567,9 +1548,9 @@ function FocusTimerSubmodule({
                     showErrorToast('Failed to Complete Block', err?.message);
                   }
                 }}
-                className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm shadow-sm flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer border border-rose-400/40"
+                className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-primary-500 hover:bg-primary-600 text-on-brand font-semibold text-sm shadow-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
-                <CheckCircle2 size={18} className="text-white shrink-0" />
+                <CheckCircle2 size={18} className="shrink-0" />
                 <span>Mark Completed</span>
               </button>
 
@@ -1584,16 +1565,16 @@ function FocusTimerSubmodule({
                     showErrorToast('Failed to Skip Block', err?.message);
                   }
                 }}
-                className="w-full sm:w-auto py-3.5 px-5 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-muted hover:text-content-secondary border border-overlay-default text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="w-full sm:w-auto py-3.5 px-5 rounded-xl text-content-muted hover:text-content-secondary hover:bg-overlay-subtle text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
-                <SkipForward size={16} className="text-content-muted" />
+                <SkipForward size={16} className="text-content-subtle" />
                 <span>Skip Block</span>
               </button>
             </div>
           </div>
         ) : activeBlock ? (
           /* State B: Ignited & Active Block */
-          <div className="card p-6 sm:p-8 text-center space-y-6 bg-bg-800 border border-emerald-500/40 relative overflow-hidden rounded-2xl shadow-sm">
+          <div className="card p-6 sm:p-8 text-center space-y-6 relative overflow-hidden">
             {/* Live HUD Indicator Banner */}
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-content-muted border-b border-overlay-subtle pb-4">
               <div className="flex flex-col items-center gap-1 shrink-0 whitespace-nowrap">
@@ -1619,7 +1600,7 @@ function FocusTimerSubmodule({
                       }
                     }}
                     title={`Revert start time back to ${formatTime12h(activeBlock.originalStartTime)}`}
-                    className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-overlay-subtle hover:bg-overlay-default text-content-secondary border border-overlay-default flex items-center gap-1.5 transition-all cursor-pointer shadow-sm whitespace-nowrap"
+                    className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-overlay-subtle hover:bg-overlay-default text-content-secondary flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
                   >
                     <RotateCcw size={13} />
                     <span>Undo Early Start</span>
@@ -1647,13 +1628,13 @@ function FocusTimerSubmodule({
                             setSelectedBreakMinutes(Math.min(5, maxAllowedBreakMinutes));
                             setShowTakeBreakModal(true);
                           }}
-                          className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm whitespace-nowrap ${
+                          className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap ${
                             isBreakDisabled
-                              ? 'bg-overlay-subtle text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
-                              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text border border-emerald-500/30 cursor-pointer'
+                              ? 'bg-overlay-subtle text-content-disabled cursor-not-allowed opacity-60'
+                              : 'bg-overlay-subtle hover:bg-overlay-default text-content-secondary cursor-pointer'
                           }`}
                         >
-                          <Coffee size={13} className={isBreakDisabled ? 'text-content-disabled' : 'text-success-text'} />
+                          <Coffee size={13} className={isBreakDisabled ? 'text-content-disabled' : 'text-content-muted'} />
                           <span>Take Break</span>
                         </button>
                       );
@@ -1675,7 +1656,7 @@ function FocusTimerSubmodule({
                           showErrorToast('Failed to Skip Block', err?.message);
                         }
                       }}
-                      className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-overlay-subtle text-content-muted hover:text-content-secondary hover:bg-overlay-default border border-overlay-default flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                      className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-overlay-subtle text-content-muted hover:text-content-secondary hover:bg-overlay-default flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
                     >
                       <SkipForward size={13} className="text-content-muted" />
                       <span>Skip Block</span>
@@ -1696,8 +1677,8 @@ function FocusTimerSubmodule({
                       }}
                       className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                         activeBlock.completed
-                          ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30'
-                          : 'bg-overlay-subtle text-content-tertiary hover:bg-overlay-default border border-overlay-default'
+                          ? 'bg-primary-500/10 text-success-text'
+                          : 'bg-overlay-subtle text-content-tertiary hover:bg-overlay-default'
                       }`}
                     >
                       <CheckCircle2 size={13} className={activeBlock.completed ? 'text-success-text' : 'text-content-muted'} />
@@ -1711,7 +1692,7 @@ function FocusTimerSubmodule({
                   onClick={(e) => handleStopSync(e)}
                   title="Stop Schedule Sync"
                   aria-label="Stop schedule sync"
-                  className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-overlay-subtle hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer sm:ml-auto whitespace-nowrap"
+                  className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-theme hover:bg-overlay-subtle flex items-center gap-1.5 transition-colors cursor-pointer sm:ml-auto whitespace-nowrap"
                 >
                   <PowerOff size={13} />
                   <span className="hidden sm:inline">Stop Sync</span>
@@ -1723,7 +1704,7 @@ function FocusTimerSubmodule({
             {activeBreakState.isOnBreak ? (
               <div className="space-y-6 py-2">
                 <div className="badge-emerald inline-flex items-center gap-2 px-3 py-1 rounded-full font-mono text-2xs font-medium uppercase tracking-[0.08em] mx-auto">
-                  <Coffee size={13} className="text-success-text animate-pulse" />
+                  <Coffee size={13} className="text-success-text" />
                   <span>CURRENTLY ON MID-BLOCK BREAK</span>
                 </div>
 
@@ -1731,18 +1712,18 @@ function FocusTimerSubmodule({
                   <h2 className="font-serif text-[1.75rem] sm:text-[2.25rem] leading-tight tracking-[-0.01em] text-content-primary">
                     Step away, stretch & recharge
                   </h2>
-                  <p className="text-xs sm:text-sm text-success-text mt-1">
+                  <p className="text-xs sm:text-sm text-content-muted mt-1">
                     Back to focus on <span className="text-content-primary font-medium">{activeBlock.customTitle || activeBlockActivity?.name}</span> shortly.
                   </p>
                 </div>
 
                 {/* Break Countdown */}
                 <div className="py-2 space-y-2">
-                  <div className="figure text-6xl sm:text-8xl text-success-text">
+                  <div className="figure text-6xl sm:text-8xl text-content-primary">
                     {formatSeconds(activeBreakState.remainingBreakSeconds)}
                   </div>
                   <p className="text-xs text-content-muted flex items-center justify-center gap-1.5 font-mono">
-                    <Clock size={13} className="text-success-text" />
+                    <Clock size={13} className="text-content-subtle" />
                     <span>
                       {Math.ceil(activeBreakState.remainingBreakSeconds / 60)}m left in break • Block finishes at {formatTime12h(activeBlock.endTime)}
                     </span>
@@ -1761,9 +1742,9 @@ function FocusTimerSubmodule({
                         showErrorToast('Failed to End Break', err?.message);
                       }
                     }}
-                    className="px-5 py-2.5 rounded-xl bg-bg-700 hover:bg-bg-600 text-content-secondary hover:text-content-primary font-semibold text-xs border border-overlay-default flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                    className="btn-secondary text-xs flex items-center gap-2"
                   >
-                    <RotateCcw size={14} className="text-success-text" />
+                    <RotateCcw size={14} />
                     <span>End Break Now & Resume Focus</span>
                   </button>
                 </div>
@@ -1773,16 +1754,13 @@ function FocusTimerSubmodule({
               <>
                 {/* Active Block Title & Secondary Activity Badges */}
                 <div className="space-y-3">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-overlay-subtle border border-overlay-default text-xs">
+                  <div className="inline-flex items-center gap-2 text-xs">
                     {(() => {
                       const resolvedActiveColor = getActivityDisplayColor(activeBlockActivity, theme);
                       return (
                         <div
-                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-                          style={{
-                            backgroundColor: `${resolvedActiveColor}25`,
-                            color: resolvedActiveColor,
-                          }}
+                          className="flex items-center justify-center shrink-0"
+                          style={{ color: resolvedActiveColor }}
                         >
                           <ActivityIcon iconName={activeBlockActivity?.icon || 'Clock'} size={12} />
                         </div>
@@ -1798,8 +1776,8 @@ function FocusTimerSubmodule({
                           const targetView = getAscendViewForModule(activeBlockActivity.ascendModule, activeBlockActivity.name);
                           if (targetView) onNavigate(targetView);
                         }}
-                        className={`text-2xs text-success-text font-mono flex items-center gap-0.5 ${
-                          onNavigate ? 'hover:text-success-text hover:underline cursor-pointer' : ''
+                        className={`text-2xs text-content-muted font-mono flex items-center gap-0.5 ${
+                          onNavigate ? 'hover:text-content-primary hover:underline cursor-pointer' : ''
                         }`}
                         title={onNavigate ? `Open ${activeBlockActivity.ascendModule} module` : undefined}
                       >
@@ -1819,15 +1797,15 @@ function FocusTimerSubmodule({
 
                   <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
                     {activeBlock.originalStartTime && (
-                      <div className="badge-neutral inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium">
-                        <Clock size={12} className="text-content-muted" />
+                      <div className="inline-flex items-center gap-1.5 text-xs text-content-muted">
+                        <Clock size={12} className="text-content-subtle" />
                         <span>Started early (originally scheduled for {formatTime12h(activeBlock.originalStartTime)})</span>
                       </div>
                     )}
 
                     {activeBlock.breakDurationMinutes && (
-                      <div className="badge-emerald inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium">
-                        <Coffee size={12} className="text-success-text" />
+                      <div className="inline-flex items-center gap-1.5 text-xs text-content-muted">
+                        <Coffee size={12} className="text-content-subtle" />
                         <span>{activeBlock.breakDurationMinutes}m break taken</span>
                       </div>
                     )}
@@ -1851,15 +1829,15 @@ function FocusTimerSubmodule({
                                 if (targetView) onNavigate(targetView);
                               }
                             }}
-                            className={`text-xs font-medium text-success-text bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg flex items-center gap-1 shadow-sm truncate max-w-full ${
-                              hasMod ? 'hover:bg-emerald-500/25 cursor-pointer hover:underline' : ''
+                            className={`text-xs font-medium text-content-secondary bg-overlay-subtle px-2.5 py-0.5 rounded-lg flex items-center gap-1 truncate max-w-full ${
+                              hasMod ? 'hover:bg-overlay-default cursor-pointer hover:underline' : ''
                             }`}
                             title={secAct.ascendModule && onNavigate ? `Open ${secAct.ascendModule} module` : secAct.name}
                           >
-                            <Zap size={11} className="text-success-text shrink-0" />
+                            <Zap size={11} className="text-content-subtle shrink-0" />
                             <span className="truncate">+{secAct.name}</span>
                             {secAct.ascendModule && (
-                              <span className="text-2xs text-success-text font-mono">[{secAct.ascendModule}]</span>
+                              <span className="text-2xs text-content-muted font-mono">[{secAct.ascendModule}]</span>
                             )}
                           </button>
                         );
@@ -1870,11 +1848,11 @@ function FocusTimerSubmodule({
 
                 {/* Massive Live Countdown */}
                 <div className="py-2 space-y-2">
-                  <div className="figure text-6xl sm:text-8xl text-success-text">
+                  <div className="figure text-6xl sm:text-8xl text-content-primary">
                     {formatSeconds(activeBlockRemainingSeconds)}
                   </div>
                   <p className="text-xs text-content-muted flex items-center justify-center gap-1.5 font-mono">
-                    <Clock size={13} className="text-success-text" />
+                    <Clock size={13} className="text-content-subtle" />
                     <span>
                       Time remaining until {formatTime12h(activeBlock.endTime)} ({Math.ceil(activeBlockRemainingSeconds / 60)} mins left)
                     </span>
@@ -1895,22 +1873,22 @@ function FocusTimerSubmodule({
           </div>
         ) : (
           /* State C: Ignited & Gap/Empty */
-          <div className="card p-6 sm:p-8 text-center space-y-6 bg-bg-800 border border-overlay-subtle rounded-2xl relative overflow-hidden shadow-sm">
+          <div className="card p-6 sm:p-8 text-center space-y-6 relative overflow-hidden">
             {/* Top Bar with Status Badge & Stop Sync in normal flow */}
             <div className="flex items-center justify-between gap-3 border-b border-overlay-subtle pb-4 text-xs text-content-muted">
               <div className="flex items-center gap-2">
                 {currentResolvedBlock?.skipped ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-overlay-subtle border border-overlay-default text-content-tertiary text-xs font-medium">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-overlay-subtle text-content-tertiary text-xs font-medium">
                     <SkipForward className="text-content-muted" size={12} />
                     <span>Block Skipped</span>
                   </div>
                 ) : currentResolvedBlock?.completed ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/30 text-content-primary text-xs font-medium">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-overlay-subtle text-content-primary text-xs font-medium">
                     <CheckCircle2 className="text-content-secondary" size={12} />
                     <span>Completed Early</span>
                   </div>
                 ) : (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-overlay-subtle border border-overlay-default text-content-secondary text-xs font-medium">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-overlay-subtle text-content-secondary text-xs font-medium">
                     <Clock className="text-content-muted" size={12} />
                     <span>Unscheduled Time</span>
                   </div>
@@ -1922,7 +1900,7 @@ function FocusTimerSubmodule({
                 onClick={(e) => handleStopSync(e)}
                 title="Stop Schedule Sync"
                 aria-label="Stop schedule sync"
-                className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-theme hover:bg-rose-500/10 border border-overlay-subtle hover:border-rose-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
+                className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-theme hover:bg-overlay-subtle flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <PowerOff size={13} />
                 <span className="hidden sm:inline">Stop Sync</span>
@@ -1940,7 +1918,7 @@ function FocusTimerSubmodule({
                       : 'Unscheduled Time'}
                   </h2>
                   <p className="text-xs text-content-muted">
-                    Next block starts in <strong className="figure text-success-text">{gapMinsUntilNext} minutes</strong>
+                    Next block starts in <strong className="figure text-content-primary">{gapMinsUntilNext} minutes</strong>
                   </p>
 
                   {/* Contextual Encouragement for Gap States */}
@@ -1954,16 +1932,7 @@ function FocusTimerSubmodule({
                         "{getEarlyCompletionContextualMessage(resolvedBlockForDisplayActivity)}"
                       </p>
                     )
-                  ) : (
-                    <div className="pt-1 max-w-md mx-auto space-y-0.5">
-                      <p className="font-serif italic text-base sm:text-lg text-content-tertiary">
-                        "Own every second — unscheduled time is your canvas for deliberate design."
-                      </p>
-                      <p className="text-micro text-content-muted font-mono">
-                        Protect your focus, recharge with intent, or step ahead into what matters.
-                      </p>
-                    </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Countdown to Next Block */}
@@ -1979,14 +1948,11 @@ function FocusTimerSubmodule({
                 {currentResolvedBlock && (() => {
                   const resolvedCurrentColor = getActivityDisplayColor(currentResolvedBlockActivity, theme, '#10b981');
                   return (
-                    <div className="p-3 px-4 rounded-xl bg-overlay-subtle border border-primary-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left shadow-sm">
+                    <div className="p-3 px-4 rounded-xl bg-overlay-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
                       <div className="flex items-center gap-3 w-full min-w-0">
                         <div
-                          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                          style={{
-                            backgroundColor: `${resolvedCurrentColor}25`,
-                            color: resolvedCurrentColor,
-                          }}
+                          className="flex items-center justify-center shrink-0"
+                          style={{ color: resolvedCurrentColor }}
                         >
                           <ActivityIcon iconName={currentResolvedBlockActivity?.icon || 'Clock'} size={14} />
                         </div>
@@ -2010,7 +1976,7 @@ function FocusTimerSubmodule({
                             showErrorToast('Failed to Undo', err?.message);
                           }
                         }}
-                        className="w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary-500/15 hover:bg-primary-500/25 text-content-primary border border-primary-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
+                        className="w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-content-secondary hover:text-content-primary hover:bg-overlay-default flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
                       >
                         <RotateCcw size={12} />
                         <span>Undo {currentResolvedBlock.skipped ? 'Skip' : 'Completion'}</span>
@@ -2023,14 +1989,11 @@ function FocusTimerSubmodule({
                 {(() => {
                   const resolvedNextColor = getActivityDisplayColor(nextBlockActivity, theme, '#10b981');
                   return (
-                    <div className="p-4 rounded-xl bg-overlay-subtle border border-overlay-default text-left flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-emerald-500/30 transition-all">
+                    <div className="p-4 rounded-xl border border-overlay-default text-left flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div className="flex items-start sm:items-center gap-3 w-full min-w-0">
                         <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                          style={{
-                            backgroundColor: `${resolvedNextColor}25`,
-                            color: resolvedNextColor,
-                          }}
+                          className="flex items-center justify-center shrink-0"
+                          style={{ color: resolvedNextColor }}
                         >
                           <ActivityIcon iconName={nextBlockActivity?.icon || 'Clock'} size={18} />
                         </div>
@@ -2060,7 +2023,7 @@ function FocusTimerSubmodule({
                                 showErrorToast('Could Not Move Block', err?.message || 'Cannot move block due to a schedule collision.');
                               }
                             }}
-                            className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-micro font-semibold bg-overlay-subtle hover:bg-overlay-default text-content-tertiary border border-overlay-default flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                            className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-micro font-semibold bg-overlay-subtle hover:bg-overlay-default text-content-tertiary flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                             title="Starts early, ends early (Maintains exact duration)"
                           >
                             <ArrowRight size={12} />
@@ -2078,7 +2041,7 @@ function FocusTimerSubmodule({
                                 showErrorToast('Could Not Extend Block', err?.message || 'Cannot extend block due to a schedule collision.');
                               }
                             }}
-                            className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-micro font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-success-text border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                            className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-micro font-semibold bg-overlay-subtle hover:bg-overlay-default text-content-secondary flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                             title="Starts early, keeps original end time (Extends duration)"
                           >
                             <Play className="fill-current" size={12} />
@@ -2092,9 +2055,7 @@ function FocusTimerSubmodule({
               </div>
             ) : todayBlocks.length > 0 ? (
               <div className="max-w-md mx-auto space-y-4 py-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-success-text flex items-center justify-center mx-auto">
-                  <CheckCircle2 size={24} />
-                </div>
+                <CheckCircle2 size={20} className="text-content-subtle mx-auto" />
                 <div className="space-y-1">
                   <h2 className="section-title">All Scheduled Blocks Resolved</h2>
                   <p className="text-xs text-content-muted">
@@ -2105,14 +2066,11 @@ function FocusTimerSubmodule({
                 {currentResolvedBlock && (() => {
                   const resolvedCurrentColor = getActivityDisplayColor(currentResolvedBlockActivity, theme, '#10b981');
                   return (
-                    <div className="p-3 px-4 rounded-xl bg-overlay-subtle border border-primary-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left shadow-sm mt-2">
+                    <div className="p-3 px-4 rounded-xl bg-overlay-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left mt-2">
                       <div className="flex items-center gap-3 w-full min-w-0">
                         <div
-                          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                          style={{
-                            backgroundColor: `${resolvedCurrentColor}25`,
-                            color: resolvedCurrentColor,
-                          }}
+                          className="flex items-center justify-center shrink-0"
+                          style={{ color: resolvedCurrentColor }}
                         >
                           <ActivityIcon iconName={currentResolvedBlockActivity?.icon || 'Clock'} size={14} />
                         </div>
@@ -2136,7 +2094,7 @@ function FocusTimerSubmodule({
                             showErrorToast('Failed to Undo', err?.message);
                           }
                         }}
-                        className="w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary-500/15 hover:bg-primary-500/25 text-content-primary border border-primary-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
+                        className="w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-content-secondary hover:text-content-primary hover:bg-overlay-default flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
                       >
                         <RotateCcw size={12} />
                         <span>Undo {currentResolvedBlock.skipped ? 'Skip' : 'Completion'}</span>
@@ -2175,11 +2133,11 @@ function FocusTimerSubmodule({
       {focusLogs.length > 0 && (
         <div className="w-full max-w-full min-w-0 overflow-x-hidden">
           <h2 className="section-title mb-3">Recent Focus Sessions</h2>
-          <div className="space-y-2 w-full max-w-full min-w-0">
+          <div className="card divide-y divide-overlay-subtle w-full max-w-full min-w-0 overflow-hidden">
             {focusLogs.slice(0, 10).map((log) => {
               const skill = skills.find((s) => s.id === log.skillId);
               return (
-                <div key={log.id} className="card p-3 space-y-1.5 card-hover text-xs w-full max-w-full min-w-0 overflow-hidden">
+                <div key={log.id} className="p-3 space-y-1.5 text-xs w-full max-w-full min-w-0 overflow-hidden">
                   <div className="flex items-center justify-between gap-2 min-w-0">
                     <div className="min-w-0 flex-1">
                       <div className="item-name !text-content-secondary truncate">{log.taskName}</div>
@@ -2188,7 +2146,7 @@ function FocusTimerSubmodule({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="figure text-content-secondary bg-primary-500/10 px-2.5 py-1 rounded-full border border-primary-500/20 whitespace-nowrap">
+                      <span className="figure text-content-muted whitespace-nowrap">
                         +{log.pointsAwarded} pts
                       </span>
                       <button
@@ -2203,7 +2161,7 @@ function FocusTimerSubmodule({
                   </div>
 
                   {log.reflection && (
-                    <div className="p-2.5 rounded-lg bg-primary-500/5 border border-primary-500/15 text-content-secondary text-micro italic break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full min-w-0">
+                    <div className="text-content-muted text-micro italic break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full min-w-0">
                       "<span className="not-italic font-medium text-content-tertiary">Reflection:</span> {log.reflection}"
                     </div>
                   )}
@@ -2218,7 +2176,7 @@ function FocusTimerSubmodule({
       <Dialog open={aboutModalOpen} onClose={() => setAboutModalOpen(false)} title="About Deep Focus & Executive Training">
         <div className="space-y-5 text-content-tertiary text-xs leading-relaxed max-h-[75vh] overflow-y-auto pr-1">
           {/* Section 1 */}
-          <div className="p-3.5 bg-primary-500/10 rounded-xl border border-primary-500/20 space-y-1.5">
+          <div className="space-y-1.5">
             <h3 className="font-serif text-xl leading-tight text-content-primary flex items-center gap-2">
               <Zap size={16} /> What is Deep Work?
             </h3>
@@ -2230,7 +2188,7 @@ function FocusTimerSubmodule({
           {/* Section 2 */}
           <div className="space-y-2">
             <h4 className="item-name text-sm flex items-center gap-1.5">
-              <BrainCircuit size={15} className="text-brand-text" /> Prefrontal Cortex & Neural Plasticity
+              <BrainCircuit size={15} className="text-content-subtle" /> Prefrontal Cortex & Neural Plasticity
             </h4>
             <p className="text-content-muted">
               Deep focus activates the <em>dorsolateral prefrontal cortex (dlPFC)</em>, which manages impulse control, working memory, and strategic problem-solving. By single-tasking for extended periods:
@@ -2245,18 +2203,18 @@ function FocusTimerSubmodule({
           {/* Section 3 */}
           <div className="space-y-2">
             <h4 className="item-name text-sm flex items-center gap-1.5">
-              <CheckCircle2 size={15} className="text-success-text" /> Best Practices for Max Impact
+              <CheckCircle2 size={15} className="text-content-subtle" /> Best Practices for Max Impact
             </h4>
-            <div className="grid grid-cols-1 gap-2 text-content-muted">
-              <div className="p-2.5 bg-bg-800 rounded-lg border border-overlay-subtle">
+            <div className="grid grid-cols-1 divide-y divide-overlay-subtle text-content-muted">
+              <div className="py-2.5">
                 <span className="item-name !text-content-secondary block mb-0.5">1. Strict Zero Distractions</span>
                 Put your phone out of sight, close unrelated browser tabs, and disable notifications during focus blocks.
               </div>
-              <div className="p-2.5 bg-bg-800 rounded-lg border border-overlay-subtle">
+              <div className="py-2.5">
                 <span className="item-name !text-content-secondary block mb-0.5">2. Right-Sized Session Durations</span>
                 25 mins for beginners (Pomodoro), 50 mins for core tasks, and up to 90–120+ mins for complex multi-hour deep focus.
               </div>
-              <div className="p-2.5 bg-bg-800 rounded-lg border border-overlay-subtle">
+              <div className="py-2.5">
                 <span className="item-name !text-content-secondary block mb-0.5">3. Genuine Rest Breaks</span>
                 Step away from screens during breaks—stretch, walk, hydrate. Do not swap focus for social media scrolling.
               </div>
@@ -2274,8 +2232,8 @@ function FocusTimerSubmodule({
       {/* Take Break Modal in Live Schedule Sync */}
       <Dialog open={showTakeBreakModal} onClose={() => setShowTakeBreakModal(false)} title="Take a Mid-Block Break">
         <div className="space-y-5">
-          <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-success-text">
-            <Coffee size={20} className="shrink-0 text-success-text" />
+          <div className="flex items-center gap-3 text-xs text-content-muted">
+            <Coffee size={18} className="shrink-0 text-content-subtle" />
             <div>
               <p className="item-name !text-content-secondary">Recharge during {activeBlock?.customTitle || activeBlockActivity?.name}</p>
               <p className="text-content-muted mt-0.5">
@@ -2300,10 +2258,10 @@ function FocusTimerSubmodule({
                     onClick={() => setSelectedBreakMinutes(mins)}
                     className={`py-3 px-2 rounded-xl text-xs font-medium transition-all flex flex-col items-center justify-center gap-1 border ${
                       !isAllowed
-                        ? 'opacity-40 cursor-not-allowed bg-bg-800 border-overlay-subtle text-content-disabled'
+                        ? 'opacity-40 cursor-not-allowed border-overlay-subtle text-content-disabled'
                         : isSelected
-                        ? 'bg-emerald-500/20 text-success-text border-emerald-500/50 ring-1 ring-emerald-500/30'
-                        : 'bg-overlay-subtle text-content-tertiary border-overlay-default hover:bg-overlay-default hover:text-content-primary cursor-pointer'
+                        ? 'bg-overlay-default text-content-primary border-overlay-strong'
+                        : 'text-content-tertiary border-overlay-subtle hover:bg-overlay-subtle hover:text-content-primary cursor-pointer'
                     }`}
                   >
                     <span className="figure text-base">{mins}m</span>
@@ -2319,7 +2277,7 @@ function FocusTimerSubmodule({
             <div className="pt-2">
               <div className="flex items-center justify-between text-xs text-content-muted mb-1.5">
                 <span>Custom duration (1–{maxAllowedBreakMinutes}m):</span>
-                <span className="figure text-success-text">{selectedBreakMinutes} minutes</span>
+                <span className="figure text-content-primary">{selectedBreakMinutes} minutes</span>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -2384,8 +2342,8 @@ function FocusTimerSubmodule({
           <p>
             You currently have an active focus session in progress. Discarding will stop the timer and no points or logs will be saved.
           </p>
-          <div className="p-3 bg-warning/10 border border-warning/20 rounded-xl text-warning-text flex items-center gap-2">
-            <AlertTriangle size={18} className="shrink-0 text-warning-text" />
+          <div className="text-warning-text flex items-center gap-2">
+            <AlertTriangle size={16} className="shrink-0 text-warning-text" />
             <span>Are you sure you want to discard your current progress?</span>
           </div>
           <div className="flex gap-2 pt-2">
@@ -2402,7 +2360,7 @@ function FocusTimerSubmodule({
       {/* Post-Session Reflection Modal */}
       <Dialog open={reflectionModalOpen} onClose={() => setReflectionModalOpen(false)} title="Focus Session Completed!">
         <div className="space-y-4">
-          <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-xl text-xs text-content-secondary">
+          <div className="text-xs text-content-secondary">
             Great job! You logged <strong>{completedSessionData?.durationMinutes} minutes</strong> of focus on <strong>"{completedSessionData?.taskName}"</strong>.
           </div>
 
@@ -2535,7 +2493,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-content-tertiary bg-bg-800/80 p-3 rounded-xl border border-overlay-subtle">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-content-tertiary">
                 <div>
                   <span className="text-content-disabled font-medium block">Why / Rationale:</span>
                   <p>{d.rationale}</p>
@@ -2547,8 +2505,8 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
               </div>
 
               {d.reflection ? (
-                <div className="p-3 bg-primary-500/10 rounded-xl text-xs text-brand-text border border-primary-500/20 break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full min-w-0">
-                  <span className="stat-label !text-brand-text block mb-1">Reflection & Learnings:</span>
+                <div className="pt-3 border-t border-overlay-subtle text-xs text-content-secondary break-words [overflow-wrap:anywhere] whitespace-pre-wrap max-w-full min-w-0">
+                  <span className="stat-label block mb-1">Reflection & Learnings:</span>
                   "{d.reflection}"
                 </div>
               ) : (
@@ -2556,7 +2514,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                   onClick={() => setReflectModalDecision(d)}
                   className="btn-secondary text-xs w-full py-1.5 flex items-center justify-center gap-1.5"
                 >
-                  <Edit3 size={14} className="text-brand-text" />
+                  <Edit3 size={14} className="text-content-subtle" />
                   <span>Revisit & Add Reflection</span>
                 </button>
               )}
@@ -2734,9 +2692,9 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
           <h3 className="font-serif text-xl leading-tight text-content-primary mb-3">Most Frequently Labeled Emotions</h3>
           <div className="flex flex-wrap gap-2">
             {sortedEmotions.map(([name, count]) => (
-              <div key={name} className="badge bg-rose-500/15 text-rose-theme border border-rose-500/30 px-3 py-1.5 text-xs font-medium flex items-center gap-2">
+              <div key={name} className="badge badge-neutral px-3 py-1.5 text-xs font-medium flex items-center gap-2">
                 <span>{name}</span>
-                <span className="figure bg-rose-500/30 px-1.5 py-0.5 rounded-full text-2xs">{count}x</span>
+                <span className="figure text-content-muted text-2xs">{count}x</span>
               </div>
             ))}
           </div>
@@ -2747,13 +2705,13 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
       {emotionLogs.length === 0 ? (
         <EmptyState icon={HeartHandshake} title="No emotions labeled yet" description="When experiencing a strong feeling, label it explicitly to calm prefrontal reactivity." action={<button onClick={() => setModalOpen(true)} className="btn-primary">Label Your First Emotion</button>} />
       ) : (
-        <div className="space-y-2">
+        <div className="card divide-y divide-overlay-subtle overflow-hidden">
           {emotionLogs.slice(0, 15).map((l) => (
-            <div key={l.id} className="card p-3.5 flex items-center justify-between card-hover text-xs">
+            <div key={l.id} className="p-3.5 flex items-center justify-between text-xs">
               <div>
                 <div className="item-name !text-content-secondary flex items-center gap-2">
                   {l.emotion}
-                  <span className="figure text-rose-theme">({l.intensity}/10)</span>
+                  <span className="figure text-content-muted">({l.intensity}/10)</span>
                 </div>
                 {l.context && <p className="text-content-muted mt-0.5">{l.context}</p>}
                 <p className="text-2xs text-content-disabled mt-1">{formatDateLong(l.date)}</p>

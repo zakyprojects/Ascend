@@ -22,9 +22,6 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             {/* Hero */}
             <Reveal index={0} className="card p-6 relative overflow-hidden">
               <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-primary-500/15 flex items-center justify-center mb-4">
-                  <Brain size={32} className="text-brand-text" />
-                </div>
                 <h2 className="font-serif font-normal text-[1.75rem] leading-tight tracking-[-0.01em] text-content-primary mb-2">
                   Your brain is not fixed.
                 </h2>
@@ -34,14 +31,14 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
                   every skill you practice, every experience you have physically changes its structure.
                 </p>
                 <p className="text-sm text-content-muted leading-relaxed mt-3">
-                  This is called <span className="text-brand-text font-medium">neuroplasticity</span>, and it means
+                  This is called <span className="text-content-primary font-medium">neuroplasticity</span>, and it means
                   you are never stuck with who you are. Change is always possible — it just requires the right approach.
                 </p>
               </div>
             </Reveal>
 
             {/* Core principle */}
-            <Reveal index={1} className="card p-5 border-l-2 border-l-primary-500">
+            <Reveal index={1} className="card p-5">
               <p className="font-serif italic text-xl leading-snug text-content-primary mb-2">
                 "Neurons that fire together, wire together."
               </p>
@@ -57,26 +54,22 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
               <h2 className="section-title mb-3">The Four Pillars of Brain Change</h2>
               <div className="grid-cards-lg gap-3">
                 <PillarCard
-                  icon={<Repeat size={20} />}
-                  color="#10b981"
+                  icon={<Repeat size={18} />}
                   title="Repetition Over Intensity"
                   description="A 10-minute daily habit beats a 2-hour weekly session. Brain rewiring happens through repeated, spaced activation — not marathon sessions. The daily repetition keeps neurons firing together, wiring them into a permanent pathway."
                 />
                 <PillarCard
-                  icon={<Moon size={20} />}
-                  color="#10b981"
+                  icon={<Moon size={18} />}
                   title="Sleep Consolidates Learning"
                   description="Practice is the input, but sleep is where the brain actually does the rewiring. During sleep, your brain replays the day's experiences, strengthens important connections, and prunes unnecessary ones. Without good sleep, your daily repetitions don't consolidate effectively."
                 />
                 <PillarCard
-                  icon={<Sparkles size={20} />}
-                  color="#10b981"
+                  icon={<Sparkles size={18} />}
                   title="Novelty Triggers Growth"
                   description="Routine builds efficiency, but novelty builds capacity. When you encounter something new, your brain releases dopamine and activates neuroplasticity. It's literally telling itself to pay attention and learn. This is why trying new things keeps your brain plastic and adaptable."
                 />
                 <PillarCard
-                  icon={<Clock size={20} />}
-                  color="#10b981"
+                  icon={<Clock size={18} />}
                   title="The 90-Day Window"
                   description="Research suggests it takes roughly 66–90 days of consistent repetition for a new behavior to become automatic — to literally wire itself into your brain's default circuitry. This is why the 90-Day League exists: it's a scientifically grounded window for real neurological change."
                 />
@@ -99,11 +92,9 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             </Reveal>
 
             {/* 90-Day League CTA */}
-            <Reveal index={3} className="card p-5 border border-primary-500/30 bg-primary-500/5">
+            <Reveal index={3} className="card p-5">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center shrink-0">
-                  <Target size={20} className="text-brand-text" />
-                </div>
+                <Target size={18} className="text-content-subtle shrink-0 mt-1" />
                 <div className="flex-1">
                   <h3 className="font-serif text-xl leading-tight text-content-primary mb-1">The 90-Day League</h3>
                   <p className="text-sm text-content-muted leading-relaxed mb-3">
@@ -129,15 +120,15 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
               <p className="text-sm text-content-disabled mb-3">
                 Read these lessons in the Lessons section for a deeper understanding of neuroplasticity:
               </p>
-              <div className="space-y-2">
+              <div className="card divide-y divide-overlay-subtle">
                 {[
                   'Neuroplasticity: Your Brain Is Not Fixed',
                   'Why Consistency Beats Intensity',
                   'Sleep: Where Memory Consolidation Happens',
                   "Novelty: The Brain's Growth Trigger",
                 ].map((title) => (
-                  <div key={title} className="card p-3 flex items-center gap-2 text-sm text-content-muted">
-                    <Brain size={14} className="text-brand-text shrink-0" />
+                  <div key={title} className="p-3 flex items-center gap-2 text-sm text-content-muted">
+                    <Brain size={14} className="text-content-subtle shrink-0" />
                     {title}
                   </div>
                 ))}
@@ -155,16 +146,11 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
   );
 }
 
-function PillarCard({ icon, color, title, description }: { icon: React.ReactNode; color: string; title: string; description: string }) {
+function PillarCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
     <div className="card p-4">
       <div className="flex items-start gap-3">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-          style={{ backgroundColor: `${color}15`, color }}
-        >
-          {icon}
-        </div>
+        <div className="text-content-subtle shrink-0 mt-0.5">{icon}</div>
         <div>
           <h3 className="item-name text-sm mb-1">{title}</h3>
           <p className="text-xs text-content-muted leading-relaxed">{description}</p>
@@ -177,9 +163,7 @@ function PillarCard({ icon, color, title, description }: { icon: React.ReactNode
 function Tip({ num, text }: { num: string; text: string }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="w-6 h-6 rounded-lg bg-primary-500/15 flex items-center justify-center shrink-0 mt-0.5">
-        <span className="figure text-xs text-brand-text">{num}</span>
-      </div>
+      <span className="figure text-xs text-content-subtle w-4 shrink-0 mt-1">{num}</span>
       <p className="text-sm text-content-muted leading-relaxed">{text}</p>
     </div>
   );

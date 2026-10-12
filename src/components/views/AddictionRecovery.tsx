@@ -127,8 +127,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       </div>
 
       {/* Persistent Disclaimer Banner */}
-      <div className="card p-4 border-l-4 border-l-warning bg-warning/10 flex items-start gap-3">
-        <AlertCircle size={22} className="text-warning-text shrink-0 mt-0.5" />
+      <div className="rounded-2xl p-4 border border-overlay-default flex items-start gap-3">
+        <AlertCircle size={16} className="text-content-subtle shrink-0 mt-0.5" />
         <div className="text-xs text-content-tertiary leading-relaxed">
           <span className="font-semibold text-warning-text">Important Medical Disclaimer:</span> This module is a self-management support tool designed to complement — but <span className="underline">not replace</span> — professional medical treatment or therapy. If you are experiencing severe addiction, physical withdrawal, or crisis, please seek immediate assistance from a licensed healthcare professional or hotline (e.g. SAMHSA Helpline: 1-800-662-4357).
         </div>
@@ -177,26 +177,26 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
 
                 {/* Live Counter Display */}
                 <div className="grid grid-cols-4 gap-2 text-center">
-                  <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
-                    <div className="figure text-3xl sm:text-4xl text-rose-theme">{timeElapsed.days}</div>
+                  <div className="p-3">
+                    <div className="figure text-3xl sm:text-4xl text-content-primary">{timeElapsed.days}</div>
                     <div className="stat-label mt-1">Days</div>
                   </div>
-                  <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
+                  <div className="p-3">
                     <div className="figure text-3xl sm:text-4xl text-content-primary">{timeElapsed.hours}</div>
                     <div className="stat-label mt-1">Hours</div>
                   </div>
-                  <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
+                  <div className="p-3">
                     <div className="figure text-3xl sm:text-4xl text-content-primary">{timeElapsed.minutes}</div>
                     <div className="stat-label mt-1">Mins</div>
                   </div>
-                  <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
+                  <div className="p-3">
                     <div className="figure text-3xl sm:text-4xl text-content-primary">{timeElapsed.seconds}</div>
                     <div className="stat-label mt-1">Secs</div>
                   </div>
                 </div>
 
                 {/* Next milestone */}
-                <div className="flex items-center gap-4 p-3 rounded-2xl bg-bg-800/60 border border-overlay-subtle">
+                <div className="flex items-center gap-4 pt-4 border-t border-overlay-subtle">
                   <ProgressRing
                     value={nextMilestone ? elapsedHours : 1}
                     max={nextMilestone ? nextMilestone.requiredHours : 1}
@@ -233,7 +233,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                   />
 
                   <div className="font-serif text-xl leading-tight text-content-primary mb-3 flex items-center gap-2">
-                    <Award size={16} className="text-brand-text" />
+                    <Award size={16} className="text-content-subtle" />
                     Milestone Celebrations & Badges
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -250,12 +250,12 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                           onClick={() => {
                             if (isUnlocked) setCelebrationMilestone(m.label);
                           }}
-                          className={`card p-3 flex items-center gap-3 text-left transition-all ${
+                          className={`rounded-xl p-3 flex items-center gap-3 text-left transition-colors ${
                             isUnlocked
-                              ? 'bg-primary-500/10 border-primary-500/40 text-content-secondary cursor-pointer hover:bg-primary-500/20'
+                              ? 'bg-primary-500/10 text-content-secondary cursor-pointer hover:bg-primary-500/15'
                               : isCapped
-                              ? 'bg-bg-800/40 border-overlay-subtle text-content-disabled opacity-50'
-                              : 'bg-bg-800/40 border-overlay-subtle text-content-disabled opacity-60'
+                              ? 'text-content-disabled opacity-50'
+                              : 'text-content-disabled opacity-60'
                           }`}
                         >
                           <span className="text-2xl">{m.icon}</span>
@@ -302,12 +302,12 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               ) : (
                 <div className="space-y-3">
                   {/* Craving History */}
-                  <div className="space-y-2">
+                  <div className="divide-y divide-overlay-subtle">
                     {cravingLogs.slice(0, 10).map((log) => (
-                      <div key={log.id} className="card enter-item p-3 bg-bg-800/60 border border-overlay-subtle space-y-1 text-xs">
+                      <div key={log.id} className="enter-item py-3 space-y-1 text-xs">
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-content-secondary flex items-center gap-2">
-                            Intensity: <span className={`px-2 py-0.5 rounded figure ${log.intensity >= 7 ? 'bg-rose-500/20 text-rose-theme' : 'bg-warning/20 text-warning-text'}`}>{log.intensity}/10</span>
+                            Intensity: <span className={`figure ${log.intensity >= 7 ? 'text-rose-theme' : 'text-content-primary'}`}>{log.intensity}/10</span>
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-content-disabled text-2xs">{formatDateLong(log.date)}</span>
@@ -322,7 +322,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                           </div>
                         </div>
                         {log.trigger && <p className="text-content-muted"><span className="text-content-disabled font-medium">Trigger:</span> {log.trigger}</p>}
-                        {log.copingStrategy && <p className="text-success-text"><span className="text-content-disabled font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
+                        {log.copingStrategy && <p className="text-content-muted"><span className="text-content-disabled font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
                       </div>
                     ))}
                   </div>
@@ -337,25 +337,25 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <Dialog open={emergencyModalOpen} onClose={() => setEmergencyModalOpen(false)} title="Emergency Support & Urge Surfing" maxWidth="max-w-lg">
         <div className="space-y-6">
           {/* Guided Breathing Box */}
-          <div className="card p-5 text-center bg-bg-800 border border-primary-500/30 space-y-4">
-            <h3 className="font-serif text-xl leading-tight text-brand-text flex items-center justify-center gap-2">
+          <div className="text-center space-y-4">
+            <h3 className="font-serif text-xl leading-tight text-content-primary flex items-center justify-center gap-2">
               Guided 4-4-4-4 Box Breathing
             </h3>
             <BreathingCircle />
           </div>
 
           {/* Quick Distraction Activity Suggestion */}
-          <div className="card p-4 space-y-3 bg-bg-800 border border-overlay-default">
+          <div className="pt-4 space-y-3 border-t border-overlay-subtle">
             <div className="flex items-center justify-between">
               <h4 className="item-name text-sm">Quick Distraction Activity</h4>
               <button
                 onClick={() => setDistractionIdx((prev) => (prev + 1) % DISTRACTION_ACTIVITIES.length)}
-                className="btn-ghost text-micro text-brand-text flex items-center gap-1"
+                className="btn-ghost text-micro text-content-muted flex items-center gap-1"
               >
                 <RefreshCw size={12} /> Next Suggestion
               </button>
             </div>
-            <div className="p-3 bg-primary-500/10 rounded-xl font-serif italic text-lg leading-snug text-brand-text text-center border border-primary-500/20">
+            <div className="p-3 font-serif italic text-lg leading-snug text-content-primary text-center">
               "{DISTRACTION_ACTIVITIES[distractionIdx]}"
             </div>
           </div>
@@ -479,7 +479,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       {/* Milestone Unlocked Modal */}
       <Dialog open={!!celebrationMilestone} onClose={() => setCelebrationMilestone(null)} title="Milestone Unlocked!">
         <div className="text-center space-y-4 py-2">
-          <div className="w-16 h-16 rounded-full bg-primary-500/20 text-brand-text border border-primary-500/40 flex items-center justify-center text-3xl mx-auto animate-celebrate">
+          <div className="text-4xl mx-auto animate-celebrate">
             🏆
           </div>
           <h3 className="font-serif text-[1.75rem] leading-tight text-content-primary">{celebrationMilestone}</h3>
@@ -582,7 +582,7 @@ function BreathingCircle() {
         <div
           className={`w-28 h-28 rounded-full border-2 transition-all duration-1000 flex flex-col items-center justify-center ${getCircleScale()}`}
         >
-          <span className="font-mono text-2xs uppercase tracking-[0.08em] font-medium text-brand-text">{phase}</span>
+          <span className="font-mono text-2xs uppercase tracking-[0.08em] font-medium text-content-muted">{phase}</span>
           <span className="figure text-2xl text-content-primary mt-0.5">{seconds}s</span>
         </div>
       </div>
@@ -590,7 +590,7 @@ function BreathingCircle() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => setIsActive(!isActive)}
-          className="btn-ghost text-xs text-brand-text flex items-center gap-1"
+          className="btn-ghost text-xs text-content-primary flex items-center gap-1"
         >
           {isActive ? <Pause size={14} /> : <Play size={14} />}
           <span>{isActive ? 'Pause' : 'Start'}</span>
