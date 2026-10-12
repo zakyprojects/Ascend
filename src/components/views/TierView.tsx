@@ -1,5 +1,7 @@
 import { getCurrentTier, getProgressToNextTier, getNextTier, TIERS, Tier } from '@/lib/tiers';
 import { AppStore } from '@/lib/store';
+import { ProgressBar } from '@/components/ui/primitives';
+import { CountUp, Reveal } from '@/components/ui/Motion';
 import { LucideIcon, Compass, Rocket, BookOpen, Dumbbell, Trophy, Star, Gem, Shield, Crown, Check, Lock } from 'lucide-react';
 
 const TIER_ICONS: Record<string, LucideIcon> = {
@@ -43,7 +45,7 @@ export function TierView({ store }: { store: AppStore }) {
             {currentTier.name}
           </h2>
           <p className="text-sm text-content-muted mt-1">
-            {seasonPoints.toLocaleString()} points
+            <CountUp value={seasonPoints} className="tabular-nums" /> points
           </p>
 
           {/* Progress to next */}
@@ -51,17 +53,16 @@ export function TierView({ store }: { store: AppStore }) {
             <div className="mt-5 max-w-sm mx-auto">
               <div className="flex items-center justify-between mb-2 text-sm">
                 <span className="text-content-muted">Progress to {nextTier.name}</span>
-                <span className="text-content-muted font-medium">{Math.round(progress.percent)}%</span>
+                <span className="text-content-muted font-medium tabular-nums"><CountUp value={Math.round(progress.percent)} />%</span>
               </div>
-              <div className="h-3 bg-bg-600 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${progress.percent}%`,
-                    background: `linear-gradient(90deg, var(--rank-${currentTier.name.toLowerCase()}-text), var(--rank-${nextTier.name.toLowerCase()}-text))`,
-                  }}
-                />
-              </div>
+              <ProgressBar
+                value={progress.percent}
+                label={`Progress to ${nextTier.name}`}
+                size="lg"
+                fillStyle={{
+                  background: `linear-gradient(90deg, var(--rank-${currentTier.name.toLowerCase()}-text), var(--rank-${nextTier.name.toLowerCase()}-text))`,
+                }}
+              />
               <p className="text-xs text-content-muted mt-2">
                 {(nextTier.minPoints - seasonPoints).toLocaleString()} points to reach {nextTier.name}
               </p>
@@ -81,8 +82,8 @@ export function TierView({ store }: { store: AppStore }) {
             const tierKey = tier.name.toLowerCase();
 
             return (
+              <Reveal key={tier.name} index={idx}>
               <div
-                key={tier.name}
                 className={`card p-4 flex items-center gap-4 transition-all ${
                   isCurrent ? 'border-overlay-default bg-bg-700' : ''
                 } ${isUnlocked ? '' : 'opacity-50'}`}
@@ -146,6 +147,7 @@ export function TierView({ store }: { store: AppStore }) {
                   </div>
                 )}
               </div>
+              </Reveal>
             );
           })}
         </div>
