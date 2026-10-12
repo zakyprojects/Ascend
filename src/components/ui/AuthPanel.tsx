@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, Shield, Zap, ArrowLeft } from 'lucide-react';
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
@@ -26,7 +26,32 @@ export function authPanelTitle(mode: AuthPanelMode): string {
 }
 
 /** /signup opens on a choice (create an account or continue as a guest); the form is its second step. */
-type AuthScreen = 'login' | 'signup-choice' | 'signup-form' | 'upgrade';
+export type AuthScreen = 'login' | 'signup-choice' | 'signup-form' | 'upgrade';
+
+/**
+ * What the form reports upward so the page can drive its brand panel ("The Climb").
+ * - progress: how many required fields on this screen are currently valid (0..steps).
+ * - steps: how many required fields this screen has (login 2, signup form / upgrade 5, choice 0).
+ * - phase: 'submitting' while a request runs (guest start included), 'success' from the moment
+ *   sign-in / sign-up / upgrade succeeds until onDone.
+ * - hoverTrail: which choice-screen route is hovered or focused (null elsewhere).
+ * - preview: the username and avatar being entered (signup form / upgrade; empty elsewhere).
+ */
+export interface AuthClimbState {
+  screen: AuthScreen;
+  progress: number;
+  steps: number;
+  phase: 'idle' | 'submitting' | 'success';
+  hoverTrail: 'account' | 'guest' | null;
+  preview: { username: string; avatar: string };
+}
+
+/** The browser's own `type="email"` rule (HTML spec), so "valid" here matches what the form accepts. */
+const EMAIL_PATTERN =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+/** The app's existing minimum for a new password (lib/auth changeUserPassword). Used for the check mark, not to block submit. */
+const NEW_PASSWORD_MIN = 6;
 
 // Screen order for the slide direction: moving forward slides in from the right, back from the left.
 const SCREEN_ORDER: Record<AuthScreen, number> = { login: 0, 'signup-choice': 1, 'signup-form': 2, upgrade: 1 };
@@ -44,6 +69,8 @@ interface AuthPanelProps {
    * account; "Not now" for a guest's upgrade), and how to follow one in-app.
    */
   pageLinks: { login: string; signup: string; dismiss: string; navigate: (href: string) => void };
+  /** Called whenever the climb state changes (screen, valid-field count, phase, hovered route, preview). */
+  onClimbChange?: (state: AuthClimbState) => void;
 }
 
 /** A plain left click follows the link in-app; modified/middle clicks keep the browser's own behaviour. */
@@ -61,7 +88,7 @@ const PAGE_LINK_CLASS = 'font-medium text-brand-text hover:underline underline-o
  * The sign-in / sign-up / guest-upgrade form with its success screen. Screen changes slide in;
  * the first screen shown does not.
  */
-export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks }: AuthPanelProps) {
+export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, onClimbChange }: AuthPanelProps) {
   const isAnonymousUser = Boolean(guestState.currentUser?.isAnonymous);
 
   const [email, setEmail] = useState('');
@@ -71,7 +98,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks }
   const [avatar, setAvatar] = useState('');
   const [keepGuestProgress, setKeepGuestProgress] = useState(true);
 
-  const [usernameStatus, setUsernameStatus] = useState<{ available: boolean; reason?: string } | null>(null);
+  // `checkedFor` is the trimmed username the result belongs to, so a result for an older value never counts as valid.
+  const [usernameStatus, setUsernameStatus] = useState<{ available: boolean; reason?: string; checkedFor?: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -117,21 +145,70 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks }
     }
     // If upgrading and username hasn't changed from current guest name, don't show taken error
     if (mode === 'upgrade' && username.trim() === guestState.currentUser?.username) {
-      setUsernameStatus({ available: true });
+      setUsernameStatus({ available: true, checkedFor: username.trim() });
       return;
     }
 
     const timer = setTimeout(async () => {
       try {
         const result = await isUsernameAvailable(username, guestState.currentUser?.id);
-        setUsernameStatus(result);
+        setUsernameStatus({ ...result, checkedFor: username.trim() });
       } catch {
-        setUsernameStatus({ available: true });
+        setUsernameStatus({ available: true, checkedFor: username.trim() });
       }
     }, 300);
 
     return () => clearTimeout(timer);
   }, [username, mode, guestState.currentUser]);
+
+  // Which route option on the choice screen is hovered or focused.
+  const [hoverTrail, setHoverTrail] = useState<'account' | 'guest' | null>(null);
+  // Set when the request succeeded: the submit button turns into a check just before the success screen.
+  const [submitDone, setSubmitDone] = useState(false);
+
+  // Field validity, using the form's own rules (required fields, type="email", matching confirm).
+  const isNewAccount = mode === 'signup' || mode === 'upgrade';
+  const trimmedUsername = username.trim();
+  const usernameChecked = Boolean(
+    trimmedUsername && usernameStatus?.available && usernameStatus.checkedFor === trimmedUsername
+  );
+  // The username is optional when saving guest progress (only signup marks it required).
+  const usernameValid = usernameChecked || (mode === 'upgrade' && !trimmedUsername);
+  const avatarValid = Boolean(avatar);
+  const emailValid = EMAIL_PATTERN.test(email.trim());
+  const passwordValid = isNewAccount ? password.length >= NEW_PASSWORD_MIN : password.length > 0;
+  const confirmValid = confirmPassword.length > 0 && confirmPassword === password;
+
+  const steps = screen === 'login' ? 2 : screen === 'signup-choice' ? 0 : 5;
+  const progress =
+    screen === 'login'
+      ? Number(emailValid) + Number(passwordValid)
+      : screen === 'signup-choice'
+      ? 0
+      : Number(usernameValid) + Number(avatarValid) + Number(emailValid) + Number(passwordValid) + Number(confirmValid);
+  const formReady = steps > 0 && progress === steps;
+  const phase: AuthClimbState['phase'] = submitDone || successTitle ? 'success' : loading ? 'submitting' : 'idle';
+  const shownTrail = screen === 'signup-choice' ? hoverTrail : null;
+  const showsPreview = screen === 'signup-form' || screen === 'upgrade';
+  const previewUsername = showsPreview ? trimmedUsername : '';
+  const previewAvatar = showsPreview ? avatar : '';
+
+  // Report the climb state upward. The callback lives in a ref so a new function from the parent
+  // on every render never re-fires this (no render loops); only real changes do.
+  const onClimbChangeRef = useRef(onClimbChange);
+  useEffect(() => {
+    onClimbChangeRef.current = onClimbChange;
+  }, [onClimbChange]);
+  useEffect(() => {
+    onClimbChangeRef.current?.({
+      screen,
+      progress,
+      steps,
+      phase,
+      hoverTrail: shownTrail,
+      preview: { username: previewUsername, avatar: previewAvatar },
+    });
+  }, [screen, progress, steps, phase, shownTrail, previewUsername, previewAvatar]);
 
   const guestPoints = guestState.seasonPoints ?? guestState.totalPoints ?? 0;
   const guestHabitsCount = guestState.habits.length;
