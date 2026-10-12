@@ -9,6 +9,7 @@ import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habit
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { PageHero } from '@/components/ui/PageHero';
 import { Dialog, Disclosure, EmptyState, PageColumns } from '@/components/ui/primitives';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
@@ -76,33 +77,35 @@ export function HabitTracker({ store }: { store: AppStore }) {
         </button>
       </div>
 
-      {/* Stats row; the 7-day card sits beside the stats from sm up and wraps under them on phones */}
-      <Reveal
-        index={0}
-        className={cx(
-          'grid grid-cols-3 gap-3',
-          hasDailyHabits && 'sm:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.7fr)]'
-        )}
-      >
-        <div className="card p-4">
-          <div className="stat-label">Total Habits</div>
-          <CountUp value={habits.length} className="stat-value mt-1 block tabular-nums" />
-        </div>
-        <div className="card p-4">
-          <div className="stat-label">To Do Today</div>
-          <CountUp value={todayHabits.length} className="stat-value mt-1 block tabular-nums text-brand-text" />
-        </div>
-        <div className="card p-4">
-          <div className="stat-label">Done Today</div>
-          <CountUp value={completedToday.length} className="stat-value mt-1 block tabular-nums text-brand-text" />
-        </div>
-        {hasDailyHabits && <WeekConsistencyCard habits={habits} />}
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel="Today's habits"
+          ring={{
+            value: completedToday.length,
+            max: habits.length,
+            label: `Habits done today: ${completedToday.length} of ${habits.length}`,
+            center: (
+              <>
+                {completedToday.length}
+                <span className="text-sm font-medium text-content-muted">/{habits.length}</span>
+              </>
+            ),
+            caption: 'done today',
+          }}
+          lead={{
+            label: 'To do today',
+            value: <CountUp value={todayHabits.length} />,
+            hint: todayHabits.length === 0 && habits.length > 0 ? 'All clear for today.' : undefined,
+          }}
+          stats={[{ label: 'Total habits', value: <CountUp value={habits.length} /> }]}
+          side={<CapMeterConnected state={store.state} capId="presetHabits" bare />}
+        />
       </Reveal>
 
       <PageColumns stickyAside
         aside={
           <>
-            <CapMeterConnected state={store.state} capId="presetHabits" />
+            {hasDailyHabits && <WeekConsistencyCard habits={habits} />}
 
             {/* Missed Habit Penalty Info */}
             <Disclosure icon={AlertTriangle} tone="warning" title="Tier-Scaled Missed Habit Penalties">
@@ -325,7 +328,7 @@ function WeekConsistencyCard({ habits }: { habits: Habit[] }) {
   const activeDays = days.filter((d) => d.done > 0).length;
 
   return (
-    <div className="card p-4 col-span-3 sm:col-span-1 flex flex-col justify-between gap-2">
+    <div className="card p-4 flex flex-col justify-between gap-2">
       <div className="flex items-baseline justify-between gap-2">
         <div className="stat-label">Last 7 Days</div>
         <span className="text-2xs text-content-muted tabular-nums">

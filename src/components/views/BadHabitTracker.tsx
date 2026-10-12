@@ -6,11 +6,9 @@ import {
   Trash2,
   CheckCircle2,
   XCircle,
-  TrendingUp,
   AlertTriangle,
   RotateCcw,
   CheckCheck,
-  Award,
   Lock,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
@@ -21,6 +19,7 @@ import { BadHabit } from '@/types';
 import { todayKey, formatDateLong, getNow } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { PageHero } from '@/components/ui/PageHero';
 import { Dialog, Disclosure, EmptyState, PageColumns, ProgressBar, SlidingPill } from '@/components/ui/primitives';
 import { getBadHabitSlot } from '@/lib/badHabitEligibility';
 import { CountUp, Reveal } from '@/components/ui/Motion';
@@ -141,50 +140,25 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         </button>
       </div>
 
-      {/* Hero Stats */}
-      <Reveal index={0} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
-            <Flame size={22} />
-          </div>
-          <div>
-            <div className="text-xs text-content-disabled">Overall Resisted Streak</div>
-            <div className="text-xl font-display font-bold text-content-primary">
-              <CountUp value={overallStreak} /> <span className="text-xs font-normal text-content-muted">consecutive days</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
-            <TrendingUp size={22} />
-          </div>
-          <div>
-            <div className="text-xs text-content-disabled">Resist Success Rate</div>
-            <div className="text-xl font-display font-bold text-content-primary">
-              <CountUp value={resistRate} />% <span className="text-xs font-normal text-content-muted">({totalResisted} vs {totalOccurred})</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
-            <Award size={22} />
-          </div>
-          <div>
-            <div className="text-xs text-content-disabled">Active Bad Habits</div>
-            <div className="text-xl font-display font-bold text-content-primary">
-              <CountUp value={activeHabits.length} />
-            </div>
-          </div>
-        </div>
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel="Your resist record"
+          lead={{
+            label: 'Resisted streak',
+            value: <CountUp value={overallStreak} />,
+            hint: 'consecutive days',
+          }}
+          stats={[
+            { label: 'Success rate', value: <><CountUp value={resistRate} />%</>, hint: `${totalResisted} resisted, ${totalOccurred} occurred` },
+            { label: 'Active habits', value: <CountUp value={activeHabits.length} /> },
+          ]}
+          side={<CapMeterConnected state={store.state} capId="badHabitsResisted" bare />}
+        />
       </Reveal>
 
       <PageColumns stickyAside
         aside={
           <>
-            <CapMeterConnected state={store.state} capId="badHabitsResisted" />
-
             <Disclosure icon={AlertTriangle} tone="warning" title="Escalating Penalty & Point Cap System Active">
               <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
                 <li>

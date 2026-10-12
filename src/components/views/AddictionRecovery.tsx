@@ -201,7 +201,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                     value={nextMilestone ? elapsedHours : 1}
                     max={nextMilestone ? nextMilestone.requiredHours : 1}
                     label={nextMilestone ? `Progress to ${nextMilestone.label}` : 'All milestones reached'}
-                    tone="warning"
+                    tone="brand"
                     size={56}
                     thickness={5}
                   >

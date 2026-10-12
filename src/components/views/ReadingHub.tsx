@@ -1,11 +1,9 @@
 import { useState, useMemo } from 'react';
 import {
   BookOpen,
-  Flame,
   Plus,
   CheckCircle2,
   Trash2,
-  Award,
   Sparkles,
   BookMarked,
   Search,
@@ -31,6 +29,7 @@ import { todayKey, formatDateLong, parseDate, getNow, weekKey, formatWeekdayDate
 import { READING_POINTS } from '@/lib/pointsConfig';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { PageHero } from '@/components/ui/PageHero';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
@@ -410,51 +409,17 @@ export function ReadingHub({ store }: { store: AppStore }) {
         </div>
       </div>
 
-      {/* Hero Stats */}
-      <Reveal index={0} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
-            <Flame size={22} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-content-primary">
-              <CountUp value={streak} /> <span className="text-xs font-normal text-content-muted">days</span>
-            </div>
-            <div className="text-xs text-content-disabled">Reading Streak</div>
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
-            <PlayCircle size={22} />
-          </div>
-          <div>
-            <CountUp value={inProgressBooks.length} className="block text-2xl font-bold text-content-primary tabular-nums" />
-            <div className="text-xs text-content-disabled">Currently Reading</div>
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
-            <CheckCircle2 size={22} />
-          </div>
-          <div>
-            <CountUp value={completedBooks.length} className="block text-2xl font-bold text-content-primary tabular-nums" />
-            <div className="text-xs text-content-disabled">Books Completed</div>
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
-            <Award size={22} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-content-primary tabular-nums">
-              +<CountUp value={totalCompletedPoints} />
-            </div>
-            <div className="text-xs text-content-disabled">Completion Points</div>
-          </div>
-        </div>
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel="Your reading"
+          lead={{ label: 'Reading streak', value: <CountUp value={streak} />, hint: 'days in a row' }}
+          stats={[
+            { label: 'Reading now', value: <CountUp value={inProgressBooks.length} /> },
+            { label: 'Finished', value: <CountUp value={completedBooks.length} /> },
+            { label: 'Completion points', value: <>+<CountUp value={totalCompletedPoints} /></> },
+          ]}
+          side={<CapMeterConnected state={store.state} capId="reading" bare />}
+        />
       </Reveal>
 
       <PageColumns stickyAside
@@ -471,14 +436,12 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 <BarChart
                   data={pageDays.map((day, i) => ({ label: formatWeekdayShort(day), value: pagesByDay[i] }))}
                   label={`Pages read per day, last 7 days: ${pagesThisWeek} total`}
-                  tone="warning"
+                  tone="brand"
                   highlightIndex={pageDays.length - 1}
                   formatTooltip={(datum, i) => `${formatWeekdayDate(pageDays[i])}: ${datum.value} pages`}
                 />
               </Reveal>
             )}
-
-            <CapMeterConnected state={store.state} capId="reading" />
           </>
         }
       >
@@ -624,7 +587,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                             </span>
                             <span className="font-bold text-brand-text">{percent}%</span>
                           </div>
-                          <ProgressBar value={percent} label="Reading progress" tone="warning" />
+                          <ProgressBar value={percent} label="Reading progress" tone="brand" />
                         </div>
 
                         {/* Target Date */}

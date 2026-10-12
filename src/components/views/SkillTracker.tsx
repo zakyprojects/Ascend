@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Target, Plus, Trash2, Clock, Award, Flame } from 'lucide-react';
+import { Target, Plus, Trash2, Clock, Flame } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -8,6 +8,7 @@ import { Skill, SkillLevel, SkillSessionLog } from '@/types';
 import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { PageHero } from '@/components/ui/PageHero';
 import { Dialog, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
@@ -249,43 +250,16 @@ export function SkillTracker({ store }: { store: AppStore }) {
         </button>
       </div>
 
-      {/* Hero Stats */}
-      <Reveal index={0} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
-            <Target size={22} />
-          </div>
-          <div>
-            <div className="text-xs text-content-disabled">Skills Tracked</div>
-            <div className="text-xl font-display font-bold text-content-primary">
-              <CountUp value={skills.length} /> <span className="text-xs font-normal text-content-muted">skills</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
-            <Clock size={22} />
-          </div>
-          <div>
-            <div className="text-xs text-content-disabled">Total Practice</div>
-            <div className="text-xl font-display font-bold text-content-primary">
-              <AutoNum text={totalPracticeHours} /> <span className="text-xs font-normal text-content-muted">hours</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
-            <Award size={22} />
-          </div>
-          <div>
-            <div className="text-xs text-content-disabled">Practice Sessions</div>
-            <div className="text-xl font-display font-bold text-success-text">
-              <CountUp value={skillLogs.length} /> <span className="text-xs font-normal text-content-muted">sessions</span>
-            </div>
-          </div>
-        </div>
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel="Your practice"
+          lead={{ label: 'Total practice', value: <AutoNum text={totalPracticeHours} />, hint: 'hours' }}
+          stats={[
+            { label: 'Skills', value: <CountUp value={skills.length} /> },
+            { label: 'Sessions', value: <CountUp value={skillLogs.length} /> },
+          ]}
+          side={<CapMeterConnected state={store.state} capId="skills" bare />}
+        />
       </Reveal>
 
       <PageColumns stickyAside
@@ -308,8 +282,6 @@ export function SkillTracker({ store }: { store: AppStore }) {
                 />
               </Reveal>
             )}
-
-            <CapMeterConnected state={store.state} capId="skills" />
           </>
         }
       >

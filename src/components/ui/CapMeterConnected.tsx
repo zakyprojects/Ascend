@@ -17,9 +17,11 @@ export interface CapMeterConnectedProps {
     | 'journalEntries'
   >;
   capId: CapId;
+  /** Render without its own card, for use inside another surface (PageHero's side slot). */
+  bare?: boolean;
 }
 
-export function CapMeterConnected({ state, capId }: CapMeterConnectedProps) {
+export function CapMeterConnected({ state, capId, bare = false }: CapMeterConnectedProps) {
   const [, setTick] = useState(0);
   const lastTodayKeyRef = useRef(todayKey(getNow()));
 
@@ -45,7 +47,7 @@ export function CapMeterConnected({ state, capId }: CapMeterConnectedProps) {
   const variant = capId === 'badHabitsResisted' || capId === 'journal' ? 'slots' : 'bar';
 
   return (
-    <div className="card p-4">
+    <div className={bare ? undefined : 'card p-4'}>
       <CapMeter
         variant={variant}
         label={capLabels[capId]}

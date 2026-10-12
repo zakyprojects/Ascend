@@ -18,6 +18,7 @@ import {
   categoryTintStyle,
 } from '@/lib/timeTracker';
 import { todayKey, formatDateKeyHuman, addDays } from '@/lib/dates';
+import { PageHero } from '@/components/ui/PageHero';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { capNote } from '@/lib/capCopy';
 import { TIME_TRACKER_POINTS, calculateTimeTrackerDailyPoints } from '@/lib/pointsConfig';
@@ -43,7 +44,6 @@ import {
   Sparkles,
   Flame,
   AlertCircle,
-  BrainCircuit,
   Activity,
   BookOpen,
   X,
@@ -484,67 +484,41 @@ export function ScheduleTab({
         </div>
       )}
 
-      {/* 3. Daily Metrics Summary Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
-          <div className="flex items-center justify-between text-content-muted text-xs">
-            <span>Total Planned</span>
-            <Clock size={14} className="text-success-text" />
-          </div>
-          <p className="text-lg font-bold text-content-primary">
-            <AutoNum text={formatDurationHuman(liveStats.totalScheduledMinutesToday)} />
-          </p>
-          <p className="text-micro text-content-disabled">{dailyBlocks.length} scheduled block(s)</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
-          <div className="flex items-center justify-between text-content-muted text-xs">
-            <span>Execution Rate</span>
-            <CheckCircle2 size={14} className="text-success-text" />
-          </div>
-          <p className="text-lg font-bold text-success-text">
-            <AutoNum text={`${liveStats.dayScheduledProgressPercent}%`} />
-          </p>
-          <p className="text-micro text-content-disabled">
-            {formatDurationHuman(liveStats.completedScheduledMinutesToday)} completed
-          </p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
-          <div className="flex items-center justify-between text-content-muted text-xs">
-            <span>Deep Work</span>
-            <BrainCircuit size={14} className="text-info-text" />
-          </div>
-          <p className="text-lg font-bold text-info-text">
-            <AutoNum text={formatDurationHuman(liveStats.deepWorkMinutesToday)} />
-          </p>
-          <p className="text-micro text-content-disabled">Focus & High-leverage</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
-          <div className="flex items-center justify-between text-content-muted text-xs">
-            <span>Training & Mind</span>
-            <Activity size={14} className="text-brand-text" />
-          </div>
-          <p className="text-lg font-bold text-brand-text">
-            <AutoNum text={formatDurationHuman(liveStats.exerciseMinutesToday + liveStats.readingMinutesToday)} />
-          </p>
-          <p className="text-micro text-content-disabled">Exercise & Reading</p>
-        </div>
-      </div>
-
-      {/* Time Tracker Daily Points Cap Meter */}
-      {isSelectedDateToday && (
-        <div className="card p-4">
-          <CapMeter
-            variant="bar"
-            label={`Time Tracker points today (${Math.floor(timeTrackerDailyScore.percentage)}% of blocks)`}
-            earned={timeTrackerDailyScore.pointsAwarded}
-            cap={TIME_TRACKER_POINTS.dailyCap}
-            note={capNote('timeTracker')}
-          />
-        </div>
-      )}
+      {/* 3. The day at a glance: one hero instead of four boxes and a separate meter */}
+      <PageHero
+        ariaLabel="This day at a glance"
+        ring={{
+          value: liveStats.dayScheduledProgressPercent,
+          max: 100,
+          label: `Execution rate: ${liveStats.dayScheduledProgressPercent}%`,
+          center: <AutoNum text={`${liveStats.dayScheduledProgressPercent}%`} />,
+          caption: 'executed',
+        }}
+        lead={{
+          label: 'Planned',
+          value: <AutoNum text={formatDurationHuman(liveStats.totalScheduledMinutesToday)} />,
+          hint: `${dailyBlocks.length} scheduled block${dailyBlocks.length === 1 ? '' : 's'}, ${formatDurationHuman(liveStats.completedScheduledMinutesToday)} done`,
+        }}
+        stats={[
+          { label: 'Deep work', value: <AutoNum text={formatDurationHuman(liveStats.deepWorkMinutesToday)} />, hint: 'Focus & high-leverage' },
+          {
+            label: 'Training & mind',
+            value: <AutoNum text={formatDurationHuman(liveStats.exerciseMinutesToday + liveStats.readingMinutesToday)} />,
+            hint: 'Exercise & reading',
+          },
+        ]}
+        side={
+          isSelectedDateToday ? (
+            <CapMeter
+              variant="bar"
+              label={`Points today (${Math.floor(timeTrackerDailyScore.percentage)}% of blocks)`}
+              earned={timeTrackerDailyScore.pointsAwarded}
+              cap={TIME_TRACKER_POINTS.dailyCap}
+              note={capNote('timeTracker')}
+            />
+          ) : undefined
+        }
+      />
 
       {/* 4. Professional Gantt-Style 24-Hour Distribution Bar */}
       {dailyBlocks.length > 0 && (

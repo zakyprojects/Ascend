@@ -841,7 +841,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             </div>
 
             {/* Progress Bar */}
-            <ProgressBar value={pct} label="Plan goal progress" tone={isGoalCompleted ? 'success' : 'warning'} />
+            <ProgressBar value={pct} label="Plan goal progress" tone={isGoalCompleted ? 'success' : 'brand'} />
 
             {plan.targetDate && (
               <div className="text-micro text-content-muted flex items-center gap-1">

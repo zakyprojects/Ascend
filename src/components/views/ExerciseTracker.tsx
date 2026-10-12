@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Activity, Dumbbell, Flame, Plus, Trash2, Calendar, Award } from 'lucide-react';
+import { Activity, Dumbbell, Plus, Trash2, Calendar } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -9,6 +9,7 @@ import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { PageHero } from '@/components/ui/PageHero';
 import { Dialog, EmptyState, PageColumns } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
@@ -175,52 +176,41 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         </div>
       </div>
 
-      {/* Hero Stats */}
-      <Reveal index={0} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
-            <Flame size={22} />
-          </div>
-          <div>
-            <div className="text-xs text-content-disabled">{dominantUnitInfo.label}</div>
-            <div className="text-xl font-display font-bold text-content-primary">
-              <AutoNum text={String(dominantUnitInfo.value)} />{' '}
-              <span className="text-xs font-normal text-content-muted">{dominantUnitInfo.unit}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
-            <Dumbbell size={22} />
-          </div>
-          <div>
-            <div className="text-xs text-content-disabled">Weekly Sessions</div>
-            <div className="text-xl font-display font-bold text-content-primary">
-              <CountUp value={totalWeeklySessions} /> <span className="text-xs font-normal text-content-muted">sessions</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-brand-text shrink-0">
-            <Award size={22} />
-          </div>
-          <div>
-            <div className="text-xs text-content-disabled">Points Today</div>
-            <div className="text-xl font-display font-bold text-brand-text">
-              <CountUp value={pointsEarnedToday} />{' '}
-              <span className="text-xs font-normal text-content-disabled">/ {WORKOUT_POINTS.dailyCap} pts cap</span>
-            </div>
-          </div>
-        </div>
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel="Your training this week"
+          ring={
+            exerciseGoal
+              ? {
+                  value: totalWeeklySessions,
+                  max: exerciseGoal.targetWeeklySessions,
+                  label: `Weekly sessions: ${totalWeeklySessions} of ${exerciseGoal.targetWeeklySessions}`,
+                  center: (
+                    <>
+                      {totalWeeklySessions}
+                      <span className="text-sm font-medium text-content-muted">/{exerciseGoal.targetWeeklySessions}</span>
+                    </>
+                  ),
+                  caption: 'weekly goal',
+                }
+              : undefined
+          }
+          lead={{
+            label: dominantUnitInfo.label,
+            value: <AutoNum text={String(dominantUnitInfo.value)} />,
+            hint: dominantUnitInfo.unit,
+          }}
+          stats={[
+            { label: 'Sessions this week', value: <CountUp value={totalWeeklySessions} /> },
+            { label: 'Points today', value: <CountUp value={pointsEarnedToday} />, hint: `of ${WORKOUT_POINTS.dailyCap} a day` },
+          ]}
+          side={<CapMeterConnected state={store.state} capId="exercise" bare />}
+        />
       </Reveal>
 
       <PageColumns stickyAside
         aside={
           <>
-            <CapMeterConnected state={store.state} capId="exercise" />
-
             {/* Weekly Activity Chart */}
             <Reveal index={1} className="card p-5">
               <div className="flex items-center justify-between mb-4">
