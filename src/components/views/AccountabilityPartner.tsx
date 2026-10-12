@@ -31,6 +31,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
 import { Dialog, EmptyState, Skeleton } from '@/components/ui/primitives';
+import { CountUp } from '@/components/ui/Motion';
 import { ProgressRing } from '@/components/ui/charts';
 import { TAP_TARGET, TAP_AREA } from '@/components/ui/primitives/shared';
 import { getCurrentTier } from '@/lib/tiers';
@@ -845,11 +846,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   <div className="text-xs font-semibold">
                     {mySeasonPoints > partnerSeasonPoints ? (
                       <span className="text-success-text flex items-center gap-1">
-                        <TrendingUp size={13} /> You lead by {(mySeasonPoints - partnerSeasonPoints).toLocaleString()} pts
+                        <TrendingUp size={13} /> You lead by <CountUp value={mySeasonPoints - partnerSeasonPoints} className="tabular-nums" /> pts
                       </span>
                     ) : partnerSeasonPoints > mySeasonPoints ? (
                       <span className="text-warning-text flex items-center gap-1">
-                        <TrendingUp size={13} /> {activePartnerUsername} leads by {(partnerSeasonPoints - mySeasonPoints).toLocaleString()} pts
+                        <TrendingUp size={13} /> {activePartnerUsername} leads by <CountUp value={partnerSeasonPoints - mySeasonPoints} className="tabular-nums" /> pts
                       </span>
                     ) : (
                       <span className="text-content-muted">Tied in points</span>
@@ -881,7 +882,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Points</span>
-                        <span className="text-sm font-display font-bold text-warning-text">{mySeasonPoints.toLocaleString()}</span>
+                        <CountUp value={mySeasonPoints} className="text-sm font-display font-bold text-warning-text tabular-nums" />
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Current Streak</span>
@@ -920,7 +921,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Points</span>
-                        <span className="text-sm font-display font-bold text-warning-text">{partnerSeasonPoints.toLocaleString()}</span>
+                        <CountUp value={partnerSeasonPoints} className="text-sm font-display font-bold text-warning-text tabular-nums" />
                       </div>
                       <div className="p-2.5 bg-bg-900/60 rounded-lg border border-overlay-subtle">
                         <span className="text-2xs text-content-muted block">Current Streak</span>
