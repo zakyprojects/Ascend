@@ -611,6 +611,28 @@
     box-shadow: var(--shadow-md);
   }
 
+  /* Design v3: a card inside a card is a section, not another box. Flat tint, hairline, no shadow,
+     no sheen, no spotlight, so each screen keeps one level of elevation. :where() keeps the
+     specificity at one class, so utilities on the inner card (selected, status tints) still win. */
+  :where(.card) .card {
+    background-color: rgb(255 255 255 / 0.025);
+    background-image: none;
+    border-color: var(--border-overlay-subtle);
+    border-radius: 0.875rem;
+    box-shadow: none;
+  }
+  :where(.card) .card::before {
+    content: none;
+  }
+  :where(.card) .card[data-spot] {
+    background-image: none;
+  }
+  [data-theme='light'] :where(.card) .card {
+    background-color: rgb(15 23 42 / 0.025);
+    border-color: var(--border-overlay-default);
+    box-shadow: none;
+  }
+
   /* Scroll edge (Apple): at the top the phone header is borderless and blends into the page; once
      content passes under it the hairline and a soft shadow appear. On desktop the scrolling <main>
      fades content out over its top 1.25rem instead of cutting it off. AppShell sets data-scrolled. */

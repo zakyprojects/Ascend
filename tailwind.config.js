@@ -249,9 +249,10 @@ export default {
       // Small end of the type scale (Tailwind's xs = 12px and up cover the rest). Size only, so
       // line height keeps following the surrounding text, as the arbitrary sizes they replace did.
       fontSize: {
-        '3xs': '0.5625rem', // 9px: tiny chips and counters
-        '2xs': '0.625rem', // 10px: badges, meta labels
-        micro: '0.6875rem', // 11px: captions, helper text, nav labels
+        // Design v3: one step up for readability (was 9/10/11px).
+        '3xs': '0.625rem', // 10px: tiny chips and counters
+        '2xs': '0.6875rem', // 11px: badges, meta labels
+        micro: '0.75rem', // 12px: captions, helper text, nav labels
       },
     },
   },

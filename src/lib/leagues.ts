@@ -248,13 +248,13 @@ export const LEAGUE_CONFIG: Record<LeagueType, { name: string; description: stri
     name: 'Monthly League',
     description: 'Monthly competition tracking consistency.',
     icon: 'CalendarDays',
-    color: '#0ea5e9',
+    color: '#34d399',
   },
   ninetyDay: {
     name: '90-Day League',
     description: 'The neuroplasticity league. 90 days of sustained effort rewires your brain.',
     icon: 'Brain',
-    color: '#a855f7',
+    color: '#34d399',
   },
 };
 
