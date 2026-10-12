@@ -879,6 +879,11 @@
     padding-left: 2.75rem !important;
   }
 
+  /* Keyboard key hint (command palette shortcuts). */
+  .kbd {
+    @apply inline-flex min-w-[1.25rem] items-center justify-center rounded-md border border-overlay-default bg-bg-700 px-1 py-px font-mono text-3xs font-semibold text-content-muted;
+  }
+
   .label {
     @apply block text-sm font-medium text-content-muted mb-1.5;
   }

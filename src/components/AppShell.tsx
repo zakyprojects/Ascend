@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   LogIn,
   LogOut,
+  Search,
   Settings,
 } from 'lucide-react';
 import {
@@ -20,6 +21,8 @@ import {
   getViewLabel,
 } from './nav/navConfig';
 import { useSidebarGroups } from './nav/useSidebarGroups';
+import { CommandPalette } from './nav/CommandPalette';
+import { IS_APPLE_PLATFORM } from '@/lib/platform';
 import { RankChip } from './ui/RankChip';
 import { ViewEntrance } from './ViewEntrance';
 import { AppStore } from '@/lib/store';
@@ -62,6 +65,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   const [guestLogoutWarningOpen, setGuestLogoutWarningOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const [lastByGroup, setLastByGroup] = useState(DEFAULT_GROUP_VIEWS);
   const activeGroupId = getGroupForView(currentView);
@@ -232,6 +236,22 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               <span>Sign In / Register</span>
             </button>
           )}
+        </div>
+
+        <div className="px-3 pb-2">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            aria-keyshortcuts={IS_APPLE_PLATFORM ? 'Meta+K' : 'Control+K'}
+            className="w-full flex items-center gap-2 rounded-xl border border-overlay-subtle bg-bg-800/60 px-3 py-2 text-xs text-content-muted hover:text-content-secondary hover:border-overlay-default transition-colors"
+          >
+            <Search size={14} aria-hidden="true" />
+            <span className="flex-1 text-left">Go to…</span>
+            <span className="inline-flex gap-0.5" aria-hidden="true">
+              <kbd className="kbd">{IS_APPLE_PLATFORM ? '⌘' : 'Ctrl'}</kbd>
+              <kbd className="kbd">K</kbd>
+            </span>
+          </button>
         </div>
 
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
@@ -455,6 +475,13 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           )}
         </div>
       </Dialog>
+
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        currentView={currentView}
+        onViewChange={onViewChange}
+      />
     </div>
   );
 }
