@@ -190,7 +190,7 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] bg-bg-900/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none ${rootMotion}`}
+      className={`fixed inset-0 z-blocking bg-bg-900/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none ${rootMotion}`}
       style={exiting ? exitStyle : undefined}
       role="dialog"
       aria-modal="true"

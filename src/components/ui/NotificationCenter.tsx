@@ -138,7 +138,7 @@ export function NotificationCenter({
         <div ref={portalRef}>
           {/* Backdrop — covers entire screen */}
           <div
-            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-popover)' }}
             className="bg-black/60 backdrop-blur-sm lg:bg-transparent lg:backdrop-blur-none"
             onClick={() => setOpen(false)}
           />
@@ -147,7 +147,7 @@ export function NotificationCenter({
           <div
             style={{
               position: 'fixed',
-              zIndex: 9999,
+              zIndex: 'var(--z-popover)',
               top: position.top,
               ...(position.left !== undefined ? { left: position.left } : {}),
               ...(position.right !== undefined ? { right: position.right } : {}),
