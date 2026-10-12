@@ -227,7 +227,7 @@ export function ActivityModal({
               </option>
             ))}
           </select>
-          <p className="text-[11px] text-content-disabled mt-1">
+          <p className="text-micro text-content-disabled mt-1">
             Linking an activity connects completed scheduled blocks with bonus discipline points and one-click session handoffs.
           </p>
         </div>

@@ -97,7 +97,7 @@ export function ActivitiesTab({
                     <h4 className="text-sm font-bold text-content-primary truncate">{act.name}</h4>
                     {act.isSystemDefault && (
                       <span
-                        className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-overlay-subtle text-content-muted border border-overlay-default flex items-center gap-0.5"
+                        className="px-1.5 py-0.2 rounded text-3xs font-bold bg-overlay-subtle text-content-muted border border-overlay-default flex items-center gap-0.5"
                         title="System Default"
                       >
                         <ShieldCheck size={10} />
@@ -107,12 +107,12 @@ export function ActivitiesTab({
                   </div>
 
                   {act.ascendModule ? (
-                    <div className="flex items-center gap-1 mt-1.5 text-success-text text-[11px] font-medium">
+                    <div className="flex items-center gap-1 mt-1.5 text-success-text text-micro font-medium">
                       <LinkIcon size={12} className="text-success-text shrink-0" />
                       <span className="truncate">Linked: {act.ascendModule}</span>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-content-disabled mt-1">General Activity</p>
+                    <p className="text-micro text-content-disabled mt-1">General Activity</p>
                   )}
                 </div>
               </div>

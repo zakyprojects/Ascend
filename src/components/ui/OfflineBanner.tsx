@@ -131,7 +131,7 @@ export function OfflineBanner() {
               <span>You are currently offline</span>
               <span className="w-1.5 h-1.5 rounded-full bg-warning-text animate-ping" />
             </p>
-            <p className="text-[11px] text-warning-text-muted truncate">
+            <p className="text-micro text-warning-text-muted truncate">
               Actions won't save until connection is restored. Please reconnect.
             </p>
           </div>

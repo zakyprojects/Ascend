@@ -362,7 +362,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
     if (!category) return null;
     const meta = getCategoryMeta(category as BookCategory);
     return (
-      <span className={`badge ${meta.badgeClass} ${compact ? 'text-[10px] px-2 py-0.5' : ''}`}>
+      <span className={`badge ${meta.badgeClass} ${compact ? 'text-2xs px-2 py-0.5' : ''}`}>
         {category}
       </span>
     );
@@ -566,7 +566,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                           <div className="flex items-center gap-2 mb-1.5">
                             {renderCategoryBadge(book.category, true)}
                             {book.isCurated && (
-                              <span className="badge badge-amber text-[10px] flex items-center gap-1">
+                              <span className="badge badge-amber text-2xs flex items-center gap-1">
                                 <Sparkles size={10} /> Curated
                               </span>
                             )}
@@ -603,7 +603,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
                       {/* Target Date */}
                       {book.targetFinishDate && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-content-muted mt-2.5">
+                        <div className="flex items-center gap-1.5 text-micro text-content-muted mt-2.5">
                           <Calendar size={12} className="text-warning-text" />
                           <span>Target Finish: {formatDateLong(book.targetFinishDate)}</span>
                         </div>
@@ -716,7 +716,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-overlay-subtle gap-2">
-                    <span className="text-[11px] text-content-disabled">
+                    <span className="text-micro text-content-disabled">
                       {book.totalAmount || book.totalPages || 250} {book.unit || 'pages'}
                     </span>
                     <button
@@ -753,7 +753,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     <div className="flex items-center justify-between gap-2">
                       {renderCategoryBadge(curated.category, true)}
                       <span
-                        className="badge badge-amber text-[10px] flex items-center gap-1"
+                        className="badge badge-amber text-2xs flex items-center gap-1"
                         title="Requires reading inside Ascend across ≥7 days span and ≥5 logged reading days"
                       >
                         <Sparkles size={10} /> +{READING_POINTS.completionBonus} pts on finish
@@ -771,13 +771,13 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   </div>
 
                   <div className="pt-3 border-t border-overlay-subtle flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
-                    <span className="text-[11px] text-content-disabled">
+                    <span className="text-micro text-content-disabled">
                       {curated.totalPages || 250} pages
                     </span>
 
                     {userBook ? (
                       <span
-                        className={`badge text-[10px] px-2 py-0.5 ${
+                        className={`badge text-2xs px-2 py-0.5 ${
                           userBook.status === 'completed'
                             ? 'badge-emerald'
                             : userBook.status === 'reading'
@@ -830,16 +830,16 @@ export function ReadingHub({ store }: { store: AppStore }) {
                     <div>
                       <div className="flex items-center gap-2">
                         {renderCategoryBadge(book.category, true)}
-                        <span className="badge badge-emerald text-[10px] flex items-center gap-1">
+                        <span className="badge badge-emerald text-2xs flex items-center gap-1">
                           <CheckCircle2 size={10} /> Completed
                         </span>
                         {book.pointsAwarded ? (
-                          <span className="badge badge-amber text-[10px] flex items-center gap-1">
+                          <span className="badge badge-amber text-2xs flex items-center gap-1">
                             <Sparkles size={10} /> +{book.pointsAwarded} pts bonus
                           </span>
                         ) : (
                           <span
-                            className="badge bg-bg-700 text-content-disabled text-[10px] flex items-center gap-1"
+                            className="badge bg-bg-700 text-content-disabled text-2xs flex items-center gap-1"
                             title="Completion bonus requires reading inside Ascend across ≥7 days span and ≥5 distinct logged reading days"
                           >
                             Completed without bonus
@@ -870,7 +870,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
                   {book.reflection && (
                     <div className="p-3.5 bg-bg-900/80 rounded-xl border border-emerald-500/15 text-xs text-content-tertiary leading-relaxed space-y-1">
-                      <span className="font-semibold text-success-text block text-[11px]">
+                      <span className="font-semibold text-success-text block text-micro">
                         Key Takeaway / Reflection:
                       </span>
                       <p>{book.reflection}</p>
@@ -1152,7 +1152,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-content-muted mb-1.5">
+            <label className="block text-micro font-medium text-content-muted mb-1.5">
               Quick Add
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -1204,7 +1204,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 <span>
                   Eligible for +{READING_POINTS.completionBonus} points completion bonus!
                 </span>
-                <p className="text-[11px] text-content-muted">
+                <p className="text-micro text-content-muted">
                   Span: {finishEligibility.spanDays} days (req. ≥7) • Reading days logged: {finishEligibility.loggedDays} (req. ≥5)
                 </p>
               </div>

@@ -67,7 +67,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
               <p className="text-xs font-bold text-content-secondary">
                 You are competing as Guest ({currentUser?.username || store.state.username})
               </p>
-              <p className="text-[11px] text-content-muted">
+              <p className="text-micro text-content-muted">
                 Save your progress — create a permanent account to lock in your rank and pick a custom username.
               </p>
             </div>
@@ -113,7 +113,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
               >
                 {type === 'ninetyDay' ? `90-Day (${getSeasonLabel(now)})` : type === 'monthly' ? 'Monthly' : 'Weekly'}
               </span>
-              <span className="text-[10px] text-content-disabled">Rank #{data.userRank}</span>
+              <span className="text-2xs text-content-disabled">Rank #{data.userRank}</span>
             </button>
           );
         })}
@@ -138,13 +138,13 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                   {activeLeague === 'ninetyDay' ? `${getSeasonLabel(now)} — 90-Day League` : config.name}
                 </h2>
               </div>
-              <p className="text-[11px] text-content-muted">{getLocalResetDetail(activeLeague, now)}</p>
+              <p className="text-micro text-content-muted">{getLocalResetDetail(activeLeague, now)}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 px-3 py-1 bg-bg-800 rounded-lg border border-overlay-subtle text-xs text-content-tertiary self-start sm:self-auto">
             <Clock size={13} className="text-content-muted" />
-            <span className="text-[11px] text-content-muted">
+            <span className="text-micro text-content-muted">
               {activeLeague === 'ninetyDay' ? 'Season Ends in:' : 'Resets in:'}
             </span>
             <span className="font-mono font-bold text-brand-text">{countdown}</span>
@@ -220,7 +220,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                   <span className={`text-xs sm:text-sm font-display font-bold ${isUser ? 'text-success-text' : 'text-content-secondary'}`}>
                     {competitor.points.toLocaleString()}
                   </span>
-                  <span className="text-[10px] sm:text-xs text-content-disabled ml-0.5 sm:ml-1">pts</span>
+                  <span className="text-2xs sm:text-xs text-content-disabled ml-0.5 sm:ml-1">pts</span>
                 </div>
 
                 <ChevronRight size={15} className="text-content-subtle group-hover:text-content-tertiary transition-colors shrink-0" />

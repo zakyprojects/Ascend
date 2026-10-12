@@ -170,7 +170,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <div className="font-display font-bold text-content-primary text-lg leading-none">Ascend</div>
-                <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md badge-beta text-[9px] font-bold uppercase tracking-wider">
+                <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md badge-beta text-3xs font-bold uppercase tracking-wider">
                   Beta
                 </span>
               </div>
@@ -189,7 +189,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-content-secondary truncate">{username}</p>
-                  <p className={`text-[10px] font-medium truncate ${currentUser.isAnonymous ? 'text-warning-text' : 'text-brand-text'}`}>
+                  <p className={`text-2xs font-medium truncate ${currentUser.isAnonymous ? 'text-warning-text' : 'text-brand-text'}`}>
                     {currentUser.isAnonymous ? 'Guest Account' : 'Account Active'}
                   </p>
                 </div>
@@ -217,7 +217,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               {currentUser.isAnonymous && (
                 <button
                   onClick={onOpenAuthModal}
-                  className="w-full py-1.5 px-2 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-brand-text font-semibold text-[11px] rounded-lg transition-all flex items-center justify-center gap-1.5"
+                  className="w-full py-1.5 px-2 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-brand-text font-semibold text-micro rounded-lg transition-all flex items-center justify-center gap-1.5"
                 >
                   <span>Save Progress — Create Account</span>
                 </button>
@@ -297,7 +297,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           <div className="flex items-center gap-1.5 sm:gap-2">
             <AppLogo className="w-8 h-8 rounded-[22%] object-cover shrink-0" />
             <span className="font-display font-bold text-content-primary">Ascend</span>
-            <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md badge-beta text-[9px] font-bold uppercase tracking-wider">
+            <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-md badge-beta text-3xs font-bold uppercase tracking-wider">
               Beta
             </span>
           </div>

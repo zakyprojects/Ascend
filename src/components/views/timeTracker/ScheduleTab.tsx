@@ -361,7 +361,7 @@ export function ScheduleTab({
 
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-success-text flex items-center gap-1">
+                  <span className="text-micro font-bold uppercase tracking-wider text-success-text flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     {liveStats.activeBlock ? 'Active Live Block' : 'Live Status'}
                   </span>
@@ -384,7 +384,7 @@ export function ScheduleTab({
                           return (
                             <span
                               key={secId}
-                              className="text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0"
+                              className="text-2xs font-mono px-1.5 py-0.5 rounded shrink-0"
                               style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                             >
                               +{secAct.name}
@@ -452,7 +452,7 @@ export function ScheduleTab({
                       onClick={() => handleLaunchModuleHandoff(liveStats.activeBlock!, m.moduleId)}
                       aria-label={`Launch ${m.moduleId}`}
                       title={`Open ${m.moduleId} (${activityMap.get(m.activityId)?.name ?? m.moduleId})`}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap hover:opacity-80 transition-opacity cursor-pointer"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-micro font-semibold whitespace-nowrap hover:opacity-80 transition-opacity cursor-pointer"
                       style={categoryTintStyle(getActivityDisplayColor(activityMap.get(m.activityId), theme))}
                     >
                       <Play size={11} className="fill-current shrink-0" />
@@ -493,7 +493,7 @@ export function ScheduleTab({
           <p className="text-lg font-bold text-content-primary">
             {formatDurationHuman(liveStats.totalScheduledMinutesToday)}
           </p>
-          <p className="text-[11px] text-content-disabled">{dailyBlocks.length} scheduled block(s)</p>
+          <p className="text-micro text-content-disabled">{dailyBlocks.length} scheduled block(s)</p>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
@@ -504,7 +504,7 @@ export function ScheduleTab({
           <p className="text-lg font-bold text-success-text">
             {liveStats.dayScheduledProgressPercent}%
           </p>
-          <p className="text-[11px] text-content-disabled">
+          <p className="text-micro text-content-disabled">
             {formatDurationHuman(liveStats.completedScheduledMinutesToday)} completed
           </p>
         </div>
@@ -517,7 +517,7 @@ export function ScheduleTab({
           <p className="text-lg font-bold text-info-text">
             {formatDurationHuman(liveStats.deepWorkMinutesToday)}
           </p>
-          <p className="text-[11px] text-content-disabled">Focus & High-leverage</p>
+          <p className="text-micro text-content-disabled">Focus & High-leverage</p>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-1">
@@ -528,7 +528,7 @@ export function ScheduleTab({
           <p className="text-lg font-bold text-warning-text">
             {formatDurationHuman(liveStats.exerciseMinutesToday + liveStats.readingMinutesToday)}
           </p>
-          <p className="text-[11px] text-content-disabled">Exercise & Reading</p>
+          <p className="text-micro text-content-disabled">Exercise & Reading</p>
         </div>
       </div>
 
@@ -550,14 +550,14 @@ export function ScheduleTab({
         <div className="p-4 rounded-2xl bg-bg-800/50 border border-overlay-subtle space-y-3">
           <div className="flex items-center justify-between text-xs text-content-muted">
             <div className="flex items-center gap-2">
-              <span className="font-semibold uppercase tracking-wider text-[11px] text-content-tertiary">
+              <span className="font-semibold uppercase tracking-wider text-micro text-content-tertiary">
                 24-Hour Timeline Distribution
               </span>
-              <span className="text-[10px] text-content-disabled font-mono">
+              <span className="text-2xs text-content-disabled font-mono">
                 ({dailyBlocks.length} blocks · {formatDurationHuman(liveStats.totalScheduledMinutesToday)})
               </span>
             </div>
-            <span className="text-[11px] font-mono text-content-disabled">00:00 – 24:00</span>
+            <span className="text-micro font-mono text-content-disabled">00:00 – 24:00</span>
           </div>
 
           {/* Timeline Track with Major Hour Grid Guides */}
@@ -634,7 +634,7 @@ export function ScheduleTab({
                   {nameFits ? (
                     <span className="flex items-center gap-1 min-w-0">
                       <ActivityIcon iconName={act?.icon || 'Activity'} size={12} className="text-white drop-shadow shrink-0" />
-                      <span className="text-[10px] font-bold text-white whitespace-nowrap drop-shadow select-none">{blockName}</span>
+                      <span className="text-2xs font-bold text-white whitespace-nowrap drop-shadow select-none">{blockName}</span>
                     </span>
                   ) : iconFits ? (
                     <ActivityIcon iconName={act?.icon || 'Activity'} size={12} className="text-white drop-shadow shrink-0" />
@@ -658,7 +658,7 @@ export function ScheduleTab({
           </div>
 
           {/* Major Hour Markers (0h, 3h, 6h, 9h, 12h, 15h, 18h, 21h, 24h) */}
-          <div className="flex justify-between text-[10px] font-mono text-content-muted px-0.5 pt-0.5">
+          <div className="flex justify-between text-2xs font-mono text-content-muted px-0.5 pt-0.5">
             <span>12 AM</span>
             <span>3 AM</span>
             <span>6 AM</span>
@@ -734,7 +734,7 @@ export function ScheduleTab({
         </div>
 
         {isPastDate && (
-          <p className="text-[11px] text-content-muted">Past days are read-only.</p>
+          <p className="text-micro text-content-muted">Past days are read-only.</p>
         )}
 
         {dailyBlocks.length === 0 ? (
@@ -865,7 +865,7 @@ export function ScheduleTab({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap min-w-0">
                           <span
-                            className="px-2 py-0.5 rounded-md text-[10px] font-bold truncate max-w-full"
+                            className="px-2 py-0.5 rounded-md text-2xs font-bold truncate max-w-full"
                             style={{
                               backgroundColor: `${color}20`,
                               color,
@@ -883,7 +883,7 @@ export function ScheduleTab({
                               return (
                                 <span
                                   key={secId}
-                                  className="text-[10px] font-mono px-1.5 py-0.5 rounded truncate max-w-full"
+                                  className="text-2xs font-mono px-1.5 py-0.5 rounded truncate max-w-full"
                                   style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                                 >
                                   +{secAct.name}
@@ -895,33 +895,33 @@ export function ScheduleTab({
                             {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)}
                           </span>
 
-                          <span className="text-[11px] text-content-disabled font-mono whitespace-nowrap">
+                          <span className="text-micro text-content-disabled font-mono whitespace-nowrap">
                             ({formatDurationHuman(durationMins)})
                           </span>
 
                           {block.breakDurationMinutes && (
-                            <span className="badge-emerald px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1 shrink-0">
+                            <span className="badge-emerald px-2 py-0.5 rounded-full text-2xs font-medium flex items-center gap-1 shrink-0">
                               <Coffee size={10} className="text-success-text" />
                               <span>{block.breakDurationMinutes}m break</span>
                             </span>
                           )}
 
                           {isBlockActive && !block.skipped && (
-                            <span className="badge-emerald px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
+                            <span className="badge-emerald px-2 py-0.5 rounded-full text-2xs font-bold flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                               Active Now
                             </span>
                           )}
 
                           {block.skipped && (
-                            <span className="badge-amber px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1">
+                            <span className="badge-amber px-2 py-0.5 rounded-full text-2xs font-medium flex items-center gap-1">
                               <SkipForward size={10} />
                               Skipped
                             </span>
                           )}
 
                           {isBlockPast && !block.completed && !block.skipped && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-bg-700 text-content-muted border border-overlay-subtle">
+                            <span className="px-2 py-0.5 rounded-full text-2xs font-medium bg-bg-700 text-content-muted border border-overlay-subtle">
                               Passed
                             </span>
                           )}
@@ -952,7 +952,7 @@ export function ScheduleTab({
                                 key={item.moduleId}
                                 onClick={() => handleLaunchModuleHandoff(block, item.moduleId)}
                                 title={`Open ${item.moduleId} (${item.activityName})`}
-                                className="text-[11px] font-semibold px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity flex items-center gap-1 cursor-pointer"
+                                className="text-micro font-semibold px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity flex items-center gap-1 cursor-pointer"
                                 style={categoryTintStyle(getActivityDisplayColor(activityMap.get(item.activityId), theme))}
                               >
                                 <span>Open {item.moduleId}</span>

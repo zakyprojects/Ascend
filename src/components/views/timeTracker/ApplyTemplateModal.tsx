@@ -91,11 +91,11 @@ export function ApplyTemplateModal({
                 >
                   <div className="min-w-0 pr-2">
                     <p className="text-xs font-semibold truncate">{tpl.title}</p>
-                    <p className="text-[11px] text-content-muted">
+                    <p className="text-micro text-content-muted">
                       {tpl.blocks?.length || 0} scheduled blocks ({formatDurationHuman(totalMins)})
                     </p>
                   </div>
-                  <div className="text-[10px] font-mono text-success-text shrink-0 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                  <div className="text-2xs font-mono text-success-text shrink-0 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
                     {tpl.activeDays?.length || 0} active days
                   </div>
                 </button>
@@ -123,7 +123,7 @@ export function ApplyTemplateModal({
                 <Plus size={13} />
                 <span>Merge Safely</span>
               </div>
-              <p className="text-[10px] text-content-muted font-normal leading-tight">
+              <p className="text-2xs text-content-muted font-normal leading-tight">
                 Add non-colliding blueprint blocks without removing existing ones.
               </p>
             </button>
@@ -141,7 +141,7 @@ export function ApplyTemplateModal({
                 <RefreshCw size={13} />
                 <span>Replace Schedule</span>
               </div>
-              <p className="text-[10px] text-content-muted font-normal leading-tight">
+              <p className="text-2xs text-content-muted font-normal leading-tight">
                 Overwrite today&rsquo;s blocks completely with this template.
               </p>
             </button>

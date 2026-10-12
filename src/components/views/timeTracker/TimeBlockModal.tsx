@@ -207,7 +207,7 @@ export function TimeBlockModal({
             <label className="text-xs font-semibold text-content-muted uppercase tracking-wider">
               Activity Categories
             </label>
-            <span className="text-[11px] text-content-muted">
+            <span className="text-micro text-content-muted">
               Primary + Optional Secondary
             </span>
           </div>
@@ -240,15 +240,15 @@ export function TimeBlockModal({
                     <p className="text-xs font-medium truncate">{act.name}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       {isPrimary ? (
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-success-text bg-emerald-500/20 px-1.5 py-0.5 rounded">
+                        <span className="text-3xs font-bold uppercase tracking-wider text-success-text bg-emerald-500/20 px-1.5 py-0.5 rounded">
                           Primary
                         </span>
                       ) : isSecondary ? (
-                        <span className="text-[9px] font-medium uppercase tracking-wider text-success-text bg-overlay-default px-1.5 py-0.5 rounded">
+                        <span className="text-3xs font-medium uppercase tracking-wider text-success-text bg-overlay-default px-1.5 py-0.5 rounded">
                           Secondary
                         </span>
                       ) : act.ascendModule ? (
-                        <span className="text-[10px] text-success-text font-mono block truncate">
+                        <span className="text-2xs text-success-text font-mono block truncate">
                           {act.ascendModule}
                         </span>
                       ) : null}
@@ -265,7 +265,7 @@ export function TimeBlockModal({
           <div className="flex flex-col h-full space-y-1.5">
             <div className="flex items-center justify-between gap-1">
               <label htmlFor="tt-block-start" className="text-xs font-medium text-content-tertiary truncate">Start Time (24h)</label>
-              <span className="text-[11px] text-content-muted font-mono bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
+              <span className="text-micro text-content-muted font-mono bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(startTime)}
               </span>
             </div>
@@ -285,7 +285,7 @@ export function TimeBlockModal({
           <div className="flex flex-col h-full space-y-1.5">
             <div className="flex items-center justify-between gap-1">
               <label htmlFor="tt-block-end" className="text-xs font-medium text-content-tertiary truncate">End Time (24h)</label>
-              <span className="text-[11px] text-content-muted font-mono bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
+              <span className="text-micro text-content-muted font-mono bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(endTime)}
               </span>
             </div>
@@ -320,10 +320,10 @@ export function TimeBlockModal({
             <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-semibold text-warning-text">Midnight Boundary Split</p>
-              <p className="text-content-tertiary text-[11px] leading-relaxed">
+              <p className="text-content-tertiary text-micro leading-relaxed">
                 This block crosses midnight ({formatTime12h(startTime)} to {formatTime12h(endTime)}). It will automatically be split into 2 safe daily blocks:
               </p>
-              <div className="flex items-center gap-2 pt-1 font-mono text-[10px] text-warning-text">
+              <div className="flex items-center gap-2 pt-1 font-mono text-2xs text-warning-text">
                 <span className="bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
                   Part 1 (Today): {startTime} - 23:59
                 </span>

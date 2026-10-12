@@ -382,7 +382,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
                     {/* Level Progress Bar */}
                     <div className="space-y-1 pt-0.5">
-                      <div className="flex justify-between items-center text-[11px] text-content-disabled">
+                      <div className="flex justify-between items-center text-micro text-content-disabled">
                         <span>{progressText}</span>
                         <span className="tabular-nums">{Math.round(progressPercent)}%</span>
                       </div>
@@ -433,7 +433,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                               <span className="text-xs text-content-disabled tabular-nums">({log.durationMinutes} mins)</span>
                             </div>
                             {log.note && <p className="text-xs text-content-muted mt-0.5">{log.note}</p>}
-                            <p className="text-[10px] text-content-disabled mt-1">{formatDateLong(log.date)}</p>
+                            <p className="text-2xs text-content-disabled mt-1">{formatDateLong(log.date)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -495,7 +495,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
             />
             {categorySuggestionsOpen && categorySuggestions.length > 0 && (
               <div className="absolute z-50 left-0 right-0 mt-1 bg-bg-750 border border-overlay-medium rounded-xl shadow-lg max-h-36 overflow-y-auto p-1 space-y-0.5">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-content-disabled px-2.5 py-1">
+                <div className="text-2xs font-semibold uppercase tracking-wider text-content-disabled px-2.5 py-1">
                   Existing Categories
                 </div>
                 {categorySuggestions.map((sug) => (
@@ -510,7 +510,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-content-secondary hover:bg-bg-600 transition-colors flex items-center justify-between"
                   >
                     <span>{sug}</span>
-                    <span className="text-[10px] text-content-disabled">Select</span>
+                    <span className="text-2xs text-content-disabled">Select</span>
                   </button>
                 ))}
               </div>

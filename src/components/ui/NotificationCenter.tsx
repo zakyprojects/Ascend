@@ -164,7 +164,7 @@ export function NotificationCenter({
                 <Bell size={16} className="text-brand-text" />
                 <span className="font-display font-bold text-sm text-content-primary">Notifications</span>
                 {unreadCount > 0 && (
-                  <span className="badge-rose text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  <span className="badge-rose text-2xs font-bold px-2 py-0.5 rounded-full">
                     {unreadCount} new
                   </span>
                 )}
@@ -174,7 +174,7 @@ export function NotificationCenter({
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="text-[11px] text-content-muted hover:text-brand-text flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-overlay-subtle transition-all"
+                    className="text-micro text-content-muted hover:text-brand-text flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-overlay-subtle transition-all"
                     title="Mark all as read"
                   >
                     <CheckCheck size={14} />
@@ -198,7 +198,7 @@ export function NotificationCenter({
                     <Bell size={20} />
                   </div>
                   <p className="text-xs text-content-muted font-medium">No notifications yet</p>
-                  <p className="text-[10px] text-content-disabled">Partner invites, nudges, and alerts will appear here live.</p>
+                  <p className="text-2xs text-content-disabled">Partner invites, nudges, and alerts will appear here live.</p>
                 </div>
               ) : (
                 notifications.map((notif: AppNotification) => (
@@ -229,7 +229,7 @@ export function NotificationCenter({
                         <span className={`text-xs font-bold truncate ${notif.read ? 'text-content-tertiary' : 'text-content-primary'}`}>
                           {notif.title || 'Notification'}
                         </span>
-                        <span className="text-[10px] text-content-disabled shrink-0">
+                        <span className="text-2xs text-content-disabled shrink-0">
                           {formatRelativeTime(notif.createdAt)}
                         </span>
                       </div>
@@ -281,7 +281,7 @@ export function NotificationCenter({
       >
         <Bell size={compact ? 16 : 18} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white font-bold text-[10px] rounded-full flex items-center justify-center border border-bg-900">
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white font-bold text-2xs rounded-full flex items-center justify-center border border-bg-900">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}

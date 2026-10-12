@@ -353,7 +353,7 @@ export function Journal({ store }: { store: AppStore }) {
                   <p className="text-xs text-success-text font-bold">
                     {justCelebrated ? "Reflection saved! Great work today." : "Today's entry saved and confirmed"}
                   </p>
-                  <p className="text-[11px] text-success-text">
+                  <p className="text-micro text-success-text">
                     Your mood and daily notes have been recorded in history.
                   </p>
                 </div>
@@ -378,7 +378,7 @@ export function Journal({ store }: { store: AppStore }) {
                     <TodayMoodIcon size={20} style={{ color: todayMoodConfig.color }} />
                   </div>
                   <div>
-                    <span className="text-[10px] text-content-disabled uppercase font-bold tracking-wider block">
+                    <span className="text-2xs text-content-disabled uppercase font-bold tracking-wider block">
                       Recorded Mood
                     </span>
                     <span
@@ -400,7 +400,7 @@ export function Journal({ store }: { store: AppStore }) {
               </div>
 
               <div>
-                <span className="text-[10px] text-content-disabled uppercase font-bold tracking-wider block mb-1.5">
+                <span className="text-2xs text-content-disabled uppercase font-bold tracking-wider block mb-1.5">
                   Your Daily Notes
                 </span>
                 <div className="text-xs text-content-secondary leading-relaxed whitespace-pre-wrap min-h-[60px] p-3 rounded-lg bg-bg-900/60 border border-overlay-subtle">
@@ -428,7 +428,7 @@ export function Journal({ store }: { store: AppStore }) {
                     : `Write at least a sentence (10+ characters) to earn +${JOURNAL_POINTS.entryCompleted} points.`}
                 </span>
               </div>
-              <span className="text-[11px] font-bold bg-primary-500/20 px-2 py-0.5 rounded text-brand-text border border-primary-500/30 shrink-0">
+              <span className="text-micro font-bold bg-primary-500/20 px-2 py-0.5 rounded text-brand-text border border-primary-500/30 shrink-0">
                 +{JOURNAL_POINTS.entryCompleted} pts
               </span>
             </div>
@@ -495,7 +495,7 @@ export function Journal({ store }: { store: AppStore }) {
               {showGuidedPrompt && (
                 <div className="p-3.5 bg-bg-800/90 rounded-xl border border-primary-500/20 space-y-2 animate-fade-in">
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${currentDailyPrompt.categoryColor}`}>
+                    <span className={`text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${currentDailyPrompt.categoryColor}`}>
                       {currentDailyPrompt.category}
                     </span>
                     <button
@@ -551,7 +551,7 @@ export function Journal({ store }: { store: AppStore }) {
                   )}
                 </div>
 
-                <span className={`text-[11px] font-mono ${hasEnoughContent ? 'text-success-text font-bold' : 'text-content-muted'}`}>
+                <span className={`text-micro font-mono ${hasEnoughContent ? 'text-success-text font-bold' : 'text-content-muted'}`}>
                   {trimmedContent.length}/{MIN_JOURNAL_CONTENT_LENGTH} min
                 </span>
               </div>
@@ -650,7 +650,7 @@ export function Journal({ store }: { store: AppStore }) {
                   <div key={row.level} className="flex items-center gap-2 w-full">
                     <div className="flex items-center gap-1 w-20 shrink-0">
                       <row.icon size={13} style={{ color: row.color }} />
-                      <span className="text-[10px] font-semibold text-content-muted truncate">
+                      <span className="text-2xs font-semibold text-content-muted truncate">
                         {row.label}
                       </span>
                     </div>
@@ -807,7 +807,7 @@ export function Journal({ store }: { store: AppStore }) {
               )}
 
               {/* X-Axis Day Labels */}
-              <div className="flex justify-between items-center px-4 pl-24 text-[10px] text-content-muted mt-2 font-medium">
+              <div className="flex justify-between items-center px-4 pl-24 text-2xs text-content-muted mt-2 font-medium">
                 {chartRange === '7d' ? (
                   chartData.map((d) => (
                     <span
@@ -844,11 +844,11 @@ export function Journal({ store }: { store: AppStore }) {
                       <Icon size={16} style={{ color: m.color }} />
                     </div>
                     <div>
-                      <span className="text-[10px] text-content-muted uppercase font-semibold block">
+                      <span className="text-2xs text-content-muted uppercase font-semibold block">
                         {m.label}
                       </span>
                       <span className="text-sm font-bold text-content-primary">
-                        {count} <span className="text-[10px] text-content-muted font-normal">days</span>
+                        {count} <span className="text-2xs text-content-muted font-normal">days</span>
                       </span>
                     </div>
                   </div>
@@ -925,7 +925,7 @@ export function Journal({ store }: { store: AppStore }) {
                       </span>
 
                       {isToday && (
-                        <span className="text-[10px] bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-bold">
+                        <span className="text-2xs bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-bold">
                           Today
                         </span>
                       )}
@@ -1010,7 +1010,7 @@ export function Journal({ store }: { store: AppStore }) {
                     <Icon size={20} style={{ color: moodMeta.color }} />
                   </div>
                   <div>
-                    <p className="text-[10px] text-content-disabled uppercase font-bold tracking-wider">
+                    <p className="text-2xs text-content-disabled uppercase font-bold tracking-wider">
                       Recorded Mood
                     </p>
                     <p className="text-sm font-bold" style={{ color: moodMeta.color }}>

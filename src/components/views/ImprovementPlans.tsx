@@ -70,7 +70,7 @@ function ExpandableDescription({ text }: { text: string }) {
       {isOverflowing && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-[11px] text-purple-hierarchy hover:underline flex items-center gap-1 mt-1"
+          className="text-micro text-purple-hierarchy hover:underline flex items-center gap-1 mt-1"
         >
           {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />} 
           {isExpanded ? 'Read less' : 'Read more'}
@@ -617,26 +617,26 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     switch (resolvedType) {
       case 'target_goal':
         return (
-          <span className="badge-amber inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded">
+          <span className="badge-amber inline-flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded">
             <Target size={11} /> Target Goal
           </span>
         );
       case 'habit_journey':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/15 text-rose-theme border border-rose-500/30">
+          <span className="inline-flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded bg-rose-500/15 text-rose-theme border border-rose-500/30">
             <Flame size={11} /> Habit Journey
           </span>
         );
       case 'vision':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded badge-purple">
+          <span className="inline-flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded badge-purple">
             <Compass size={11} /> Vision & Reflection
           </span>
         );
       case 'milestone':
       default:
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded badge-blue">
+          <span className="inline-flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded badge-blue">
             <CheckSquare size={11} /> Milestone Plan
           </span>
         );
@@ -690,10 +690,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {/* Add Reflection Note Field (Interactive mode ONLY) */}
           {mode !== 'read_only' && (
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center justify-between text-micro">
                 <span className="font-semibold text-content-muted">Add Reflection Note</span>
                 {effectiveCadence && (
-                  <span className="text-[10px] text-purple-hierarchy font-mono">
+                  <span className="text-2xs text-purple-hierarchy font-mono">
                     Cadence: {effectiveCadence === 'weekly' ? 'Weekly' : 'Monthly'}
                   </span>
                 )}
@@ -751,7 +751,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
                 return (
                   <div key={noteKey} className="text-xs p-2 rounded bg-bg-700/60 border border-overlay-subtle space-y-1">
-                    <div className="flex items-center justify-between text-[10px] text-content-disabled font-mono">
+                    <div className="flex items-center justify-between text-2xs text-content-disabled font-mono">
                       <span>{new Date(noteDate).toLocaleString()}</span>
                       {mode !== 'read_only' && (
                         <div className="flex items-center gap-1.5">
@@ -788,7 +788,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => setEditingNoteId({ ...editingNoteId, [noteKey]: false })}
-                            className="btn-secondary text-[10px] py-0.5 px-2"
+                            className="btn-secondary text-2xs py-0.5 px-2"
                           >
                             Cancel
                           </button>
@@ -804,7 +804,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                 setEditingNoteId({ ...editingNoteId, [noteKey]: false });
                               }
                             }}
-                            className="btn-primary text-[10px] py-0.5 px-2 bg-purple-600 hover:bg-purple-500"
+                            className="btn-primary text-2xs py-0.5 px-2 bg-purple-600 hover:bg-purple-500"
                           >
                             Save
                           </button>
@@ -843,7 +843,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <ProgressBar value={pct} label="Plan goal progress" tone={isGoalCompleted ? 'success' : 'warning'} />
 
             {plan.targetDate && (
-              <div className="text-[11px] text-content-muted flex items-center gap-1">
+              <div className="text-micro text-content-muted flex items-center gap-1">
                 <Calendar size={12} className="text-content-disabled" /> Target Date: <span className="text-content-tertiary">{plan.targetDate}</span>
               </div>
             )}
@@ -902,7 +902,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                         alert("Please enter a valid number greater than 0.");
                       }
                     }}
-                    className="btn-primary text-[11px] py-1 px-2 ml-1"
+                    className="btn-primary text-micro py-1 px-2 ml-1"
                   >
                     Set New Target
                   </button>
@@ -934,7 +934,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               <span className="flex items-center gap-1.5 font-bold text-rose-theme">
                 <Flame size={15} /> {streak} {cadenceText} Streak
               </span>
-              <span className="text-content-muted text-[11px]">
+              <span className="text-content-muted text-micro">
                 Commitment: <span className="text-content-secondary">{durationText}</span> ({plan.cadence || 'daily'})
               </span>
             </div>
@@ -942,7 +942,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             {/* Read-Only mode in Discover: NO "Mark Done" button */}
             {mode === 'read_only' ? (
               plan.lastCompletedDate && (
-                <div className="text-[10px] text-content-disabled pt-1">
+                <div className="text-2xs text-content-disabled pt-1">
                   Last completed: {formatDateShort(plan.lastCompletedDate)}
                 </div>
               )
@@ -985,7 +985,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   )}
                 </div>
                 {plan.lastCompletedDate && (
-                  <span className="text-[10px] text-content-disabled">
+                  <span className="text-2xs text-content-disabled">
                     Last completed: {formatDateShort(plan.lastCompletedDate)}
                   </span>
                 )}
@@ -1002,7 +1002,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         <div>
           {renderReviewDueBadge()}
           {plan.targetReviewDate && (
-            <div className="text-[11px] text-purple-hierarchy flex items-center gap-1 bg-bg-800/40 p-2.5 rounded-lg border border-overlay-subtle mb-2">
+            <div className="text-micro text-purple-hierarchy flex items-center gap-1 bg-bg-800/40 p-2.5 rounded-lg border border-overlay-subtle mb-2">
               <Calendar size={12} className="text-purple-hierarchy" /> Target Review Date: {plan.targetReviewDate}
             </div>
           )}
@@ -1142,11 +1142,11 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             <div className="flex flex-wrap items-center gap-2">
                               {renderPlanTypeBadge(plan.planType)}
                               {plan.category && (
-                                <span className="badge text-[10px] bg-bg-700 text-content-muted border border-overlay-subtle">
+                                <span className="badge text-2xs bg-bg-700 text-content-muted border border-overlay-subtle">
                                   {plan.category}
                                 </span>
                               )}
-                              <span className={`badge text-[10px] font-bold ${plan.isPublic ? 'badge-blue' : 'bg-bg-700 text-content-muted border border-overlay-subtle'}`}>
+                              <span className={`badge text-2xs font-bold ${plan.isPublic ? 'badge-blue' : 'bg-bg-700 text-content-muted border border-overlay-subtle'}`}>
                                 {plan.isPublic ? <Globe size={10} className="inline mr-1" /> : <Lock size={10} className="inline mr-1" />}
                                 {plan.isPublic ? 'Public' : 'Private'}
                               </span>
@@ -1157,7 +1157,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
                           {/* RIGHT SIDE: Action Button Group */}
                           <div className="flex items-center gap-1.5 shrink-0 bg-bg-800/60 p-1.5 rounded-lg border border-overlay-subtle">
-                            <span className="flex items-center gap-1 text-[11px] font-bold text-blue-theme px-1" title="Times copied">
+                            <span className="flex items-center gap-1 text-micro font-bold text-blue-theme px-1" title="Times copied">
                               <Copy size={12} /> {displayCopyCount}
                             </span>
 
@@ -1310,7 +1310,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
             {/* Category Filter Chips */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-overlay-default">
-              <span className="text-[11px] font-semibold text-content-disabled mr-1">Category:</span>
+              <span className="text-micro font-semibold text-content-disabled mr-1">Category:</span>
               {['All', ...PLAN_CATEGORIES].map((cat) => (
                 <button
                   key={cat}
@@ -1318,7 +1318,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     setDiscoverCategory(cat);
                     loadPlans(discoverSearch, cat, discoverPlanType, discoverSortBy);
                   }}
-                  className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
+                  className={`text-micro font-medium px-2.5 py-1 rounded-full border transition-all ${
                     discoverCategory === cat
                       ? 'badge-blue font-semibold'
                       : 'bg-bg-700/60 text-content-muted border-overlay-subtle hover:bg-bg-700 hover:text-content-secondary'
@@ -1331,7 +1331,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
             {/* Plan Type Filter Chips */}
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-semibold text-content-disabled mr-1">Plan Type:</span>
+              <span className="text-micro font-semibold text-content-disabled mr-1">Plan Type:</span>
               {[
                 { id: 'all', label: 'All Types' },
                 { id: 'milestone', label: 'Milestone' },
@@ -1345,7 +1345,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     setDiscoverPlanType(t.id);
                     loadPlans(discoverSearch, discoverCategory, t.id, discoverSortBy);
                   }}
-                  className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${
+                  className={`text-micro font-medium px-2.5 py-1 rounded-full border transition-all ${
                     discoverPlanType === t.id
                       ? 'bg-purple-500/20 text-purple-hierarchy border-purple-500/40 font-semibold'
                       : 'bg-bg-700/60 text-content-muted border-overlay-subtle hover:bg-bg-700 hover:text-content-secondary'
@@ -1417,12 +1417,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               {plan.creatorUsername}
                               <TierBadge totalPoints={creatorSeasonPts} size="sm" />
                             </div>
-                            <span className="text-[10px] text-content-disabled">{creatorSeasonPts} pts</span>
+                            <span className="text-2xs text-content-disabled">{creatorSeasonPts} pts</span>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0 bg-bg-800/60 p-1.5 rounded-lg border border-overlay-subtle">
-                          <span className="flex items-center gap-1 text-[11px] font-bold text-blue-theme px-1" title="Times copied">
+                          <span className="flex items-center gap-1 text-micro font-bold text-blue-theme px-1" title="Times copied">
                             <Copy size={12} /> {plan.copyCount || 0}
                           </span>
                           {isOwnPlan && (
@@ -1482,7 +1482,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                         <div className="flex flex-wrap items-center gap-2">
                           {renderPlanTypeBadge(plan.planType)}
                           {plan.category && (
-                            <span className="badge text-[10px] bg-bg-700 text-content-muted border border-overlay-subtle">
+                            <span className="badge text-2xs bg-bg-700 text-content-muted border border-overlay-subtle">
                               {plan.category}
                             </span>
                           )}
@@ -1497,7 +1497,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
                     {/* Copy Action Footer */}
                     <div className="pt-2 border-t border-overlay-default flex items-center justify-between">
-                      <span className="text-[10px] text-content-disabled">Created: {new Date(plan.createdAt).toLocaleDateString()}</span>
+                      <span className="text-2xs text-content-disabled">Created: {new Date(plan.createdAt).toLocaleDateString()}</span>
 
                       {!isOwnPlan && (
                         <button
@@ -1562,7 +1562,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   <div className="font-bold text-content-secondary group-hover:text-blue-theme flex items-center justify-between">
                     <span>{tpl.title}</span>
                   </div>
-                  <div className="text-[10px] text-content-disabled line-clamp-2 mt-0.5">{tpl.description}</div>
+                  <div className="text-2xs text-content-disabled line-clamp-2 mt-0.5">{tpl.description}</div>
                 </button>
               ))}
             </div>
@@ -1584,7 +1584,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <div className="flex items-center gap-1.5 font-bold text-xs text-blue-theme">
                   <CheckSquare size={14} /> Milestone Plan
                 </div>
-                <div className="text-[11px] text-content-disabled leading-tight">Ordered list of milestones & step completion</div>
+                <div className="text-micro text-content-disabled leading-tight">Ordered list of milestones & step completion</div>
               </button>
 
               <button
@@ -1599,7 +1599,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <div className="flex items-center gap-1.5 font-bold text-xs text-warning-text">
                   <Target size={14} /> Target Goal
                 </div>
-                <div className="text-[11px] text-content-disabled leading-tight">Single measurable target value reached by date</div>
+                <div className="text-micro text-content-disabled leading-tight">Single measurable target value reached by date</div>
               </button>
 
               <button
@@ -1614,7 +1614,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <div className="flex items-center gap-1.5 font-bold text-xs text-rose-theme">
                   <Flame size={14} /> Habit Journey
                 </div>
-                <div className="text-[11px] text-content-disabled leading-tight">Daily/weekly habit commitment with streak counter</div>
+                <div className="text-micro text-content-disabled leading-tight">Daily/weekly habit commitment with streak counter</div>
               </button>
 
               <button
@@ -1629,7 +1629,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <div className="flex items-center gap-1.5 font-bold text-xs text-purple-hierarchy">
                   <Compass size={14} /> Vision & Reflection
                 </div>
-                <div className="text-[11px] text-content-disabled leading-tight">Long-term vision with dated check-in notes</div>
+                <div className="text-micro text-content-disabled leading-tight">Long-term vision with dated check-in notes</div>
               </button>
             </div>
           </div>

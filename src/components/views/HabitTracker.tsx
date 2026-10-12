@@ -397,7 +397,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
             const consecutiveMisses = getHabitConsecutiveMisses(habit);
             if (!habit.isPreset || consecutiveMisses <= 0) return null;
             return (
-              <div className="mt-1.5 flex items-center gap-1 text-[11px] text-rose-theme bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 w-fit font-medium">
+              <div className="mt-1.5 flex items-center gap-1 text-micro text-rose-theme bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 w-fit font-medium">
                 <AlertTriangle size={11} className="shrink-0" />
                 <span>
                   {consecutiveMisses} consecutive miss{consecutiveMisses > 1 ? 'es' : ''} (Next miss = {getMissPenaltyMultiplier(consecutiveMisses + 1, seasonPoints)}x penalty)

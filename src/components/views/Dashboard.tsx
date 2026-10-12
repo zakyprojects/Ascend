@@ -166,7 +166,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               <p className="text-xs font-bold text-content-secondary">
                 You are using a Guest Session ({store.state.currentUser.username})
               </p>
-              <p className="text-[11px] text-content-muted">
+              <p className="text-micro text-content-muted">
                 Save your progress — convert to a permanent account so you never lose your habits, points, and league rank.
               </p>
             </div>
@@ -245,7 +245,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           >
             <div>
               <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyExerciseMins} /> <span className="text-xs font-normal text-content-muted">mins this week</span></div>
-              <div className="text-[11px] text-content-disabled"><CountUp value={weeklyWorkouts.length} /> sessions completed</div>
+              <div className="text-micro text-content-disabled"><CountUp value={weeklyWorkouts.length} /> sessions completed</div>
             </div>
           </ModuleCard>
 
@@ -258,7 +258,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           >
             <div>
               <div className="text-xl font-bold text-content-primary"><CountUp value={activeBooks} /> <span className="text-xs font-normal text-content-muted">books in progress</span></div>
-              <div className="text-[11px] text-content-disabled"><CountUp value={finishedBooks} /> finished total</div>
+              <div className="text-micro text-content-disabled"><CountUp value={finishedBooks} /> finished total</div>
             </div>
           </ModuleCard>
 
@@ -271,7 +271,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           >
             <div>
               <div className="text-xl font-bold text-content-primary"><CountUp value={totalSkillHours} decimals={1} /> <span className="text-xs font-normal text-content-muted">hrs practice</span></div>
-              <div className="text-[11px] text-content-disabled"><CountUp value={store.state.skills.length} /> skills tracked</div>
+              <div className="text-micro text-content-disabled"><CountUp value={store.state.skills.length} /> skills tracked</div>
             </div>
           </ModuleCard>
 
@@ -284,7 +284,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           >
             <div>
               <div className="text-xl font-bold text-content-primary"><CountUp value={badHabitCount} /> <span className="text-xs font-normal text-content-muted">habits reduced</span></div>
-              <div className="text-[11px] text-content-disabled">Escalating penalties enabled</div>
+              <div className="text-micro text-content-disabled">Escalating penalties enabled</div>
             </div>
           </ModuleCard>
 
@@ -299,7 +299,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
               <div className="text-xl font-bold text-content-primary">
                 {activeAddiction ? activeAddiction.title : 'Sobriety Tracker'}
               </div>
-              <div className="text-[11px] text-content-disabled">Includes emergency support & breathing</div>
+              <div className="text-micro text-content-disabled">Includes emergency support & breathing</div>
             </div>
           </ModuleCard>
 
@@ -312,7 +312,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
           >
             <div>
               <div className="text-xl font-bold text-content-primary"><CountUp value={weeklyFocusMins} /> <span className="text-xs font-normal text-content-muted">focus mins this week</span></div>
-              <div className="text-[11px] text-content-disabled">Pomodoro, decisions & emotions</div>
+              <div className="text-micro text-content-disabled">Pomodoro, decisions & emotions</div>
             </div>
           </ModuleCard>
 
@@ -328,7 +328,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
                 <AutoNum text={todayScheduledMins > 0 ? formatDurationHuman(todayScheduledMins) : '0h 0m'} />{' '}
                 <span className="text-xs font-normal text-content-muted">planned today</span>
               </div>
-              <div className="text-[11px] text-content-disabled">
+              <div className="text-micro text-content-disabled">
                 {todayBlocks.length > 0 ? (
                   <AutoNum text={`${todayCompletedBlocksCount}/${todayBlocks.length} blocks completed`} />
                 ) : (
@@ -496,8 +496,8 @@ function LeagueRankCard({ type, rank, points }: { type: LeagueType; rank: number
       <div className="text-lg font-display font-bold tabular-nums" style={{ color: `var(--badge-${tone}-text)` }}>
         #<CountUp value={rank} />
       </div>
-      <div className="text-[10px] text-content-muted tabular-nums"><CountUp value={points} /> pts</div>
-      <LeagueCountdown type={type} className="text-[10px] text-brand-text mt-0.5 truncate font-mono font-medium" />
+      <div className="text-2xs text-content-muted tabular-nums"><CountUp value={points} /> pts</div>
+      <LeagueCountdown type={type} className="text-2xs text-brand-text mt-0.5 truncate font-mono font-medium" />
     </div>
   );
 }

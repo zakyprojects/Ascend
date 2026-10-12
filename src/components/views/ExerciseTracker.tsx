@@ -234,7 +234,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             return (
               <div key={d.dayLabel} className="flex flex-col items-center h-full justify-end group relative">
                 {/* Tooltip */}
-                <div className="absolute -top-7 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity bg-bg-700 text-content-secondary text-[10px] px-1.5 py-0.5 rounded border border-overlay-default pointer-events-none whitespace-nowrap z-10">
+                <div className="absolute -top-7 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity bg-bg-700 text-content-secondary text-2xs px-1.5 py-0.5 rounded border border-overlay-default pointer-events-none whitespace-nowrap z-10">
                   {d.points} pts
                 </div>
                 {/* Bar */}
@@ -246,7 +246,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                     style={{ height: `${Math.max(d.points > 0 ? 10 : 0, heightPercent)}%` }}
                   />
                 </div>
-                <span className={`text-[11px] mt-2 font-medium ${d.isToday ? 'text-success-text font-bold' : 'text-content-disabled'}`}>
+                <span className={`text-micro mt-2 font-medium ${d.isToday ? 'text-success-text font-bold' : 'text-content-disabled'}`}>
                   {d.dayLabel}
                 </span>
               </div>
@@ -492,7 +492,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               className="input"
               required
             />
-            <span className="text-[11px] text-content-disabled mt-1 block">Set to 0 to disable weekly target penalty checks.</span>
+            <span className="text-micro text-content-disabled mt-1 block">Set to 0 to disable weekly target penalty checks.</span>
           </div>
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setGoalModalOpen(false)} className="btn-secondary flex-1">

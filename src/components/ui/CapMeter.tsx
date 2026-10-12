@@ -71,7 +71,7 @@ export function CapMeter({
       )}
 
       {note && (
-        <div className="text-[11px] text-content-muted">
+        <div className="text-micro text-content-muted">
           {note}
         </div>
       )}

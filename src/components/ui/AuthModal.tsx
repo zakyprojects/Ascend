@@ -295,7 +295,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                   <div className="font-bold text-sm flex items-center gap-2">
                     <span>Sign Up</span>
                   </div>
-                  <div className="text-[11px] text-primary-100/90 mt-0.5">
+                  <div className="text-micro text-primary-100/90 mt-0.5">
                     Create a new account with email & password
                   </div>
                 </div>
@@ -312,7 +312,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                   <div className="font-bold text-sm flex items-center gap-2">
                     <span>Sign In</span>
                   </div>
-                  <div className="text-[11px] text-content-muted mt-0.5">
+                  <div className="text-micro text-content-muted mt-0.5">
                     Log in to your existing account
                   </div>
                 </div>
@@ -331,7 +331,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                     <Zap size={15} />
                     <span>Continue as Guest</span>
                   </div>
-                  <div className="text-[11px] opacity-90 mt-0.5">
+                  <div className="text-micro opacity-90 mt-0.5">
                     Instant access — no email or password required
                   </div>
                 </div>
@@ -417,11 +417,11 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                       {username.trim() && (
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           {usernameStatus?.available ? (
-                            <span className="badge-emerald text-[11px] font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
+                            <span className="badge-emerald text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-md">
                               <Check size={12} /> Available
                             </span>
                           ) : usernameStatus?.reason ? (
-                            <span className="badge-rose text-[11px] font-medium flex items-center gap-1 px-2 py-0.5 rounded-md truncate max-w-[110px]">
+                            <span className="badge-rose text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-md truncate max-w-[110px]">
                               Taken / Invalid
                             </span>
                           ) : null}
@@ -429,7 +429,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                       )}
                     </div>
                     {usernameStatus && !usernameStatus.available && (
-                      <p className="text-[11px] text-error-text mt-1">{usernameStatus.reason}</p>
+                      <p className="text-micro text-error-text mt-1">{usernameStatus.reason}</p>
                     )}
                   </div>
                 </>

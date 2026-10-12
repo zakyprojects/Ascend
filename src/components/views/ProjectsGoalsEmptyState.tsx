@@ -129,7 +129,7 @@ export function EmptyState({ tier, onCreate, isFiltered = false, onTabSwitch }: 
       </div>
 
       {/* Educational Micro Hierarchy Map (Task -> Project -> Goal) */}
-      <div className="flex items-center justify-center gap-1 sm:gap-2 max-w-sm mx-auto py-2 px-3 rounded-xl bg-bg-900/70 border border-overlay-subtle text-[10px] sm:text-xs relative z-10">
+      <div className="flex items-center justify-center gap-1 sm:gap-2 max-w-sm mx-auto py-2 px-3 rounded-xl bg-bg-900/70 border border-overlay-subtle text-2xs sm:text-xs relative z-10">
         <button
           type="button"
           onClick={() => onTabSwitch?.('tasks')}

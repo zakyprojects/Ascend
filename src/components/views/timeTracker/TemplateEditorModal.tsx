@@ -257,7 +257,7 @@ export function TemplateEditorModal({
             <label className="block text-xs font-semibold text-content-muted uppercase tracking-wider mb-1.5">
               Auto-Apply Days
             </label>
-            <p className="text-[11px] text-content-muted mb-2">
+            <p className="text-micro text-content-muted mb-2">
               On the selected days, opening the schedule for an empty day will automatically apply this template.
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -330,7 +330,7 @@ export function TemplateEditorModal({
                               {block.customTitle || act?.name || 'Block'}
                             </p>
                             {act?.ascendModule && (
-                              <span className="text-[10px] font-mono" style={{ color: resolvedColor }}>
+                              <span className="text-2xs font-mono" style={{ color: resolvedColor }}>
                                 [{act.ascendModule}]
                               </span>
                             )}
@@ -341,7 +341,7 @@ export function TemplateEditorModal({
                                 return (
                                   <span
                                     key={secId}
-                                    className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                                    className="text-2xs font-mono px-1.5 py-0.5 rounded"
                                     style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                                   >
                                     +{secAct.name}
@@ -349,7 +349,7 @@ export function TemplateEditorModal({
                                 );
                               })}
                           </div>
-                          <p className="text-[11px] text-content-muted font-mono">
+                          <p className="text-micro text-content-muted font-mono">
                             {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)} ({formatDurationHuman(duration)})
                           </p>
                         </div>

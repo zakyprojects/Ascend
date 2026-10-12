@@ -62,7 +62,7 @@ export function PasswordInput({
         </button>
       </div>
       {error && (
-        <p className="text-[11px] text-error-text mt-1 flex items-center gap-1 font-medium">
+        <p className="text-micro text-error-text mt-1 flex items-center gap-1 font-medium">
           {error}
         </p>
       )}

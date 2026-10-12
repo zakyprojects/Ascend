@@ -45,12 +45,12 @@ export function CompetitorProfileModal({
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-lg font-display font-bold text-content-primary truncate">{competitor.name}</h3>
                 {competitor.isUser && (
-                  <span className="text-[10px] bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-bold shrink-0">
+                  <span className="text-2xs bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-bold shrink-0">
                     You
                   </span>
                 )}
                 {competitor.isRealUser && !competitor.isUser && (
-                  <span className="badge-emerald text-[10px] font-medium flex items-center gap-1 px-2 py-0.5 rounded-md shrink-0">
+                  <span className="badge-emerald text-2xs font-medium flex items-center gap-1 px-2 py-0.5 rounded-md shrink-0">
                     <CheckCircle2 size={10} /> Member
                   </span>
                 )}
@@ -58,7 +58,7 @@ export function CompetitorProfileModal({
 
               {/* UID Display directly under username */}
               {(competitor.uid || competitor.id) && (
-                <div className="text-[11px] font-mono text-content-muted mt-0.5 tracking-tight truncate">
+                <div className="text-micro font-mono text-content-muted mt-0.5 tracking-tight truncate">
                   ID: #{competitor.uid || competitor.id?.slice(0, 8)}
                 </div>
               )}
@@ -91,7 +91,7 @@ export function CompetitorProfileModal({
                 <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
                   Because you have set your own profile to private, other members' detailed statistics and active habits are hidden from you.
                 </p>
-                <p className="text-[11px] text-warning-text font-medium">
+                <p className="text-micro text-warning-text font-medium">
                   Enable your public profile setting in the sidebar to view member achievements.
                 </p>
               </>
@@ -185,11 +185,11 @@ export function CompetitorProfileModal({
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {habit.category && (
-                          <span className="text-[10px] bg-bg-700 text-content-muted px-2 py-0.5 rounded-md border border-overlay-subtle">
+                          <span className="text-2xs bg-bg-700 text-content-muted px-2 py-0.5 rounded-md border border-overlay-subtle">
                             {habit.category}
                           </span>
                         )}
-                        <span className="text-[10px] bg-primary-500/10 text-brand-text px-2 py-0.5 rounded-md uppercase font-bold">
+                        <span className="text-2xs bg-primary-500/10 text-brand-text px-2 py-0.5 rounded-md uppercase font-bold">
                           {habit.frequency}
                         </span>
                       </div>
@@ -227,7 +227,7 @@ export function CompetitorProfileModal({
                             <p className="text-xs font-bold text-content-secondary truncate">
                               {historyRecord.seasonName}
                             </p>
-                            <p className="text-[10px] font-medium truncate" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
+                            <p className="text-2xs font-medium truncate" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
                               {tier.name} Tier
                             </p>
                           </div>
@@ -237,7 +237,7 @@ export function CompetitorProfileModal({
                             {historyRecord.points.toLocaleString()} pts
                           </p>
                           {historyRecord.date && (
-                            <p className="text-[10px] text-content-disabled">
+                            <p className="text-2xs text-content-disabled">
                               {historyRecord.date}
                             </p>
                           )}
@@ -277,10 +277,10 @@ function StatCard({
         <Icon size={16} style={{ color }} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] text-content-muted truncate">{label}</p>
+        <p className="text-2xs text-content-muted truncate">{label}</p>
         <p className="text-xs font-bold text-content-secondary truncate">{value}</p>
         {subtitle && (
-          <p className="text-[10px] text-orange-400/90 font-medium truncate mt-0.5" title={`Source: ${subtitle}`}>
+          <p className="text-2xs text-orange-400/90 font-medium truncate mt-0.5" title={`Source: ${subtitle}`}>
             {subtitle}
           </p>
         )}

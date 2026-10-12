@@ -575,7 +575,7 @@ export function Gallery() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Legacy .btn-*</span>
+                  <span className="text-micro text-content-disabled font-mono block">Legacy .btn-*</span>
                   <div className="flex flex-wrap items-center gap-2">
                     <button className="btn-primary">Primary</button>
                     <button className="btn-secondary">Secondary</button>
@@ -584,7 +584,7 @@ export function Gallery() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Primitive &lt;Button&gt;</span>
+                  <span className="text-micro text-content-disabled font-mono block">Primitive &lt;Button&gt;</span>
                   <div className="flex flex-wrap items-center gap-2">
                     <Button variant="primary">Primary</Button>
                     <Button variant="secondary">Secondary</Button>
@@ -602,7 +602,7 @@ export function Gallery() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Legacy .btn-* text-xs py-1.5 px-3</span>
+                  <span className="text-micro text-content-disabled font-mono block">Legacy .btn-* text-xs py-1.5 px-3</span>
                   <div className="flex flex-wrap items-center gap-2">
                     <button className="btn-primary text-xs py-1.5 px-3">Primary</button>
                     <button className="btn-secondary text-xs py-1.5 px-3">Secondary</button>
@@ -610,7 +610,7 @@ export function Gallery() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Primitive &lt;Button size="sm"&gt;</span>
+                  <span className="text-micro text-content-disabled font-mono block">Primitive &lt;Button size="sm"&gt;</span>
                   <div className="flex flex-wrap items-center gap-2">
                     <Button variant="primary" size="sm">Primary</Button>
                     <Button variant="secondary" size="sm">Secondary</Button>
@@ -627,14 +627,14 @@ export function Gallery() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Legacy "btn-primary flex items-center gap-2"</span>
+                  <span className="text-micro text-content-disabled font-mono block">Legacy "btn-primary flex items-center gap-2"</span>
                   <button className="btn-primary flex items-center gap-2">
                     <Plus size={18} />
                     <span>Add Item</span>
                   </button>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Primitive &lt;Button variant="primary"&gt;</span>
+                  <span className="text-micro text-content-disabled font-mono block">Primitive &lt;Button variant="primary"&gt;</span>
                   <Button variant="primary">
                     <Plus size={18} />
                     <span>Add Item</span>
@@ -650,14 +650,14 @@ export function Gallery() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Legacy disabled</span>
+                  <span className="text-micro text-content-disabled font-mono block">Legacy disabled</span>
                   <div className="flex flex-wrap items-center gap-2">
                     <button disabled className="btn-primary">Disabled Primary</button>
                     <button disabled className="btn-secondary">Disabled Secondary</button>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Primitive &lt;Button disabled&gt;</span>
+                  <span className="text-micro text-content-disabled font-mono block">Primitive &lt;Button disabled&gt;</span>
                   <div className="flex flex-wrap items-center gap-2">
                     <Button disabled variant="primary">Disabled Primary</Button>
                     <Button disabled variant="secondary">Disabled Secondary</Button>
@@ -673,11 +673,11 @@ export function Gallery() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Legacy "btn-secondary text-xs py-1.5 px-3"</span>
+                  <span className="text-micro text-content-disabled font-mono block">Legacy "btn-secondary text-xs py-1.5 px-3"</span>
                   <button className="btn-secondary text-xs py-1.5 px-3">Pattern A</button>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">&lt;Button variant="secondary" className="text-xs py-1.5 px-3"&gt;</span>
+                  <span className="text-micro text-content-disabled font-mono block">&lt;Button variant="secondary" className="text-xs py-1.5 px-3"&gt;</span>
                   <Button variant="secondary" className="text-xs py-1.5 px-3">Pattern A</Button>
                 </div>
               </div>
@@ -690,14 +690,14 @@ export function Gallery() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Legacy "btn-secondary text-xs flex items-center gap-2"</span>
+                  <span className="text-micro text-content-disabled font-mono block">Legacy "btn-secondary text-xs flex items-center gap-2"</span>
                   <button className="btn-secondary text-xs flex items-center gap-2">
                     <Plus size={16} />
                     <span>Pattern B</span>
                   </button>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">&lt;Button variant="secondary" className="text-xs"&gt;</span>
+                  <span className="text-micro text-content-disabled font-mono block">&lt;Button variant="secondary" className="text-xs"&gt;</span>
                   <Button variant="secondary" className="text-xs">
                     <Plus size={16} />
                     <span>Pattern B</span>
@@ -709,16 +709,16 @@ export function Gallery() {
             {/* 7. Override REAL PATTERN C */}
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
-                7. Override REAL PATTERN C: "text-[10px] py-0.5 px-2"
+                7. Override REAL PATTERN C: "text-2xs py-0.5 px-2"
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Legacy "btn-secondary text-[10px] py-0.5 px-2"</span>
-                  <button className="btn-secondary text-[10px] py-0.5 px-2">Micro C</button>
+                  <span className="text-micro text-content-disabled font-mono block">Legacy "btn-secondary text-2xs py-0.5 px-2"</span>
+                  <button className="btn-secondary text-2xs py-0.5 px-2">Micro C</button>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">&lt;Button variant="secondary" className="text-[10px] py-0.5 px-2"&gt;</span>
-                  <Button variant="secondary" className="text-[10px] py-0.5 px-2">Micro C</Button>
+                  <span className="text-micro text-content-disabled font-mono block">&lt;Button variant="secondary" className="text-2xs py-0.5 px-2"&gt;</span>
+                  <Button variant="secondary" className="text-2xs py-0.5 px-2">Micro C</Button>
                 </div>
               </div>
             </div>
@@ -734,14 +734,14 @@ export function Gallery() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-bg-800/50 rounded-xl border border-overlay-subtle">
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Legacy "btn-secondary flex-1" / "btn-primary flex-1"</span>
+                  <span className="text-micro text-content-disabled font-mono block">Legacy "btn-secondary flex-1" / "btn-primary flex-1"</span>
                   <div className="w-80 flex gap-2">
                     <button className="btn-secondary flex-1">Cancel</button>
                     <button className="btn-primary flex-1">Save</button>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[11px] text-content-disabled font-mono block">Primitive &lt;Button className="flex-1"&gt;</span>
+                  <span className="text-micro text-content-disabled font-mono block">Primitive &lt;Button className="flex-1"&gt;</span>
                   <div className="w-80 flex gap-2">
                     <Button variant="secondary" className="flex-1">Cancel</Button>
                     <Button variant="primary" className="flex-1">Save</Button>

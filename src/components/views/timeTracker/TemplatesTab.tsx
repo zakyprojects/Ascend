@@ -203,20 +203,20 @@ export function TemplatesTab({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Hard Work */}
             <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
-              <h4 className="text-[11px] font-bold text-content-secondary mb-1 flex items-center gap-1.5">
+              <h4 className="text-micro font-bold text-content-secondary mb-1 flex items-center gap-1.5">
                 <Brain className="text-content-muted" size={13} /> 
                 8 Hours: Hard Work
               </h4>
-              <p className="text-[10px] text-content-muted leading-snug">Deep focus, career progression, and building your empire.</p>
+              <p className="text-2xs text-content-muted leading-snug">Deep focus, career progression, and building your empire.</p>
             </div>
 
             {/* Life & Balance */}
             <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
-              <h4 className="text-[11px] font-bold text-content-secondary mb-1.5 flex items-center gap-1.5">
+              <h4 className="text-micro font-bold text-content-secondary mb-1.5 flex items-center gap-1.5">
                 <Heart className="text-content-muted" size={13} /> 
                 8 Hours: 3Fs, 3Hs, & 3Ss
               </h4>
-              <div className="text-[10px] text-content-muted leading-snug space-y-0.5">
+              <div className="text-2xs text-content-muted leading-snug space-y-0.5">
                 <p><strong className="text-content-tertiary font-semibold">3Fs:</strong> Family, Friends, Faith</p>
                 <p><strong className="text-content-tertiary font-semibold">3Hs:</strong> Health, Hygiene, Hobby</p>
                 <p><strong className="text-content-tertiary font-semibold">3Ss:</strong> Soul, Service, Smile</p>
@@ -225,11 +225,11 @@ export function TemplatesTab({
 
             {/* Sleep */}
             <div className="p-3 rounded-xl bg-overlay-subtle border border-overlay-subtle hover:border-overlay-default transition-colors">
-              <h4 className="text-[11px] font-bold text-content-secondary mb-1 flex items-center gap-1.5">
+              <h4 className="text-micro font-bold text-content-secondary mb-1 flex items-center gap-1.5">
                 <Moon className="text-content-muted" size={13} /> 
                 8 Hours: Good Sleep
               </h4>
-              <p className="text-[10px] text-content-muted leading-snug">High-quality recovery to repair the prefrontal cortex and body.</p>
+              <p className="text-2xs text-content-muted leading-snug">High-quality recovery to repair the prefrontal cortex and body.</p>
             </div>
           </div>
         </div>
@@ -321,7 +321,7 @@ export function TemplatesTab({
 
                   {/* Active Days Badges */}
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-content-disabled block mb-1.5">
+                    <span className="text-2xs font-bold uppercase tracking-wider text-content-disabled block mb-1.5">
                       Auto-Apply Days
                     </span>
                     <div className="flex flex-wrap gap-1">
@@ -345,7 +345,7 @@ export function TemplatesTab({
                               handleToggleDay(tpl, day);
                             }}
                             title={`Toggle ${day} auto-apply for ${tpl.title}`}
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                            className={`px-2 py-0.5 rounded-md text-2xs font-bold transition-all cursor-pointer ${
                               isDayActive
                                 ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30 hover:bg-emerald-500/30'
                                 : 'bg-bg-900/40 text-content-subtle border border-overlay-subtle hover:text-content-muted hover:border-overlay-default'
@@ -405,7 +405,7 @@ export function TemplatesTab({
                               className="w-2.5 h-2.5 rounded-full shrink-0"
                               style={{ backgroundColor: color }}
                             />
-                            <span className="font-mono text-[11px] text-content-muted shrink-0">
+                            <span className="font-mono text-micro text-content-muted shrink-0">
                               {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)}
                             </span>
                             <span className="font-semibold text-content-secondary truncate">
@@ -418,7 +418,7 @@ export function TemplatesTab({
                                 return (
                                   <span
                                     key={secId}
-                                    className="text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0"
+                                    className="text-2xs font-mono px-1.5 py-0.5 rounded shrink-0"
                                     style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
                                   >
                                     +{secAct.name}
@@ -428,7 +428,7 @@ export function TemplatesTab({
                           </div>
                           {act?.ascendModule && (
                             <span
-                              className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
+                              className="text-2xs px-1.5 py-0.5 rounded shrink-0"
                               style={categoryTintStyle(color)}
                             >
                               {act.ascendModule}

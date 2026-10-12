@@ -175,19 +175,19 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           <div className="grid grid-cols-4 gap-2 text-center">
             <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
               <div className="text-3xl sm:text-4xl font-display font-bold text-rose-theme">{timeElapsed.days}</div>
-              <div className="text-[10px] text-content-disabled uppercase font-semibold mt-1">Days</div>
+              <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Days</div>
             </div>
             <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
               <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary">{timeElapsed.hours}</div>
-              <div className="text-[10px] text-content-disabled uppercase font-semibold mt-1">Hours</div>
+              <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Hours</div>
             </div>
             <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
               <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary">{timeElapsed.minutes}</div>
-              <div className="text-[10px] text-content-disabled uppercase font-semibold mt-1">Mins</div>
+              <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Mins</div>
             </div>
             <div className="bg-bg-800/80 p-3 rounded-2xl border border-overlay-subtle">
               <div className="text-3xl sm:text-4xl font-display font-bold text-content-primary">{timeElapsed.seconds}</div>
-              <div className="text-[10px] text-content-disabled uppercase font-semibold mt-1">Secs</div>
+              <div className="text-2xs text-content-disabled uppercase font-semibold mt-1">Secs</div>
             </div>
           </div>
 
@@ -230,7 +230,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                     <span className="text-2xl">{m.icon}</span>
                     <div>
                       <div className="text-xs font-bold">{m.label}</div>
-                      <div className="text-[10px] text-content-muted">
+                      <div className="text-2xs text-content-muted">
                         {isUnlocked
                           ? `Unlocked! (+${m.points} pts)`
                           : isCapped
@@ -276,7 +276,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                       Intensity: <span className={`px-2 py-0.5 rounded font-mono ${log.intensity >= 7 ? 'bg-rose-500/20 text-rose-theme' : 'bg-amber-500/20 text-warning-text'}`}>{log.intensity}/10</span>
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-content-disabled text-[10px]">{formatDateLong(log.date)}</span>
+                      <span className="text-content-disabled text-2xs">{formatDateLong(log.date)}</span>
                       <button
                         onClick={() => setDeleteCravingModalLog(log)}
                         className={`text-content-subtle hover:text-rose-theme p-0.5 transition-colors ${TAP_TARGET}`}
@@ -313,7 +313,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               <h4 className="text-xs font-bold text-content-secondary">Quick Distraction Activity</h4>
               <button
                 onClick={() => setDistractionIdx((prev) => (prev + 1) % DISTRACTION_ACTIVITIES.length)}
-                className="btn-ghost text-[11px] text-brand-text flex items-center gap-1"
+                className="btn-ghost text-micro text-brand-text flex items-center gap-1"
               >
                 <RefreshCw size={12} /> Next Suggestion
               </button>

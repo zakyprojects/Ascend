@@ -261,11 +261,11 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-content-primary text-base">{bh.name}</h3>
                         {slotInfo ? (
-                          <span className="text-[10px] bg-emerald-500/15 text-success-text border border-emerald-500/30 px-2 py-0.5 rounded font-semibold">
+                          <span className="text-2xs bg-emerald-500/15 text-success-text border border-emerald-500/30 px-2 py-0.5 rounded font-semibold">
                             Point-Eligible (Slot {slotInfo.slot}/{slotInfo.total})
                           </span>
                         ) : (
-                          <span className="text-[10px] bg-bg-700 text-content-muted border border-overlay-subtle px-2 py-0.5 rounded font-semibold">
+                          <span className="text-2xs bg-bg-700 text-content-muted border border-overlay-subtle px-2 py-0.5 rounded font-semibold">
                             Tracking Only
                           </span>
                         )}
@@ -384,13 +384,13 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         {todayLog.status !== 'no_report' ? (
                           <button
                             onClick={() => store.undoTodayBadHabitLog(bh.id)}
-                            className="text-warning-text hover:opacity-80 flex items-center gap-1 text-[11px] font-semibold transition-colors"
+                            className="text-warning-text hover:opacity-80 flex items-center gap-1 text-micro font-semibold transition-colors"
                           >
                             <RotateCcw size={12} />
                             <span>Undo Today's Action</span>
                           </button>
                         ) : (
-                          <span className="text-[10px] text-content-disabled italic">No-report penalties cannot be undone</span>
+                          <span className="text-2xs text-content-disabled italic">No-report penalties cannot be undone</span>
                         )}
                       </div>
                     )}
@@ -398,7 +398,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
                   {/* 14-day Trend Matrix */}
                   <div className="pt-2 border-t border-overlay-subtle">
-                    <div className="text-[10px] text-content-disabled mb-1 font-medium flex items-center justify-between">
+                    <div className="text-2xs text-content-disabled mb-1 font-medium flex items-center justify-between">
                       <span>14-Day Trend History</span>
                       <span className="text-content-subtle">✓ Resisted • ✕ Occurred • ! Missed</span>
                     </div>
@@ -412,7 +412,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                         return (
                           <div
                             key={d}
-                            className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 transition-all ${
+                            className={`w-6 h-6 rounded-md flex items-center justify-center text-2xs font-bold shrink-0 transition-all ${
                               isResisted
                                 ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40'
                                 : isOccurred
@@ -464,7 +464,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-content-secondary text-base">{bh.name}</h3>
-                      <span className="badge bg-emerald-500/20 text-success-text text-[10px] font-bold">
+                      <span className="badge bg-emerald-500/20 text-success-text text-2xs font-bold">
                         Completed
                       </span>
                     </div>
@@ -472,7 +472,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                       Commitment: {bh.commitmentDays} days • Total days resisted: <strong className="text-success-text tabular-nums">{totalResistedCount} days</strong>
                     </p>
                     {bh.completedAt && (
-                      <p className="text-[11px] text-content-disabled mt-0.5">
+                      <p className="text-micro text-content-disabled mt-0.5">
                         Completed on {new Date(bh.completedAt).toLocaleDateString()} (Points earned preserved)
                       </p>
                     )}
@@ -551,7 +551,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
             {durationMode === 'custom' && (
               <div className="mt-2">
-                <label className="block text-[11px] text-content-disabled mb-1" htmlFor="bad-habit-custom-days-input">Custom Duration (Minimum 30 days)</label>
+                <label className="block text-micro text-content-disabled mb-1" htmlFor="bad-habit-custom-days-input">Custom Duration (Minimum 30 days)</label>
                 <input
                   id="bad-habit-custom-days-input"
                   type="number"
