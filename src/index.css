@@ -928,6 +928,32 @@
     transform-origin: left bottom;
     animation: menu-in 180ms var(--ease-emphasized) both;
   }
+  /* Phone zone bar: a floating glass pill; the current zone's slot widens to show its name. */
+  .zone-bar {
+    background: rgb(var(--color-bg-900-rgb, 15 17 17) / 0.82);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.55);
+  }
+  .zone-slot {
+    transition: flex-grow 320ms var(--ease-emphasized), background-color var(--duration-base) var(--ease-standard),
+      color var(--duration-base) var(--ease-standard);
+  }
+  .zone-slot-active > span {
+    animation: zone-in 280ms var(--ease-emphasized) both;
+  }
+  .zone-sheet {
+    animation: sheet-up 340ms var(--ease-emphasized) both;
+  }
+  .zone-sheet-backdrop {
+    animation: fade-in 200ms var(--ease-standard) both;
+  }
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+  }
   @keyframes zone-in {
     from { opacity: 0; transform: translateX(-6px); }
   }
@@ -935,7 +961,8 @@
     from { opacity: 0; transform: translateX(-4px) scale(0.97); }
   }
   @media (prefers-reduced-motion: reduce) {
-    .zone-title, .zone-pages, .account-menu { animation: none; }
+    .zone-title, .zone-pages, .account-menu, .zone-slot-active > span, .zone-sheet, .zone-sheet-backdrop { animation: none; }
+    .zone-slot { transition: none; }
     .rail-altitude { transition: none; }
   }
 

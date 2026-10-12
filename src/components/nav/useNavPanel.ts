@@ -39,5 +39,5 @@ export function useNavPanel() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [toggle]);
 
-  return { collapsed, toggle };
+  return { collapsed, setCollapsed, toggle };
 }

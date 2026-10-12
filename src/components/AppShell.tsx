@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { ReactNode, useCallback, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { LogIn } from 'lucide-react';
 import {
   Button,
@@ -18,6 +18,8 @@ import { useNavPanel } from './nav/useNavPanel';
 import { ZoneRail } from './nav/ZoneRail';
 import { ZonePanel } from './nav/ZonePanel';
 import { AccountMenu } from './nav/AccountMenu';
+import { MobileZoneBar } from './nav/MobileZoneBar';
+import { ZoneSheet } from './nav/ZoneSheet';
 import { CommandPalette } from './nav/CommandPalette';
 import { getNavStatuses, getUpNext } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
@@ -57,7 +59,9 @@ interface AppShellProps {
 }
 
 export function AppShell({ currentView, navigationKind, onViewChange, store, onOpenAuthModal, children }: AppShellProps) {
-  const { collapsed: panelCollapsed, toggle: togglePanel } = useNavPanel();
+  const { collapsed: panelCollapsed, setCollapsed: setPanelCollapsed, toggle: togglePanel } = useNavPanel();
+  const [zoneSheetOpen, setZoneSheetOpen] = useState(false);
+  const closeZoneSheet = useCallback(() => setZoneSheetOpen(false), []);
   const [accountOpen, setAccountOpen] = useState(false);
   const [guestLogoutWarningOpen, setGuestLogoutWarningOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
@@ -74,6 +78,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
   const panelGroup = NAV_GROUPS.find((g) => g.id === panelZone) ?? NAV_GROUPS[0];
   const navStatuses = getNavStatuses(store.state, store.isHabitDone);
+  const upNext = getUpNext(navStatuses);
 
   // Scroll memory: each view's last position, recorded as the user scrolls (back/forward has
   // already switched the view by the time we could read the old one).
@@ -177,8 +182,8 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   return (
     <div className="relative isolate min-h-screen lg:h-dvh bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div aria-hidden="true" className="app-atmosphere" />
-      {/* Desktop navigation (Basecamp): zone rail + the zone's pages. With the panel hidden, a zone
-          opens its last page directly; with it shown, a zone first shows its pages. */}
+      {/* Desktop navigation (Basecamp): zone rail + the zone's pages. A zone opens its pages in the
+          panel; clicking the zone the panel already shows hides the panel again. */}
       <aside className="hidden lg:flex h-full glass border-r border-overlay-subtle shrink-0">
         <ZoneRail
           onDashboard={currentView === NAV_DASHBOARD.id}
@@ -189,8 +194,12 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           playBadge={pendingIncomingInvitesCount}
           onGoDashboard={() => goTo(NAV_DASHBOARD.id)}
           onZone={(zone) => {
-            if (panelCollapsed) onViewChange(lastByGroup[zone]);
-            else setPanelZone(zone);
+            if (!panelCollapsed && panelZone === zone) {
+              setPanelCollapsed(true);
+            } else {
+              setPanelZone(zone);
+              setPanelCollapsed(false);
+            }
           }}
           onExpandPanel={togglePanel}
           onSearch={() => setPaletteOpen(true)}
@@ -214,7 +223,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
             currentView={currentView}
             partnerBadge={pendingIncomingInvitesCount}
             statuses={navStatuses}
-            upNext={getUpNext(navStatuses)}
+            upNext={upNext}
             onNavigate={goTo}
             onCollapse={togglePanel}
             footer={<RankChip seasonPoints={seasonPoints} latestEntryTimestamp={store.state.pointsHistory?.[0]?.timestamp} />}
@@ -235,7 +244,6 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           </div>
 
           <div className="flex items-center gap-2">
-            <ThemeToggle isDark={isDarkTheme} onToggle={store.toggleThemePreference} />
             {currentUser && <NotificationCenter store={store} compact />}
             {!currentUser && (
               <button
@@ -259,7 +267,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
 
         {/* Main content. Below lg the window scrolls, so main must not be a scroll container there
             (the scroll-rise timeline would bind to it and never move); it only clips sideways. */}
-        <main ref={mainRef} data-page-area className="relative flex-1 max-lg:overflow-x-clip lg:overflow-y-auto pb-[calc(5rem_+_env(safe-area-inset-bottom))] lg:pb-0">
+        <main ref={mainRef} data-page-area className="relative flex-1 max-lg:overflow-x-clip lg:overflow-y-auto pb-[calc(6rem_+_env(safe-area-inset-bottom))] lg:pb-0">
           {activeGroup && (
             <div className="lg:hidden px-4 pt-3">
               <Tabs
@@ -270,6 +278,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
                     i.id === 'partner' && pendingIncomingInvitesCount > 0
                       ? pendingIncomingInvitesCount
                       : undefined,
+                  status: navStatuses[i.id]?.tone,
                 }))}
                 value={currentView}
                 onChange={(id) => goTo(id as View)}
@@ -290,29 +299,25 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           </div>
         </main>
 
-        {/* Mobile bottom nav */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 glass border-t border-overlay-subtle pt-1.5 pb-[calc(0.375rem_+_env(safe-area-inset-bottom))] pl-[calc(0.25rem_+_env(safe-area-inset-left))] pr-[calc(0.25rem_+_env(safe-area-inset-right))] z-30">
-          <div className="grid grid-cols-5">
-            <NavItemPrimitive
-              icon={NAV_DASHBOARD.icon}
-              label={NAV_DASHBOARD.label}
-              active={currentView === 'dashboard'}
-              onClick={() => goTo('dashboard')}
-              layout="stack"
-            />
-            {NAV_GROUPS.map((group) => (
-              <NavItemPrimitive
-                key={group.id}
-                icon={group.icon}
-                label={group.label}
-                active={activeGroupId === group.id}
-                onClick={() => (activeGroupId === group.id ? goTo(currentView) : onViewChange(lastByGroup[group.id]))}
-                layout="stack"
-                badgeCount={group.id === 'play' ? pendingIncomingInvitesCount : undefined}
-              />
-            ))}
-          </div>
-        </nav>
+        {/* Mobile navigation: floating zone bar; the zone on screen opens its sheet. */}
+        <MobileZoneBar
+          onDashboard={currentView === NAV_DASHBOARD.id}
+          activeZone={activeGroupId}
+          playBadge={pendingIncomingInvitesCount}
+          sheetOpen={zoneSheetOpen}
+          onGoDashboard={() => goTo(NAV_DASHBOARD.id)}
+          onZone={(zone) => (activeGroupId === zone ? setZoneSheetOpen((v) => !v) : onViewChange(lastByGroup[zone]))}
+        />
+        <ZoneSheet
+          open={zoneSheetOpen}
+          group={activeGroup}
+          currentView={currentView}
+          statuses={navStatuses}
+          upNext={upNext}
+          partnerBadge={pendingIncomingInvitesCount}
+          onNavigate={goTo}
+          onClose={closeZoneSheet}
+        />
       </div>
 
       <GuestLogoutWarningModal
@@ -377,6 +382,10 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               onViewChange('settings');
             }}
           />
+          <div className="flex items-center justify-between rounded-xl px-3 py-1">
+            <span className="text-sm font-medium text-content-secondary">{isDarkTheme ? 'Dark theme' : 'Light theme'}</span>
+            <ThemeToggle isDark={isDarkTheme} onToggle={store.toggleThemePreference} />
+          </div>
           {currentUser && (
             <Button
               variant="danger"

@@ -3,12 +3,15 @@ import type { LucideIcon } from 'lucide-react';
 import { useActiveBox } from '@/lib/useActiveBox';
 import { useHoverGlide } from '@/lib/useHoverGlide';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
+import type { NavStatusTone } from '@/lib/navStatus';
 
 export interface TabItem {
   id: string;
   label: string;
   icon?: LucideIcon;
   badge?: number;
+  /** Today's status of the page the tab opens (lib/navStatus): a small dot before the label. */
+  status?: NavStatusTone;
 }
 
 export interface TabsProps {
@@ -40,7 +43,7 @@ export const Tabs: React.FC<TabsProps> = ({
   const tabRefs = React.useRef<Map<string, HTMLButtonElement>>(new Map());
   const listRef = React.useRef<HTMLDivElement>(null);
   // Re-measure when the tabs' text changes (labels, badges), not on every new items array.
-  const itemsKey = items.map((item) => `${item.id}:${item.label}:${item.badge ?? ''}`).join('|');
+  const itemsKey = items.map((item) => `${item.id}:${item.label}:${item.badge ?? ''}:${item.status ?? ''}`).join('|');
   const indicator = useActiveBox(listRef, () => tabRefs.current.get(value), value, itemsKey);
   const glideRef = React.useRef<HTMLSpanElement>(null);
   useHoverGlide(listRef, glideRef);
@@ -158,7 +161,21 @@ export const Tabs: React.FC<TabsProps> = ({
             )}
           >
             {Icon && <Icon size={16} aria-hidden="true" />}
-            <span>{item.label}</span>
+            {item.status && (
+              <span
+                aria-hidden="true"
+                className={cx(
+                  'h-1.5 w-1.5 shrink-0 rounded-full',
+                  item.status === 'done' && 'bg-brand-text',
+                  item.status === 'risk' && 'bg-warning',
+                  item.status === 'pending' && 'border border-content-muted'
+                )}
+              />
+            )}
+            <span>
+              {item.label}
+              {item.status && <span className="sr-only">{item.status === 'done' ? ', done today' : ', open today'}</span>}
+            </span>
             {item.badge !== undefined && item.badge > 0 && (
               <span
                 className={cx(
