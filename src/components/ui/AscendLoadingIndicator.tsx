@@ -178,11 +178,10 @@ export interface AscendLoadingOverlayProps {
   exiting?: boolean;
 }
 
-/** The growth staircase along the bottom of the overlay (growthTrace.ts; styles in index.html). */
+/** The growth line along the bottom of the overlay (growthTrace.ts; styles in index.html). */
 const GrowthTrace: React.FC<{ fromPageStart: boolean }> = ({ fromPageStart }) => {
   const ref = React.useRef<SVGSVGElement>(null);
-  const [startedAt] = React.useState(() => (fromPageStart ? 0 : performance.now()));
-  React.useEffect(() => (ref.current ? runGrowthTrace(ref.current, startedAt) : undefined), [startedAt]);
+  React.useEffect(() => (ref.current ? runGrowthTrace(ref.current, fromPageStart) : undefined), [fromPageStart]);
   return (
     <svg ref={ref} className="growth-trace" aria-hidden="true">
       <line className="gt-level" />

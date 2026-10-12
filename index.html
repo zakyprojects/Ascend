@@ -165,31 +165,28 @@
       </div>
     </div>
     <script>
-      // Growth trace for the splash. KEEP IN SYNC with src/components/ui/growthTrace.ts
-      // (same clock: performance.now() from page start, so the React overlay continues it).
+      // Growth trace for the splash: only the straight part. KEEP IN SYNC with src/components/ui/growthTrace.ts
+      // (same clock: performance.now() from page start; the React overlay continues from where this got to).
       (function() {
         var svg = document.getElementById('splash-trace');
         if (!svg || !window.requestAnimationFrame) return;
-        var STEPS = 44, GROWTH = 1.06, DELAY = 250, DRAW = 2600, END = 0.92;
+        var DELAY = 250, STRAIGHT = 1400, LIFT_AT = 0.42;
         var level = svg.querySelector('.gt-level'), line = svg.querySelector('.gt-line'), head = svg.querySelector('.gt-head');
         var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var w = window.innerWidth, h = window.innerHeight, y0 = h * 0.84, rise = h * 0.26, total = Math.pow(GROWTH, STEPS) - 1;
-        var d = 'M0 ' + y0.toFixed(1);
-        for (var i = 1; i <= STEPS; i++) d += ' H' + (w * END * i / STEPS).toFixed(1) + ' V' + (y0 - (Math.pow(GROWTH, i) - 1) / total * rise).toFixed(1);
+        var w = window.innerWidth, h = window.innerHeight, y0 = h * 0.84, x1 = w * LIFT_AT;
         svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
-        line.setAttribute('d', d);
+        line.setAttribute('d', 'M0 ' + y0.toFixed(1) + ' H' + x1.toFixed(1));
         level.setAttribute('x1', 0); level.setAttribute('x2', w); level.setAttribute('y1', y0); level.setAttribute('y2', y0);
-        var len = line.getTotalLength();
-        line.style.strokeDasharray = len;
+        line.style.strokeDasharray = x1;
+        head.setAttribute('cy', y0);
         function draw(now) {
           if (!svg.isConnected) return; // React has replaced the splash
-          var t = still ? 1 : Math.min(1, Math.max(0, (now - DELAY) / DRAW));
-          var drawn = len * (1 - Math.pow(1 - t, 3));
-          line.style.strokeDashoffset = len - drawn;
-          var p = line.getPointAtLength(drawn);
-          head.setAttribute('cx', p.x); head.setAttribute('cy', p.y);
-          head.style.opacity = t > 0 ? 1 : 0;
-          if (t < 1) requestAnimationFrame(draw); else svg.setAttribute('data-done', '');
+          var t = still ? 1 : Math.min(1, Math.max(0, (now - DELAY) / STRAIGHT));
+          var drawn = x1 * (1 - Math.pow(1 - t, 3));
+          line.style.strokeDashoffset = x1 - drawn;
+          head.setAttribute('cx', drawn);
+          head.style.opacity = drawn > 0 ? 1 : 0;
+          if (t < 1) requestAnimationFrame(draw);
         }
         draw(performance.now());
       })();
