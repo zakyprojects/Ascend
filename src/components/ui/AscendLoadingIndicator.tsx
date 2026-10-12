@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef, useSyncExternalStore } from 'react';
 import { getRibbonFrames, subscribeRibbonFrames } from './ascendLoaderRibbon';
+import { runGrowthTrace } from './growthTrace';
 
 /** Static logo swoosh (0-100 mark space), shown when reduced motion is on. */
 const SWOOSH_PATH =
@@ -177,6 +178,20 @@ export interface AscendLoadingOverlayProps {
   exiting?: boolean;
 }
 
+/** The growth staircase along the bottom of the overlay (growthTrace.ts; styles in index.html). */
+const GrowthTrace: React.FC<{ fromPageStart: boolean }> = ({ fromPageStart }) => {
+  const ref = React.useRef<SVGSVGElement>(null);
+  const [startedAt] = React.useState(() => (fromPageStart ? 0 : performance.now()));
+  React.useEffect(() => (ref.current ? runGrowthTrace(ref.current, startedAt) : undefined), [startedAt]);
+  return (
+    <svg ref={ref} className="growth-trace" aria-hidden="true">
+      <line className="gt-level" />
+      <path className="gt-line" />
+      <circle className="gt-head" r="3.5" />
+    </svg>
+  );
+};
+
 export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
   message = 'Loading...',
   submessage,
@@ -196,6 +211,7 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
       aria-modal="true"
       aria-label={message}
     >
+      <GrowthTrace fromPageStart={entrance === 'boot'} />
       {/* Background ambient glow aura */}
       <div className="absolute w-48 h-48 bg-primary-500/15 rounded-full blur-3xl animate-pulse" />
 
