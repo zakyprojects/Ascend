@@ -44,14 +44,14 @@ export function CapMeter({
         <span className="text-content-muted">{label}</span>
         <span
           key={feedback?.id}
-          className={`inline-block tabular-nums ${feedbackClass} ${isCapped ? 'text-content-secondary' : 'text-success-text'}`}
+          className={`inline-block tabular-nums ${feedbackClass} ${isCapped ? 'text-warning-text' : 'text-success-text'}`}
         >
           {earned} / {cap}
         </span>
       </div>
 
       {variant === 'bar' && (
-        <ProgressBar value={earned} max={cap} label={label} tone={isCapped ? 'brand' : 'success'} size="sm" />
+        <ProgressBar value={earned} max={cap} label={label} tone={isCapped ? 'warning' : 'success'} size="sm" />
       )}
 
       {variant === 'slots' && (
@@ -62,7 +62,7 @@ export function CapMeter({
               className={`w-2.5 h-2.5 rounded-full transition-colors ${
                 i < slotsUsed
                   ? isCapped
-                    ? 'bg-brand-text'
+                    ? 'bg-warning-text'
                     : 'bg-success-text'
                   : 'bg-bg-700'
               }`}

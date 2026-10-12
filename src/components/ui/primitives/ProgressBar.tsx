@@ -2,7 +2,7 @@ import { CSSProperties, useRef } from 'react';
 import { useIntroMotion, useSeen } from '@/lib/motion';
 import { cx } from './shared';
 
-export type ProgressTone = 'brand' | 'success' | 'warning';
+export type ProgressTone = 'brand' | 'success' | 'warning' | 'purple' | 'cyan';
 export type ProgressSize = 'sm' | 'md' | 'lg';
 
 export interface ProgressBarProps {
@@ -29,6 +29,9 @@ const toneClasses: Record<ProgressTone, string> = {
   brand: 'bg-primary-500',
   success: 'bg-success-text',
   warning: 'bg-warning-text',
+  // Module identity colours (Skills purple, Projects cyan).
+  purple: 'bg-purple-500',
+  cyan: 'bg-cyan-500',
 };
 
 const sizeClasses: Record<ProgressSize, string> = {

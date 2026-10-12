@@ -6,10 +6,10 @@ export interface JournalPrompt {
 }
 
 export const JOURNAL_PROMPT_CATEGORIES = [
-  { name: 'Gratitude', color: 'badge-neutral' },
+  { name: 'Gratitude', color: 'badge-amber' },
   { name: 'Reflection', color: 'badge-emerald' },
-  { name: 'Challenges', color: 'badge-neutral' },
-  { name: 'Forward-Looking', color: 'badge-neutral' },
+  { name: 'Challenges', color: 'badge-sky' },
+  { name: 'Forward-Looking', color: 'badge-purple' },
 ] as const;
 
 export const JOURNAL_PROMPTS: JournalPrompt[] = [
@@ -17,25 +17,25 @@ export const JOURNAL_PROMPTS: JournalPrompt[] = [
   {
     id: 'grat-1',
     category: 'Gratitude',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-amber',
     prompt: "What's one thing or person you're genuinely grateful for today, and why?",
   },
   {
     id: 'grat-2',
     category: 'Gratitude',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-amber',
     prompt: 'What was a small, simple pleasure or comfort you enjoyed today?',
   },
   {
     id: 'grat-3',
     category: 'Gratitude',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-amber',
     prompt: 'Who made a positive difference in your day, and how did they help you?',
   },
   {
     id: 'grat-4',
     category: 'Gratitude',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-amber',
     prompt: 'What is an opportunity or privilege in your life right now that you appreciate?',
   },
 
@@ -69,25 +69,25 @@ export const JOURNAL_PROMPTS: JournalPrompt[] = [
   {
     id: 'chal-1',
     category: 'Challenges',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-sky',
     prompt: "What's something that challenged you today, and how did you handle it?",
   },
   {
     id: 'chal-2',
     category: 'Challenges',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-sky',
     prompt: 'What obstacle or frustration did you face, and what can it teach you?',
   },
   {
     id: 'chal-3',
     category: 'Challenges',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-sky',
     prompt: 'Where did you feel resistance or procrastination today, and how did you respond?',
   },
   {
     id: 'chal-4',
     category: 'Challenges',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-sky',
     prompt: 'What is a tough decision or conversation you managed today, or need to prepare for?',
   },
 
@@ -95,25 +95,25 @@ export const JOURNAL_PROMPTS: JournalPrompt[] = [
   {
     id: 'fwd-1',
     category: 'Forward-Looking',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-purple',
     prompt: "What's one small thing or habit you want to execute differently tomorrow?",
   },
   {
     id: 'fwd-2',
     category: 'Forward-Looking',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-purple',
     prompt: 'What is the single most important high-impact priority for your day tomorrow?',
   },
   {
     id: 'fwd-3',
     category: 'Forward-Looking',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-purple',
     prompt: 'What standard of discipline will you hold yourself to when you wake up tomorrow?',
   },
   {
     id: 'fwd-4',
     category: 'Forward-Looking',
-    categoryColor: 'badge-neutral',
+    categoryColor: 'badge-purple',
     prompt: 'How can you set up your morning environment tonight to ensure positive momentum?',
   },
 ];

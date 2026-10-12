@@ -242,7 +242,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
           <div className="flex items-center gap-1.5 sm:gap-2">
             <AppLogo className="w-8 h-8 rounded-[22%] object-cover shrink-0" />
             <span className="font-display font-bold text-content-primary">Ascend</span>
-            <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-lg badge-neutral text-3xs font-semibold">
+            <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-lg badge-beta text-3xs font-semibold">
               Beta
             </span>
           </div>
@@ -349,7 +349,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
         <div className="space-y-2">
           {currentUser && (
             <p
-              className={`text-xs font-medium ${currentUser.isAnonymous ? 'text-content-muted' : 'text-brand-text'}`}
+              className={`text-xs font-medium ${currentUser.isAnonymous ? 'text-warning-text' : 'text-brand-text'}`}
             >
               {currentUser.isAnonymous ? 'Guest account' : 'Account active'}
             </p>

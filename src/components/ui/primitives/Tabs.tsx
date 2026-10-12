@@ -115,7 +115,7 @@ export const Tabs: React.FC<TabsProps> = ({
           data-tab-pill={pageTabs ? '' : undefined}
           className={cx(
             'absolute pointer-events-none',
-            isSegmented ? 'top-1 bottom-1 rounded-lg bg-overlay-strong shadow-sm' : 'bottom-0 h-0.5 rounded-full bg-brand-text',
+            isSegmented ? 'top-1 bottom-1 rounded-lg bg-primary-500 shadow-sm' : 'bottom-0 h-0.5 rounded-full bg-brand-text',
             indicator.animate && 'sliding-pill-move'
           )}
           style={{ left: indicator.left, width: indicator.width }}
@@ -148,7 +148,7 @@ export const Tabs: React.FC<TabsProps> = ({
                 ? cx(
                     'rounded-lg',
                     active
-                      ? 'text-content-primary'
+                      ? 'text-on-brand'
                       : 'text-content-muted hover:text-content-secondary'
                   )
                 : cx(
@@ -166,9 +166,14 @@ export const Tabs: React.FC<TabsProps> = ({
                 aria-hidden="true"
                 className={cx(
                   'h-1.5 w-1.5 shrink-0 rounded-full',
-                  item.status === 'done' && 'bg-brand-text',
-                  item.status === 'risk' && 'bg-warning',
-                  item.status === 'pending' && 'border border-content-muted'
+                  // On the emerald segmented pill the dot takes the label colour so it stays visible.
+                  active && isSegmented
+                    ? item.status === 'pending' ? 'border border-current' : 'bg-current'
+                    : cx(
+                        item.status === 'done' && 'bg-brand-text',
+                        item.status === 'risk' && 'bg-warning',
+                        item.status === 'pending' && 'border border-content-muted'
+                      )
                 )}
               />
             )}

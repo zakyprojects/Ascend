@@ -1,7 +1,22 @@
 import React from 'react';
 import { cx } from './shared';
 
-export type BadgeTone = 'neutral' | 'emerald' | 'warning' | 'rose';
+export type BadgeTone =
+  | 'neutral'
+  | 'emerald'
+  | 'warning'
+  | 'amber'
+  | 'purple'
+  | 'cyan'
+  | 'rose'
+  | 'blue'
+  | 'sky'
+  | 'teal'
+  | 'orange'
+  | 'indigo'
+  | 'violet'
+  | 'season'
+  | 'beta';
 
 export type BadgeSize = 'xs' | 'sm';
 export type BadgeShape = 'pill' | 'tag';
@@ -17,7 +32,18 @@ const toneClasses: Record<BadgeTone, string> = {
   neutral: 'badge-neutral',
   emerald: 'badge-emerald',
   warning: 'badge-warning',
+  amber: 'badge-amber',
+  purple: 'badge-purple',
+  cyan: 'badge-cyan',
   rose: 'badge-rose',
+  blue: 'badge-blue',
+  sky: 'badge-sky',
+  teal: 'badge-teal',
+  orange: 'badge-orange',
+  indigo: 'badge-indigo',
+  violet: 'badge-violet',
+  season: 'badge-season',
+  beta: 'badge-beta',
 };
 
 const sizeClasses: Record<BadgeSize, string> = {

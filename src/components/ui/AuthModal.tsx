@@ -324,10 +324,10 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                 type="button"
                 onClick={handleGuestSignIn}
                 disabled={loading}
-                className="w-full p-4 hover:bg-overlay-subtle text-content-primary rounded-2xl border border-overlay-default transition-all flex items-center justify-between group disabled:opacity-50"
+                className="w-full p-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text rounded-2xl border border-emerald-500/30 transition-all flex items-center justify-between group disabled:opacity-50"
               >
                 <div className="text-left">
-                  <div className="font-semibold text-sm flex items-center gap-2">
+                  <div className="font-semibold text-sm flex items-center gap-2 text-success-text">
                     <Zap size={15} />
                     <span>Continue as Guest</span>
                   </div>
@@ -335,7 +335,7 @@ export function AuthModal({ open, onClose, onAuthSuccess, guestState }: AuthModa
                     Start now. No email or password needed.
                   </div>
                 </div>
-                <UserCheck size={20} className="text-content-muted group-hover:text-content-secondary transition-colors shrink-0" />
+                <UserCheck size={20} className="text-success-text shrink-0" />
               </button>
             </div>
           </div>

@@ -38,19 +38,19 @@ export function CompetitorProfileModal({
         {/* Profile Header */}
         <div className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-14 h-14 rounded-2xl bg-overlay-subtle flex items-center justify-center text-3xl shrink-0">
+            <div className="w-14 h-14 rounded-2xl bg-primary-500/20 border border-primary-500/30 flex items-center justify-center text-3xl shrink-0">
               {competitor.avatar}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-xl font-semibold leading-tight text-content-primary truncate">{competitor.name}</h3>
                 {competitor.isUser && (
-                  <span className="text-2xs bg-overlay-default text-content-secondary px-2 py-0.5 rounded-full font-medium shrink-0">
+                  <span className="text-2xs bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-medium shrink-0">
                     You
                   </span>
                 )}
                 {competitor.isRealUser && !competitor.isUser && (
-                  <span className="text-2xs text-content-muted shrink-0">
+                  <span className="badge-emerald text-2xs font-medium px-2 py-0.5 rounded-lg shrink-0">
                     Member
                   </span>
                 )}
@@ -65,7 +65,7 @@ export function CompetitorProfileModal({
 
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-content-muted">League points:</span>
-                <span className="figure text-xs text-content-primary">
+                <span className="figure text-xs text-brand-text">
                   {competitor.points.toLocaleString()} pts
                 </span>
               </div>
@@ -82,7 +82,7 @@ export function CompetitorProfileModal({
         {!canViewDetailed ? (
           <div className="card p-6 text-center space-y-2.5 animate-fade-in">
             <div className="flex items-center justify-center text-content-subtle">
-              {!viewerIsPublic ? <EyeOff size={18} /> : <Lock size={18} />}
+              {!viewerIsPublic ? <EyeOff size={18} className="text-warning-text" /> : <Lock size={18} />}
             </div>
 
             {!viewerIsPublic ? (
@@ -122,32 +122,38 @@ export function CompetitorProfileModal({
                       <>
                         <StatCard
                           icon={Flame}
+                          color="#f59e0b"
                           label="Current streak"
                           value={`${cDays} days`}
                           subtitle={cCat || undefined}
                         />
                         <StatCard
                           icon={CheckSquare}
+                          color="#34d399"
                           label="Habits done"
                           value={stats.habitsCompletedCount.toLocaleString()}
                         />
                         <StatCard
                           icon={BookOpen}
+                          color="#0ea5e9"
                           label="Journal entries"
                           value={stats.journalEntriesCount.toLocaleString()}
                         />
                         <StatCard
                           icon={Activity}
+                          color="#14b8a6"
                           label="Exercise mins"
                           value={`${stats.exerciseMinutes}m`}
                         />
                         <StatCard
                           icon={Book}
+                          color="#fbbf24"
                           label="Books read"
                           value={`${stats.booksRead}`}
                         />
                         <StatCard
                           icon={Target}
+                          color="#f472b6"
                           label="Skills practiced"
                           value={`${stats.skillsPracticedCount}`}
                         />
@@ -171,6 +177,7 @@ export function CompetitorProfileModal({
                       className="px-3 py-2.5 flex items-center justify-between gap-2"
                     >
                       <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-2 h-2 rounded-full bg-primary-400 shrink-0" />
                         <span className="item-name text-xs text-content-secondary truncate">
                           {habit.name}
                         </span>
@@ -181,7 +188,7 @@ export function CompetitorProfileModal({
                             {habit.category}
                           </span>
                         )}
-                        <span className="text-2xs text-content-muted">
+                        <span className="text-2xs bg-primary-500/10 text-brand-text px-2 py-0.5 rounded-lg font-medium">
                           {habit.frequency}
                         </span>
                       </div>
@@ -224,7 +231,7 @@ export function CompetitorProfileModal({
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="figure text-xs text-content-primary">
+                          <p className="figure text-xs text-brand-text">
                             {historyRecord.points.toLocaleString()} pts
                           </p>
                           {historyRecord.date && (
@@ -248,23 +255,30 @@ export function CompetitorProfileModal({
 
 function StatCard({
   icon: Icon,
+  color,
   label,
   value,
   subtitle,
 }: {
   icon: any;
+  color: string;
   label: string;
   value: string;
   subtitle?: string;
 }) {
   return (
     <div className="card p-3 flex items-center gap-2.5 min-w-0">
-      <Icon size={16} className="text-content-subtle shrink-0" />
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+        style={{ backgroundColor: `${color}15` }}
+      >
+        <Icon size={16} style={{ color }} />
+      </div>
       <div className="min-w-0 flex-1">
         <p className="stat-label truncate">{label}</p>
         <p className="figure text-sm text-content-primary truncate mt-0.5">{value}</p>
         {subtitle && (
-          <p className="text-2xs text-[color:var(--badge-neutral-text)] truncate mt-0.5" title={`Source: ${subtitle}`}>
+          <p className="text-2xs text-[color:var(--badge-orange-text)] font-medium truncate mt-0.5" title={`Source: ${subtitle}`}>
             {subtitle}
           </p>
         )}

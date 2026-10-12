@@ -51,7 +51,7 @@ export function GuestLogoutWarningModal({
             onClick={async () => {
               await onLogoutAnyway();
             }}
-            className="w-full py-2.5 hover:bg-overlay-subtle disabled:opacity-50 text-rose-theme border border-overlay-default font-medium text-xs rounded-xl transition-colors flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 disabled:opacity-50 text-rose-theme border border-rose-500/30 font-medium text-xs rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             {isLoggingOut ? (
               <>

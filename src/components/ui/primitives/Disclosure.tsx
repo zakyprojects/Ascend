@@ -6,7 +6,7 @@ export interface DisclosureProps {
   /** Always-visible one-line summary. */
   title: ReactNode;
   icon?: LucideIcon;
-  /** 'warning' for rules that cost points (soft rose edge), 'neutral' for plain explanations. */
+  /** 'warning' for rules that cost points (amber edge), 'neutral' for plain explanations. */
   tone?: 'warning' | 'neutral';
   defaultOpen?: boolean;
   children: ReactNode;

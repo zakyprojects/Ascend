@@ -60,12 +60,43 @@ export default {
         brand: {
           text: 'var(--color-brand-text)',
         },
+        // Secondary — warm amber for streaks/energy
+        secondary: {
+          400: '#fbbf24',
+          500: '#f59e0b',
+          600: '#d97706',
+        },
+        // Accent — soft sky for highlights
+        accent: {
+          400: '#38bdf8',
+          500: '#0ea5e9',
+          600: '#0284c7',
+        },
+        // Mood colors
+        mood: {
+          happy: '#fbbf24',
+          neutral: '#94a3b8',
+          sad: '#60a5fa',
+          motivated: '#34d399',
+        },
+        // Tier colors
+        tier: {
+          bronze: '#cd7f32',
+          silver: '#c0c0c0',
+          gold: '#fbbf24',
+          platinum: '#e5e7eb',
+          diamond: '#60a5fa',
+          crown: '#f472b6',
+          ace: '#34d399',
+          conqueror: '#f97316',
+          legend: '#a855f7',
+        },
         success: {
           DEFAULT: '#10b981',
           text: 'var(--color-success-text)',
           soft: 'var(--color-success-soft)',
         },
-        // Design v3: warning is a soft rose (see --color-warning-rgb); opacity modifiers work (bg-warning/10).
+        // Warning is amber (see --color-warning-rgb); opacity modifiers work (bg-warning/10).
         warning: {
           DEFAULT: withOpacityValue('--color-warning'),
           text: 'var(--color-warning-text)',
@@ -78,7 +109,7 @@ export default {
           soft: 'var(--color-error-soft)',
         },
         info: {
-          DEFAULT: '#94a3b8',
+          DEFAULT: '#0ea5e9',
           text: 'var(--color-info-text)',
           soft: 'var(--color-info-soft)',
         },
