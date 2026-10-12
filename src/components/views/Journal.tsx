@@ -31,6 +31,8 @@ import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { useToast } from '@/components/ui/Toast';
 import { Dialog, EmptyState, Tabs } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { useIntroMotion, useSeen } from '@/lib/motion';
+import { CountUp } from '@/components/ui/Motion';
 import { getDailyPrompt, JournalPrompt } from '@/data/journalPrompts';
 
 // Minimum required non-whitespace characters to save an entry
@@ -126,6 +128,9 @@ export function Journal({ store }: { store: AppStore }) {
   const [promptOffset, setPromptOffset] = useState<number>(0);
   const [chartRange, setChartRange] = useState<ChartRange>('7d');
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  // The trend line draws in once the mood card scrolls into view (instant without intro motion).
+  const moodCardRef = useRef<HTMLDivElement>(null);
+  const moodChartSeen = useSeen(moodCardRef, useIntroMotion());
   const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number }>({
     width: 600,
     height: 144,
@@ -600,7 +605,7 @@ export function Journal({ store }: { store: AppStore }) {
       </div>
 
       {/* MOOD OVERVIEW — TREND GRAPH & STATS */}
-      <div className="card p-5 space-y-4">
+      <div ref={moodCardRef} className="card p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="section-title flex items-center gap-2">
@@ -681,15 +686,34 @@ export function Journal({ store }: { store: AppStore }) {
                           return `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.pixelX.toFixed(1)} ${pt.pixelY.toFixed(1)}`;
                         }, '')
                       : '';
+                  const firstPoint = recordedPoints[0];
+                  const lastPoint = recordedPoints[recordedPoints.length - 1];
+                  const areaD = pathD
+                    ? `${pathD} L ${lastPoint.pixelX.toFixed(1)} ${h} L ${firstPoint.pixelX.toFixed(1)} ${h} Z`
+                    : '';
 
                   return (
                     <div ref={chartContainerRef} className="absolute inset-0 left-24 right-4 top-4 bottom-4">
                       <svg
-                        className="w-full h-full overflow-visible"
+                        className="w-full h-full overflow-visible transition-[clip-path] duration-[900ms] ease-emphasized motion-reduce:transition-none"
+                        style={{ clipPath: moodChartSeen ? 'inset(-24px)' : 'inset(-24px 100% -24px -24px)' }}
                         viewBox={`0 0 ${w} ${h}`}
                         width={w}
                         height={h}
                       >
+                        {/* 0. Soft area under the trend line */}
+                        {areaD && (
+                          <>
+                            <defs>
+                              <linearGradient id="journal-mood-area" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                              </linearGradient>
+                            </defs>
+                            <path d={areaD} fill="url(#journal-mood-area)" className="pointer-events-none" />
+                          </>
+                        )}
+
                         {/* 1. Trend Line Path */}
                         {pathD && (
                           <path
@@ -710,23 +734,36 @@ export function Journal({ store }: { store: AppStore }) {
                           const cy = pt.pixelY !== null ? pt.pixelY : h - 6;
                           const radius = chartRange === '7d' ? 8 : 6.5;
 
+                          const showPoint = () => {
+                            if (hasEntry) {
+                              setHoveredChartPoint({
+                                date: pt.dateKey,
+                                label: pt.label,
+                                entry: pt.entry,
+                                moodMeta: pt.moodMeta,
+                                x: pt.index,
+                                y: pt.score || 1,
+                              });
+                            }
+                          };
+
                           return (
                             <g
                               key={pt.dateKey}
-                              className="cursor-pointer group"
-                              onMouseEnter={() => {
-                                if (hasEntry) {
-                                  setHoveredChartPoint({
-                                    date: pt.dateKey,
-                                    label: pt.label,
-                                    entry: pt.entry,
-                                    moodMeta: pt.moodMeta,
-                                    x: pt.index,
-                                    y: pt.score || 1,
-                                  });
+                              className="cursor-pointer group outline-none"
+                              tabIndex={hasEntry ? 0 : undefined}
+                              role={hasEntry ? 'button' : undefined}
+                              aria-label={hasEntry ? `${formatDateLong(pt.dateKey)}: ${pt.moodMeta?.label}` : undefined}
+                              onMouseEnter={showPoint}
+                              onFocus={showPoint}
+                              onMouseLeave={() => setHoveredChartPoint(null)}
+                              onBlur={() => setHoveredChartPoint(null)}
+                              onKeyDown={(e) => {
+                                if ((e.key === 'Enter' || e.key === ' ') && pt.entry) {
+                                  e.preventDefault();
+                                  setSelectedEntry(pt.entry);
                                 }
                               }}
-                              onMouseLeave={() => setHoveredChartPoint(null)}
                               onClick={() => {
                                 if (pt.entry) setSelectedEntry(pt.entry);
                               }}
@@ -743,7 +780,7 @@ export function Journal({ store }: { store: AppStore }) {
                                     cy={cy}
                                     r={radius + 1.5}
                                     fill="var(--color-bg-800)"
-                                    className="transition-all duration-150 group-hover:scale-125 origin-center"
+                                    className="transition-all duration-150 group-hover:scale-125 group-focus-visible:scale-125 origin-center"
                                     style={{
                                       transformOrigin: `${cx}px ${cy}px`,
                                     }}
@@ -754,7 +791,7 @@ export function Journal({ store }: { store: AppStore }) {
                                     cy={cy}
                                     r={radius}
                                     fill={pt.moodMeta?.color || '#10b981'}
-                                    className="transition-all duration-150 group-hover:scale-125 origin-center drop-shadow-md"
+                                    className="transition-all duration-150 group-hover:scale-125 group-focus-visible:scale-125 origin-center drop-shadow-md"
                                     style={{
                                       transformOrigin: `${cx}px ${cy}px`,
                                     }}
@@ -778,10 +815,31 @@ export function Journal({ store }: { store: AppStore }) {
                 })()}
               </div>
 
-              {/* Hover Tooltip Card */}
-              {hoveredChartPoint && hoveredChartPoint.moodMeta && (
+              {/* X-Axis Day Labels */}
+              <div className="flex justify-between items-center px-4 pl-24 text-2xs text-content-muted mt-2 font-medium">
+                {chartRange === '7d' ? (
+                  chartData.map((d) => (
+                    <span
+                      key={d.dateKey}
+                      className={d.isToday ? 'text-brand-text font-bold' : 'text-content-muted'}
+                    >
+                      {d.shortLabel}
+                    </span>
+                  ))
+                ) : (
+                  <>
+                    <span>{chartData[0]?.label}</span>
+                    <span>{chartData[Math.floor(chartData.length / 2)]?.label}</span>
+                    <span className="text-brand-text font-bold">Today</span>
+                  </>
+                )}
+              </div>
+
+              {/* Hover Tooltip Card — a fixed slot, so hovering never shifts the layout */}
+              <div className="mt-2 min-h-[4.25rem]">
+              {hoveredChartPoint && hoveredChartPoint.moodMeta ? (
                 <div
-                  className="p-2.5 bg-bg-800 border border-overlay-default rounded-xl shadow-2xl space-y-1 mt-2 animate-fade-in"
+                  className="p-2.5 bg-bg-800 border border-overlay-default rounded-xl shadow-2xl space-y-1 animate-fade-in"
                   style={{ borderColor: `${hoveredChartPoint.moodMeta.color}40` }}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -804,26 +862,9 @@ export function Journal({ store }: { store: AppStore }) {
                     )}
                   </p>
                 </div>
+              ) : (
+                <p className="text-2xs text-content-disabled pt-1">Hover, tap or tab to a day to see its entry.</p>
               )}
-
-              {/* X-Axis Day Labels */}
-              <div className="flex justify-between items-center px-4 pl-24 text-2xs text-content-muted mt-2 font-medium">
-                {chartRange === '7d' ? (
-                  chartData.map((d) => (
-                    <span
-                      key={d.dateKey}
-                      className={d.isToday ? 'text-brand-text font-bold' : 'text-content-muted'}
-                    >
-                      {d.shortLabel}
-                    </span>
-                  ))
-                ) : (
-                  <>
-                    <span>{chartData[0]?.label}</span>
-                    <span>{chartData[Math.floor(chartData.length / 2)]?.label}</span>
-                    <span className="text-brand-text font-bold">Today</span>
-                  </>
-                )}
               </div>
             </div>
 
@@ -848,7 +889,7 @@ export function Journal({ store }: { store: AppStore }) {
                         {m.label}
                       </span>
                       <span className="text-sm font-bold text-content-primary">
-                        {count} <span className="text-2xs text-content-muted font-normal">days</span>
+                        <CountUp value={count} /> <span className="text-2xs text-content-muted font-normal">days</span>
                       </span>
                     </div>
                   </div>
