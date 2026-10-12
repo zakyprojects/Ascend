@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { PanelLeftClose, PanelLeftOpen, Plus, Search, type LucideIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Search, type LucideIcon } from 'lucide-react';
 import { NAV_DASHBOARD, NAV_GROUPS, type NavGroup } from './navConfig';
 import { AppLogo } from '@/components/ui/AppLogo';
 import { NavItem, NavSection } from '@/components/ui/primitives';
@@ -16,8 +16,8 @@ export type AccountPlacement = 'below' | 'side';
 
 const STORAGE_KEY = 'ascend_nav_closed_groups';
 
-/** Sidebar widths. The toggle sits at the same top-left spot in both (12px in, 16px down), so
- *  the rail is sized to centre a 32px button: 12 + 32 + 12. */
+/** Sidebar widths. The collapse toggle is a small round button centred on the sidebar's right
+ *  edge (half inside, half outside), so it rides the edge in both states. */
 const EXPANDED_WIDTH = 'w-64';
 const RAIL_WIDTH = 'w-14';
 /** Width slide shared by the column, the panel fade and the rail fade (~220ms, emphasized ease). */
@@ -140,14 +140,9 @@ export function Sidebar({
   );
 
   return (
-    <div
-      className={cx(
-        'relative h-full shrink-0 overflow-hidden transition-[width]',
-        SLIDE,
-        collapsed ? RAIL_WIDTH : EXPANDED_WIDTH
-      )}
-    >
-      {/* The one toggle, shared by both states: same box, same spot. */}
+    <div className={cx('relative h-full shrink-0 transition-[width]', SLIDE, collapsed ? RAIL_WIDTH : EXPANDED_WIDTH)}>
+      {/* The one toggle, shared by both states: centred on the edge, level with the top row. Outside the
+          clipping box below so its outer half shows. */}
       <button
         type="button"
         onClick={onToggleCollapsed}
@@ -156,14 +151,17 @@ export function Sidebar({
         aria-controls="app-sidebar"
         aria-keyshortcuts={IS_APPLE_PLATFORM ? 'Meta+\\' : 'Control+\\'}
         className={cx(
-          'absolute left-3 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-content-muted hover:bg-overlay-subtle hover:text-content-secondary',
+          'absolute right-[-0.5px] top-5 z-10 flex h-6 w-6 translate-x-1/2 items-center justify-center rounded-full border border-overlay-subtle bg-bg-800 text-content-muted shadow-sm hover:bg-bg-700 hover:text-content-primary',
           FOCUS_RING,
           TRANSITION
         )}
         {...tipProps(toggleLabel, collapseShortcut)}
       >
-        {collapsed ? <PanelLeftOpen size={16} aria-hidden="true" /> : <PanelLeftClose size={16} aria-hidden="true" />}
+        {collapsed ? <ChevronRight size={14} aria-hidden="true" /> : <ChevronLeft size={14} aria-hidden="true" />}
       </button>
+
+      {/* Clips both states while the width slides. */}
+      <div className="absolute inset-0 overflow-hidden">
 
       {/* Expanded column. Fixed width, so its contents never reflow while the edge slides over them. */}
       <div
@@ -177,9 +175,7 @@ export function Sidebar({
           collapsed ? 'invisible opacity-0' : 'visible opacity-100'
         )}
       >
-        <div className="flex items-center gap-1 px-3 pb-3 pt-4">
-          {/* Room for the toggle, which floats above this row. */}
-          <span aria-hidden="true" className="h-8 w-8 shrink-0" />
+        <div className="flex items-center gap-1 pb-3 pl-3 pr-5 pt-4">
           <a
             {...pageLinkProps(NAV_DASHBOARD.id, onNavigate)}
             className={cx('flex min-w-0 flex-1 items-center gap-2 rounded-lg pl-0.5', FOCUS_RING)}
@@ -275,7 +271,6 @@ export function Sidebar({
         )}
       >
         <div className="flex flex-col items-center gap-1 pb-2 pt-4">
-          <span aria-hidden="true" className="h-8 w-8" />
           <RailButton icon={Plus} label="Quick log" onClick={onQuickLog} {...tipProps('Quick log')} />
           <RailButton icon={Search} label="Go to…" onClick={onSearch} {...tipProps('Go to…', shortcut)} />
           {bell}
@@ -297,6 +292,7 @@ export function Sidebar({
           ))}
         </nav>
         <div className="flex w-full justify-center border-t border-overlay-subtle py-3">{renderAccount('side')}</div>
+      </div>
       </div>
 
       {tip &&
