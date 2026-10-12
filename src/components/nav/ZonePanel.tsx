@@ -46,7 +46,7 @@ export function ZonePanel({ group, currentView, partnerBadge, statuses, upNext, 
         </button>
       </div>
 
-      <UpNextCard upNext={upNext} currentView={currentView} statuses={statuses} onNavigate={onNavigate} className="mx-3 mb-3 w-auto" />
+      <UpNextCard upNext={upNext} currentView={currentView} statuses={statuses} onNavigate={onNavigate} className="mx-3 mb-3" />
 
       <nav ref={navRef} aria-label={`${group.label} pages`} className="relative isolate flex-1 overflow-y-auto px-3">
         <div key={group.id} className="nav-trail zone-pages space-y-0.5">

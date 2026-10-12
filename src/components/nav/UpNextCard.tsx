@@ -25,7 +25,7 @@ export function UpNextCard({ upNext, currentView, statuses, onNavigate, classNam
       type="button"
       onClick={() => onNavigate(item.id)}
       className={cx(
-        'group/up flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left',
+        'group/up flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left',
         risk ? 'border-warning/25 bg-warning/[0.06] hover:border-warning/40' : 'border-overlay-subtle bg-bg-800/60 hover:border-overlay-default',
         FOCUS_RING,
         TRANSITION,

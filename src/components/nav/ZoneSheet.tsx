@@ -58,7 +58,7 @@ export function ZoneSheet({ open, group, currentView, statuses, upNext, partnerB
           <span className="font-mono text-2xs uppercase tracking-[0.16em] text-content-muted">{group.items.length} pages</span>
         </div>
 
-        <UpNextCard upNext={upNext} currentView={currentView} statuses={statuses} onNavigate={go} className="mb-3 rounded-2xl px-4 py-3" />
+        <UpNextCard upNext={upNext} currentView={currentView} statuses={statuses} onNavigate={go} className="mb-3 w-full rounded-2xl px-4 py-3" />
 
         <ul className="zone-sheet-rows space-y-1">
           {group.items.map((item) => {
