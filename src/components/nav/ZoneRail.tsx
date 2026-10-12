@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { PanelLeftOpen, Plus, Search } from 'lucide-react';
 import { NAV_DASHBOARD, NAV_GROUPS, type NavGroup } from './navConfig';
+import { ZONE_KEYS } from './useNavShortcuts';
 import { AppLogo } from '@/components/ui/AppLogo';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 import { IS_APPLE_PLATFORM } from '@/lib/platform';
@@ -79,12 +80,13 @@ export function ZoneRail({
           className="rail-altitude absolute bottom-3 left-1/2 w-px -translate-x-1/2 bg-brand-text"
           style={{ height: `calc((100% - 1.5rem) * ${altitude})` }}
         />
-        <ZoneButton icon={NAV_DASHBOARD.icon} label={NAV_DASHBOARD.label} active={onDashboard} onClick={onGoDashboard} />
+        <ZoneButton icon={NAV_DASHBOARD.icon} label={NAV_DASHBOARD.label} shortcut="G D" active={onDashboard} onClick={onGoDashboard} />
         {NAV_GROUPS.map((group) => (
           <ZoneButton
             key={group.id}
             icon={group.icon}
             label={group.label}
+            shortcut={`G ${ZONE_KEYS[group.id].toUpperCase()}`}
             active={activeZone === group.id}
             shown={!panelCollapsed && panelZone === group.id && activeZone !== group.id}
             badge={group.id === 'play' && playBadge > 0}
@@ -129,6 +131,7 @@ function RailButton({ label, onClick, children }: { label: string; onClick: () =
 interface ZoneButtonProps {
   icon: NavGroup['icon'];
   label: string;
+  shortcut: string;
   active: boolean;
   /** The panel shows this zone while another page is on screen. */
   shown?: boolean;
@@ -136,14 +139,14 @@ interface ZoneButtonProps {
   onClick: () => void;
 }
 
-function ZoneButton({ icon: Icon, label, active, shown = false, badge = false, onClick }: ZoneButtonProps) {
+function ZoneButton({ icon: Icon, label, shortcut, active, shown = false, badge = false, onClick }: ZoneButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
       aria-current={active ? 'true' : undefined}
-      title={label}
+      title={`${label} (${shortcut})`}
       className={cx(
         'group/zone relative flex h-11 w-11 items-center justify-center rounded-2xl border',
         active

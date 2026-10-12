@@ -21,6 +21,7 @@ import { AccountMenu } from './nav/AccountMenu';
 import { MobileZoneBar } from './nav/MobileZoneBar';
 import { ZoneSheet } from './nav/ZoneSheet';
 import { QuickLog } from './nav/QuickLog';
+import { useNavShortcuts } from './nav/useNavShortcuts';
 import { CommandPalette } from './nav/CommandPalette';
 import { getNavStatuses, getUpNext } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
@@ -80,6 +81,20 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
   const panelGroup = NAV_GROUPS.find((g) => g.id === panelZone) ?? NAV_GROUPS[0];
   const navStatuses = getNavStatuses(store.state, store.isHabitDone);
+
+  useNavShortcuts({
+    onDashboard: () => goTo(NAV_DASHBOARD.id),
+    onSettings: () => goTo(NAV_SETTINGS.id),
+    onZone: (zone) => {
+      setPanelZone(zone);
+      setPanelCollapsed(false);
+      onViewChange(lastByGroup[zone]);
+    },
+    onPageIndex: (index) => {
+      const item = panelGroup.items[index];
+      if (item) goTo(item.id);
+    },
+  });
   const upNext = getUpNext(navStatuses);
 
   // Scroll memory: each view's last position, recorded as the user scrolls (back/forward has
@@ -103,6 +118,23 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
       window.removeEventListener('scroll', record);
     };
   }, []);
+  // Phones: the header slides away while reading down and returns on any scroll up (Safari style).
+  useEffect(() => {
+    const root = document.documentElement;
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const dy = y - lastY;
+      if (Math.abs(dy) < 6) return;
+      root.toggleAttribute('data-header-hidden', dy > 0 && y > 80 && !window.matchMedia(DESKTOP_QUERY).matches);
+      lastY = y;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      root.removeAttribute('data-header-hidden');
+    };
+  }, []);
   // Before paint: a new visit opens at the top, back/forward returns to where the user was.
   useLayoutEffect(() => {
     const main = mainRef.current;
@@ -111,6 +143,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
     const target = navigationKind === 'pop' ? scrollByView.current.get(currentView) ?? 0 : 0;
     writeScroll(main, target);
     document.documentElement.toggleAttribute('data-scrolled', target > 4);
+    document.documentElement.removeAttribute('data-header-hidden');
     if (target === 0) return;
     // Content that grows a frame later (measured lists) can clamp the first attempt.
     const frame = requestAnimationFrame(() => {

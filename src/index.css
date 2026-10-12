@@ -641,7 +641,12 @@
     border-left-color: transparent;
     border-right-color: transparent;
     border-bottom-color: transparent;
-    transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+    transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard),
+      transform 280ms var(--ease-emphasized);
+  }
+  /* Phones: AppShell hides the header while scrolling down and brings it back on scroll up. */
+  html[data-header-hidden] .app-header {
+    transform: translateY(-100%);
   }
   html[data-scrolled] .app-header {
     border-bottom-color: var(--border-overlay-subtle);
