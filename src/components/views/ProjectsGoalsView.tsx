@@ -1293,7 +1293,7 @@ export function ProjectsGoalsView({
             <div className="mt-2 flex items-center gap-2 bg-bg-900/60 border border-overlay-subtle px-2 sm:px-3 py-1.5 rounded-xl text-2xs sm:text-xs font-medium overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] w-full">
               {tabOrder === 'taskFirst' && (
                 <>
-                  <div className="flex items-center gap-1.5 text-success-text">
+                  <div className="flex items-center gap-1.5 text-content-secondary">
                     <CheckSquare size={12} /> <span>1. Tasks</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
@@ -1301,7 +1301,7 @@ export function ProjectsGoalsView({
                     <FolderKanban size={12} /> <span>2. Projects</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-brand-text">
+                  <div className="flex items-center gap-1.5 text-content-secondary">
                     <Target size={12} /> <span>3. Goals</span>
                   </div>
                 </>
@@ -1312,18 +1312,18 @@ export function ProjectsGoalsView({
                     <FolderKanban size={12} /> <span>1. Projects</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-success-text">
+                  <div className="flex items-center gap-1.5 text-content-secondary">
                     <CheckSquare size={12} /> <span>2. Tasks</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-brand-text">
+                  <div className="flex items-center gap-1.5 text-content-secondary">
                     <Target size={12} /> <span>3. Goals</span>
                   </div>
                 </>
               )}
               {tabOrder === 'goalFirst' && (
                 <>
-                  <div className="flex items-center gap-1.5 text-brand-text">
+                  <div className="flex items-center gap-1.5 text-content-secondary">
                     <Target size={12} /> <span>1. Goals</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
@@ -1331,7 +1331,7 @@ export function ProjectsGoalsView({
                     <FolderKanban size={12} /> <span>2. Projects</span>
                   </div>
                   <ArrowRight className="text-content-subtle" size={12} />
-                  <div className="flex items-center gap-1.5 text-success-text">
+                  <div className="flex items-center gap-1.5 text-content-secondary">
                     <CheckSquare size={12} /> <span>3. Tasks</span>
                   </div>
                 </>
@@ -1384,7 +1384,7 @@ export function ProjectsGoalsView({
                   <span className="stat-label">Pending Tasks</span>
                   <CountUp value={hierarchyStats.pendingTasks} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <CheckSquare size={18} className="text-success-text opacity-60 hidden sm:block shrink-0" />
+                <CheckSquare size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1400,7 +1400,7 @@ export function ProjectsGoalsView({
                   <span className="stat-label">Active Goals</span>
                   <CountUp value={hierarchyStats.activeGoals} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <Target size={18} className="text-brand-text opacity-60 hidden sm:block shrink-0" />
+                <Target size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
             </>
           )}
@@ -1420,7 +1420,7 @@ export function ProjectsGoalsView({
                   <span className="stat-label">Pending Tasks</span>
                   <CountUp value={hierarchyStats.pendingTasks} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <CheckSquare size={18} className="text-success-text opacity-60 hidden sm:block shrink-0" />
+                <CheckSquare size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1428,7 +1428,7 @@ export function ProjectsGoalsView({
                   <span className="stat-label">Active Goals</span>
                   <CountUp value={hierarchyStats.activeGoals} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <Target size={18} className="text-brand-text opacity-60 hidden sm:block shrink-0" />
+                <Target size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
             </>
           )}
@@ -1440,7 +1440,7 @@ export function ProjectsGoalsView({
                   <span className="stat-label">Active Goals</span>
                   <CountUp value={hierarchyStats.activeGoals} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <Target size={18} className="text-brand-text opacity-60 hidden sm:block shrink-0" />
+                <Target size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
 
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
@@ -1456,7 +1456,7 @@ export function ProjectsGoalsView({
                   <span className="stat-label">Pending Tasks</span>
                   <CountUp value={hierarchyStats.pendingTasks} className="block font-serif text-xl sm:text-2xl leading-tight text-content-primary tabular-nums" />
                 </div>
-                <CheckSquare size={18} className="text-success-text opacity-60 hidden sm:block shrink-0" />
+                <CheckSquare size={18} className="text-content-secondary opacity-60 hidden sm:block shrink-0" />
               </div>
             </>
           )}
@@ -1467,20 +1467,20 @@ export function ProjectsGoalsView({
           <div className="flex-1 min-w-0 flex items-center gap-1 sm:gap-2 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-1 pr-1">
             {(tabOrder === 'taskFirst'
               ? [
-                  { id: 'tasks' as const, label: `1. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
-                  { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'badge-neutral' },
-                  { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target, activeColor: 'badge-neutral' },
+                  { id: 'tasks' as const, label: `1. Tasks (${tasks.length})`, icon: CheckSquare },
+                  { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban },
+                  { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target },
                 ]
               : tabOrder === 'projectFirst'
               ? [
-                  { id: 'projects' as const, label: `1. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'badge-neutral' },
-                  { id: 'tasks' as const, label: `2. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
-                  { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target, activeColor: 'badge-neutral' },
+                  { id: 'projects' as const, label: `1. Projects (${projects.length})`, icon: FolderKanban },
+                  { id: 'tasks' as const, label: `2. Tasks (${tasks.length})`, icon: CheckSquare },
+                  { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target },
                 ]
               : [
-                  { id: 'goals' as const, label: `1. Goals (${goals.length})`, icon: Target, activeColor: 'badge-neutral' },
-                  { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'badge-neutral' },
-                  { id: 'tasks' as const, label: `3. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
+                  { id: 'goals' as const, label: `1. Goals (${goals.length})`, icon: Target },
+                  { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban },
+                  { id: 'tasks' as const, label: `3. Tasks (${tasks.length})`, icon: CheckSquare },
                 ]
             ).map((tab) => {
               const TabIcon = tab.icon;
@@ -1491,7 +1491,7 @@ export function ProjectsGoalsView({
                   id={`tab-${tab.id}-view`}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-1 sm:gap-2 px-1.5 sm:px-4 py-1 sm:py-2.5 rounded-xl font-medium text-2xs sm:text-xs transition-all shrink-0 ${
-                    isActive ? `${tab.activeColor} border` : 'text-content-muted hover:bg-overlay-subtle'
+                    isActive ? 'badge-neutral border' : 'text-content-muted hover:bg-overlay-subtle'
                   }`}
                 >
                   <TabIcon size={14} className="sm:w-4 sm:h-4" />
