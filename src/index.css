@@ -701,6 +701,36 @@
     box-shadow: var(--shadow-md);
   }
 
+  /* Scroll edge (Apple): at the top the phone header is borderless and blends into the page; once
+     content passes under it the hairline and a soft shadow appear. On desktop the scrolling <main>
+     fades content out over its top 1.25rem instead of cutting it off. AppShell sets data-scrolled. */
+  .app-header {
+    border-top-color: transparent;
+    border-left-color: transparent;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+    transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+  }
+  html[data-scrolled] .app-header {
+    border-bottom-color: var(--border-overlay-subtle);
+    box-shadow: 0 8px 24px -18px rgb(0 0 0 / 0.6);
+  }
+  @media (min-width: 1024px) {
+    html[data-scrolled] main[data-page-area] {
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 1.25rem);
+      mask-image: linear-gradient(to bottom, transparent 0, #000 1.25rem);
+    }
+  }
+
+  /* Background window (macOS): when Ascend loses focus its active accents (nav pill, tab
+     indicator, primary buttons' glow) go quiet grey; they return the moment the window is back. */
+  html[data-window-inactive] [data-nav-pill],
+  html[data-window-inactive] [role='tablist'] > span[aria-hidden='true']:not(.hover-glide) {
+    filter: grayscale(1);
+    opacity: 0.7;
+    transition: filter var(--duration-base) var(--ease-standard), opacity var(--duration-base) var(--ease-standard);
+  }
+
   /* Hover glide (lib/useHoverGlide.ts): the trailing hover highlight of a list. Placed by the hook
      with transform/size; only its fade is CSS. Sits under the items (the list is `isolate`). */
   .hover-glide {

@@ -24,6 +24,7 @@ import { useSidebarGroups } from './nav/useSidebarGroups';
 import { CommandPalette } from './nav/CommandPalette';
 import { IS_APPLE_PLATFORM } from '@/lib/platform';
 import { useHoverGlide } from '@/lib/useHoverGlide';
+import { prefersReducedMotion } from '@/lib/motion';
 import { RankChip } from './ui/RankChip';
 import { ViewEntrance } from './ViewEntrance';
 import { AppStore } from '@/lib/store';
@@ -87,7 +88,12 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   useEffect(() => {
     const main = mainRef.current;
     if (!main) return;
-    const record = () => scrollByView.current.set(scrollOwnerRef.current, readScroll(main));
+    // Also flags the scroll edge (index.css: header/main top fade once content passes under it).
+    const record = () => {
+      const top = readScroll(main);
+      scrollByView.current.set(scrollOwnerRef.current, top);
+      document.documentElement.toggleAttribute('data-scrolled', top > 4);
+    };
     main.addEventListener('scroll', record, { passive: true });
     window.addEventListener('scroll', record, { passive: true });
     return () => {
@@ -102,6 +108,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
     scrollOwnerRef.current = currentView;
     const target = navigationKind === 'pop' ? scrollByView.current.get(currentView) ?? 0 : 0;
     writeScroll(main, target);
+    document.documentElement.toggleAttribute('data-scrolled', target > 4);
     if (target === 0) return;
     // Content that grows a frame later (measured lists) can clamp the first attempt.
     const frame = requestAnimationFrame(() => {
@@ -109,6 +116,16 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
     });
     return () => cancelAnimationFrame(frame);
   }, [currentView, navigationKind]);
+
+  // iOS tab bar: choosing the page you are already on glides back to its top.
+  const goTo = (view: View) => {
+    if (view !== currentView) return onViewChange(view);
+    const main = mainRef.current;
+    if (!main) return;
+    const behavior: ScrollBehavior = prefersReducedMotion() ? 'instant' : 'smooth';
+    if (window.matchMedia(DESKTOP_QUERY).matches) main.scrollTo({ top: 0, behavior });
+    else window.scrollTo({ top: 0, behavior });
+  };
 
   useEffect(() => {
     document.title = currentView === 'dashboard' ? 'Ascend - Self-Improvement' : `${getViewLabel(currentView)} · Ascend`;
@@ -260,7 +277,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
             icon={NAV_DASHBOARD.icon}
             label={NAV_DASHBOARD.label}
             active={currentView === NAV_DASHBOARD.id}
-            onClick={() => onViewChange(NAV_DASHBOARD.id)}
+            onClick={() => goTo(NAV_DASHBOARD.id)}
             layout="row"
             density="compact"
           />
@@ -281,7 +298,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
                       icon={item.icon}
                       label={item.label}
                       active={currentView === item.id}
-                      onClick={() => onViewChange(item.id)}
+                      onClick={() => goTo(item.id)}
                       layout="row"
                       density="compact"
                       badgeCount={item.id === 'partner' ? pendingIncomingInvitesCount : undefined}
@@ -296,7 +313,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               icon={NAV_SETTINGS.icon}
               label={NAV_SETTINGS.label}
               active={currentView === NAV_SETTINGS.id}
-              onClick={() => onViewChange(NAV_SETTINGS.id)}
+              onClick={() => goTo(NAV_SETTINGS.id)}
               layout="row"
               density="compact"
             />
@@ -315,7 +332,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
       {/* Mobile view wrapper */}
       <div className="flex-1 flex flex-col min-w-0 lg:h-full lg:overflow-hidden">
         {/* Mobile header */}
-        <header className="lg:hidden glass border-b border-overlay-subtle px-4 pt-[calc(0.75rem_+_env(safe-area-inset-top))] pb-3 flex items-center justify-between sticky top-0 z-30">
+        <header className="app-header lg:hidden glass border-b px-4 pt-[calc(0.75rem_+_env(safe-area-inset-top))] pb-3 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <AppLogo className="w-8 h-8 rounded-[22%] object-cover shrink-0" />
             <span className="font-display font-bold text-content-primary">Ascend</span>
@@ -361,7 +378,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
                       : undefined,
                 }))}
                 value={currentView}
-                onChange={(id) => onViewChange(id as View)}
+                onChange={(id) => goTo(id as View)}
                 variant="underline"
                 size="sm"
                 scrollable
@@ -385,7 +402,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               icon={NAV_DASHBOARD.icon}
               label={NAV_DASHBOARD.label}
               active={currentView === 'dashboard'}
-              onClick={() => onViewChange('dashboard')}
+              onClick={() => goTo('dashboard')}
               layout="stack"
             />
             {NAV_GROUPS.map((group) => (
@@ -394,7 +411,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
                 icon={group.icon}
                 label={group.label}
                 active={activeGroupId === group.id}
-                onClick={() => onViewChange(lastByGroup[group.id])}
+                onClick={() => (activeGroupId === group.id ? goTo(currentView) : onViewChange(lastByGroup[group.id]))}
                 layout="stack"
                 badgeCount={group.id === 'play' ? pendingIncomingInvitesCount : undefined}
               />

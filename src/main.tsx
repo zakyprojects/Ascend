@@ -9,11 +9,12 @@ import '@fontsource/plus-jakarta-sans/600.css';
 import '@fontsource/plus-jakarta-sans/700.css';
 import '@fontsource/plus-jakarta-sans/800.css';
 import './index.css';
-import { installPageVisibilityFlag } from './lib/motion';
+import { installPageVisibilityFlag, installWindowFocusFlag } from './lib/motion';
 import { installCardSpotlight } from './lib/cardSpotlight';
 import { installListExit } from './lib/listExit';
 
 installPageVisibilityFlag();
+installWindowFocusFlag();
 installCardSpotlight();
 installListExit();
 

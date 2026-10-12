@@ -121,6 +121,14 @@ export function useCountUp(target: number, { intro, active }: { intro: boolean; 
   return value;
 }
 
+/** Marks <html data-window-inactive> while another window has focus (index.css: accents go grey). */
+export function installWindowFocusFlag(): void {
+  if (typeof window === 'undefined') return;
+  const set = (inactive: boolean) => document.documentElement.toggleAttribute('data-window-inactive', inactive);
+  window.addEventListener('blur', () => set(true));
+  window.addEventListener('focus', () => set(false));
+}
+
 /** Marks <html data-page-hidden> while the tab is hidden so CSS animations pause (index.css). */
 export function installPageVisibilityFlag(): void {
   if (typeof document === 'undefined') return;
