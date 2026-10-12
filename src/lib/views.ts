@@ -1,4 +1,4 @@
-/** Every page of the app. The URL hash carries one of these (`#/habits`). */
+/** Every page of the app. Each has its own path (routes.ts): `/habits`, `/prefrontal-cortex`. */
 export const VIEWS = [
   'dashboard',
   'habits',

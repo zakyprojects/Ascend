@@ -1,35 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { DEFAULT_VIEW, isView, View } from './views';
+import { View } from './views';
+import { pathForView, viewFromLocation } from './routes';
 import { runPageTransition } from './pageTransition';
 
 /**
- * Hash routing for the app's pages: `#/habits`. Refresh keeps the page, links open a page
+ * Path routing for the app's pages: `/habits`. Refresh keeps the page, links open a page
  * directly, and browser back/forward move between pages.
  *
- * Only hashes that start with `#/` are routes. Anything else (Supabase's `#access_token=...`
- * auth redirect) is left alone for the auth client to read, and the app shows the default page.
+ * The hash is not ours: Supabase's `#access_token=...` auth redirect is left alone for the auth
+ * client to read. Old `#/habits` links are rewritten to `/habits` (index.html does it before the
+ * app loads; the check here covers a hash typed into the address bar later).
  */
 
 /** 'push' = the user opened a page; 'pop' = browser back/forward (restore its scroll). */
 export type NavigationKind = 'push' | 'pop';
 
-// Old view ids that still resolve, so links made before a rename keep working.
-const VIEW_ALIASES: Record<string, View> = { books: 'reading' };
-
-function viewFromHash(hash: string): View | null {
-  if (!hash.startsWith('#/')) return null;
-  const id = decodeURIComponent(hash.slice(2)).replace(/\/+$/, '');
-  if (isView(id)) return id;
-  return VIEW_ALIASES[id] ?? null;
-}
-
-function hashFor(view: View): string {
-  return `#/${view}`;
+/**
+ * Rewrites the address bar in place (no new history entry) when it does not name the page on
+ * screen the canonical way: an alias, a trailing slash, an unknown path, an old `#/` link. The
+ * query and a non-route hash are kept.
+ */
+function canonicalizeUrl(view: View): void {
+  const { pathname, search, hash } = window.location;
+  const legacyHash = hash.startsWith('#/');
+  const path = pathForView(view);
+  if (pathname === path && !legacyHash) return;
+  window.history.replaceState(window.history.state, '', path + search + (legacyHash ? '' : hash));
 }
 
 export function useViewRoute() {
   const [route, setRoute] = useState<{ view: View; kind: NavigationKind }>(() => ({
-    view: viewFromHash(window.location.hash) ?? DEFAULT_VIEW,
+    view: viewFromLocation(),
     kind: 'push',
   }));
   const viewRef = useRef(route.view);
@@ -38,33 +39,25 @@ export function useViewRoute() {
   useEffect(() => {
     // The app restores each page's scroll itself (AppShell); the browser's guess would fight it.
     window.history.scrollRestoration = 'manual';
+    canonicalizeUrl(viewRef.current);
 
-    // A route hash that is unknown or an alias is rewritten in place, so the URL always names
-    // the page on screen. Non-route hashes are not ours to touch.
-    const { hash } = window.location;
-    if (hash.startsWith('#/') && hash !== hashFor(viewRef.current)) {
-      window.history.replaceState(window.history.state, '', hashFor(viewRef.current));
-    }
-
-    // popstate covers back/forward; hashchange covers a hash typed or pasted into the address bar.
+    // Back/forward (and a hash typed into the address bar, which also fires popstate).
     const onHistoryMove = () => {
-      const view = viewFromHash(window.location.hash);
-      if (!view || view === viewRef.current) return;
+      const view = viewFromLocation();
+      canonicalizeUrl(view);
+      if (view === viewRef.current) return;
       // Claimed now: the transition renders a frame later, and a repeat event must not re-run it.
       viewRef.current = view;
       runPageTransition(() => setRoute({ view, kind: 'pop' }));
     };
     window.addEventListener('popstate', onHistoryMove);
-    window.addEventListener('hashchange', onHistoryMove);
-    return () => {
-      window.removeEventListener('popstate', onHistoryMove);
-      window.removeEventListener('hashchange', onHistoryMove);
-    };
+    return () => window.removeEventListener('popstate', onHistoryMove);
   }, []);
 
   const navigate = useCallback((view: View) => {
     if (view === viewRef.current) return;
-    window.history.pushState(null, '', hashFor(view));
+    // A new path drops the query: `?tab=live` belongs to the visit that came with it.
+    window.history.pushState(null, '', pathForView(view));
     viewRef.current = view;
     runPageTransition(() => setRoute({ view, kind: 'push' }));
   }, []);
