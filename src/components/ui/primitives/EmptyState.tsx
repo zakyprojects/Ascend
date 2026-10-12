@@ -28,7 +28,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     <div
       className={cx(
         'text-center',
-        isSm ? 'space-y-1.5' : 'space-y-3',
+        // Full-size empty states settle in; small inline ones stay still beside list rows.
+        isSm ? 'space-y-1.5' : 'space-y-3 animate-enter-up',
         !surface && className
       )}
     >
@@ -36,7 +37,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         (isSm ? (
           <Icon size={16} aria-hidden="true" className="mx-auto text-content-muted" />
         ) : (
-          <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-overlay-subtle text-content-muted">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-500/10 text-brand-text ring-1 ring-inset ring-primary-500/20">
             <Icon size={20} aria-hidden="true" />
           </span>
         ))}
