@@ -1,4 +1,14 @@
-import { pathForView, viewFromLegacyHash, viewFromLocation, viewFromPath } from '../routes';
+import {
+  authPathWithNext,
+  authRouteFromPath,
+  nextFromSearch,
+  pathForAuthRoute,
+  pathForView,
+  safeNextPath,
+  viewFromLegacyHash,
+  viewFromLocation,
+  viewFromPath,
+} from '../routes';
 import { VIEWS } from '../views';
 
 function assert(condition: boolean, msg: string) {
@@ -31,6 +41,45 @@ function runFixtures() {
 
   assert(viewFromLocation({ pathname: '/journal', hash: '#access_token=x' }) === 'journal', 'path wins over token hash');
   assert(viewFromLocation({ pathname: '/', hash: '#/leagues' }) === 'leagues', 'old hash wins on /');
+
+  // Sign-in pages
+  assert(pathForAuthRoute('login') === '/login' && pathForAuthRoute('signup') === '/signup', 'auth paths');
+  assert(authRouteFromPath('/login') === 'login', '/login');
+  assert(authRouteFromPath('/signup/') === 'signup', '/signup/ trailing slash');
+  assert(authRouteFromPath('/Login') === 'login', 'case');
+  assert(authRouteFromPath('/habits') === null, 'a page is not a sign-in page');
+  assert(authRouteFromPath('/login/extra') === null, 'nested path is not a sign-in page');
+  assert(viewFromPath('/login') === null, '/login is not a page');
+
+  // next: only same-site paths
+  assert(safeNextPath('/habits') === '/habits', 'plain path');
+  assert(safeNextPath('/prefrontal-cortex?tab=live') === '/prefrontal-cortex?tab=live', 'query kept');
+  assert(safeNextPath('/habits#x') === '/habits', 'hash dropped');
+  assert(safeNextPath('/') === '/', 'root');
+  assert(safeNextPath(null) === '/' && safeNextPath(undefined) === '/' && safeNextPath('') === '/', 'missing');
+  assert(safeNextPath('https://evil.com') === '/', 'absolute URL');
+  assert(safeNextPath('//evil.com') === '/', 'protocol-relative');
+  assert(safeNextPath('///evil.com') === '/', 'triple slash');
+  assert(safeNextPath('/\\evil.com') === '/', 'slash backslash');
+  assert(safeNextPath('\\evil.com') === '/', 'backslashes');
+  assert(safeNextPath('/\t/evil.com') === '/', 'tab trick');
+  assert(safeNextPath('/\n/evil.com') === '/', 'newline trick');
+  assert(safeNextPath(' /habits') === '/', 'leading space');
+  assert(safeNextPath('javascript:alert(1)') === '/', 'javascript scheme');
+  assert(safeNextPath('habits') === '/', 'relative path');
+  assert(safeNextPath('/login') === '/' && safeNextPath('/signup?next=%2Fhabits') === '/', 'no loop through a sign-in page');
+  assert(nextFromSearch('?next=%2Fhabits') === '/habits', 'next from query');
+  assert(nextFromSearch('?next=%2Fprefrontal-cortex%3Ftab%3Dlive') === '/prefrontal-cortex?tab=live', 'encoded query in next');
+  assert(nextFromSearch('?next=https%3A%2F%2Fevil.com') === '/', 'encoded absolute URL rejected');
+  assert(nextFromSearch('?next=%2F%2Fevil.com') === '/', 'encoded // rejected');
+  assert(nextFromSearch('') === '/', 'no query');
+  assert(authPathWithNext('login', '/habits') === '/login?next=%2Fhabits', 'login with next');
+  assert(authPathWithNext('login', '/') === '/login', 'dashboard needs no next');
+  assert(authPathWithNext('signup', '//evil.com') === '/signup', 'unsafe next dropped');
+  assert(
+    authPathWithNext('login', '/prefrontal-cortex?tab=live') === '/login?next=%2Fprefrontal-cortex%3Ftab%3Dlive',
+    'next keeps the query'
+  );
 
   console.log('\nAll routes fixture assertions PASSED successfully!');
 }

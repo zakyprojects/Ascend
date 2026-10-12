@@ -58,3 +58,55 @@ export function viewFromLegacyHash(hash: string): View | null {
 export function viewFromLocation(location: Pick<Location, 'pathname' | 'hash'> = window.location): View {
   return viewFromLegacyHash(location.hash) ?? viewFromPath(location.pathname) ?? DEFAULT_VIEW;
 }
+
+/**
+ * The sign-in pages. They live outside the app shell: `/login` (sign in) and `/signup` (create an
+ * account, or save a guest's progress). A signed-out visit to a page goes to
+ * `/login?next=<that page>` and comes back to it after signing in.
+ */
+export type AuthRoute = 'login' | 'signup';
+
+const AUTH_PATHS: Record<AuthRoute, string> = { login: '/login', signup: '/signup' };
+
+export function pathForAuthRoute(route: AuthRoute): string {
+  return AUTH_PATHS[route];
+}
+
+/** The sign-in page a path names (case and slashes at either end do not matter), or null. */
+export function authRouteFromPath(pathname: string): AuthRoute | null {
+  const segment = pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+  return segment === 'login' || segment === 'signup' ? segment : null;
+}
+
+/**
+ * A `next` value made safe to send the browser to: only a path on this site (`/habits`,
+ * `/prefrontal-cortex?tab=live`). Anything else gives `/`: an absolute URL, `//host`, a backslash
+ * (`/\host`, which browsers read as `//host`), whitespace or control characters (browsers drop
+ * tabs and newlines, so `/\t/host` would become `//host`), a scheme, or a sign-in page (a loop).
+ * The query is kept; a hash is dropped (it is never part of a page's address here).
+ */
+export function safeNextPath(raw: string | null | undefined): string {
+  if (typeof raw !== 'string' || !raw.startsWith('/') || raw.startsWith('//')) return '/';
+  // eslint-disable-next-line no-control-regex -- control characters are exactly what is rejected
+  if (/[\\\u0000-\u0020\u007f]/.test(raw)) return '/';
+  let url: URL;
+  try {
+    url = new URL(raw, 'https://ascend.invalid');
+  } catch {
+    return '/';
+  }
+  if (url.origin !== 'https://ascend.invalid') return '/';
+  if (authRouteFromPath(url.pathname)) return '/';
+  return url.pathname + url.search;
+}
+
+/** The safe `next` page carried in a sign-in page's query (`?next=%2Fhabits`), `/` when none. */
+export function nextFromSearch(search: string): string {
+  return safeNextPath(new URLSearchParams(search).get('next'));
+}
+
+/** A sign-in page's address that returns to `next` afterwards (no `next` when it is the dashboard). */
+export function authPathWithNext(route: AuthRoute, next: string): string {
+  const safe = safeNextPath(next);
+  return safe === '/' ? AUTH_PATHS[route] : `${AUTH_PATHS[route]}?next=${encodeURIComponent(safe)}`;
+}
