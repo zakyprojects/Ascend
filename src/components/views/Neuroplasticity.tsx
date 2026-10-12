@@ -1,6 +1,7 @@
 import { Brain, Repeat, Moon, Sparkles, Clock, Target, ArrowRight } from 'lucide-react';
 import { View } from '@/components/AppShell';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { Reveal } from '@/components/ui/Motion';
 
 interface NeuroplasticityProps {
   onViewChange?: (view: View) => void;
@@ -15,7 +16,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
       </div>
 
       {/* Hero */}
-      <div className="card p-6 relative overflow-hidden">
+      <Reveal index={0} className="card p-6 relative overflow-hidden">
         <div className="relative">
           <div className="w-16 h-16 rounded-2xl bg-purple-500/15 flex items-center justify-center mb-4">
             <Brain size={32} className="text-purple-hierarchy" />
@@ -33,10 +34,10 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             you are never stuck with who you are. Change is always possible — it just requires the right approach.
           </p>
         </div>
-      </div>
+      </Reveal>
 
       {/* Core principle */}
-      <div className="card p-5 border-l-2 border-l-purple-500">
+      <Reveal index={1} className="card p-5 border-l-2 border-l-purple-500">
         <p className="text-lg font-display font-bold text-content-primary mb-2">
           "Neurons that fire together, wire together."
         </p>
@@ -45,10 +46,10 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
           the neural pathway involved gets stronger and faster. Over time, it becomes automatic —
           you don't have to think about it anymore. This is how habits are literally built into your brain.
         </p>
-      </div>
+      </Reveal>
 
       {/* Key principles */}
-      <div>
+      <Reveal index={2}>
         <h2 className="section-title mb-3">The Four Pillars of Brain Change</h2>
         <div className="space-y-3">
           <PillarCard
@@ -76,10 +77,10 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             description="Research suggests it takes roughly 66–90 days of consistent repetition for a new behavior to become automatic — to literally wire itself into your brain's default circuitry. This is why the 90-Day League exists: it's a scientifically grounded window for real neurological change."
           />
         </div>
-      </div>
+      </Reveal>
 
       {/* Practical tips */}
-      <div>
+      <Reveal index={3}>
         <h2 className="section-title mb-3">How to Leverage Neuroplasticity</h2>
         <div className="card p-5 space-y-3">
           <Tip num="1" text="Start small and repeat daily. Even 5 minutes of consistent practice rewires your brain more than sporadic intense effort." />
@@ -88,10 +89,10 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
           <Tip num="4" text="Don't miss twice. One missed day is fine, but two in a row starts to weaken the pathway you've been building." />
           <Tip num="5" text="Be patient. You're not building a habit — you're building a neural pathway. That takes weeks, not days." />
         </div>
-      </div>
+      </Reveal>
 
       {/* 90-Day League CTA */}
-      <div className="card p-5 border border-purple-500/30 bg-purple-500/5">
+      <Reveal index={3} className="card p-5 border border-purple-500/30 bg-purple-500/5">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0">
             <Target size={20} className="text-purple-hierarchy" />
@@ -113,10 +114,10 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             )}
           </div>
         </div>
-      </div>
+      </Reveal>
 
       {/* Deep dive lessons */}
-      <div>
+      <Reveal index={3}>
         <h2 className="section-title mb-3">Deep Dive</h2>
         <p className="text-sm text-content-disabled mb-3">
           Read these lessons in the Lessons section for a deeper understanding of neuroplasticity:
@@ -139,7 +140,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
             Read all lessons <ArrowRight size={14} />
           </button>
         )}
-      </div>
+      </Reveal>
     </div>
   );
 }
