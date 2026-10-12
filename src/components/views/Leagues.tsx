@@ -61,7 +61,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
               <Sparkles size={18} />
             </div>
             <div>
-              <p className="text-xs font-bold text-content-secondary">
+              <p className="item-name text-xs">
                 You are competing as Guest ({currentUser?.username || store.state.username})
               </p>
               <p className="text-micro text-content-muted">
@@ -108,7 +108,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                       <Icon size={20} style={{ color: cfg.color }} />
                     </div>
                     <span
-                      className="text-xs font-display font-bold"
+                      className="text-xs font-medium"
                       style={{ color: active ? cfg.color : 'var(--color-content-muted)' }}
                     >
                       {type === 'ninetyDay' ? `90-Day (${getSeasonLabel(now)})` : type === 'monthly' ? 'Monthly' : 'Weekly'}
@@ -161,7 +161,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                   <div className="flex items-start gap-2">
                     <Brain size={16} className="text-brand-text mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm text-content-secondary font-bold mb-1">90 Days to Rewire Your Brain</p>
+                      <p className="item-name text-sm mb-1">90 Days to Rewire Your Brain</p>
                       <p className="text-xs text-content-muted leading-relaxed">
                         Neuroscience research reveals it takes roughly 66–90 days of consistent repetition for a new habit
                         to form automated neural pathways in your brain. This 90-Day League tests long-term grit and consistency.
@@ -194,7 +194,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                         {isTop3 ? (
                           <Crown size={15} className="mx-auto" style={{ color: medalVarNames[rank - 1] }} />
                         ) : (
-                          <span className="text-xs sm:text-sm font-bold text-content-disabled">{rank}</span>
+                          <span className="figure text-xs sm:text-sm text-content-disabled">{rank}</span>
                         )}
                       </div>
 
@@ -205,7 +205,7 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
                       {/* Name */}
                       <div className="flex-1 min-w-0">
-                        <span className={`text-xs sm:text-sm font-medium truncate block ${isUser ? 'text-success-text font-bold' : 'text-content-tertiary'}`}>
+                        <span className={`item-name text-xs sm:text-sm truncate block ${isUser ? '!text-success-text' : '!text-content-secondary'}`}>
                           {competitor.name}
                         </span>
                       </div>
@@ -217,10 +217,10 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
                       {/* Period Points */}
                       <div className="text-right shrink-0 min-w-[55px] sm:min-w-[70px]">
-                        <span className={`text-xs sm:text-sm font-display font-bold ${isUser ? 'text-success-text' : 'text-content-secondary'}`}>
+                        <span className={`figure text-xs sm:text-sm ${isUser ? 'text-success-text' : 'text-content-primary'}`}>
                           <CountUp value={competitor.points} className="tabular-nums" />
                         </span>
-                        <span className="text-2xs sm:text-xs text-content-disabled ml-0.5 sm:ml-1">pts</span>
+                        <span className="font-mono text-2xs text-content-disabled ml-1">pts</span>
                       </div>
 
                       <ChevronRight size={15} className="text-content-subtle group-hover:text-content-tertiary transition-colors shrink-0" />
@@ -294,16 +294,16 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
                     }`}
                   >
                     <div className="w-7 text-center shrink-0">
-                      <span className="text-sm font-bold text-content-disabled">{idx + 1}</span>
+                      <span className="figure text-sm text-content-disabled">{idx + 1}</span>
                     </div>
                     <div className="w-9 h-9 rounded-lg bg-bg-600 flex items-center justify-center text-lg shrink-0">
                       {c.avatar}
                     </div>
-                    <span className={`text-sm font-medium flex-1 truncate ${c.isUser ? 'text-success-text font-bold' : 'text-content-tertiary'}`}>
+                    <span className={`item-name text-sm flex-1 truncate ${c.isUser ? '!text-success-text' : '!text-content-secondary'}`}>
                       {c.name}
                     </span>
                     <TierBadge totalPoints={c.points} size="sm" showName={false} />
-                    <span className="text-sm font-display font-bold text-content-secondary">
+                    <span className="figure text-sm text-content-primary">
                       {c.points.toLocaleString()} pts
                     </span>
                   </div>

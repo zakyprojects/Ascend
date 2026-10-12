@@ -44,11 +44,11 @@ export function TierView({ store }: { store: AppStore }) {
                     return <Icon size={44} style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }} />;
                   })()}
                 </div>
-                <h2 className="text-2xl font-display font-bold" style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }}>
+                <h2 className="font-serif text-[2.75rem] leading-none" style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }}>
                   {currentTier.name}
                 </h2>
                 <p className="text-sm text-content-muted mt-1">
-                  <CountUp value={seasonPoints} className="tabular-nums" /> points
+                  <CountUp value={seasonPoints} className="figure text-content-secondary" /> points
                 </p>
 
                 {/* Progress to next */}
@@ -56,7 +56,7 @@ export function TierView({ store }: { store: AppStore }) {
                   <div className="mt-5 max-w-sm mx-auto">
                     <div className="flex items-center justify-between mb-2 text-sm">
                       <span className="text-content-muted">Progress to {nextTier.name}</span>
-                      <span className="text-content-muted font-medium tabular-nums"><CountUp value={Math.round(progress.percent)} />%</span>
+                      <span className="figure text-content-secondary"><CountUp value={Math.round(progress.percent)} />%</span>
                     </div>
                     <ProgressBar
                       value={progress.percent}
@@ -95,7 +95,7 @@ export function TierView({ store }: { store: AppStore }) {
                   style={isCurrent ? { boxShadow: `0 0 20px var(--rank-${tierKey}-glow)` } : {}}
                 >
                   {/* Rank number */}
-                  <div className="text-xs font-display font-bold text-content-subtle w-6 text-center">
+                  <div className="figure text-xs text-content-subtle w-6 text-center">
                     {idx + 1}
                   </div>
 
@@ -124,7 +124,7 @@ export function TierView({ store }: { store: AppStore }) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h3
-                        className="font-display font-bold"
+                        className="font-serif text-[1.5rem] leading-none"
                         style={{ color: isUnlocked ? `var(--rank-${tierKey}-text)` : 'var(--color-content-disabled)' }}
                       >
                         {tier.name}
@@ -136,7 +136,7 @@ export function TierView({ store }: { store: AppStore }) {
                       )}
                     </div>
                     <p className="text-xs text-content-muted mt-0.5">
-                      {tier.minPoints.toLocaleString()} points
+                      <span className="figure">{tier.minPoints.toLocaleString()}</span> points
                     </p>
                     {tier.description && (
                       <p className="text-xs text-content-disabled mt-1 leading-snug">
@@ -170,7 +170,7 @@ export function TierView({ store }: { store: AppStore }) {
                       entry.amount > 0 ? 'bg-primary-500/15' : 'bg-error/15'
                     }`}
                   >
-                    <span className={`text-xs font-bold ${entry.amount > 0 ? 'text-brand-text' : 'text-error'}`}>
+                    <span className={`figure text-xs ${entry.amount > 0 ? 'text-brand-text' : 'text-error'}`}>
                       {entry.amount > 0 ? '+' : ''}
                       {entry.amount}
                     </span>
