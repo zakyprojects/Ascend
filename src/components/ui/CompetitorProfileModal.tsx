@@ -38,14 +38,14 @@ export function CompetitorProfileModal({
         {/* Profile Header */}
         <div className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-14 h-14 rounded-2xl bg-primary-500/20 border border-primary-500/30 flex items-center justify-center text-3xl shrink-0 shadow-lg">
+            <div className="w-14 h-14 rounded-2xl bg-primary-500/20 border border-primary-500/30 flex items-center justify-center text-3xl shrink-0 shadow-sm">
               {competitor.avatar}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-lg font-display font-bold text-content-primary truncate">{competitor.name}</h3>
+                <h3 className="font-serif text-2xl leading-tight text-content-primary truncate">{competitor.name}</h3>
                 {competitor.isUser && (
-                  <span className="text-2xs bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-bold shrink-0">
+                  <span className="text-2xs bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-semibold shrink-0">
                     You
                   </span>
                 )}
@@ -58,14 +58,14 @@ export function CompetitorProfileModal({
 
               {/* UID Display directly under username */}
               {(competitor.uid || competitor.id) && (
-                <div className="text-micro font-mono text-content-muted mt-0.5 tracking-tight truncate">
+                <div className="text-micro font-mono tabular-nums text-content-muted mt-0.5 truncate">
                   ID: #{competitor.uid || competitor.id?.slice(0, 8)}
                 </div>
               )}
 
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-content-muted">League Points:</span>
-                <span className="text-xs font-display font-bold text-brand-text">
+                <span className="figure text-xs text-brand-text">
                   {competitor.points.toLocaleString()} pts
                 </span>
               </div>
@@ -87,7 +87,7 @@ export function CompetitorProfileModal({
 
             {!viewerIsPublic ? (
               <>
-                <h4 className="text-sm font-bold text-content-secondary">Reciprocal Privacy Active</h4>
+                <h4 className="font-serif text-xl leading-tight text-content-secondary">Reciprocal Privacy Active</h4>
                 <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
                   Because you have set your own profile to private, other members' detailed statistics and active habits are hidden from you.
                 </p>
@@ -97,7 +97,7 @@ export function CompetitorProfileModal({
               </>
             ) : (
               <>
-                <h4 className="text-sm font-bold text-content-secondary">Private Profile</h4>
+                <h4 className="font-serif text-xl leading-tight text-content-secondary">Private Profile</h4>
                 <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
                   This user has set their detailed statistics and active habits list to private.
                   Their username, tier rank, and league points remain visible.
@@ -110,7 +110,7 @@ export function CompetitorProfileModal({
             {/* Statistics Section */}
             {stats && (
               <div>
-                <h4 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <h4 className="stat-label mb-2.5 flex items-center gap-1.5">
                   <ShieldCheck size={14} className="text-brand-text" />
                   Activity Statistics
                 </h4>
@@ -167,7 +167,7 @@ export function CompetitorProfileModal({
 
             {/* Currently Active Habits */}
             <div>
-              <h4 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-2.5">
+              <h4 className="stat-label mb-2.5">
                 Active Habits ({competitor.activeHabits?.length || 0})
               </h4>
               {competitor.activeHabits && competitor.activeHabits.length > 0 ? (
@@ -179,7 +179,7 @@ export function CompetitorProfileModal({
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-2 h-2 rounded-full bg-primary-400 shrink-0" />
-                        <span className="text-xs font-medium text-content-secondary truncate">
+                        <span className="item-name text-xs text-content-secondary truncate">
                           {habit.name}
                         </span>
                       </div>
@@ -189,7 +189,7 @@ export function CompetitorProfileModal({
                             {habit.category}
                           </span>
                         )}
-                        <span className="text-2xs bg-primary-500/10 text-brand-text px-2 py-0.5 rounded-md uppercase font-bold">
+                        <span className="text-2xs bg-primary-500/10 text-brand-text px-2 py-0.5 rounded-md font-mono uppercase tracking-[0.06em] font-medium">
                           {habit.frequency}
                         </span>
                       </div>
@@ -207,7 +207,7 @@ export function CompetitorProfileModal({
             {/* Past Seasons & Trophies */}
             {seasonHistory && seasonHistory.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-content-muted uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <h4 className="stat-label mb-2.5 flex items-center gap-1.5">
                   <Trophy size={14} className="text-brand-text" />
                   Past Seasons & Trophies ({seasonHistory.length})
                 </h4>
@@ -224,7 +224,7 @@ export function CompetitorProfileModal({
                             <TierBadge totalPoints={historyRecord.points} size="sm" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-content-secondary truncate">
+                            <p className="item-name text-xs text-content-secondary truncate">
                               {historyRecord.seasonName}
                             </p>
                             <p className="text-2xs font-medium truncate" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
@@ -233,11 +233,11 @@ export function CompetitorProfileModal({
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-xs font-bold text-brand-text">
+                          <p className="figure text-xs text-brand-text">
                             {historyRecord.points.toLocaleString()} pts
                           </p>
                           {historyRecord.date && (
-                            <p className="text-2xs text-content-disabled">
+                            <p className="figure text-2xs text-content-disabled">
                               {historyRecord.date}
                             </p>
                           )}
@@ -277,10 +277,10 @@ function StatCard({
         <Icon size={16} style={{ color }} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-2xs text-content-muted truncate">{label}</p>
-        <p className="text-xs font-bold text-content-secondary truncate">{value}</p>
+        <p className="stat-label truncate">{label}</p>
+        <p className="figure text-sm text-content-primary truncate mt-0.5">{value}</p>
         {subtitle && (
-          <p className="text-2xs text-[color:var(--badge-neutral-text)] font-medium truncate mt-0.5" title={`Source: ${subtitle}`}>
+          <p className="text-2xs text-[color:var(--badge-neutral-text)] truncate mt-0.5" title={`Source: ${subtitle}`}>
             {subtitle}
           </p>
         )}

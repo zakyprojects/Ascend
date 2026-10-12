@@ -27,10 +27,10 @@ export function TierBadge({ totalPoints, size = 'md', showName = false }: TierBa
   const tierKey = tier.name.toLowerCase();
 
   const sizes = {
-    sm: { box: 'w-7 h-7', icon: 14, text: 'text-xs' },
-    md: { box: 'w-10 h-10', icon: 18, text: 'text-sm' },
-    lg: { box: 'w-14 h-14', icon: 24, text: 'base' },
-    xl: { box: 'w-20 h-20', icon: 36, text: 'text-lg' },
+    sm: { box: 'w-7 h-7', icon: 14, text: 'text-sm' },
+    md: { box: 'w-10 h-10', icon: 18, text: 'text-lg' },
+    lg: { box: 'w-14 h-14', icon: 24, text: 'text-xl' },
+    xl: { box: 'w-20 h-20', icon: 36, text: 'text-2xl' },
   };
   const s = sizes[size];
 
@@ -41,7 +41,6 @@ export function TierBadge({ totalPoints, size = 'md', showName = false }: TierBa
         style={{
           backgroundColor: `var(--rank-${tierKey}-bg)`,
           border: `1.5px solid var(--rank-${tierKey}-border)`,
-          boxShadow: `0 2px 10px var(--rank-${tierKey}-glow)`,
         }}
       >
         <Icon size={s.icon} style={{ color: `var(--rank-${tierKey}-text)` }} />
@@ -49,13 +48,13 @@ export function TierBadge({ totalPoints, size = 'md', showName = false }: TierBa
       {showName && (
         <div>
           <div
-            className={`font-display font-bold ${s.text}`}
+            className={`font-serif leading-none ${s.text}`}
             style={{ color: `var(--rank-${tierKey}-text)` }}
           >
             {tier.name}
           </div>
           {size === 'lg' || size === 'xl' ? (
-            <div className="text-xs text-content-disabled">{totalPoints.toLocaleString()} pts</div>
+            <div className="figure text-xs text-content-disabled mt-1">{totalPoints.toLocaleString()} pts</div>
           ) : null}
         </div>
       )}
@@ -79,7 +78,7 @@ export function TierProgress({ totalPoints }: TierProgressProps) {
       <div className="flex items-center justify-between mb-2">
         {next ? (
           <span className="text-xs text-content-disabled ml-auto">
-            {next.name} at {next.minPoints.toLocaleString()}
+            {next.name} at <span className="figure">{next.minPoints.toLocaleString()}</span>
           </span>
         ) : (
           <span className="text-xs text-content-disabled ml-auto">Max tier reached</span>
@@ -94,7 +93,7 @@ export function TierProgress({ totalPoints }: TierProgressProps) {
       {next && (
         <div className="flex items-center justify-between mt-1.5">
           <span className="text-xs text-content-disabled ml-auto">
-            {(next.minPoints - totalPoints).toLocaleString()} to go
+            <span className="figure">{(next.minPoints - totalPoints).toLocaleString()}</span> to go
           </span>
         </div>
       )}
