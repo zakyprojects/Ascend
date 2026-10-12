@@ -147,6 +147,9 @@ export default {
         // No fill-mode on purpose: a retained transform on the view wrapper would
         // become the containing block for any position:fixed descendant.
         'view-enter': 'enterUp var(--duration-enter) var(--ease-emphasized)',
+        // Scroll reveal (Motion.tsx Reveal): `backwards` holds it hidden through its stagger delay
+        // without keeping a transform after it ends.
+        'reveal': 'enterUp 450ms var(--ease-emphasized) backwards',
         'pop': 'pop 320ms var(--ease-emphasized)',
         'slide-in-right': 'slideInRight var(--duration-enter) var(--ease-emphasized) both',
         // Uses the individual `translate` property so it composes with the
