@@ -31,6 +31,7 @@ import { GuestLogoutWarningModal } from './ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from './ui/LogoutConfirmModal';
 import { NotificationCenter } from './ui/NotificationCenter';
 import { AppLogo } from './ui/AppLogo';
+import { AscentBackdrop } from './ui/AscentBackdrop';
 import { ThemeToggle } from './ui/ThemeToggle';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import type { View } from '@/lib/views';
@@ -163,7 +164,9 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
 
   return (
     <div className="relative isolate min-h-screen lg:h-dvh bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      <div aria-hidden="true" className="app-atmosphere" />
+      <div aria-hidden="true" className="app-atmosphere">
+        <AscentBackdrop />
+      </div>
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-64 h-full glass border-r border-overlay-subtle shrink-0 overflow-y-auto">
         <div className="p-6 flex items-center justify-between gap-2">
