@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Flame, Trash2, Check, Calendar, Repeat, BookMarked, Pencil, Info, AlertTriangle, BookOpen, Lock } from 'lucide-react';
+import { Plus, Flame, Trash2, Check, Calendar, Repeat, BookMarked, Pencil, Info, AlertTriangle, BookOpen, Lock, Undo2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Habit, HabitFrequency } from '@/types';
 import { calculateStreak, calculateBestStreak, getNow, weekKey, previousPeriodKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
@@ -14,6 +14,7 @@ import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';
+import { SwipeRow } from '@/components/ui/SwipeRow';
 import { dailyHabitCompletions, lastDayKeys } from '@/lib/weeklyActivity';
 
 export function HabitTracker({ store }: { store: AppStore }) {
@@ -395,6 +396,16 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
   };
 
   return (
+    <SwipeRow
+      right={{
+        label: done ? 'Undo' : 'Done',
+        icon: done ? Undo2 : Check,
+        tone: done ? 'bg-bg-600 text-content-secondary' : 'bg-primary-500 text-on-brand',
+        onCommit: handleToggle,
+        disabled: isLinked,
+      }}
+      left={{ label: 'Delete', icon: Trash2, tone: 'bg-rose-600 text-white', onCommit: onDelete }}
+    >
     <div className={`card enter-item p-4 card-hover group ${done ? 'opacity-75' : ''}`}>
       <div className="flex items-center gap-3">
         <button
@@ -495,5 +506,6 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
         </button>
       </div>
     </div>
+    </SwipeRow>
   );
 }

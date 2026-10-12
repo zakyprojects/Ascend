@@ -1286,6 +1286,22 @@ html[data-page-hidden] *::after {
   }
 }
 
+/* Swipe rows (ui/SwipeRow.tsx): vertical pans stay with the browser, horizontal drags come to the
+   row; on release the row springs back to rest. The action icon swells once the drag passes the mark. */
+.swipe-row-surface {
+  position: relative;
+  touch-action: pan-y;
+}
+.swipe-row-surface.is-settling {
+  transition: translate 320ms var(--ease-emphasized);
+}
+.swipe-row-icon {
+  transition: scale 180ms var(--ease-emphasized);
+}
+.swipe-row-icon.is-armed {
+  scale: 1.25;
+}
+
 /* Sliding active pill (Tabs indicator, SlidingPill): glides between options at the nav pill's pace. */
 .sliding-pill-move {
   transition-property: left, top, width, height, background-color, border-color, box-shadow, color;
