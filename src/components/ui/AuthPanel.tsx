@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, Shield, Zap } from 'lucide-react';
+import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, Shield, Zap, ArrowLeft } from 'lucide-react';
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
@@ -25,8 +25,11 @@ export function authPanelTitle(mode: AuthPanelMode): string {
   return mode === 'upgrade' ? 'Save your progress' : mode === 'signup' ? 'Create an account' : 'Sign in';
 }
 
+/** /signup opens on a choice (create an account or continue as a guest); the form is its second step. */
+type AuthScreen = 'login' | 'signup-choice' | 'signup-form' | 'upgrade';
+
 // Screen order for the slide direction: moving forward slides in from the right, back from the left.
-const MODE_ORDER: Record<AuthPanelMode, number> = { login: 0, signup: 1, upgrade: 1 };
+const SCREEN_ORDER: Record<AuthScreen, number> = { login: 0, 'signup-choice': 1, 'signup-form': 2, upgrade: 1 };
 
 interface AuthPanelProps {
   /** The screen to show (from the address: /login, /signup, or /signup for a guest). */
@@ -77,10 +80,18 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks }
   // Screen switches slide in (direction from MODE_ORDER); the first screen does not. Derived
   // during render so a new screen's first frame animates.
   const [slide, setSlide] = useState<'left' | 'right' | null>(null);
+  const [signupStep, setSignupStep] = useState<'choice' | 'form'>('choice');
   const [shownMode, setShownMode] = useState(mode);
   if (mode !== shownMode) {
+    // Arriving at /signup always starts on the choice.
     setShownMode(mode);
-    setSlide(MODE_ORDER[mode] > MODE_ORDER[shownMode] ? 'right' : 'left');
+    setSignupStep('choice');
+  }
+  const screen: AuthScreen = mode === 'signup' ? `signup-${signupStep}` : mode;
+  const [shownScreen, setShownScreen] = useState(screen);
+  if (screen !== shownScreen) {
+    setShownScreen(screen);
+    setSlide(SCREEN_ORDER[screen] > SCREEN_ORDER[shownScreen] ? 'right' : 'left');
   }
   const slideClass = slide === 'right' ? 'animate-slide-in-right' : slide === 'left' ? 'animate-slide-in-left' : '';
 
@@ -285,7 +296,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks }
 
       {/* Sign in / sign up / save progress */}
       {!successTitle && (
-        <div key={mode} className={`space-y-4 ${slideClass}`}>
+        <div key={screen} className={`space-y-4 ${slideClass}`}>
           <div>
             <h2 className="section-title text-center">
               {mode === 'upgrade'
@@ -303,6 +314,26 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks }
             </p>
           </div>
 
+          {screen === 'signup-choice' ? (
+            <div className="space-y-4 pt-1">
+              <button
+                type="button"
+                onClick={() => setSignupStep('form')}
+                disabled={loading}
+                className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-on-brand font-medium text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <UserPlus size={18} /> Create Account
+              </button>
+              {guestButton}
+              <p className="text-xs text-content-muted text-center">
+                Already have an account?{' '}
+                <a href={pageLinks.login} onClick={inAppClick(pageLinks.login, pageLinks.navigate)} className={PAGE_LINK_CLASS}>
+                  Sign in
+                </a>
+              </p>
+            </div>
+          ) : (
+          <>
           <form onSubmit={handleSubmit} className="space-y-3.5">
             {(mode === 'signup' || mode === 'upgrade') && (
               <>
@@ -468,9 +499,16 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks }
           )}
 
           {mode === 'signup' && (
-            <div className="space-y-4 pt-1">
-              {guestButton}
-              <p className="text-xs text-content-muted text-center">
+            <div className="flex items-center justify-between gap-3 pt-1 text-xs text-content-muted">
+              <button
+                type="button"
+                onClick={() => setSignupStep('choice')}
+                disabled={loading}
+                className="inline-flex items-center gap-1 font-medium hover:text-content-primary transition-colors disabled:opacity-50"
+              >
+                <ArrowLeft size={14} /> Back
+              </button>
+              <p>
                 Already have an account?{' '}
                 <a href={pageLinks.login} onClick={inAppClick(pageLinks.login, pageLinks.navigate)} className={PAGE_LINK_CLASS}>
                   Sign in
@@ -485,6 +523,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks }
                 Not now
               </a>
             </p>
+          )}
+          </>
           )}
         </div>
       )}
