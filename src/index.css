@@ -904,6 +904,9 @@
   .nav-node-active {
     box-shadow: 0 0 0 3px rgb(16 185 129 / 0.18), 0 0 12px rgb(16 185 129 / 0.45);
   }
+  .nav-node-risk {
+    box-shadow: 0 0 0 3px rgb(var(--color-warning-rgb) / 0.18);
+  }
 
   /* Basecamp rail (nav/ZoneRail): the current zone glows; the season climb fills the route line. */
   .zone-active {

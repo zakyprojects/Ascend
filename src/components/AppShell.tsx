@@ -19,6 +19,7 @@ import { ZoneRail } from './nav/ZoneRail';
 import { ZonePanel } from './nav/ZonePanel';
 import { AccountMenu } from './nav/AccountMenu';
 import { CommandPalette } from './nav/CommandPalette';
+import { getNavStatuses, getUpNext } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
 import { RankChip } from './ui/RankChip';
 import { ViewEntrance } from './ViewEntrance';
@@ -72,6 +73,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
 
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
   const panelGroup = NAV_GROUPS.find((g) => g.id === panelZone) ?? NAV_GROUPS[0];
+  const navStatuses = getNavStatuses(store.state, store.isHabitDone);
 
   // Scroll memory: each view's last position, recorded as the user scrolls (back/forward has
   // already switched the view by the time we could read the old one).
@@ -211,6 +213,8 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
             group={panelGroup}
             currentView={currentView}
             partnerBadge={pendingIncomingInvitesCount}
+            statuses={navStatuses}
+            upNext={getUpNext(navStatuses)}
             onNavigate={goTo}
             onCollapse={togglePanel}
             footer={<RankChip seasonPoints={seasonPoints} latestEntryTimestamp={store.state.pointsHistory?.[0]?.timestamp} />}

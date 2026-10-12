@@ -1,0 +1,111 @@
+import type { AppState, Habit } from '@/types';
+import type { View } from '@/lib/views';
+import { todayKey } from '@/lib/dates';
+import { getActiveBadHabitsOrdered } from '@/lib/badHabitEligibility';
+
+/** done = today's part is finished; pending = still open; risk = still open late in the day. */
+export type NavStatusTone = 'done' | 'pending' | 'risk';
+
+export interface NavStatus {
+  tone: NavStatusTone;
+  /** Short mono note beside the page name ("2 left", "3/5"). */
+  meta?: string;
+  /** Spoken to screen readers after the page name. */
+  label: string;
+}
+
+export type NavStatuses = Partial<Record<View, NavStatus>>;
+
+/** From this hour, a daily item still open turns to risk (its day is about to close). */
+const RISK_HOUR = 20;
+
+/** Pages in the order "Up next" picks from when several are open. */
+const UP_NEXT_ORDER: View[] = ['habits', 'journal', 'bad-habits', 'time-tracker', 'exercise', 'reading', 'skills'];
+
+/**
+ * Today's status for each page that has a clear daily task. Pages without one get no entry
+ * (no status is better than a made-up one). Pure and computed on every render, never cached.
+ */
+export function getNavStatuses(state: AppState, isHabitDone: (habit: Habit) => boolean, now: Date = new Date()): NavStatuses {
+  const today = todayKey(now);
+  const late = now.getHours() >= RISK_HOUR;
+  const statuses: NavStatuses = {};
+
+  // Habits: every habit done for its current period (daily: today, weekly: this week).
+  const habits = state.habits ?? [];
+  if (habits.length > 0) {
+    const open = habits.filter((h) => !isHabitDone(h));
+    if (open.length === 0) {
+      statuses.habits = { tone: 'done', meta: `${habits.length}/${habits.length}`, label: 'all habits done today' };
+    } else {
+      const dailyOpen = open.some((h) => h.frequency === 'daily');
+      statuses.habits = {
+        tone: late && dailyOpen ? 'risk' : 'pending',
+        meta: `${open.length} left`,
+        label: `${open.length} ${open.length === 1 ? 'habit' : 'habits'} left today`,
+      };
+    }
+  }
+
+  // Bad habits: every active one reported (resisted or occurred) for today.
+  const activeBad = getActiveBadHabitsOrdered(state.badHabits ?? []);
+  if (activeBad.length > 0) {
+    const reported = new Set(
+      (state.badHabitLogs ?? []).filter((l) => l.date === today && l.status !== 'no_report').map((l) => l.badHabitId)
+    );
+    const unreported = activeBad.filter((h) => !reported.has(h.id)).length;
+    statuses['bad-habits'] =
+      unreported === 0
+        ? { tone: 'done', label: 'all reported today' }
+        : { tone: late ? 'risk' : 'pending', meta: `${unreported} to report`, label: `${unreported} to report today` };
+  }
+
+  // Journal: today's entry saved.
+  const journalDone = (state.journalEntries ?? []).some((e) => e.date === today);
+  statuses.journal = journalDone
+    ? { tone: 'done', label: "today's entry written" }
+    : { tone: late ? 'risk' : 'pending', label: "today's entry not written yet" };
+
+  // Time tracker: today's blocks resolved (completed or skipped).
+  const blocks = state.timeTracker?.dailyLogs?.[today] ?? [];
+  if (blocks.length > 0) {
+    const resolved = blocks.filter((b) => b.completed || b.skipped).length;
+    statuses['time-tracker'] = {
+      tone: resolved === blocks.length ? 'done' : 'pending',
+      meta: `${resolved}/${blocks.length}`,
+      label: `${resolved} of ${blocks.length} blocks done today`,
+    };
+  }
+
+  // Exercise: a workout logged today; open only once a weekly goal is set.
+  if ((state.workouts ?? []).some((w) => w.date === today)) {
+    statuses.exercise = { tone: 'done', label: 'workout logged today' };
+  } else if (state.exerciseGoal) {
+    statuses.exercise = { tone: 'pending', label: 'no workout logged today' };
+  }
+
+  // Reading: pages logged today; open only while a book is being read.
+  if ((state.readingLogs ?? []).some((l) => l.date === today && l.pagesRead > 0)) {
+    statuses.reading = { tone: 'done', label: 'read today' };
+  } else if ((state.libraryBooks ?? []).some((b) => b.status === 'reading')) {
+    statuses.reading = { tone: 'pending', label: 'not read today' };
+  }
+
+  // Skills: a practice session logged today; open once a skill exists.
+  if ((state.skillLogs ?? []).some((l) => l.date === today)) {
+    statuses.skills = { tone: 'done', label: 'practised today' };
+  } else if ((state.skills ?? []).length > 0) {
+    statuses.skills = { tone: 'pending', label: 'not practised today' };
+  }
+
+  return statuses;
+}
+
+/** The most pressing open page: any at-risk page first, then the first open one, in UP_NEXT_ORDER. */
+export function getUpNext(statuses: NavStatuses): View | null {
+  return (
+    UP_NEXT_ORDER.find((view) => statuses[view]?.tone === 'risk') ??
+    UP_NEXT_ORDER.find((view) => statuses[view]?.tone === 'pending') ??
+    null
+  );
+}

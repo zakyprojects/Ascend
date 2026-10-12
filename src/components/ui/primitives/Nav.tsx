@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRight, type LucideIcon } from 'lucide-react';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
+import type { NavStatus } from '@/lib/navStatus';
 
 export interface NavItemProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -12,6 +13,8 @@ export interface NavItemProps
   /** row: icon + label; trail: label on a group's climbing line (sidebar groups); stack: bottom bar. */
   layout?: 'row' | 'trail' | 'stack';
   density?: 'default' | 'compact';
+  /** trail only: today's status of the page (node style + short note). */
+  status?: NavStatus;
 }
 
 export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
@@ -24,6 +27,7 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
       badgeCount,
       layout = 'row',
       density = 'default',
+      status,
       className,
       ...props
     },
@@ -48,17 +52,38 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
           {...props}
         >
           {active && <span aria-hidden="true" data-nav-pill className="absolute inset-0 rounded-lg bg-primary-500/10" />}
-          {/* Node on the group's line (the parent draws the line): a waypoint, lit on the current page. */}
+          {/* Node on the zone's line (the parent draws the line): lit on the current page, otherwise
+              today's status: emerald dot = done, ring = open, rose = open late in the day. */}
           <span
             aria-hidden="true"
             className={cx(
               'nav-node absolute top-1/2 -translate-y-1/2 rounded-full',
               active
                 ? 'nav-node-active -left-[12px] h-[9px] w-[9px] bg-brand-text'
-                : '-left-[10px] h-[5px] w-[5px] bg-overlay-strong group-hover/nav:bg-primary-500'
+                : status?.tone === 'done'
+                  ? '-left-[11px] h-[7px] w-[7px] bg-brand-text'
+                  : status?.tone === 'risk'
+                    ? 'nav-node-risk -left-[11px] h-[7px] w-[7px] bg-warning'
+                    : status?.tone === 'pending'
+                      ? '-left-[11px] h-[7px] w-[7px] border border-content-muted bg-bg-900 group-hover/nav:border-primary-500'
+                      : '-left-[10px] h-[5px] w-[5px] bg-overlay-strong group-hover/nav:bg-primary-500'
             )}
           />
-          <span className="relative truncate">{label}</span>
+          <span className="relative truncate">
+            {label}
+            {status && <span className="sr-only">, {status.label}</span>}
+          </span>
+          {status?.meta && (
+            <span
+              aria-hidden="true"
+              className={cx(
+                'relative ml-auto shrink-0 font-mono text-2xs tabular-nums',
+                status.tone === 'risk' ? 'text-warning-text' : status.tone === 'done' ? 'text-brand-text' : 'text-content-muted'
+              )}
+            >
+              {status.meta}
+            </span>
+          )}
           {Boolean(badgeCount && badgeCount > 0) && (
             <span className="relative w-5 h-5 rounded-full bg-rose-500 text-white text-micro font-bold flex items-center justify-center">
               {badgeCount}
