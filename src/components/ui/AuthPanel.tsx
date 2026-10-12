@@ -84,6 +84,85 @@ function inAppClick(href: string, navigate: (href: string) => void) {
 
 const PAGE_LINK_CLASS = 'font-medium text-brand-text hover:underline underline-offset-2';
 
+const INPUT_CLASS =
+  'w-full py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all';
+
+/** A small check that fades and scales in when its field is valid. */
+function FieldCheck({ show }: { show: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-flex w-4 h-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-success-text transition-[opacity,transform] duration-base ease-emphasized ${
+        show ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
+      }`}
+    >
+      <Check size={11} strokeWidth={3} />
+    </span>
+  );
+}
+
+/** A field label with the field's check mark at the end of the row. */
+function FieldLabel({
+  htmlFor,
+  required,
+  valid,
+  children,
+}: {
+  htmlFor?: string;
+  required?: boolean;
+  valid: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 mb-1.5">
+      <label htmlFor={htmlFor} className="block text-xs font-medium text-content-tertiary">
+        {children} {required && <span className="text-error-text">*</span>}
+      </label>
+      <FieldCheck show={valid} />
+    </div>
+  );
+}
+
+/** The focus line: grows from the left along the field's bottom edge. Sits inside a `relative group` wrapper. */
+function FocusLine() {
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary-500 origin-left scale-x-0 transition-transform duration-enter ease-emphasized group-focus-within:scale-x-100"
+    />
+  );
+}
+
+/** 0 (empty) to 4: under the minimum length is always 1; then length and character variety add steps. */
+function passwordScore(password: string): number {
+  if (!password) return 0;
+  if (password.length < NEW_PASSWORD_MIN) return 1;
+  const classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((re) => re.test(password)).length;
+  return Math.min(4, 1 + Number(password.length >= 10) + Number(classes >= 2) + Number(classes >= 3));
+}
+
+const STRENGTH_LABELS = ['', 'Weak password', 'Fair password', 'Good password', 'Strong password'];
+const STAIR_HEIGHTS = ['h-1', 'h-1.5', 'h-2', 'h-2.5'];
+
+/** Password strength for a new password: four ascending steps that fill as it gets stronger. */
+function PasswordStaircase({ password }: { password: string }) {
+  const score = passwordScore(password);
+  const label = password.length < NEW_PASSWORD_MIN ? `Use ${NEW_PASSWORD_MIN} characters or more` : STRENGTH_LABELS[score];
+  return (
+    <div className="mt-1.5 flex items-center gap-2">
+      <div aria-hidden="true" className="flex items-end gap-1">
+        {STAIR_HEIGHTS.map((height, i) => (
+          <span
+            key={height}
+            className={`w-5 rounded-sm transition-colors duration-base ${height} ${i < score ? 'bg-emerald-500' : 'bg-bg-600'}`}
+          />
+        ))}
+      </div>
+      <p className="text-micro text-content-muted">{label}</p>
+    </div>
+  );
+}
+
 /**
  * The sign-in / sign-up / guest-upgrade form with its success screen. Screen changes slide in;
  * the first screen shown does not.
@@ -415,9 +494,9 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
             {(mode === 'signup' || mode === 'upgrade') && (
               <>
                 <div>
-                  <label className="block text-xs font-medium text-content-tertiary mb-1.5">
-                    Leaderboard avatar <span className="text-error-text">*</span>
-                  </label>
+                  <FieldLabel required valid={avatarValid}>
+                    Leaderboard avatar
+                  </FieldLabel>
                   <div className="grid grid-cols-8 gap-1.5 p-2 bg-bg-800 rounded-xl border border-overlay-subtle">
                     {EMOJI_AVATARS.map((emoji) => (
                       <button
@@ -437,21 +516,23 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-content-tertiary mb-1">
-                    Leaderboard username {mode === 'signup' && <span className="text-error-text">*</span>}
-                  </label>
-                  <div className="relative">
+                  <FieldLabel htmlFor="auth-username" required={mode === 'signup'} valid={usernameChecked}>
+                    Leaderboard username
+                  </FieldLabel>
+                  <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
                       <User size={16} />
                     </div>
                     <input
+                      id="auth-username"
                       type="text"
                       required={mode === 'signup'}
                       placeholder="e.g. Alex_Mastery"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full input-has-icon pr-24 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all"
+                      className={`${INPUT_CLASS} input-has-icon pr-24`}
                     />
+                    <FocusLine />
                     {username.trim() && (
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                         {usernameStatus?.available ? (
@@ -474,49 +555,69 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
             )}
 
             <div>
-              <label className="block text-xs font-medium text-content-tertiary mb-1">
-                Email <span className="text-error-text">*</span>
-              </label>
-              <div className="relative">
+              <FieldLabel htmlFor="auth-email" required valid={emailValid}>
+                Email
+              </FieldLabel>
+              <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
                   <Mail size={16} />
                 </div>
                 <input
+                  id="auth-email"
                   type="email"
                   required
+                  autoComplete="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full input-has-icon pr-3 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all"
+                  className={`${INPUT_CLASS} input-has-icon pr-3`}
                 />
+                <FocusLine />
               </div>
             </div>
 
-            <PasswordInput
-              key={`auth-password-${mode}`}
-              label="Password"
-              required
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div>
+              <FieldLabel htmlFor="auth-password" required valid={passwordValid}>
+                Password
+              </FieldLabel>
+              <div className="relative group">
+                <PasswordInput
+                  key={`auth-password-${mode}`}
+                  id="auth-password"
+                  required
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <FocusLine />
+              </div>
+              {isNewAccount && <PasswordStaircase password={password} />}
+            </div>
 
-            {(mode === 'signup' || mode === 'upgrade') && (
-              <PasswordInput
-                key={`auth-confirm-password-${mode}`}
-                label="Confirm password"
-                required
-                autoComplete="new-password"
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                error={
-                  confirmPassword && password !== confirmPassword
-                    ? 'Passwords do not match'
-                    : undefined
-                }
-              />
+            {isNewAccount && (
+              <div>
+                <FieldLabel htmlFor="auth-confirm-password" required valid={confirmValid}>
+                  Confirm password
+                </FieldLabel>
+                <div className="relative group">
+                  <PasswordInput
+                    key={`auth-confirm-password-${mode}`}
+                    id="auth-confirm-password"
+                    required
+                    autoComplete="new-password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                  <FocusLine />
+                </div>
+                {confirmPassword && password !== confirmPassword && (
+                  <p className="text-micro text-error-text mt-1 flex items-center gap-1 font-medium">
+                    Passwords do not match
+                  </p>
+                )}
+              </div>
             )}
 
             {mode === 'signup' && hasGuestData && (
