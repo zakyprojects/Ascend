@@ -749,9 +749,24 @@
       transform: translateY(-2px);
       box-shadow: var(--card-hover-shadow);
     }
+    /* Light theme: the card stays white and the lift + shadow carry the hover (a grey fill read as
+       disabled). */
+    [data-theme='light'] .card-hover:hover {
+      background-color: var(--color-bg-800);
+    }
   }
   .card-hover:active {
     transform: translateY(0) scale(0.995);
+  }
+  /* A row that is both new-item and interactive keeps the slower rise for its entrance; the
+     emphasized curve still makes the hover lift feel immediate. */
+  .card-hover.enter-item {
+    transition:
+      opacity 360ms var(--ease-standard),
+      transform 460ms var(--ease-emphasized),
+      background-color var(--duration-base) var(--ease-standard),
+      border-color var(--duration-base) var(--ease-standard),
+      box-shadow var(--duration-base) var(--ease-standard);
   }
 
   .btn {

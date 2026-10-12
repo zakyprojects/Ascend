@@ -1453,6 +1453,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           icon={Users}
           title="No partners yet"
           description="Enter a friend's 6-digit user ID to send an invite. You can have up to 5 partners."
+          action={
+            <button onClick={() => setInviteModalOpen(true)} className="btn-secondary mx-auto text-xs flex items-center gap-1.5">
+              <UserPlus size={14} />
+              <span>Invite a partner</span>
+            </button>
+          }
         />
       )}
 
