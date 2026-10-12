@@ -27,13 +27,16 @@ import { Dialog, EmptyState, ProgressBar, Tabs } from '@/components/ui/primitive
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
-import { todayKey, formatDateLong, parseDate, getNow, weekKey } from '@/lib/dates';
+import { todayKey, formatDateLong, parseDate, getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
+import { BarChart } from '@/components/ui/charts';
+import { CountUp, Reveal } from '@/components/ui/Motion';
+import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
 
 type ReadingHubTab = 'reading' | 'to-read' | 'completed' | 'discover';
 
@@ -74,6 +77,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
   const libraryBooks = store.state.libraryBooks;
   const readingLogs = store.state.readingLogs;
+  const pageDays = lastDayKeys(7);
+  const pagesByDay = sumPerDay(readingLogs, pageDays, (l) => l.pagesRead);
+  const pagesThisWeek = pagesByDay.reduce((sum, p) => sum + p, 0);
 
   // Calculate Reading Streak based strictly on readingLogs (daily progress updates)
   const uniqueDates = useMemo(() => {
@@ -410,14 +416,14 @@ export function ReadingHub({ store }: { store: AppStore }) {
       </div>
 
       {/* Hero Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <Reveal index={0} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="card p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center text-warning-text shrink-0">
             <Flame size={22} />
           </div>
           <div>
             <div className="text-2xl font-bold text-content-primary">
-              {streak} <span className="text-xs font-normal text-content-muted">days</span>
+              <CountUp value={streak} /> <span className="text-xs font-normal text-content-muted">days</span>
             </div>
             <div className="text-xs text-content-disabled">Reading Streak</div>
           </div>
@@ -428,7 +434,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             <PlayCircle size={22} />
           </div>
           <div>
-            <div className="text-2xl font-bold text-content-primary">{inProgressBooks.length}</div>
+            <CountUp value={inProgressBooks.length} className="block text-2xl font-bold text-content-primary tabular-nums" />
             <div className="text-xs text-content-disabled">Currently Reading</div>
           </div>
         </div>
@@ -438,7 +444,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             <CheckCircle2 size={22} />
           </div>
           <div>
-            <div className="text-2xl font-bold text-content-primary">{completedBooks.length}</div>
+            <CountUp value={completedBooks.length} className="block text-2xl font-bold text-content-primary tabular-nums" />
             <div className="text-xs text-content-disabled">Books Completed</div>
           </div>
         </div>
@@ -448,11 +454,31 @@ export function ReadingHub({ store }: { store: AppStore }) {
             <Award size={22} />
           </div>
           <div>
-            <div className="text-2xl font-bold text-content-primary">+{totalCompletedPoints}</div>
+            <div className="text-2xl font-bold text-content-primary tabular-nums">
+              +<CountUp value={totalCompletedPoints} />
+            </div>
             <div className="text-xs text-content-disabled">Completion Points</div>
           </div>
         </div>
-      </div>
+      </Reveal>
+
+      {readingLogs.length > 0 && (
+        <Reveal index={1} className="card p-4 space-y-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="section-title">Pages, Last 7 Days</h2>
+            <span className="text-xs text-content-muted tabular-nums">
+              <CountUp value={pagesThisWeek} /> pages
+            </span>
+          </div>
+          <BarChart
+            data={pageDays.map((day, i) => ({ label: formatWeekdayShort(day), value: pagesByDay[i] }))}
+            label={`Pages read per day, last 7 days: ${pagesThisWeek} total`}
+            tone="warning"
+            highlightIndex={pageDays.length - 1}
+            formatTooltip={(datum, i) => `${formatWeekdayDate(pageDays[i])}: ${datum.value} pages`}
+          />
+        </Reveal>
+      )}
 
       <CapMeterConnected state={store.state} capId="reading" />
 

@@ -5,11 +5,14 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { Skill, SkillLevel, SkillSessionLog } from '@/types';
-import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate, weekKey } from '@/lib/dates';
+import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYesterdayLocal, calculateStreak, parseDate, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { Dialog, EmptyState, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { BarChart } from '@/components/ui/charts';
+import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
+import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
 
 export function SkillTracker({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -70,6 +73,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
   const totalPracticeMinutes = skillLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
   const totalPracticeHours = (totalPracticeMinutes / 60).toFixed(1);
+  const practiceDays = lastDayKeys(7);
+  const practiceMinutes = sumPerDay(skillLogs, practiceDays, (l) => l.durationMinutes);
+  const practiceWeekTotal = practiceMinutes.reduce((sum, m) => sum + m, 0);
 
   const getEffectiveSkillLevel = (skill: Skill): {
     level: SkillLevel;
@@ -249,7 +255,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
       </div>
 
       {/* Hero Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <Reveal index={0} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="card p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
             <Target size={22} />
@@ -257,7 +263,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           <div>
             <div className="text-xs text-content-disabled">Skills Tracked</div>
             <div className="text-xl font-display font-bold text-content-primary">
-              {skills.length} <span className="text-xs font-normal text-content-muted">skills</span>
+              <CountUp value={skills.length} /> <span className="text-xs font-normal text-content-muted">skills</span>
             </div>
           </div>
         </div>
@@ -269,7 +275,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           <div>
             <div className="text-xs text-content-disabled">Total Practice</div>
             <div className="text-xl font-display font-bold text-content-primary">
-              {totalPracticeHours} <span className="text-xs font-normal text-content-muted">hours</span>
+              <AutoNum text={totalPracticeHours} /> <span className="text-xs font-normal text-content-muted">hours</span>
             </div>
           </div>
         </div>
@@ -281,11 +287,29 @@ export function SkillTracker({ store }: { store: AppStore }) {
           <div>
             <div className="text-xs text-content-disabled">Practice Sessions</div>
             <div className="text-xl font-display font-bold text-success-text">
-              {skillLogs.length} <span className="text-xs font-normal text-content-muted">sessions</span>
+              <CountUp value={skillLogs.length} /> <span className="text-xs font-normal text-content-muted">sessions</span>
             </div>
           </div>
         </div>
-      </div>
+      </Reveal>
+
+      {skillLogs.length > 0 && (
+        <Reveal index={1} className="card p-4 space-y-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="section-title">Practice, Last 7 Days</h2>
+            <span className="text-xs text-content-muted tabular-nums">
+              <CountUp value={practiceWeekTotal} /> mins
+            </span>
+          </div>
+          <BarChart
+            data={practiceDays.map((day, i) => ({ label: formatWeekdayShort(day), value: practiceMinutes[i] }))}
+            label={`Skill practice minutes per day, last 7 days: ${practiceWeekTotal} total`}
+            tone="purple"
+            highlightIndex={practiceDays.length - 1}
+            formatTooltip={(datum, i) => `${formatWeekdayDate(practiceDays[i])}: ${datum.value} mins`}
+          />
+        </Reveal>
+      )}
 
       <CapMeterConnected state={store.state} capId="skills" />
 
