@@ -113,7 +113,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       {/* Top Header + Emergency Button */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
+          <h1 className="page-title flex items-center gap-2">
             <HeartPulse className="text-rose-theme" size={26} />
             Addiction Recovery Module
           </h1>
@@ -309,7 +309,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                   {/* Craving History */}
                   <div className="space-y-2">
                     {cravingLogs.slice(0, 10).map((log) => (
-                      <div key={log.id} className="card p-3 bg-bg-800/60 border border-overlay-subtle space-y-1 text-xs">
+                      <div key={log.id} className="card enter-item p-3 bg-bg-800/60 border border-overlay-subtle space-y-1 text-xs">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-content-secondary flex items-center gap-2">
                             Intensity: <span className={`px-2 py-0.5 rounded font-mono ${log.intensity >= 7 ? 'bg-rose-500/20 text-rose-theme' : 'bg-amber-500/20 text-warning-text'}`}>{log.intensity}/10</span>

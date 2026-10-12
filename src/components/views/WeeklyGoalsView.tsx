@@ -70,7 +70,7 @@ function GoalItemRow({
   return (
     <div
       key={item.id}
-      className={`p-4 rounded-xl border transition-all space-y-3 ${
+      className={`enter-item p-4 rounded-xl border transition-all space-y-3 ${
         isDone
           ? 'bg-emerald-500/5 border-emerald-500/20'
           : 'bg-bg-900/60 border-overlay-default hover:border-overlay-strong'
@@ -610,7 +610,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           <div>
             <div className="flex items-center gap-2">
               <Target size={24} className="text-success-text" />
-              <h1 className="text-2xl font-display font-bold text-content-primary">Weekly Executive Goals & Review</h1>
+              <h1 className="page-title">Weekly Executive Goals & Review</h1>
             </div>
             <p className="text-sm text-content-muted mt-1">
               Set high-leverage measurable goals, auto-sync activity progress across trackers, and conduct structured Sunday reflections.

@@ -314,7 +314,7 @@ export function Journal({ store }: { store: AppStore }) {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-display font-bold text-content-primary">Journal</h1>
+        <h1 className="page-title">Journal</h1>
         <p className="text-sm text-content-disabled mt-1">
           Reflect daily, build emotional awareness, and track your mood trends
         </p>
@@ -954,7 +954,7 @@ export function Journal({ store }: { store: AppStore }) {
                       <div
                         key={entry.id}
                         onClick={() => setSelectedEntry(entry)}
-                        className={`card p-4 card-hover w-full text-left flex items-center gap-3.5 transition-all group cursor-pointer border border-overlay-subtle border-l-4 ${moodMeta.borderLeftClass}`}
+                        className={`card enter-item p-4 card-hover w-full text-left flex items-center gap-3.5 transition-all group cursor-pointer border border-overlay-subtle border-l-4 ${moodMeta.borderLeftClass}`}
                       >
                         {/* Mood icon container with colored background tint */}
                         <div

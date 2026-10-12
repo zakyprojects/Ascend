@@ -18,7 +18,7 @@ export function TierView({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold text-content-primary">Ranks</h1>
+        <h1 className="page-title">Ranks</h1>
         <p className="text-sm text-content-disabled mt-1">Climb the ladder from Beginner to Master</p>
       </div>
 

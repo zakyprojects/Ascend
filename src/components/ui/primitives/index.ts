@@ -62,3 +62,6 @@ export type { SwitchProps } from './Switch';
 
 export { PageColumns } from './PageColumns';
 export type { PageColumnsProps } from './PageColumns';
+
+export { Disclosure } from './Disclosure';
+export type { DisclosureProps } from './Disclosure';

@@ -236,7 +236,7 @@ export function PrefrontalCortex({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
+        <h1 className="page-title flex items-center gap-2">
           <BrainCircuit className="text-cyan-hierarchy" size={26} />
           Prefrontal Cortex Module
         </h1>

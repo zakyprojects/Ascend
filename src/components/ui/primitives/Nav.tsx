@@ -38,10 +38,10 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
           aria-current={active ? 'page' : undefined}
           onClick={onClick}
           className={cx(
-            'w-full flex items-center justify-between gap-3 px-3 rounded-xl text-sm font-medium',
+            'group/nav w-full flex items-center justify-between gap-3 px-3 rounded-xl text-sm font-medium',
             density === 'compact' ? 'py-1.5' : 'py-2.5',
             active
-              ? 'bg-primary-500/15 text-brand-text'
+              ? 'text-brand-text'
               : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle',
             TAP_TARGET,
             FOCUS_RING,
@@ -50,20 +50,23 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
           )}
           {...props}
         >
-          {/* Active accent: grows in on the item that becomes current. */}
-          <span
-            aria-hidden="true"
-            className={cx(
-              'absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand-text transition-transform duration-base ease-emphasized motion-reduce:transition-none',
-              active ? 'scale-y-100' : 'scale-y-0'
-            )}
-          />
-          <span className="flex items-center gap-3">
-            <Icon size={20} aria-hidden="true" />
+          {/* Active pill with its accent bar. One element on the current item, named during a page
+              change (index.css, "Page transitions") so it glides from the old item to the new. */}
+          {active && (
+            <span aria-hidden="true" data-nav-pill className="absolute inset-0 rounded-xl bg-primary-500/15">
+              <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand-text" />
+            </span>
+          )}
+          <span className="relative flex items-center gap-3">
+            <Icon
+              size={20}
+              aria-hidden="true"
+              className="transition-transform duration-base ease-emphasized group-hover/nav:translate-x-0.5 motion-reduce:transition-none"
+            />
             <span>{label}</span>
           </span>
           {Boolean(badgeCount && badgeCount > 0) && (
-            <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-micro font-bold flex items-center justify-center">
+            <span className="relative w-5 h-5 rounded-full bg-rose-500 text-white text-micro font-bold flex items-center justify-center">
               {badgeCount}
             </span>
           )}
@@ -87,14 +90,10 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
         )}
         {...props}
       >
-        {/* Active pill behind the icon (bottom bar). */}
-        <span
-          className={cx(
-            'flex items-center justify-center w-12 h-7 rounded-full transition-colors duration-base ease-standard',
-            active ? 'bg-primary-500/15' : 'bg-transparent'
-          )}
-        >
-          <Icon size={20} aria-hidden="true" />
+        {/* Active pill behind the icon (bottom bar); glides between items like the sidebar's. */}
+        <span className="relative flex items-center justify-center w-12 h-7 rounded-full">
+          {active && <span aria-hidden="true" data-nav-pill className="absolute inset-0 rounded-full bg-primary-500/15" />}
+          <Icon size={20} aria-hidden="true" className="relative" />
         </span>
         <span className="text-micro font-medium">{label}</span>
         {Boolean(badgeCount && badgeCount > 0) && (

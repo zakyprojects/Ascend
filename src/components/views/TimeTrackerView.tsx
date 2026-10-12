@@ -193,7 +193,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
               <Clock size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-display font-extrabold text-content-primary leading-tight">
+              <h1 className="page-title">
                 Time Tracker
               </h1>
               <p className="text-xs text-content-muted">

@@ -37,15 +37,15 @@ export function Leagues({ store, onOpenAuthModal }: LeaguesProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-display font-bold text-content-primary">Leagues</h1>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="page-title">Leagues</h1>
           <p className="text-sm text-content-disabled mt-1">Compete with real users, view ranks, and climb tiers</p>
         </div>
         {!currentUser && onOpenAuthModal && (
           <button
             onClick={onOpenAuthModal}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-brand-text text-xs font-semibold rounded-xl transition-all"
+            className="hidden sm:flex shrink-0 items-center gap-1.5 px-3 py-1.5 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/30 text-brand-text text-xs font-semibold rounded-xl transition-all"
           >
             <Sparkles size={14} />
             <span>Sign Up to Claim Username</span>

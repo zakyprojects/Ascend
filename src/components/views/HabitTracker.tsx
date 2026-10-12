@@ -9,7 +9,7 @@ import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habit
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { Dialog, EmptyState, PageColumns } from '@/components/ui/primitives';
+import { Dialog, Disclosure, EmptyState, PageColumns } from '@/components/ui/primitives';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
@@ -64,12 +64,12 @@ export function HabitTracker({ store }: { store: AppStore }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-display font-bold text-content-primary">Habit Tracker</h1>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="page-title">Habit Tracker</h1>
           <p className="text-sm text-content-disabled mt-1">Build consistency, one day at a time</p>
         </div>
-        <button onClick={() => { setShowAdd(true); setAddMode('choice'); }} className="btn-primary">
+        <button onClick={() => { setShowAdd(true); setAddMode('choice'); }} className="btn-primary shrink-0">
           <Plus size={18} />
           <span className="hidden sm:inline">New Habit</span>
         </button>
@@ -103,19 +103,15 @@ export function HabitTracker({ store }: { store: AppStore }) {
           <>
             <CapMeterConnected state={store.state} capId="presetHabits" />
 
-            {/* Missed Habit Penalty Info Banner */}
-            <div className="card p-3.5 flex items-start gap-2.5 text-xs text-content-muted">
-              <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
-              <div className="space-y-0.5">
-                <p className="font-bold text-content-secondary">Tier-Scaled Missed Habit Penalties:</p>
-                <p className="leading-relaxed">
-                  Missing a preset habit deducts points equal to its value (1st miss = -1x).
-                  For <span className="text-content-secondary font-semibold">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="text-warning-text font-semibold">1.5x</span>.
-                  For <span className="text-brand-text font-semibold">Performer tier and above</span>, escalation caps at <span className="text-rose-theme font-semibold">2.5x</span>.
-                  Completing the habit breaks the miss streak and resets the penalty to 1x!
-                </p>
-              </div>
-            </div>
+            {/* Missed Habit Penalty Info */}
+            <Disclosure icon={AlertTriangle} tone="warning" title="Tier-Scaled Missed Habit Penalties">
+              <p>
+                Missing a preset habit deducts points equal to its value (1st miss = -1x).
+                For <span className="text-content-secondary font-semibold">Below Performer tier</span> (Beginner to Achiever), penalty escalation caps at <span className="text-warning-text font-semibold">1.5x</span>.
+                For <span className="text-brand-text font-semibold">Performer tier and above</span>, escalation caps at <span className="text-rose-theme font-semibold">2.5x</span>.
+                Completing the habit breaks the miss streak and resets the penalty to 1x!
+              </p>
+            </Disclosure>
           </>
         }
       >
@@ -399,7 +395,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
   };
 
   return (
-    <div className={`card p-4 card-hover group ${done ? 'opacity-75' : ''}`}>
+    <div className={`card enter-item p-4 card-hover group ${done ? 'opacity-75' : ''}`}>
       <div className="flex items-center gap-3">
         <button
           onClick={handleToggle}

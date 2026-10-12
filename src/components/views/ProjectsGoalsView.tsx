@@ -119,7 +119,7 @@ function TaskItemRow({
   return (
     <div
       key={task.id}
-      className={`card p-4 border transition-all rounded-2xl space-y-3 ${
+      className={`card enter-item p-4 border transition-all rounded-2xl space-y-3 ${
         projectLock.isLocked
           ? 'bg-bg-800/80 border-amber-500/20'
           : task.completed
@@ -1263,7 +1263,7 @@ export function ProjectsGoalsView({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2.5">
+              <h1 className="page-title flex items-center gap-2.5">
                 <FolderKanban className="text-purple-hierarchy" size={26} />
                 Projects & Goals
               </h1>
@@ -1617,7 +1617,7 @@ export function ProjectsGoalsView({
                 return (
                   <div
                     key={goal.id}
-                    className="card p-4 sm:p-4.5 border border-overlay-default bg-bg-800 rounded-2xl space-y-3.5 hover:border-purple-500/30 transition-all shadow-sm group"
+                    className="card enter-item p-4 sm:p-4.5 border border-overlay-default bg-bg-800 rounded-2xl space-y-3.5 hover:border-purple-500/30 transition-all shadow-sm group"
                   >
                     {/* Top Row: Info & Metadata (Left) + Actions & Controls (Right) */}
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -1970,7 +1970,7 @@ export function ProjectsGoalsView({
                 return (
                   <div
                     key={project.id}
-                    className={`card p-4 sm:p-4.5 border rounded-2xl space-y-3.5 transition-all shadow-sm group ${
+                    className={`card enter-item p-4 sm:p-4.5 border rounded-2xl space-y-3.5 transition-all shadow-sm group ${
                       lockStatus.isLocked
                         ? 'border-amber-500/20 bg-bg-800/80 hover:border-amber-500/40'
                         : 'border-overlay-default bg-bg-800 hover:border-cyan-500/30'

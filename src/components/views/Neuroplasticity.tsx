@@ -12,7 +12,7 @@ export function Neuroplasticity({ onViewChange }: NeuroplasticityProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold text-content-primary">Neuroplasticity</h1>
+        <h1 className="page-title">Neuroplasticity</h1>
         <p className="text-sm text-content-disabled mt-1">How your brain rewires itself — and how to use it</p>
       </div>
 

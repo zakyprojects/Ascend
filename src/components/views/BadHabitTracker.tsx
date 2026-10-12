@@ -21,7 +21,7 @@ import { BadHabit } from '@/types';
 import { todayKey, formatDateLong, getNow } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { Dialog, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
+import { Dialog, Disclosure, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
 import { getBadHabitSlot } from '@/lib/badHabitEligibility';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { getCapStatus } from '@/lib/capStatus';
@@ -130,9 +130,9 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="page-title flex items-center gap-2">
             <ShieldAlert className="text-rose-theme" size={26} />
             Bad Habit Reduction Tracker
           </h1>
@@ -140,7 +140,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
             Earn points on your first {BAD_HABIT_POINTS.eligibleSlots} active habits (+{BAD_HABIT_POINTS.resistBase} per resist, max +{BAD_HABIT_POINTS.dailyCap}/day), enforce rank-tiered escalating penalties on those habits, and complete 75%+ commitments.
           </p>
         </div>
-        <button onClick={() => setAddModalOpen(true)} className="btn-primary flex items-center gap-2">
+        <button onClick={() => setAddModalOpen(true)} className="btn-primary flex items-center gap-2 shrink-0">
           <Plus size={18} />
           <span>Add Bad Habit</span>
         </button>
@@ -190,25 +190,19 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           <>
             <CapMeterConnected state={store.state} capId="badHabitsResisted" />
 
-            <div className="card p-4 border-l-4 border-l-amber-500 bg-amber-500/5 flex items-start gap-3">
-              <AlertTriangle size={20} className="text-warning-text shrink-0 mt-0.5" />
-              <div className="text-xs text-content-tertiary leading-relaxed space-y-1">
-                <div>
-                  <span className="font-bold text-warning-text">Escalating Penalty & Point Cap System Active:</span>
-                </div>
-                <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
-                  <li>
-                    <span className="text-content-secondary">Daily Resists & Cap:</span> Only the first <span className="text-success-text font-semibold">{BAD_HABIT_POINTS.eligibleSlots} active habits</span> (oldest first) are point-eligible. Each eligible resist earns <span className="text-success-text font-semibold">+{BAD_HABIT_POINTS.resistBase} pts</span> (max +{BAD_HABIT_POINTS.dailyCap} pts/day). Other habits are tracking-only (streak only, 0 pts for resist, occurred, and missed days).
-                  </li>
-                  <li>
-                    <span className="text-content-secondary">Occurred & Miss Penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-rose-theme font-semibold">point-eligible habits only</span>. Deleting an eligible habit refunds its resist points and today's Occurred penalty (earlier penalties stay); completing keeps everything. Promoting the next eligible habit recalculates today's resists. Undo is available for today's action.
-                  </li>
-                  <li>
-                    <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="text-brand-text font-semibold">75%</span> of commitment duration. Completing preserves points earned!
-                  </li>
-                </ul>
-              </div>
-            </div>
+            <Disclosure icon={AlertTriangle} tone="warning" title="Escalating Penalty & Point Cap System Active">
+              <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
+                <li>
+                  <span className="text-content-secondary">Daily Resists & Cap:</span> Only the first <span className="text-success-text font-semibold">{BAD_HABIT_POINTS.eligibleSlots} active habits</span> (oldest first) are point-eligible. Each eligible resist earns <span className="text-success-text font-semibold">+{BAD_HABIT_POINTS.resistBase} pts</span> (max +{BAD_HABIT_POINTS.dailyCap} pts/day). Other habits are tracking-only (streak only, 0 pts for resist, occurred, and missed days).
+                </li>
+                <li>
+                  <span className="text-content-secondary">Occurred & Miss Penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-rose-theme font-semibold">point-eligible habits only</span>. Deleting an eligible habit refunds its resist points and today's Occurred penalty (earlier penalties stay); completing keeps everything. Promoting the next eligible habit recalculates today's resists. Undo is available for today's action.
+                </li>
+                <li>
+                  <span className="text-content-secondary">Completion Unlock:</span> Unlocks when resisted streak reaches <span className="text-brand-text font-semibold">75%</span> of commitment duration. Completing preserves points earned!
+                </li>
+              </ul>
+            </Disclosure>
           </>
         }
       >
@@ -260,7 +254,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
                 const slotInfo = getBadHabitSlot(badHabits, bh.id);
 
                 return (
-                  <div key={bh.id} className="card p-4 space-y-4">
+                  <div key={bh.id} className="card enter-item p-4 space-y-4">
                     {/* Top Bar */}
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-overlay-subtle pb-3">
                       <div>

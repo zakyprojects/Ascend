@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEFAULT_VIEW, isView, View } from './views';
+import { runPageTransition } from './pageTransition';
 
 /**
  * Hash routing for the app's pages: `#/habits`. Refresh keeps the page, links open a page
@@ -48,7 +49,10 @@ export function useViewRoute() {
     // popstate covers back/forward; hashchange covers a hash typed or pasted into the address bar.
     const onHistoryMove = () => {
       const view = viewFromHash(window.location.hash);
-      if (view && view !== viewRef.current) setRoute({ view, kind: 'pop' });
+      if (!view || view === viewRef.current) return;
+      // Claimed now: the transition renders a frame later, and a repeat event must not re-run it.
+      viewRef.current = view;
+      runPageTransition(() => setRoute({ view, kind: 'pop' }));
     };
     window.addEventListener('popstate', onHistoryMove);
     window.addEventListener('hashchange', onHistoryMove);
@@ -61,7 +65,8 @@ export function useViewRoute() {
   const navigate = useCallback((view: View) => {
     if (view === viewRef.current) return;
     window.history.pushState(null, '', hashFor(view));
-    setRoute({ view, kind: 'push' });
+    viewRef.current = view;
+    runPageTransition(() => setRoute({ view, kind: 'push' }));
   }, []);
 
   return { view: route.view, navigationKind: route.kind, navigate };

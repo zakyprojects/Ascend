@@ -32,7 +32,7 @@ export function Lessons({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold text-content-primary">Lessons</h1>
+        <h1 className="page-title">Lessons</h1>
         <p className="text-sm text-content-disabled mt-1">Short, practical self-improvement articles</p>
       </div>
 

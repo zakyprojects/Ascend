@@ -618,7 +618,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-display font-bold text-content-primary flex items-center gap-2">
+            <h1 className="page-title flex items-center gap-2">
               <Users className="text-success-text" size={26} />
               Accountability Partners
             </h1>

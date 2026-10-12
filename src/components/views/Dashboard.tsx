@@ -154,7 +154,7 @@ export function Dashboard({ store, onViewChange, onOpenAuthModal }: DashboardPro
       {/* Header */}
       <div>
         <p className="text-sm text-content-disabled">{formatDateLong(todayKey())}</p>
-        <h1 className="text-2xl font-display font-bold text-content-primary mt-0.5">
+        <h1 className="page-title mt-0.5">
           {greeting()}, let's ascend
         </h1>
       </div>
