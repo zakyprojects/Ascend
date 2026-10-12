@@ -35,6 +35,8 @@ import {
 import { WeeklyGoalItem, WeeklyGoalPriority, WeeklyGoalLinkedModule, WeeklyGoalReflection } from '@/types';
 import { computeLinkedGoalProgress, GoalProgressResult, LINKED_GOAL_METRICS, LinkedModule } from '@/lib/linkedGoalMetrics';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
+import { BarChart } from '@/components/ui/charts';
+import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 function GoalItemRow({
   item,
   selectedWeekKey,
@@ -256,6 +258,8 @@ function GoalItemRow({
     </div>
   );
 }
+
+const TREND_WEEKS = 8;
 
 export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -573,6 +577,20 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     };
   }, [activeGoalDoc.goals, getGoalProgress]);
 
+  // Completion % of the last 8 weeks (same averaging as goalStats), oldest first.
+  const weekTrend = useMemo(() => {
+    return Array.from({ length: TREND_WEEKS }, (_, i) => {
+      const key = offsetWeekKey(currentWeekKey, i - (TREND_WEEKS - 1));
+      const goals = (weeklyGoals.find((w) => w.weekKey === key)?.goals ?? []).filter((g) => !g.archived);
+      const percent = goals.length
+        ? Math.round(goals.reduce((sum, g) => sum + getGoalProgress(g, key).percent, 0) / goals.length)
+        : 0;
+      return { key, goals: goals.length, percent };
+    });
+  }, [currentWeekKey, weeklyGoals, getGoalProgress]);
+  const trendWeeksWithGoals = weekTrend.filter((w) => w.goals > 0).length;
+  const selectedTrendIndex = weekTrend.findIndex((w) => w.key === selectedWeekKey);
+
   const priorityColor = (p: WeeklyGoalPriority) => {
     switch (p) {
       case 'high':
@@ -645,29 +663,51 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                 <BarChart2 size={14} className="text-brand-text" />
                 Weekly Target Completion
               </span>
-              <span className="text-brand-text font-bold">{goalStats.percent}% Complete ({goalStats.completed}/{goalStats.total})</span>
+              <span className="text-brand-text font-bold tabular-nums">
+                <AutoNum text={`${goalStats.percent}%`} /> Complete ({goalStats.completed}/{goalStats.total})
+              </span>
             </div>
             <ProgressBar value={goalStats.percent} label="Weekly target completion" size="lg" />
           </div>
 
           <div className="bg-bg-900/40 p-3.5 rounded-xl border border-overlay-subtle flex items-center justify-around">
             <div className="text-center">
-              <span className="text-lg font-bold text-content-primary block">{goalStats.total}</span>
+              <CountUp value={goalStats.total} className="text-lg font-bold text-content-primary block tabular-nums" />
               <span className="text-2xs uppercase tracking-wider text-content-muted font-medium">Total Goals</span>
             </div>
             <div className="w-px h-8 bg-overlay-default" />
             <div className="text-center">
-              <span className="text-lg font-bold text-success-text block">{goalStats.completed}</span>
+              <CountUp value={goalStats.completed} className="text-lg font-bold text-success-text block tabular-nums" />
               <span className="text-2xs uppercase tracking-wider text-content-muted font-medium">Completed</span>
             </div>
             <div className="w-px h-8 bg-overlay-default" />
             <div className="text-center">
-              <span className="text-lg font-bold text-rose-theme block">{goalStats.highPriorityCompleted}</span>
+              <CountUp value={goalStats.highPriorityCompleted} className="text-lg font-bold text-rose-theme block tabular-nums" />
               <span className="text-2xs uppercase tracking-wider text-content-muted font-medium">High Pri Done</span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* LAST 8 WEEKS TREND (needs at least two planned weeks to say anything) */}
+      {trendWeeksWithGoals >= 2 && (
+        <Reveal className="card p-4 space-y-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="section-title">Last {TREND_WEEKS} Weeks</h2>
+            <span className="text-xs text-content-muted">Weekly target completion</span>
+          </div>
+          <BarChart
+            data={weekTrend.map((w) => ({ label: formatWeekRange(w.key).split(' –')[0], value: w.percent }))}
+            label={`Weekly goal completion, last ${TREND_WEEKS} weeks`}
+            max={100}
+            highlightIndex={selectedTrendIndex >= 0 ? selectedTrendIndex : undefined}
+            formatTooltip={(_, i) => {
+              const w = weekTrend[i];
+              return w.goals ? `${formatWeekRange(w.key)}: ${w.percent}% of ${w.goals} goal${w.goals > 1 ? 's' : ''}` : `${formatWeekRange(w.key)}: no goals`;
+            }}
+          />
+        </Reveal>
+      )}
 
       {/* CARRY-OVER PROMPT BANNER FOR INCOMPLETE PAST GOALS */}
       {unaddressedPastGoals.length > 0 && selectedWeekKey === currentWeekKey && (
