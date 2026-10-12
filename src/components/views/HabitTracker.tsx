@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Plus, Flame, Trash2, Check, Calendar, Repeat, BookMarked, Pencil, Info, AlertTriangle, BookOpen, Lock } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Habit, HabitFrequency } from '@/types';
-import { calculateStreak, calculateBestStreak, periodKey, getNow, weekKey } from '@/lib/dates';
+import { calculateStreak, calculateBestStreak, getNow, weekKey, previousPeriodKey, formatWeekdayDate } from '@/lib/dates';
 import { PRESET_CATEGORIES, PresetHabit } from '@/lib/presets';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habitPenalties';
@@ -11,7 +11,10 @@ import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { useCompletionPop } from '@/lib/useCompletionPop';
-import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
+import { Heatmap } from '@/components/ui/charts';
+import { CountUp, Reveal } from '@/components/ui/Motion';
+import { dailyHabitCompletions, weekGridDayKeys } from '@/lib/weeklyActivity';
 
 export function HabitTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
@@ -72,20 +75,24 @@ export function HabitTracker({ store }: { store: AppStore }) {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3">
+      <Reveal index={0} className="grid grid-cols-3 gap-3">
         <div className="card p-4">
           <div className="stat-label">Total Habits</div>
-          <div className="stat-value mt-1">{habits.length}</div>
+          <CountUp value={habits.length} className="stat-value mt-1 block tabular-nums" />
         </div>
         <div className="card p-4">
           <div className="stat-label">To Do Today</div>
-          <div className="stat-value mt-1 text-secondary-400">{todayHabits.length}</div>
+          <CountUp value={todayHabits.length} className="stat-value mt-1 block tabular-nums text-secondary-400" />
         </div>
         <div className="card p-4">
           <div className="stat-label">Done Today</div>
-          <div className="stat-value mt-1 text-brand-text">{completedToday.length}</div>
+          <CountUp value={completedToday.length} className="stat-value mt-1 block tabular-nums text-brand-text" />
         </div>
-      </div>
+      </Reveal>
+
+      <Reveal index={1}>
+        <ConsistencyCard habits={habits} />
+      </Reveal>
 
       <CapMeterConnected state={store.state} capId="presetHabits" />
 
@@ -302,6 +309,78 @@ export function HabitTracker({ store }: { store: AppStore }) {
   );
 }
 
+const CONSISTENCY_WEEKS = 12;
+
+/** Daily-habit completion over the last 12 weeks, one cell per day, Monday at the top. */
+function ConsistencyCard({ habits }: { habits: Habit[] }) {
+  const grid = useMemo(() => {
+    const keys = weekGridDayKeys(CONSISTENCY_WEEKS);
+    const realDays = keys.filter((k): k is string => k !== null);
+    const byDay = new Map(dailyHabitCompletions(habits, realDays).map((d) => [d.day, d]));
+    return keys.map((key) => {
+      const day = key ? byDay.get(key) : undefined;
+      if (!key || !day) return null;
+      const date = formatWeekdayDate(key);
+      return {
+        label: day.total > 0 ? `${date}: ${day.done}/${day.total} habits` : `${date}: no daily habits`,
+        value: day.total > 0 ? Math.round((day.done / day.total) * 100) : 0,
+      };
+    });
+  }, [habits]);
+
+  if (!habits.some((h) => h.frequency === 'daily')) return null;
+  const activeDays = grid.filter((c) => c && c.value > 0).length;
+
+  return (
+    <div className="card p-4 space-y-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="section-title">Consistency</h2>
+        <span className="text-xs text-content-muted tabular-nums">
+          <CountUp value={activeDays} /> active days · last {CONSISTENCY_WEEKS} weeks
+        </span>
+      </div>
+      <Heatmap
+        cells={grid}
+        max={100}
+        label={`Daily habit completion, last ${CONSISTENCY_WEEKS} weeks: ${activeDays} active days`}
+        className="max-w-xl"
+      />
+    </div>
+  );
+}
+
+const HISTORY_PERIODS = 7;
+
+/** The habit's last seven periods (days or weeks), oldest first, current one last. */
+function HabitHistory({ habit }: { habit: Habit }) {
+  const unit = habit.frequency === 'daily' ? 'day' : 'week';
+  const periods = Array.from({ length: HISTORY_PERIODS }, (_, i) => {
+    const key = previousPeriodKey(habit.frequency, HISTORY_PERIODS - 1 - i);
+    const completions = habit.completions as Habit['completions'] | string[] | undefined;
+    const done = Array.isArray(completions) ? completions.includes(key) : completions?.[key]?.done === true;
+    return { key, done, current: i === HISTORY_PERIODS - 1 };
+  });
+  const doneCount = periods.filter((p) => p.done).length;
+  return (
+    <div
+      role="img"
+      aria-label={`Done ${doneCount} of the last ${HISTORY_PERIODS} ${unit}s`}
+      className="hidden sm:flex items-center gap-1 shrink-0"
+    >
+      {periods.map((p) => (
+        <span
+          key={p.key}
+          className={cx(
+            'h-2.5 w-2.5 rounded-[3px] transition-colors duration-base',
+            p.done ? 'bg-primary-500' : 'bg-overlay-default',
+            p.current && !p.done && 'ring-1 ring-inset ring-overlay-strong'
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
 function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; onDelete: () => void }) {
   const done = store.isHabitDone(habit);
   const streak = calculateStreak(habit.completions, habit.frequency);
@@ -406,6 +485,8 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
             );
           })()}
         </div>
+
+        <HabitHistory habit={habit} />
 
         <button
           onClick={onDelete}
