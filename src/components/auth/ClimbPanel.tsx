@@ -19,6 +19,8 @@ export interface ClimbPanelProps {
   passwordVisible?: boolean;
   /** Goes up by one per error the form shows. */
   errorTick?: number;
+  /** An error is showing and no field has changed since: Ember keeps its worried face. */
+  upset?: boolean;
   /** The side of the page the panel sits on; its slanted edge faces the form on the other side. */
   side: ClimbPanelSide;
   className?: string;
@@ -78,6 +80,7 @@ export function ClimbPanel({
   caret = 0,
   passwordVisible = false,
   errorTick = 0,
+  upset = false,
   side,
   className = '',
 }: ClimbPanelProps) {
@@ -119,6 +122,7 @@ export function ClimbPanel({
           caret={caret}
           passwordVisible={passwordVisible}
           errorTick={errorTick}
+          upset={upset}
           progress={progress}
           hoverTrail={mode === 'signup-choice' ? hoverTrail : null}
           badge={mode === 'signup' && avatar ? avatar : undefined}

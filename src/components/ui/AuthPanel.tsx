@@ -65,6 +65,7 @@ export type AuthScreen = 'login' | 'signup-choice' | 'signup-form' | 'upgrade';
  *   field's visible width), in steps of 1/40 so small moves do not report.
  * - passwordVisible: the focused password field shows its text (show/hide toggle).
  * - errorTick: goes up by one each time the form shows an error message.
+ * - upset: an error was shown and the user has not changed any field since (or left the screen).
  */
 export type AuthFocus = 'email' | 'password' | 'confirm' | 'username' | null;
 
@@ -79,6 +80,7 @@ export interface AuthClimbState {
   caret: number;
   passwordVisible: boolean;
   errorTick: number;
+  upset: boolean;
 }
 
 /** The form's fields by element id, as the page's mascot knows them. */
@@ -264,6 +266,9 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const [caret, setCaret] = useState(0);
   const [shownPasswords, setShownPasswords] = useState({ password: false, confirm: false });
   const [errorTick, setErrorTick] = useState(0);
+  // The field values when the last error was shown; the mascot stays upset until one changes.
+  const [errorInputs, setErrorInputs] = useState<string | null>(null);
+  const inputsKey = [email, password, confirmPassword, username, avatar].join('\u0000');
 
   // Screen switches slide in (direction from MODE_ORDER); the first screen does not. Derived
   // during render so a new screen's first frame animates.
@@ -303,12 +308,14 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   // A new screen mounts new fields; nothing has focus until one of them takes it.
   useEffect(() => {
     setFocus(null);
+    setErrorInputs(null);
   }, [screen]);
 
   /** Shows an error message (and counts it, so the page can react to each one). */
   const showError = (message: string) => {
     setErrorMsg(message);
     setErrorTick((tick) => tick + 1);
+    setErrorInputs(inputsKey);
   };
 
   const trackCaret = (target: EventTarget) => {
@@ -386,6 +393,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const passwordVisible =
     shownFocus === 'password' ? shownPasswords.password : shownFocus === 'confirm' ? shownPasswords.confirm : false;
   const shownCaret = shownFocus === 'email' || shownFocus === 'username' ? caret : 0;
+  const upset = phase === 'idle' && errorInputs !== null && errorInputs === inputsKey;
 
   // Report the climb state upward. The callback lives in a ref so a new function from the parent
   // on every render never re-fires this (no render loops); only real changes do.
@@ -405,8 +413,9 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       caret: shownCaret,
       passwordVisible,
       errorTick,
+      upset,
     });
-  }, [screen, progress, steps, phase, shownTrail, previewUsername, previewAvatar, shownFocus, shownCaret, passwordVisible, errorTick]);
+  }, [screen, progress, steps, phase, shownTrail, previewUsername, previewAvatar, shownFocus, shownCaret, passwordVisible, errorTick, upset]);
 
   const guestPoints = guestState.seasonPoints ?? guestState.totalPoints ?? 0;
   const guestHabitsCount = guestState.habits.length;

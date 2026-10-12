@@ -17,6 +17,8 @@ export interface EmberProps {
   passwordVisible: boolean;
   /** Goes up by one each time the form shows an error. */
   errorTick: number;
+  /** An error is showing and the user has not changed a field since: the worried face holds. */
+  upset: boolean;
   /** Valid fields so far: Ember nods when it goes up. */
   progress: number;
   /** Signup choice: the option the pointer or focus is on. */
@@ -218,7 +220,6 @@ const EASE_SPRING = 'cubic-bezier(0.34, 1.36, 0.64, 1)';
 const GAZE_T = `transform 150ms ${EASE_OUT}`;
 const POSE_T = `transform 320ms ${EASE_SPRING}`;
 const FADE_T = 'opacity 140ms linear';
-const WORRY_MS = 1100;
 
 const origin = (x: number, y: number) => `${x}px ${y}px`;
 
@@ -310,6 +311,7 @@ export function Ember({
   caret,
   passwordVisible,
   errorTick,
+  upset,
   progress,
   hoverTrail,
   badge,
@@ -328,33 +330,27 @@ export function Ember({
   const blinkL = useRef<SVGGElement>(null);
   const blinkR = useRef<SVGGElement>(null);
 
-  // Worried brows for a moment after each error (a reaction, not a loop).
-  const [worried, setWorried] = useState(false);
+  // Each new error: a head shake. The worried face itself holds while `upset` (until a field changes).
   const lastErrorTick = useRef(errorTick);
   useEffect(() => {
     if (errorTick === lastErrorTick.current) return;
     const rose = errorTick > lastErrorTick.current;
     lastErrorTick.current = errorTick;
-    if (!rose) return;
-    setWorried(true);
-    if (!reduced) {
-      shakeRef.current?.animate(
-        [
-          { transform: 'none' },
-          { transform: 'translateX(-7px) rotate(-4deg)' },
-          { transform: 'translateX(6px) rotate(3deg)' },
-          { transform: 'translateX(-4px) rotate(-2deg)' },
-          { transform: 'translateX(2px) rotate(1deg)' },
-          { transform: 'none' },
-        ],
-        { duration: 420, easing: 'ease-in-out' }
-      );
-    }
-    const timer = window.setTimeout(() => setWorried(false), WORRY_MS);
-    return () => window.clearTimeout(timer);
+    if (!rose || reduced) return;
+    shakeRef.current?.animate(
+      [
+        { transform: 'none' },
+        { transform: 'translateX(-7px) rotate(-4deg)' },
+        { transform: 'translateX(6px) rotate(3deg)' },
+        { transform: 'translateX(-4px) rotate(-2deg)' },
+        { transform: 'translateX(2px) rotate(1deg)' },
+        { transform: 'none' },
+      ],
+      { duration: 420, easing: 'ease-in-out' }
+    );
   }, [errorTick, reduced]);
 
-  const pose = poseFor({ phase, focus, caret, passwordVisible, hoverTrail, badge }, worried, split, finePointer, formSide);
+  const pose = poseFor({ phase, focus, caret, passwordVisible, hoverTrail, badge }, upset, split, finePointer, formSide);
 
   // ---- One-off reactions (WAAPI; skipped under reduced motion) ----
   const lastProgress = useRef(progress);
