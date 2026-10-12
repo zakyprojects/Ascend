@@ -45,13 +45,29 @@ interface AuthPanelProps {
   /** Sign-in, sign-up or guest start finished (after the success screen). */
   onDone: () => void;
   guestState: AppState;
+  /**
+   * On the sign-in pages: the addresses of the other screens, shown as real links under the form
+   * (sign in <-> create account; "Not now" for a guest's upgrade), and how to follow one in-app.
+   */
+  pageLinks?: { login: string; signup: string; dismiss: string; navigate: (href: string) => void };
 }
+
+/** A plain left click follows the link in-app; modified/middle clicks keep the browser's own behaviour. */
+function inAppClick(href: string, navigate: (href: string) => void) {
+  return (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    navigate(href);
+  };
+}
+
+const PAGE_LINK_CLASS = 'font-medium text-brand-text hover:underline underline-offset-2';
 
 /**
  * The sign-in / sign-up / guest-upgrade form with its success screen. Screen changes slide in;
  * the screen shown when the panel becomes active does not.
  */
-export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, onDone, guestState }: AuthPanelProps) {
+export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, onDone, guestState, pageLinks }: AuthPanelProps) {
   const isAnonymousUser = Boolean(guestState.currentUser?.isAnonymous);
   const isAuthenticated = Boolean(guestState.currentUser);
 
@@ -254,6 +270,26 @@ export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, on
     setUsernameStatus(null);
   };
 
+  const guestButton = (
+    <button
+      type="button"
+      onClick={handleGuestSignIn}
+      disabled={loading}
+      className="w-full p-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text rounded-2xl border border-emerald-500/30 transition-all flex items-center justify-between group disabled:opacity-50"
+    >
+      <div className="text-left">
+        <div className="font-semibold text-sm flex items-center gap-2 text-success-text">
+          <Zap size={15} />
+          <span>Continue as Guest</span>
+        </div>
+        <div className="text-micro opacity-90 mt-0.5">
+          Start now. No email or password needed.
+        </div>
+      </div>
+      <UserCheck size={20} className="text-success-text shrink-0" />
+    </button>
+  );
+
   return (
     <div className="space-y-4">
       {/* Error / Success Notifications */}
@@ -332,23 +368,7 @@ export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, on
             </button>
 
             {/* Option 3: Continue as Guest */}
-            <button
-              type="button"
-              onClick={handleGuestSignIn}
-              disabled={loading}
-              className="w-full p-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-success-text rounded-2xl border border-emerald-500/30 transition-all flex items-center justify-between group disabled:opacity-50"
-            >
-              <div className="text-left">
-                <div className="font-semibold text-sm flex items-center gap-2 text-success-text">
-                  <Zap size={15} />
-                  <span>Continue as Guest</span>
-                </div>
-                <div className="text-micro opacity-90 mt-0.5">
-                  Start now. No email or password needed.
-                </div>
-              </div>
-              <UserCheck size={20} className="text-success-text shrink-0" />
-            </button>
+            {guestButton}
           </div>
         </div>
       )}
@@ -357,7 +377,7 @@ export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, on
       {mode !== 'choice' && !successTitle && (
         <div key={mode} className={`space-y-4 ${slideClass}`}>
           {/* Header with Back to Options button for unauthenticated users */}
-          {!isAuthenticated && (
+          {!isAuthenticated && !pageLinks && (
             <button
               type="button"
               onClick={() => switchMode('choice')}
@@ -539,6 +559,35 @@ export function AuthPanel({ mode, onModeChange, active = true, onAuthSuccess, on
               )}
             </button>
           </form>
+
+          {pageLinks && mode === 'login' && (
+            <p className="text-xs text-content-muted text-center pt-1">
+              Don’t have an account?{' '}
+              <a href={pageLinks.signup} onClick={inAppClick(pageLinks.signup, pageLinks.navigate)} className={PAGE_LINK_CLASS}>
+                Create one
+              </a>
+            </p>
+          )}
+
+          {pageLinks && mode === 'signup' && (
+            <div className="space-y-4 pt-1">
+              {guestButton}
+              <p className="text-xs text-content-muted text-center">
+                Already have an account?{' '}
+                <a href={pageLinks.login} onClick={inAppClick(pageLinks.login, pageLinks.navigate)} className={PAGE_LINK_CLASS}>
+                  Sign in
+                </a>
+              </p>
+            </div>
+          )}
+
+          {pageLinks && mode === 'upgrade' && (
+            <p className="text-xs text-content-muted text-center pt-1">
+              <a href={pageLinks.dismiss} onClick={inAppClick(pageLinks.dismiss, pageLinks.navigate)} className={PAGE_LINK_CLASS}>
+                Not now
+              </a>
+            </p>
+          )}
         </div>
       )}
     </div>

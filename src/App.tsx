@@ -1,6 +1,9 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
 import { useAppState } from '@/lib/store';
 import { useViewRoute } from '@/lib/useViewRoute';
+import { authPathWithNext, nextFromSearch, pathForAuthRoute, pathForView } from '@/lib/routes';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
 import { AppShell } from '@/components/AppShell';
 import {
   AccountabilityPartner,
@@ -27,6 +30,8 @@ import {
 } from '@/components/views/lazyViews';
 import { PageSkeleton } from '@/components/views/PageSkeleton';
 import { AuthModal } from '@/components/ui/AuthModal';
+import type { AuthPageProps, AuthScreen } from '@/components/auth/AuthPage';
+import { loadedAuthPage, preloadAuthPage } from '@/components/auth/lazyAuthPage';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { AscendLoadingOverlay, OVERLAY_EXIT_MS } from '@/components/ui/AscendLoadingIndicator';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
@@ -37,14 +42,80 @@ import { UpdateBanner } from '@/components/ui/UpdateBanner';
 function App() {
   const store = useAppState();
   // Page changes wait for the page's code first, so the view transition never shows a fallback.
-  const { view, navigationKind, navigate: setView } = useViewRoute(preloadView);
+  const { view, auth, search, navigationKind, navigate: setView, goToPath } = useViewRoute(preloadView);
   const [userOpenedAuthModal, setUserOpenedAuthModal] = useState(false);
 
-  // Blocking loader: the initial session check, then any later sign-in that is still loading
-  // the user's data once the auth modal's success screen is done (never an empty guest view).
-  // It stays mounted for its exit animation, revealing the app beneath; state is derived
-  // during render so the app never shows a frame without it.
-  const showLoader = store.isAuthChecking || (store.isSessionLoading && !userOpenedAuthModal);
+  // ---- Sign-in pages (/login, /signup) ------------------------------------------------------
+  // Signed out: every page goes to /login?next=<page>. A guest (anonymous account) on /login or
+  // /signup gets /signup in save-progress mode. Signed in: the sign-in pages go to `next`.
+  // Without Supabase (local-only mode) there is no sign-in at all: the app opens on local data.
+  const currentUser = store.state.currentUser;
+  const isGuest = Boolean(currentUser?.isAnonymous);
+  const authReady = !store.isAuthChecking;
+  const authGate = isSupabaseConfigured;
+
+  // The success screen holds the page it started on (the user changes under it) until it is done.
+  const [authHold, setAuthHold] = useState<AuthScreen | null>(null);
+  // Set when a sign-in, sign-up or guest start finishes: the page goes to `next` as soon as the
+  // account is loaded (a new guest too, who would otherwise get the save-progress page).
+  const [leavingAuth, setLeavingAuth] = useState(false);
+  if (leavingAuth && !auth) setLeavingAuth(false);
+  let routeScreen: AuthScreen | null = null;
+  if (authReady && authGate) {
+    if (auth) routeScreen = !currentUser ? auth : isGuest && !leavingAuth ? 'upgrade' : null;
+    // A sign-in still loading its data shows the session loader, not the sign-in page.
+    else if (!currentUser && !store.isSessionLoading) routeScreen = 'login';
+  }
+  const authScreen = authHold ?? routeScreen;
+
+  // Redirects, before paint (the page shown above already matches where they go).
+  const hadUserRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!authReady) return;
+    const wasSignedIn = hadUserRef.current;
+    hadUserRef.current = Boolean(currentUser);
+    if (authHold) return;
+    let target: string | null = null;
+    // A Supabase hash (#access_token=…, #error=…) rides along on redirects to the sign-in pages.
+    const authHash = window.location.hash.startsWith('#/') ? '' : window.location.hash;
+    if (!authGate) {
+      if (auth) target = '/';
+    } else if (auth) {
+      if (currentUser && (!isGuest || leavingAuth)) target = nextFromSearch(search);
+      else if (isGuest && auth === 'login') target = pathForAuthRoute('signup') + search + authHash;
+    } else if (!currentUser && !store.isSessionLoading) {
+      // Logging out lands on a plain /login; a signed-out visit returns to its page afterwards.
+      target = wasSignedIn ? pathForAuthRoute('login') : authPathWithNext('login', pathForView(view) + search) + authHash;
+    }
+    if (target) goToPath(target, { replace: true });
+  }, [authReady, authGate, authHold, leavingAuth, auth, currentUser, isGuest, search, view, store.isSessionLoading, goToPath]);
+
+  // The sign-in page's code (preloaded behind the splash by main.tsx).
+  const [AuthPageView, setAuthPageView] = useState<ComponentType<AuthPageProps> | null>(() => loadedAuthPage());
+  const needsAuthPage = authScreen !== null;
+  useEffect(() => {
+    if (!needsAuthPage || AuthPageView) return;
+    let cancelled = false;
+    preloadAuthPage().then(
+      (component) => {
+        if (!cancelled) setAuthPageView(() => component);
+      },
+      () => reloadOnceForStaleChunk()
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [needsAuthPage, AuthPageView]);
+
+  // Blocking loader: the initial session check (and the sign-in page's code if it is somehow not
+  // here yet), then any later sign-in that is still loading the user's data once the success
+  // screen is done (never an empty guest view). It stays mounted for its exit animation,
+  // revealing the app beneath; state is derived during render so the app never shows a frame
+  // without it.
+  const showLoader =
+    store.isAuthChecking ||
+    (needsAuthPage && !AuthPageView) ||
+    (store.isSessionLoading && !authHold && !userOpenedAuthModal);
   const [loaderShown, setLoaderShown] = useState(showLoader);
   const [loaderExiting, setLoaderExiting] = useState(false);
   const [loaderKind, setLoaderKind] = useState<'boot' | 'session'>('boot');
@@ -75,58 +146,73 @@ function App() {
     if (appVisible) prefetchAllViewsWhenIdle();
   }, [appVisible]);
 
-  const currentUser = store.state.currentUser;
-  const isUnauthenticated = !currentUser;
-  const authModalOpen = isUnauthenticated || userOpenedAuthModal;
+  // The app itself: not while a sign-in page is up, nor for the one frame a redirect away from
+  // a sign-in page takes (signed in, or local-only mode).
+  const showApp = authReady && !authScreen && !auth;
 
   return (
     <>
-      {!store.isAuthChecking && (
+      {authReady && (
         <ToastProvider>
           <UpdateBanner />
           <OfflineBanner />
-          <AppShell
-            currentView={view}
-            navigationKind={navigationKind}
-            onViewChange={setView}
-            store={store}
-            onOpenAuthModal={() => setUserOpenedAuthModal(true)}
-          >
-            <ErrorBoundary fallbackTitle="Section Error">
-              <Suspense fallback={<PageSkeleton />}>
-                {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
-                {view === 'habits' && <HabitTracker store={store} />}
-                {view === 'time-tracker' && <TimeTrackerView store={store} onNavigate={setView} />}
-                {view === 'weekly-goals' && <WeeklyGoalsView store={store} />}
-                {view === 'projects-goals' && (
-                  <ProjectsGoalsView
-                    store={store}
-                    onStartFocusSession={(taskTitle) => {
-                      sessionStorage.setItem('ascend_pending_focus_task', taskTitle);
-                      setView('prefrontal');
-                    }}
-                  />
-                )}
-                {view === 'journal' && <Journal store={store} />}
-                {view === 'exercise' && <ExerciseTracker store={store} />}
-                {view === 'reading' && <ReadingHub store={store} />}
-                {view === 'skills' && <SkillTracker store={store} />}
-                {view === 'bad-habits' && <BadHabitTracker store={store} />}
-                {view === 'recovery' && <AddictionRecovery store={store} />}
-                {view === 'prefrontal' && <PrefrontalCortex store={store} onNavigate={setView} />}
-                {view === 'plans' && <ImprovementPlans store={store} />}
-                {view === 'partner' && <AccountabilityPartner store={store} />}
-                {view === 'tiers' && <TierView store={store} />}
-                {view === 'leagues' && <Leagues store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
-                {view === 'lessons' && <Lessons store={store} />}
-                {view === 'neuroplasticity' && <Neuroplasticity onViewChange={setView} />}
-                {view === 'settings' && <SettingsView store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
-              </Suspense>
-            </ErrorBoundary>
-          </AppShell>
+          {authScreen && AuthPageView && (
+            <AuthPageView
+              screen={authScreen}
+              search={search}
+              guestState={store.state}
+              onAuthSuccess={() => setAuthHold(authScreen)}
+              onDone={() => {
+                setAuthHold(null);
+                setLeavingAuth(true);
+              }}
+              onNavigate={(path) => goToPath(path)}
+            />
+          )}
+          {showApp && (
+            <AppShell
+              currentView={view}
+              navigationKind={navigationKind}
+              onViewChange={setView}
+              store={store}
+              onOpenAuthModal={() => setUserOpenedAuthModal(true)}
+            >
+              <ErrorBoundary fallbackTitle="Section Error">
+                <Suspense fallback={<PageSkeleton />}>
+                  {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+                  {view === 'habits' && <HabitTracker store={store} />}
+                  {view === 'time-tracker' && <TimeTrackerView store={store} onNavigate={setView} />}
+                  {view === 'weekly-goals' && <WeeklyGoalsView store={store} />}
+                  {view === 'projects-goals' && (
+                    <ProjectsGoalsView
+                      store={store}
+                      onStartFocusSession={(taskTitle) => {
+                        sessionStorage.setItem('ascend_pending_focus_task', taskTitle);
+                        setView('prefrontal');
+                      }}
+                    />
+                  )}
+                  {view === 'journal' && <Journal store={store} />}
+                  {view === 'exercise' && <ExerciseTracker store={store} />}
+                  {view === 'reading' && <ReadingHub store={store} />}
+                  {view === 'skills' && <SkillTracker store={store} />}
+                  {view === 'bad-habits' && <BadHabitTracker store={store} />}
+                  {view === 'recovery' && <AddictionRecovery store={store} />}
+                  {view === 'prefrontal' && <PrefrontalCortex store={store} onNavigate={setView} />}
+                  {view === 'plans' && <ImprovementPlans store={store} />}
+                  {view === 'partner' && <AccountabilityPartner store={store} />}
+                  {view === 'tiers' && <TierView store={store} />}
+                  {view === 'leagues' && <Leagues store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+                  {view === 'lessons' && <Lessons store={store} />}
+                  {view === 'neuroplasticity' && <Neuroplasticity onViewChange={setView} />}
+                  {view === 'settings' && <SettingsView store={store} onOpenAuthModal={() => setUserOpenedAuthModal(true)} />}
+                </Suspense>
+              </ErrorBoundary>
+            </AppShell>
+          )}
 
           <AuthModal
-            open={authModalOpen}
+            open={userOpenedAuthModal && Boolean(currentUser)}
             onClose={() => setUserOpenedAuthModal(false)}
             onAuthSuccess={() => setUserOpenedAuthModal(true)}
             guestState={store.state}

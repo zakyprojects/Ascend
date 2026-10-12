@@ -11,8 +11,9 @@ import './index.css';
 import { installPageVisibilityFlag, installWindowFocusFlag } from './lib/motion';
 import { installCardSpotlight } from './lib/cardSpotlight';
 import { installListExit } from './lib/listExit';
-import { viewFromLocation } from './lib/routes';
+import { authRouteFromPath, nextFromSearch, viewFromLocation, viewFromPath } from './lib/routes';
 import { installPagePrefetch, preloadView } from './components/views/lazyViews';
+import { preloadAuthPage } from './components/auth/lazyAuthPage';
 
 installPageVisibilityFlag();
 installWindowFocusFlag();
@@ -34,8 +35,13 @@ if (import.meta.env.DEV && devParams.has('splash-preview')) {
     )
   );
 } else {
-  // The page in the address bar starts loading now, alongside the session check behind the splash.
-  preloadView(viewFromLocation()).catch(() => undefined);
+  // The page in the address bar (on a sign-in page: the page it returns to) starts loading now,
+  // alongside the session check behind the splash. So does the sign-in page: whether it is
+  // needed is only known after the check, and it must not flash in late.
+  const onAuthPage = authRouteFromPath(window.location.pathname) && !window.location.hash.startsWith('#/');
+  const firstView = onAuthPage ? viewFromPath(nextFromSearch(window.location.search).split('?')[0]) : viewFromLocation();
+  if (firstView) preloadView(firstView).catch(() => undefined);
+  preloadAuthPage().catch(() => undefined);
   installPagePrefetch();
   root.render(
     <StrictMode>
