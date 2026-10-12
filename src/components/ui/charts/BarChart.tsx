@@ -17,10 +17,12 @@ export interface BarChartProps {
   tone?: ChartTone;
   /** Bar drawn at full strength (e.g. today); the rest are softer. Omit to show all full. */
   highlightIndex?: number;
+  /** Value of a full-height bar (e.g. the number of habits); defaults to the largest value. */
+  max?: number;
   /** Height of the bar area in px (labels sit below it). */
   height?: number;
   /** Tooltip text for a bar; defaults to "label: value". */
-  formatTooltip?: (datum: BarDatum) => string;
+  formatTooltip?: (datum: BarDatum, index: number) => string;
   className?: string;
 }
 
@@ -36,6 +38,7 @@ export function BarChart({
   label,
   tone = 'brand',
   highlightIndex,
+  max: maxProp,
   height = 96,
   formatTooltip = (d) => `${d.label}: ${d.value}`,
   className,
@@ -44,19 +47,19 @@ export function BarChart({
   const intro = useIntroMotion();
   const seen = useSeen(ref, intro);
   const { active, setActive, clear } = useChartHover();
-  const max = Math.max(0, ...data.map((d) => d.value)) || 1;
+  const max = maxProp ?? (Math.max(0, ...data.map((d) => d.value)) || 1);
 
   return (
     <div ref={ref} role="group" aria-label={label} className={cx('w-full', toneText[tone], className)}>
       <div className="relative flex items-end gap-1.5" style={{ height }} onPointerLeave={clear}>
         {data.map((datum, i) => {
-          const percent = Math.max(0, (datum.value / max) * 100);
+          const percent = Math.min(100, Math.max(0, (datum.value / (max || 1)) * 100));
           const soft = highlightIndex !== undefined && i !== highlightIndex;
           return (
             <button
               key={`${datum.label}-${i}`}
               type="button"
-              aria-label={formatTooltip(datum)}
+              aria-label={formatTooltip(datum, i)}
               onPointerEnter={() => setActive(i)}
               onPointerDown={() => setActive(i)}
               onFocus={() => setActive(i)}
@@ -81,7 +84,7 @@ export function BarChart({
           );
         })}
         {active !== null && data[active] && (
-          <ChartTooltip x={((active + 0.5) / data.length) * 100}>{formatTooltip(data[active])}</ChartTooltip>
+          <ChartTooltip x={((active + 0.5) / data.length) * 100}>{formatTooltip(data[active], active)}</ChartTooltip>
         )}
       </div>
       <div className="mt-1.5 flex gap-1.5" aria-hidden="true">
