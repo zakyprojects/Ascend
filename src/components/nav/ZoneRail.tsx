@@ -171,7 +171,7 @@ function ZoneButton({ icon: Icon, label, shortcut, active, shown = false, badge 
         active
           ? 'zone-active border-primary-500/40 bg-bg-800 text-brand-text'
           : basecamp
-            ? 'border-transparent bg-overlay-default text-content-secondary hover:bg-overlay-medium hover:text-content-primary'
+            ? 'border-transparent bg-overlay-default text-content-secondary hover:bg-overlay-strong hover:text-content-primary'
             : shown
             ? 'border-overlay-default bg-bg-800 text-content-secondary'
             : 'border-overlay-subtle bg-bg-900 text-content-muted hover:border-overlay-default hover:text-content-secondary',
