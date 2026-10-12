@@ -43,7 +43,7 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
           data-glide-item=""
           className={cx(
             'relative w-full flex items-center justify-between gap-3 px-2.5 py-1.5 rounded-lg text-sm font-medium',
-            active ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary',
+            active ? 'text-brand-text' : 'text-content-muted hover:text-content-secondary',
             TAP_TARGET,
             FOCUS_RING,
             TRANSITION,
@@ -51,9 +51,10 @@ export const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
           )}
           {...props}
         >
-          {active && <span aria-hidden="true" data-nav-pill className="absolute inset-0 rounded-lg bg-overlay-default" />}
+          {/* Selected page: emerald text and icon on a soft emerald pill. */}
+          {active && <span aria-hidden="true" data-nav-pill className="absolute inset-0 rounded-lg bg-primary-500/15" />}
           <span className="relative flex min-w-0 items-center gap-2.5">
-            <Icon size={16} aria-hidden="true" className={cx('shrink-0', active ? 'text-content-primary' : 'text-content-muted')} />
+            <Icon size={16} aria-hidden="true" className={cx('shrink-0', active ? 'text-brand-text' : 'text-content-muted')} />
             <span className="truncate">
               {label}
               {status && <span className="sr-only">, {status.label}</span>}

@@ -340,14 +340,14 @@ function RailButton({ icon: Icon, label, onClick, active = false, named = false,
       aria-current={active ? 'page' : undefined}
       className={cx(
         'relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-        active ? 'text-content-primary' : 'text-content-muted hover:bg-overlay-subtle hover:text-content-secondary',
+        active ? 'text-brand-text' : 'text-content-muted hover:bg-overlay-subtle hover:text-content-secondary',
         FOCUS_RING,
         TRANSITION
       )}
       {...tipHandlers}
     >
       {active && (
-        <span aria-hidden="true" {...(named ? { 'data-nav-pill': '' } : {})} className="absolute inset-0 rounded-lg bg-overlay-default" />
+        <span aria-hidden="true" {...(named ? { 'data-nav-pill': '' } : {})} className="absolute inset-0 rounded-lg bg-primary-500/15" />
       )}
       <Icon size={16} aria-hidden="true" className="relative" />
       {badge > 0 ? (
