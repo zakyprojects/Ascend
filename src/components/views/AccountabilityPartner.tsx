@@ -31,6 +31,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
 import { Dialog, EmptyState, Skeleton } from '@/components/ui/primitives';
+import { ProgressRing } from '@/components/ui/charts';
 import { TAP_TARGET, TAP_AREA } from '@/components/ui/primitives/shared';
 import { getCurrentTier } from '@/lib/tiers';
 import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
@@ -1151,11 +1152,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   const partnerDone = partnerDoneDates.includes(today);
 
                   const totalCompleted = challenge.totalJointDaysCompleted ?? challenge.jointStreak ?? 0;
-                  const streakProgressPercent = Math.min(100, Math.round(((challenge.jointStreak || 0) / (challenge.durationDays || 1)) * 100));
                   const totalProgressPercent = Math.min(100, Math.round((totalCompleted / (challenge.durationDays || 1)) * 100));
-                  const ringRadius = 38;
-                  const ringCircumference = 2 * Math.PI * ringRadius;
-                  const ringOffset = ringCircumference - (streakProgressPercent / 100) * ringCircumference;
 
                   // Nudge Cooldown check
                   const cooldownEnd = nudgeCooldowns[challenge.id] || 0;
@@ -1185,39 +1182,19 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         </div>
 
                         {/* Circular Progress Ring */}
-                        <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
-                          <svg className="w-20 h-20 -rotate-90 transform" viewBox="0 0 96 96">
-                            {/* Track */}
-                            <circle
-                              cx="48"
-                              cy="48"
-                              r={ringRadius}
-                              className="text-bg-900 stroke-current"
-                              strokeWidth="8"
-                              fill="transparent"
-                            />
-                            {/* Progress */}
-                            <circle
-                              cx="48"
-                              cy="48"
-                              r={ringRadius}
-                              className="text-success-text stroke-current transition-all duration-700 ease-out"
-                              strokeWidth="8"
-                              strokeDasharray={ringCircumference}
-                              strokeDashoffset={ringOffset}
-                              strokeLinecap={streakProgressPercent > 0 ? "round" : "butt"}
-                              fill="transparent"
-                            />
-                          </svg>
-
-                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                            <Flame size={18} className="text-warning-text mb-0.5" />
-                            <span className="font-display font-extrabold text-xs text-content-primary leading-none">
-                              {challenge.jointStreak}d
-                            </span>
-                            <span className="text-3xs text-content-muted font-mono mt-0.5">streak</span>
-                          </div>
-                        </div>
+                        <ProgressRing
+                          value={challenge.jointStreak || 0}
+                          max={challenge.durationDays || 1}
+                          label="Pact streak progress"
+                          tone="success"
+                          size={80}
+                        >
+                          <Flame size={18} className="text-warning-text mb-0.5" />
+                          <span className="font-display font-extrabold text-xs text-content-primary leading-none">
+                            {challenge.jointStreak}d
+                          </span>
+                          <span className="text-3xs text-content-muted font-mono mt-0.5">streak</span>
+                        </ProgressRing>
                       </div>
 
                       {/* Milestone Checkpoints */}
