@@ -37,7 +37,7 @@ import {
 import { AppStore } from '@/lib/store';
 import { DEFAULT_TIME_TRACKER_ACTIVITIES } from '@/types';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Dialog, EmptyState, ProgressBar } from '@/components/ui/primitives';
+import { cx, Dialog, EmptyState, ProgressBar, SlidingPill } from '@/components/ui/primitives';
 import {
   todayKey,
   formatDateLong,
@@ -246,13 +246,21 @@ export function PrefrontalCortex({
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-overlay-subtle gap-2 overflow-x-auto pb-1">
+      <div className="relative isolate flex border-b border-overlay-subtle gap-2 overflow-x-auto pb-1">
+        <SlidingPill
+          active={activeTab}
+          className={cx(
+            'rounded-xl',
+            activeTab === 'focus' && 'bg-cyan-500/15 border-cyan-500/30',
+            activeTab === 'decision' && 'bg-purple-500/15 border-purple-500/30',
+            activeTab === 'emotion' && 'bg-rose-500/15 border-rose-500/30'
+          )}
+        />
         <button
+          data-pill-id="focus"
           onClick={() => setActiveTab('focus')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
-            activeTab === 'focus'
-              ? 'bg-cyan-500/15 text-cyan-hierarchy border border-cyan-500/30'
-              : 'text-content-muted hover:bg-overlay-subtle'
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border border-transparent font-medium text-xs transition-colors shrink-0 ${
+            activeTab === 'focus' ? 'text-cyan-hierarchy' : 'text-content-muted hover:bg-overlay-subtle'
           }`}
         >
           <Timer size={16} />
@@ -260,11 +268,10 @@ export function PrefrontalCortex({
         </button>
 
         <button
+          data-pill-id="decision"
           onClick={() => setActiveTab('decision')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
-            activeTab === 'decision'
-              ? 'bg-purple-500/15 text-purple-hierarchy border border-purple-500/30'
-              : 'text-content-muted hover:bg-overlay-subtle'
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border border-transparent font-medium text-xs transition-colors shrink-0 ${
+            activeTab === 'decision' ? 'text-purple-hierarchy' : 'text-content-muted hover:bg-overlay-subtle'
           }`}
         >
           <Scale size={16} />
@@ -272,11 +279,10 @@ export function PrefrontalCortex({
         </button>
 
         <button
+          data-pill-id="emotion"
           onClick={() => setActiveTab('emotion')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs transition-all shrink-0 ${
-            activeTab === 'emotion'
-              ? 'bg-rose-500/15 text-rose-theme border border-rose-500/30'
-              : 'text-content-muted hover:bg-overlay-subtle'
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border border-transparent font-medium text-xs transition-colors shrink-0 ${
+            activeTab === 'emotion' ? 'text-rose-theme' : 'text-content-muted hover:bg-overlay-subtle'
           }`}
         >
           <HeartHandshake size={16} />

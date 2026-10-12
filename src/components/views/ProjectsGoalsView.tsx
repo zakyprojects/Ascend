@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Dialog, ProgressBar } from '@/components/ui/primitives';
+import { cx, Dialog, ProgressBar, SlidingPill } from '@/components/ui/primitives';
 import {
   Target,
   FolderKanban,
@@ -52,6 +52,22 @@ import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { CountUp } from '@/components/ui/Motion';
+
+// Active look of each status filter, worn by the row's SlidingPill.
+const GOAL_FILTER_PILL: Record<string, string> = {
+  all: 'bg-overlay-default border-overlay-strong',
+  active: 'bg-emerald-500/20 border-emerald-500/30',
+  achieved: 'bg-[var(--badge-purple-bg)] border-[var(--badge-purple-border)]',
+  abandoned: 'bg-overlay-default border-overlay-default',
+};
+const PROJECT_FILTER_PILL: Record<string, string> = {
+  all: 'bg-overlay-default border-overlay-strong',
+  in_progress: 'bg-[var(--badge-cyan-bg)] border-[var(--badge-cyan-border)]',
+  not_started: 'bg-overlay-default border-overlay-default',
+  on_hold: 'bg-amber-500/20 border-amber-500/30',
+  completed: 'bg-emerald-500/20 border-emerald-500/30',
+  locked: 'bg-amber-500/20 border-amber-500/35',
+};
 
 type SubViewTab = 'goals' | 'projects' | 'tasks';
 
@@ -1554,47 +1570,47 @@ export function ProjectsGoalsView({
             </div>
 
             {/* Bottom Row: Status Filter Tabs */}
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-3 border-t border-overlay-subtle">
+            <div className="relative isolate flex flex-wrap items-center gap-1.5 sm:gap-2 pt-3 border-t border-overlay-subtle">
+              <SlidingPill
+                active={goalStatusFilter}
+                className={cx('rounded-lg', GOAL_FILTER_PILL[goalStatusFilter])}
+              />
               <button
                 id="filter-goals-all"
+                data-pill-id="all"
                 onClick={() => setGoalStatusFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-                  goalStatusFilter === 'all'
-                    ? 'bg-overlay-default text-content-primary border border-overlay-strong'
-                    : 'text-content-muted hover:text-content-secondary'
+                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
+                  goalStatusFilter === 'all' ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
                 All ({goalStatusCounts.all})
               </button>
               <button
                 id="filter-goals-active"
+                data-pill-id="active"
                 onClick={() => setGoalStatusFilter('active')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-                  goalStatusFilter === 'active'
-                    ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30'
-                    : 'text-content-muted hover:text-content-secondary'
+                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
+                  goalStatusFilter === 'active' ? 'text-success-text' : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
                 Active ({goalStatusCounts.active})
               </button>
               <button
                 id="filter-goals-achieved"
+                data-pill-id="achieved"
                 onClick={() => setGoalStatusFilter('achieved')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-                  goalStatusFilter === 'achieved'
-                    ? 'badge-purple font-semibold'
-                    : 'text-content-muted hover:text-content-secondary'
+                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
+                  goalStatusFilter === 'achieved' ? 'text-[var(--badge-purple-text)]' : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
                 Achieved ({goalStatusCounts.achieved})
               </button>
               <button
                 id="filter-goals-abandoned"
+                data-pill-id="abandoned"
                 onClick={() => setGoalStatusFilter('abandoned')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-                  goalStatusFilter === 'abandoned'
-                    ? 'bg-overlay-default text-content-tertiary border border-overlay-default'
-                    : 'text-content-muted hover:text-content-secondary'
+                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
+                  goalStatusFilter === 'abandoned' ? 'text-content-tertiary' : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
                 Abandoned ({goalStatusCounts.abandoned})
@@ -1873,69 +1889,67 @@ export function ProjectsGoalsView({
             </div>
 
             {/* Bottom Row: Status Filter Tabs */}
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-3 border-t border-overlay-subtle">
+            <div className="relative isolate flex flex-wrap items-center gap-1.5 sm:gap-2 pt-3 border-t border-overlay-subtle">
+              <SlidingPill
+                active={projectStatusFilter}
+                className={cx('rounded-lg', PROJECT_FILTER_PILL[projectStatusFilter])}
+              />
               <button
                 id="filter-projects-all"
+                data-pill-id="all"
                 onClick={() => setProjectStatusFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-                  projectStatusFilter === 'all'
-                    ? 'bg-overlay-default text-content-primary border border-overlay-strong'
-                    : 'text-content-muted hover:text-content-secondary'
+                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
+                  projectStatusFilter === 'all' ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
                 All ({projectStatusCounts.all})
               </button>
               <button
                 id="filter-projects-in-progress"
+                data-pill-id="in_progress"
                 onClick={() => setProjectStatusFilter('in_progress')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-                  projectStatusFilter === 'in_progress'
-                    ? 'badge-cyan font-semibold'
-                    : 'text-content-muted hover:text-content-secondary'
+                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
+                  projectStatusFilter === 'in_progress' ? 'text-[var(--badge-cyan-text)]' : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
                 In Progress ({projectStatusCounts.in_progress})
               </button>
               <button
                 id="filter-projects-not-started"
+                data-pill-id="not_started"
                 onClick={() => setProjectStatusFilter('not_started')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-                  projectStatusFilter === 'not_started'
-                    ? 'bg-overlay-default text-content-secondary border border-overlay-default'
-                    : 'text-content-muted hover:text-content-secondary'
+                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
+                  projectStatusFilter === 'not_started' ? 'text-content-secondary' : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
                 Not Started ({projectStatusCounts.not_started})
               </button>
               <button
                 id="filter-projects-on-hold"
+                data-pill-id="on_hold"
                 onClick={() => setProjectStatusFilter('on_hold')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-                  projectStatusFilter === 'on_hold'
-                    ? 'bg-amber-500/20 text-warning-text border border-amber-500/30'
-                    : 'text-content-muted hover:text-content-secondary'
+                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
+                  projectStatusFilter === 'on_hold' ? 'text-warning-text' : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
                 On Hold ({projectStatusCounts.on_hold})
               </button>
               <button
                 id="filter-projects-completed"
+                data-pill-id="completed"
                 onClick={() => setProjectStatusFilter('completed')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-                  projectStatusFilter === 'completed'
-                    ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30'
-                    : 'text-content-muted hover:text-content-secondary'
+                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
+                  projectStatusFilter === 'completed' ? 'text-success-text' : 'text-content-muted hover:text-content-secondary'
                 }`}
               >
                 Completed ({projectStatusCounts.completed})
               </button>
               <button
                 id="filter-projects-locked"
+                data-pill-id="locked"
                 onClick={() => setProjectStatusFilter('locked')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all flex items-center gap-1.5 ${
-                  projectStatusFilter === 'locked'
-                    ? 'bg-amber-500/20 text-warning-text border border-amber-500/35'
-                    : 'text-content-muted hover:text-warning-text'
+                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors flex items-center gap-1.5 ${
+                  projectStatusFilter === 'locked' ? 'text-warning-text' : 'text-content-muted hover:text-warning-text'
                 }`}
               >
                 <Lock size={12} className="shrink-0" />

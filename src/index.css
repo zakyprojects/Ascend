@@ -1258,6 +1258,13 @@ html[data-page-hidden] *::after {
   mix-blend-mode: normal;
 }
 
+/* Sliding active pill (Tabs indicator, SlidingPill): glides between options at the nav pill's pace. */
+.sliding-pill-move {
+  transition-property: left, top, width, height, background-color, border-color, box-shadow, color;
+  transition-duration: 360ms;
+  transition-timing-function: var(--ease-emphasized);
+}
+
 /* Page transitions (lib/pageTransition.ts adds html.vt-page while one runs). The outgoing page area
    settles back and fades, the incoming one fades in (its content then rises via ViewEntrance), and
    the nav's active pill glides to the new item. Phones have no fixed page box (the window scrolls),
@@ -1287,6 +1294,13 @@ html.vt-page::view-transition-old(page) {
 html.vt-page::view-transition-new(page) {
   animation: vt-fade-in 260ms var(--ease-standard) 60ms both;
 }
+/* The phone's page tabs (Tabs pageTabs) glide like the nav pill; its own slide is off meanwhile, or
+   the snapshot would catch it mid-move. */
+html.vt-page [data-tab-pill] {
+  view-transition-name: tab-pill;
+  transition: none !important;
+}
+html.vt-page::view-transition-group(tab-pill),
 html.vt-page::view-transition-group(nav-pill) {
   animation-duration: 360ms;
   animation-timing-function: var(--ease-emphasized);

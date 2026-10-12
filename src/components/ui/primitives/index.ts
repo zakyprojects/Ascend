@@ -51,6 +51,9 @@ export type { NavItemProps, NavSectionProps } from './Nav';
 export { Tabs } from './Tabs';
 export type { TabItem, TabsProps } from './Tabs';
 
+export { SlidingPill } from './SlidingPill';
+export type { SlidingPillProps } from './SlidingPill';
+
 export { ProgressBar } from './ProgressBar';
 export type { ProgressBarProps, ProgressTone, ProgressSize } from './ProgressBar';
 

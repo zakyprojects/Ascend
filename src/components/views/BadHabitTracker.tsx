@@ -21,7 +21,7 @@ import { BadHabit } from '@/types';
 import { todayKey, formatDateLong, getNow } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
-import { Dialog, Disclosure, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
+import { Dialog, Disclosure, EmptyState, PageColumns, ProgressBar, SlidingPill } from '@/components/ui/primitives';
 import { getBadHabitSlot } from '@/lib/badHabitEligibility';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { getCapStatus } from '@/lib/capStatus';
@@ -511,39 +511,44 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
           <div>
             <label className="block text-xs font-medium text-content-muted mb-1">Commitment Duration</label>
-            <div className="grid grid-cols-4 gap-2 mb-2">
+            <div className="relative isolate grid grid-cols-4 gap-2 mb-2">
+              <SlidingPill active={durationMode} className="rounded-xl bg-primary-500/20 border-primary-500 ring-1 ring-primary-500/40 shadow-sm" />
               <button
                 type="button"
+                data-pill-id="30"
                 onClick={() => setDurationMode('30')}
-                className={`py-2 text-xs rounded-xl border font-semibold transition-all ${
-                  durationMode === '30' ? 'bg-primary-500/20 border-primary-500 text-brand-text ring-1 ring-primary-500/40 shadow-sm' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
+                className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
+                  durationMode === '30' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
                 30 Days
               </button>
               <button
                 type="button"
+                data-pill-id="60"
                 onClick={() => setDurationMode('60')}
-                className={`py-2 text-xs rounded-xl border font-semibold transition-all ${
-                  durationMode === '60' ? 'bg-primary-500/20 border-primary-500 text-brand-text ring-1 ring-primary-500/40 shadow-sm' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
+                className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
+                  durationMode === '60' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
                 60 Days
               </button>
               <button
                 type="button"
+                data-pill-id="90"
                 onClick={() => setDurationMode('90')}
-                className={`py-2 text-xs rounded-xl border font-semibold transition-all ${
-                  durationMode === '90' ? 'bg-primary-500/20 border-primary-500 text-brand-text ring-1 ring-primary-500/40 shadow-sm' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
+                className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
+                  durationMode === '90' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
                 90 Days
               </button>
               <button
                 type="button"
+                data-pill-id="custom"
                 onClick={() => setDurationMode('custom')}
-                className={`py-2 text-xs rounded-xl border font-semibold transition-all ${
-                  durationMode === 'custom' ? 'bg-primary-500/20 border-primary-500 text-brand-text ring-1 ring-primary-500/40 shadow-sm' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
+                className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
+                  durationMode === 'custom' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
                 Custom

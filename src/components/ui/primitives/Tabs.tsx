@@ -1,5 +1,6 @@
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { useActiveBox } from '@/lib/useActiveBox';
 import { useHoverGlide } from '@/lib/useHoverGlide';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
 
@@ -17,6 +18,8 @@ export interface TabsProps {
   variant?: 'segmented' | 'underline';
   size?: 'sm' | 'md';
   scrollable?: boolean;
+  /** The one tab row that switches pages: its indicator glides across page transitions. */
+  pageTabs?: boolean;
   ariaLabel: string;
   className?: string;
 }
@@ -28,6 +31,7 @@ export const Tabs: React.FC<TabsProps> = ({
   variant = 'segmented',
   size = 'md',
   scrollable = false,
+  pageTabs = false,
   ariaLabel,
   className,
 }) => {
@@ -35,7 +39,9 @@ export const Tabs: React.FC<TabsProps> = ({
   const isSm = size === 'sm';
   const tabRefs = React.useRef<Map<string, HTMLButtonElement>>(new Map());
   const listRef = React.useRef<HTMLDivElement>(null);
-  const indicator = useActiveIndicator(listRef, tabRefs, value, items);
+  // Re-measure when the tabs' text changes (labels, badges), not on every new items array.
+  const itemsKey = items.map((item) => `${item.id}:${item.label}:${item.badge ?? ''}`).join('|');
+  const indicator = useActiveBox(listRef, () => tabRefs.current.get(value), value, itemsKey);
   const glideRef = React.useRef<HTMLSpanElement>(null);
   useHoverGlide(listRef, glideRef);
 
@@ -103,11 +109,11 @@ export const Tabs: React.FC<TabsProps> = ({
       {indicator && (
         <span
           aria-hidden="true"
+          data-tab-pill={pageTabs ? '' : undefined}
           className={cx(
             'absolute pointer-events-none',
             isSegmented ? 'top-1 bottom-1 rounded-lg bg-primary-500 shadow-sm' : 'bottom-0 h-0.5 rounded-full bg-brand-text',
-            indicator.animate &&
-              'transition-[left,width] duration-base ease-emphasized motion-reduce:transition-none'
+            indicator.animate && 'sliding-pill-move'
           )}
           style={{ left: indicator.left, width: indicator.width }}
         />
@@ -171,43 +177,3 @@ export const Tabs: React.FC<TabsProps> = ({
     </div>
   );
 };
-
-interface IndicatorBox {
-  left: number;
-  width: number;
-  /** False for the first placement, so the indicator appears in place instead of sliding in. */
-  animate: boolean;
-}
-
-/** Position of the active tab inside the list, kept current through resizes and font loads. */
-function useActiveIndicator(
-  listRef: React.RefObject<HTMLDivElement>,
-  tabRefs: React.RefObject<Map<string, HTMLButtonElement>>,
-  value: string,
-  items: TabItem[]
-): IndicatorBox | null {
-  const [box, setBox] = React.useState<IndicatorBox | null>(null);
-  // Re-measure when the tabs' text changes (labels, badges), not on every new items array.
-  const itemsKey = items.map((item) => `${item.id}:${item.label}:${item.badge ?? ''}`).join('|');
-
-  React.useLayoutEffect(() => {
-    const list = listRef.current;
-    const tab = tabRefs.current?.get(value);
-    if (!list || !tab) {
-      setBox(null);
-      return;
-    }
-    const measure = () =>
-      setBox((prev) => {
-        const next = { left: tab.offsetLeft, width: tab.offsetWidth, animate: prev !== null };
-        return prev && prev.left === next.left && prev.width === next.width ? prev : next;
-      });
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(list);
-    observer.observe(tab);
-    return () => observer.disconnect();
-  }, [listRef, tabRefs, value, itemsKey]);
-
-  return box;
-}

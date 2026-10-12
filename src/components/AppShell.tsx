@@ -379,6 +379,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
                 variant="underline"
                 size="sm"
                 scrollable
+                pageTabs
                 ariaLabel={`${activeGroup.label} pages`}
               />
             </div>

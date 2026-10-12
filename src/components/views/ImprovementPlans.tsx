@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Dialog, EmptyState, ProgressBar, Skeleton } from '@/components/ui/primitives';
+import { Dialog, EmptyState, ProgressBar, Skeleton, SlidingPill } from '@/components/ui/primitives';
 import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
 import { getCurrentTier } from '@/lib/tiers';
 import { todayKey } from '@/lib/dates';
@@ -1080,22 +1080,25 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
       {/* Tabs */}
       <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
-        <div className="flex gap-4">
+        <div className="relative isolate flex gap-4">
+          <SlidingPill active={activeTab} variant="underline" className="rounded-full bg-blue-500" />
           <button
+            data-pill-id="my_plans"
             onClick={() => setActiveTab('my_plans')}
             className={`pb-2 font-medium text-sm transition-colors border-b-2 ${
               activeTab === 'my_plans'
-                ? 'border-blue-500 text-blue-theme'
+                ? 'border-transparent text-blue-theme'
                 : 'border-transparent text-content-disabled hover:text-content-tertiary'
             }`}
           >
             My Plans & Following ({myCreatedPlans.length + followedPlans.length})
           </button>
           <button
+            data-pill-id="discover"
             onClick={() => setActiveTab('discover')}
             className={`pb-2 font-medium text-sm transition-colors border-b-2 ${
               activeTab === 'discover'
-                ? 'border-blue-500 text-blue-theme'
+                ? 'border-transparent text-blue-theme'
                 : 'border-transparent text-content-disabled hover:text-content-tertiary'
             }`}
           >
