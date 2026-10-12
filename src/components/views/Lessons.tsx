@@ -4,6 +4,7 @@ import { AppStore } from '@/lib/store';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import { Lesson } from '@/types';
 import { Dialog, EmptyState } from '@/components/ui/primitives';
+import { CountUp, Reveal } from '@/components/ui/Motion';
 import { getSeasonNumber, leagueNow } from '@/lib/leagueTime';
 
 export function Lessons({ store }: { store: AppStore }) {
@@ -36,22 +37,22 @@ export function Lessons({ store }: { store: AppStore }) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
+      <Reveal className="grid grid-cols-2 gap-3">
         <div className="card p-4">
           <div className="stat-label">Lessons Read (Season {activeSeasonNum})</div>
-          <div className="stat-value mt-1">
-            {readCount}
+          <div className="stat-value mt-1 tabular-nums">
+            <CountUp value={readCount} />
             <span className="text-base text-content-disabled">/{LESSONS.length}</span>
           </div>
         </div>
         <div className="card p-4">
           <div className="stat-label">Points Earned</div>
-          <div className="stat-value mt-1 text-brand-text">
-            {earnedPoints}
+          <div className="stat-value mt-1 text-brand-text tabular-nums">
+            <CountUp value={earnedPoints} />
             <span className="text-base text-content-disabled">/{totalPoints}</span>
           </div>
         </div>
-      </div>
+      </Reveal>
 
       {/* Search */}
       <div className="relative">

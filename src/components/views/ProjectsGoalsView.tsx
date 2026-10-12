@@ -51,6 +51,7 @@ import { todayKey, weekKey, formatDateLong, formatDateShort } from '@/lib/dates'
 import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
+import { CountUp } from '@/components/ui/Motion';
 
 type SubViewTab = 'goals' | 'projects' | 'tasks';
 
@@ -1368,7 +1369,7 @@ export function ProjectsGoalsView({
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
                 <div>
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Pending Tasks</span>
-                  <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.pendingTasks}</p>
+                  <CountUp value={hierarchyStats.pendingTasks} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
                 <CheckSquare size={18} className="text-success-text opacity-60" />
               </div>
@@ -1376,7 +1377,7 @@ export function ProjectsGoalsView({
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
                 <div>
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Projects</span>
-                  <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeProjects}</p>
+                  <CountUp value={hierarchyStats.activeProjects} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
                 <FolderKanban size={18} className="text-cyan-hierarchy opacity-60" />
               </div>
@@ -1384,7 +1385,7 @@ export function ProjectsGoalsView({
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
                 <div>
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Goals</span>
-                  <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeGoals}</p>
+                  <CountUp value={hierarchyStats.activeGoals} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
                 <Target size={18} className="text-purple-hierarchy opacity-60" />
               </div>
@@ -1396,7 +1397,7 @@ export function ProjectsGoalsView({
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
                 <div>
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Projects</span>
-                  <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeProjects}</p>
+                  <CountUp value={hierarchyStats.activeProjects} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
                 <FolderKanban size={18} className="text-cyan-hierarchy opacity-60" />
               </div>
@@ -1404,7 +1405,7 @@ export function ProjectsGoalsView({
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
                 <div>
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Pending Tasks</span>
-                  <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.pendingTasks}</p>
+                  <CountUp value={hierarchyStats.pendingTasks} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
                 <CheckSquare size={18} className="text-success-text opacity-60" />
               </div>
@@ -1412,7 +1413,7 @@ export function ProjectsGoalsView({
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
                 <div>
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Goals</span>
-                  <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeGoals}</p>
+                  <CountUp value={hierarchyStats.activeGoals} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
                 <Target size={18} className="text-purple-hierarchy opacity-60" />
               </div>
@@ -1424,7 +1425,7 @@ export function ProjectsGoalsView({
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
                 <div>
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Goals</span>
-                  <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeGoals}</p>
+                  <CountUp value={hierarchyStats.activeGoals} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
                 <Target size={18} className="text-purple-hierarchy opacity-60" />
               </div>
@@ -1432,7 +1433,7 @@ export function ProjectsGoalsView({
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
                 <div>
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Active Projects</span>
-                  <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.activeProjects}</p>
+                  <CountUp value={hierarchyStats.activeProjects} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
                 <FolderKanban size={18} className="text-cyan-hierarchy opacity-60" />
               </div>
@@ -1440,7 +1441,7 @@ export function ProjectsGoalsView({
               <div className="p-1.5 sm:p-2.5 rounded-xl bg-bg-900/60 border border-overlay-subtle flex items-center justify-between">
                 <div>
                   <span className="text-3xs sm:text-2xs uppercase font-bold text-content-muted tracking-wider">Pending Tasks</span>
-                  <p className="text-sm sm:text-base font-bold text-content-primary">{hierarchyStats.pendingTasks}</p>
+                  <CountUp value={hierarchyStats.pendingTasks} className="block text-sm sm:text-base font-bold text-content-primary tabular-nums" />
                 </div>
                 <CheckSquare size={18} className="text-success-text opacity-60" />
               </div>

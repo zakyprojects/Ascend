@@ -43,6 +43,7 @@ import { leagueNow } from '@/lib/leagueTime';
 import { isTodayLocal, calculateActivePlanStreak, formatDateShort, parseDate } from '@/lib/dates';
 import { STARTER_TEMPLATES } from '@/data/planTemplates';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
+import { AutoNum, CountUp } from '@/components/ui/Motion';
 
 function ExpandableDescription({ text }: { text: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -834,9 +835,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           <div className="card space-y-3 p-3">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-content-tertiary">
-                Progress: <span className={isGoalCompleted ? 'text-success-text font-bold' : 'text-warning-text font-bold'}>{curProg}</span>{/* OLD: <span className="text-warning-text font-bold">{curProg}</span> */} / {targetVal} {plan.targetUnit || 'units'}
+                Progress: <span className={isGoalCompleted ? 'text-success-text font-bold tabular-nums' : 'text-warning-text font-bold tabular-nums'}><AutoNum text={String(curProg)} /></span>{/* OLD: <span className="text-warning-text font-bold">{curProg}</span> */} / {targetVal} {plan.targetUnit || 'units'}
               </span>
-              <span className={isGoalCompleted ? 'font-bold text-success-text' : 'font-bold text-warning-text'}>{pct}%</span>{/* OLD: <span className="font-bold text-warning-text">{pct}%</span> */}
+              <span className={isGoalCompleted ? 'font-bold text-success-text tabular-nums' : 'font-bold text-warning-text tabular-nums'}><CountUp value={pct} />%</span>{/* OLD: <span className="font-bold text-warning-text">{pct}%</span> */}
             </div>
 
             {/* Progress Bar */}
