@@ -163,8 +163,6 @@
     --dialog-scrim: 3 10 9;
     --glide-bg: rgb(255 255 255 / 0.055);
     --glide-ring: rgb(52 211 153 / 0.10);
-    --atmo-glow-a: rgb(16 185 129 / 0.11);
-    --atmo-glow-b: rgb(45 212 191 / 0.05);
     --atmo-line: rgb(52 211 153 / 0.11);
   }
 
@@ -178,8 +176,6 @@
     --dialog-scrim: 15 30 27;
     --glide-bg: rgb(15 23 42 / 0.05);
     --glide-ring: rgb(16 185 129 / 0.14);
-    --atmo-glow-a: rgb(16 185 129 / 0.12);
-    --atmo-glow-b: rgb(20 184 166 / 0.07);
     --atmo-line: rgb(4 120 87 / 0.1);
 
     /* Surfaces */
@@ -264,7 +260,7 @@
     /* League Leaderboard Tokens */
     --league-user-bg: #d1fae5;
     --league-user-border: #10b981;
-    --league-user-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+    --league-user-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
     --medal-gold: #d97706;
     --medal-silver: #64748b;
     --medal-bronze: #92400e;
@@ -660,7 +656,7 @@
   }
 
   /* Background window (macOS): when Ascend loses focus its active accents (nav pill, tab
-     indicator, primary buttons' glow) go quiet grey; they return the moment the window is back. */
+     indicator) go quiet grey; they return the moment the window is back. */
   html[data-window-inactive] [data-nav-pill],
   html[data-window-inactive] [role='tablist'] > span[aria-hidden='true']:not(.hover-glide) {
     filter: grayscale(1);
@@ -834,32 +830,9 @@
   }
 
   .btn-primary {
-    @apply btn btn-sheen bg-primary-500 text-on-brand hover:bg-primary-600 hover:shadow-brand-glow hover:-translate-y-px;
+    @apply btn bg-primary-500 text-on-brand hover:bg-primary-600;
   }
 
-  /* A light streak sweeps across a solid button once on hover. Drawn by ::before with a moving
-     background, so the button needs no overflow clip (its ::after tap area stays intact). */
-  .btn-sheen {
-    position: relative;
-    isolation: isolate;
-  }
-  .btn-sheen::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    background: linear-gradient(110deg, transparent 38%, rgb(255 255 255 / 0.26) 50%, transparent 62%) no-repeat;
-    background-size: 250% 100%;
-    background-position: 130% 0;
-    pointer-events: none;
-  }
-  @media (hover: hover) {
-    .btn-sheen:hover:not(:disabled)::before {
-      background-position: -30% 0;
-      transition: background-position 750ms var(--ease-standard);
-    }
-  }
 
   .btn-secondary {
     @apply btn bg-bg-600 text-content-secondary hover:bg-bg-500;
@@ -907,18 +880,17 @@
     transition: background-color var(--duration-fast) var(--ease-standard);
   }
   .nav-node-active {
-    box-shadow: 0 0 0 3px rgb(16 185 129 / 0.18), 0 0 12px rgb(16 185 129 / 0.45);
+    box-shadow: 0 0 0 3px rgb(16 185 129 / 0.18);
   }
   .nav-node-risk {
     box-shadow: 0 0 0 3px rgb(var(--color-warning-rgb) / 0.18);
   }
 
-  /* Basecamp rail (nav/ZoneRail): the current zone glows; the season climb fills the route line. */
+  /* Basecamp rail (nav/ZoneRail): the current zone is outlined; the season climb fills the route line. */
   .zone-active {
-    box-shadow: 0 0 0 1px rgb(16 185 129 / 0.25), 0 6px 18px -6px rgb(16 185 129 / 0.45);
+    box-shadow: 0 0 0 1px rgb(16 185 129 / 0.25);
   }
   .rail-altitude {
-    box-shadow: 0 0 8px rgb(16 185 129 / 0.6);
     transition: height 900ms var(--ease-emphasized);
   }
   /* Zone panel: a new zone's title and pages slide in; the account menu rises from the avatar. */
@@ -1053,7 +1025,7 @@
     }
   }
 
-  /* Page atmosphere behind the app (AppShell): two soft emerald glows and a topographic map of the
+  /* Page atmosphere behind the app (AppShell): a topographic map of the
      climb: contour rings around a summit off the top-right corner, with a smaller rise in the
      bottom-left, every fifth line heavier like a real survey map. Static and fixed, so it is painted
      once and never repaints on scroll; the rings fade out toward the middle where the content sits. */
@@ -1062,9 +1034,6 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background:
-      radial-gradient(64rem 42rem at 88% -12%, var(--atmo-glow-a), transparent 70%),
-      radial-gradient(54rem 36rem at 4% 112%, var(--atmo-glow-b), transparent 70%);
   }
   .app-atmosphere::after {
     content: '';
