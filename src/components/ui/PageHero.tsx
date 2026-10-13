@@ -3,6 +3,9 @@ import { ProgressRing } from './charts';
 import type { ChartTone } from './charts/chartShared';
 import { cx } from './primitives/shared';
 
+/** Phones: every stat shares one row, so no stat is left alone on a second line. */
+const PHONE_STAT_COLUMNS = ['grid-cols-1', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3'] as const;
+
 export interface PageHeroStat {
   label: string;
   value: ReactNode;
@@ -39,7 +42,7 @@ export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }:
           side ? 'xl:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] xl:items-center xl:gap-8' : undefined
         )}
       >
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:gap-8">
+        <div className="flex flex-col gap-5 sm:gap-6 md:flex-row md:items-center md:gap-8">
           <div className="flex items-center gap-5">
             {ring && (
               <ProgressRing value={ring.value} max={Math.max(ring.max, 1)} label={ring.label} size={104} thickness={8} tone={ring.tone}>
@@ -51,17 +54,23 @@ export function PageHero({ ring, lead, stats = [], side, ariaLabel, className }:
             )}
             <div className="min-w-0">
               <div className="stat-label">{lead.label}</div>
-              <div className={cx('mt-1 font-serif text-5xl leading-none tabular-nums', lead.valueClassName ?? 'text-content-primary')}>{lead.value}</div>
-              {lead.hint && <div className="mt-2 text-sm text-content-muted">{lead.hint}</div>}
+              <div className={cx('mt-1 font-serif text-4xl leading-none tabular-nums sm:text-5xl', lead.valueClassName ?? 'text-content-primary')}>{lead.value}</div>
+              {lead.hint && <div className="mt-1.5 text-sm text-content-muted sm:mt-2">{lead.hint}</div>}
             </div>
           </div>
 
           {stats.length > 0 && (
-            <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-4 sm:flex sm:flex-wrap sm:gap-0 md:border-l md:border-overlay-subtle">
+            <dl
+              className={cx(
+                'grid flex-1 gap-x-4 border-t border-overlay-subtle pt-4 sm:flex sm:flex-wrap sm:gap-0 sm:border-t-0 sm:pt-0 md:border-l',
+                PHONE_STAT_COLUMNS[Math.min(stats.length, 3)]
+              )}
+            >
               {stats.map((stat) => (
-                <div key={stat.label} className="min-w-0 sm:px-6 sm:first:pl-0 md:first:pl-8 sm:[&:not(:first-child)]:border-l sm:[&:not(:first-child)]:border-overlay-subtle">
-                  <dt className="stat-label">{stat.label}</dt>
-                  <dd className={cx('mt-1 text-3xl font-medium leading-none tabular-nums', stat.valueClassName ?? 'text-content-primary')}>{stat.value}</dd>
+                <div key={stat.label} className="flex min-w-0 flex-col sm:px-6 sm:first:pl-0 md:first:pl-8 sm:[&:not(:first-child)]:border-l sm:[&:not(:first-child)]:border-overlay-subtle">
+                  {/* flex-1 keeps the values on one line when a long label wraps on a phone. */}
+                  <dt className="stat-label flex-1">{stat.label}</dt>
+                  <dd className={cx('mt-1 text-2xl font-medium leading-none tabular-nums sm:text-3xl', stat.valueClassName ?? 'text-content-primary')}>{stat.value}</dd>
                   {stat.hint && <dd className="mt-0.5 text-micro text-content-muted">{stat.hint}</dd>}
                 </div>
               ))}
