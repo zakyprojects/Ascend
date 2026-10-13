@@ -483,6 +483,11 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       return;
     }
 
+    if (isNewAccount && password.length < NEW_PASSWORD_MIN) {
+      showError(`Use ${NEW_PASSWORD_MIN} characters or more for your password.`);
+      return;
+    }
+
     if (mode !== 'login' && password !== confirmPassword) {
       showError('Passwords do not match.');
       return;
