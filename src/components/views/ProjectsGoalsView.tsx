@@ -53,6 +53,7 @@ import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { CountUp } from '@/components/ui/Motion';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useScrollFade } from '@/lib/useScrollFade';
 
 // Active look of each status filter, worn by the row's SlidingPill.
 const GOAL_FILTER_PILL: Record<string, string> = {
@@ -409,6 +410,8 @@ export function ProjectsGoalsView({
 
   // Active sub-view tab
   const [activeTab, setActiveTab] = useState<SubViewTab>('tasks');
+  const subViewTabsRef = useRef<HTMLDivElement>(null);
+  useScrollFade(subViewTabsRef);
 
   // Filter drilldown state
   const [filterGoalId, setFilterGoalId] = useState<string | null>(null);
@@ -428,6 +431,12 @@ export function ProjectsGoalsView({
   const [taskPriorityFilter, setTaskPriorityFilter] = useState<'all' | TaskPriority>('all');
   const [taskProjectFilter, setTaskProjectFilter] = useState<string>('all');
   const [taskSearch, setTaskSearch] = useState('');
+  // Phones: the task filters sit behind one Filters button so the list starts higher.
+  const [taskFiltersOpen, setTaskFiltersOpen] = useState(false);
+  const activeTaskFilterCount =
+    Number(taskPriorityFilter !== 'all') +
+    Number(!filterProjectId && taskProjectFilter !== 'all') +
+    Number(taskViewFilter !== 'all');
 
   // Quick Task Add Input state
   const quickTaskInputRef = useRef<HTMLInputElement | null>(null);
@@ -1450,7 +1459,7 @@ export function ProjectsGoalsView({
 
         {/* SUB-VIEW TABS & DYNAMIC HIERARCHY SORTER */}
         <div className="flex items-center justify-between border-b border-overlay-subtle gap-1 sm:gap-2 pb-2 w-full overflow-hidden">
-          <div className="flex-1 min-w-0 flex items-center gap-1 sm:gap-2 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-1 pr-1">
+          <div ref={subViewTabsRef} className="scroll-fade flex-1 min-w-0 flex items-center gap-1 sm:gap-2 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-1 pr-1">
             {(tabOrder === 'taskFirst'
               ? [
                   { id: 'tasks' as const, label: `1. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
@@ -2345,18 +2354,39 @@ export function ProjectsGoalsView({
           <div className="flex flex-col gap-3">
             {/* Top Row: Search & Dropdown Selects */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <div className="flex-1 relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" size={14} />
-                <input
-                  type="text"
-                  placeholder="Search tasks..."
-                  value={taskSearch}
-                  onChange={(e) => setTaskSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-secondary focus:outline-none focus:border-emerald-500/50"
-                />
+              <div className="flex w-full flex-1 items-center gap-2">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" size={14} />
+                  <input
+                    type="text"
+                    placeholder="Search tasks..."
+                    value={taskSearch}
+                    onChange={(e) => setTaskSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-secondary focus:outline-none focus:border-emerald-500/50"
+                  />
+                </div>
+                <button
+                  type="button"
+                  aria-expanded={taskFiltersOpen}
+                  aria-controls="task-filters-selects task-filters-status"
+                  onClick={() => setTaskFiltersOpen((open) => !open)}
+                  className={cx(
+                    'sm:hidden flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors',
+                    taskFiltersOpen || activeTaskFilterCount > 0
+                      ? 'border-emerald-500/30 bg-emerald-500/15 text-success-text'
+                      : 'border-overlay-default bg-bg-900 text-content-muted'
+                  )}
+                >
+                  <Filter size={14} aria-hidden="true" />
+                  <span>Filters</span>
+                  {activeTaskFilterCount > 0 && <span className="tabular-nums">{activeTaskFilterCount}</span>}
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
+              <div
+                id="task-filters-selects"
+                className={cx('grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto', !taskFiltersOpen && 'max-sm:hidden')}
+              >
                 {/* Priority Dropdown Filter */}
                 <FilterSelect
                   aria-label="Filter tasks by priority"
@@ -2388,7 +2418,10 @@ export function ProjectsGoalsView({
             </div>
 
             {/* Bottom Row: Quick Segment Filter Buttons */}
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-3 border-t border-overlay-subtle">
+            <div
+              id="task-filters-status"
+              className={cx('flex flex-wrap items-center gap-1.5 sm:gap-2 pt-3 border-t border-overlay-subtle', !taskFiltersOpen && 'max-sm:hidden')}
+            >
               {(
                 [
                   { id: 'all', label: 'All' },
