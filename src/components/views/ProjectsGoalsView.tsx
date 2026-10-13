@@ -52,6 +52,7 @@ import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { CountUp } from '@/components/ui/Motion';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 
 // Active look of each status filter, worn by the row's SlidingPill.
 const GOAL_FILTER_PILL: Record<string, string> = {
@@ -473,6 +474,32 @@ export function ProjectsGoalsView({
   const [taskFormPriority, setTaskFormPriority] = useState<TaskPriority>('medium');
   const [taskFormSubtasks, setTaskFormSubtasks] = useState<{ id: string; title: string; completed: boolean }[]>([]);
   const [newModalSubtaskTitle, setNewModalSubtaskTitle] = useState('');
+
+  const goalForm = useUnsavedChanges(goalModalOpen, [
+    goalFormTitle,
+    goalFormDescription,
+    goalFormCategory,
+    goalFormTargetDate,
+    goalFormStatus,
+    goalFormSequentialMode,
+  ]);
+  const projectForm = useUnsavedChanges(projectModalOpen, [
+    projectFormTitle,
+    projectFormDescription,
+    projectFormGoalId,
+    projectFormStartDate,
+    projectFormDueDate,
+    projectFormStatus,
+  ]);
+  const taskForm = useUnsavedChanges(taskModalOpen, [
+    taskFormTitle,
+    taskFormDescription,
+    taskFormProjectId,
+    taskFormDueDate,
+    taskFormPriority,
+    taskFormSubtasks,
+    newModalSubtaskTitle,
+  ]);
 
   // Delete Modals
   const [deleteGoalTarget, setDeleteGoalTarget] = useState<Goal | null>(null);
@@ -2482,6 +2509,7 @@ export function ProjectsGoalsView({
       <Dialog
         open={goalModalOpen}
         onClose={() => setGoalModalOpen(false)}
+        dirty={goalForm.dirty}
         title={editingGoal ? 'Edit Goal' : 'Create New Goal'}
       >
         <div className="space-y-4">
@@ -2590,7 +2618,7 @@ export function ProjectsGoalsView({
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-overlay-subtle">
             <button
               type="button"
-              onClick={() => setGoalModalOpen(false)}
+              onClick={() => goalForm.confirmDiscard(() => setGoalModalOpen(false))}
               className="btn-secondary text-xs px-4 py-2"
             >
               Cancel
@@ -2614,6 +2642,7 @@ export function ProjectsGoalsView({
       <Dialog
         open={projectModalOpen}
         onClose={() => setProjectModalOpen(false)}
+        dirty={projectForm.dirty}
         title={editingProject ? 'Edit Project' : 'Create New Project'}
       >
         <div className="space-y-4">
@@ -2706,7 +2735,7 @@ export function ProjectsGoalsView({
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-overlay-subtle">
             <button
               type="button"
-              onClick={() => setProjectModalOpen(false)}
+              onClick={() => projectForm.confirmDiscard(() => setProjectModalOpen(false))}
               className="btn-secondary text-xs px-4 py-2"
             >
               Cancel
@@ -2730,6 +2759,7 @@ export function ProjectsGoalsView({
       <Dialog
         open={taskModalOpen}
         onClose={() => setTaskModalOpen(false)}
+        dirty={taskForm.dirty}
         title={editingTask ? 'Edit Task' : 'Create New Task'}
       >
         <div className="space-y-4">
@@ -2865,7 +2895,7 @@ export function ProjectsGoalsView({
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-overlay-subtle">
             <button
               type="button"
-              onClick={() => setTaskModalOpen(false)}
+              onClick={() => taskForm.confirmDiscard(() => setTaskModalOpen(false))}
               className="btn-secondary text-xs px-4 py-2"
             >
               Cancel

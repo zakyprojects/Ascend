@@ -24,6 +24,7 @@ import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Plus, Trash2, Edit2, Clock, Calendar, AlertTriangle, Layers, Check } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { uid } from '@/lib/dates';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 
 interface TemplateEditorModalProps {
@@ -53,6 +54,7 @@ export function TemplateEditorModal({
   const [blocks, setBlocks] = useState<TimeTrackerBlock[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const form = useUnsavedChanges(open && (editingTemplate?.id ?? 'new'), [title, activeDays, blocks]);
 
   // Block Modal State (for both Add and Edit)
   const [targetBlockForModal, setTargetBlockForModal] = useState<TimeTrackerBlock | null>(null);
@@ -223,6 +225,7 @@ export function TemplateEditorModal({
       <Dialog
         open={open}
         onClose={onClose}
+        dirty={form.dirty}
         title={editingTemplate ? 'Edit Template' : 'Create Template'}
         maxWidth="max-w-xl"
         preventClose={isSaving}
@@ -386,7 +389,7 @@ export function TemplateEditorModal({
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-overlay-subtle">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => form.confirmDiscard(onClose)}
               disabled={isSaving}
               className="px-4 py-2 text-xs font-medium text-content-muted hover:text-content-secondary transition-colors cursor-pointer"
             >

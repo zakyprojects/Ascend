@@ -38,6 +38,7 @@ import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 function GoalItemRow({
   item,
   selectedWeekKey,
@@ -399,6 +400,19 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const [linkedMetricKey, setLinkedMetricKey] = useState<string>('');
   const [targetValue, setTargetValue] = useState<number>(1);
   const [unit, setUnit] = useState<string>('times');
+
+  const goalForm = useUnsavedChanges(modalOpen, [
+    title,
+    targetDescription,
+    priority,
+    linkedModule,
+    linkedItemId,
+    linkedMetricKey,
+    targetValue,
+    unit,
+  ]);
+  const newReflectionForm = useUnsavedChanges(showAddReflection, newReflectionContent);
+  const editReflectionForm = useUnsavedChanges(editingReflection?.id ?? null, editReflectionContent);
 
   // Confirmation Modals
   const [deleteGoalModal, setDeleteGoalModal] = useState<WeeklyGoalItem | null>(null);
@@ -861,7 +875,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                   />
                   <div className="flex items-center justify-end gap-2">
                     <button
-                      onClick={() => setShowAddReflection(false)}
+                      onClick={() => newReflectionForm.confirmDiscard(() => setShowAddReflection(false))}
                       className="btn-secondary text-xs py-1.5 px-3"
                     >
                       Cancel
@@ -921,7 +935,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                               />
                               <div className="flex items-center justify-end gap-2">
                                 <button
-                                  onClick={() => setEditingReflection(null)}
+                                  onClick={() => editReflectionForm.confirmDiscard(() => setEditingReflection(null))}
                                   className="btn-secondary text-xs py-1.5 px-3"
                                 >
                                   Cancel
@@ -963,10 +977,12 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                               </div>
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => {
-                              setEditingReflection(ref);
-                              setEditReflectionContent(ref.content);
-                            }}
+                            onClick={() =>
+                              editReflectionForm.confirmDiscard(() => {
+                                setEditingReflection(ref);
+                                setEditReflectionContent(ref.content);
+                              })
+                            }
                             disabled={isPastWeek || isFutureWeek}
                             className={`p-1 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
                             title="Edit reflection"
@@ -1004,6 +1020,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       <Dialog
         open={modalOpen}
         onClose={() => setModalOpen(false)}
+        dirty={goalForm.dirty}
         title={editingGoal ? 'Edit Weekly Goal' : 'Add Weekly Goal'}
       >
         <div className="space-y-4 pt-2">
@@ -1215,7 +1232,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           <div className="flex gap-2 pt-3 border-t border-overlay-default">
             <button
-              onClick={() => setModalOpen(false)}
+              onClick={() => goalForm.confirmDiscard(() => setModalOpen(false))}
               className="btn-secondary text-xs flex-1"
             >
               Cancel

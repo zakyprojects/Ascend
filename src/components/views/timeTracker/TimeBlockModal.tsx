@@ -18,6 +18,7 @@ import { ActivityIcon } from './ActivityIcon';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Clock, AlertTriangle, Check, Tag, FileText } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 
 interface TimeBlockModalProps {
   open: boolean;
@@ -56,6 +57,14 @@ export function TimeBlockModal({
   const [notes, setNotes] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const form = useUnsavedChanges(open && (editingBlock?.id ?? 'new'), [
+    activityId,
+    secondaryActivityIds,
+    startTime,
+    endTime,
+    customTitle,
+    notes,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -188,6 +197,7 @@ export function TimeBlockModal({
     <Dialog
       open={open}
       onClose={onClose}
+      dirty={form.dirty}
       title={editingBlock ? 'Edit Time Block' : 'Schedule Time Block'}
       maxWidth="max-w-lg"
       preventClose={isSaving}
@@ -372,7 +382,7 @@ export function TimeBlockModal({
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-overlay-subtle">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => form.confirmDiscard(onClose)}
             disabled={isSaving}
             className="px-4 py-2 text-xs font-medium text-content-muted hover:text-content-secondary transition-colors"
           >

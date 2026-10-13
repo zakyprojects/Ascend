@@ -34,6 +34,7 @@ import { useToast } from '@/components/ui/Toast';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 
 type ReadingHubTab = 'reading' | 'to-read' | 'completed' | 'discover';
 
@@ -71,6 +72,18 @@ export function ReadingHub({ store }: { store: AppStore }) {
   // Form states for Progress & Finish
   const [progressInput, setProgressInput] = useState<number>(20);
   const [reflectionInput, setReflectionInput] = useState('');
+
+  const addBookForm = useUnsavedChanges(addCustomModalOpen, [
+    customTitle,
+    customAuthor,
+    customDescription,
+    customCategory,
+    customTotalAmount,
+    customUnit,
+    customStatus,
+    customTargetFinishDate,
+  ]);
+  const finishForm = useUnsavedChanges(finishModalBook?.id ?? null, reflectionInput);
 
   const libraryBooks = store.state.libraryBooks;
   const readingLogs = store.state.readingLogs;
@@ -879,6 +892,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       <Dialog
         open={addCustomModalOpen}
         onClose={() => setAddCustomModalOpen(false)}
+        dirty={addBookForm.dirty}
         title="Add Book"
       >
         <form onSubmit={handleAddCustomSubmit} className="space-y-4">
@@ -1009,7 +1023,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="flex items-center justify-end gap-2.5 pt-2">
             <button
               type="button"
-              onClick={() => setAddCustomModalOpen(false)}
+              onClick={() => addBookForm.confirmDiscard(() => setAddCustomModalOpen(false))}
               className="btn-secondary text-xs"
             >
               Cancel
@@ -1173,6 +1187,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       <Dialog
         open={Boolean(finishModalBook)}
         onClose={() => setFinishModalBook(null)}
+        dirty={finishForm.dirty}
         title={finishModalBook ? `Finish: ${finishModalBook.title}` : 'Finish Book'}
       >
         <form onSubmit={handleFinishSubmit} className="space-y-4">
@@ -1240,7 +1255,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           <div className="flex items-center justify-end gap-2.5 pt-2">
             <button
               type="button"
-              onClick={() => setFinishModalBook(null)}
+              onClick={() => finishForm.confirmDiscard(() => setFinishModalBook(null))}
               className="btn-secondary text-xs"
             >
               Cancel

@@ -61,6 +61,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 type PFCTab = 'focus' | 'decision' | 'emotion';
@@ -406,6 +407,7 @@ function FocusTimerSubmodule({
   const [reflectionModalOpen, setReflectionModalOpen] = useState(false);
   const [completedSessionData, setCompletedSessionData] = useState<{ taskName: string; durationMinutes: number; skillId?: string } | null>(null);
   const [reflectionText, setReflectionText] = useState('');
+  const sessionReflectionForm = useUnsavedChanges(reflectionModalOpen, reflectionText);
 
   // Duration settings
   const [focusMinutes, setFocusMinutes] = useState(25);
@@ -2372,7 +2374,12 @@ function FocusTimerSubmodule({
       </Dialog>
 
       {/* Post-Session Reflection Modal */}
-      <Dialog open={reflectionModalOpen} onClose={() => setReflectionModalOpen(false)} title="Focus session complete">
+      <Dialog
+        open={reflectionModalOpen}
+        onClose={() => setReflectionModalOpen(false)}
+        dirty={sessionReflectionForm.dirty}
+        title="Focus session complete"
+      >
         <div className="space-y-4">
           <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-xs text-cyan-hierarchy">
             You logged <strong>{completedSessionData?.durationMinutes} minutes</strong> of focus on <strong>"{completedSessionData?.taskName}"</strong>.
@@ -2392,7 +2399,10 @@ function FocusTimerSubmodule({
           </div>
 
           <div className="flex gap-2 pt-2">
-            <button onClick={() => setReflectionModalOpen(false)} className="btn-secondary flex-1 text-xs">
+            <button
+              onClick={() => sessionReflectionForm.confirmDiscard(() => setReflectionModalOpen(false))}
+              className="btn-secondary flex-1 text-xs"
+            >
               Skip
             </button>
             <button onClick={handleSaveReflection} className="btn-primary flex-1 text-xs flex items-center justify-center gap-1.5">
@@ -2446,6 +2456,8 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
   const [revisitDate, setRevisitDate] = useState(todayKey());
 
   const [reflectionText, setReflectionText] = useState('');
+  const decisionForm = useUnsavedChanges(modalOpen, [title, rationale, expectedOutcome, revisitDate]);
+  const decisionReflectionForm = useUnsavedChanges(reflectModalDecision?.id ?? null, reflectionText);
 
   const decisionLogs = store.state.decisionLogs;
 
@@ -2538,7 +2550,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
       )}
 
       {/* Log Decision Modal */}
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} title="Log Decision">
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} dirty={decisionForm.dirty} title="Log Decision">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="pfc-decision-title" className="block text-xs font-medium text-content-muted mb-1">Decision</label>
@@ -2590,7 +2602,11 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary flex-1">
+            <button
+              type="button"
+              onClick={() => decisionForm.confirmDiscard(() => setModalOpen(false))}
+              className="btn-secondary flex-1"
+            >
               Cancel
             </button>
             <button type="submit" className="btn-primary flex-1">
@@ -2601,7 +2617,11 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
       </Dialog>
 
       {/* Reflect Modal */}
-      <Dialog open={!!reflectModalDecision} onClose={() => setReflectModalDecision(null)} title={`Reflect: ${reflectModalDecision?.title}`}>
+      <Dialog
+        open={!!reflectModalDecision}
+        onClose={() => setReflectModalDecision(null)}
+        dirty={decisionReflectionForm.dirty}
+        title={`Reflect: ${reflectModalDecision?.title}`}>
         <form onSubmit={handleReflectionSubmit} className="space-y-4">
           <div>
             <label htmlFor="pfc-decision-reflection-notes" className="block text-xs font-medium text-content-muted mb-1">What actually happened? What did you learn?</label>
@@ -2616,7 +2636,11 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setReflectModalDecision(null)} className="btn-secondary flex-1">
+            <button
+              type="button"
+              onClick={() => decisionReflectionForm.confirmDiscard(() => setReflectModalDecision(null))}
+              className="btn-secondary flex-1"
+            >
               Cancel
             </button>
             <button type="submit" className="btn-primary flex-1">
@@ -2665,6 +2689,8 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
   const [customEmotion, setCustomEmotion] = useState('');
   const [intensity, setIntensity] = useState(5);
   const [context, setContext] = useState('');
+
+  const emotionForm = useUnsavedChanges(modalOpen, [emotion, customEmotion, intensity, context]);
 
   const emotionLogs = store.state.emotionLogs;
 
@@ -2746,7 +2772,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
       )}
 
       {/* Modal */}
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} title="Label Emotion">
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} dirty={emotionForm.dirty} title="Label Emotion">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="pfc-emotion-select" className="block text-xs font-medium text-content-muted mb-1">Emotion</label>
@@ -2799,7 +2825,11 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary flex-1">
+            <button
+              type="button"
+              onClick={() => emotionForm.confirmDiscard(() => setModalOpen(false))}
+              className="btn-secondary flex-1"
+            >
               Cancel
             </button>
             <button type="submit" className="btn-primary flex-1">

@@ -35,6 +35,7 @@ import { useIntroMotion, useSeen } from '@/lib/motion';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { lastDayKeys } from '@/lib/weeklyActivity';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { getDailyPrompt, JournalPrompt } from '@/data/journalPrompts';
 
 // Minimum required non-whitespace characters to save an entry
@@ -116,6 +117,7 @@ export function Journal({ store }: { store: AppStore }) {
   const [justCelebrated, setJustCelebrated] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [deleteModalEntry, setDeleteModalEntry] = useState<JournalEntry | null>(null);
+  const entryForm = useUnsavedChanges(isEditingToday, [mood, content]);
 
   // Guided prompt preferences
   const [showGuidedPrompt, setShowGuidedPrompt] = useState<boolean>(() => {
@@ -234,13 +236,14 @@ export function Journal({ store }: { store: AppStore }) {
     }
   };
 
-  const handleCancelEdit = () => {
-    if (existingToday) {
-      setMood(existingToday.mood);
-      setContent(existingToday.content || '');
-    }
-    setIsEditingToday(false);
-  };
+  const handleCancelEdit = () =>
+    entryForm.confirmDiscard(() => {
+      if (existingToday) {
+        setMood(existingToday.mood);
+        setContent(existingToday.content || '');
+      }
+      setIsEditingToday(false);
+    });
 
   const entries = store.state.journalEntries;
   const currentDailyPrompt: JournalPrompt = getDailyPrompt(todayKey(), promptOffset);

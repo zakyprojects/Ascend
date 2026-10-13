@@ -14,6 +14,7 @@ import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 
 export function SkillTracker({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -31,6 +32,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
   const [duration, setDuration] = useState(30);
   const [note, setNote] = useState('');
   const [noteTouched, setNoteTouched] = useState(false);
+  const logForm = useUnsavedChanges(logModalSkill?.id ?? null, [duration, note]);
 
   const skills = store.state.skills;
   const skillLogs = store.state.skillLogs;
@@ -535,6 +537,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           setLogModalSkill(null);
           setNoteTouched(false);
         }}
+        dirty={logForm.dirty}
         title={`Log Practice: ${logModalSkill?.name}`}
       >
         <form onSubmit={handleLogPracticeSubmit} className="space-y-4">
@@ -578,10 +581,12 @@ export function SkillTracker({ store }: { store: AppStore }) {
           <div className="flex gap-2 pt-2">
             <button
               type="button"
-              onClick={() => {
-                setLogModalSkill(null);
-                setNoteTouched(false);
-              }}
+              onClick={() =>
+                logForm.confirmDiscard(() => {
+                  setLogModalSkill(null);
+                  setNoteTouched(false);
+                })
+              }
               className="btn-secondary flex-1"
             >
               Cancel

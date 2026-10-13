@@ -45,6 +45,7 @@ import { isTodayLocal, calculateActivePlanStreak, formatDateShort, parseDate } f
 import { STARTER_TEMPLATES } from '@/data/planTemplates';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { AutoNum, CountUp } from '@/components/ui/Motion';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 
 function ExpandableDescription({ text }: { text: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -168,6 +169,44 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     setProgressInput((prev) => ({ ...prev, [newTargetFor.planId]: '0' }));
     closeNewTarget();
   };
+
+  const createForm = useUnsavedChanges(createModalOpen, [
+    planType,
+    title,
+    description,
+    category,
+    isPublic,
+    steps,
+    targetValue,
+    targetUnit,
+    currentProgress,
+    targetDate,
+    cadence,
+    duration,
+    startDate,
+    targetReviewDate,
+    initialReflectionNote,
+    reviewCadence,
+  ]);
+  const editForm = useUnsavedChanges(editModalOpen && editingPlanId, [
+    editTitle,
+    editDescription,
+    editCategory,
+    editIsPublic,
+    editSteps,
+    editTargetValue,
+    editTargetUnit,
+    editTargetDate,
+    editCadence,
+    editDuration,
+    editTargetReviewDate,
+    editReviewCadence,
+  ]);
+  // The "add a reflection note" boxes under each plan; a box cleared after saving is clean again.
+  useUnsavedChanges(
+    true,
+    Object.entries(reflectionInput).filter(([, text]) => text.trim() !== '')
+  );
 
   const [noteToDelete, setNoteToDelete] = useState<{ planId: string; noteKey: string; mode: 'creator_interactive' | 'follower_interactive' } | null>(null);
 
@@ -1586,7 +1625,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       </Dialog>
 
       {/* CREATE PLAN MODAL */}
-      <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create Improvement Plan">
+      <Dialog
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        dirty={createForm.dirty}
+        title="Create Improvement Plan"
+      >
         <form onSubmit={handleCreateSubmit} className="space-y-4">
           {/* STARTER TEMPLATE ACCELERATOR */}
           <div className="card p-3 space-y-2">
@@ -1911,7 +1955,11 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setCreateModalOpen(false)} className="btn-secondary flex-1">
+            <button
+              type="button"
+              onClick={() => createForm.confirmDiscard(() => setCreateModalOpen(false))}
+              className="btn-secondary flex-1"
+            >
               Cancel
             </button>
             <button type="submit" className="btn-primary flex-1">
@@ -1922,7 +1970,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       </Dialog>
 
       {/* EDIT STRUCTURAL FIELDS MODAL */}
-      <Dialog open={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Plan Structure">
+      <Dialog
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        dirty={editForm.dirty}
+        title="Edit Plan Structure"
+      >
         <form onSubmit={handleEditSubmit} className="space-y-4">
           <div>
             <label htmlFor="pip-edit-title" className="block text-xs font-medium text-content-muted mb-1">Plan Title</label>
@@ -2117,7 +2170,11 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setEditModalOpen(false)} className="btn-secondary flex-1">
+            <button
+              type="button"
+              onClick={() => editForm.confirmDiscard(() => setEditModalOpen(false))}
+              className="btn-secondary flex-1"
+            >
               Cancel
             </button>
             <button type="submit" className="btn-primary flex-1">
