@@ -718,24 +718,24 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                   {unaddressedPastGoals.map(({ weekKey: pastWeek, goal }) => (
                     <div
                       key={`${pastWeek}-${goal.id}`}
-                      className="scroll-rise flex items-center justify-between py-2.5"
+                      className="scroll-rise flex items-center justify-between gap-3 py-2.5"
                     >
-                      <div className="space-y-0.5">
+                      <div className="min-w-0 flex-1 space-y-0.5">
                         <span className="item-name text-xs text-content-secondary block">{goal.title}</span>
                         <span className="text-2xs text-warning-text">
                           From {pastWeek} (<span className="capitalize">{goal.priority}</span> Priority)
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-2">
                         <button
                           onClick={() => handleCarryOverClick(pastWeek, goal)}
-                          className="btn-primary text-micro py-1 px-2.5 flex items-center gap-1"
+                          className="btn-primary gap-1 whitespace-nowrap px-3 py-1.5 text-xs"
                         >
-                          <ArrowRight size={12} /> Carry Over
+                          Carry over <ArrowRight size={14} aria-hidden="true" />
                         </button>
                         <button
                           onClick={() => setDismissPastGoalModal({ pastWeek, goal })}
-                          className="btn-secondary text-micro py-1 px-2 text-content-muted hover:text-content-secondary"
+                          className="btn-secondary whitespace-nowrap px-3 py-1.5 text-xs text-content-muted hover:text-content-secondary"
                         >
                           Dismiss
                         </button>
