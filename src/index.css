@@ -1084,7 +1084,7 @@
 
   /* The account menu drops from the avatar. */
   .account-menu {
-    transform-origin: right top;
+    transform-origin: left top;
     animation: menu-in 180ms var(--ease-emphasized) both;
   }
   /* Phone zone bar: a floating glass pill; the current zone's slot widens to show its name. */

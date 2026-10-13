@@ -18,7 +18,7 @@ interface AccountMenuProps {
   onOpenView: (view: View) => void;
   onOpenAuth: () => void;
   onLogout: () => void;
-  /** below: opens under the avatar, right-aligned (top row). side: opens to its right, bottom-aligned (rail foot). */
+  /** below: opens under the avatar, extending to its right over the page (top row). side: opens to its right, bottom-aligned (rail foot). */
   placement?: 'below' | 'side';
 }
 
@@ -52,7 +52,7 @@ export function AccountMenu({
     setAnchor(
       placement === 'side'
         ? { left: rect.right + 8, bottom: Math.max(12, window.innerHeight - rect.bottom) }
-        : { left: Math.max(12, rect.right - MENU_WIDTH), top: rect.bottom + 8 }
+        : { left: Math.max(12, Math.min(rect.left, window.innerWidth - MENU_WIDTH - 12)), top: rect.bottom + 8 }
     );
   }, [open, placement]);
 
