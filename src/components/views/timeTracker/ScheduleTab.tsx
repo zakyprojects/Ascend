@@ -715,7 +715,7 @@ export function ScheduleTab({
         {dailyBlocks.length === 0 ? (
           <EmptyState
             icon={Clock}
-            title="No Blocks Scheduled"
+            title="No blocks scheduled"
             description="Add time blocks or apply one of your saved templates."
             action={
               <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">

@@ -202,7 +202,8 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                 <EmptyState
                   surface
                   size="md"
-                  title="No habits yet. Add one to get started."
+                  title="No habits yet"
+                  description="Add one to get started."
                   action={
                     <Button variant="primary" onClick={() => onViewChange('habits')}>
                       Add Your First Habit

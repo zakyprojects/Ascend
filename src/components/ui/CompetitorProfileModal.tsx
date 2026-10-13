@@ -198,7 +198,7 @@ export function CompetitorProfileModal({
               ) : (
                 <EmptyState
                   size="sm"
-                  title="No active habits shared yet."
+                  title="No active habits shared yet"
                 />
               )}
             </div>

@@ -237,7 +237,7 @@ export function TemplatesTab({
       {templates.length === 0 ? (
         <EmptyState
           icon={Layers}
-          title="No Blueprint Templates Yet"
+          title="No blueprints yet"
           description="Build a daily routine once and reuse it. Blueprints apply automatically on the days you assign."
           action={
             <div className="flex flex-wrap items-center justify-center gap-3">

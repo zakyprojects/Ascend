@@ -779,7 +779,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               {activeGoalDoc.goals.filter((g) => !g.archived).length === 0 ? (
                 <EmptyState
                   icon={Target}
-                  title="No Weekly Goals Set Yet"
+                  title="No weekly goals yet"
                   description="Pick 1-3 measurable priorities for this week."
                   size="sm"
                   surface={false}
@@ -896,7 +896,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                       {reflections.length === 0 && !showAddReflection && (
                         <EmptyState
                           icon={PenLine}
-                          title={selectedWeekKey === currentWeekKey ? `No reflections added for ${selectedWeekKey} yet.` : `No reflections added for ${selectedWeekKey}.`}
+                          title={selectedWeekKey === currentWeekKey ? `No reflections for ${selectedWeekKey} yet` : `No reflections for ${selectedWeekKey}`}
                           description={selectedWeekKey === currentWeekKey ? 'Use "+ Add Reflection" above to write one.' : undefined}
                           size="sm"
                           surface={false}

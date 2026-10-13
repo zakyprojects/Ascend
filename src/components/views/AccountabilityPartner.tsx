@@ -1107,8 +1107,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
             {activePacts.length === 0 ? (
               <EmptyState
-                title="No active joint pacts"
-                description={`No active joint pacts with ${activePartnerUsername} right now.`}
+                title="No active pacts"
+                description={`Nothing running with ${activePartnerUsername} right now.`}
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -1122,8 +1122,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <h2 className="section-title mb-3">Created By Me</h2>
             {myCreatedPlans.length === 0 ? (
               <EmptyState
-                title="You haven't created any plans yet."
-                description={'Use "Create Plan" above to make one.'}
+                title="No plans yet"
+                description={'Use "Create Plan" to make one.'}
               />
             ) : (
               <div className="grid-cards-lg gap-4">
@@ -1229,8 +1229,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <h2 className="section-title mb-3">Followed & Copied Plans</h2>
             {followedPlans.length === 0 ? (
               <EmptyState
-                title="You haven't copied any public plans yet."
-                description={'Browse the "Discover Public Plans" tab to copy one.'}
+                title="No copied plans yet"
+                description="Copy one from Discover Public Plans."
               />
             ) : (
               <div className="grid-cards-lg gap-4">
@@ -1378,8 +1378,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           ) : remotePublicPlans.length === 0 ? (
             <EmptyState
               icon={Compass}
-              title="No public plans found matching your filters."
-              description="Try adjusting your search query, category, or plan type filters."
+              title="No plans match your filters"
+              description="Try a different search, category or type."
               action={
                 (discoverSearch || discoverCategory !== 'All' || discoverPlanType !== 'all') ? (
                   <button
