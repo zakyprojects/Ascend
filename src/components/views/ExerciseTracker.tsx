@@ -253,12 +253,12 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           ) : (
             <div className="card overflow-hidden divide-y divide-overlay-subtle">
               {workouts.map((w) => (
-                <div key={w.id} className="enter-item p-3.5 flex items-center justify-between transition-colors hover:bg-overlay-subtle">
-                  <div className="flex items-center gap-3">
+                <div key={w.id} className="enter-item p-3.5 flex items-center justify-between gap-3 transition-colors hover:bg-overlay-subtle">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
                       <Activity size={18} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h3 className="item-name text-sm text-content-secondary">{w.type}</h3>
                       <p className="text-xs text-content-disabled">
                         {formatDateLong(w.date)} • {w.amount !== undefined && w.unit && w.unit !== 'mins' ? (
@@ -270,8 +270,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="figure text-xs text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="figure text-xs text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 whitespace-nowrap">
                       +{w.pointsAwarded} pts
                     </span>
                     <button

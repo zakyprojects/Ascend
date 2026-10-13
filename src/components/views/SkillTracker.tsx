@@ -423,12 +423,12 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     {group.logs.map((log) => {
                       const skill = skills.find((s) => s.id === log.skillId);
                       return (
-                        <div key={log.id} className="enter-item p-3.5 flex items-start justify-between transition-colors hover:bg-overlay-subtle">
-                          <div className="flex items-start gap-3">
+                        <div key={log.id} className="enter-item p-3.5 flex items-start justify-between gap-3 transition-colors hover:bg-overlay-subtle">
+                          <div className="flex min-w-0 flex-1 items-start gap-3">
                             <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0 mt-0.5">
                               <Clock size={18} />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="item-name text-content-secondary text-sm">{skill?.name || 'Skill'}</span>
                                 <span className="figure text-xs text-content-disabled">({log.durationMinutes} mins)</span>
@@ -437,8 +437,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
                               <p className="text-2xs text-content-disabled mt-1">{formatDateLong(log.date)}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="badge-purple figure text-xs px-2.5 py-1 rounded-full">
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="badge-purple figure text-xs px-2.5 py-1 rounded-full whitespace-nowrap">
                               +{log.pointsAwarded} pts
                             </span>
                             <button
