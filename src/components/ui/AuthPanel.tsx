@@ -506,7 +506,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
         }
 
         await withTimeout(upgradeAnonymousUser(email, password, username, avatar));
-        await finishWithSuccess('Progress saved!', () => window.location.reload());
+        // USER_UPDATED re-loads the same account (store), so no page reload is needed.
+        await finishWithSuccess('Progress saved!', onDone);
       } else if (mode === 'signup') {
         const check = await isUsernameAvailable(username);
         if (!check.available) {
