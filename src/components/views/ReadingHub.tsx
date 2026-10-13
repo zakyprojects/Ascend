@@ -1312,7 +1312,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           if (deleteModalBook) {
             await store.deleteBook(deleteModalBook.id);
             setDeleteModalBook(null);
-            showSuccessToast('Book Deleted', 'Book removed successfully.', `book_${deleteModalBook.id}`);
+            showSuccessToast('Book deleted', 'Book removed successfully.', `book_${deleteModalBook.id}`);
           }
         }}
         title="Remove Book from Library?"

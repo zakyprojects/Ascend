@@ -142,8 +142,8 @@ function App() {
   // Rendered beside the app (not instead of it), so it is not remounted when it starts exiting.
   const loaderOverlay = (showLoader || loaderExiting) && (
     <AscendLoadingOverlay
-      message={loaderKind === 'boot' ? 'Verifying session...' : 'Loading your workspace...'}
-      submessage={loaderKind === 'boot' ? 'Checking your account' : 'Syncing your data'}
+      message={loaderKind === 'boot' ? 'Starting up...' : 'Loading your workspace...'}
+      submessage={loaderKind === 'boot' ? 'Checking your account' : 'Loading your data'}
       entrance={loaderKind === 'boot' ? 'boot' : 'fade'}
       exiting={!showLoader}
     />
@@ -236,9 +236,9 @@ function App() {
             open={Boolean(store.destructiveWipeModal?.open)}
             onClose={store.handleCancelDestructiveWipe}
             onConfirm={store.handleConfirmDestructiveWipe}
-            title={store.destructiveWipeModal?.title || 'Confirm Data Removal'}
+            title={store.destructiveWipeModal?.title || 'Confirm data removal'}
             description={store.destructiveWipeModal?.description}
-            confirmText="Yes, Save Changes"
+            confirmText="Yes, save changes"
             isDeleting={store.isSavingDestructiveWipe}
           />
         </ToastProvider>

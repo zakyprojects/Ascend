@@ -342,7 +342,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       } catch (err: any) {
         const errorMessage = toUserMessage(err, "Couldn't send the invite. Try again.");
         setInviteError(errorMessage);
-        showErrorToast('Invite failed', errorMessage);
+        showErrorToast("Couldn't send invite", errorMessage);
       }
     });
   };
@@ -373,11 +373,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         setUser1Target('');
         setUser2Target('');
         setChallengeError(null);
-        showSuccessToast('Joint Pact Locked In!', `"${title}" has begun with @${activePartnerUsername}.`);
+        showSuccessToast('Joint pact locked in!', `"${title}" has begun with @${activePartnerUsername}.`);
       } catch (err: any) {
         const errorMessage = toUserMessage(err, "Couldn't create the pact. Try again.");
         setChallengeError(errorMessage);
-        showErrorToast('Could not create pact', errorMessage);
+        showErrorToast("Couldn't create pact", errorMessage);
       }
     });
   };
@@ -471,7 +471,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
           showSuccessToast('Nudge sent', `Reminded @${activePartnerUsername} about today's pledge.`);
         } catch (err: any) {
-          showErrorToast('Failed to send nudge', toUserMessage(err, 'Try again later.'));
+          showErrorToast("Couldn't send nudge", toUserMessage(err, 'Try again later.'));
         }
       });
     },
@@ -1298,7 +1298,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                               try {
                                 await store.logSharedChallengeHabit(challenge.id);
                               } catch (err: any) {
-                                showErrorToast('Failed to log pledge', toUserMessage(err, "Your progress wasn't saved. Try again."));
+                                showErrorToast("Couldn't log pledge", toUserMessage(err, "Your progress wasn't saved. Try again."));
                               }
                             });
                           }}
@@ -1453,7 +1453,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         <EmptyState
           icon={Users}
           title="No partners yet"
-          description="Enter a friend's 6-digit user ID to send an invite. You can have up to 5 partners."
+          description="Enter a friend's 6-digit ID to send an invite. You can have up to 5 partners."
           action={
             <button onClick={() => setInviteModalOpen(true)} className="btn-secondary mx-auto text-xs flex items-center gap-1.5">
               <UserPlus size={14} />
@@ -1474,11 +1474,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleSendInviteSubmit} className="space-y-4">
           <p className="text-xs text-content-muted">
-            Enter your partner's 6-digit user ID (it's in their Settings). You can have up to 5 partners.
+            Enter your partner's 6-digit ID (it's in their Settings). You can have up to 5 partners.
           </p>
 
           <div>
-            <label htmlFor="partner-invite-uid" className="block text-xs font-medium text-content-tertiary mb-1">Partner's user ID</label>
+            <label htmlFor="partner-invite-uid" className="block text-xs font-medium text-content-tertiary mb-1">Partner's ID</label>
             <input
               id="partner-invite-uid"
               type="text"
@@ -1764,7 +1764,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                 showSuccessToast('Pairing ended', `You're no longer partners with ${activePartnerUsername}.`);
                 setEndConfirmOpen(false);
               } catch (err: any) {
-                showErrorToast('Could not end pairing', toUserMessage(err, 'Try again.'));
+                showErrorToast("Couldn't end pairing", toUserMessage(err, 'Try again.'));
               }
             });
           }

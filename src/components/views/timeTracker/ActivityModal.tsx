@@ -214,7 +214,7 @@ export function ActivityModal({
         <div>
           <label htmlFor="tt-act-module" className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
             <LinkIcon size={13} className="text-success-text" />
-            Ascend Ecosystem Module Sync (Optional)
+            Link to an Ascend module (optional)
           </label>
           <select
             id="tt-act-module"

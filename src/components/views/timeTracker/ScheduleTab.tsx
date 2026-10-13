@@ -180,12 +180,12 @@ export function ScheduleTab({
       const isNowCompleted = !block.completed;
       if (isNowCompleted) {
         showSuccessToast(
-          'Block Completed!',
+          'Block completed!',
           `Logged completion for "${block.customTitle || activityMap.get(block.activityId)?.name || 'Scheduled Block'}"`
         );
       }
     } catch (err: any) {
-      showErrorToast('Failed to update block', toUserMessage(err, 'Try again.'));
+      showErrorToast("Couldn't update block", toUserMessage(err, 'Try again.'));
     }
   };
 
@@ -194,9 +194,9 @@ export function ScheduleTab({
     const blockId = deleteTargetBlock.id;
     try {
       store.deleteDailyTimeBlock(selectedDateKey, blockId);
-      showSuccessToast('Time Block Deleted', 'Time block removed.', `time_block_${blockId}`);
+      showSuccessToast('Time block deleted', 'Time block removed.', `time_block_${blockId}`);
     } catch (err: any) {
-      showErrorToast('Failed to delete block', toUserMessage(err, 'Try again.'));
+      showErrorToast("Couldn't delete block", toUserMessage(err, 'Try again.'));
     } finally {
       setDeleteTargetBlock(null);
     }
@@ -205,9 +205,9 @@ export function ScheduleTab({
   const handleConfirmClearDay = async () => {
     try {
       store.clearDailyTimeBlocks(selectedDateKey);
-      showSuccessToast('Day Schedule Cleared', 'Day schedule cleared.', `clear_day_${selectedDateKey}_${Date.now()}`);
+      showSuccessToast('Day cleared', 'Day schedule cleared.', `clear_day_${selectedDateKey}_${Date.now()}`);
     } catch (err: any) {
-      showErrorToast('Failed to clear schedule', toUserMessage(err, 'Try again.'));
+      showErrorToast("Couldn't clear day", toUserMessage(err, 'Try again.'));
     } finally {
       setShowClearDayModal(false);
     }

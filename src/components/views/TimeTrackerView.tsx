@@ -88,7 +88,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         showSuccessToast('Time block scheduled');
       }
     } catch (err: any) {
-      showErrorToast('Failed to schedule block', toUserMessage(err, 'Try again.'));
+      showErrorToast("Couldn't schedule block", toUserMessage(err, 'Try again.'));
       throw err;
     }
   };
@@ -118,7 +118,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         showSuccessToast('Blueprint template created');
       }
     } catch (err: any) {
-      showErrorToast('Failed to save blueprint', toUserMessage(err, 'Try again.'));
+      showErrorToast("Couldn't save blueprint", toUserMessage(err, 'Try again.'));
       throw err;
     }
   };
@@ -135,20 +135,20 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
       const result = store.applyTemplateToDate(dateToApply, templateId, mode);
 
       if (mode === 'replace') {
-        showSuccessToast('Blueprint Applied', `Blueprint applied: ${result.added} blocks scheduled.`);
+        showSuccessToast('Blueprint applied', `Blueprint applied: ${result.added} blocks scheduled.`);
       } else {
         if (result.added > 0 && result.rejected === 0) {
-          showSuccessToast('Blueprint Merged', `Blueprint merged: ${result.added} blocks added.`);
+          showSuccessToast('Blueprint merged', `Blueprint merged: ${result.added} blocks added.`);
         } else if (result.added > 0 && result.rejected > 0) {
-          showSuccessToast('Blueprint Merged', `Blueprint merged: ${result.added} added, ${result.rejected} skipped (overlap).`);
+          showSuccessToast('Blueprint merged', `Blueprint merged: ${result.added} added, ${result.rejected} skipped (overlap).`);
         } else if (result.added === 0 && result.rejected > 0) {
-          showErrorToast('Merge Skipped', `All ${result.rejected} blocks overlapped with existing schedule.`);
+          showErrorToast('Nothing merged', `All ${result.rejected} blocks overlapped with existing schedule.`);
         } else {
-          showSuccessToast('Blueprint Applied', 'Blueprint applied.');
+          showSuccessToast('Blueprint applied', 'Blueprint applied.');
         }
       }
     } catch (err: any) {
-      showErrorToast('Failed to apply blueprint', toUserMessage(err, 'Try again.'));
+      showErrorToast("Couldn't apply blueprint", toUserMessage(err, 'Try again.'));
       throw err;
     }
   };
@@ -179,7 +179,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         showSuccessToast('Activity category created');
       }
     } catch (err: any) {
-      showErrorToast('Failed to save activity', toUserMessage(err, 'Try again.'));
+      showErrorToast("Couldn't save activity", toUserMessage(err, 'Try again.'));
       throw err;
     }
   };

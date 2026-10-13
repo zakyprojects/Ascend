@@ -144,7 +144,7 @@ export function TimeBlockModal({
     e.preventDefault();
     if (!activityId) {
       setValidationError('Please select a primary activity category.');
-      showErrorToast('Activity Required', 'Please select a primary activity category.');
+      showErrorToast('Choose an activity', 'Please select a primary activity category.');
       return;
     }
     if (isZeroDuration) {

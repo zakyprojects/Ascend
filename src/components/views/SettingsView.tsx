@@ -417,7 +417,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
               <div className="p-3 rounded-xl border border-overlay-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <label className="block text-xs font-medium text-content-tertiary">
-                    Your user ID (UID)
+                    Your ID
                   </label>
                   <p className="text-micro text-content-muted">
                     Share this 6-digit ID with friends to add them as accountability partners.
@@ -823,7 +823,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                     )}
                   </div>
                   <p className="text-micro text-content-muted leading-relaxed">
-                    Let others find you by your user ID (UID) and send you partner invites.
+                    Let others find you by your ID and send you partner invites.
                     <br />
                     <em className="text-content-disabled">
                       Turning this off blocks new invites. Current partners stay connected.
@@ -1017,7 +1017,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
       {isLoggingOut && (
         <AscendLoadingOverlay
           message="Logging out..."
-          submessage="Ending your session"
+          submessage="Just a moment"
         />
       )}
     </div>

@@ -229,15 +229,15 @@ export function Journal({ store }: { store: AppStore }) {
 
         if (!wasAwarded) {
           setJustCelebrated(true);
-          showSuccessToast('Journal Saved', `+${JOURNAL_POINTS.entryCompleted} points for today's entry.`);
+          showSuccessToast('Journal saved', `+${JOURNAL_POINTS.entryCompleted} points for today's entry.`);
           setTimeout(() => setJustCelebrated(false), 4500);
         } else {
-          showSuccessToast('Journal Updated', 'Your entry has been updated.');
+          showSuccessToast('Journal updated', 'Your entry has been updated.');
         }
       });
       setIsEditingToday(false);
     } catch (err: any) {
-      showErrorToast('Save Failed', toUserMessage(err, "Couldn't save your entry. Try again."));
+      showErrorToast("Couldn't save entry", toUserMessage(err, 'Try again.'));
     }
   };
 
@@ -1151,7 +1151,7 @@ export function Journal({ store }: { store: AppStore }) {
             await executeDelete(async () => {
               await store.deleteJournalEntry(deleteModalEntry.id);
               setDeleteModalEntry(null);
-              showSuccessToast('Entry Deleted', 'Journal entry removed successfully.', `journal_${deleteModalEntry.id}`);
+              showSuccessToast('Entry deleted', 'Journal entry removed successfully.', `journal_${deleteModalEntry.id}`);
             });
           }
         }}

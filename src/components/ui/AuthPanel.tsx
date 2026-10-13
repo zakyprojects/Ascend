@@ -616,7 +616,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
             {/* The page's own h1 names the screen; this line says what it is for. */}
             <p className="text-sm text-content-muted">
               {mode === 'upgrade'
-                ? 'Turn your guest session into a full account. Your habits, points, and league rank stay.'
+                ? 'Turn your guest progress into a full account. Your habits, points, and league rank stay.'
                 : mode === 'signup'
                 ? 'Create an account to compete in weekly, monthly, and 90-day leagues.'
                 : 'Sign in to see your habits, rank, and league points.'}

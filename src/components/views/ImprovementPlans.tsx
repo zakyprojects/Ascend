@@ -1217,7 +1217,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                   try {
                                     await store.togglePlanVisibility(plan.id, !plan.isPublic);
                                   } catch (err: any) {
-                                    showErrorToast('Visibility Update Failed', toUserMessage(err, "Couldn't change who can see this plan. Try again."));
+                                    showErrorToast("Couldn't change plan visibility", toUserMessage(err, 'Try again in a moment.'));
                                   }
                                 });
                               }}
@@ -1482,7 +1482,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                     try {
                                       await store.togglePlanVisibility(plan.id, !plan.isPublic);
                                     } catch (err: any) {
-                                      showErrorToast('Visibility Update Failed', toUserMessage(err, "Couldn't change who can see this plan. Try again."));
+                                      showErrorToast("Couldn't change plan visibility", toUserMessage(err, 'Try again in a moment.'));
                                     }
                                   });
                                 }}
@@ -1553,9 +1553,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             await executeWithKey(`copy_plan_${plan.id}`, async () => {
                               try {
                                 await store.copyPublicPlan(plan);
-                                showSuccessToast('Plan Copied!', `"${plan.title}" added to your saved plans.`);
+                                showSuccessToast('Plan copied!', `"${plan.title}" added to your saved plans.`);
                               } catch (err: any) {
-                                showErrorToast('Copy Failed', toUserMessage(err, "Couldn't copy this plan. Try again."));
+                                showErrorToast("Couldn't copy plan", toUserMessage(err, 'Try again in a moment.'));
                               }
                             });
                           }}
@@ -2196,9 +2196,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               try {
                 await store.deletePlan(planId);
                 setPlanToDelete(null);
-                showSuccessToast('Plan Deleted', 'Improvement plan removed successfully.', `plan_${planId}`);
+                showSuccessToast('Plan deleted', 'Improvement plan removed successfully.', `plan_${planId}`);
               } catch (err: any) {
-                showErrorToast('Delete Failed', toUserMessage(err, "Couldn't delete this plan. Try again."));
+                showErrorToast("Couldn't delete plan", toUserMessage(err, 'Try again in a moment.'));
               }
             });
           }
@@ -2220,9 +2220,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               try {
                 await store.deleteFollowedPlan(followId);
                 setFollowToDelete(null);
-                showSuccessToast('Plan Removed', 'Saved plan removed from your account.', `follow_${followId}`);
+                showSuccessToast('Plan removed', 'Saved plan removed from your account.', `follow_${followId}`);
               } catch (err: any) {
-                showErrorToast('Remove Failed', toUserMessage(err, "Couldn't remove this saved plan. Try again."));
+                showErrorToast("Couldn't remove plan", toUserMessage(err, 'Try again.'));
               }
             });
           }
@@ -2245,7 +2245,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             } else {
               store.deleteFollowedVisionReflectionNote(noteToDelete.planId, noteToDelete.noteKey);
             }
-            showSuccessToast('Note Deleted', 'Reflection note removed.', `note_${noteToDelete.planId}_${noteToDelete.noteKey}`);
+            showSuccessToast('Note deleted', 'Reflection note removed.', `note_${noteToDelete.planId}_${noteToDelete.noteKey}`);
             setNoteToDelete(null);
           }
         }}

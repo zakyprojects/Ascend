@@ -1748,8 +1748,8 @@ export function useAppState() {
         window.dispatchEvent(
           new CustomEvent('app-toast-success', {
             detail: {
-              title: 'Changes Saved',
-              message: 'Your updates have been confirmed and saved to the cloud.',
+              title: 'Changes saved',
+              message: 'Your changes are saved.',
             },
           })
         );
@@ -1760,7 +1760,7 @@ export function useAppState() {
         window.dispatchEvent(
           new CustomEvent('app-toast-error', {
             detail: {
-              title: 'Save Failed',
+              title: "Couldn't save your changes",
               message: toUserMessage(err, "Your changes weren't saved. Try again."),
             },
           })
@@ -1917,7 +1917,7 @@ export function useAppState() {
         // regardless of whether the inbound fetch succeeded, had no data, or failed.
         if (stateRef.current.unsyncedEntityIds && stateRef.current.unsyncedEntityIds.length > 0) {
           console.log('[SYNC] Triggering outbound retry-push for unsynced entities:', stateRef.current.unsyncedEntityIds);
-          setState((prev) => ({ ...prev }), { immediate: true, actionLabel: 'Sync pending changes' });
+          setState((prev) => ({ ...prev }), { immediate: true, actionLabel: 'Pending changes' });
         }
       }
     };
@@ -2055,10 +2055,10 @@ export function useAppState() {
                 const isZeroOut = err.code === 'ZERO_OUT_WIPE';
                 setDestructiveWipeModal({
                   open: true,
-                  title: isZeroOut ? 'Clear All Tracked Data?' : 'Confirm Large Data Removal',
+                  title: isZeroOut ? 'Clear all tracked data?' : 'Remove most of your data?',
                   description: isZeroOut
-                    ? 'This action will remove all remaining tracked items from your account. Are you sure you want to save this change?'
-                    : 'This action will remove most of your tracked items (>70% decrease). Are you sure you want to proceed with saving this change?',
+                    ? 'This removes all remaining tracked items from your account. Save this change?'
+                    : 'This removes most of your tracked items. Save this change?',
                   stateToRetry: state,
                   stateBeforeAction: lastKnownGoodStateRef.current,
                 });
@@ -2086,15 +2086,15 @@ export function useAppState() {
               let toastTitle: string;
               if (distinctLabels.length === 1) {
                 toastTitle = isGuard
-                  ? `${distinctLabels[0]} blocked (Data Protection)`
+                  ? `${distinctLabels[0]} not saved`
                   : `${distinctLabels[0]} failed`;
               } else {
-                toastTitle = isGuard ? 'Data Protection Triggered' : 'Cloud Sync Failed';
+                toastTitle = isGuard ? 'Save stopped to protect your data' : "Couldn't save your changes";
               }
 
               const toastMessage = isGuard
-                ? (err.message || 'Prevented data loss by blocking abnormal database overwrite.')
-                : 'Could not sync user data to cloud.';
+                ? "This change would have erased a lot of your data, so we didn't save it. Nothing was lost."
+                : "They're kept on this device for now. Check your connection.";
 
               const dedupKey =
                 distinctEntityIds.length === 1
@@ -2140,10 +2140,10 @@ export function useAppState() {
                 const isZeroOut = err.code === 'ZERO_OUT_WIPE';
                 setDestructiveWipeModal({
                   open: true,
-                  title: isZeroOut ? 'Clear All Tracked Data?' : 'Confirm Large Data Removal',
+                  title: isZeroOut ? 'Clear all tracked data?' : 'Remove most of your data?',
                   description: isZeroOut
-                    ? 'This action will remove all remaining tracked items from your account. Are you sure you want to save this change?'
-                    : 'This action will remove most of your tracked items (>70% decrease). Are you sure you want to proceed with saving this change?',
+                    ? 'This removes all remaining tracked items from your account. Save this change?'
+                    : 'This removes most of your tracked items. Save this change?',
                   stateToRetry: state,
                   stateBeforeAction: lastKnownGoodStateRef.current,
                 });
@@ -2153,10 +2153,10 @@ export function useAppState() {
               window.dispatchEvent(
                 new CustomEvent('app-toast-error', {
                   detail: {
-                    title: isGuard ? 'Data Protection Triggered' : 'Cloud Sync Failed',
+                    title: isGuard ? 'Save stopped to protect your data' : "Couldn't save your changes",
                     message: isGuard
-                      ? (err.message || 'Prevented data loss by blocking abnormal database overwrite.')
-                      : 'Could not sync user data to cloud.',
+                      ? "This change would have erased a lot of your data, so we didn't save it. Nothing was lost."
+                      : "They're kept on this device for now. Check your connection.",
                   },
                 })
               );
@@ -2358,10 +2358,10 @@ export function useAppState() {
                 const isZeroOut = guardResult.mergedCount === 0;
                 setDestructiveWipeModal({
                   open: true,
-                  title: isZeroOut ? 'Clear All Tracked Data?' : 'Confirm Large Data Removal',
+                  title: isZeroOut ? 'Clear all tracked data?' : 'Remove most of your data?',
                   description: isZeroOut
-                    ? 'This action will remove all remaining tracked items from your account. Are you sure you want to proceed?'
-                    : `A large reduction in data was detected (${guardResult.droppedCount} items removed compared to your last saved cloud state). Would you like to confirm saving these removals to the cloud, or keep your existing data?`,
+                    ? 'This removes all remaining tracked items from your account. Save this change?'
+                    : `${guardResult.droppedCount} items are missing compared to your last save. Save these removals, or keep your existing data?`,
                   stateToRetry: guardResult.mergedState,
                   stateBeforeAction: guardResult.retainedState,
                 });
@@ -2880,8 +2880,8 @@ export function useAppState() {
                   window.dispatchEvent(
                     new CustomEvent('app-toast-error', {
                       detail: {
-                        title: 'Plan Sync Failed',
-                        message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                        title: "Couldn't save plan",
+                        message: "It's saved on this device and will retry automatically.",
                         dedupKey: `plan_sync_failed_${plan.id}`,
                       },
                     })
@@ -2900,8 +2900,8 @@ export function useAppState() {
                 window.dispatchEvent(
                   new CustomEvent('app-toast-error', {
                     detail: {
-                      title: 'Plan Sync Failed',
-                      message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                      title: "Couldn't save plan",
+                      message: "It's saved on this device and will retry automatically.",
                       dedupKey: `plan_sync_failed_${plan.id}`,
                     },
                   })
@@ -3045,8 +3045,8 @@ export function useAppState() {
           window.dispatchEvent(
             new CustomEvent('app-toast-error', {
               detail: {
-                title: 'Sync Warning',
-                message: 'Recent changes may not have finished saving to the cloud before logout.',
+                title: 'Some changes may not have saved',
+                message: 'Your latest changes may not have saved before you logged out.',
               },
             })
           );
@@ -3056,8 +3056,8 @@ export function useAppState() {
           window.dispatchEvent(
             new CustomEvent('app-toast-error', {
               detail: {
-                title: 'Signed Out Locally',
-                message: "Logged out locally — couldn't confirm with the server.",
+                title: 'Logged out on this device',
+                message: "Couldn't reach the server to finish logging out everywhere.",
               },
             })
           );
@@ -7222,8 +7222,8 @@ export function useAppState() {
             window.dispatchEvent(
               new CustomEvent('app-toast-error', {
                 detail: {
-                  title: 'Plan Sync Failed',
-                  message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                  title: "Couldn't save plan",
+                  message: "It's saved on this device and will retry automatically.",
                   dedupKey: `plan_sync_failed_${planToSync.id}`,
                 },
               })
@@ -7242,8 +7242,8 @@ export function useAppState() {
           window.dispatchEvent(
             new CustomEvent('app-toast-error', {
               detail: {
-                title: 'Plan Sync Failed',
-                message: 'Could not sync plan to cloud. Changes are saved locally and will retry automatically.',
+                title: "Couldn't save plan",
+                message: "It's saved on this device and will retry automatically.",
                 dedupKey: `plan_sync_failed_${planToSync.id}`,
               },
             })
@@ -7912,7 +7912,7 @@ export function useAppState() {
       // 1. Verify Session First
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        dispatchToastError("Authentication Required", "You must be logged in to copy a plan.");
+        dispatchToastError("Couldn't copy plan", 'Log in and try again.');
         return;
       }
 
@@ -8299,7 +8299,7 @@ export function useAppState() {
     async (targetUidInput: string) => {
       const trimmedUid = targetUidInput.trim();
       if (!trimmedUid) {
-        throw new Error('User ID cannot be empty');
+        throw new Error("Enter your partner's ID.");
       }
 
       if (state.currentUser?.uid && trimmedUid === state.currentUser.uid) {
@@ -8313,7 +8313,7 @@ export function useAppState() {
       const profileData = await fetchProfileByUidFromSupabase(trimmedUid);
 
       if (!profileData) {
-        throw new Error(`No user found with User ID '${trimmedUid}'. Please verify the 6-digit User ID and try again.`);
+        throw new Error(`No one has the ID '${trimmedUid}'. Check the 6-digit ID and try again.`);
       }
 
       // Check if target user accepts partnership invites

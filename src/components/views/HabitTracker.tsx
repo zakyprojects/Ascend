@@ -304,7 +304,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
           if (confirmDelete) {
             await store.deleteHabit(confirmDelete.id);
             setConfirmDelete(null);
-            showSuccessToast('Habit Deleted', 'Habit removed successfully.', `habit_${confirmDelete.id}`);
+            showSuccessToast('Habit deleted', 'Habit removed successfully.', `habit_${confirmDelete.id}`);
           }
         }}
         title="Delete Habit?"
@@ -468,7 +468,7 @@ function HabitCard({ habit, store, onDelete }: { habit: Habit; store: AppStore; 
             )}
             {isLinked ? (
               <div className="text-xs text-warning-text font-medium flex items-center gap-1">
-                <span>Auto-synced</span>
+                <span>Updates automatically</span>
                 {habit.points === 0 ? (
                   <span className="text-content-subtle">For habit tracking, no points</span>
                 ) : (

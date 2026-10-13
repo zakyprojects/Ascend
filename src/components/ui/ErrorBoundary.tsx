@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
             onClick={() => this.setState({ hasError: false, error: null })}
             className="btn-secondary text-xs flex items-center gap-2 py-1.5 px-3"
           >
-            <RefreshCw size={14} /> Retry Component
+            <RefreshCw size={14} /> Try again
           </button>
         </div>
       );

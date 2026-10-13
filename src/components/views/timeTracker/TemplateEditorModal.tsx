@@ -196,13 +196,13 @@ export function TemplateEditorModal({
     e.preventDefault();
     if (!title.trim()) {
       setValidationError('Please enter a template title.');
-      showErrorToast('Title Required', 'Please enter a template title.');
+      showErrorToast('Add a title', 'Please enter a template title.');
       return;
     }
 
     if (blocks.length === 0) {
       setValidationError('A template must have at least 1 time block.');
-      showErrorToast('Blocks Required', 'A template must have at least 1 time block.');
+      showErrorToast('Add a block', 'A template must have at least 1 time block.');
       return;
     }
 

@@ -534,8 +534,8 @@ export async function hydrateUserSession(
         window.dispatchEvent(
           new CustomEvent('app-toast-error', {
             detail: {
-              title: 'Account Setup Warning',
-              message: 'Initial account setup data could not be saved to cloud. It will sync the next time you make a change.',
+              title: "Some account details didn't save",
+              message: "They'll save the next time you make a change.",
             },
           })
         );

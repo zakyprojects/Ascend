@@ -84,16 +84,16 @@ export function TemplatesTab({
     try {
       const result = store.applyTemplateToDate(dateKey, templateId, 'merge');
       if (result.added > 0 && result.rejected === 0) {
-        showSuccessToast('Blueprint Merged', `Blueprint merged: ${result.added} blocks added to ${formatDateKeyHuman(dateKey)}.`);
+        showSuccessToast('Blueprint merged', `Blueprint merged: ${result.added} blocks added to ${formatDateKeyHuman(dateKey)}.`);
       } else if (result.added > 0 && result.rejected > 0) {
-        showSuccessToast('Blueprint Merged', `Blueprint merged: ${result.added} added, ${result.rejected} skipped (overlap).`);
+        showSuccessToast('Blueprint merged', `Blueprint merged: ${result.added} added, ${result.rejected} skipped (overlap).`);
       } else if (result.added === 0 && result.rejected > 0) {
-        showErrorToast('Merge Skipped', `All ${result.rejected} blocks overlapped with existing schedule.`);
+        showErrorToast('Nothing merged', `All ${result.rejected} blocks overlapped with existing schedule.`);
       } else {
-        showSuccessToast('Blueprint Applied', `Blueprint applied to ${formatDateKeyHuman(dateKey)}.`);
+        showSuccessToast('Blueprint applied', `Blueprint applied to ${formatDateKeyHuman(dateKey)}.`);
       }
     } catch (err: any) {
-      showErrorToast('Failed to apply template', toUserMessage(err, 'Try again.'));
+      showErrorToast("Couldn't apply template", toUserMessage(err, 'Try again.'));
     }
   };
 
@@ -102,9 +102,9 @@ export function TemplatesTab({
     const templateId = deleteTargetTemplate.id;
     try {
       store.deleteTimeTrackerTemplate(templateId);
-      showSuccessToast('Template Deleted', 'Template removed.', `template_${templateId}`);
+      showSuccessToast('Template deleted', 'Template removed.', `template_${templateId}`);
     } catch (err: any) {
-      showErrorToast('Failed to delete template', toUserMessage(err, 'Try again.'));
+      showErrorToast("Couldn't delete template", toUserMessage(err, 'Try again.'));
     } finally {
       setDeleteTargetTemplate(null);
     }
@@ -174,7 +174,7 @@ export function TemplatesTab({
             <button
               onClick={() => {
                 store.restoreTimeTrackerTemplate('template-default-weekday');
-                showSuccessToast('Template Restored', 'Standard Productive Day blueprint has been restored.');
+                showSuccessToast('Template restored', 'Standard Productive Day blueprint has been restored.');
               }}
               className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-success-text bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl transition-colors cursor-pointer"
             >
@@ -279,7 +279,7 @@ export function TemplatesTab({
                 <button
                   onClick={() => {
                     store.restoreTimeTrackerTemplate('template-default-weekday');
-                    showSuccessToast('Template Restored', 'Standard Productive Day blueprint has been restored.');
+                    showSuccessToast('Template restored', 'Standard Productive Day blueprint has been restored.');
                   }}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-secondary border border-overlay-default text-xs font-semibold transition-all cursor-pointer"
                 >

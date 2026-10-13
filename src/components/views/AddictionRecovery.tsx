@@ -502,7 +502,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           await executeWithKey('delete_addiction_tracker', async () => {
             await store.deleteAddictionTracker();
             setDeleteTrackerConfirmOpen(false);
-            showSuccessToast('Tracker Deleted', 'Sobriety tracker and history removed.', `tracker_${tracker?.id || 'main'}`);
+            showSuccessToast('Tracker deleted', 'Sobriety tracker and history removed.', `tracker_${tracker?.id || 'main'}`);
           });
         }}
         isDeleting={isKeyLoading('delete_addiction_tracker')}
@@ -522,7 +522,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             await executeWithKey(`delete_craving_log_${logId}`, async () => {
               await store.deleteCravingLog(logId);
               setDeleteCravingModalLog(null);
-              showSuccessToast('Log Deleted', 'Craving log removed.', `craving_log_${logId}`);
+              showSuccessToast('Log deleted', 'Craving log removed.', `craving_log_${logId}`);
             });
           }
         }}

@@ -169,12 +169,12 @@ function getSkipToastMessage(activity?: { ascendModule?: string; name?: string }
   const isHighValue = Boolean(activity?.ascendModule);
   if (isHighValue) {
     return {
-      title: 'Block Skipped',
+      title: 'Block skipped',
       subtitle: 'Logged as skipped.',
     };
   }
   return {
-    title: 'Block Skipped',
+    title: 'Block skipped',
     subtitle: 'Schedule updated.',
   };
 }
@@ -1185,7 +1185,7 @@ function FocusTimerSubmodule({
             }`}
           >
             <Radio size={14} className={timerMode === 'sync' ? 'text-success-text' : 'text-content-subtle'} />
-            <span className="whitespace-nowrap">Schedule sync</span>
+            <span className="whitespace-nowrap">Follow schedule</span>
             {isScheduleIgnited && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             )}
@@ -1405,7 +1405,7 @@ function FocusTimerSubmodule({
 
               <div>
                 <h2 className="section-title mb-1">
-                  Schedule sync
+                  Follow schedule
                 </h2>
                 <p className="text-xs text-content-muted leading-relaxed">
                   Start today&apos;s schedule and the timer follows your time blocks as they happen.
@@ -1441,7 +1441,7 @@ function FocusTimerSubmodule({
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-2xl font-semibold leading-tight text-content-primary">Stop schedule sync?</h2>
+                <h2 className="text-2xl font-semibold leading-tight text-content-primary">Stop following schedule?</h2>
                 <p className="text-sm text-content-tertiary">
                   This stops following your schedule and switches back to the manual timer.
                 </p>
@@ -1453,14 +1453,14 @@ function FocusTimerSubmodule({
                   onClick={() => setShowStopConfirm(false)}
                   className="w-full sm:w-auto btn-secondary px-6 py-3"
                 >
-                  Keep Syncing
+                  Keep following
                 </button>
                 <button
                   type="button"
                   onClick={executeStopSync}
                   className="w-full sm:w-auto px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold shadow-sm transition-all cursor-pointer"
                 >
-                  Stop Sync
+                  Stop
                 </button>
               </div>
             </div>
@@ -1484,12 +1484,12 @@ function FocusTimerSubmodule({
                 <button
                   type="button"
                   onClick={(e) => handleStopSync(e)}
-                  title="Stop schedule sync"
-                  aria-label="Stop schedule sync"
+                  title="Stop following schedule"
+                  aria-label="Stop following schedule"
                   className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-error-text hover:text-content-primary hover:bg-rose-500/20 flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <PowerOff size={13} />
-                  <span className="hidden sm:inline">Stop Sync</span>
+                  <span className="hidden sm:inline">Stop</span>
                 </button>
               </div>
             </div>
@@ -1549,9 +1549,9 @@ function FocusTimerSubmodule({
                 onClick={() => {
                   try {
                     store.toggleDailyTimeBlockCompleted(todayDateKey, overdueBlock.id);
-                    showSuccessToast('Block Completed', 'Marked overdue block as completed.');
+                    showSuccessToast('Block completed', 'Marked overdue block as completed.');
                   } catch (err: any) {
-                    showErrorToast('Failed to Complete Block', toUserMessage(err, 'Try again.'));
+                    showErrorToast("Couldn't complete block", toUserMessage(err, 'Try again.'));
                   }
                 }}
                 className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-primary-600 hover:bg-primary-700 text-on-brand font-semibold text-sm shadow-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
@@ -1568,7 +1568,7 @@ function FocusTimerSubmodule({
                     const toastInfo = getSkipToastMessage(overdueBlockActivity);
                     showSuccessToast(toastInfo.title, toastInfo.subtitle);
                   } catch (err: any) {
-                    showErrorToast('Failed to Skip Block', toUserMessage(err, 'Try again.'));
+                    showErrorToast("Couldn't skip block", toUserMessage(err, 'Try again.'));
                   }
                 }}
                 className="w-full sm:w-auto py-3.5 px-5 rounded-xl text-content-muted hover:text-content-secondary hover:bg-overlay-subtle text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
@@ -1600,9 +1600,9 @@ function FocusTimerSubmodule({
                     onClick={() => {
                       try {
                         store.undoEarlyStartTimeBlock(todayDateKey, activeBlock.id);
-                        showSuccessToast('Reverted Start Time', `Start time reverted back to ${formatTime12h(activeBlock.originalStartTime!)}`);
+                        showSuccessToast('Start time reverted', `Start time reverted back to ${formatTime12h(activeBlock.originalStartTime!)}`);
                       } catch (err: any) {
-                        showErrorToast('Failed to Revert', toUserMessage(err, 'Try again.'));
+                        showErrorToast("Couldn't revert start time", toUserMessage(err, 'Try again.'));
                       }
                     }}
                     title={`Revert start time back to ${formatTime12h(activeBlock.originalStartTime)}`}
@@ -1625,9 +1625,9 @@ function FocusTimerSubmodule({
                           onClick={() => {
                             if (isBreakDisabled) {
                               if (activeBlockProgress < 50) {
-                                showErrorToast('Break Unavailable', 'Complete at least half of this block before taking a break.');
+                                showErrorToast('Break not available', 'Complete at least half of this block before taking a break.');
                               } else {
-                                showErrorToast('Break Unavailable', 'Not enough time left in this block for a break.');
+                                showErrorToast('Break not available', 'Not enough time left in this block for a break.');
                               }
                               return;
                             }
@@ -1659,7 +1659,7 @@ function FocusTimerSubmodule({
                           const toastInfo = getSkipToastMessage(activeBlockActivity);
                           showSuccessToast(toastInfo.title, toastInfo.subtitle);
                         } catch (err: any) {
-                          showErrorToast('Failed to Skip Block', toUserMessage(err, 'Try again.'));
+                          showErrorToast("Couldn't skip block", toUserMessage(err, 'Try again.'));
                         }
                       }}
                       className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-overlay-subtle text-content-muted hover:text-content-secondary hover:bg-overlay-default flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
@@ -1675,10 +1675,10 @@ function FocusTimerSubmodule({
                           const nowStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
                           store.toggleDailyTimeBlockCompleted(todayDateKey, activeBlock.id, nowStr);
                           if (!activeBlock.completed) {
-                            showSuccessToast('Block Completed', `Ended at ${formatTime12h(nowStr)}`);
+                            showSuccessToast('Block completed', `Ended at ${formatTime12h(nowStr)}`);
                           }
                         } catch (err: any) {
-                          showErrorToast('Failed to Complete Block', toUserMessage(err, 'Try again.'));
+                          showErrorToast("Couldn't complete block", toUserMessage(err, 'Try again.'));
                         }
                       }}
                       className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
@@ -1696,12 +1696,12 @@ function FocusTimerSubmodule({
                 <button
                   type="button"
                   onClick={(e) => handleStopSync(e)}
-                  title="Stop schedule sync"
-                  aria-label="Stop schedule sync"
+                  title="Stop following schedule"
+                  aria-label="Stop following schedule"
                   className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-theme hover:bg-rose-500/10 flex items-center gap-1.5 transition-colors cursor-pointer sm:ml-auto whitespace-nowrap"
                 >
                   <PowerOff size={13} />
-                  <span className="hidden sm:inline">Stop Sync</span>
+                  <span className="hidden sm:inline">Stop</span>
                 </button>
               </div>
             </div>
@@ -1743,9 +1743,9 @@ function FocusTimerSubmodule({
                     onClick={() => {
                       try {
                         store.endDailyBlockBreakEarly(todayDateKey, activeBlock.id);
-                        showSuccessToast('Break Ended', 'Back to focus.');
+                        showSuccessToast('Break ended', 'Back to focus.');
                       } catch (err: any) {
-                        showErrorToast('Failed to End Break', toUserMessage(err, 'Try again.'));
+                        showErrorToast("Couldn't end break", toUserMessage(err, 'Try again.'));
                       }
                     }}
                     className="btn-secondary text-xs flex items-center gap-2"
@@ -1907,12 +1907,12 @@ function FocusTimerSubmodule({
               <button
                 type="button"
                 onClick={(e) => handleStopSync(e)}
-                title="Stop schedule sync"
-                aria-label="Stop schedule sync"
+                title="Stop following schedule"
+                aria-label="Stop following schedule"
                 className="shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-theme hover:bg-rose-500/10 flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <PowerOff size={13} />
-                <span className="hidden sm:inline">Stop Sync</span>
+                <span className="hidden sm:inline">Stop</span>
               </button>
             </div>
 
@@ -1983,9 +1983,9 @@ function FocusTimerSubmodule({
                         onClick={() => {
                           try {
                             store.undoDailyTimeBlockResolution(todayDateKey, currentResolvedBlock.id);
-                            showSuccessToast('Status Reverted', `Reverted ${currentResolvedBlock.skipped ? 'skipped' : 'completed'} status.`);
+                            showSuccessToast('Status reverted', `Reverted ${currentResolvedBlock.skipped ? 'skipped' : 'completed'} status.`);
                           } catch (err: any) {
-                            showErrorToast('Failed to Undo', toUserMessage(err, 'Try again.'));
+                            showErrorToast("Couldn't undo", toUserMessage(err, 'Try again.'));
                           }
                         }}
                         className="bg-cyan-500/15 w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-content-primary border border-cyan-500/30 hover:bg-cyan-500/25 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
@@ -2035,7 +2035,7 @@ function FocusTimerSubmodule({
                                 store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'shift', gapTriggerBlock?.id);
                                 showSuccessToast('Block moved to now', `Started early at ${formatTime12h(nowStr)}`);
                               } catch (err: any) {
-                                showErrorToast('Could Not Move Block', toUserMessage(err, 'Try again.'));
+                                showErrorToast("Couldn't move block", toUserMessage(err, 'Try again.'));
                               }
                             }}
                             className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-micro font-semibold bg-overlay-subtle hover:bg-overlay-default text-content-tertiary flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
@@ -2053,7 +2053,7 @@ function FocusTimerSubmodule({
                                 store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'stretch', gapTriggerBlock?.id);
                                 showSuccessToast('Block extended to now', `Started early at ${formatTime12h(nowStr)}`);
                               } catch (err: any) {
-                                showErrorToast('Could Not Extend Block', toUserMessage(err, 'Try again.'));
+                                showErrorToast("Couldn't extend block", toUserMessage(err, 'Try again.'));
                               }
                             }}
                             className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-micro font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-success-text flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
@@ -2109,9 +2109,9 @@ function FocusTimerSubmodule({
                         onClick={() => {
                           try {
                             store.undoDailyTimeBlockResolution(todayDateKey, currentResolvedBlock.id);
-                            showSuccessToast('Status Reverted', `Reverted ${currentResolvedBlock.skipped ? 'skipped' : 'completed'} status.`);
+                            showSuccessToast('Status reverted', `Reverted ${currentResolvedBlock.skipped ? 'skipped' : 'completed'} status.`);
                           } catch (err: any) {
-                            showErrorToast('Failed to Undo', toUserMessage(err, 'Try again.'));
+                            showErrorToast("Couldn't undo", toUserMessage(err, 'Try again.'));
                           }
                         }}
                         className="bg-cyan-500/15 w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-content-primary border border-cyan-500/30 hover:bg-cyan-500/25 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
@@ -2342,9 +2342,9 @@ function FocusTimerSubmodule({
                 try {
                   store.startDailyBlockBreak(todayDateKey, activeBlock.id, selectedBreakMinutes);
                   setShowTakeBreakModal(false);
-                  showSuccessToast('Break Started', `${selectedBreakMinutes}-minute break started.`);
+                  showSuccessToast('Break started', `${selectedBreakMinutes}-minute break started.`);
                 } catch (err: any) {
-                  showErrorToast('Failed to Start Break', toUserMessage(err, 'Try again.'));
+                  showErrorToast("Couldn't start break", toUserMessage(err, 'Try again.'));
                 }
               }}
               className="btn-primary flex-1 text-xs flex items-center justify-center gap-1.5"
@@ -2428,9 +2428,9 @@ function FocusTimerSubmodule({
               try {
                 await store.deleteFocusLog(logId);
                 setDeleteModalLog(null);
-                showSuccessToast('Session Deleted', 'Focus session removed.', `focus_log_${logId}`);
+                showSuccessToast('Session deleted', 'Focus session removed.', `focus_log_${logId}`);
               } catch (err: any) {
-                showErrorToast('Delete Failed', toUserMessage(err, "Couldn't delete this focus session. Try again."));
+                showErrorToast("Couldn't delete session", toUserMessage(err, 'Try again.'));
               }
             });
           }
@@ -2665,9 +2665,9 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
               try {
                 await store.deleteDecisionLog(decisionId);
                 setDeleteModalDecision(null);
-                showSuccessToast('Decision Deleted', 'Decision entry removed.', `decision_${decisionId}`);
+                showSuccessToast('Decision deleted', 'Decision entry removed.', `decision_${decisionId}`);
               } catch (err: any) {
-                showErrorToast('Delete Failed', toUserMessage(err, "Couldn't delete this decision. Try again."));
+                showErrorToast("Couldn't delete decision", toUserMessage(err, 'Try again.'));
               }
             });
           }
@@ -2854,9 +2854,9 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
               try {
                 await store.deleteEmotionLog(emotionId);
                 setDeleteModalEmotion(null);
-                showSuccessToast('Emotion Log Deleted', 'Emotion log entry removed.', `emotion_${emotionId}`);
+                showSuccessToast('Emotion log deleted', 'Emotion log entry removed.', `emotion_${emotionId}`);
               } catch (err: any) {
-                showErrorToast('Delete Failed', toUserMessage(err, "Couldn't delete this emotion log. Try again."));
+                showErrorToast("Couldn't delete emotion log", toUserMessage(err, 'Try again.'));
               }
             });
           }

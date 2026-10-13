@@ -948,7 +948,7 @@ export function ProjectsGoalsView({
           status: goalFormStatus,
           sequentialMode: goalFormSequentialMode,
         });
-        showSuccessToast('Goal Updated', `"${goalFormTitle.trim()}" saved.`);
+        showSuccessToast('Goal updated', `"${goalFormTitle.trim()}" saved.`);
       } else {
         store.createGoal({
           title: goalFormTitle.trim(),
@@ -958,7 +958,7 @@ export function ProjectsGoalsView({
           status: goalFormStatus,
           sequentialMode: goalFormSequentialMode,
         });
-        showSuccessToast('Goal Created', `"${goalFormTitle.trim()}" is now active.`);
+        showSuccessToast('Goal created', `"${goalFormTitle.trim()}" is now active.`);
       }
       setGoalModalOpen(false);
     });
@@ -1005,7 +1005,7 @@ export function ProjectsGoalsView({
     if (!deleteGoalTarget) return;
     await executeWithKey(`delete_goal_${deleteGoalTarget.id}`, async () => {
       await store.deleteGoal(deleteGoalTarget.id);
-      showSuccessToast('Goal Deleted', 'Linked projects were safely unlinked.', `goal_${deleteGoalTarget.id}`);
+      showSuccessToast('Goal deleted', 'Linked projects were safely unlinked.', `goal_${deleteGoalTarget.id}`);
       setDeleteGoalTarget(null);
       if (filterGoalId === deleteGoalTarget.id) {
         setFilterGoalId(null);
@@ -1058,7 +1058,7 @@ export function ProjectsGoalsView({
           dueDate: sanitizedDueDate,
           status: projectFormStatus,
         });
-        showSuccessToast('Project Updated', `"${projectFormTitle.trim()}" saved.`);
+        showSuccessToast('Project updated', `"${projectFormTitle.trim()}" saved.`);
       } else {
         store.createProject({
           title: projectFormTitle.trim(),
@@ -1068,7 +1068,7 @@ export function ProjectsGoalsView({
           dueDate: sanitizedDueDate,
           status: projectFormStatus,
         });
-        showSuccessToast('Project Created', `"${projectFormTitle.trim()}" added.`);
+        showSuccessToast('Project created', `"${projectFormTitle.trim()}" added.`);
       }
       setProjectModalOpen(false);
     });
@@ -1077,7 +1077,7 @@ export function ProjectsGoalsView({
   const handleUpdateProjectManualProgress = (project: Project, val: number) => {
     const lock = getProjectLockStatus(project.id);
     if (lock.isLocked) {
-      showErrorToast('Project Locked', `This project is locked until "${lock.blockingProject?.title}" is completed.`);
+      showErrorToast('Project locked', `This project is locked until "${lock.blockingProject?.title}" is completed.`);
       return;
     }
 
@@ -1103,7 +1103,7 @@ export function ProjectsGoalsView({
   const handleMoveProjectStatus = async (projectId: string, newStatus: ProjectStatus) => {
     const lock = getProjectLockStatus(projectId);
     if (lock.isLocked && (newStatus === 'completed' || newStatus === 'in_progress')) {
-      showErrorToast('Project Locked', `This project is locked in sequential mode until "${lock.blockingProject?.title}" is completed.`);
+      showErrorToast('Project locked', `This project is locked in sequential mode until "${lock.blockingProject?.title}" is completed.`);
       return;
     }
 
@@ -1127,7 +1127,7 @@ export function ProjectsGoalsView({
     if (!deleteProjectTarget) return;
     await executeWithKey(`delete_project_${deleteProjectTarget.id}`, async () => {
       await store.deleteProject(deleteProjectTarget.id);
-      showSuccessToast('Project Deleted', 'Linked tasks were safely unlinked.', `project_${deleteProjectTarget.id}`);
+      showSuccessToast('Project deleted', 'Linked tasks were safely unlinked.', `project_${deleteProjectTarget.id}`);
       setDeleteProjectTarget(null);
       if (filterProjectId === deleteProjectTarget.id) {
         setFilterProjectId(null);
@@ -1155,7 +1155,7 @@ export function ProjectsGoalsView({
         subtasks: [],
       });
       setQuickTaskTitle('');
-      showSuccessToast('Task Added', `"${title}" added.`);
+      showSuccessToast('Task added', `"${title}" added.`);
     });
   };
 
@@ -1198,7 +1198,7 @@ export function ProjectsGoalsView({
           priority: taskFormPriority,
           subtasks: taskFormSubtasks,
         });
-        showSuccessToast('Task Updated', `"${taskFormTitle.trim()}" saved.`);
+        showSuccessToast('Task updated', `"${taskFormTitle.trim()}" saved.`);
       } else {
         store.createTask({
           title: taskFormTitle.trim(),
@@ -1209,7 +1209,7 @@ export function ProjectsGoalsView({
           completed: false,
           subtasks: taskFormSubtasks,
         });
-        showSuccessToast('Task Created', `"${taskFormTitle.trim()}" added.`);
+        showSuccessToast('Task created', `"${taskFormTitle.trim()}" added.`);
       }
       setTaskModalOpen(false);
     });
@@ -1219,7 +1219,7 @@ export function ProjectsGoalsView({
     if (task.projectId) {
       const lock = getProjectLockStatus(task.projectId);
       if (lock.isLocked) {
-        showErrorToast('Project Locked', `Cannot mark tasks complete while project is locked. Complete "${lock.blockingProject?.title}" first.`);
+        showErrorToast('Project locked', `Cannot mark tasks complete while project is locked. Complete "${lock.blockingProject?.title}" first.`);
         return;
       }
     }
@@ -1231,7 +1231,7 @@ export function ProjectsGoalsView({
     if (task?.projectId) {
       const lock = getProjectLockStatus(task.projectId);
       if (lock.isLocked) {
-        showErrorToast('Project Locked', `Cannot mark subtasks complete while project is locked. Complete "${lock.blockingProject?.title}" first.`);
+        showErrorToast('Project locked', `Cannot mark subtasks complete while project is locked. Complete "${lock.blockingProject?.title}" first.`);
         return;
       }
     }
@@ -1242,7 +1242,7 @@ export function ProjectsGoalsView({
     if (!deleteTaskTarget) return;
     await executeWithKey(`delete_task_${deleteTaskTarget.id}`, async () => {
       await store.deleteTask(deleteTaskTarget.id);
-      showSuccessToast('Task Deleted', 'Task removed.', `task_${deleteTaskTarget.id}`);
+      showSuccessToast('Task deleted', 'Task removed.', `task_${deleteTaskTarget.id}`);
       setDeleteTaskTarget(null);
     });
   };
@@ -1251,7 +1251,7 @@ export function ProjectsGoalsView({
     if (!deleteSubtaskTarget) return;
     await executeWithKey(`delete_subtask_${deleteSubtaskTarget.subtask.id}`, async () => {
       await store.deleteSubtask(deleteSubtaskTarget.taskId, deleteSubtaskTarget.subtask.id);
-      showSuccessToast('Subtask Deleted', 'Subtask removed.', `subtask_${deleteSubtaskTarget.subtask.id}`);
+      showSuccessToast('Subtask deleted', 'Subtask removed.', `subtask_${deleteSubtaskTarget.subtask.id}`);
       setDeleteSubtaskTarget(null);
     });
   };
