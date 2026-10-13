@@ -298,6 +298,30 @@ export function calculateTimeTrackerDailyPoints(blocks: Array<{ completed?: bool
   return { percentage, pointsAwarded };
 }
 
+/** Time a weekly goal counts as achieved: completedAt, falling back to createdAt. */
+export function getWeeklyGoalCompletionTime(goal: WeeklyGoalItem): number {
+  if (goal.completedAt) return new Date(goal.completedAt).getTime();
+  return goal.createdAt ? new Date(goal.createdAt).getTime() : 0;
+}
+
+/**
+ * Completed, non-archived goals in chronological completion order, split into the
+ * goals that earn points (the first WEEKLY_GOALS_POINTS.maxGoalsCounted) and the total count.
+ */
+export function getCountedWeeklyGoals(goals: WeeklyGoalItem[]): {
+  countedGoals: WeeklyGoalItem[];
+  completedGoalsCount: number;
+} {
+  const completedGoals = (goals || [])
+    .filter((g) => g && !g.archived && (g.completed === true || g.done === true))
+    .sort((a, b) => getWeeklyGoalCompletionTime(a) - getWeeklyGoalCompletionTime(b));
+
+  return {
+    countedGoals: completedGoals.slice(0, WEEKLY_GOALS_POINTS.maxGoalsCounted),
+    completedGoalsCount: completedGoals.length,
+  };
+}
+
 /**
  * Calculates points awarded for achieved weekly goals.
  * Formula:
@@ -310,17 +334,8 @@ export function calculateWeeklyGoalsPoints(goals: WeeklyGoalItem[]): {
   completedGoalsCount: number;
   countedGoalsCount: number;
 } {
-  const activeGoals = (goals || []).filter((g) => !g.archived);
-  const completedGoals = activeGoals.filter((g) => g && (g.completed === true || g.done === true));
-
-  completedGoals.sort((a, b) => {
-    const timeA = a.completedAt ? new Date(a.completedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-    const timeB = b.completedAt ? new Date(b.completedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-    return timeA - timeB;
-  });
-
-  const completedGoalsCount = completedGoals.length;
-  const countedGoalsCount = Math.min(completedGoalsCount, WEEKLY_GOALS_POINTS.maxGoalsCounted);
+  const { countedGoals, completedGoalsCount } = getCountedWeeklyGoals(goals);
+  const countedGoalsCount = countedGoals.length;
   const pointsAwarded = countedGoalsCount * WEEKLY_GOALS_POINTS.pointsPerGoal;
 
   return {
@@ -328,4 +343,14 @@ export function calculateWeeklyGoalsPoints(goals: WeeklyGoalItem[]): {
     completedGoalsCount,
     countedGoalsCount,
   };
+}
+
+/**
+ * Points from counted goals achieved strictly before `boundary` (a season start).
+ * Used for the week a season boundary falls in, when no earlier-season entry was recorded.
+ */
+export function calculateWeeklyGoalsPointsBefore(goals: WeeklyGoalItem[], boundary: Date): number {
+  const cutoff = boundary.getTime();
+  const { countedGoals } = getCountedWeeklyGoals(goals);
+  return countedGoals.filter((g) => getWeeklyGoalCompletionTime(g) < cutoff).length * WEEKLY_GOALS_POINTS.pointsPerGoal;
 }

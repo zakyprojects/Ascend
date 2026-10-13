@@ -45,6 +45,7 @@ import { ensureDefaultActivities } from './timeTracker';
 import { parseDate } from './dates';
 import { calculateSeasonalTotal } from './leagues';
 import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
+import { isWeeklyGoalSeasonSplitEntryId } from './weeklyGoalSeasons';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 
 function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string; timestamp?: string }>(
@@ -667,7 +668,8 @@ function mergeAppStateInternal(
     }
   }
 
-  // Deduplicate weekly_goal_achieved entries by weekKey, keeping latest timestamp (with deterministic id tie-breaker)
+  // Deduplicate weekly_goal_achieved entries by weekKey, keeping latest timestamp (with deterministic id tie-breaker).
+  // A week a season started in also holds one per-season entry; it is its own snapshot, keyed by its id.
   const weeklyGoalsBest = new Map<string, PointsEntry>();
   const duplicateWeeklyGoalEntryIds = new Set<string>();
 
@@ -689,10 +691,11 @@ function mergeAppStateInternal(
       }
 
       if (weekKey) {
+        const dedupKey = isWeeklyGoalSeasonSplitEntryId(entry.id) ? entry.id : weekKey;
         const isCanonicalId = entry.id === `weekly_goal_${weekKey}`;
-        const existing = weeklyGoalsBest.get(weekKey);
+        const existing = weeklyGoalsBest.get(dedupKey);
         if (!existing) {
-          weeklyGoalsBest.set(weekKey, entry);
+          weeklyGoalsBest.set(dedupKey, entry);
         } else {
           const existingIsCanonical = existing.id === `weekly_goal_${weekKey}`;
           const timeCand = entry.timestamp ? new Date(entry.timestamp).getTime() : 0;
@@ -711,7 +714,7 @@ function mergeAppStateInternal(
 
           if (replace) {
             if (existing.id) duplicateWeeklyGoalEntryIds.add(existing.id);
-            weeklyGoalsBest.set(weekKey, entry);
+            weeklyGoalsBest.set(dedupKey, entry);
           } else {
             if (entry.id) duplicateWeeklyGoalEntryIds.add(entry.id);
           }

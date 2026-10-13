@@ -142,9 +142,17 @@ import {
   calculateReadingPoints,
   calculateTimeTrackerDailyPoints,
   calculateWeeklyGoalsPoints,
+  calculateWeeklyGoalsPointsBefore,
   wouldExceedRecoverySeasonCap,
   POINTS_V2_START_DATE_KEY,
 } from './pointsConfig';
+import {
+  getWeeklyGoalEntryId,
+  getWeeklyGoalSeasonSplitEntryId,
+  isWeeklyGoalSeasonSplitEntryId,
+  getSeasonBoundaryInWeek,
+  isWeekBeforeSeason,
+} from './weeklyGoalSeasons';
 import {
   allocateEligibleResistPoints,
   isBadHabitPointEligible,
@@ -530,18 +538,13 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
 
   for (const weekKey of allWeeklyGoalWeekKeys) {
     const doc = (st.weeklyGoals || []).find((w) => w && w.weekKey === weekKey);
-    let isClosedSeason = false;
-    try {
-      const { start } = getWeekDates(weekKey);
-      isClosedSeason = start < activeSeasonStart;
-    } catch {
-      isClosedSeason = true;
-    }
+    const isClosedSeason = isWeekBeforeSeason(weekKey, activeSeasonStart);
 
     // Active season week with a matching doc: skip manual consolidation here.
     // Pass raw entries through so reconcileWeeklyGoalsPointsForAllWeeks can canonically
     // reconcile via addPointsInternal / excisePointsEntriesInternal later in sweep.
-    if (!isClosedSeason && doc) {
+    // A week a season started in keeps its per-season entries as they are (never merged into one).
+    if (doc && (!isClosedSeason || getSeasonBoundaryInWeek(weekKey))) {
       const activeEntries = weeklyGoalsMap.get(weekKey) || [];
       passthroughActiveGoalEntries.push(...activeEntries);
       continue;
@@ -1164,20 +1167,92 @@ export function getWeeklyGoalsNetPoints(state: AppState, weekKey: string): numbe
   return total;
 }
 
+/**
+ * Weekly Goals points for a week the active season started in.
+ * The earlier season's entry (`weekly_goal_<weekKey>`) is frozen with that season; this season
+ * gets only what the week earns beyond it, in its own entry, so the weekly cap still holds.
+ */
+function recomputeSeasonSplitWeeklyGoalsPoints(
+  baseState: AppState,
+  targetWeekKey: string,
+  newGoals: WeeklyGoalItem[],
+  seasonStart: Date,
+  seasonNumber: number,
+  triggerGoalId?: string
+): Partial<AppState> {
+  const currentHistory = baseState.pointsHistory || [];
+  const earlierEntry = currentHistory.find((e) => e && e.id === getWeeklyGoalEntryId(targetWeekKey));
+  const entryId = getWeeklyGoalSeasonSplitEntryId(targetWeekKey, seasonNumber);
+  const existing = currentHistory.find((e) => e && e.id === entryId);
+
+  const score = calculateWeeklyGoalsPoints(newGoals);
+  const earlierSeasonPoints = earlierEntry
+    ? earlierEntry.amount || 0
+    : calculateWeeklyGoalsPointsBefore(newGoals, seasonStart);
+  const newPoints = Math.max(0, score.pointsAwarded - earlierSeasonPoints);
+
+  if (existing ? existing.amount === newPoints : newPoints === 0) {
+    return {};
+  }
+
+  if (newPoints === 0) {
+    const exciseResult = excisePointsEntriesInternal(baseState, (e) => e?.id === entryId);
+    return {
+      ...exciseResult,
+      deletedEntityIds: Array.from(new Set([...(baseState.deletedEntityIds || []), entryId])).slice(-500),
+      restoredEntityIds: (baseState.restoredEntityIds || []).filter((id) => id !== entryId),
+    };
+  }
+
+  const pointsUpdate = addPointsInternal(
+    baseState,
+    newPoints,
+    `Weekly goals achieved for ${targetWeekKey}, Season ${seasonNumber} (${newPoints} pts)`,
+    'weekly_goal_achieved',
+    {
+      weekKey: targetWeekKey,
+      seasonNumber,
+      ...(triggerGoalId ? { goalId: triggerGoalId } : {}),
+      countedGoalsCount: score.countedGoalsCount,
+      completedGoalsCount: score.completedGoalsCount,
+    },
+    existing?.timestamp || leagueNow().toISOString(),
+    entryId
+  );
+
+  return {
+    ...pointsUpdate,
+    deletedEntityIds: (baseState.deletedEntityIds || []).filter((id) => id !== entryId).slice(-500),
+    restoredEntityIds: Array.from(new Set([...(baseState.restoredEntityIds || []), entryId])).slice(-500),
+  };
+}
+
 export const recomputeWeeklyGoalsPointsForState = (
   baseState: AppState,
   targetWeekKey: string,
   newGoals: WeeklyGoalItem[],
   triggerGoalId?: string
 ): Partial<AppState> => {
+  const seasonBoundary = getSeasonBoundaryInWeek(targetWeekKey);
+  if (seasonBoundary && leagueNow().getTime() >= seasonBoundary.boundary.getTime()) {
+    return recomputeSeasonSplitWeeklyGoalsPoints(
+      baseState,
+      targetWeekKey,
+      newGoals,
+      seasonBoundary.boundary,
+      seasonBoundary.seasonNumber,
+      triggerGoalId
+    );
+  }
+
   const score = calculateWeeklyGoalsPoints(newGoals);
   const newPoints = score.pointsAwarded;
-  const entryId = `weekly_goal_${targetWeekKey}`;
+  const entryId = getWeeklyGoalEntryId(targetWeekKey);
+  const isWeekEntry = (e: PointsEntry | null | undefined) =>
+    Boolean(e && (e.id === entryId || (!isWeeklyGoalSeasonSplitEntryId(e.id) && extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey)));
 
   const currentHistory = baseState.pointsHistory || [];
-  const allWeekEntries = currentHistory.filter(
-    (e) => e && (e.id === entryId || extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey)
-  );
+  const allWeekEntries = currentHistory.filter(isWeekEntry);
   const existing = allWeekEntries.find((e) => e.id === entryId) || allWeekEntries[0];
 
   // True no-op: exactly one canonical entry already matching current target points
@@ -1190,10 +1265,7 @@ export const recomputeWeeklyGoalsPointsForState = (
   }
 
   if (newPoints === 0) {
-    const exciseResult = excisePointsEntriesInternal(
-      baseState,
-      (e) => Boolean(e && (e.id === entryId || extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey))
-    );
+    const exciseResult = excisePointsEntriesInternal(baseState, isWeekEntry);
     const updatedDeletedEntityIds = Array.from(
       new Set([
         ...(baseState.deletedEntityIds || []),
@@ -1218,7 +1290,7 @@ export const recomputeWeeklyGoalsPointsForState = (
         ...baseState,
         ...excisePointsEntriesInternal(
           baseState,
-          (e) => Boolean(e && e.id !== entryId && extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey)
+          (e) => isWeekEntry(e) && e.id !== entryId
         ),
       }
     : baseState;
@@ -1278,10 +1350,10 @@ export function reconcileWeeklyGoalsPointsForAllWeeks(
       continue;
     }
     try {
-      const { start } = getWeekDates(doc.weekKey);
-      if (start < activeSeasonStart) {
+      if (isWeekBeforeSeason(doc.weekKey, activeSeasonStart)) {
         continue; // Closed-season weeks are frozen
       }
+      const { start } = getWeekDates(doc.weekKey);
       const weekStartKey = todayKey(start);
       if (weekStartKey < POINTS_V2_START_DATE_KEY) {
         continue;
