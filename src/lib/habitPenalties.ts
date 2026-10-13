@@ -9,6 +9,17 @@ import { getPointEligibleHabitIds } from './badHabitEligibility';
 export { applyPenaltyDeductionInternal };
 
 export const MAX_RETROACTIVE_PENALTY_DAYS = 90;
+const MAX_RETROACTIVE_PENALTY_WEEKS = 52;
+
+/**
+ * First local day of the daily penalty window ending at `yesterday`: the most recent
+ * MAX_RETROACTIVE_PENALTY_DAYS days, never before the habit's creation day.
+ * The window moves with the calendar, so habits of any age keep being evaluated.
+ */
+function getDailyPenaltyWindowStart(createdDay: Date, yesterday: Date): Date {
+  const earliest = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate() - (MAX_RETROACTIVE_PENALTY_DAYS - 1));
+  return createdDay > earliest ? createdDay : earliest;
+}
 
 export function getAppStateSeasonPoints(state: AppState, now: Date): number {
   return getEffectiveSeasonPoints(state, now);
@@ -240,15 +251,13 @@ export function getPastDuePeriods(habit: Habit, now: Date = new Date()): string[
 
     if (start > yesterday) return [];
 
-    const cursor = new Date(start);
-    let loops = 0;
-    while (cursor <= yesterday && loops < MAX_RETROACTIVE_PENALTY_DAYS) {
+    const cursor = getDailyPenaltyWindowStart(start, yesterday);
+    while (cursor <= yesterday) {
       const key = todayKey(cursor);
       if (key !== todayKey(now)) {
         pastPeriods.push(key);
       }
       cursor.setDate(cursor.getDate() + 1);
-      loops++;
     }
   } else {
     const currentWeekKey = periodKey('weekly', now);
@@ -258,8 +267,10 @@ export function getPastDuePeriods(habit: Habit, now: Date = new Date()): string[
 
     if (createdWeekKey === currentWeekKey) return [];
 
-    let cursor = parsedCreated ? new Date(parsedCreated) : new Date();
-    for (let i = 0; i < 52; i++) {
+    // Most recent MAX_RETROACTIVE_PENALTY_WEEKS weeks ending last week, never before creation.
+    const windowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7 * MAX_RETROACTIVE_PENALTY_WEEKS);
+    const cursor = parsedCreated && parsedCreated > windowStart ? new Date(parsedCreated) : windowStart;
+    for (let i = 0; i < MAX_RETROACTIVE_PENALTY_WEEKS; i++) {
       const key = periodKey('weekly', cursor);
       if (key !== currentWeekKey) {
         if (!pastPeriods.includes(key)) {
@@ -413,9 +424,8 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
 
     if (start > yesterday) continue;
 
-    const cursor = new Date(start);
-    let loops = 0;
-    while (cursor <= yesterday && loops < MAX_RETROACTIVE_PENALTY_DAYS) {
+    const cursor = getDailyPenaltyWindowStart(start, yesterday);
+    while (cursor <= yesterday) {
       const key = todayKey(cursor);
 
       const existingLog = newLogs.find((l) => l.badHabitId === habit.id && l.date === key);
@@ -490,7 +500,6 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
       }
 
       cursor.setDate(cursor.getDate() + 1);
-      loops++;
     }
   }
 
