@@ -748,21 +748,23 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
             {/* WEEKLY GOALS LIST SECTION */}
             <div className="card p-5 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-overlay-subtle pb-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {/* Title, points, then the add button pushed right. Phones: the title takes its own row and
+                  points + button share the row under it, button still on the right as on desktop. */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-overlay-subtle pb-3">
+                <div className="flex min-w-0 items-center gap-2 max-sm:basis-full">
                   <Target size={16} className="text-brand-text shrink-0" />
                   <h3 className="section-title">
                     Target Priorities for {selectedWeekKey}
                   </h3>
-                  <span className="badge badge-emerald figure text-2xs">
-                    {calculateWeeklyGoalsPoints(activeGoalDoc.goals).pointsAwarded}/{WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts
-                  </span>
                 </div>
+                <span className="badge badge-emerald figure text-2xs">
+                  {calculateWeeklyGoalsPoints(activeGoalDoc.goals).pointsAwarded}/{WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts
+                </span>
 
                 <button
                   onClick={openCreateModal}
                   disabled={isPastWeek}
-                  className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary ml-auto text-xs py-1.5 px-3 flex items-center gap-1.5 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus size={14} /> Add Weekly Goal
                 </button>
