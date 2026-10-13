@@ -35,6 +35,7 @@ export function ConfirmDeleteModal({
     try {
       await onConfirm();
     } catch (err: any) {
+      console.error('Delete failed:', err);
       showErrorToast('Couldn’t delete', toUserMessage(err, 'Try again.'));
     } finally {
       setInternalDeleting(false);

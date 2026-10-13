@@ -463,6 +463,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       await withTimeout(signInAsGuest());
       onDone();
     } catch (err: unknown) {
+      console.error('Guest sign-in failed:', err);
       showError(toUserMessage(err, 'Couldn’t sign in as a guest. Try again.'));
     } finally {
       setLoading(false);
