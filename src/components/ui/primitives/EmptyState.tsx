@@ -5,6 +5,8 @@ import { cx } from './shared';
 
 export interface EmptyStateProps {
   icon?: LucideIcon;
+  /** Colour classes for the full-size icon tile (a module's own tone); emerald when left out. */
+  iconClassName?: string;
   title: string;
   description?: React.ReactNode;
   action?: React.ReactNode;
@@ -15,6 +17,7 @@ export interface EmptyStateProps {
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
   icon: Icon,
+  iconClassName,
   title,
   description,
   action,
@@ -37,7 +40,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         (isSm ? (
           <Icon size={16} aria-hidden="true" className="mx-auto text-content-muted" />
         ) : (
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-500/10 text-brand-text ring-1 ring-inset ring-primary-500/20">
+          <span
+            className={cx(
+              'mx-auto flex h-12 w-12 items-center justify-center rounded-2xl',
+              iconClassName ?? 'bg-primary-500/10 text-brand-text ring-1 ring-inset ring-primary-500/20'
+            )}
+          >
             <Icon size={20} aria-hidden="true" />
           </span>
         ))}
@@ -45,7 +53,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         className={
           isSm
             ? 'text-xs font-semibold text-content-secondary'
-            : 'text-sm font-semibold text-content-primary'
+            : 'text-base font-semibold text-content-primary'
         }
       >
         {title}
@@ -55,7 +63,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           className={
             isSm
               ? 'text-xs text-content-muted'
-              : 'mx-auto max-w-sm text-xs leading-relaxed text-content-muted'
+              : 'mx-auto max-w-sm text-sm leading-relaxed text-content-muted'
           }
         >
           {description}
