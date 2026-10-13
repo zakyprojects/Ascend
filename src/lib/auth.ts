@@ -333,10 +333,22 @@ export async function upgradeAnonymousUser(
   }
 }
 
+// Set when the user signs out on purpose (logout, account deletion), so the sign-in gate can tell
+// that apart from a session that expired on its own (which returns to its page after sign-in).
+let signOutByUser = false;
+
+/** True once after a sign-out the user asked for; reading it clears it. */
+export function consumeSignOutByUser(): boolean {
+  const value = signOutByUser;
+  signOutByUser = false;
+  return value;
+}
+
 /**
  * Logout current user session from Supabase.
  */
 export async function logoutUser(): Promise<void> {
+  signOutByUser = true;
   if (isSupabaseConfigured) {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -526,6 +538,7 @@ export async function deleteUserProfileAndData(userId: string): Promise<void> {
     }
 
     // 6. Sign out user from Supabase Auth
+    signOutByUser = true;
     await supabase.auth.signOut();
   }
 }

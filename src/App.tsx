@@ -2,6 +2,7 @@ import { Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentT
 import { useAppState } from '@/lib/store';
 import { useViewRoute } from '@/lib/useViewRoute';
 import { authPathWithNext, nextFromSearch, pathForAuthRoute, pathForView } from '@/lib/routes';
+import { consumeSignOutByUser } from '@/lib/auth';
 import type { View } from '@/lib/views';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
@@ -90,8 +91,10 @@ function App() {
       if (currentUser && (!isGuest || leavingAuth)) target = nextFromSearch(search);
       else if (isGuest && auth === 'login') target = pathForAuthRoute('signup') + search + authHash;
     } else if (!currentUser && !store.isSessionLoading) {
-      // Logging out lands on a plain /login; a signed-out visit returns to its page afterwards.
-      target = wasSignedIn ? pathForAuthRoute('login') : authPathWithNext('login', pathForView(view) + search) + authHash;
+      // Logging out lands on a plain /login; a signed-out visit or an expired session returns to
+      // its page after signing in.
+      const plain = wasSignedIn && consumeSignOutByUser();
+      target = plain ? pathForAuthRoute('login') : authPathWithNext('login', pathForView(view) + search) + authHash;
     }
     if (target) goToPath(target, { replace: true });
   }, [authReady, authGate, authHold, leavingAuth, auth, currentUser, isGuest, search, view, store.isSessionLoading, goToPath]);
