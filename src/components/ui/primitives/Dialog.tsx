@@ -64,6 +64,13 @@ export const Dialog: React.FC<DialogProps> = ({
 
   const titleId = React.useId();
   const panelRef = React.useRef<HTMLDivElement>(null);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  // A leaving dialog is inert, not aria-hidden: inert also drops focus from the button that
+  // closed it, so the browser never sees focus inside hidden content. Focus then returns to
+  // the opener in the focus effect's cleanup.
+  React.useLayoutEffect(() => {
+    if (rootRef.current) rootRef.current.inert = exiting;
+  }, [exiting, rendered]);
   const dialogIdRef = React.useRef<symbol | null>(null);
   if (!dialogIdRef.current) {
     dialogIdRef.current = Symbol();
@@ -180,13 +187,13 @@ export const Dialog: React.FC<DialogProps> = ({
 
   return createPortal(
     <div
+      ref={rootRef}
       className={cx(
         'fixed inset-0 z-modal flex justify-center p-3 sm:p-4',
         placement === 'top' ? 'items-start sm:pt-[12vh]' : 'items-center',
         'pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]',
         exiting && 'pointer-events-none'
       )}
-      aria-hidden={exiting || undefined}
     >
       <div
         className={cx(
