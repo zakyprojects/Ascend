@@ -36,6 +36,7 @@ import {
   Moon,
   AlertTriangle,
   RotateCcw,
+  ChevronDown,
 } from 'lucide-react';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 
@@ -60,6 +61,8 @@ export function TemplatesTab({
 }: TemplatesTabProps) {
   const { showSuccessToast, showErrorToast } = useToast();
   const [deleteTargetTemplate, setDeleteTargetTemplate] = useState<TimeTrackerTemplate | null>(null);
+  // Phones: the 8+8+8 guide starts folded; from md up it is always open and the toggle is hidden.
+  const [ruleOpen, setRuleOpen] = useState(false);
   const theme = store.state.themePreference || 'dark';
   const [conflictState, setConflictState] = useState<{
     isOpen: boolean;
@@ -190,44 +193,66 @@ export function TemplatesTab({
       </div>
 
       {/* Blueprint Philosophy / 8-8-8 Guide */}
-      <div className="p-4 rounded-2xl border border-overlay-subtle flex flex-col xl:flex-row gap-3 items-start">
+      <div className="p-4 rounded-2xl border border-overlay-subtle flex flex-row md:flex-col xl:flex-row gap-3 items-start">
         <Compass className="text-success-text shrink-0 mt-1" size={18} />
         <div className="flex-1 w-full">
-          <h3 className="section-title mb-1.5">The 8+8+8 rule</h3>
-          <p className="text-xs text-content-tertiary leading-relaxed mb-3 max-w-3xl">
-            Split your 24 hours into three equal parts. Ascend blueprints are built around this.
-          </p>
+          <h3 className="section-title">
+            <button
+              type="button"
+              aria-expanded={ruleOpen}
+              aria-controls="eight-eight-eight-rule"
+              onClick={() => setRuleOpen((open) => !open)}
+              className="flex w-full items-center justify-between gap-2 text-left md:pointer-events-none md:cursor-default"
+            >
+              The 8+8+8 rule
+              <ChevronDown
+                size={16}
+                aria-hidden="true"
+                className={`shrink-0 text-content-muted transition-transform duration-base ease-emphasized motion-reduce:transition-none md:hidden ${ruleOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+          </h3>
+          <div
+            id="eight-eight-eight-rule"
+            className={`grid transition-[grid-template-rows] duration-base ease-emphasized motion-reduce:transition-none md:grid-rows-[1fr] ${ruleOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <p className="text-xs text-content-tertiary leading-relaxed mt-1.5 mb-3 max-w-3xl">
+                Split your 24 hours into three equal parts. Ascend blueprints are built around this.
+              </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-0 md:divide-x md:divide-overlay-subtle">
-            {/* Hard Work */}
-            <div className="md:px-4 md:first:pl-0">
-              <h4 className="item-name text-xs text-content-secondary mb-1 flex items-center gap-1.5">
-                <Brain className="text-content-muted" size={13} /> 
-                8 Hours: Hard Work
-              </h4>
-              <p className="text-2xs text-content-muted leading-snug">Deep focus and your career.</p>
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-0 md:divide-x md:divide-overlay-subtle">
+                {/* Hard Work */}
+                <div className="md:px-4 md:first:pl-0">
+                  <h4 className="item-name text-xs text-content-secondary mb-1 flex items-center gap-1.5">
+                    <Brain className="text-content-muted" size={13} /> 
+                    8 Hours: Hard Work
+                  </h4>
+                  <p className="text-2xs text-content-muted leading-snug">Deep focus and your career.</p>
+                </div>
 
-            {/* Life & Balance */}
-            <div className="md:px-4 md:first:pl-0">
-              <h4 className="item-name text-xs text-content-secondary mb-1.5 flex items-center gap-1.5">
-                <Heart className="text-content-muted" size={13} /> 
-                8 Hours: 3Fs, 3Hs, & 3Ss
-              </h4>
-              <div className="text-2xs text-content-muted leading-snug space-y-0.5">
-                <p><strong className="text-content-tertiary font-medium">3Fs:</strong> Family, Friends, Faith</p>
-                <p><strong className="text-content-tertiary font-medium">3Hs:</strong> Health, Hygiene, Hobby</p>
-                <p><strong className="text-content-tertiary font-medium">3Ss:</strong> Soul, Service, Smile</p>
+                {/* Life & Balance */}
+                <div className="md:px-4 md:first:pl-0">
+                  <h4 className="item-name text-xs text-content-secondary mb-1.5 flex items-center gap-1.5">
+                    <Heart className="text-content-muted" size={13} /> 
+                    8 Hours: 3Fs, 3Hs, & 3Ss
+                  </h4>
+                  <div className="text-2xs text-content-muted leading-snug space-y-0.5">
+                    <p><strong className="text-content-tertiary font-medium">3Fs:</strong> Family, Friends, Faith</p>
+                    <p><strong className="text-content-tertiary font-medium">3Hs:</strong> Health, Hygiene, Hobby</p>
+                    <p><strong className="text-content-tertiary font-medium">3Ss:</strong> Soul, Service, Smile</p>
+                  </div>
+                </div>
+
+                {/* Sleep */}
+                <div className="md:px-4 md:first:pl-0">
+                  <h4 className="item-name text-xs text-content-secondary mb-1 flex items-center gap-1.5">
+                    <Moon className="text-content-muted" size={13} /> 
+                    8 Hours: Good Sleep
+                  </h4>
+                  <p className="text-2xs text-content-muted leading-snug">Rest for your mind and body.</p>
+                </div>
               </div>
-            </div>
-
-            {/* Sleep */}
-            <div className="md:px-4 md:first:pl-0">
-              <h4 className="item-name text-xs text-content-secondary mb-1 flex items-center gap-1.5">
-                <Moon className="text-content-muted" size={13} /> 
-                8 Hours: Good Sleep
-              </h4>
-              <p className="text-2xs text-content-muted leading-snug">Rest for your mind and body.</p>
             </div>
           </div>
         </div>
