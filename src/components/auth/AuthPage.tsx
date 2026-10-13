@@ -262,19 +262,19 @@ export function AuthPage({ screen, search, guestState, onAuthSuccess, onDone, on
         }`}
       >
         <div className="mx-auto w-full max-w-md lg:min-h-full lg:flex lg:flex-col lg:justify-center">
-          <h1 id="auth-page-title" className="text-2xl sm:text-3xl font-semibold tracking-tight text-content-primary">
-            {authPanelTitle(screen)}
-          </h1>
-          <div className="mt-2">
-            <AuthPanel
-              mode={screen}
-              onAuthSuccess={onAuthSuccess}
-              onDone={handleDone}
-              guestState={guestState}
-              pageLinks={{ ...links, navigate: onNavigate }}
-              onClimbChange={setClimb}
-            />
-          </div>
+          <AuthPanel
+            mode={screen}
+            title={
+              <h1 id="auth-page-title" className="text-2xl sm:text-3xl font-semibold tracking-tight text-content-primary">
+                {authPanelTitle(screen)}
+              </h1>
+            }
+            onAuthSuccess={onAuthSuccess}
+            onDone={handleDone}
+            guestState={guestState}
+            pageLinks={{ ...links, navigate: onNavigate }}
+            onClimbChange={setClimb}
+          />
         </div>
       </main>
 
