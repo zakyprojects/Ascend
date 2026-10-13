@@ -60,6 +60,7 @@ import { ActivityIcon } from './timeTracker/ActivityIcon';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { PageHero } from '@/components/ui/PageHero';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 type PFCTab = 'focus' | 'decision' | 'emotion';
@@ -230,6 +231,10 @@ export function PrefrontalCortex({
 }) {
   const [activeTab, setActiveTab] = useState<PFCTab>('focus');
 
+  const weekStart = getStartOfWeek(new Date());
+  const weeklyFocusLogs = store.state.focusLogs.filter((l) => (parseDate(l.date) || new Date(0)) >= weekStart);
+  const weeklyFocusMinutes = weeklyFocusLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -237,6 +242,19 @@ export function PrefrontalCortex({
         <h1 className="page-title">Prefrontal Cortex</h1>
         <p className="page-subtitle">Deep focus, a decision journal and emotion labeling.</p>
       </div>
+
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel="Your focus"
+          lead={{ label: 'Focus this week', value: <CountUp value={weeklyFocusMinutes} />, hint: 'minutes', valueClassName: 'text-cyan-hierarchy' }}
+          stats={[
+            { label: 'Sessions this week', value: <CountUp value={weeklyFocusLogs.length} />, valueClassName: 'text-cyan-hierarchy' },
+            { label: 'Decisions logged', value: <CountUp value={store.state.decisionLogs.length} />, valueClassName: 'text-purple-hierarchy' },
+            { label: 'Emotions labeled', value: <CountUp value={store.state.emotionLogs.length} />, valueClassName: 'text-rose-theme' },
+          ]}
+          side={<CapMeterConnected state={store.state} capId="pfc" bare />}
+        />
+      </Reveal>
 
       {/* Tabs */}
       <div className="relative isolate flex border-b border-overlay-subtle gap-2 overflow-x-auto pb-1">
@@ -709,11 +727,6 @@ function FocusTimerSubmodule({
   const focusLogs = store.state.focusLogs;
   const skills = store.state.skills;
 
-  // Weekly stats calculation
-  const now = new Date();
-  const weekStart = getStartOfWeek(now);
-  const weeklyFocusLogs = focusLogs.filter((l) => (parseDate(l.date) || new Date(0)) >= weekStart);
-  const weeklyFocusMinutes = weeklyFocusLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
   const focusDays = lastDayKeys(7);
   const focusMinutesByDay = sumPerDay(focusLogs, focusDays, (l) => l.durationMinutes);
   const focusLast7Total = focusMinutesByDay.reduce((sum, m) => sum + m, 0);
@@ -1079,96 +1092,66 @@ function FocusTimerSubmodule({
 
   return (
     <div className="space-y-6">
-      {/* Stats & Info Header */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="card p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center text-cyan-hierarchy shrink-0">
-              <Timer size={20} />
+      {/* About + notifications */}
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setAboutModalOpen(true)}
+          className="btn-ghost text-xs text-content-muted hover:text-content-primary flex items-center gap-1.5"
+        >
+          <HelpCircle size={16} aria-hidden="true" />
+          <span>About deep focus</span>
+        </button>
+
+      <div className="text-right relative">
+        <button
+          type="button"
+          onClick={handleHeaderNotifButtonClick}
+          className="transition-all active:scale-95"
+          title={
+            notificationPerm === 'default'
+              ? 'Allow browser notifications'
+              : 'How to change notification settings'
+          }
+        >
+          {notificationPerm === 'denied' ? (
+            <span className="text-rose-theme flex items-center gap-1.5 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/20 font-medium text-micro">
+              <BellOff size={12} /> Notifications blocked
+            </span>
+          ) : notificationPerm === 'granted' ? (
+            <span className="badge-emerald flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium text-micro">
+              <Bell size={12} /> Notifications on
+            </span>
+          ) : (
+            <span className="text-cyan-hierarchy flex items-center gap-1.5 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20 font-medium text-micro">
+              <Bell size={12} /> Turn on notifications
+            </span>
+          )}
+        </button>
+
+        {showNotifHint && notificationPerm !== 'default' && (
+          <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-bg-800 border border-overlay-default rounded-xl shadow-md z-30 text-left text-xs space-y-1.5 text-content-tertiary animate-scale-in">
+            <div className="flex items-center justify-between text-content-primary font-medium text-micro">
+              <span>Change it in your browser</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowNotifHint(false);
+                }}
+                aria-label="Close notification settings hint"
+                className="text-content-muted hover:text-content-primary text-xs px-1"
+              >
+                ✕
+              </button>
             </div>
-            <div>
-              <div className="stat-label">Focus minutes this week</div>
-              <div className="figure text-xl text-cyan-hierarchy mt-0.5">
-                <CountUp value={weeklyFocusMinutes} /> <span className="font-sans text-xs font-normal text-content-muted">mins</span>
-              </div>
-            </div>
+            <p className="text-micro text-content-muted leading-relaxed">
+              Sites can't change this themselves. Tap the lock icon by the address bar → <strong className="text-content-secondary">Site settings</strong> → <strong className="text-content-secondary">Notifications</strong>.
+            </p>
           </div>
-
-          <button
-            onClick={() => setAboutModalOpen(true)}
-            aria-label="About Deep Focus"
-            className="hover:bg-cyan-500/10 btn-ghost text-cyan-hierarchy hover:text-content-secondary flex items-center p-1.5 rounded-lg"
-            title="About Deep Focus"
-          >
-            <HelpCircle size={16} />
-          </button>
-        </div>
-
-        <div className="card p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-hierarchy shrink-0">
-              <CheckCircle2 size={20} />
-            </div>
-            <div>
-              <div className="stat-label">Sessions completed</div>
-              <div className="figure text-xl text-purple-hierarchy mt-0.5">
-                <CountUp value={weeklyFocusLogs.length} /> <span className="font-sans text-xs font-normal text-content-muted">sessions</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-right relative">
-            <button
-              type="button"
-              onClick={handleHeaderNotifButtonClick}
-              className="transition-all active:scale-95"
-              title={
-                notificationPerm === 'default'
-                  ? 'Allow browser notifications'
-                  : 'How to change notification settings'
-              }
-            >
-              {notificationPerm === 'denied' ? (
-                <span className="text-rose-theme flex items-center gap-1.5 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/20 font-medium text-micro">
-                  <BellOff size={12} /> Notifications blocked
-                </span>
-              ) : notificationPerm === 'granted' ? (
-                <span className="badge-emerald flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium text-micro">
-                  <Bell size={12} /> Notifications on
-                </span>
-              ) : (
-                <span className="text-cyan-hierarchy flex items-center gap-1.5 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20 font-medium text-micro">
-                  <Bell size={12} /> Turn on notifications
-                </span>
-              )}
-            </button>
-
-            {showNotifHint && notificationPerm !== 'default' && (
-              <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-bg-800 border border-overlay-default rounded-xl shadow-md z-30 text-left text-xs space-y-1.5 text-content-tertiary animate-scale-in">
-                <div className="flex items-center justify-between text-content-primary font-medium text-micro">
-                  <span>Change it in your browser</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowNotifHint(false);
-                    }}
-                    aria-label="Close notification settings hint"
-                    className="text-content-muted hover:text-content-primary text-xs px-1"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <p className="text-micro text-content-muted leading-relaxed">
-                  Sites can't change this themselves. Tap the lock icon by the address bar → <strong className="text-content-secondary">Site settings</strong> → <strong className="text-content-secondary">Notifications</strong>.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
-
-      <CapMeterConnected state={store.state} capId="pfc" />
+      </div>
 
       {/* Timer Mode Switcher (Manual Focus Timer vs Live Schedule Sync) */}
       <div className="flex justify-center pt-1">
