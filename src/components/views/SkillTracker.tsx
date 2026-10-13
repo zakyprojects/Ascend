@@ -322,15 +322,18 @@ export function SkillTracker({ store }: { store: AppStore }) {
               }
             />
           ) : filteredSkills.length === 0 ? (
-            <div className="card p-6 text-center">
-              <p className="text-sm text-content-disabled">No skills found in category &ldquo;{selectedCategory}&rdquo;</p>
-              <button
-                onClick={() => setSelectedCategory('All')}
-                className="text-xs text-purple-hierarchy hover:underline mt-2 inline-block font-medium"
-              >
-                Show all skills
-              </button>
-            </div>
+            <EmptyState
+              size="sm"
+              title={`No skills in ${selectedCategory}`}
+              action={
+                <button
+                  onClick={() => setSelectedCategory('All')}
+                  className="text-xs text-purple-hierarchy hover:underline font-medium"
+                >
+                  Show all skills
+                </button>
+              }
+            />
           ) : (
             <div className="grid-cards-lg gap-3">
               {filteredSkills.map((skill) => {
