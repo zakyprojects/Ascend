@@ -188,8 +188,12 @@ export function Journal({ store }: { store: AppStore }) {
     }
   };
 
-  // Synchronize state with today's existing entry when present
+  // Synchronize state with today's existing entry when present. While the user has unsaved typing
+  // (e.g. a sync from another device lands mid-edit), their text is kept; saving then wins.
+  const entryDirtyRef = useRef(false);
+  entryDirtyRef.current = entryForm.dirty;
   useEffect(() => {
+    if (entryDirtyRef.current) return;
     if (existingToday) {
       setMood(existingToday.mood);
       setContent(existingToday.content || '');
