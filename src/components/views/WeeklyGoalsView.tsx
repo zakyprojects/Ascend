@@ -628,7 +628,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           </div>
 
           {/* Week Selector Controls */}
-          <div className="flex items-center gap-2 bg-bg-900/60 p-1.5 rounded-xl border border-overlay-subtle self-start md:self-auto">
+          <div className="flex w-full items-center gap-2 bg-bg-900/60 p-1.5 rounded-xl border border-overlay-subtle md:w-auto">
             <button
               onClick={() => setSelectedWeekKey(offsetWeekKey(selectedWeekKey, -1))}
               className={`p-1.5 rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-800 transition-colors ${TAP_TARGET}`}
@@ -638,7 +638,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               <ChevronLeft size={16} />
             </button>
 
-            <div className="text-center px-3">
+            <div className="flex-1 text-center px-3 md:flex-none">
               <span className="figure text-xs text-content-secondary block">{selectedWeekKey}</span>
               <span className="text-2xs text-content-muted block whitespace-nowrap">
                 {formatWeekRange(selectedWeekKey)}

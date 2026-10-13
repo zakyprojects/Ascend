@@ -178,7 +178,10 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       >
         {/* Active Bad Habits List */}
         <div>
-          <h2 className="section-title mb-3">Active bad habits (today: {formatDateLong(today)})</h2>
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h2 className="section-title">Active bad habits</h2>
+            <span className="text-xs text-content-muted">{formatDateLong(today)}</span>
+          </div>
 
           {activeHabits.length === 0 ? (
             <EmptyState
