@@ -193,6 +193,7 @@ import {
 } from './supabase';
 import { GuardBlockedError } from './errors';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult } from './stateMerger';
+import { toUserMessage } from './userMessage';
 
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
@@ -1760,7 +1761,7 @@ export function useAppState() {
           new CustomEvent('app-toast-error', {
             detail: {
               title: 'Save Failed',
-              message: err?.message || 'Could not save changes to cloud. Please check your connection.',
+              message: toUserMessage(err, "Your changes weren't saved. Try again."),
             },
           })
         );

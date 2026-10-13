@@ -3,6 +3,7 @@ import { Dialog } from './primitives';
 import { Trash2, AlertTriangle } from 'lucide-react';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 import { useToast } from './Toast';
+import { toUserMessage } from '@/lib/userMessage';
 
 interface ConfirmDeleteModalProps {
   open: boolean;
@@ -34,7 +35,7 @@ export function ConfirmDeleteModal({
     try {
       await onConfirm();
     } catch (err: any) {
-      showErrorToast('Couldn’t delete', err?.message || 'Check your connection and try again.');
+      showErrorToast('Couldn’t delete', toUserMessage(err, 'Try again.'));
     } finally {
       setInternalDeleting(false);
     }

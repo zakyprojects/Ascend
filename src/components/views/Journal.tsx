@@ -36,6 +36,7 @@ import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { lastDayKeys } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { toUserMessage } from '@/lib/userMessage';
 import { getDailyPrompt, JournalPrompt } from '@/data/journalPrompts';
 
 // Minimum required non-whitespace characters to save an entry
@@ -236,7 +237,7 @@ export function Journal({ store }: { store: AppStore }) {
       });
       setIsEditingToday(false);
     } catch (err: any) {
-      showErrorToast('Save Failed', err?.message || 'Could not save journal entry. Please try again.');
+      showErrorToast('Save Failed', toUserMessage(err, "Couldn't save your entry. Try again."));
     }
   };
 

@@ -35,6 +35,7 @@ import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { todayKey, formatDateShort, parseDate, calculateElapsedDays, addDays } from '@/lib/dates';
 import { createNotificationSupabase, checkRecentPartnerNudgeSent } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
+import { toUserMessage } from '@/lib/userMessage';
 import { Partnership, SharedChallenge, SharedChallengeCategory, PartnerInvite } from '@/types';
 
 const EMPTY_PARTNERSHIPS: Partnership[] = [];
@@ -339,7 +340,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         setInviteError(null);
         showSuccessToast('Invite sent', 'Your partner invite is on its way.');
       } catch (err: any) {
-        const errorMessage = err?.message || 'Failed to send invite.';
+        const errorMessage = toUserMessage(err, "Couldn't send the invite. Try again.");
         setInviteError(errorMessage);
         showErrorToast('Invite failed', errorMessage);
       }
@@ -374,7 +375,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         setChallengeError(null);
         showSuccessToast('Joint Pact Locked In!', `"${title}" has begun with @${activePartnerUsername}.`);
       } catch (err: any) {
-        const errorMessage = err?.message || 'Failed to create pact.';
+        const errorMessage = toUserMessage(err, "Couldn't create the pact. Try again.");
         setChallengeError(errorMessage);
         showErrorToast('Could not create pact', errorMessage);
       }
@@ -388,7 +389,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         await store.acceptPartnerInvite(inviteId);
         showSuccessToast('Partner connected', "You're now accountability partners.");
       } catch (err: any) {
-        setInviteError(err.message || 'Failed to accept invite.');
+        setInviteError(toUserMessage(err, "Couldn't accept the invite. Try again."));
       }
     });
   };
@@ -470,7 +471,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
           showSuccessToast('Nudge sent', `Reminded @${activePartnerUsername} about today's pledge.`);
         } catch (err: any) {
-          showErrorToast('Failed to send nudge', err.message || 'Please try again later.');
+          showErrorToast('Failed to send nudge', toUserMessage(err, 'Try again later.'));
         }
       });
     },
@@ -1297,7 +1298,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                               try {
                                 await store.logSharedChallengeHabit(challenge.id);
                               } catch (err: any) {
-                                showErrorToast('Failed to log pledge', err.message || 'Your progress could not be saved.');
+                                showErrorToast('Failed to log pledge', toUserMessage(err, "Your progress wasn't saved. Try again."));
                               }
                             });
                           }}
@@ -1763,7 +1764,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                 showSuccessToast('Pairing ended', `You're no longer partners with ${activePartnerUsername}.`);
                 setEndConfirmOpen(false);
               } catch (err: any) {
-                showErrorToast('Could not end pairing', err.message || 'Please try again.');
+                showErrorToast('Could not end pairing', toUserMessage(err, 'Try again.'));
               }
             });
           }

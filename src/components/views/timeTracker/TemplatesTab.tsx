@@ -39,6 +39,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
+import { toUserMessage } from '@/lib/userMessage';
 
 interface TemplatesTabProps {
   store: AppStore;
@@ -92,7 +93,7 @@ export function TemplatesTab({
         showSuccessToast('Blueprint Applied', `Blueprint applied to ${formatDateKeyHuman(dateKey)}.`);
       }
     } catch (err: any) {
-      showErrorToast('Failed to apply template', err?.message);
+      showErrorToast('Failed to apply template', toUserMessage(err, 'Try again.'));
     }
   };
 
@@ -103,7 +104,7 @@ export function TemplatesTab({
       store.deleteTimeTrackerTemplate(templateId);
       showSuccessToast('Template Deleted', 'Template removed.', `template_${templateId}`);
     } catch (err: any) {
-      showErrorToast('Failed to delete template', err?.message);
+      showErrorToast('Failed to delete template', toUserMessage(err, 'Try again.'));
     } finally {
       setDeleteTargetTemplate(null);
     }

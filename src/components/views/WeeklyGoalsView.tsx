@@ -39,6 +39,7 @@ import { BarChart } from '@/components/ui/charts';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { toUserMessage } from '@/lib/userMessage';
 function GoalItemRow({
   item,
   selectedWeekKey,
@@ -115,7 +116,7 @@ function GoalItemRow({
                     });
                   }
                 } catch (err: any) {
-                  showErrorToast('Failed to update goal', err?.message);
+                  showErrorToast('Failed to update goal', toUserMessage(err, 'Try again.'));
                 }
               }}
               disabled={isPastWeek || isFutureWeek}
@@ -214,7 +215,7 @@ function GoalItemRow({
                         try {
                           store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
                         } catch (err: any) {
-                          showErrorToast('Failed to update goal', err?.message);
+                          showErrorToast('Failed to update goal', toUserMessage(err, 'Try again.'));
                         }
                       }}
                       disabled={isPastWeek || isFutureWeek || prog.current <= 0}
@@ -233,7 +234,7 @@ function GoalItemRow({
                         try {
                           store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
                         } catch (err: any) {
-                          showErrorToast('Failed to update goal', err?.message);
+                          showErrorToast('Failed to update goal', toUserMessage(err, 'Try again.'));
                         }
                       }}
                       disabled={isPastWeek || isFutureWeek || prog.current >= prog.target}
@@ -438,7 +439,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       setNewReflectionContent('');
       setShowAddReflection(false);
     } catch (err: any) {
-      showErrorToast('Failed to add reflection', err?.message);
+      showErrorToast('Failed to add reflection', toUserMessage(err, 'Try again.'));
     }
   };
 
@@ -449,7 +450,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       setEditingReflection(null);
       setEditReflectionContent('');
     } catch (err: any) {
-      showErrorToast('Failed to update reflection', err?.message);
+      showErrorToast('Failed to update reflection', toUserMessage(err, 'Try again.'));
     }
   };
 
@@ -462,7 +463,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           setDeleteReflectionModal(null);
           showSuccessToast('Reflection Deleted', 'Weekly reflection entry removed.', `weekly_reflection_${reflectionId}`);
         } catch (err: any) {
-          showErrorToast('Failed to delete reflection', err?.message);
+          showErrorToast('Failed to delete reflection', toUserMessage(err, 'Try again.'));
         }
       });
     }
@@ -477,7 +478,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           setDeleteGoalModal(null);
           showSuccessToast('Goal Deleted', 'Weekly goal removed.', `weekly_goal_${goalId}`);
         } catch (err: any) {
-          showErrorToast('Failed to delete goal', err?.message);
+          showErrorToast('Failed to delete goal', toUserMessage(err, 'Try again.'));
         }
       });
     }
@@ -558,7 +559,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       }
       setModalOpen(false);
     } catch (err: any) {
-      showErrorToast(editingGoal ? 'Failed to update goal' : 'Failed to add goal', err?.message);
+      showErrorToast(editingGoal ? 'Failed to update goal' : 'Failed to add goal', toUserMessage(err, 'Try again.'));
     }
   };
 
@@ -1273,7 +1274,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               });
               setDismissPastGoalModal(null);
             } catch (err: any) {
-              showErrorToast('Failed to dismiss goal', err?.message);
+              showErrorToast('Failed to dismiss goal', toUserMessage(err, 'Try again.'));
             }
           }
         }}

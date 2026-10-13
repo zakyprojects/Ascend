@@ -396,7 +396,7 @@ export async function saveUserDataToSupabase(
 
       if (profErr) {
         console.error('Error upserting profile in Supabase:', profErr);
-        throw new Error(profErr.message || 'Error upserting profile in Supabase');
+        throw new Error(profErr.message || "Couldn't save your profile. Try again.");
       }
       return null;
     })();
@@ -414,11 +414,11 @@ export async function saveUserDataToSupabase(
         });
         if (retryErr) {
           console.error('Error retrying user_data upsert in Supabase:', retryErr);
-          throw new Error(retryErr.message || 'Error retrying user_data upsert in Supabase');
+          throw new Error(retryErr.message || "Couldn't save your changes. Try again.");
         }
       } else {
         console.error('Error upserting user_data in Supabase:', dataResult.error);
-        throw new Error(dataResult.error.message || 'Error upserting user_data in Supabase');
+        throw new Error(dataResult.error.message || "Couldn't save your changes. Try again.");
       }
     }
     return finalState;
@@ -1006,7 +1006,7 @@ export async function sendPartnerInviteSupabase(invite: PartnerInvite) {
   const fromUserId = authUserId || (uuidPattern.test(invite.fromUserId) ? invite.fromUserId : null);
 
   if (!fromUserId) {
-    throw new Error('Sender user ID could not be resolved for invite persistence.');
+    throw new Error("Couldn't send the invite. Sign in again and try again.");
   }
 
   // 1. Try atomic SECURITY DEFINER RPC first
@@ -1021,7 +1021,7 @@ export async function sendPartnerInviteSupabase(invite: PartnerInvite) {
 
   if (!rpcErr && rpcData) {
     if (rpcData.success === false) {
-      throw new Error(rpcData.error || 'Failed to send invite.');
+      throw new Error(rpcData.error || "Couldn't send the invite. Try again.");
     }
     return;
   }
@@ -1052,7 +1052,7 @@ export async function sendPartnerInviteSupabase(invite: PartnerInvite) {
 
   if (error) {
     console.error('Error sending partner invite to Supabase:', error);
-    throw new Error(error.message || 'Failed to persist invite in database.');
+    throw new Error(error.message || "Couldn't send the invite. Try again.");
   }
 }
 
@@ -1199,7 +1199,7 @@ export async function savePartnershipSupabase(partnership: Partnership) {
     });
     if (pErr) {
       console.warn('Supabase partnership save warning:', pErr.message);
-      throw new Error(pErr.message || 'Failed to save partnership in database');
+      throw new Error(pErr.message || "Couldn't accept the invite. Try again.");
     }
 
     // Delete or update invite status in DB for both users
@@ -1221,7 +1221,7 @@ export async function deletePartnerInviteSupabase(inviteId: string) {
     const { error } = await supabase.from('partner_invites').delete().eq('id', inviteId);
     if (error) {
       console.error('Error deleting partner invite in Supabase:', error);
-      throw new Error(error.message || 'Failed to delete partner invite in database');
+      throw new Error(error.message || "Couldn't remove the invite. Try again.");
     }
   } catch (e) {
     console.error('deletePartnerInviteSupabase failed:', e);
@@ -1337,13 +1337,13 @@ export async function deletePartnershipSupabase(partnershipId: string) {
     const { error: chalErr } = await supabase.from('shared_challenges').delete().eq('partnership_id', partnershipId);
     if (chalErr) {
       console.error('Error deleting associated shared challenges in Supabase:', chalErr);
-      throw new Error(chalErr.message || 'Failed to remove associated joint pacts from database');
+      throw new Error(chalErr.message || "Couldn't end the pairing. Try again.");
     }
 
     const { error } = await supabase.from('partnerships').delete().eq('id', partnershipId);
     if (error) {
       console.error('Supabase partnership delete error:', error);
-      throw new Error(error.message || 'Failed to delete partnership in database');
+      throw new Error(error.message || "Couldn't end the pairing. Try again.");
     }
   } catch (e) {
     console.error('deletePartnershipSupabase failed:', e);
@@ -1389,7 +1389,7 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
       console.warn('RPC save_shared_challenge_atomic reported error, falling back to direct upsert:', rpcError);
     } else if (rpcData && !rpcData.success) {
       console.error('RPC save_shared_challenge_atomic business error:', rpcData.error);
-      throw new Error(rpcData.error || 'Failed to save joint pact in database.');
+      throw new Error(rpcData.error || "Couldn't save the pact. Try again.");
     }
 
     // 2. Direct upsert fallback
@@ -1423,7 +1423,7 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
 
     if (error) {
       console.error('Error saving shared challenge to Supabase:', error);
-      throw new Error(error.message || 'Failed to save joint pact in database.');
+      throw new Error(error.message || "Couldn't save the pact. Try again.");
     }
   } catch (e: any) {
     console.error('saveSharedChallengeSupabase failed:', e);
@@ -1497,13 +1497,13 @@ export async function deleteSharedChallengeSupabase(challengeId: string) {
       console.warn('RPC delete_shared_challenge_atomic reported error, falling back to direct delete:', rpcErr);
     } else if (rpcData && !rpcData.success) {
       console.error('RPC delete_shared_challenge_atomic business error:', rpcData.error);
-      throw new Error(rpcData.error || 'Failed to delete shared challenge in database');
+      throw new Error(rpcData.error || "Couldn't delete the pact. Try again.");
     }
 
     const { error } = await supabase.from('shared_challenges').delete().eq('id', challengeId);
     if (error) {
       console.error('Error deleting shared challenge in Supabase:', error);
-      throw new Error(error.message || 'Failed to delete shared challenge in database');
+      throw new Error(error.message || "Couldn't delete the pact. Try again.");
     }
   } catch (e: any) {
     console.error('deleteSharedChallengeSupabase failed:', e);

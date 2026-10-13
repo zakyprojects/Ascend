@@ -36,6 +36,7 @@ import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
 import { Dialog, Switch, Tabs } from '@/components/ui/primitives';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
+import { toUserMessage } from '@/lib/userMessage';
 import { AscendLoadingIndicator, AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
 
 type SettingsSection =
@@ -215,8 +216,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
         setUsernameMsg({ type: 'success', text: 'Username updated.' });
         setUsernameStatus(null);
       } catch (err: unknown) {
-        const error = err as { message?: string };
-        setUsernameMsg({ type: 'error', text: error.message || 'Failed to update username.' });
+        setUsernameMsg({ type: 'error', text: toUserMessage(err, "Couldn't change your username. Try again.") });
       }
     });
   };
@@ -261,8 +261,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
         setConfirmPassword('');
         setShowPasswordForm(false);
       } catch (err: unknown) {
-        const error = err as { message?: string };
-        setPasswordMsg({ type: 'error', text: error.message || 'Failed to change password.' });
+        setPasswordMsg({ type: 'error', text: toUserMessage(err, "Couldn't change your password. Try again.") });
       }
     });
   };
@@ -978,7 +977,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
 
           {deleteAccountError && (
             <p role="alert" className="text-xs text-rose-theme">
-              Couldn't delete your account: {deleteAccountError.message}
+              {toUserMessage(deleteAccountError, "Couldn't delete your account. Try again.")}
             </p>
           )}
 

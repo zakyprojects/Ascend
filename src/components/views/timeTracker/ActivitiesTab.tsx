@@ -17,6 +17,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
+import { toUserMessage } from '@/lib/userMessage';
 
 interface ActivitiesTabProps {
   store: AppStore;
@@ -42,7 +43,7 @@ export function ActivitiesTab({
       store.deleteTimeTrackerActivity(activityId);
       showSuccessToast('Activity Removed', 'Activity category removed.', `activity_${activityId}`);
     } catch (err: any) {
-      showErrorToast('Failed to remove activity', err?.message);
+      showErrorToast('Failed to remove activity', toUserMessage(err, 'Try again.'));
     } finally {
       setDeleteTargetActivity(null);
     }

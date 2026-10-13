@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/Toast';
 import { Tabs } from '@/components/ui/primitives';
 import { Clock, Layers, Tag, Calendar, Sparkles } from 'lucide-react';
 import { View } from '@/components/AppShell';
+import { toUserMessage } from '@/lib/userMessage';
 
 interface TimeTrackerViewProps {
   store: AppStore;
@@ -87,7 +88,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         showSuccessToast('Time block scheduled');
       }
     } catch (err: any) {
-      showErrorToast('Failed to schedule block', err?.message);
+      showErrorToast('Failed to schedule block', toUserMessage(err, 'Try again.'));
       throw err;
     }
   };
@@ -117,7 +118,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         showSuccessToast('Blueprint template created');
       }
     } catch (err: any) {
-      showErrorToast('Failed to save blueprint', err?.message);
+      showErrorToast('Failed to save blueprint', toUserMessage(err, 'Try again.'));
       throw err;
     }
   };
@@ -147,7 +148,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         }
       }
     } catch (err: any) {
-      showErrorToast('Failed to apply blueprint', err?.message);
+      showErrorToast('Failed to apply blueprint', toUserMessage(err, 'Try again.'));
       throw err;
     }
   };
@@ -178,7 +179,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         showSuccessToast('Activity category created');
       }
     } catch (err: any) {
-      showErrorToast('Failed to save activity', err?.message);
+      showErrorToast('Failed to save activity', toUserMessage(err, 'Try again.'));
       throw err;
     }
   };

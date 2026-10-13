@@ -11,6 +11,7 @@ import {
 import { getLocalThemePreference } from '@/lib/store';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Shapes, AlertTriangle, Link as LinkIcon, Check } from 'lucide-react';
+import { toUserMessage } from '@/lib/userMessage';
 
 interface ActivityModalProps {
   open: boolean;
@@ -92,7 +93,7 @@ export function ActivityModal({
       });
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Failed to save activity.');
+      setError(toUserMessage(err, "Couldn't save this activity. Try again."));
     } finally {
       setIsSaving(false);
     }

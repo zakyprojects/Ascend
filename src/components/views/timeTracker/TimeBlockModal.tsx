@@ -19,6 +19,7 @@ import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Clock, AlertTriangle, Check, Tag, FileText } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { toUserMessage } from '@/lib/userMessage';
 
 interface TimeBlockModalProps {
   open: boolean;
@@ -159,7 +160,7 @@ export function TimeBlockModal({
         editingBlock?.id
       );
       if (collision.hasCollision) {
-        setValidationError(collision.message || 'Collision with an existing scheduled block.');
+        setValidationError(collision.message || 'This overlaps another block.');
         return;
       }
     } else {
@@ -187,7 +188,7 @@ export function TimeBlockModal({
       });
       onClose();
     } catch (err: any) {
-      setValidationError(err?.message || 'Failed to save time block.');
+      setValidationError(toUserMessage(err, "Couldn't save this block. Try again."));
     } finally {
       setIsSaving(false);
     }

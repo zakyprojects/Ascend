@@ -15,6 +15,7 @@ import { BarChart } from '@/components/ui/charts';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { toUserMessage } from '@/lib/userMessage';
 
 export function SkillTracker({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -639,7 +640,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                 setDeleteModalLog(null);
                 showSuccessToast('Log Deleted', 'Practice session log removed.', `skill_log_${logId}`);
               } catch (err: any) {
-                showErrorToast('Delete Failed', err?.message || 'Failed to delete practice log.');
+                showErrorToast('Delete Failed', toUserMessage(err, "Couldn't delete this practice log. Try again."));
               }
             });
           }

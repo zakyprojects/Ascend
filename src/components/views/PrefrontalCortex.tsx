@@ -63,6 +63,7 @@ import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { useScrollFade } from '@/lib/useScrollFade';
+import { toUserMessage } from '@/lib/userMessage';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 type PFCTab = 'focus' | 'decision' | 'emotion';
@@ -1550,7 +1551,7 @@ function FocusTimerSubmodule({
                     store.toggleDailyTimeBlockCompleted(todayDateKey, overdueBlock.id);
                     showSuccessToast('Block Completed', 'Marked overdue block as completed.');
                   } catch (err: any) {
-                    showErrorToast('Failed to Complete Block', err?.message);
+                    showErrorToast('Failed to Complete Block', toUserMessage(err, 'Try again.'));
                   }
                 }}
                 className="w-full sm:flex-1 py-3.5 px-6 rounded-xl bg-primary-600 hover:bg-primary-700 text-on-brand font-semibold text-sm shadow-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
@@ -1567,7 +1568,7 @@ function FocusTimerSubmodule({
                     const toastInfo = getSkipToastMessage(overdueBlockActivity);
                     showSuccessToast(toastInfo.title, toastInfo.subtitle);
                   } catch (err: any) {
-                    showErrorToast('Failed to Skip Block', err?.message);
+                    showErrorToast('Failed to Skip Block', toUserMessage(err, 'Try again.'));
                   }
                 }}
                 className="w-full sm:w-auto py-3.5 px-5 rounded-xl text-content-muted hover:text-content-secondary hover:bg-overlay-subtle text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
@@ -1601,7 +1602,7 @@ function FocusTimerSubmodule({
                         store.undoEarlyStartTimeBlock(todayDateKey, activeBlock.id);
                         showSuccessToast('Reverted Start Time', `Start time reverted back to ${formatTime12h(activeBlock.originalStartTime!)}`);
                       } catch (err: any) {
-                        showErrorToast('Failed to Revert', err?.message);
+                        showErrorToast('Failed to Revert', toUserMessage(err, 'Try again.'));
                       }
                     }}
                     title={`Revert start time back to ${formatTime12h(activeBlock.originalStartTime)}`}
@@ -1658,7 +1659,7 @@ function FocusTimerSubmodule({
                           const toastInfo = getSkipToastMessage(activeBlockActivity);
                           showSuccessToast(toastInfo.title, toastInfo.subtitle);
                         } catch (err: any) {
-                          showErrorToast('Failed to Skip Block', err?.message);
+                          showErrorToast('Failed to Skip Block', toUserMessage(err, 'Try again.'));
                         }
                       }}
                       className="flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-overlay-subtle text-content-muted hover:text-content-secondary hover:bg-overlay-default flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
@@ -1677,7 +1678,7 @@ function FocusTimerSubmodule({
                             showSuccessToast('Block Completed', `Ended at ${formatTime12h(nowStr)}`);
                           }
                         } catch (err: any) {
-                          showErrorToast('Failed to Complete Block', err?.message);
+                          showErrorToast('Failed to Complete Block', toUserMessage(err, 'Try again.'));
                         }
                       }}
                       className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
@@ -1744,7 +1745,7 @@ function FocusTimerSubmodule({
                         store.endDailyBlockBreakEarly(todayDateKey, activeBlock.id);
                         showSuccessToast('Break Ended', 'Back to focus.');
                       } catch (err: any) {
-                        showErrorToast('Failed to End Break', err?.message);
+                        showErrorToast('Failed to End Break', toUserMessage(err, 'Try again.'));
                       }
                     }}
                     className="btn-secondary text-xs flex items-center gap-2"
@@ -1984,7 +1985,7 @@ function FocusTimerSubmodule({
                             store.undoDailyTimeBlockResolution(todayDateKey, currentResolvedBlock.id);
                             showSuccessToast('Status Reverted', `Reverted ${currentResolvedBlock.skipped ? 'skipped' : 'completed'} status.`);
                           } catch (err: any) {
-                            showErrorToast('Failed to Undo', err?.message);
+                            showErrorToast('Failed to Undo', toUserMessage(err, 'Try again.'));
                           }
                         }}
                         className="bg-cyan-500/15 w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-content-primary border border-cyan-500/30 hover:bg-cyan-500/25 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
@@ -2034,7 +2035,7 @@ function FocusTimerSubmodule({
                                 store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'shift', gapTriggerBlock?.id);
                                 showSuccessToast('Block moved to now', `Started early at ${formatTime12h(nowStr)}`);
                               } catch (err: any) {
-                                showErrorToast('Could Not Move Block', err?.message || 'Cannot move block due to a schedule collision.');
+                                showErrorToast('Could Not Move Block', toUserMessage(err, 'Try again.'));
                               }
                             }}
                             className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-micro font-semibold bg-overlay-subtle hover:bg-overlay-default text-content-tertiary flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
@@ -2052,7 +2053,7 @@ function FocusTimerSubmodule({
                                 store.pullForwardDailyTimeBlock(todayDateKey, nextBlock.id, nowStr, 'stretch', gapTriggerBlock?.id);
                                 showSuccessToast('Block extended to now', `Started early at ${formatTime12h(nowStr)}`);
                               } catch (err: any) {
-                                showErrorToast('Could Not Extend Block', err?.message || 'Cannot extend block due to a schedule collision.');
+                                showErrorToast('Could Not Extend Block', toUserMessage(err, 'Try again.'));
                               }
                             }}
                             className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg text-micro font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-success-text flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
@@ -2110,7 +2111,7 @@ function FocusTimerSubmodule({
                             store.undoDailyTimeBlockResolution(todayDateKey, currentResolvedBlock.id);
                             showSuccessToast('Status Reverted', `Reverted ${currentResolvedBlock.skipped ? 'skipped' : 'completed'} status.`);
                           } catch (err: any) {
-                            showErrorToast('Failed to Undo', err?.message);
+                            showErrorToast('Failed to Undo', toUserMessage(err, 'Try again.'));
                           }
                         }}
                         className="bg-cyan-500/15 w-full sm:w-auto mt-3 sm:mt-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-content-primary border border-cyan-500/30 hover:bg-cyan-500/25 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
@@ -2343,7 +2344,7 @@ function FocusTimerSubmodule({
                   setShowTakeBreakModal(false);
                   showSuccessToast('Break Started', `${selectedBreakMinutes}-minute break started.`);
                 } catch (err: any) {
-                  showErrorToast('Failed to Start Break', err?.message);
+                  showErrorToast('Failed to Start Break', toUserMessage(err, 'Try again.'));
                 }
               }}
               className="btn-primary flex-1 text-xs flex items-center justify-center gap-1.5"
@@ -2429,7 +2430,7 @@ function FocusTimerSubmodule({
                 setDeleteModalLog(null);
                 showSuccessToast('Session Deleted', 'Focus session removed.', `focus_log_${logId}`);
               } catch (err: any) {
-                showErrorToast('Delete Failed', err?.message || 'Failed to delete focus session.');
+                showErrorToast('Delete Failed', toUserMessage(err, "Couldn't delete this focus session. Try again."));
               }
             });
           }
@@ -2666,7 +2667,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                 setDeleteModalDecision(null);
                 showSuccessToast('Decision Deleted', 'Decision entry removed.', `decision_${decisionId}`);
               } catch (err: any) {
-                showErrorToast('Delete Failed', err?.message || 'Failed to delete decision.');
+                showErrorToast('Delete Failed', toUserMessage(err, "Couldn't delete this decision. Try again."));
               }
             });
           }
@@ -2855,7 +2856,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
                 setDeleteModalEmotion(null);
                 showSuccessToast('Emotion Log Deleted', 'Emotion log entry removed.', `emotion_${emotionId}`);
               } catch (err: any) {
-                showErrorToast('Delete Failed', err?.message || 'Failed to delete emotion log.');
+                showErrorToast('Delete Failed', toUserMessage(err, "Couldn't delete this emotion log. Try again."));
               }
             });
           }

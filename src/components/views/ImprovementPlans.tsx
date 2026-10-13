@@ -46,6 +46,7 @@ import { STARTER_TEMPLATES } from '@/data/planTemplates';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { AutoNum, CountUp } from '@/components/ui/Motion';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { toUserMessage } from '@/lib/userMessage';
 
 function ExpandableDescription({ text }: { text: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -1216,7 +1217,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                   try {
                                     await store.togglePlanVisibility(plan.id, !plan.isPublic);
                                   } catch (err: any) {
-                                    showErrorToast('Visibility Update Failed', err?.message || 'Could not update plan visibility.');
+                                    showErrorToast('Visibility Update Failed', toUserMessage(err, "Couldn't change who can see this plan. Try again."));
                                   }
                                 });
                               }}
@@ -1481,7 +1482,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                     try {
                                       await store.togglePlanVisibility(plan.id, !plan.isPublic);
                                     } catch (err: any) {
-                                      showErrorToast('Visibility Update Failed', err?.message || 'Could not update plan visibility.');
+                                      showErrorToast('Visibility Update Failed', toUserMessage(err, "Couldn't change who can see this plan. Try again."));
                                     }
                                   });
                                 }}
@@ -1554,7 +1555,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                                 await store.copyPublicPlan(plan);
                                 showSuccessToast('Plan Copied!', `"${plan.title}" added to your saved plans.`);
                               } catch (err: any) {
-                                showErrorToast('Copy Failed', err?.message || 'Could not copy plan.');
+                                showErrorToast('Copy Failed', toUserMessage(err, "Couldn't copy this plan. Try again."));
                               }
                             });
                           }}
@@ -2197,7 +2198,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 setPlanToDelete(null);
                 showSuccessToast('Plan Deleted', 'Improvement plan removed successfully.', `plan_${planId}`);
               } catch (err: any) {
-                showErrorToast('Delete Failed', err?.message || 'Could not delete plan.');
+                showErrorToast('Delete Failed', toUserMessage(err, "Couldn't delete this plan. Try again."));
               }
             });
           }
@@ -2221,7 +2222,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 setFollowToDelete(null);
                 showSuccessToast('Plan Removed', 'Saved plan removed from your account.', `follow_${followId}`);
               } catch (err: any) {
-                showErrorToast('Remove Failed', err?.message || 'Could not remove saved plan.');
+                showErrorToast('Remove Failed', toUserMessage(err, "Couldn't remove this saved plan. Try again."));
               }
             });
           }

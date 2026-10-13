@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <h3 className="text-lg font-semibold leading-tight">{this.props.fallbackTitle || 'This section couldn’t load'}</h3>
           </div>
           <p className="text-xs text-content-muted">
-            {this.state.error?.message || 'Something went wrong while showing it.'}
+            Something went wrong while showing it.
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}

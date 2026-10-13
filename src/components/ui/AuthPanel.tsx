@@ -4,6 +4,7 @@ import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnony
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 import { PasswordInput } from './PasswordInput';
+import { toUserMessage } from '@/lib/userMessage';
 
 /** How long the sign-in/sign-up success screen shows before `onDone` runs. */
 const AUTH_SUCCESS_MS = 900;
@@ -462,8 +463,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       await withTimeout(signInAsGuest());
       onDone();
     } catch (err: unknown) {
-      const authErr = err as { message?: string };
-      showError(authErr.message || 'Couldn’t sign in as a guest. Try again.');
+      showError(toUserMessage(err, 'Couldn’t sign in as a guest. Try again.'));
     } finally {
       setLoading(false);
     }
@@ -547,7 +547,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       ) {
         showError('Too many sign-up attempts. Wait a few minutes and try again.');
       } else {
-        showError(authErr.message || 'Something went wrong. Try again.');
+        showError(toUserMessage(err, 'Something went wrong. Try again.'));
       }
     } finally {
       setLoading(false);

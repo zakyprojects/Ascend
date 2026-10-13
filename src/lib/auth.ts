@@ -212,12 +212,12 @@ export async function signUpUser(
 
   if (authError) {
     sessionStorage.removeItem('ascend_signup_defaults');
-    throw new Error(authError.message || 'Failed to create account in Supabase.');
+    throw new Error(authError.message || "Couldn't create your account. Try again.");
   }
 
   if (!authData.user) {
     sessionStorage.removeItem('ascend_signup_defaults');
-    throw new Error('Failed to create account in Supabase.');
+    throw new Error("Couldn't create your account. Try again.");
   }
 
   if (!authData.session) {
@@ -265,7 +265,7 @@ export async function loginUser(email: string, password: string): Promise<void> 
 export async function signInAsGuest(): Promise<void> {
   const { error } = await supabase.auth.signInAnonymously();
   if (error) {
-    throw new Error(error.message || 'Failed to continue as guest.');
+    throw new Error(error.message || "Couldn't sign in as a guest. Try again.");
   }
 }
 
@@ -286,7 +286,7 @@ export async function upgradeAnonymousUser(
   // 1. Retrieve current user to obtain their ID
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    throw new Error('No active user session found to upgrade.');
+    throw new Error("You're not signed in. Sign in and try again.");
   }
 
   // 2. Validate username availability if provided
@@ -329,7 +329,7 @@ export async function upgradeAnonymousUser(
   });
 
   if (error) {
-    throw new Error(error.message || 'Failed to upgrade account.');
+    throw new Error(error.message || "Couldn't create your account. Try again.");
   }
 }
 
@@ -355,7 +355,7 @@ export async function logoutUser({ scope = 'global' }: { scope?: 'global' | 'loc
     const { error } = await supabase.auth.signOut({ scope });
     if (error) {
       console.error('Error signing out from Supabase:', error);
-      throw new Error(error.message || 'Failed to sign out from authentication service.');
+      throw new Error(error.message || "Couldn't log out. Try again.");
     }
   }
   if (typeof window !== 'undefined') {
@@ -434,7 +434,7 @@ export async function updateUsernameWithCooldown(
     }
 
     if (updateErr) {
-      throw new Error(updateErr.message || 'Failed to update username in database.');
+      throw new Error(updateErr.message || "Couldn't change your username. Try again.");
     }
 
     // Propagate metadata to Auth
@@ -460,7 +460,7 @@ export async function updateUserAvatar(userId: string, newAvatar: string): Promi
     .eq('id', userId);
 
   if (error) {
-    throw new Error(error.message || 'Failed to update avatar in database.');
+    throw new Error(error.message || "Couldn't change your avatar. Try again.");
   }
 
   await supabase.auth.updateUser({
@@ -478,7 +478,7 @@ export async function changeUserPassword(newPassword: string): Promise<void> {
 
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) {
-    throw new Error(error.message || 'Failed to update password.');
+    throw new Error(error.message || "Couldn't change your password. Try again.");
   }
 }
 
@@ -491,7 +491,7 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
   if (isSupabaseConfigured) {
     const { error } = await supabase.rpc('delete_own_account');
     if (error) {
-      throw new Error(error.message || 'Could not delete your account.');
+      throw new Error(error.message || "Couldn't delete your account. Try again.");
     }
   }
 

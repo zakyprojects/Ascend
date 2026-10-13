@@ -52,6 +52,7 @@ import {
 } from 'lucide-react';
 import { View } from '@/components/AppShell';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
+import { toUserMessage } from '@/lib/userMessage';
 
 function getLaunchModules(
   primary: TimeTrackerActivity | undefined | null,
@@ -184,7 +185,7 @@ export function ScheduleTab({
         );
       }
     } catch (err: any) {
-      showErrorToast('Failed to update block', err?.message);
+      showErrorToast('Failed to update block', toUserMessage(err, 'Try again.'));
     }
   };
 
@@ -195,7 +196,7 @@ export function ScheduleTab({
       store.deleteDailyTimeBlock(selectedDateKey, blockId);
       showSuccessToast('Time Block Deleted', 'Time block removed.', `time_block_${blockId}`);
     } catch (err: any) {
-      showErrorToast('Failed to delete block', err?.message);
+      showErrorToast('Failed to delete block', toUserMessage(err, 'Try again.'));
     } finally {
       setDeleteTargetBlock(null);
     }
@@ -206,7 +207,7 @@ export function ScheduleTab({
       store.clearDailyTimeBlocks(selectedDateKey);
       showSuccessToast('Day Schedule Cleared', 'Day schedule cleared.', `clear_day_${selectedDateKey}_${Date.now()}`);
     } catch (err: any) {
-      showErrorToast('Failed to clear schedule', err?.message);
+      showErrorToast('Failed to clear schedule', toUserMessage(err, 'Try again.'));
     } finally {
       setShowClearDayModal(false);
     }

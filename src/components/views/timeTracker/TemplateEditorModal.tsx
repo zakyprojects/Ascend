@@ -26,6 +26,7 @@ import { useToast } from '@/components/ui/Toast';
 import { uid } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
+import { toUserMessage } from '@/lib/userMessage';
 
 interface TemplateEditorModalProps {
   open: boolean;
@@ -214,7 +215,7 @@ export function TemplateEditorModal({
       });
       onClose();
     } catch (err: any) {
-      setValidationError(err?.message || 'Failed to save template.');
+      setValidationError(toUserMessage(err, "Couldn't save this template. Try again."));
     } finally {
       setIsSaving(false);
     }
