@@ -111,7 +111,8 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   return (
     <div className="space-y-6">
       {/* Top Header + Emergency Button */}
-      <div className="page-header">
+      {/* Phones keep the button in the top-right corner too (compact), instead of a full-width row. */}
+      <div className="page-header max-sm:flex-row max-sm:items-start max-sm:justify-between">
         <div>
           <h1 className="page-title">Addiction Recovery</h1>
           <p className="page-subtitle">Your sobriety streak, craving log and emergency support.</p>
@@ -119,10 +120,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
 
         <button
           onClick={() => setEmergencyModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-2 sm:shrink-0"
+          className="shrink-0 px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-1.5 sm:gap-2"
         >
-          <PhoneCall size={16} />
-          <span>Emergency Support</span>
+          <PhoneCall size={14} aria-hidden="true" />
+          <span>Emergency<span className="max-sm:hidden"> Support</span></span>
         </button>
       </div>
 
@@ -151,22 +152,23 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               />
             ) : (
               <div className="card p-6 relative overflow-hidden space-y-6">
-                <div className="flex items-center justify-between flex-wrap gap-2 border-b border-overlay-subtle pb-4">
-                  <div>
+                <div className="flex items-start justify-between gap-3 border-b border-overlay-subtle pb-4 sm:items-center">
+                  <div className="min-w-0">
                     <span className="stat-label">Sobriety counter</span>
                     <h2 className="section-title mt-1">{tracker.title}</h2>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* Phones: the two actions stack in the corner instead of taking a row of their own. */}
+                  <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
                     <button
                       onClick={() => setResetConfirmOpen(true)}
-                      className="btn-ghost text-xs text-content-muted hover:text-warning-text flex items-center gap-1.5"
+                      className="btn-ghost text-xs text-content-muted hover:text-warning-text flex items-center gap-1.5 max-sm:px-2 max-sm:py-1"
                     >
                       <RefreshCw size={14} />
                       <span>Reset Timer</span>
                     </button>
                     <button
                       onClick={() => setDeleteTrackerConfirmOpen(true)}
-                      className="btn-ghost text-xs text-content-muted hover:text-rose-theme flex items-center gap-1.5"
+                      className="btn-ghost text-xs text-content-muted hover:text-rose-theme flex items-center gap-1.5 max-sm:px-2 max-sm:py-1"
                       title="Delete sobriety tracker"
                     >
                       <Trash2 size={14} />
