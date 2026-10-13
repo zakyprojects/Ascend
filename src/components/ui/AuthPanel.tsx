@@ -133,8 +133,9 @@ function caretFraction(input: HTMLInputElement): number {
 const EMAIL_PATTERN =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
-/** The app's existing minimum for a new password (lib/auth changeUserPassword). Used for the check mark, not to block submit. */
-const NEW_PASSWORD_MIN = 6;
+/** Minimum password length for a new account (sign-up, save progress). Existing accounts sign in
+ *  with whatever they have; lib/auth changeUserPassword keeps its own minimum of 6. */
+const NEW_PASSWORD_MIN = 8;
 
 // Screen order for the slide direction: moving forward slides in from the right, back from the left.
 const SCREEN_ORDER: Record<AuthScreen, number> = { login: 0, 'signup-choice': 1, 'signup-form': 2, upgrade: 1 };
