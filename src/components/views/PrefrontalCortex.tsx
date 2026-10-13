@@ -62,6 +62,7 @@ import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { useScrollFade } from '@/lib/useScrollFade';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 
 type PFCTab = 'focus' | 'decision' | 'emotion';
@@ -231,6 +232,8 @@ export function PrefrontalCortex({
   onNavigate?: (view: any) => void;
 }) {
   const [activeTab, setActiveTab] = useState<PFCTab>('focus');
+  const tabRowRef = useRef<HTMLDivElement>(null);
+  useScrollFade(tabRowRef);
 
   const weekStart = getStartOfWeek(new Date());
   const weeklyFocusLogs = store.state.focusLogs.filter((l) => (parseDate(l.date) || new Date(0)) >= weekStart);
@@ -258,7 +261,7 @@ export function PrefrontalCortex({
       </Reveal>
 
       {/* Tabs */}
-      <div className="relative isolate flex border-b border-overlay-subtle gap-2 overflow-x-auto pb-1">
+      <div ref={tabRowRef} className="scroll-fade relative isolate flex border-b border-overlay-subtle gap-2 overflow-x-auto pb-1">
         <SlidingPill
           active={activeTab}
           className={cx(

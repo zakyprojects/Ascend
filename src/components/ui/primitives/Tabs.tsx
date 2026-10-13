@@ -2,6 +2,7 @@ import React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { useActiveBox } from '@/lib/useActiveBox';
 import { useHoverGlide } from '@/lib/useHoverGlide';
+import { useScrollFade } from '@/lib/useScrollFade';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
 import type { NavStatusTone } from '@/lib/navStatus';
 
@@ -47,6 +48,7 @@ export const Tabs: React.FC<TabsProps> = ({
   const indicator = useActiveBox(listRef, () => tabRefs.current.get(value), value, itemsKey);
   const glideRef = React.useRef<HTMLSpanElement>(null);
   useHoverGlide(listRef, glideRef);
+  useScrollFade(listRef, scrollable);
 
   React.useLayoutEffect(() => {
     if (!scrollable) return;
@@ -104,7 +106,7 @@ export const Tabs: React.FC<TabsProps> = ({
           ? 'inline-flex items-center gap-1 p-1 rounded-xl bg-bg-700'
           : 'flex items-center gap-4 border-b border-overlay-subtle',
         scrollable &&
-          'max-w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]',
+          'scroll-fade max-w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]',
         className
       )}
     >
