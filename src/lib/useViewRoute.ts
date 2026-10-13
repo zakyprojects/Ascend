@@ -9,6 +9,7 @@ import {
   viewFromPath,
 } from './routes';
 import { runPageTransition } from './pageTransition';
+import { confirmLeave, hasUnsavedChanges } from './unsavedChanges';
 
 /**
  * Path routing for the app's pages: `/habits`. Refresh keeps the page, links open a page
@@ -129,6 +130,16 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
         syncToLocation('pop'); // to or from a sign-in page: no page transition, no chunk wait
         return;
       }
+      if (hasUnsavedChanges() && target.view !== viewRef.current) {
+        // Back/forward can't be cancelled and the address has already moved: put the current
+        // page's address back first, and go only if the user discards the unsaved typing.
+        window.history.pushState(null, '', pathForView(viewRef.current));
+        confirmLeave(() => {
+          window.history.replaceState(null, '', pathForView(target.view));
+          show(target.view, 'pop');
+        });
+        return;
+      }
       canonicalizeUrl(target);
       show(target.view, 'pop');
     };
@@ -140,7 +151,8 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
     (view: View) => {
       // A new path drops the query: `?tab=live` belongs to the visit that came with it. The URL
       // changes when the page does, so a superseded click never leaves a history entry.
-      show(view, 'push', () => window.history.pushState(null, '', pathForView(view)));
+      if (view === targetRef.current) return;
+      confirmLeave(() => show(view, 'push', () => window.history.pushState(null, '', pathForView(view))));
     },
     [show]
   );

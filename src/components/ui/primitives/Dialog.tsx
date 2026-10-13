@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
 import { prefersReducedMotion } from '@/lib/motion';
+import { requestDiscard } from '@/lib/unsavedChanges';
 
 export interface DialogProps {
   open: boolean;
@@ -13,6 +14,8 @@ export interface DialogProps {
   preventClose?: boolean;
   /** 'top' keeps the panel's top edge still while its content changes height (search results). */
   placement?: 'center' | 'top';
+  /** Unsaved typing (`useUnsavedChanges`): Esc, backdrop and X ask "Discard changes?" first. */
+  dirty?: boolean;
 }
 
 // Matches the longest exit animation (dialog-out / exit-fade, tailwind.config.js).
@@ -33,6 +36,7 @@ export const Dialog: React.FC<DialogProps> = ({
   maxWidth = 'max-w-md',
   preventClose = false,
   placement = 'center',
+  dirty = false,
 }) => {
   // Stays mounted for its exit animation after `open` turns false. The last open title and
   // content are shown while it leaves, so a parent clearing its data on close cannot make the
@@ -67,8 +71,9 @@ export const Dialog: React.FC<DialogProps> = ({
   const dialogId = dialogIdRef.current;
 
   const previousActiveElement = React.useRef<HTMLElement | null>(null);
-  const onCloseRef = React.useRef(onClose);
-  onCloseRef.current = onClose;
+  const requestClose = dirty ? () => requestDiscard(onClose) : onClose;
+  const onCloseRef = React.useRef(requestClose);
+  onCloseRef.current = requestClose;
   const preventCloseRef = React.useRef(preventClose);
   preventCloseRef.current = preventClose;
 
@@ -189,7 +194,7 @@ export const Dialog: React.FC<DialogProps> = ({
           exiting ? 'animate-exit-fade' : 'motion-safe:animate-enter-fade'
         )}
         onClick={() => {
-          if (!preventClose) onClose();
+          if (!preventClose) requestClose();
         }}
       />
       <div
@@ -213,7 +218,7 @@ export const Dialog: React.FC<DialogProps> = ({
               <button
                 type="button"
                 aria-label="Close"
-                onClick={onClose}
+                onClick={requestClose}
                 className={cx(
                   'inline-flex h-8 w-8 items-center justify-center rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-700',
                   TAP_TARGET,
