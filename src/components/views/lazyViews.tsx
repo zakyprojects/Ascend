@@ -107,3 +107,5 @@ export const Neuroplasticity = page('neuroplasticity', () => import('./Neuroplas
 export const ImprovementPlans = page('plans', () => import('./ImprovementPlans').then((m) => m.ImprovementPlans));
 export const AccountabilityPartner = page('partner', () => import('./AccountabilityPartner').then((m) => m.AccountabilityPartner));
 export const SettingsView = page('settings', () => import('./SettingsView').then((m) => m.SettingsView));
+export const ReportBugView = page('report-bug', () => import('./FeedbackView').then((m) => m.FeedbackView));
+export const SuggestIdeaView = page('suggest-idea', () => import('./FeedbackView').then((m) => m.FeedbackView));

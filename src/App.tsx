@@ -2,6 +2,7 @@ import { Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentT
 import { useAppState } from '@/lib/store';
 import { useViewRoute } from '@/lib/useViewRoute';
 import { authPathWithNext, nextFromSearch, pathForAuthRoute, pathForView } from '@/lib/routes';
+import type { View } from '@/lib/views';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
 import { AppShell } from '@/components/AppShell';
@@ -20,8 +21,10 @@ import {
   PrefrontalCortex,
   ProjectsGoalsView,
   ReadingHub,
+  ReportBugView,
   SettingsView,
   SkillTracker,
+  SuggestIdeaView,
   TierView,
   TimeTrackerView,
   WeeklyGoalsView,
@@ -43,6 +46,10 @@ function App() {
   const store = useAppState();
   // Page changes wait for the page's code first, so the view transition never shows a fallback.
   const { view, auth, search, navigationKind, navigate: setView, goToPath } = useViewRoute(preloadView);
+
+  // The last ordinary page: a bug report or idea starts out about it ("Which page?").
+  const [feedbackFromView, setFeedbackFromView] = useState<View>(view);
+  if (view !== 'report-bug' && view !== 'suggest-idea' && view !== feedbackFromView) setFeedbackFromView(view);
 
   // ---- Sign-in pages (/login, /signup) ------------------------------------------------------
   // Signed out: every page goes to /login?next=<page>. A guest (anonymous account) on /login or
@@ -211,6 +218,12 @@ function App() {
                   {view === 'lessons' && <Lessons store={store} />}
                   {view === 'neuroplasticity' && <Neuroplasticity onViewChange={setView} />}
                   {view === 'settings' && <SettingsView store={store} onOpenAuth={openAuth} />}
+                  {view === 'report-bug' && (
+                    <ReportBugView key="bug" kind="bug" store={store} fromView={feedbackFromView} onNavigate={setView} />
+                  )}
+                  {view === 'suggest-idea' && (
+                    <SuggestIdeaView key="idea" kind="idea" store={store} fromView={feedbackFromView} onNavigate={setView} />
+                  )}
                 </Suspense>
               </ErrorBoundary>
             </AppShell>

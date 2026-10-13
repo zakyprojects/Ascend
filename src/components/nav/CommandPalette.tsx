@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { CornerDownLeft, Search } from 'lucide-react';
 import { Dialog, cx } from '@/components/ui/primitives';
 import type { View } from '@/components/AppShell';
-import { NAV_DASHBOARD, NAV_GROUPS, NAV_SETTINGS, NavEntry } from './navConfig';
+import { NAV_DASHBOARD, NAV_GROUPS, NAV_HELP, NAV_SETTINGS, NavEntry } from './navConfig';
 import { IS_APPLE_PLATFORM } from '@/lib/platform';
 
 /** "g" then this key jumps to the page. Kept to the most visited pages so the letters stay memorable. */
@@ -28,6 +28,7 @@ const ENTRIES: PaletteEntry[] = [
   { ...NAV_DASHBOARD, group: 'Home' },
   ...NAV_GROUPS.flatMap((group) => group.items.map((item) => ({ ...item, group: group.label }))),
   { ...NAV_SETTINGS, group: 'App' },
+  ...NAV_HELP.map((item) => ({ ...item, group: 'Help' })),
 ];
 
 function isTypingTarget(target: EventTarget | null): boolean {

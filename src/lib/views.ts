@@ -19,6 +19,8 @@ export const VIEWS = [
   'leagues',
   'tiers',
   'settings',
+  'report-bug',
+  'suggest-idea',
 ] as const;
 
 export type View = (typeof VIEWS)[number];

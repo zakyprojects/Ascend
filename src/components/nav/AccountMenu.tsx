@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { LogIn, LogOut, Moon, Settings, Sun, UserRound } from 'lucide-react';
 import { toggleThemeWithReveal } from '@/lib/themeTransition';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
+import type { View } from '@/lib/views';
+import { NAV_HELP } from './navConfig';
 
 interface AccountMenuProps {
   /** null when nobody is signed in. */
@@ -11,6 +13,9 @@ interface AccountMenuProps {
   isDark: boolean;
   onToggleTheme: () => void;
   onOpenSettings: () => void;
+  /** The page on show, so a Help entry can mark itself current. */
+  currentView: View;
+  onOpenView: (view: View) => void;
   onOpenAuth: () => void;
   onLogout: () => void;
   /** below: opens under the avatar, right-aligned (top row). side: opens to its right, bottom-aligned (rail foot). */
@@ -24,7 +29,18 @@ const MENU_WIDTH = 240;
  * (replaces the sidebar's account card with its separate Settings and Log out icons).
  * Opens below the avatar; Escape, a click outside or choosing an item closes it.
  */
-export function AccountMenu({ user, settingsActive, isDark, onToggleTheme, onOpenSettings, onOpenAuth, onLogout, placement = 'below' }: AccountMenuProps) {
+export function AccountMenu({
+  user,
+  settingsActive,
+  isDark,
+  onToggleTheme,
+  onOpenSettings,
+  currentView,
+  onOpenView,
+  onOpenAuth,
+  onLogout,
+  placement = 'below',
+}: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<{ left: number; top?: number; bottom?: number }>({ left: 0, top: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -151,6 +167,21 @@ export function AccountMenu({ user, settingsActive, isDark, onToggleTheme, onOpe
             >
               {isDark ? 'Light theme' : 'Dark theme'}
             </MenuItem>
+
+            <div className="my-1.5 h-px bg-overlay-subtle" role="separator" />
+            {NAV_HELP.map(({ id, label, icon: Icon }) => (
+              <MenuItem
+                key={id}
+                icon={<Icon size={16} />}
+                current={currentView === id}
+                onSelect={() => {
+                  close(false);
+                  onOpenView(id);
+                }}
+              >
+                {label}
+              </MenuItem>
+            ))}
 
             {user && (
               <>

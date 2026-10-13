@@ -21,6 +21,8 @@ import {
   Trophy,
   Award,
   Users,
+  Bug,
+  Lightbulb,
 } from 'lucide-react';
 import type { View } from '@/components/AppShell';
 
@@ -48,6 +50,12 @@ export const NAV_SETTINGS: NavEntry = {
   label: 'Settings',
   icon: Settings,
 };
+
+/** Help: reached from the account menu and the palette, not the page groups. */
+export const NAV_HELP: NavEntry[] = [
+  { id: 'report-bug', label: 'Report a bug', icon: Bug },
+  { id: 'suggest-idea', label: 'Suggest an idea', icon: Lightbulb },
+];
 
 export const NAV_GROUPS: NavGroup[] = [
   {
@@ -106,7 +114,7 @@ export const DEFAULT_GROUP_VIEWS: Record<NavGroup['id'], View> = NAV_GROUPS.redu
 );
 
 const NAV_LABELS = new Map<View, string>(
-  [NAV_DASHBOARD, NAV_SETTINGS, ...NAV_GROUPS.flatMap((group) => group.items)].map((entry) => [entry.id, entry.label])
+  [NAV_DASHBOARD, NAV_SETTINGS, ...NAV_HELP, ...NAV_GROUPS.flatMap((group) => group.items)].map((entry) => [entry.id, entry.label])
 );
 
 /** The page's name as the navigation shows it (used for the document title). */

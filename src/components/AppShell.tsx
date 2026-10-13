@@ -9,6 +9,7 @@ import {
 import {
   NAV_DASHBOARD,
   NAV_SETTINGS,
+  NAV_HELP,
   NAV_GROUPS,
   DEFAULT_GROUP_VIEWS,
   getGroupForView,
@@ -246,6 +247,8 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               isDark={isDarkTheme}
               onToggleTheme={store.toggleThemePreference}
               onOpenSettings={() => goTo(NAV_SETTINGS.id)}
+              currentView={currentView}
+              onOpenView={goTo}
               onOpenAuth={onOpenAuth}
               onLogout={handleLogoutClick}
             />
@@ -407,6 +410,19 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
               onViewChange(view);
             })}
           />
+          {NAV_HELP.map((entry) => (
+            <NavItemPrimitive
+              key={entry.id}
+              icon={entry.icon}
+              label={entry.label}
+              layout="row"
+              active={currentView === entry.id}
+              {...pageLinkProps(entry.id, (view) => {
+                setAccountOpen(false);
+                onViewChange(view);
+              })}
+            />
+          ))}
           <div className="flex items-center justify-between rounded-xl px-3 py-1">
             <span className="text-sm font-medium text-content-secondary">{isDarkTheme ? 'Dark theme' : 'Light theme'}</span>
             <ThemeToggle isDark={isDarkTheme} onToggle={store.toggleThemePreference} />
