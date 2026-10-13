@@ -3,7 +3,6 @@ import {
   Target,
   ChevronLeft,
   ChevronRight,
-  BarChart2,
   AlertTriangle,
   ArrowRight,
   Plus,
@@ -38,6 +37,7 @@ import { computeLinkedGoalProgress, GoalProgressResult, LINKED_GOAL_METRICS, Lin
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
+import { PageHero } from '@/components/ui/PageHero';
 function GoalItemRow({
   item,
   selectedWeekKey,
@@ -605,7 +605,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     <div className="space-y-6">
       {/* HEADER & WEEK NAVIGATION CARD */}
       <div className="space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-overlay-subtle pb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="page-title">Weekly Goals</h1>
             <p className="page-subtitle">
@@ -651,38 +651,16 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           </div>
         </div>
 
-        {/* OVERALL WEEK PROGRESS BAR & SUMMARY BADGES */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-          <div className="md:col-span-2 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-content-tertiary flex items-center gap-1.5">
-                <BarChart2 size={14} className="text-brand-text" />
-                Weekly goal completion
-              </span>
-              <span className="figure text-brand-text">
-                <AutoNum text={`${goalStats.percent}%`} /> Complete ({goalStats.completed}/{goalStats.total})
-              </span>
-            </div>
-            <ProgressBar value={goalStats.percent} label="Weekly target completion" size="lg" />
-          </div>
-
-          <div className="flex items-center justify-around md:border-l md:border-overlay-subtle">
-            <div className="text-center">
-              <CountUp value={goalStats.total} className="font-medium text-3xl leading-none text-content-primary block tabular-nums" />
-              <span className="stat-label mt-1 block">Total Goals</span>
-            </div>
-            <div className="w-px h-8 bg-overlay-default" />
-            <div className="text-center">
-              <CountUp value={goalStats.completed} className="font-medium text-3xl leading-none text-success-text block tabular-nums" />
-              <span className="stat-label mt-1 block">Completed</span>
-            </div>
-            <div className="w-px h-8 bg-overlay-default" />
-            <div className="text-center">
-              <CountUp value={goalStats.highPriorityCompleted} className="font-medium text-3xl leading-none text-rose-theme block tabular-nums" />
-              <span className="stat-label mt-1 block">High Pri Done</span>
-            </div>
-          </div>
-        </div>
+        <Reveal index={0}>
+          <PageHero
+            ariaLabel="This week's goals"
+            ring={{ value: goalStats.completed, max: goalStats.total, label: 'Weekly target completion', center: <AutoNum text={`${goalStats.percent}%`} />, caption: 'complete' }}
+            lead={{ label: 'Goals done', value: <CountUp value={goalStats.completed} />, hint: `of ${goalStats.total} goals`, valueClassName: 'text-success-text' }}
+            stats={[
+              { label: 'High priority done', value: <CountUp value={goalStats.highPriorityCompleted} />, valueClassName: 'text-rose-theme' },
+            ]}
+          />
+        </Reveal>
       </div>
 
       <PageColumns
