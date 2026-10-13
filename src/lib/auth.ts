@@ -346,11 +346,13 @@ export function consumeSignOutByUser(): boolean {
 
 /**
  * Logout current user session from Supabase.
+ * `scope: 'local'` only clears this device's session (used after account deletion,
+ * when the server no longer knows the user and a global sign-out would fail).
  */
-export async function logoutUser(): Promise<void> {
+export async function logoutUser({ scope = 'global' }: { scope?: 'global' | 'local' } = {}): Promise<void> {
   signOutByUser = true;
   if (isSupabaseConfigured) {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope });
     if (error) {
       console.error('Error signing out from Supabase:', error);
       throw new Error(error.message || 'Failed to sign out from authentication service.');
@@ -481,10 +483,18 @@ export async function changeUserPassword(newPassword: string): Promise<void> {
 }
 
 /**
- * Fully delete user profile and all associated data from Supabase DB, then sign out.
+ * Permanently delete the signed-in user's account. The `delete_own_account` RPC removes the
+ * auth user; every user row (profile, user_data, partnerships, plans, notifications...)
+ * cascades from it. Throws when the server refuses, so the caller can keep the user signed in.
  */
-export async function deleteUserProfileAndData(userId: string): Promise<void> {
-  // Clear in-memory watermark and local user cache first
+export async function deleteOwnAccount(userId: string): Promise<void> {
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.rpc('delete_own_account');
+    if (error) {
+      throw new Error(error.message || 'Could not delete your account.');
+    }
+  }
+
   clearUserDataWatermark(userId);
   if (typeof window !== 'undefined') {
     try {
@@ -492,54 +502,6 @@ export async function deleteUserProfileAndData(userId: string): Promise<void> {
     } catch {
       /* ignore */
     }
-  }
-
-  if (isSupabaseConfigured) {
-    try {
-      // 1. Delete user_data state row
-      await supabase.from('user_data').delete().eq('user_id', userId);
-
-      // 2. Delete user plan follows and notes
-      await supabase.from('user_plan_follows').delete().eq('user_id', userId);
-      await supabase.from('plan_reflection_notes').delete().eq('user_id', userId);
-
-      // 3. Delete improvement plans created by user
-      await supabase.from('improvement_plans').delete().eq('creator_id', userId);
-
-      // 4. Delete notifications for user
-      await supabase.from('notifications').delete().or(`recipient_id.eq.${userId},actor_id.eq.${userId}`);
-
-      // 5. Delete partner invites to/from user
-      await supabase
-        .from('partner_invites')
-        .delete()
-        .or(`from_user_id.eq.${userId},to_user_id.eq.${userId},sender_id.eq.${userId},recipient_id.eq.${userId}`);
-
-      // 6. Delete shared challenges for user's partnerships, then delete partnerships
-      const { data: userPartnerships } = await supabase
-        .from('partnerships')
-        .select('id')
-        .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
-
-      if (userPartnerships && userPartnerships.length > 0) {
-        const pIds = userPartnerships.map((p) => p.id);
-        await supabase.from('shared_challenges').delete().in('partnership_id', pIds);
-      }
-
-      await supabase
-        .from('partnerships')
-        .delete()
-        .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
-
-      // 7. Delete profile row (foreign key root)
-      await supabase.from('profiles').delete().eq('id', userId);
-    } catch (e) {
-      console.error('Error purging user data from Supabase:', e);
-    }
-
-    // 6. Sign out user from Supabase Auth
-    signOutByUser = true;
-    await supabase.auth.signOut();
   }
 }
 

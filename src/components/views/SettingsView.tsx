@@ -29,7 +29,7 @@ import {
   updateUsernameWithCooldown,
   updateUserAvatar,
   changeUserPassword,
-  deleteUserProfileAndData,
+  deleteOwnAccount,
 } from '@/lib/auth';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
@@ -175,7 +175,12 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
   const minsLeft = Math.ceil((msLeft % (1000 * 60 * 60)) / (1000 * 60));
 
-  const { isLoading: isDeletingAccount, executeFn: executeDeleteAccount } = useAsyncAction();
+  const {
+    isLoading: isDeletingAccount,
+    error: deleteAccountError,
+    executeFn: executeDeleteAccount,
+    resetError: resetDeleteAccountError,
+  } = useAsyncAction();
   const { isLoading: isLoggingOut, executeFn: executeLogout } = useAsyncAction();
   const { isLoading: isUsernameSaving, executeFn: executeUsernameSave } = useAsyncAction();
   const { isLoading: isPasswordSaving, executeFn: executePasswordSave } = useAsyncAction();
@@ -295,22 +300,17 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
     });
   };
 
-  // Delete account handler
+  // Delete account handler. On failure the account still exists, so the user stays signed in
+  // and the dialog stays open with the error; on success the session is cleared locally.
   const handleDeleteAccount = async () => {
-    await executeDeleteAccount(async () => {
-      try {
-        await deleteUserProfileAndData(userId);
-      } catch (err) {
-        console.error('Account deletion failed in SettingsView:', err);
-      } finally {
-        setShowDeleteConfirm(false);
-        try {
-          await store.logout();
-        } catch (logoutErr) {
-          console.error('Post-deletion logout error in SettingsView:', logoutErr);
-        }
-      }
-    });
+    try {
+      await executeDeleteAccount(() => deleteOwnAccount(userId));
+    } catch (err) {
+      console.error('Account deletion failed in SettingsView:', err);
+      return;
+    }
+    setShowDeleteConfirm(false);
+    await store.logout({ accountDeleted: true });
   };
 
   // Sidebar section definitions
@@ -896,7 +896,10 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
 
                 <button
                   type="button"
-                  onClick={() => setShowDeleteConfirm(true)}
+                  onClick={() => {
+                    resetDeleteAccountError();
+                    setShowDeleteConfirm(true);
+                  }}
                   className="bg-rose-500/10 px-4 py-2.5 hover:bg-rose-500/20 text-rose-theme font-medium text-xs rounded-xl border border-rose-500/30 transition-colors flex items-center justify-center gap-2"
                 >
                   <Trash2 size={16} />
@@ -972,6 +975,12 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
               </p>
             </div>
           </div>
+
+          {deleteAccountError && (
+            <p role="alert" className="text-xs text-rose-theme">
+              Couldn't delete your account: {deleteAccountError.message}
+            </p>
+          )}
 
           <div className="flex items-center gap-3 pt-2">
             <button

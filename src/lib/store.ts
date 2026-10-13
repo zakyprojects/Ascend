@@ -2979,7 +2979,9 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const logout = useCallback(async () => {
+  // `accountDeleted`: the account is already gone on the server, so unsaved state is
+  // discarded (a flush would try to recreate the user's rows) and only the local session is cleared.
+  const logout = useCallback(async ({ accountDeleted = false }: { accountDeleted?: boolean } = {}) => {
     // 1. Guard against re-entrancy
     if (isLoggingOutRef.current) return;
     isLoggingOutRef.current = true;
@@ -3002,17 +3004,19 @@ export function useAppState() {
 
       // 3. Force immediate flush if there is unsaved state
       let persistError: unknown = null;
-      try {
-        await Promise.race([enqueuePersist(currentState), timeoutPromise]);
-      } catch (persistErr) {
-        persistError = persistErr;
-        console.error('Failed to flush state before logout:', persistErr);
+      if (!accountDeleted) {
+        try {
+          await Promise.race([enqueuePersist(currentState), timeoutPromise]);
+        } catch (persistErr) {
+          persistError = persistErr;
+          console.error('Failed to flush state before logout:', persistErr);
+        }
       }
 
       // 4. Attempt remote sign-out
       let networkError: unknown = null;
       try {
-        await Promise.race([logoutUser(), timeoutPromise]);
+        await Promise.race([logoutUser({ scope: accountDeleted ? 'local' : 'global' }), timeoutPromise]);
       } catch (err: unknown) {
         networkError = err;
         console.error('Logout error in auth service:', err);
