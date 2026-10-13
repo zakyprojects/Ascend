@@ -17,12 +17,12 @@ import {
   Mail,
   LogOut,
   Trash2,
-  HelpCircle,
-  MessageSquare,
   Info,
 } from 'lucide-react';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { AppStore } from '@/lib/store';
+import type { View } from '@/lib/views';
+import { NAV_HELP } from '@/components/nav/navConfig';
 import { EMOJI_AVATARS } from '@/types';
 import {
   isUsernameAvailable,
@@ -50,9 +50,11 @@ type SettingsSection =
 interface SettingsViewProps {
   store: AppStore;
   onOpenAuth?: () => void;
+  /** Opens another page (the Help links under About). */
+  onNavigate: (view: View) => void;
 }
 
-export function SettingsView({ store, onOpenAuth }: SettingsViewProps) {
+export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProps) {
   const currentUser = store.state.currentUser;
   const isGuest = Boolean(currentUser?.isAnonymous);
   const userId = currentUser?.id || '';
@@ -913,23 +915,18 @@ export function SettingsView({ store, onOpenAuth }: SettingsViewProps) {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2 border-t border-overlay-subtle">
-                  <button
-                    type="button"
-                    onClick={() => alert('Questions or feedback? Email support@ascendgrowth.app')}
-                    className="px-3.5 py-2 hover:bg-overlay-subtle text-content-tertiary text-xs font-medium rounded-xl border border-overlay-default flex items-center gap-1.5 transition-colors"
-                  >
-                    <MessageSquare size={14} />
-                    <span>Feedback & Support</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => alert('See the Help section in the sidebar.')}
-                    className="px-3.5 py-2 hover:bg-overlay-subtle text-content-tertiary text-xs font-medium rounded-xl border border-overlay-default flex items-center gap-1.5 transition-colors"
-                  >
-                    <HelpCircle size={14} />
-                    <span>User Documentation</span>
-                  </button>
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-overlay-subtle">
+                  {NAV_HELP.map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => onNavigate(id)}
+                      className="px-3.5 py-2 hover:bg-overlay-subtle text-content-tertiary text-xs font-medium rounded-xl border border-overlay-default flex items-center gap-1.5 transition-colors"
+                    >
+                      <Icon size={14} />
+                      <span>{label}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

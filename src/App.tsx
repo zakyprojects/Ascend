@@ -217,7 +217,7 @@ function App() {
                   {view === 'leagues' && <Leagues store={store} onOpenAuth={openAuth} />}
                   {view === 'lessons' && <Lessons store={store} />}
                   {view === 'neuroplasticity' && <Neuroplasticity onViewChange={setView} />}
-                  {view === 'settings' && <SettingsView store={store} onOpenAuth={openAuth} />}
+                  {view === 'settings' && <SettingsView store={store} onOpenAuth={openAuth} onNavigate={setView} />}
                   {view === 'report-bug' && (
                     <ReportBugView key="bug" kind="bug" store={store} fromView={feedbackFromView} onNavigate={setView} />
                   )}
