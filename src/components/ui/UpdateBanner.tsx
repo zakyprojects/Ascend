@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { APP_VERSION } from '@/lib/version';
+import { APP_BUILD_ID } from '@/lib/version';
 
 export function UpdateBanner() {
   const [hasUpdate, setHasUpdate] = useState(false);
@@ -13,7 +13,7 @@ export function UpdateBanner() {
       });
       if (!res.ok) return;
       const data = await res.json();
-      if (data && data.version && data.version !== APP_VERSION) {
+      if (data && data.buildId && data.buildId !== APP_BUILD_ID) {
         setHasUpdate(true);
       }
     } catch {

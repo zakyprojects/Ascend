@@ -1,31 +1,36 @@
 import { defineConfig, loadEnv, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'));
-const buildVersion = `${pkg.version}-${Date.now()}`;
-const buildTimeIso = new Date().toISOString();
 
-function versionGeneratorPlugin(): Plugin {
+// Version = package.json (bumped with `npm version`). Build = the build's date in Pakistan time,
+// shown to users. Build id = the exact build moment, never shown; UpdateBanner compares it so
+// every deploy, even two on the same day, is detected as new.
+const buildMoment = new Date();
+const buildDate = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Karachi',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+  .format(buildMoment)
+  .replaceAll('-', '.');
+const buildId = String(buildMoment.getTime());
+
+/** Emits dist/version.json at build time only; nothing is written into the source tree. */
+function versionFilePlugin(): Plugin {
   return {
-    name: 'version-generator',
-    buildStart() {
-      const versionData = JSON.stringify({ version: buildVersion, buildTime: buildTimeIso });
-      try {
-        writeFileSync(fileURLToPath(new URL('./public/version.json', import.meta.url)), versionData);
-      } catch (err) {
-        console.error('Failed to write public/version.json', err);
-      }
+    name: 'version-file',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify({ version: pkg.version, build: buildDate, buildId }),
+      });
     },
-    writeBundle() {
-      const versionData = JSON.stringify({ version: buildVersion, buildTime: buildTimeIso });
-      try {
-        writeFileSync(fileURLToPath(new URL('./dist/version.json', import.meta.url)), versionData);
-      } catch (err) {
-        // dist might not exist yet if not in build mode
-      }
-    }
   };
 }
 
@@ -80,10 +85,11 @@ function apiFunctionsPlugin(): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), versionGeneratorPlugin(), apiFunctionsPlugin()],
+  plugins: [react(), versionFilePlugin(), apiFunctionsPlugin()],
   define: {
-    __APP_VERSION__: JSON.stringify(buildVersion),
-    __APP_BUILD__: JSON.stringify(pkg.version),
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_BUILD__: JSON.stringify(buildDate),
+    __APP_BUILD_ID__: JSON.stringify(buildId),
   },
   server: {
     port: 5173,

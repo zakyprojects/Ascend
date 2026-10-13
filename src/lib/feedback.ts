@@ -58,7 +58,7 @@ export function feedbackContext(account: { uid?: string; isAnonymous?: boolean }
     Device: deviceKind(),
     Screen: `${window.innerWidth}×${window.innerHeight}`,
     Theme: document.documentElement.getAttribute('data-theme') === 'light' ? 'Light' : 'Dark',
-    Version: __APP_BUILD__,
+    Version: `${__APP_VERSION__} (build ${__APP_BUILD__})`,
     Account: account && !account.isAnonymous ? `Signed in${account.uid ? ` (ID ${account.uid})` : ''}` : 'Guest',
   };
 }
