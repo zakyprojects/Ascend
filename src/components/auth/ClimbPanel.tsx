@@ -99,9 +99,9 @@ export function ClimbPanel({
         style={CONTOURS}
       />
 
-      <div className="flex items-center gap-2.5">
-        <img src="/logo-torch.svg" alt="" width={36} height={36} className="w-9 h-9 shrink-0" />
-        <span className="text-sm font-semibold tracking-tight">Ascend</span>
+      <div className="flex items-center gap-2.5 lg:gap-3">
+        <img src="/logo-torch.svg" alt="" width={40} height={40} className="w-9 h-9 lg:w-10 lg:h-10 shrink-0" />
+        <span className="text-base lg:text-lg font-semibold tracking-tight">Ascend</span>
       </div>
 
       {/* Phones: headline and Ember side by side in the band. Desktop: headline centred, Ember below. */}
