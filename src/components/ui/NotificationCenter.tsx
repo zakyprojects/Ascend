@@ -4,6 +4,13 @@ import { Bell, Check, CheckCheck, Trash2, X, Award, Users, AlertTriangle, Zap, I
 import { AppStore } from '@/lib/store';
 import { AppNotification } from '@/types';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
+import { Badge } from '@/components/ui/primitives/Badge';
+
+const PANEL_WIDTH = 344;
+
+// Shared look for the small square icon buttons in the panel (close, mark read, clear).
+const ICON_BUTTON =
+  'inline-flex items-center justify-center w-7 h-7 rounded-lg text-content-disabled transition-colors';
 
 // Must match AppShell's `lg:` breakpoint, where the bell moves from the mobile
 // header into the desktop sidebar.
@@ -153,28 +160,27 @@ export function NotificationCenter({
               ...(position.right !== undefined ? { right: position.right } : {}),
               // Mobile: fill width with margins
               ...(isMobileShell()
-                ? { left: 16, right: 16, maxWidth: 384, margin: '0 auto' }
-                : { width: 384 }),
+                ? { left: 16, right: 16, maxWidth: PANEL_WIDTH, margin: '0 auto' }
+                : { width: PANEL_WIDTH }),
             }}
             className="bg-bg-800 border border-overlay-default rounded-2xl shadow-lg overflow-hidden animate-scale-in flex flex-col"
           >
             {/* Header */}
-            <div className="p-3.5 border-b border-overlay-subtle flex items-center justify-between bg-bg-800/50">
-              <div className="flex items-center gap-2">
-                <Bell size={16} className="text-brand-text" />
-                <span className="text-lg font-semibold leading-none text-content-primary">Notifications</span>
+            <div className="pl-3.5 pr-2 py-2 border-b border-overlay-subtle flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm font-semibold text-content-primary">Notifications</span>
                 {unreadCount > 0 && (
-                  <span className="badge-rose figure text-2xs px-2 py-0.5 rounded-full">
+                  <Badge tone="rose" size="xs" className="figure leading-none py-1">
                     {unreadCount} new
-                  </span>
+                  </Badge>
                 )}
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 shrink-0">
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="text-micro text-content-muted hover:text-brand-text flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-overlay-subtle transition-all"
+                    className="inline-flex items-center gap-1 h-7 px-2 rounded-lg text-micro font-medium leading-none text-content-muted hover:text-brand-text hover:bg-overlay-subtle transition-colors"
                     title="Mark all as read"
                   >
                     <CheckCheck size={14} />
@@ -183,7 +189,8 @@ export function NotificationCenter({
                 )}
                 <button
                   onClick={() => setOpen(false)}
-                  className={`p-1 text-content-disabled hover:text-content-tertiary rounded-lg hover:bg-overlay-subtle ${TAP_TARGET}`}
+                  title="Close"
+                  className={`${ICON_BUTTON} hover:text-content-tertiary hover:bg-overlay-subtle ${TAP_TARGET}`}
                 >
                   <X size={16} />
                 </button>
@@ -191,7 +198,7 @@ export function NotificationCenter({
             </div>
 
             {/* List */}
-            <div className="max-h-80 overflow-y-auto divide-y divide-overlay-subtle" style={{ maxHeight: isMobileShell() ? '70vh' : 480 }}>
+            <div className="overflow-y-auto divide-y divide-overlay-subtle" style={{ maxHeight: isMobileShell() ? '70vh' : 400 }}>
               {notifications.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
                   <div className="w-10 h-10 rounded-full bg-overlay-subtle flex items-center justify-center mx-auto text-content-disabled">
@@ -205,20 +212,20 @@ export function NotificationCenter({
                   <div
                     key={notif.id}
                     onClick={() => !notif.read && store.markNotificationRead(notif.id)}
-                    className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer group ${
+                    className={`px-3.5 py-2.5 flex items-start gap-2.5 transition-colors cursor-pointer group ${
                       notif.read ? 'bg-transparent hover:bg-overlay-subtle' : 'bg-primary-500/5 hover:bg-primary-500/10'
                     }`}
                   >
                     <div className="shrink-0 mt-0.5">
                       {notif.actorAvatar ? (
-                        <div className="w-8 h-8 rounded-lg bg-bg-800 border border-overlay-default flex items-center justify-center text-sm relative">
+                        <div className="w-7 h-7 rounded-lg bg-bg-800 border border-overlay-default flex items-center justify-center text-sm relative">
                           <span>{notif.actorAvatar}</span>
                           <div className="absolute -bottom-1 -right-1 bg-bg-900 rounded-full p-0.5">
                             {renderIcon(notif.type)}
                           </div>
                         </div>
                       ) : (
-                        <div className="w-8 h-8 rounded-lg bg-bg-800 border border-overlay-default flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-bg-800 border border-overlay-default flex items-center justify-center">
                           {renderIcon(notif.type)}
                         </div>
                       )}
@@ -238,12 +245,15 @@ export function NotificationCenter({
                       </p>
                     </div>
 
-                    <div className="shrink-0 flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                      {!notif.read && (
+                    <div className="shrink-0 flex items-center -mr-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                      {/* Read rows keep an empty slot so the clear buttons stay in one column */}
+                      {notif.read ? (
+                        <span className="w-7 h-7" aria-hidden="true" />
+                      ) : (
                         <button
                           onClick={(e) => handleMarkRead(notif.id, e)}
                           title="Mark as read"
-                          className={`p-1 text-content-disabled hover:text-success-text hover:bg-emerald-500/10 rounded-lg transition-all ${TAP_TARGET_Y}`}
+                          className={`${ICON_BUTTON} hover:text-success-text hover:bg-emerald-500/10 ${TAP_TARGET_Y}`}
                         >
                           <Check size={14} />
                         </button>
@@ -251,7 +261,7 @@ export function NotificationCenter({
                       <button
                         onClick={(e) => handleClear(notif.id, e)}
                         title="Clear notification"
-                        className={`p-1 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-all ${TAP_TARGET_Y}`}
+                        className={`${ICON_BUTTON} hover:text-rose-theme hover:bg-rose-500/10 ${TAP_TARGET_Y}`}
                       >
                         <Trash2 size={14} />
                       </button>
