@@ -1,4 +1,4 @@
-import { defineConfig, Plugin } from 'vite';
+import { defineConfig, loadEnv, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -29,9 +29,58 @@ function versionGeneratorPlugin(): Plugin {
   };
 }
 
+/**
+ * Serves the Vercel Functions in /api during `npm run dev` (Vercel runs them in production).
+ * Server-only secrets (GITHUB_FEEDBACK_TOKEN, no VITE_ prefix) come from .env.local and stay
+ * on the dev server; they never reach the browser bundle.
+ */
+function apiFunctionsPlugin(): Plugin {
+  return {
+    name: 'api-functions',
+    apply: 'serve',
+    configureServer(server) {
+      const env = loadEnv(server.config.mode, process.cwd(), '');
+      for (const key of ['GITHUB_FEEDBACK_TOKEN', 'GITHUB_FEEDBACK_REPO']) {
+        if (env[key] && !process.env[key]) process.env[key] = env[key];
+      }
+      server.middlewares.use('/api/feedback', async (req, res) => {
+        try {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) chunks.push(chunk as Buffer);
+          const headers = new Headers();
+          for (const [key, value] of Object.entries(req.headers)) {
+            if (typeof value === 'string') headers.set(key, value);
+          }
+          const mod = await server.ssrLoadModule('/api/feedback.ts');
+          const handler = mod[req.method ?? 'GET'] as ((request: Request) => Promise<Response>) | undefined;
+          if (!handler) {
+            res.statusCode = 405;
+            res.end();
+            return;
+          }
+          const response = await handler(
+            new Request(`http://localhost${req.originalUrl ?? '/api/feedback'}`, {
+              method: req.method,
+              headers,
+              body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks),
+            })
+          );
+          res.statusCode = response.status;
+          response.headers.forEach((value, key) => res.setHeader(key, value));
+          res.end(Buffer.from(await response.arrayBuffer()));
+        } catch (err) {
+          server.config.logger.error(`[api/feedback] ${String(err)}`);
+          res.statusCode = 500;
+          res.end();
+        }
+      });
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), versionGeneratorPlugin()],
+  plugins: [react(), versionGeneratorPlugin(), apiFunctionsPlugin()],
   define: {
     __APP_VERSION__: JSON.stringify(buildVersion),
     __APP_BUILD__: JSON.stringify(pkg.version),
