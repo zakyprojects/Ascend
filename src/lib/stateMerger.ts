@@ -1045,6 +1045,10 @@ function mergeAppStateInternal(
         reflectionNotes: notes,
       };
     }
+  ).filter(
+    // Title-less entries are fragments of other users' plans that a cross-tab broadcast once
+    // wrote into this state ({ id, copyCount }); a real plan always has a title.
+    (p) => p.title != null
   );
 
   const followedPlans = mergeEntityArrays(

@@ -2520,11 +2520,19 @@ export function useAppState() {
     const unsubscribe = syncBroadcaster.subscribe((event, payload) => {
       setState((prev) => {
         if (event === 'PLAN_CREATED' || event === 'PLAN_UPDATED') {
+          // The channel is shared by every tab in the browser, whichever account it is signed in to.
+          // Payloads can be partial ({ id, copyCount }), so they merge into a plan this tab already has,
+          // and a new plan is only added when it is a full plan owned by this tab's user.
           const exists = prev.improvementPlans.some((p) => p.id === payload.id);
-          const updatedPlans = exists
-            ? prev.improvementPlans.map((p) => (p.id === payload.id ? payload : p))
-            : [payload, ...prev.improvementPlans];
-          return { ...prev, improvementPlans: updatedPlans };
+          if (exists) {
+            return {
+              ...prev,
+              improvementPlans: prev.improvementPlans.map((p) => (p.id === payload.id ? { ...p, ...payload } : p)),
+            };
+          }
+          const isOwnFullPlan = Boolean(payload.title) && Boolean(prev.currentUser?.id) && payload.creatorId === prev.currentUser?.id;
+          if (!isOwnFullPlan) return prev;
+          return { ...prev, improvementPlans: [payload, ...prev.improvementPlans] };
         }
 
         if (event === 'PARTNER_INVITE_SENT') {
