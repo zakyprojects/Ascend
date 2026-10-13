@@ -396,7 +396,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           {readingHabit ? (
             <button
               onClick={() => setUnlinkConfirmOpen(true)}
-              className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-2 border-emerald-500/30 text-success-text bg-emerald-500/10 hover:bg-emerald-500/20 whitespace-nowrap"
+              className="btn-secondary text-xs leading-5 py-2 px-3.5 flex items-center gap-2 border-emerald-500/30 text-success-text bg-emerald-500/10 hover:bg-emerald-500/20 whitespace-nowrap"
             >
               <Check size={14} className="text-success-text shrink-0" />
               <span className="whitespace-nowrap font-medium">Linked to habits</span>
@@ -404,7 +404,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           ) : (
             <button
               onClick={() => store.toggleReadingHabit()}
-              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-2 whitespace-nowrap"
+              className="btn-primary text-xs leading-5 py-2 px-3.5 flex items-center gap-2 whitespace-nowrap"
             >
               <Zap size={14} className="shrink-0" />
               <span className="whitespace-nowrap">Track as Daily Habit</span>
