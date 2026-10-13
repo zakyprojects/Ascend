@@ -60,6 +60,21 @@ const GOAL_FILTER_PILL: Record<string, string> = {
   achieved: 'bg-[var(--badge-purple-bg)] border-[var(--badge-purple-border)]',
   abandoned: 'bg-overlay-default border-overlay-default',
 };
+/** Compact filter dropdown for the toolbars: one look, a drawn chevron, and an accessible name. */
+function FilterSelect({ className, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { 'aria-label': string }) {
+  return (
+    <div className={cx('relative w-full sm:w-auto shrink-0', className)}>
+      <select
+        {...props}
+        className="w-full appearance-none bg-bg-900 border border-overlay-default rounded-xl pl-3 pr-8 py-1.5 text-2xs sm:text-xs text-content-secondary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30"
+      >
+        {children}
+      </select>
+      <ChevronDown size={14} aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted" />
+    </div>
+  );
+}
+
 const PROJECT_FILTER_PILL: Record<string, string> = {
   all: 'bg-overlay-default border-overlay-strong',
   in_progress: 'bg-[var(--badge-cyan-bg)] border-[var(--badge-cyan-border)]',
@@ -1811,10 +1826,10 @@ export function ProjectsGoalsView({
               {!filterGoalId && (
                 <div className="grid grid-cols-1 sm:flex items-center gap-2 w-full sm:w-auto shrink-0">
                   <Filter size={14} className="text-content-muted shrink-0 hidden sm:inline-block" />
-                  <select
+                  <FilterSelect
+                    aria-label="Filter projects by goal"
                     value={projectGoalFilter}
                     onChange={(e) => setProjectGoalFilter(e.target.value)}
-                    className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-3 py-1.5 text-2xs sm:text-xs text-content-secondary focus:outline-none focus:border-primary-500/50"
                   >
                     <option value="all">All Goals ({projects.length} projects)</option>
                     <option value="standalone">Standalone Projects (No Goal)</option>
@@ -1823,7 +1838,7 @@ export function ProjectsGoalsView({
                         Goal: {g.title}
                       </option>
                     ))}
-                  </select>
+                  </FilterSelect>
                 </div>
               )}
             </div>
@@ -2316,22 +2331,22 @@ export function ProjectsGoalsView({
 
               <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
                 {/* Priority Dropdown Filter */}
-                <select
+                <FilterSelect
+                  aria-label="Filter tasks by priority"
                   value={taskPriorityFilter}
                   onChange={(e) => setTaskPriorityFilter(e.target.value as 'all' | TaskPriority)}
-                  className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-3 py-1.5 text-2xs sm:text-xs text-content-tertiary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 shrink-0"
                 >
                   <option value="all">All Priorities</option>
                   <option value="high">High Priority</option>
                   <option value="medium">Medium Priority</option>
                   <option value="low">Low Priority</option>
-                </select>
+                </FilterSelect>
 
                 {!filterProjectId && (
-                  <select
+                  <FilterSelect
+                    aria-label="Filter tasks by project"
                     value={taskProjectFilter}
                     onChange={(e) => setTaskProjectFilter(e.target.value)}
-                    className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-3 py-1.5 text-2xs sm:text-xs text-content-tertiary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 max-w-full sm:max-w-[160px] truncate shrink-0"
                   >
                     <option value="all">All Projects</option>
                     <option value="standalone">Standalone Tasks Only</option>
@@ -2340,7 +2355,7 @@ export function ProjectsGoalsView({
                         Project: {p.title}
                       </option>
                     ))}
-                  </select>
+                  </FilterSelect>
                 )}
               </div>
             </div>
