@@ -221,7 +221,8 @@
             var dx = RX * Math.cos(th), dy = 2 * RY * Math.cos(2 * th);
             var tx = dx * COS_R - dy * SIN_R, ty = dx * SIN_R + dy * COS_R;
             var len = Math.sqrt(tx * tx + ty * ty) || 1, nx = -ty / len, ny = tx / len;
-            var u = 1 - (head - th) / SPAN;
+            // Clamped: rounding can put the tail a hair below 0, and pow(negative, 0.85) is NaN.
+            var u = Math.min(1, Math.max(0, 1 - (head - th) / SPAN));
             var w = MAX_W * Math.pow(Math.sin(Math.PI * Math.pow(u, 0.85)), 0.9) / 2;
             left.push((px + nx * w).toFixed(2) + ',' + (py + ny * w).toFixed(2));
             right.unshift((px - nx * w).toFixed(2) + ',' + (py - ny * w).toFixed(2));

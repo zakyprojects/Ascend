@@ -44,6 +44,8 @@ function normal(th: number): [number, number] {
 
 /** Swoosh profile: pointed at both ends, fullest about 60% along (u = 0 tail, 1 head). */
 function width(u: number, maxWidth: number): number {
+  // Rounding can put the tail a hair below 0, and Math.pow(negative, 0.85) is NaN.
+  u = Math.min(1, Math.max(0, u));
   return maxWidth * Math.pow(Math.sin(Math.PI * Math.pow(u, 0.85)), 0.9);
 }
 
