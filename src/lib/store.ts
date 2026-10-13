@@ -7894,8 +7894,7 @@ export function useAppState() {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        dispatchToastError("Couldn't change plan visibility", 'Log in and try again.');
-        return;
+        throw new Error('Log in and try again.');
       }
 
       let targetNewVisibility = newVisibility;
@@ -7916,8 +7915,7 @@ export function useAppState() {
 
       if (error || !data || data.length === 0) {
         console.error("[Visibility Update] DB Error or 0 rows modified:", error, data);
-        dispatchToastError("Couldn't change plan visibility", 'Try again in a moment.');
-        return;
+        throw error ?? new Error('Try again in a moment.');
       }
 
       console.log(`[Visibility Update] DB Success! Updating local Zustand state...`);
@@ -7944,7 +7942,8 @@ export function useAppState() {
       }
     } catch (err: any) {
       console.error("[Visibility Update] Fatal error toggling visibility:", err);
-      dispatchToastError("Couldn't change plan visibility", toUserMessage(err, 'Try again in a moment.'));
+      // The caller shows the error toast.
+      throw err;
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -8322,8 +8321,7 @@ export function useAppState() {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        dispatchToastError("Couldn't delete plan", 'Log in and try again.');
-        return;
+        throw new Error('Log in and try again.');
       }
 
       // 1. Force the database delete FIRST
@@ -8336,8 +8334,7 @@ export function useAppState() {
 
       if (error || !data || data.length === 0) {
         console.error("[Delete Plan] DB Error or 0 rows deleted:", error, data);
-        dispatchToastError("Couldn't delete plan", 'Try again in a moment.');
-        return;
+        throw error ?? new Error('Try again in a moment.');
       }
 
       console.log(`[Delete Plan] DB Success! Removing from local Zustand state...`);
@@ -8360,7 +8357,8 @@ export function useAppState() {
       );
     } catch (err: any) {
       console.error("[Delete Plan] Fatal error deleting plan:", err);
-      dispatchToastError("Couldn't delete plan", toUserMessage(err, 'Try again in a moment.'));
+      // The caller shows the error toast and keeps the confirm dialog open.
+      throw err;
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
