@@ -5,6 +5,7 @@ import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import { Lesson } from '@/types';
 import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { CountUp, Reveal } from '@/components/ui/Motion';
+import { PageHero } from '@/components/ui/PageHero';
 import { getSeasonNumber, leagueNow } from '@/lib/leagueTime';
 
 export function Lessons({ store }: { store: AppStore }) {
@@ -36,22 +37,12 @@ export function Lessons({ store }: { store: AppStore }) {
         <p className="page-subtitle">Short, practical self-improvement reads.</p>
       </div>
 
-      {/* Stats */}
-      <Reveal className="card p-0 grid grid-cols-2 divide-x divide-overlay-subtle">
-        <div className="p-4">
-          <div className="stat-label">Lessons Read (Season {activeSeasonNum})</div>
-          <div className="stat-value mt-1 tabular-nums">
-            <CountUp value={readCount} />
-            <span className="figure text-base text-content-disabled">/{LESSONS.length}</span>
-          </div>
-        </div>
-        <div className="p-4">
-          <div className="stat-label">Points Earned</div>
-          <div className="stat-value mt-1 text-brand-text tabular-nums">
-            <CountUp value={earnedPoints} />
-            <span className="figure text-base text-content-disabled">/{totalPoints}</span>
-          </div>
-        </div>
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel="Your lessons"
+          ring={{ value: readCount, max: LESSONS.length, label: `Lessons read in Season ${activeSeasonNum}`, center: readCount, caption: `of ${LESSONS.length} read` }}
+          lead={{ label: 'Points earned', value: <CountUp value={earnedPoints} />, hint: `of ${totalPoints} this season`, valueClassName: 'text-brand-text' }}
+        />
       </Reveal>
 
       {/* Search */}
