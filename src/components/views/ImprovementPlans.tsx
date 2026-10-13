@@ -146,6 +146,29 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
   const [planToDelete, setPlanToDelete] = useState<ImprovementPlan | null>(null);
   const [followToDelete, setFollowToDelete] = useState<UserPlanFollow | null>(null);
+  // Completed target goal: the plan waiting for a new target, and the value being typed.
+  const [newTargetFor, setNewTargetFor] = useState<{ planId: string; mode: 'creator_interactive' | 'follower_interactive' } | null>(null);
+  const [newTargetValue, setNewTargetValue] = useState('');
+  const newTargetNumber = Number(newTargetValue);
+  const isNewTargetValid = newTargetValue.trim() !== '' && Number.isFinite(newTargetNumber) && newTargetNumber >= 1;
+
+  const closeNewTarget = () => {
+    setNewTargetFor(null);
+    setNewTargetValue('');
+  };
+
+  const handleNewTargetSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTargetFor || !isNewTargetValid) return;
+    if (newTargetFor.mode === 'creator_interactive') {
+      store.setNewTargetGoal(newTargetFor.planId, newTargetNumber);
+    } else {
+      store.setNewFollowedTargetGoal(newTargetFor.planId, newTargetNumber);
+    }
+    setProgressInput((prev) => ({ ...prev, [newTargetFor.planId]: '0' }));
+    closeNewTarget();
+  };
+
   const [noteToDelete, setNoteToDelete] = useState<{ planId: string; noteKey: string; mode: 'creator_interactive' | 'follower_interactive' } | null>(null);
 
   const improvementPlans = store.state.improvementPlans;
@@ -888,22 +911,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 
                 {isGoalCompleted && (
                   <button
-                    onClick={() => {
-                      const newTargetStr = window.prompt(`Goal completed! Enter your new target value:`);
-                      if (newTargetStr === null) return;
-                      
-                      const newTarget = Number(newTargetStr);
-                      if (!isNaN(newTarget) && newTarget > 0) {
-                        if (mode === 'creator_interactive') {
-                          store.setNewTargetGoal(planId, newTarget);
-                        } else {
-                          store.setNewFollowedTargetGoal(planId, newTarget);
-                        }
-                        setProgressInput({ ...progressInput, [planId]: '0' });
-                      } else {
-                        alert("Please enter a valid number greater than 0.");
-                      }
-                    }}
+                    onClick={() => setNewTargetFor({ planId, mode })}
                     className="btn-primary text-micro py-1 px-2 ml-1"
                   >
                     Set New Target
@@ -1540,6 +1548,42 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
         </div>
       )}
+
+      {/* NEW TARGET (completed target goal) */}
+      <Dialog open={newTargetFor !== null} onClose={closeNewTarget} title="Set a new target" maxWidth="max-w-sm">
+        <form onSubmit={handleNewTargetSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="plan-new-target" className="text-xs font-medium text-content-secondary">
+              New target value
+            </label>
+            <input
+              id="plan-new-target"
+              type="number"
+              min="1"
+              step="any"
+              inputMode="decimal"
+              autoFocus
+              value={newTargetValue}
+              onChange={(e) => setNewTargetValue(e.target.value)}
+              className="input w-full"
+              placeholder="e.g. 20"
+            />
+            <p className="text-xs text-content-muted">Goal done. Progress starts again from 0.</p>
+          </div>
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={closeNewTarget}
+              className="flex-1 py-2.5 hover:bg-overlay-subtle text-content-tertiary font-semibold text-xs rounded-xl border border-overlay-default transition-all"
+            >
+              Cancel
+            </button>
+            <button type="submit" disabled={!isNewTargetValid} className="btn-primary flex-1 justify-center text-xs disabled:opacity-50 disabled:cursor-not-allowed">
+              Set target
+            </button>
+          </div>
+        </form>
+      </Dialog>
 
       {/* CREATE PLAN MODAL */}
       <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create Improvement Plan">
