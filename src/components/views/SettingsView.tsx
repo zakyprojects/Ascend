@@ -76,6 +76,13 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   const [usernameStatus, setUsernameStatus] = useState<{ available: boolean; reason?: string } | null>(null);
   const [usernameSaving, setUsernameSaving] = useState(false);
   const [usernameMsg, setUsernameMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // The Available / Not available badge sits inside the input; the input reserves room for it
+  // only while it shows, so long usernames never run under it.
+  const usernameBadgeShown = Boolean(
+    usernameInput.trim() &&
+      usernameInput.trim() !== currentUser?.username &&
+      (usernameStatus?.available || usernameStatus?.reason)
+  );
 
   // Avatar form state
   const [selectedAvatar, setSelectedAvatar] = useState(currentUser?.avatar || '🧑');
@@ -398,7 +405,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
         <main
           ref={contentAreaRef}
           key={activeSection}
-          className="flex-1 min-w-0 max-h-[680px] overflow-y-auto pr-1 space-y-5 animate-fade-in scroll-smooth"
+          className="flex-1 min-w-0 lg:max-h-[680px] lg:overflow-y-auto lg:pr-1 space-y-5 animate-fade-in scroll-smooth"
         >
           {/* SECTION 1: PROFILE */}
           {activeSection === 'profile' && (
@@ -463,9 +470,9 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                     disabled={isCooldownActive || usernameSaving}
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
-                    className="w-full input-has-icon pr-28 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all disabled:opacity-60"
+                    className={`w-full input-has-icon ${usernameBadgeShown ? 'pr-32' : 'pr-3'} py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all disabled:opacity-60`}
                   />
-                  {usernameInput.trim() && usernameInput.trim() !== currentUser?.username && (
+                  {usernameBadgeShown && (
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                       {usernameStatus?.available ? (
                         <span className="badge-emerald text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-lg">
