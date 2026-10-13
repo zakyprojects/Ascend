@@ -8,6 +8,7 @@ import { leagueNow } from '@/lib/leagueTime';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { CompetitorProfileModal } from '@/components/ui/CompetitorProfileModal';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
+import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 
@@ -53,26 +54,11 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
 
       {/* Guest Mode Banner */}
       {(!currentUser || currentUser.isAnonymous) && (
-        <div className="p-4 rounded-xl border border-primary-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div>
-              <p className="item-name text-xs">
-                You're competing as a guest ({currentUser?.username || store.state.username})
-              </p>
-              <p className="text-micro text-content-muted">
-                Create an account to keep your rank and choose your own username.
-              </p>
-            </div>
-          </div>
-          {onOpenAuth && (
-            <button
-              onClick={onOpenAuth}
-              className="px-3.5 py-1.5 bg-primary-600 hover:bg-primary-700 text-on-brand text-xs font-semibold rounded-lg transition-colors shrink-0 w-full sm:w-auto"
-            >
-              Create Account
-            </button>
-          )}
-        </div>
+        <GuestSaveBanner
+          title={`You're competing as a guest (${currentUser?.username || store.state.username})`}
+          description="Create an account to keep your rank and choose your own username."
+          onCreateAccount={onOpenAuth}
+        />
       )}
 
       <PageColumns

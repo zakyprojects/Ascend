@@ -2,7 +2,6 @@ import {
   BookOpen,
   Check,
   ArrowRight,
-  Save,
   Brain,
   Calendar,
   CalendarDays,
@@ -28,6 +27,7 @@ import { calculateBlockDurationMinutes, formatDurationHuman } from '@/lib/timeTr
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
+import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { dailyHabitCompletions, dailyPoints, lastDayKeys } from '@/lib/weeklyActivity';
 import { WeekActivityCard } from './WeekActivityCard';
@@ -143,24 +143,11 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
 
       {/* Guest Mode Banner on Dashboard */}
       {store.state.currentUser?.isAnonymous && onOpenAuth && (
-        <div className="p-4 rounded-xl border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0 text-warning-text">
-              <Save size={18} aria-hidden="true" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-content-secondary">
-                You're in a guest session ({store.state.currentUser.username})
-              </p>
-              <p className="text-micro text-content-muted">
-                Create an account to keep your habits, points, and league rank.
-              </p>
-            </div>
-          </div>
-          <button onClick={onOpenAuth} className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs rounded-lg transition-colors shrink-0 w-full sm:w-auto">
-            Create Account
-          </button>
-        </div>
+        <GuestSaveBanner
+          title={`You're in a guest session (${store.state.currentUser.username})`}
+          description="Create an account to keep your habits, points, and league rank."
+          onCreateAccount={onOpenAuth}
+        />
       )}
 
       {/* Hero: today, the season, and where you stand on the climb */}

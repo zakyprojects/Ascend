@@ -21,6 +21,7 @@ import {
   MessageSquare,
   Info,
 } from 'lucide-react';
+import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { AppStore } from '@/lib/store';
 import { EMOJI_AVATARS } from '@/types';
 import {
@@ -334,29 +335,11 @@ export function SettingsView({ store, onOpenAuth }: SettingsViewProps) {
 
       {/* Guest Mode Banner */}
       {isGuest && (
-        <div className="p-4 rounded-xl border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0 text-warning-text">
-              <User size={18} />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-content-secondary">
-                Guest account ({currentUser?.username})
-              </p>
-              <p className="text-micro text-content-muted">
-                Create an account to keep your habits and points.
-              </p>
-            </div>
-          </div>
-          {onOpenAuth && (
-            <button
-              onClick={onOpenAuth}
-              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs rounded-lg transition-colors shrink-0 w-full sm:w-auto"
-            >
-              Save Progress (Create Account)
-            </button>
-          )}
-        </div>
+        <GuestSaveBanner
+          title={`Guest account (${currentUser?.username})`}
+          description="Create an account to keep your habits and points."
+          onCreateAccount={onOpenAuth}
+        />
       )}
 
       {/* Sectioned Main Layout (Sidebar Navigation + Independent Content Area) */}
