@@ -1321,9 +1321,11 @@ html[data-page-hidden] *::after {
    moves exactly with the finger or wheel and settles once the card is ~260px in. Cards already on
    screen when a page opens are past the range and use the page's open stagger (Reveal) instead.
    Fill is backwards only: after the range the card keeps no transform, so a fixed-position child
-   (a modal) is never trapped. Browsers without scroll timelines show cards as they are. */
+   (a modal) is never trapped. Browsers without scroll timelines show cards as they are.
+   Below lg the window scrolls and Android can freeze that timeline mid-fling, so phones get the
+   same rise played once on entry instead (lib/scrollRise.ts, data-rise below). */
 @supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
+  @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
     [data-page-area] :is(.card, .scroll-rise):not([class*='animate-']) {
       animation: scroll-rise linear backwards;
       animation-timeline: view();
@@ -1343,6 +1345,18 @@ html[data-page-hidden] *::after {
   60% {
     opacity: 1;
   }
+}
+
+[data-rise='wait'] {
+  opacity: 0;
+  translate: 0 40px;
+  scale: 0.97;
+}
+[data-rise='in'] {
+  transition:
+    opacity 270ms ease-out,
+    translate 450ms cubic-bezier(0.25, 0.5, 0.3, 1),
+    scale 450ms cubic-bezier(0.25, 0.5, 0.3, 1);
 }
 
 /* Swipe rows (ui/SwipeRow.tsx): vertical pans stay with the browser, horizontal drags come to the
