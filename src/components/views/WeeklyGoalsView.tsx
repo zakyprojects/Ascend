@@ -669,7 +669,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         <Reveal index={0}>
           <PageHero
             ariaLabel="This week's goals"
-            ring={{ value: goalStats.completed, max: goalStats.total, label: 'Weekly target completion', center: <AutoNum text={`${goalStats.percent}%`} />, caption: 'complete' }}
+            ring={{ value: goalStats.completed, max: goalStats.total, label: 'Weekly target completion', center: <><AutoNum text={String(goalStats.percent)} /><span className="text-sm text-content-muted">%</span></>, caption: 'complete' }}
             lead={{ label: 'Goals done', value: <CountUp value={goalStats.completed} />, hint: `of ${goalStats.total} goals`, valueClassName: 'text-success-text' }}
             stats={[
               { label: 'High priority done', value: <CountUp value={goalStats.highPriorityCompleted} />, valueClassName: 'text-rose-theme' },
