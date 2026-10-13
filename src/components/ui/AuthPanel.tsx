@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, Shield, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, ArrowLeft, ArrowRight } from 'lucide-react';
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
@@ -820,9 +820,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                   <span className="sr-only">Please wait…</span>
                 </span>
               ) : mode === 'upgrade' ? (
-                <>
-                  <Shield size={18} /> Save to Full Account
-                </>
+                'Save to Full Account'
               ) : mode === 'signup' ? (
                 <>
                   <UserPlus size={18} /> Create Account
