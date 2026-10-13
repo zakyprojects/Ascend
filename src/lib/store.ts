@@ -7822,7 +7822,7 @@ export function useAppState() {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        alert("Error: You must be logged in to change plan visibility.");
+        dispatchToastError("Couldn't change plan visibility", 'Log in and try again.');
         return;
       }
 
@@ -7844,7 +7844,7 @@ export function useAppState() {
 
       if (error || !data || data.length === 0) {
         console.error("[Visibility Update] DB Error or 0 rows modified:", error, data);
-        alert(`Database Error (Visibility Update): ${error ? (error.message || error.code) : '0 rows updated in database. Permission denied or plan not found.'}`);
+        dispatchToastError("Couldn't change plan visibility", 'Try again in a moment.');
         return;
       }
 
@@ -7872,7 +7872,7 @@ export function useAppState() {
       }
     } catch (err: any) {
       console.error("[Visibility Update] Fatal error toggling visibility:", err);
-      alert(`Fatal Error: ${err.message || 'Check console'}`);
+      dispatchToastError("Couldn't change plan visibility", toUserMessage(err, 'Try again in a moment.'));
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -7930,7 +7930,7 @@ export function useAppState() {
 
       if (rpcError) {
         console.error("[Copy Plan] RPC FAILED:", rpcError);
-        dispatchToastError("Database Error (RPC)", rpcError.message || rpcError.code);
+        dispatchToastError("Couldn't copy plan", 'Try again in a moment.');
         throw rpcError;
       }
 
@@ -7990,7 +7990,7 @@ export function useAppState() {
       syncFollowedPlanToSupabase(createdFollow);
     } catch (err: any) {
       console.error("[Copy Plan] FATAL ERROR CATCH:", err);
-      dispatchToastError("Copy Failed", err.message || 'Check console');
+      dispatchToastError("Couldn't copy plan", toUserMessage(err, 'Try again in a moment.'));
       throw err;
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -8250,7 +8250,7 @@ export function useAppState() {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        alert("Error: You must be logged in to delete a plan.");
+        dispatchToastError("Couldn't delete plan", 'Log in and try again.');
         return;
       }
 
@@ -8264,7 +8264,7 @@ export function useAppState() {
 
       if (error || !data || data.length === 0) {
         console.error("[Delete Plan] DB Error or 0 rows deleted:", error, data);
-        alert(`Database Error (Delete Plan): ${error ? (error.message || error.code) : '0 rows deleted in database. Permission denied or plan not found.'}`);
+        dispatchToastError("Couldn't delete plan", 'Try again in a moment.');
         return;
       }
 
@@ -8288,7 +8288,7 @@ export function useAppState() {
       );
     } catch (err: any) {
       console.error("[Delete Plan] Fatal error deleting plan:", err);
-      alert(`Fatal Error during deletion: ${err.message || 'Check console'}`);
+      dispatchToastError("Couldn't delete plan", toUserMessage(err, 'Try again in a moment.'));
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps

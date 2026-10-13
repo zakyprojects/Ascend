@@ -983,7 +983,7 @@ function FocusTimerSubmodule({
   // Header Notification Button Click Handler
   const handleHeaderNotifButtonClick = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
-      alert('Web Notifications are not supported by your current browser.');
+      showErrorToast("Notifications aren't available", "Your browser doesn't support notifications.");
       return;
     }
 
