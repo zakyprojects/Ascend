@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Mood, JournalEntry } from '@/types';
-import { formatDateLong, todayKey, parseDate } from '@/lib/dates';
+import { formatDateLong, todayKey, parseDate, calculateStreak } from '@/lib/dates';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/useAsyncAction';
@@ -32,7 +32,9 @@ import { useToast } from '@/components/ui/Toast';
 import { Dialog, EmptyState, PageColumns, Tabs } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { useIntroMotion, useSeen } from '@/lib/motion';
-import { CountUp } from '@/components/ui/Motion';
+import { CountUp, Reveal } from '@/components/ui/Motion';
+import { PageHero } from '@/components/ui/PageHero';
+import { lastDayKeys } from '@/lib/weeklyActivity';
 import { getDailyPrompt, JournalPrompt } from '@/data/journalPrompts';
 
 // Minimum required non-whitespace characters to save an entry
@@ -303,6 +305,13 @@ export function Journal({ store }: { store: AppStore }) {
     ? (recordedPointsInRange.reduce((sum, p) => sum + (p.score || 0), 0) / recordedPointsInRange.length).toFixed(1)
     : null;
 
+  // Hero numbers (computed live)
+  const entryDates = entries.map((e) => e.date);
+  const journalStreak = calculateStreak(entryDates, 'daily');
+  const last7Keys = lastDayKeys(7);
+  const writtenLast7 = last7Keys.filter((k) => entryDates.includes(k)).length;
+  const journalPoints = entries.filter((e) => e.pointsAwarded).length * JOURNAL_POINTS.entryCompleted;
+
   const moodCountsInRange = recordedPointsInRange.reduce((acc, p) => {
     if (p.entry) {
       acc[p.entry.mood] = (acc[p.entry.mood] || 0) + 1;
@@ -318,11 +327,22 @@ export function Journal({ store }: { store: AppStore }) {
         <p className="page-subtitle">Reflect daily and see how your mood moves.</p>
       </div>
 
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel="Your journal"
+          ring={{ value: writtenLast7, max: 7, label: `Written on ${writtenLast7} of the last 7 days`, center: writtenLast7, caption: 'of 7 days' }}
+          lead={{ label: 'Journal streak', value: <CountUp value={journalStreak} />, hint: 'days in a row', valueClassName: 'text-warning-text' }}
+          stats={[
+            { label: 'Entries', value: <CountUp value={totalEntriesCount} />, valueClassName: 'text-brand-text' },
+            { label: 'Points earned', value: <>+<CountUp value={journalPoints} /></>, valueClassName: 'text-purple-hierarchy' },
+          ]}
+          side={<CapMeterConnected state={store.state} capId="journal" bare />}
+        />
+      </Reveal>
+
       <PageColumns
         lead={
           <>
-            <CapMeterConnected state={store.state} capId="journal" />
-
             {/* TODAY'S ENTRY CARD (TWO-STATE FLOW) */}
             <div className="card p-5 relative overflow-hidden">
               {/* Subtle background tint when celebrated */}
