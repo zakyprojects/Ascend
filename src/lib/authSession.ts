@@ -3,6 +3,7 @@ import { AppState, DEFAULT_STATE, UserProfile, PlanStep, Partnership } from '@/t
 import { generateNumericUID, parseDate, getNow, weekKey } from './dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { computeStateDataWeight } from './dataWeight';
+import { cachedSyncedCollections } from './sync/syncedCollections';
 import { applyPresetHabitRemovalMigration } from './store';
 import {
   fetchUserDataWithStatusFromSupabase,
@@ -229,6 +230,8 @@ export async function hydrateUserSession(
   if (savedState) {
     state = {
       ...DEFAULT_STATE,
+      // Collections that live in their own tables are not in the blob (DB normalization S4).
+      ...cachedSyncedCollections(userId),
       ...savedState,
       currentUser: user,
       username: user.username,

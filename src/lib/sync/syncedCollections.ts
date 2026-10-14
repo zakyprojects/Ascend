@@ -1,4 +1,14 @@
-import type { AppState, DecisionLog, EmotionLog } from '../../types';
+import type {
+  AppState,
+  CravingLog,
+  DecisionLog,
+  EmotionLog,
+  FocusSessionLog,
+  Goal,
+  JournalEntry,
+  Project,
+  Task,
+} from '../../types';
 
 /**
  * Blob collections that also live in a relational table (DB normalization,
@@ -71,9 +81,181 @@ const emotionLogs: SyncedCollection<'emotionLogs'> = {
   ownTimestamp: (e) => e.createdAt || e.date,
 };
 
+/** Nullable column back to an optional field: absent when null, so the row hashes like the original item. */
+const optional = <K extends string, V>(key: K, value: unknown, cast: (v: unknown) => V): { [P in K]?: V } =>
+  (value == null ? {} : { [key]: cast(value) }) as { [P in K]?: V };
+
+const cravingLogs: SyncedCollection<'cravingLogs'> = {
+  stateKey: 'cravingLogs',
+  table: 'craving_logs',
+  toRow: (c: CravingLog) => ({
+    id: c.id,
+    logged_at: c.date || c.createdAt,
+    intensity: c.intensity,
+    trigger_text: c.trigger ?? '',
+    coping_strategy: c.copingStrategy ?? '',
+    created_at: c.createdAt || c.date,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    date: isoTime(r.logged_at),
+    intensity: Number(r.intensity),
+    trigger: String(r.trigger_text ?? ''),
+    copingStrategy: String(r.coping_strategy ?? ''),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (c) => c.createdAt || c.date,
+};
+
+const journalEntries: SyncedCollection<'journalEntries'> = {
+  stateKey: 'journalEntries',
+  table: 'journal_entries',
+  toRow: (j: JournalEntry) => ({
+    id: j.id,
+    entry_date: j.date,
+    mood: j.mood,
+    content: j.content ?? '',
+    points_awarded: j.pointsAwarded ?? false,
+    created_at: j.createdAt,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    date: String(r.entry_date),
+    mood: String(r.mood) as JournalEntry['mood'],
+    content: String(r.content ?? ''),
+    pointsAwarded: Boolean(r.points_awarded),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (j) => j.createdAt,
+};
+
+const focusLogs: SyncedCollection<'focusLogs'> = {
+  stateKey: 'focusLogs',
+  table: 'focus_logs',
+  toRow: (f: FocusSessionLog) => ({
+    id: f.id,
+    log_date: f.date,
+    task_name: f.taskName ?? '',
+    skill_id: f.skillId || null,
+    duration_minutes: f.durationMinutes ?? 0,
+    points_awarded: f.pointsAwarded ?? 0,
+    reflection: f.reflection ?? null,
+    created_at: f.createdAt,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    date: String(r.log_date),
+    taskName: String(r.task_name ?? ''),
+    ...optional('skillId', r.skill_id, String),
+    durationMinutes: Number(r.duration_minutes ?? 0),
+    pointsAwarded: Number(r.points_awarded ?? 0),
+    ...optional('reflection', r.reflection, String),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (f) => f.createdAt,
+};
+
+const goals: SyncedCollection<'goals'> = {
+  stateKey: 'goals',
+  table: 'goals',
+  toRow: (g: Goal) => ({
+    id: g.id,
+    title: g.title ?? '',
+    description: g.description ?? null,
+    category: g.category ?? null,
+    target_date: g.targetDate || null,
+    status: g.status,
+    manual_progress: g.manualProgress ?? null,
+    sequential_mode: g.sequentialMode ?? null,
+    created_at: g.createdAt,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    title: String(r.title ?? ''),
+    ...optional('description', r.description, String),
+    ...optional('category', r.category, String),
+    ...optional('targetDate', r.target_date, String),
+    status: String(r.status) as Goal['status'],
+    ...optional('manualProgress', r.manual_progress, Number),
+    ...optional('sequentialMode', r.sequential_mode, Boolean),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (g) => g.createdAt,
+};
+
+const projects: SyncedCollection<'projects'> = {
+  stateKey: 'projects',
+  table: 'projects',
+  toRow: (p: Project) => ({
+    id: p.id,
+    title: p.title ?? '',
+    description: p.description ?? null,
+    goal_id: p.goalId || null,
+    start_date: p.startDate || null,
+    due_date: p.dueDate || null,
+    status: p.status,
+    completed_at: p.completedAt || null,
+    manual_progress: p.manualProgress ?? null,
+    sort_order: p.order ?? null,
+    created_at: p.createdAt,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    title: String(r.title ?? ''),
+    ...optional('description', r.description, String),
+    ...optional('goalId', r.goal_id, String),
+    ...optional('startDate', r.start_date, String),
+    ...optional('dueDate', r.due_date, String),
+    status: String(r.status) as Project['status'],
+    ...optional('completedAt', r.completed_at, isoTime),
+    ...optional('manualProgress', r.manual_progress, Number),
+    ...optional('order', r.sort_order, Number),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (p) => p.createdAt,
+};
+
+const tasks: SyncedCollection<'tasks'> = {
+  stateKey: 'tasks',
+  table: 'tasks',
+  toRow: (t: Task) => ({
+    id: t.id,
+    title: t.title ?? '',
+    description: t.description ?? null,
+    project_id: t.projectId || null,
+    due_date: t.dueDate || null,
+    priority: t.priority,
+    completed: t.completed ?? false,
+    subtasks: (t.subtasks ?? []).map((st) => ({ id: st.id, title: st.title, completed: st.completed })),
+    created_at: t.createdAt,
+  }),
+  fromRow: (r) => ({
+    id: String(r.id),
+    title: String(r.title ?? ''),
+    ...optional('description', r.description, String),
+    ...optional('projectId', r.project_id, String),
+    ...optional('dueDate', r.due_date, String),
+    priority: String(r.priority) as Task['priority'],
+    completed: Boolean(r.completed),
+    subtasks: (Array.isArray(r.subtasks) ? r.subtasks : []).map((st: Record<string, unknown>) => ({
+      id: String(st.id),
+      title: String(st.title ?? ''),
+      completed: Boolean(st.completed),
+    })),
+    createdAt: isoTime(r.created_at),
+  }),
+  ownTimestamp: (t) => t.createdAt,
+};
+
 export const SYNCED_COLLECTIONS: SyncedCollection[] = [
   decisionLogs as unknown as SyncedCollection,
   emotionLogs as unknown as SyncedCollection,
+  cravingLogs as unknown as SyncedCollection,
+  journalEntries as unknown as SyncedCollection,
+  focusLogs as unknown as SyncedCollection,
+  goals as unknown as SyncedCollection,
+  projects as unknown as SyncedCollection,
+  tasks as unknown as SyncedCollection,
 ];
 
 /**
@@ -85,4 +267,24 @@ export function withoutSyncedCollections(state: AppState): AppState {
   const blob: Partial<AppState> = { ...state };
   for (const { stateKey } of SYNCED_COLLECTIONS) delete blob[stateKey];
   return blob as AppState;
+}
+
+/**
+ * Synced collections from this device's last saved state. The blob no longer
+ * carries them, so an online boot starts from these instead of empty lists
+ * until the table pull lands; the pull then reconciles them.
+ */
+export function cachedSyncedCollections(userId: string): Partial<AppState> {
+  try {
+    const raw = localStorage.getItem(`ascend_user_cache_${userId}`);
+    const cached = raw ? (JSON.parse(raw) as Partial<AppState>) : null;
+    if (!cached || typeof cached !== 'object') return {};
+    const picked: Partial<AppState> = {};
+    for (const { stateKey } of SYNCED_COLLECTIONS) {
+      if (Array.isArray(cached[stateKey])) Object.assign(picked, { [stateKey]: cached[stateKey] });
+    }
+    return picked;
+  } catch {
+    return {};
+  }
 }
