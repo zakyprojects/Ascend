@@ -1,7 +1,7 @@
 import type { AppState } from '../../types';
 import { supabase } from '../supabase';
 import { DELETED, acceptServerRows, cursorKey, hashRow, knownHashes, pendingOpIds } from './outbox';
-import { SYNCED_COLLECTIONS, rowIdOf, type SyncedCollection } from './syncedCollections';
+import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf, withItems, type SyncedCollection } from './syncedCollections';
 
 /**
  * Relational sync, read side (DB normalization S3). Server rows are MERGED into
@@ -11,7 +11,7 @@ import { SYNCED_COLLECTIONS, rowIdOf, type SyncedCollection } from './syncedColl
  */
 
 export interface RemoteChange {
-  stateKey: keyof AppState;
+  key: string;
   id: string;
   /** null = the row is soft-deleted on the server. */
   item: { id: string } | null;
@@ -34,7 +34,8 @@ export function prepareRemoteRows(
   full = false
 ): RemoteChange[] {
   const pending = pendingOpIds(userId, collection.table);
-  const known = knownHashes(userId, collection.stateKey);
+  const key = syncKeyOf(collection);
+  const known = knownHashes(userId, key);
   const hashes: Record<string, string | null> = {};
   const changes: RemoteChange[] = [];
 
@@ -42,24 +43,24 @@ export function prepareRemoteRows(
     const id = typeof row.id === 'string' ? row.id : '';
     if (!id || pending.has(id)) continue;
     if (row.deleted_at) {
-      // A delete this device already applied: a local copy is a re-award not yet
-      // saved (the diff runs after the debounced save) and must not be removed.
-      if (collection.mirrorRemovals && known[id] === DELETED) continue;
+      // A delete this device already applied: a local copy is a re-award or restore
+      // not yet saved (the diff runs after the debounced save) and must not be removed.
+      if (collection.revivable && known[id] === DELETED) continue;
       hashes[id] = null;
-      changes.push({ stateKey: collection.stateKey, id, item: null });
+      changes.push({ key, id, item: null });
       continue;
     }
     const item = collection.fromRow(row) as { id: string };
     const hash = hashRow(collection.toRow(item as never));
     if (known[id] === hash) {
-      if (full) changes.push({ stateKey: collection.stateKey, id, item, missingOnly: true });
+      if (full) changes.push({ key, id, item, missingOnly: true });
       continue;
     }
     hashes[id] = hash;
-    changes.push({ stateKey: collection.stateKey, id, item });
+    changes.push({ key, id, item });
   }
 
-  if (Object.keys(hashes).length > 0) acceptServerRows(userId, collection.stateKey, hashes);
+  if (Object.keys(hashes).length > 0) acceptServerRows(userId, key, hashes);
   return changes;
 }
 
@@ -69,11 +70,12 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
   let next = prev;
 
   for (const collection of SYNCED_COLLECTIONS) {
-    const { stateKey } = collection;
-    const forKey = changes.filter((c) => c.stateKey === stateKey);
+    const key = syncKeyOf(collection);
+    const forKey = changes.filter((c) => c.key === key);
     if (forKey.length === 0) continue;
 
-    const current = (prev[stateKey] as Array<{ id: string }> | undefined) || [];
+    // Read from `next`: the time tracker's three collections share one state object.
+    const current = itemsOf(collection, next);
     let items = current;
     for (const change of forKey) {
       const index = items.findIndex((item) => rowIdOf(collection, item) === change.id);
@@ -84,7 +86,7 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
         else if (!change.missingOnly) items = items.map((item, i) => (i === index ? change.item! : item));
       }
     }
-    if (items !== current) next = { ...next, [stateKey]: items };
+    if (items !== current) next = withItems(collection, next, items);
   }
 
   return next;

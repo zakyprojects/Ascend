@@ -1151,8 +1151,10 @@ function mergeAppStateInternal(
   );
 
   // 16. Time Tracker
-  const baseTT = baseState.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-  const incTT = incomingState.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+  // The blob no longer carries the time tracker (batch E): a side without it takes the
+  // other side's copy, never the defaults, so deleted default templates stay deleted.
+  const baseTT = baseState.timeTracker || incomingState.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+  const incTT = incomingState.timeTracker || baseState.timeTracker || DEFAULT_TIME_TRACKER_STATE;
 
   const mergedActivities = ensureDefaultActivities(
     mergeEntityArrays(baseTT.activities || [], incTT.activities || [], tombstoneSet)

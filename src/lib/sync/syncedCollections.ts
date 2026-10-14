@@ -8,7 +8,12 @@ import type {
   JournalEntry,
   Project,
   Task,
+  TimeTrackerActivity,
+  TimeTrackerBlock,
+  TimeTrackerState,
+  TimeTrackerTemplate,
 } from '../../types';
+import { DEFAULT_TIME_TRACKER_STATE } from '../../types';
 
 /**
  * Blob collections that also live in a relational table (DB normalization,
@@ -33,11 +38,35 @@ export interface SyncedCollection<K extends keyof AppState = keyof AppState> {
    * mass removal.
    */
   mirrorRemovals?: boolean;
+  /**
+   * The table lets a newer write bring a deleted row back (point_entries and
+   * the time tracker's activities and templates, whose ids are reused by
+   * re-awards and default restores), so re-adding a deleted id is an upload.
+   */
+  revivable?: boolean;
+  /** Baseline and change key when several collections share one state key (the time tracker). */
+  key?: string;
+  /** Items of a collection nested inside a state key (default: state[stateKey]). */
+  read?: (state: AppState) => SyncedItem<K>[];
+  /** The state with this collection's items replaced (default: state[stateKey] = items). */
+  write?: (state: AppState, items: SyncedItem<K>[]) => AppState;
 }
 
 /** The table row id of a state item. */
 export const rowIdOf = (collection: SyncedCollection, item: { id?: string }): string =>
   collection.rowId ? collection.rowId(item as never) : item.id || '';
+
+/** Baseline and change key of a collection. */
+export const syncKeyOf = (collection: SyncedCollection): string => collection.key ?? collection.stateKey;
+
+/** The collection's items in a state. */
+export const itemsOf = (collection: SyncedCollection, state: AppState): Array<{ id?: string }> =>
+  ((collection.read ? collection.read(state) : state[collection.stateKey]) as Array<{ id?: string }> | undefined) ||
+  [];
+
+/** The state with the collection's items replaced. */
+export const withItems = (collection: SyncedCollection, state: AppState, items: unknown[]): AppState =>
+  collection.write ? collection.write(state, items as never) : { ...state, [collection.stateKey]: items };
 
 /** Postgres timestamptz text back to the client's ISO form (2026-10-14T08:51:38.705Z). */
 const isoTime = (value: unknown): string => new Date(String(value)).toISOString();
@@ -304,6 +333,116 @@ const tasks: SyncedCollection<'tasks'> = {
   ownTimestamp: (t) => t.createdAt,
 };
 
+/** A valid ISO time from a field that may be missing or malformed. */
+const validIso = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? undefined : new Date(time).toISOString();
+};
+
+/** Created/updated time of an item without one: older than any real edit, so it never wins a conflict. */
+const EPOCH = '1970-01-01T00:00:00.000Z';
+
+/** One day of the time tracker: its blocks (absent = never set up) and whether it was cleared. */
+export interface TimeTrackerDay {
+  date: string;
+  blocks?: TimeTrackerBlock[];
+  cleared?: boolean;
+}
+
+const timeTrackerOf = (state: AppState): TimeTrackerState => state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+
+/** A jsonb document collection for a list inside the time tracker object. */
+function timeTrackerCollection<T extends object>(
+  part: string,
+  table: string,
+  read: (tt: TimeTrackerState) => T[],
+  write: (tt: TimeTrackerState, items: T[]) => TimeTrackerState,
+  rowId: (item: T) => string,
+  createdAt: (item: T) => string,
+  ownTimestamp: (item: T) => string,
+  revivable: boolean
+): SyncedCollection<'timeTracker'> {
+  return {
+    stateKey: 'timeTracker',
+    key: `timeTracker.${part}`,
+    table,
+    toRow: (item) => ({ id: rowId(item as T), data: canonical(item), created_at: createdAt(item as T) }),
+    fromRow: (row) => canonical(row.data) as never,
+    ownTimestamp: (item) => ownTimestamp(item as T),
+    rowId: (item) => rowId(item as T),
+    read: (state) => read(timeTrackerOf(state)) as never,
+    write: (state, items) => ({ ...state, timeTracker: write(timeTrackerOf(state), items as unknown as T[]) }),
+    ...(revivable ? { revivable } : {}),
+  };
+}
+
+type Dated = { createdAt?: string; updatedAt?: string };
+const datedCreatedAt = (item: Dated) => validIso(item.createdAt) ?? EPOCH;
+const datedOwnTimestamp = (item: Dated) => validIso(item.updatedAt) ?? datedCreatedAt(item);
+
+const timeTrackerActivities = timeTrackerCollection<TimeTrackerActivity>(
+  'activities',
+  'time_tracker_activities',
+  (tt) => tt.activities || [],
+  (tt, activities) => ({ ...tt, activities }),
+  (a) => a.id,
+  datedCreatedAt,
+  datedOwnTimestamp,
+  true
+);
+
+const timeTrackerTemplates = timeTrackerCollection<TimeTrackerTemplate>(
+  'templates',
+  'time_tracker_templates',
+  (tt) => tt.templates || [],
+  (tt, templates) => ({ ...tt, templates }),
+  (t) => t.id,
+  datedCreatedAt,
+  datedOwnTimestamp,
+  true
+);
+
+const dayStart = (day: TimeTrackerDay) => `${day.date}T00:00:00.000Z`;
+
+/** Latest time a day's blocks were created or resolved; the day's start when none. */
+function dayOwnTimestamp(day: TimeTrackerDay): string {
+  let latest = '';
+  for (const block of day.blocks || []) {
+    for (const value of [block.updatedAt, block.completedAt, block.skippedAt, block.breakStartedAt, block.breakEndedAt, block.createdAt]) {
+      const iso = validIso(value);
+      if (iso && iso > latest) latest = iso;
+    }
+  }
+  return latest || dayStart(day);
+}
+
+// A day is one document: editing, clearing or applying a template rewrites the
+// whole day, last writer wins (Zakria, 2026-10-14). dailyLogs keeps "absent"
+// (auto-apply a template) apart from [] (deliberately empty).
+const timeTrackerDays = timeTrackerCollection<TimeTrackerDay>(
+  'days',
+  'time_tracker_days',
+  (tt) => {
+    const cleared = new Set(tt.clearedDates || []);
+    const dates = new Set([...Object.keys(tt.dailyLogs || {}), ...cleared]);
+    return Array.from(dates, (date) => ({
+      date,
+      ...(tt.dailyLogs?.[date] !== undefined ? { blocks: tt.dailyLogs[date] } : {}),
+      ...(cleared.has(date) ? { cleared: true } : {}),
+    }));
+  },
+  (tt, days) => ({
+    ...tt,
+    dailyLogs: Object.fromEntries(days.filter((d) => d.blocks !== undefined).map((d) => [d.date, d.blocks!])),
+    clearedDates: days.filter((d) => d.cleared).map((d) => d.date),
+  }),
+  (d) => d.date,
+  dayStart,
+  dayOwnTimestamp,
+  false
+);
+
 export const SYNCED_COLLECTIONS = [
   decisionLogs as unknown as SyncedCollection,
   emotionLogs as unknown as SyncedCollection,
@@ -324,7 +463,11 @@ export const SYNCED_COLLECTIONS = [
   // Weekly goals merge by week, not by document id, so the week is the row id.
   documentCollection('weeklyGoals', 'weekly_goals', byCreatedAt, (w) => w.weekKey),
   // Points ledger (batch D): complete history; deterministic ids can be excised and re-awarded.
-  documentCollection('pointsHistory', 'point_entries', (e) => e.timestamp, undefined, true),
+  { ...documentCollection('pointsHistory', 'point_entries', (e) => e.timestamp, undefined, true), revivable: true },
+  // Time tracker (batch E): one state object, three tables.
+  timeTrackerActivities,
+  timeTrackerTemplates,
+  timeTrackerDays,
 ] as unknown as SyncedCollection[];
 
 /**
@@ -345,10 +488,9 @@ const TABLE_OWNED_KEYS = [
 ] as const satisfies readonly (keyof AppState)[];
 
 /** Every state key whose source of truth is a table rather than the blob. */
-const TABLE_BACKED_KEYS: (keyof AppState)[] = [
-  ...SYNCED_COLLECTIONS.map((c) => c.stateKey),
-  ...TABLE_OWNED_KEYS,
-];
+const TABLE_BACKED_KEYS: (keyof AppState)[] = Array.from(
+  new Set([...SYNCED_COLLECTIONS.map((c) => c.stateKey), ...TABLE_OWNED_KEYS])
+);
 
 /**
  * The state as stored in the user_data blob (DB normalization S4): keys

@@ -1,7 +1,7 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 import type { AppState } from '../../types';
 import { supabase } from '../supabase';
-import { SYNCED_COLLECTIONS, rowIdOf } from './syncedCollections';
+import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './syncedCollections';
 
 /**
  * Relational sync outbox (DB normalization, S2 dual-write).
@@ -33,7 +33,7 @@ interface DeleteOp {
 type OutboxOp = UpsertOp | DeleteOp;
 type Outbox = Record<string, OutboxOp>;
 /**
- * stateKey -> item id -> row hash, as last sent to or received from the server.
+ * collection key -> item id -> row hash, as last sent to or received from the server.
  * DELETED marks a row this device knows is deleted, so bringing the id back is a
  * local re-creation (a re-awarded points entry), not an old copy.
  */
@@ -85,9 +85,9 @@ export function diffSyncedCollections(
   let changed = false;
 
   for (const collection of SYNCED_COLLECTIONS) {
-    const prev = baseline[collection.stateKey] || {};
+    const prev = baseline[syncKeyOf(collection)] || {};
     const next: Record<string, string> = {};
-    const items = (state[collection.stateKey] as Array<{ id?: string }> | undefined) || [];
+    const items = itemsOf(collection, state);
 
     for (const item of items) {
       const id = item ? rowIdOf(collection, item) : '';
@@ -98,8 +98,8 @@ export function diffSyncedCollections(
       if (prev[id] === hash) continue;
 
       const key = opKey(collection.table, id);
-      // A pending delete wins, except in a mirror collection, where re-adding is a re-award.
-      if (nextOutbox[key]?.kind === 'delete' && !collection.mirrorRemovals) continue;
+      // A pending delete wins, except where the table revives rows (a re-award or a restore).
+      if (nextOutbox[key]?.kind === 'delete' && !collection.revivable) continue;
       nextOutbox[key] = {
         kind: 'upsert',
         table: collection.table,
@@ -134,7 +134,7 @@ export function diffSyncedCollections(
     }
 
     if (Object.keys(prev).length !== Object.keys(next).length) changed = true;
-    nextBaseline[collection.stateKey] = next;
+    nextBaseline[syncKeyOf(collection)] = next;
   }
 
   return { baseline: nextBaseline, outbox: nextOutbox, changed };
@@ -174,16 +174,16 @@ export function pendingOpIds(userId: string, table: string): Set<string> {
   );
 }
 
-export function knownHashes(userId: string, stateKey: string): Record<string, string> {
-  return (readJson<Baseline>(baselineKey(userId)) || {})[stateKey] || {};
+export function knownHashes(userId: string, key: string): Record<string, string> {
+  return (readJson<Baseline>(baselineKey(userId)) || {})[key] || {};
 }
 
 /** Records server rows the state now holds, so the next diff does not send them back as edits. */
-export function acceptServerRows(userId: string, stateKey: string, hashes: Record<string, string | null>): void {
+export function acceptServerRows(userId: string, key: string, hashes: Record<string, string | null>): void {
   const baseline = readJson<Baseline>(baselineKey(userId)) || {};
-  const forKey = { ...(baseline[stateKey] || {}) };
+  const forKey = { ...(baseline[key] || {}) };
   for (const [id, hash] of Object.entries(hashes)) forKey[id] = hash ?? DELETED;
-  baseline[stateKey] = forKey;
+  baseline[key] = forKey;
   writeJson(baselineKey(userId), baseline);
 }
 
