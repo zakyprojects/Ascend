@@ -120,7 +120,8 @@ import {
   getHighestUserStreak,
   getAppStateSeasonPoints,
 } from './habitPenalties';
-import { addPointsInternal } from './pointsLedger';
+import { archiveSeasonBeforeRollover, buildSeasonArchive } from './seasonArchive';
+import { addPointsInternal, evictHistoryOverflow } from './pointsLedger';
 export { addPointsInternal };
 import {
   PRESET_HABIT_POINTS,
@@ -581,41 +582,66 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
     });
   }
 
-  const pointsHistory = [
+  // Full sorted history; trimmed to the 500 limit further down, after the season context is known,
+  // so anything over the limit lands in the evicted counters instead of being dropped.
+  const sortedHistory = [
     ...otherHistory,
     ...consolidatedWeeklyEntries,
     ...consolidatedWeeklyGoalEntries,
     ...passthroughActiveGoalEntries,
   ].sort(
     (a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
-  ).slice(0, 500);
+  );
 
-  const currentHistorySum = pointsHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
-  
   let seasonId = typeof st.seasonId === 'number' ? st.seasonId : 1;
   let seasonEvictedPos = typeof st.seasonEvictedPos === 'number' && st.seasonEvictedPos >= 0 ? st.seasonEvictedPos : 0;
   let seasonEvictedNeg = typeof st.seasonEvictedNeg === 'number' && st.seasonEvictedNeg >= 0 ? st.seasonEvictedNeg : 0;
   let leagueArchives: LeagueArchive[] = (st.leagueArchives || []).filter((a) => !!a.id);
 
-  // Check if loaded state belongs to an older season (Rollover Check)
+  // Check if loaded state belongs to an older season (Rollover Check).
+  // Archive the closing season first: its evicted counters are reset just below.
   if (st.seasonId === undefined || st.seasonId < activeSeasonNumber) {
+    leagueArchives = archiveSeasonBeforeRollover(
+      {
+        pointsHistory: sortedHistory,
+        seasonId: st.seasonId,
+        seasonEvictedPos,
+        seasonEvictedNeg,
+        evictedExcisionRecords: st.evictedExcisionRecords ?? [],
+        leagueArchives,
+        currentUser: profile,
+        username: profile ? profile.username : (st.username ?? 'Guest User'),
+        totalPoints: typeof st.totalPoints === 'number' ? st.totalPoints : 0,
+      },
+      activeSeasonNumber
+    );
     seasonId = activeSeasonNumber;
     seasonEvictedPos = 0;
     seasonEvictedNeg = 0;
   }
 
+  // Season-scoped ledgers, uncapped (see evictHistoryOverflow): they reset at rollover.
   const evictedExcisionRecords = (st.evictedExcisionRecords ?? [])
-    .filter((r) => r && r.seasonNumber === seasonId)
-    .slice(-500);
+    .filter((r) => r && r.seasonNumber === seasonId);
 
-  const evictedEntryIds = (st.evictedEntryIds ?? [])
+  const loadedEvictedEntryIds = (st.evictedEntryIds ?? [])
     .filter((r) => r && r.seasonNumber === seasonId)
     .map((r) => ({
       id: r.id,
       seasonNumber: r.seasonNumber,
       amount: typeof r.amount === 'number' ? r.amount : 0,
-    }))
-    .slice(-1000);
+    }));
+
+  const {
+    keptHistory: pointsHistory,
+    seasonPosDrop,
+    seasonNegDrop,
+    evictedEntryIds,
+  } = evictHistoryOverflow(sortedHistory, activeSeasonStart, seasonId, loadedEvictedEntryIds);
+  seasonEvictedPos += seasonPosDrop;
+  seasonEvictedNeg += seasonNegDrop;
+
+  const currentHistorySum = pointsHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
 
   const computedSeasonPoints = calculateSeasonalTotal(
     seasonEvictedPos,
@@ -1024,8 +1050,9 @@ export function excisePointsEntriesInternal(
   let prevSeasonNeg = typeof prev.seasonEvictedNeg === 'number' && prev.seasonEvictedNeg >= 0 ? prev.seasonEvictedNeg : 0;
   let leagueArchives: LeagueArchive[] = prev.leagueArchives ? [...prev.leagueArchives] : [];
 
-  // Season Rollover Check
+  // Season Rollover Check (archive the closing season while its evicted counters still exist)
   if (seasonId < activeSeasonNumber) {
+    leagueArchives = archiveSeasonBeforeRollover(prev, activeSeasonNumber);
     seasonId = activeSeasonNumber;
     prevSeasonPos = 0;
     prevSeasonNeg = 0;
@@ -1095,21 +1122,15 @@ export function excisePointsEntriesInternal(
     }
   }
 
-  const keptExcisionRecords = currentEvictedExcisionRecords.slice(-500);
+  // Season-scoped, uncapped: a dropped excision record would silently re-add its points to the season.
+  const keptExcisionRecords = currentEvictedExcisionRecords;
 
-  const keptHistory = keptAfterExcise.slice(0, 500);
-  const droppedHistory = keptAfterExcise.slice(500);
-
-  let seasonPosDrop = 0;
-  let seasonNegDrop = 0;
-
-  for (const p of droppedHistory) {
-    const amt = p.amount || 0;
-    if (new Date(p.timestamp) >= activeSeasonStart) {
-      if (amt > 0) seasonPosDrop += amt;
-      else seasonNegDrop += Math.abs(amt);
-    }
-  }
+  const {
+    keptHistory,
+    seasonPosDrop,
+    seasonNegDrop,
+    evictedEntryIds: keptEvictedEntryIds,
+  } = evictHistoryOverflow(keptAfterExcise, activeSeasonStart, seasonId, currentEvictedEntryIds);
 
   const newSeasonEvictedPos = prevSeasonPos + seasonPosDrop;
   const newSeasonEvictedNeg = prevSeasonNeg + seasonNegDrop;
@@ -1129,7 +1150,7 @@ export function excisePointsEntriesInternal(
     seasonEvictedPos: newSeasonEvictedPos,
     seasonEvictedNeg: newSeasonEvictedNeg,
     evictedExcisionRecords: keptExcisionRecords,
-    evictedEntryIds: currentEvictedEntryIds,
+    evictedEntryIds: keptEvictedEntryIds,
     totalPoints: newSeasonPoints,
     pointsHistory: keptHistory,
     leagueArchives,
@@ -10884,6 +10905,8 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
   }
 
   // 3. NinetyDay (Season) catch-up loop
+  // Scored by the shared season-close maths: a season whose evicted counters this state still holds
+  // (state.seasonId === targetSeason) is archived in full, older ones from pointsHistory alone.
   const currSeasonNum = getSeasonNumber(now);
   let targetSeason = currSeasonNum - 1;
   for (let step = 0; step < 12 && targetSeason >= 1; step++) {
@@ -10893,29 +10916,8 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
       break;
     }
 
-    const seasonRefDate = new Date(EPOCH_UTC.getTime() + (targetSeason - 1) * SEASON_LENGTH_MS);
-    const periodStart = getSeasonStart(seasonRefDate);
-    const periodEnd = getSeasonEnd(seasonRefDate);
-
-    const prevPoints = calculatePeriodPoints(state.pointsHistory, periodStart, periodEnd, state.totalPoints);
-    if (prevPoints > 0) {
-      const rawCompetitors = generateCompetitors(
-        'ninetyDay',
-        prevPoints,
-        state.currentUser,
-        state.username,
-        state.totalPoints,
-        undefined,
-        undefined,
-        seasonRefDate
-      );
-      const competitors = rawCompetitors.filter((c) => !c.isSeed);
-      const userRank = getUserRank(competitors);
-      const periodLabel = getLeaguePeriodLabel('ninetyDay', seasonRefDate);
-      const archive = createArchive('ninetyDay', competitors, userRank, prevPoints, periodLabel, periodId);
-      archive.seasonNumber = targetSeason;
-      newArchives.push(archive);
-    }
+    const archive = buildSeasonArchive(state, targetSeason);
+    if (archive) newArchives.push(archive);
 
     targetSeason--;
   }

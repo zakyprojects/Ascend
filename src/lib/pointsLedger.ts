@@ -4,12 +4,66 @@ import {
   calculateSeasonalTotal,
 } from './leagues';
 import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
+import { archiveSeasonBeforeRollover } from './seasonArchive';
+
+/** Number of newest entries pointsHistory keeps; older ones move into the season's evicted counters. */
+export const POINTS_HISTORY_LIMIT = 500;
+
+/**
+ * Trims a newest-first history to POINTS_HISTORY_LIMIT. Dropped entries of the active season are added
+ * to the evicted counters once each: an id already in the season's evictedEntryIds is never counted again.
+ * evictedEntryIds is season-scoped (reset at rollover) and deliberately uncapped: trimming it would let
+ * a re-evicted id be counted twice and break the merge's ledger sums.
+ */
+export function evictHistoryOverflow(
+  history: PointsEntry[],
+  activeSeasonStart: Date,
+  seasonId: number,
+  seasonEvictedEntryIds: EvictedEntryRecord[]
+): {
+  keptHistory: PointsEntry[];
+  seasonPosDrop: number;
+  seasonNegDrop: number;
+  evictedEntryIds: EvictedEntryRecord[];
+} {
+  const keptHistory = history.slice(0, POINTS_HISTORY_LIMIT);
+  const droppedHistory = history.slice(POINTS_HISTORY_LIMIT);
+
+  let seasonPosDrop = 0;
+  let seasonNegDrop = 0;
+  const existingEvictedIdSet = new Set(seasonEvictedEntryIds.map((r) => r.id));
+  const newEvictedEntries: EvictedEntryRecord[] = [];
+
+  for (const p of droppedHistory) {
+    const amt = p.amount || 0;
+    if (new Date(p.timestamp) >= activeSeasonStart) {
+      if (p.id) {
+        if (!existingEvictedIdSet.has(p.id)) {
+          if (amt > 0) seasonPosDrop += amt;
+          else seasonNegDrop += Math.abs(amt);
+          newEvictedEntries.push({ id: p.id, seasonNumber: seasonId, amount: amt });
+          existingEvictedIdSet.add(p.id);
+        }
+      } else {
+        if (amt > 0) seasonPosDrop += amt;
+        else seasonNegDrop += Math.abs(amt);
+      }
+    }
+  }
+
+  return {
+    keptHistory,
+    seasonPosDrop,
+    seasonNegDrop,
+    evictedEntryIds: [...seasonEvictedEntryIds, ...newEvictedEntries],
+  };
+}
 
 /**
  * Pure reducer function to add points (or apply point deductions) to AppState.
  * Manages:
  * 1. Automatic season rollover & league archiving
- * 2. 500-entry pointsHistory cap
+ * 2. 500-entry pointsHistory cap (evictHistoryOverflow)
  * 3. Eviction tracking (seasonEvictedPos, seasonEvictedNeg, and evictedEntryIds ledger)
  * 4. Deterministic recalculation of seasonPoints via calculateSeasonalTotal
  */
@@ -42,8 +96,9 @@ export function addPointsInternal(
   let prevSeasonNeg = typeof prev.seasonEvictedNeg === 'number' && prev.seasonEvictedNeg >= 0 ? prev.seasonEvictedNeg : 0;
   let leagueArchives: LeagueArchive[] = prev.leagueArchives ? [...prev.leagueArchives] : [];
 
-  // Season Rollover Check
+  // Season Rollover Check (archive the closing season while its evicted counters still exist)
   if (seasonId < activeSeasonNumber) {
+    leagueArchives = archiveSeasonBeforeRollover(prev, activeSeasonNumber);
     seasonId = activeSeasonNumber;
     prevSeasonPos = 0;
     prevSeasonNeg = 0;
@@ -98,32 +153,12 @@ export function addPointsInternal(
   if (customTimestamp) {
     fullHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
-  const keptHistory = fullHistory.slice(0, 500);
-  const droppedHistory = fullHistory.slice(500);
-
-  let seasonPosDrop = 0;
-  let seasonNegDrop = 0;
-  const existingEvictedIdSet = new Set(currentEvictedEntryIds.map((r) => r.id));
-  const newEvictedEntries: EvictedEntryRecord[] = [];
-
-  for (const p of droppedHistory) {
-    const amt = p.amount || 0;
-    if (new Date(p.timestamp) >= activeSeasonStart) {
-      if (p.id) {
-        if (!existingEvictedIdSet.has(p.id)) {
-          if (amt > 0) seasonPosDrop += amt;
-          else seasonNegDrop += Math.abs(amt);
-          newEvictedEntries.push({ id: p.id, seasonNumber: seasonId, amount: amt });
-          existingEvictedIdSet.add(p.id);
-        }
-      } else {
-        if (amt > 0) seasonPosDrop += amt;
-        else seasonNegDrop += Math.abs(amt);
-      }
-    }
-  }
-
-  const keptEvictedEntryIds = [...currentEvictedEntryIds, ...newEvictedEntries].slice(-1000);
+  const {
+    keptHistory,
+    seasonPosDrop,
+    seasonNegDrop,
+    evictedEntryIds: keptEvictedEntryIds,
+  } = evictHistoryOverflow(fullHistory, activeSeasonStart, seasonId, currentEvictedEntryIds);
 
   const newSeasonEvictedPos = prevSeasonPos + seasonPosDrop;
   const newSeasonEvictedNeg = prevSeasonNeg + seasonNegDrop;

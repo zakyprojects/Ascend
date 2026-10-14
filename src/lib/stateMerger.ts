@@ -46,6 +46,7 @@ import { parseDate } from './dates';
 import { calculateSeasonalTotal } from './leagues';
 import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
 import { isWeeklyGoalSeasonSplitEntryId } from './weeklyGoalSeasons';
+import { archiveSeasonBeforeRollover } from './seasonArchive';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 
 function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string; timestamp?: string }>(
@@ -385,7 +386,9 @@ function mergeLeagueArchives(
 
   for (const item of incomingList) {
     if (!item || !item.id) continue;
-    if (!map.has(item.id)) {
+    const existing = map.get(item.id);
+    // First come wins, except a complete (ledger-scored) season archive replaces a history-only one.
+    if (!existing || (item.scoreSource === 'ledger' && existing.scoreSource !== 'ledger')) {
       map.set(item.id, item);
     }
   }
@@ -517,8 +520,8 @@ function mergeAppStateInternal(
           : 0,
     })
   )
-    .filter((r) => r && r.seasonNumber === maxSeason)
-    .slice(-1000);
+    // Season-scoped and uncapped: trimming would let an evicted id be counted twice.
+    .filter((r) => r && r.seasonNumber === maxSeason);
 
   const evictedEntryIdSet = new Set(
     mergedEvictedEntryIds.map((r) => r && r.id).filter(Boolean)
@@ -742,8 +745,8 @@ function mergeAppStateInternal(
     incomingState.evictedExcisionRecords || [],
     tombstoneSet
   )
-    .filter((r) => r && r.seasonNumber === maxSeason)
-    .slice(-500);
+    // Season-scoped and uncapped: a dropped record would re-add its excised points.
+    .filter((r) => r && r.seasonNumber === maxSeason);
 
   const evictedExcisionIdSet = new Set(
     mergedEvictedExcisionRecords.map((r) => r && r.id).filter(Boolean)
@@ -793,7 +796,7 @@ function mergeAppStateInternal(
     mergedSeasonNeg += additionalEvictedNeg;
   }
 
-  const finalEvictedEntryIds = [...mergedEvictedEntryIds, ...newEvictedFromMerge].slice(-1000);
+  const finalEvictedEntryIds = [...mergedEvictedEntryIds, ...newEvictedFromMerge];
 
   const computedSeasonPoints = calculateSeasonalTotal(
     mergedSeasonPos,
@@ -1175,9 +1178,11 @@ function mergeAppStateInternal(
     .slice(0, 50);
 
   // 15. Leagues, Lessons, Trackers
+  // A side still in an older season loses its evicted counters in the points merge above,
+  // so its closing season is archived from them here first.
   const leagueArchives = mergeLeagueArchives(
-    baseState.leagueArchives || [],
-    incomingState.leagueArchives || []
+    archiveSeasonBeforeRollover(baseState, currentSeason),
+    archiveSeasonBeforeRollover(incomingState, currentSeason)
   );
 
   const readLessonIds = Array.from(

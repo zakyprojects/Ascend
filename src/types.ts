@@ -116,6 +116,8 @@ export interface LeagueArchive {
   archivedAt: string;
   completedAt?: string;
   participantCount?: number;
+  /** 'ledger': scored with the season's evicted counters (complete). Absent: scored from pointsHistory alone. */
+  scoreSource?: 'ledger';
 }
 
 export interface Lesson {
