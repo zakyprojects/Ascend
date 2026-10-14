@@ -40,6 +40,11 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const config = LEAGUE_CONFIG[activeLeague];
   const periodLabel = getLeaguePeriodLabel(activeLeague, now);
   const archives = store.state.leagueArchives.filter((a) => a.type === activeLeague);
+  // Tiers come from season points on every tab; weekly/monthly points only rank the table.
+  const seasonPointsById = new Map(
+    store.getLeagueData('ninetyDay').competitors.map((c) => [c.id, c.points] as const)
+  );
+  const seasonPointsOf = (c: LeagueCompetitor) => seasonPointsById.get(c.id) ?? 0;
 
   const currentUser = store.state.currentUser;
 
@@ -190,7 +195,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
 
                       {/* Tier Badge visible for EVERY entry */}
                       <div className="shrink-0">
-                        <TierBadge totalPoints={competitor.points} size="sm" showName={false} />
+                        <TierBadge totalPoints={seasonPointsOf(competitor)} size="sm" showName={false} />
                       </div>
 
                       {/* Period Points */}
@@ -277,7 +282,8 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
                     <span className={`item-name text-sm flex-1 truncate ${c.isUser ? '!text-success-text' : '!text-content-secondary'}`}>
                       {c.name}
                     </span>
-                    <TierBadge totalPoints={c.points} size="sm" showName={false} />
+                    {/* Only a season archive knows each member's season score. */}
+                    {archive.type === 'ninetyDay' && <TierBadge totalPoints={c.points} size="sm" showName={false} />}
                     <span className="figure text-sm text-content-primary">
                       {c.points.toLocaleString()} pts
                     </span>
@@ -292,6 +298,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
       {/* Clickable Profile Detail Modal */}
       <CompetitorProfileModal
         competitor={selectedCompetitor}
+        seasonPoints={selectedCompetitor ? seasonPointsOf(selectedCompetitor) : 0}
         viewerIsPublic={currentUser ? (currentUser.isProfilePublic ?? true) : true}
         open={!!selectedCompetitor}
         onClose={() => setSelectedCompetitor(null)}

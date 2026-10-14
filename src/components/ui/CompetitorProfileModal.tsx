@@ -12,6 +12,8 @@ const HABIT_PREVIEW_COUNT = 6;
 
 interface CompetitorProfileModalProps {
   competitor: LeagueCompetitor | null;
+  /** The member's season points, which set their tier (competitor.points are the open tab's period points). */
+  seasonPoints: number;
   viewerIsPublic?: boolean;
   open: boolean;
   onClose: () => void;
@@ -19,6 +21,7 @@ interface CompetitorProfileModalProps {
 
 export function CompetitorProfileModal({
   competitor,
+  seasonPoints,
   viewerIsPublic = true,
   open,
   onClose,
@@ -88,7 +91,7 @@ export function CompetitorProfileModal({
 
           {/* Tier Badge */}
           <div className="shrink-0 self-start sm:self-center">
-            <TierBadge totalPoints={competitor.points} size="md" showName />
+            <TierBadge totalPoints={seasonPoints} size="md" showName />
           </div>
         </div>
 
