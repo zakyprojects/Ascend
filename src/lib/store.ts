@@ -205,7 +205,7 @@ import { GuardBlockedError } from './errors';
 import { flushOutbox, recordSyncedChanges } from './sync/outbox';
 import { applyRemoteChanges, prepareRemoteRows, pullSyncedRows } from './sync/pull';
 import { SYNCED_COLLECTIONS } from './sync/syncedCollections';
-import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult } from './stateMerger';
+import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId } from './stateMerger';
 import { toUserMessage } from './userMessage';
 
 // Cross-tab real-time state synchronization channel
@@ -510,14 +510,17 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
       // Deleted week / non-positive net -> drop all entries
       continue;
     }
-    // Net > 0 (e.g. 20 or corrupted duplicate 40) -> consolidate to single +20 award
+    // Net > 0 (a single award, or a corrupted duplicate) -> consolidate to one award.
+    // The award keeps the amount it was given (Zakria, 2026-10-14: an old 20-point
+    // reflection stays 20), never more than the week's net.
     const sorted = [...entries].sort(
       (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
     );
     const earliest = sorted[0];
+    const firstAward = sorted.find((e) => (e.amount || 0) > 0);
     consolidatedWeeklyEntries.push({
       id: `weekly_review_${weekKey}`,
-      amount: WEEKLY_REFLECTION_POINTS.awarded,
+      amount: Math.min(netAmount, firstAward?.amount || WEEKLY_REFLECTION_POINTS.awarded),
       reason: `Weekly reflection completed for ${weekKey}`,
       source: 'weekly_review',
       timestamp: earliest.timestamp || new Date().toISOString(),
@@ -781,7 +784,7 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
   const sanitizedLibraryBooks = Array.from(libraryMap.values());
 
   const activeDeletedEntityIds = (st.deletedEntityIds ?? [])
-    .filter((id) => !(st.restoredEntityIds || []).includes(id));
+    .filter((id) => isLegitimateTombstoneId(id) && !(st.restoredEntityIds || []).includes(id));
 
   const resolvedTheme = st.themePreference || (getLocalThemePreference() || 'dark');
 
@@ -1684,9 +1687,10 @@ export function reconcileReflectionPoints(
     );
     currentState = { ...currentState, ...pointsAward };
   } else if (!latest && isWeekAwarded) {
+    // Reverse what the week actually holds: an award kept at an older value (20) is undone in full.
     const pointsDeduct = addPointsInternal(
       currentState,
-      WEEKLY_REFLECTION_POINTS.reversed,
+      -netPoints,
       `Weekly reflection deleted for ${weekKey}`,
       'weekly_review',
       { weekKey },

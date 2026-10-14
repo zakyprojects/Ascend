@@ -411,11 +411,22 @@ function mergeLeagueArchives(
  */
 const POISONED_COMPOSITE_KEY_REGEX = /^[A-Za-z0-9_-]+_\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * A week's reflection award (`weekly_review_<weekKey>`) is derived from its reflections: a
+ * deleted reflection is undone by `weekly_review_rev_<weekKey>`, never by a tombstone. A
+ * tombstone on it only ever came from a lost duplicate tie-break, and it blocked the award
+ * from loading or syncing for good.
+ */
+const WEEKLY_REFLECTION_AWARD_ID_REGEX = /^weekly_review_\d{4}-W\d{2}$/;
+
 export function isLegitimateTombstoneId(id: unknown): id is string {
   if (typeof id !== 'string' || !id.trim()) return false;
   const trimmed = id.trim();
   // Reject composite date-slot keys
   if (POISONED_COMPOSITE_KEY_REGEX.test(trimmed)) {
+    return false;
+  }
+  if (WEEKLY_REFLECTION_AWARD_ID_REGEX.test(trimmed)) {
     return false;
   }
   return true;
@@ -652,14 +663,20 @@ function mergeAppStateInternal(
       }
 
       if (weekKey) {
+        const isCanonicalId = entry.id === `weekly_review_${weekKey}`;
         const existing = weeklyReviewBest.get(weekKey);
         if (!existing) {
           weeklyReviewBest.set(weekKey, entry);
         } else {
+          const existingIsCanonical = existing.id === `weekly_review_${weekKey}`;
           const timeCand = entry.timestamp ? new Date(entry.timestamp).getTime() : 0;
           const timeExist = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
           let replace = false;
-          if (timeCand !== timeExist) {
+          // Prefer the canonical id: load consolidation gives it the legacy entry's timestamp,
+          // so a timestamp/id tie-break would otherwise drop it in favour of the legacy id.
+          if (isCanonicalId !== existingIsCanonical) {
+            replace = isCanonicalId;
+          } else if (timeCand !== timeExist) {
             replace = timeCand < timeExist; // earliest timestamp wins
           } else {
             replace = (entry.id || '') < (existing.id || ''); // deterministic tie-breaker

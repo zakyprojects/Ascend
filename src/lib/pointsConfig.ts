@@ -64,8 +64,6 @@ export const JOURNAL_POINTS = {
 export const WEEKLY_REFLECTION_POINTS = {
   // store.ts:1006
   awarded: 5,
-  // store.ts:1017
-  reversed: -5,
 } as const;
 
 export const WEEKLY_GOALS_POINTS = {
