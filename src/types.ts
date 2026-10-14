@@ -140,32 +140,12 @@ export interface Lesson {
   points: number;
 }
 
-export interface EvictedExcisionRecord {
-  id: string;
-  seasonNumber: number;
-  posAmount: number;
-  negAmount: number;
-  timestamp: string;
-}
-
-export interface EvictedEntryRecord {
-  id: string;
-  seasonNumber: number;
-  amount: number;
-}
-
 export interface AppState {
   currentUser: UserProfile | null;
   habits: Habit[];
   journalEntries: JournalEntry[];
   seasonId: number;
   seasonPoints: number;
-  seasonEvictedPos: number;
-  seasonEvictedNeg: number;
-  /** Evicted excision records to adjust evicted baseline without scalar desync */
-  evictedExcisionRecords: EvictedExcisionRecord[];
-  /** Evicted entry IDs for normal 500-cap pointsHistory eviction tracking */
-  evictedEntryIds: EvictedEntryRecord[];
   /** DEPRECATED: Mirrored alias for seasonPoints to maintain backward compatibility */
   totalPoints?: number;
   /** Points ledger entries for history */
@@ -693,12 +673,6 @@ export interface AppState {
   journalEntries: JournalEntry[];
   seasonId: number;
   seasonPoints: number;
-  seasonEvictedPos: number;
-  seasonEvictedNeg: number;
-  /** Evicted excision records to adjust evicted baseline without scalar desync */
-  evictedExcisionRecords: EvictedExcisionRecord[];
-  /** Evicted entry IDs for normal 500-cap pointsHistory eviction tracking */
-  evictedEntryIds: EvictedEntryRecord[];
   /** DEPRECATED: Mirrored alias for seasonPoints to maintain backward compatibility */
   totalPoints?: number;
   /** Points ledger entries for history */
@@ -984,10 +958,6 @@ export const DEFAULT_STATE: AppState = {
   journalEntries: [],
   seasonId: 1,
   seasonPoints: 0,
-  seasonEvictedPos: 0,
-  seasonEvictedNeg: 0,
-  evictedExcisionRecords: [],
-  evictedEntryIds: [],
   totalPoints: 0,
   pointsHistory: [],
   leagueArchives: [],

@@ -1,4 +1,4 @@
-import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile, EvictedExcisionRecord, AppState } from '@/types';
+import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile, AppState } from '@/types';
 import { getSeedCompetitors } from './seedAccounts';
 import { getRegisteredCompetitors } from './auth';
 import {
@@ -273,41 +273,16 @@ export const LEAGUE_CONFIG: Record<LeagueType, { name: string; description: stri
   },
 };
 
-export function calculateSeasonalTotal(
-  seasonEvictedPos: number,
-  seasonEvictedNeg: number,
-  history: PointsEntry[],
-  seasonStart: Date,
-  evictedExcisionRecords: EvictedExcisionRecord[],
-  activeSeasonNumber: number
-): number {
-  const targetSeason = activeSeasonNumber;
-  let seasonExcisedPosOffset = 0;
-  let seasonExcisedNegOffset = 0;
-
-  for (const rec of evictedExcisionRecords || []) {
-    if (rec && rec.seasonNumber === targetSeason) {
-      if (typeof rec.posAmount === 'number' && rec.posAmount > 0) {
-        seasonExcisedPosOffset += rec.posAmount;
-      }
-      if (typeof rec.negAmount === 'number' && rec.negAmount > 0) {
-        seasonExcisedNegOffset += rec.negAmount;
-      }
-    }
-  }
-
-  const effectivePos = Math.max(0, (seasonEvictedPos || 0) - seasonExcisedPosOffset);
-  const effectiveNeg = Math.max(0, (seasonEvictedNeg || 0) - seasonExcisedNegOffset);
-
+export function calculateSeasonalTotal(history: PointsEntry[], seasonStart: Date): number {
   if (!history || history.length === 0) {
-    return Math.max(0, effectivePos - effectiveNeg);
+    return 0;
   }
 
   // Sort chronological
   const sorted = [...history].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
-  let current = effectivePos - effectiveNeg;
+  let current = 0;
 
   for (const p of sorted) {
     if (p.reason === 'System: Debt Forgiveness' || p.source === 'system') {
@@ -326,28 +301,8 @@ export function calculateSeasonalTotal(
   return current;
 }
 
-/**
- * Computes the live effective season points for the currently active season.
- * If state.seasonId is behind the live season, stale evicted scalar baselines and excision records
- * are ignored (treated as 0/empty), falling back cleanly to pointsHistory filtered from getSeasonStart(now).
- */
+/** Live season points for the season `now` falls in, from the complete points ledger. */
 export function getEffectiveSeasonPoints(state: AppState, now: Date): number {
-  const liveSeason = getSeasonNumber(now);
-  const evictedValid = state.seasonId === liveSeason;
-
-  const effectivePos = evictedValid ? (state.seasonEvictedPos || 0) : 0;
-  const effectiveNeg = evictedValid ? (state.seasonEvictedNeg || 0) : 0;
-  const effectiveExcisionRecords = evictedValid
-    ? (state.evictedExcisionRecords || []).filter((r) => r && r.seasonNumber === liveSeason)
-    : [];
-
-  return calculateSeasonalTotal(
-    effectivePos,
-    effectiveNeg,
-    state.pointsHistory || [],
-    getSeasonStart(now),
-    effectiveExcisionRecords,
-    liveSeason
-  );
+  return calculateSeasonalTotal(state.pointsHistory || [], getSeasonStart(now));
 }
 

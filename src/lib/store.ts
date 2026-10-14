@@ -42,7 +42,6 @@ import {
   PlanType,
   SharedChallengeCategory,
   AppNotification,
-  EvictedExcisionRecord,
   Goal,
   Project,
   Task,
@@ -594,8 +593,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
     });
   }
 
-  // Full sorted history; trimmed to the 500 limit further down, after the season context is known,
-  // so anything over the limit lands in the evicted counters instead of being dropped.
+  // Full sorted history (the ledger is complete: point_entries table).
   const sortedHistory = [
     ...otherHistory,
     ...consolidatedWeeklyEntries,
@@ -606,23 +604,18 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   );
 
   let seasonId = typeof st.seasonId === 'number' ? st.seasonId : 1;
-  let seasonEvictedPos = typeof st.seasonEvictedPos === 'number' && st.seasonEvictedPos >= 0 ? st.seasonEvictedPos : 0;
-  let seasonEvictedNeg = typeof st.seasonEvictedNeg === 'number' && st.seasonEvictedNeg >= 0 ? st.seasonEvictedNeg : 0;
   // Archives saved before standings were slimmed still carry other members' stats and habits.
   let leagueArchives: LeagueArchive[] = (st.leagueArchives || [])
     .filter((a) => !!a.id)
     .map((a) => ({ ...a, competitors: (a.competitors || []).map(toArchivedCompetitor) }));
 
   // Check if loaded state belongs to an older season (Rollover Check).
-  // Archive the closing season first: its evicted counters are reset just below.
+  // Archive the closing season first.
   if (st.seasonId === undefined || st.seasonId < activeSeasonNumber) {
     leagueArchives = archiveSeasonBeforeRollover(
       {
         pointsHistory: sortedHistory,
         seasonId: st.seasonId,
-        seasonEvictedPos,
-        seasonEvictedNeg,
-        evictedExcisionRecords: st.evictedExcisionRecords ?? [],
         leagueArchives,
         currentUser: profile,
         username: profile ? profile.username : (st.username ?? 'Guest User'),
@@ -631,37 +624,13 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
       activeSeasonNumber
     );
     seasonId = activeSeasonNumber;
-    seasonEvictedPos = 0;
-    seasonEvictedNeg = 0;
   }
 
-  // Season-scoped ledgers of what the retired 500-entry cap dropped; they reset at rollover.
-  const evictedExcisionRecords = (st.evictedExcisionRecords ?? [])
-    .filter((r) => r && r.seasonNumber === seasonId);
-
-  const loadedEvictedEntryIds = (st.evictedEntryIds ?? [])
-    .filter((r) => r && r.seasonNumber === seasonId)
-    .map((r) => ({
-      id: r.id,
-      seasonNumber: r.seasonNumber,
-      amount: typeof r.amount === 'number' ? r.amount : 0,
-    }));
-
-  // Entries already counted in the evicted counters must not be counted again.
-  const evictedEntryIds = loadedEvictedEntryIds;
-  const evictedIdSet = new Set(evictedEntryIds.map((r) => r.id));
-  const pointsHistory = sortedHistory.filter((e) => !evictedIdSet.has(e.id));
+  const pointsHistory = sortedHistory;
 
   const currentHistorySum = pointsHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
 
-  const computedSeasonPoints = calculateSeasonalTotal(
-    seasonEvictedPos,
-    seasonEvictedNeg,
-    pointsHistory,
-    activeSeasonStart,
-    evictedExcisionRecords,
-    seasonId
-  );
+  const computedSeasonPoints = calculateSeasonalTotal(pointsHistory, activeSeasonStart);
 
   // Deduplicate badHabitLogs by (badHabitId, date) keeping latest entry
   const logsMap = new Map<string, BadHabitLog>();
@@ -909,10 +878,6 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
     journalEntries: filterActiveTombstones(st.journalEntries),
     seasonId,
     seasonPoints: computedSeasonPoints,
-    seasonEvictedPos,
-    seasonEvictedNeg,
-    evictedExcisionRecords,
-    evictedEntryIds,
     totalPoints: computedSeasonPoints,
     pointsHistory,
     leagueArchives,
@@ -1045,10 +1010,8 @@ async function persistState(state: AppState, options?: { allowDestructiveWipe?: 
 export function excisePointsEntriesInternal(
   prev: AppState,
   matcher: (entry: PointsEntry) => boolean,
-  fallbackDeductAmount?: { pos?: number; neg?: number },
-  maxExciseCount: number = Infinity,
-  fallbackExcisionKey?: string
-): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'seasonEvictedPos' | 'seasonEvictedNeg' | 'evictedExcisionRecords' | 'evictedEntryIds' | 'pointsHistory' | 'leagueArchives'> & {
+  maxExciseCount: number = Infinity
+): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'> & {
   excisedEntryIds: string[];
 } {
   const now = leagueNow();
@@ -1056,106 +1019,34 @@ export function excisePointsEntriesInternal(
   const activeSeasonStart = getSeasonStart(now);
 
   let seasonId = typeof prev.seasonId === 'number' ? prev.seasonId : 1;
-  let prevSeasonPos = typeof prev.seasonEvictedPos === 'number' && prev.seasonEvictedPos >= 0 ? prev.seasonEvictedPos : 0;
-  let prevSeasonNeg = typeof prev.seasonEvictedNeg === 'number' && prev.seasonEvictedNeg >= 0 ? prev.seasonEvictedNeg : 0;
   let leagueArchives: LeagueArchive[] = prev.leagueArchives ? [...prev.leagueArchives] : [];
 
-  // Season Rollover Check (archive the closing season while its evicted counters still exist)
+  // Season Rollover Check (archive the closing season before moving on)
   if (seasonId < activeSeasonNumber) {
     leagueArchives = archiveSeasonBeforeRollover(prev, activeSeasonNumber);
     seasonId = activeSeasonNumber;
-    prevSeasonPos = 0;
-    prevSeasonNeg = 0;
   }
 
-  const prevHistory = prev.pointsHistory || [];
   const excisedEntryIds: string[] = [];
-  const excisedEntries: PointsEntry[] = [];
-  const keptAfterExcise: PointsEntry[] = [];
+  const keptHistory: PointsEntry[] = [];
   let excisedCount = 0;
 
-  for (const entry of prevHistory) {
+  for (const entry of prev.pointsHistory || []) {
     if (excisedCount < maxExciseCount && matcher(entry)) {
-      excisedEntries.push(entry);
       if (entry.id) {
         excisedEntryIds.push(entry.id);
       }
       excisedCount++;
     } else {
-      keptAfterExcise.push(entry);
+      keptHistory.push(entry);
     }
   }
 
-  let excisedSeasonPos = 0;
-  let excisedSeasonNeg = 0;
-
-  for (const entry of excisedEntries) {
-    const amt = entry.amount || 0;
-    if (new Date(entry.timestamp) >= activeSeasonStart) {
-      if (amt > 0) excisedSeasonPos += amt;
-      else excisedSeasonNeg += Math.abs(amt);
-    }
-  }
-
-  const currentEvictedExcisionRecords = (prev.evictedExcisionRecords || []).filter(
-    (r) => r && r.seasonNumber === seasonId
-  );
-  const currentEvictedEntryIds = (prev.evictedEntryIds || []).filter(
-    (r) => r && r.seasonNumber === seasonId
-  );
-
-  if (fallbackDeductAmount) {
-    const remainingPosToExcise = typeof fallbackDeductAmount.pos === 'number'
-      ? Math.max(0, fallbackDeductAmount.pos - excisedSeasonPos)
-      : 0;
-    const remainingNegToExcise = typeof fallbackDeductAmount.neg === 'number'
-      ? Math.max(0, fallbackDeductAmount.neg - excisedSeasonNeg)
-      : 0;
-
-    if (remainingPosToExcise > 0 || remainingNegToExcise > 0) {
-      const recordId = fallbackExcisionKey
-        ? `ex_${seasonId}_${fallbackExcisionKey}`
-        : `ex_${uid()}`;
-      const existingIdx = currentEvictedExcisionRecords.findIndex((r) => r.id === recordId);
-      const excisionRecord: EvictedExcisionRecord = {
-        id: recordId,
-        seasonNumber: seasonId,
-        posAmount: remainingPosToExcise,
-        negAmount: remainingNegToExcise,
-        timestamp: new Date().toISOString(),
-      };
-      if (existingIdx >= 0) {
-        currentEvictedExcisionRecords[existingIdx] = excisionRecord;
-      } else {
-        currentEvictedExcisionRecords.push(excisionRecord);
-      }
-    }
-  }
-
-  // Season-scoped, uncapped: a dropped excision record would silently re-add its points to the season.
-  const keptExcisionRecords = currentEvictedExcisionRecords;
-
-  const keptHistory = keptAfterExcise;
-  const keptEvictedEntryIds = currentEvictedEntryIds;
-  const newSeasonEvictedPos = prevSeasonPos;
-  const newSeasonEvictedNeg = prevSeasonNeg;
-
-  const newSeasonPoints = calculateSeasonalTotal(
-    newSeasonEvictedPos,
-    newSeasonEvictedNeg,
-    keptHistory,
-    activeSeasonStart,
-    keptExcisionRecords,
-    seasonId
-  );
+  const newSeasonPoints = calculateSeasonalTotal(keptHistory, activeSeasonStart);
 
   return {
     seasonId,
     seasonPoints: newSeasonPoints,
-    seasonEvictedPos: newSeasonEvictedPos,
-    seasonEvictedNeg: newSeasonEvictedNeg,
-    evictedExcisionRecords: keptExcisionRecords,
-    evictedEntryIds: keptEvictedEntryIds,
     totalPoints: newSeasonPoints,
     pointsHistory: keptHistory,
     leagueArchives,
@@ -1169,12 +1060,6 @@ export function getWeeklyReflectionNetPoints(state: AppState, weekKey: string): 
 
   let total = 0;
   for (const e of state.pointsHistory || []) {
-    if (e && (e.id === awardId || e.id === revId)) {
-      total += e.amount || 0;
-    }
-  }
-
-  for (const e of state.evictedEntryIds || []) {
     if (e && (e.id === awardId || e.id === revId)) {
       total += e.amount || 0;
     }
@@ -3318,10 +3203,7 @@ export function useAppState() {
             (entry) =>
               (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
               entry.metadata?.habitId === target.id &&
-              entry.metadata?.periodKey === today,
-            undefined,
-            Infinity,
-            `habit_${target.id}_${today}`
+              entry.metadata?.periodKey === today
           );
           const { excisedEntryIds, ...restPoints } = exciseResult;
           runningState = { ...runningState, ...restPoints };
@@ -3353,10 +3235,7 @@ export function useAppState() {
               (entry) =>
                 (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
                 entry.metadata?.habitId === target.id &&
-                entry.metadata?.periodKey === currentWeek,
-              undefined,
-              Infinity,
-              `habit_${target.id}_${currentWeek}`
+                entry.metadata?.periodKey === currentWeek
             );
             const { excisedEntryIds, ...restPoints } = exciseResult;
             runningState = { ...runningState, ...restPoints };
@@ -3604,17 +3483,12 @@ export function useAppState() {
                     runningState = { ...runningState, ...checkPointsUpdate };
                   }
                 } else {
-                  const targetCompletion = prevCompletions[currentPeriodKey];
-                  const completionInstanceTimestamp = targetCompletion?.updatedAt || habit.createdAt || currentPeriodKey;
                   const exciseResult = excisePointsEntriesInternal(
                     runningState,
                     (entry) =>
                       (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
                       entry.metadata?.habitId === habit.id &&
-                      entry.metadata?.periodKey === currentPeriodKey,
-                    undefined,
-                    Infinity,
-                    `habit_${habit.id}_${currentPeriodKey}_${completionInstanceTimestamp}`
+                      entry.metadata?.periodKey === currentPeriodKey
                   );
                   const { excisedEntryIds, ...restPoints } = exciseResult;
                   runningState = { ...runningState, ...restPoints };
@@ -3631,17 +3505,12 @@ export function useAppState() {
                 // Daily preset habits:
                 // If unchecking, excise the habit's own previous completion and redistribution entries
                 if (!completed) {
-                  const targetCompletion = prevCompletions[currentPeriodKey];
-                  const completionInstanceTimestamp = targetCompletion?.updatedAt || habit.createdAt || currentPeriodKey;
                   const exciseResult = excisePointsEntriesInternal(
                     runningState,
                     (entry) =>
                       (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
                       entry.metadata?.habitId === habit.id &&
-                      entry.metadata?.periodKey === currentPeriodKey,
-                    undefined,
-                    Infinity,
-                    `habit_${habit.id}_${currentPeriodKey}_${completionInstanceTimestamp}`
+                      entry.metadata?.periodKey === currentPeriodKey
                   );
                   const { excisedEntryIds, ...restPoints } = exciseResult;
                   runningState = { ...runningState, ...restPoints };
@@ -5197,9 +5066,6 @@ export function useAppState() {
 
         // When modifying an existing log on the same date with different status, excise old points transaction first
         if (existingLog && existingLog.pointsAwardedOrDeducted !== 0) {
-          const isDeduction = (existingLog.pointsAwardedOrDeducted || 0) < 0;
-          const ptsAmt = Math.abs(existingLog.pointsAwardedOrDeducted || 0);
-          const logInstance = existingLog.id || existingLog.createdAt || existingLog.updatedAt || date;
           const exciseResult = excisePointsEntriesInternal(
             baseState,
             (entry) => {
@@ -5209,9 +5075,7 @@ export function useAppState() {
               }
               return false;
             },
-            isDeduction ? { neg: ptsAmt } : { pos: ptsAmt },
-            1,
-            `badhabit_${badHabitId}_${date}_${logInstance}`
+            1
           );
           const { excisedEntryIds, ...pointsState } = exciseResult;
           excisedIds = excisedEntryIds;
@@ -5402,9 +5266,6 @@ export function useAppState() {
         });
       } else if (target.pointsAwardedOrDeducted !== 0) {
         // Occurred status reversal via static excision
-        const isDeduction = target.pointsAwardedOrDeducted < 0;
-        const ptsAmt = Math.abs(target.pointsAwardedOrDeducted);
-        const logInstance = target.id || target.createdAt || target.updatedAt || today;
         const exciseResult = excisePointsEntriesInternal(
           prev,
           (entry) => {
@@ -5414,9 +5275,7 @@ export function useAppState() {
             }
             return false;
           },
-          isDeduction ? { neg: ptsAmt } : { pos: ptsAmt },
-          1,
-          `badhabit_${badHabitId}_${today}_${logInstance}`
+          1
         );
         const { excisedEntryIds, ...restPoints } = exciseResult;
         pointsUpdate = restPoints;
@@ -5463,17 +5322,13 @@ export function useAppState() {
             );
 
             if (todayOccurredLog) {
-              const storedAmount = todayOccurredLog.pointsAwardedOrDeducted || 0;
-              const logInstance = todayOccurredLog.id || todayOccurredLog.createdAt || today;
               const exciseResult = excisePointsEntriesInternal(
                 prev,
                 (entry) =>
                   entry.source === 'bad_habit_occurred' &&
                   entry.metadata?.badHabitId === badHabitId &&
                   entry.metadata?.date === today,
-                { neg: Math.abs(storedAmount) },
-                1,
-                `badhabit_${badHabitId}_${today}_${logInstance}`
+                1
               );
               const { excisedEntryIds: newlyExcisedIds, ...pointsStateWithoutExcisedEntryIds } = exciseResult;
               baseState = { ...prev, ...pointsStateWithoutExcisedEntryIds };
@@ -5621,8 +5476,6 @@ export function useAppState() {
         let pointsUpdate = {};
         let excisedIds: string[] = [];
         if (target && target.pointsAwardedOrDeducted !== 0) {
-          const isDeduction = target.pointsAwardedOrDeducted < 0;
-          const ptsAmt = Math.abs(target.pointsAwardedOrDeducted);
           const exciseResult = excisePointsEntriesInternal(
             prev,
             (entry) => {
@@ -5632,9 +5485,7 @@ export function useAppState() {
               }
               return false;
             },
-            isDeduction ? { neg: ptsAmt } : { pos: ptsAmt },
-            1,
-            `badhabit_${badHabitId}_${date}_${target.id || target.createdAt || target.updatedAt || date}`
+            1
           );
           const { excisedEntryIds, ...restPoints } = exciseResult;
           pointsUpdate = restPoints;
@@ -9119,10 +8970,6 @@ export function useAppState() {
       state.username,
       state.totalPoints,
       state.seasonId,
-      state.seasonEvictedPos,
-      state.seasonEvictedNeg,
-      state.evictedExcisionRecords,
-      state.evictedEntryIds,
       state.leagueArchives,
     ]
   );
@@ -9498,9 +9345,7 @@ export function useAppState() {
       const exciseResult = excisePointsEntriesInternal(
         baseState,
         (entry) => entry.id === entryId,
-        { pos: oldPoints },
-        1,
-        `time_tracker_${targetDateKey}`
+        1
       );
       const { excisedEntryIds, ...restPoints } = exciseResult;
       const updatedDeleted = Array.from(
@@ -9528,10 +9373,6 @@ export function useAppState() {
       pointsHistory: pointsUpdate.pointsHistory,
       totalPoints: pointsUpdate.totalPoints,
       seasonPoints: pointsUpdate.seasonPoints,
-      ...(pointsUpdate.seasonEvictedPos !== undefined ? { seasonEvictedPos: pointsUpdate.seasonEvictedPos } : {}),
-      ...(pointsUpdate.seasonEvictedNeg !== undefined ? { seasonEvictedNeg: pointsUpdate.seasonEvictedNeg } : {}),
-      ...(pointsUpdate.evictedEntryIds !== undefined ? { evictedEntryIds: pointsUpdate.evictedEntryIds } : {}),
-      ...(pointsUpdate.evictedExcisionRecords !== undefined ? { evictedExcisionRecords: pointsUpdate.evictedExcisionRecords } : {}),
       ...(pointsUpdate.leagueArchives !== undefined ? { leagueArchives: pointsUpdate.leagueArchives } : {}),
     };
   };

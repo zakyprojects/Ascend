@@ -520,85 +520,6 @@ function mergeAppStateInternal(
   // Clamped to currentSeason — a corrupted/future seasonId from any device must never advance the account beyond the real season. Fixes the wrong-clock vulnerability identified in Phase 4 Mode A (2026-09-20).
   const maxSeason = Math.min(Math.max(baseSeason, incSeason, currentSeason), currentSeason);
 
-  const mergedEvictedEntryIds = mergeEntityArrays(
-    baseState.evictedEntryIds || [],
-    incomingState.evictedEntryIds || [],
-    tombstoneSet,
-    (a, b) => ({
-      ...a,
-      ...b,
-      amount:
-        typeof b.amount === 'number' && b.amount !== 0
-          ? b.amount
-          : typeof a.amount === 'number'
-          ? a.amount
-          : 0,
-    })
-  )
-    // Season-scoped and uncapped: trimming would let an evicted id be counted twice.
-    .filter((r) => r && r.seasonNumber === maxSeason);
-
-  const evictedEntryIdSet = new Set(
-    mergedEvictedEntryIds.map((r) => r && r.id).filter(Boolean)
-  );
-
-  let ledgerSeasonPos = 0;
-  let ledgerSeasonNeg = 0;
-  for (const record of mergedEvictedEntryIds) {
-    const amt = record.amount || 0;
-    if (amt > 0) {
-      ledgerSeasonPos += amt;
-    } else if (amt < 0) {
-      ledgerSeasonNeg += Math.abs(amt);
-    }
-  }
-
-  // Calculate each side's own ledger sum for maxSeason
-  let baseOwnLedgerPos = 0;
-  let baseOwnLedgerNeg = 0;
-  if (baseSeason === maxSeason) {
-    for (const r of baseState.evictedEntryIds || []) {
-      if (r && r.seasonNumber === maxSeason) {
-        const amt = r.amount || 0;
-        if (amt > 0) baseOwnLedgerPos += amt;
-        else if (amt < 0) baseOwnLedgerNeg += Math.abs(amt);
-      }
-    }
-  }
-
-  let incOwnLedgerPos = 0;
-  let incOwnLedgerNeg = 0;
-  if (incSeason === maxSeason) {
-    for (const r of incomingState.evictedEntryIds || []) {
-      if (r && r.seasonNumber === maxSeason) {
-        const amt = r.amount || 0;
-        if (amt > 0) incOwnLedgerPos += amt;
-        else if (amt < 0) incOwnLedgerNeg += Math.abs(amt);
-      }
-    }
-  }
-
-  // Legacy gap = scalar minus own ledger sum (untracked pre-ledger points)
-  const baseLegacyGapPos = baseSeason === maxSeason ? Math.max(0, (baseState.seasonEvictedPos || 0) - baseOwnLedgerPos) : 0;
-  const baseLegacyGapNeg = baseSeason === maxSeason ? Math.max(0, (baseState.seasonEvictedNeg || 0) - baseOwnLedgerNeg) : 0;
-
-  const incLegacyGapPos = incSeason === maxSeason ? Math.max(0, (incomingState.seasonEvictedPos || 0) - incOwnLedgerPos) : 0;
-  const incLegacyGapNeg = incSeason === maxSeason ? Math.max(0, (incomingState.seasonEvictedNeg || 0) - incOwnLedgerNeg) : 0;
-
-  // Resolution of untracked legacy gaps:
-  // We take Math.max of the two legacy gaps. This aligns with the codebase's existing pre-ledger merge philosophy
-  // (which used Math.max of scalar counters between syncs). In multi-device setups that previously synced before
-  // ledger tracking was introduced, both devices frequently shared the same untracked evicted baseline; summing
-  // the gaps would double-count that shared pre-ledger history. The residual risk is that if two devices were
-  // completely offline/partitioned from each other for their entire pre-ledger history, only the larger legacy gap
-  // is credited rather than both. Since new evictions are fully tracked by ID in the ledger and properly summed,
-  // this bounded legacy gap only applies to pre-migration data and safely expires at season rollover.
-  const resolvedLegacyGapPos = Math.max(baseLegacyGapPos, incLegacyGapPos);
-  const resolvedLegacyGapNeg = Math.max(baseLegacyGapNeg, incLegacyGapNeg);
-
-  const mergedSeasonPos = ledgerSeasonPos + resolvedLegacyGapPos;
-  const mergedSeasonNeg = ledgerSeasonNeg + resolvedLegacyGapNeg;
-
   const mergedHistoryFull = mergeEntityArrays(
     baseState.pointsHistory || [],
     incomingState.pointsHistory || [],
@@ -761,39 +682,15 @@ function mergeAppStateInternal(
     ? Array.from(new Set([...postHabitDeletedEntityIds, ...allDuplicatePointIds])).slice(-500)
     : postHabitDeletedEntityIds;
 
-  const mergedEvictedExcisionRecords = mergeEntityArrays(
-    baseState.evictedExcisionRecords || [],
-    incomingState.evictedExcisionRecords || [],
-    tombstoneSet
-  )
-    // Season-scoped and uncapped: a dropped record would re-add its excised points.
-    .filter((r) => r && r.seasonNumber === maxSeason);
+  const finalHistory = dedupedHistoryFull;
 
-  const historyWithoutEvicted = dedupedHistoryFull.filter(
-    (e) => !(e && e.id && evictedEntryIdSet.has(e.id))
-  );
-  // The ledger is complete (point_entries table); nothing is evicted any more.
-  const finalHistory = historyWithoutEvicted;
-  const finalEvictedEntryIds = mergedEvictedEntryIds;
-
-  const computedSeasonPoints = calculateSeasonalTotal(
-    mergedSeasonPos,
-    mergedSeasonNeg,
-    finalHistory,
-    getSeasonStart(leagueNow()),
-    mergedEvictedExcisionRecords,
-    maxSeason
-  );
+  const computedSeasonPoints = calculateSeasonalTotal(finalHistory, getSeasonStart(leagueNow()));
 
   // Clamped to currentSeason — a corrupted/future seasonId from any device must never advance the account beyond the real season. Fixes the wrong-clock vulnerability identified in Phase 4 Mode A (2026-09-20).
   const seasonId = Math.min(maxSeason, currentSeason);
   const seasonPoints = computedSeasonPoints;
-  const seasonEvictedPos = mergedSeasonPos;
-  const seasonEvictedNeg = mergedSeasonNeg;
   const totalPoints = computedSeasonPoints;
   const pointsHistory = finalHistory;
-  const evictedExcisionRecords = mergedEvictedExcisionRecords;
-  const evictedEntryIds = finalEvictedEntryIds;
 
   // 5. Workouts
   const workouts = mergeEntityArrays(
@@ -1156,8 +1053,8 @@ function mergeAppStateInternal(
     .slice(0, 50);
 
   // 15. Leagues, Lessons, Trackers
-  // A side still in an older season loses its evicted counters in the points merge above,
-  // so its closing season is archived from them here first.
+  // A side still in an older season moves into the current one in the merge above,
+  // so its closing season is archived here first.
   const leagueArchives = mergeLeagueArchives(
     archiveSeasonBeforeRollover(baseState, currentSeason),
     archiveSeasonBeforeRollover(incomingState, currentSeason)
@@ -1384,10 +1281,6 @@ function mergeAppStateInternal(
     username,
     seasonId,
     seasonPoints,
-    seasonEvictedPos,
-    seasonEvictedNeg,
-    evictedExcisionRecords,
-    evictedEntryIds,
     totalPoints,
     pointsHistory,
     habits,

@@ -601,15 +601,10 @@ export function processTimeTrackerDailyPoints(state: AppState, now: Date = new D
 
   let updatedState = state;
   const historyEntries = updatedState.pointsHistory || [];
-  const currentSeason = typeof state.seasonId === 'number' ? state.seasonId : 1;
-  const evictedIds = (state.evictedEntryIds || [])
-    .filter((r) => r && (r.seasonNumber === undefined || r.seasonNumber === currentSeason))
-    .map((r) => r.id);
-  const evictedSet = new Set(evictedIds);
 
   for (const dateKey of pastDateKeys) {
     const entryId = `time_tracker_${dateKey}`;
-    const alreadyEvaluated = historyEntries.some((e) => e && e.id === entryId) || evictedSet.has(entryId);
+    const alreadyEvaluated = historyEntries.some((e) => e && e.id === entryId);
 
     if (!alreadyEvaluated) {
       const blocks = dailyLogs[dateKey] || [];

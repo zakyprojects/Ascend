@@ -12,21 +12,14 @@ import {
 import { EPOCH_UTC, SEASON_LENGTH_MS, getSeasonPeriodId } from './leagueTime';
 
 /**
- * Season close (90-day league archive).
- *
- * pointsHistory keeps only the newest 500 entries; older entries of the running season live on
- * as the seasonEvictedPos / seasonEvictedNeg counters (minus evictedExcisionRecords). Those
- * counters belong to `state.seasonId` and are reset the moment a state crosses into a new season.
- * A season's final score is therefore only complete while the counters still belong to it, so
- * every place that resets them archives the closing season first (archiveSeasonBeforeRollover).
+ * Season close (90-day league archive). The points ledger is complete (point_entries table),
+ * so a season's final score comes from its entries alone. Every place that moves a state into
+ * a new season archives the closing season first (archiveSeasonBeforeRollover).
  */
 
 type SeasonLedgerState = Pick<
   AppState,
   | 'pointsHistory'
-  | 'seasonEvictedPos'
-  | 'seasonEvictedNeg'
-  | 'evictedExcisionRecords'
   | 'leagueArchives'
   | 'currentUser'
   | 'username'
@@ -38,21 +31,16 @@ function getSeasonBounds(seasonNumber: number): { start: Date; end: Date } {
   return { start, end: new Date(start.getTime() + SEASON_LENGTH_MS) };
 }
 
-/** Season the evicted counters of this state belong to (missing seasonId = Season 1, as in addPointsInternal). */
+/** Season this state belongs to (missing seasonId = Season 1, as in addPointsInternal). */
 function getLedgerSeason(state: { seasonId?: number }): number {
   return typeof state.seasonId === 'number' ? state.seasonId : 1;
 }
 
-/**
- * Final points of a season: the same floored ledger maths as the live season score.
- * Evicted counters are included only while they still belong to that season; otherwise
- * only the entries left in pointsHistory can be counted.
- */
+/** Final points of a season: the same floored ledger maths as the live season score. */
 export function calculateClosedSeasonPoints(state: SeasonLedgerState, seasonNumber: number): number {
   const { start, end } = getSeasonBounds(seasonNumber);
   const startMs = start.getTime();
   const endMs = end.getTime();
-  const ownsCounters = getLedgerSeason(state) === seasonNumber;
 
   const seasonHistory = (state.pointsHistory || []).filter((entry) => {
     if (!entry) return false;
@@ -60,13 +48,7 @@ export function calculateClosedSeasonPoints(state: SeasonLedgerState, seasonNumb
     return ts >= startMs && ts < endMs;
   });
 
-  const pos = ownsCounters && typeof state.seasonEvictedPos === 'number' && state.seasonEvictedPos > 0 ? state.seasonEvictedPos : 0;
-  const neg = ownsCounters && typeof state.seasonEvictedNeg === 'number' && state.seasonEvictedNeg > 0 ? state.seasonEvictedNeg : 0;
-  const excisionRecords = ownsCounters
-    ? (state.evictedExcisionRecords || []).filter((r) => r && r.seasonNumber === seasonNumber)
-    : [];
-
-  return calculateSeasonalTotal(pos, neg, seasonHistory, start, excisionRecords, seasonNumber);
+  return calculateSeasonalTotal(seasonHistory, start);
 }
 
 /** Standings of a closed season: every real member's final score for it, seeds excluded. */
@@ -138,7 +120,7 @@ export function toSeasonHistory(archives: LeagueArchive[] = []): SeasonHistoryEn
 }
 
 /**
- * Call right before a state's evicted counters are reset for a new season.
+ * Call right before a state moves into a new season.
  * Returns leagueArchives with the closing season archived from its full ledger.
  * An existing archive for that season is kept unless it was scored from pointsHistory
  * alone (no scoreSource), which undercounts once entries were evicted.
