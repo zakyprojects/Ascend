@@ -1382,53 +1382,38 @@ html[data-page-hidden] *::after {
   transition-timing-function: var(--ease-emphasized);
 }
 
-/* Page transitions (lib/pageTransition.ts adds html.vt-page while one runs). The outgoing page area
-   settles back and fades, the incoming one fades in (its content then rises via ViewEntrance), and
-   the nav's active pill glides to the new item. Phones have no fixed page box (the window scrolls),
-   so there the whole screen crossfades instead. */
+/* Page transitions, desktop only (lib/pageTransition.ts adds html.vt-page while one runs; phones
+   change pages at once). The outgoing page area settles back and fades while the incoming one fades
+   in over the same time and curve, so their opacities always add up to full and nothing dims in
+   between (its content then rises via ViewEntrance). The rest of the screen (sidebar) swaps at once
+   and the nav's active pill glides to the new item. */
 html.vt-page [data-nav-pill] {
   view-transition-name: nav-pill;
 }
-@media (min-width: 1024px) {
-  html.vt-page [data-page-area] {
-    view-transition-name: page;
-  }
+html.vt-page [data-page-area] {
+  view-transition-name: page;
 }
-html.vt-page::view-transition-old(root) {
-  animation: vt-fade-out 160ms var(--ease-standard) both;
-  mix-blend-mode: plus-lighter;
-}
+html.vt-page::view-transition-old(root),
 html.vt-page::view-transition-new(root) {
-  animation: vt-fade-in 240ms var(--ease-standard) both;
-  mix-blend-mode: plus-lighter;
+  animation: none;
 }
 html.vt-page::view-transition-group(page) {
   animation: none;
 }
 html.vt-page::view-transition-old(page) {
-  animation: vt-page-out 160ms var(--ease-standard) both;
+  animation: vt-page-out 220ms var(--ease-standard) both;
+  mix-blend-mode: plus-lighter;
 }
 html.vt-page::view-transition-new(page) {
-  animation: vt-fade-in 260ms var(--ease-standard) 60ms both;
+  animation: vt-fade-in 220ms var(--ease-standard) both;
+  mix-blend-mode: plus-lighter;
 }
-/* The phone's page tabs (Tabs pageTabs) glide like the nav pill; its own slide is off meanwhile, or
-   the snapshot would catch it mid-move. */
-html.vt-page [data-tab-pill] {
-  view-transition-name: tab-pill;
-  transition: none !important;
-}
-html.vt-page::view-transition-group(tab-pill),
 html.vt-page::view-transition-group(nav-pill) {
   animation-duration: 360ms;
   animation-timing-function: var(--ease-emphasized);
 }
 @keyframes vt-fade-in {
   from {
-    opacity: 0;
-  }
-}
-@keyframes vt-fade-out {
-  to {
     opacity: 0;
   }
 }
