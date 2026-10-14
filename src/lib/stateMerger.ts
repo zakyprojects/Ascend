@@ -31,7 +31,6 @@ import {
   Partnership,
   SharedChallenge,
   AppNotification,
-  EvictedEntryRecord,
   TimeTrackerState,
   TimeTrackerActivity,
   TimeTrackerTemplate,
@@ -586,8 +585,8 @@ function mergeAppStateInternal(
   const resolvedLegacyGapPos = Math.max(baseLegacyGapPos, incLegacyGapPos);
   const resolvedLegacyGapNeg = Math.max(baseLegacyGapNeg, incLegacyGapNeg);
 
-  let mergedSeasonPos = ledgerSeasonPos + resolvedLegacyGapPos;
-  let mergedSeasonNeg = ledgerSeasonNeg + resolvedLegacyGapNeg;
+  const mergedSeasonPos = ledgerSeasonPos + resolvedLegacyGapPos;
+  const mergedSeasonNeg = ledgerSeasonNeg + resolvedLegacyGapNeg;
 
   const mergedHistoryFull = mergeEntityArrays(
     baseState.pointsHistory || [],
@@ -753,55 +752,12 @@ function mergeAppStateInternal(
     // Season-scoped and uncapped: a dropped record would re-add its excised points.
     .filter((r) => r && r.seasonNumber === maxSeason);
 
-  const evictedExcisionIdSet = new Set(
-    mergedEvictedExcisionRecords.map((r) => r && r.id).filter(Boolean)
-  );
-
   const historyWithoutEvicted = dedupedHistoryFull.filter(
     (e) => !(e && e.id && evictedEntryIdSet.has(e.id))
   );
-  const finalHistory = historyWithoutEvicted.slice(0, 500);
-  const droppedHistory = historyWithoutEvicted.slice(500);
-  const newEvictedFromMerge: EvictedEntryRecord[] = [];
-
-  if (droppedHistory.length > 0) {
-    const activeSeasonStart = getSeasonStart(leagueNow());
-    let additionalEvictedPos = 0;
-    let additionalEvictedNeg = 0;
-
-    for (const dropEntry of droppedHistory) {
-      if (!dropEntry) continue;
-      const amt = dropEntry.amount || 0;
-      if (amt === 0) continue;
-
-      const dropTime = dropEntry.timestamp ? new Date(dropEntry.timestamp) : new Date(0);
-      if (dropTime >= activeSeasonStart) {
-        const dropId = dropEntry.id;
-        const alreadyRecorded = Boolean(
-          dropId &&
-            (evictedExcisionIdSet.has(dropId) ||
-              evictedExcisionIdSet.has(`ex_${maxSeason}_${dropId}`) ||
-              evictedEntryIdSet.has(dropId))
-        );
-        if (!alreadyRecorded) {
-          if (amt > 0) {
-            additionalEvictedPos += amt;
-          } else {
-            additionalEvictedNeg += Math.abs(amt);
-          }
-          if (dropId) {
-            newEvictedFromMerge.push({ id: dropId, seasonNumber: maxSeason, amount: amt });
-            evictedEntryIdSet.add(dropId);
-          }
-        }
-      }
-    }
-
-    mergedSeasonPos += additionalEvictedPos;
-    mergedSeasonNeg += additionalEvictedNeg;
-  }
-
-  const finalEvictedEntryIds = [...mergedEvictedEntryIds, ...newEvictedFromMerge];
+  // The ledger is complete (point_entries table); nothing is evicted any more.
+  const finalHistory = historyWithoutEvicted;
+  const finalEvictedEntryIds = mergedEvictedEntryIds;
 
   const computedSeasonPoints = calculateSeasonalTotal(
     mergedSeasonPos,

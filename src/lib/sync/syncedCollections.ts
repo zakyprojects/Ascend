@@ -26,6 +26,13 @@ export interface SyncedCollection<K extends keyof AppState = keyof AppState> {
   ownTimestamp: (item: SyncedItem<K>) => string;
   /** Row id for an item when it is not item.id (weekly goals are one row per week). */
   rowId?: (item: SyncedItem<K>) => string;
+  /**
+   * An item removed from the state is deleted on the server even without a
+   * tombstone. Only for collections that local reducers alone rewrite (the points
+   * ledger, which consolidates and excises entries); the outbox still refuses a
+   * mass removal.
+   */
+  mirrorRemovals?: boolean;
 }
 
 /** The table row id of a state item. */
@@ -60,7 +67,8 @@ function documentCollection<K extends keyof AppState>(
   stateKey: K,
   table: string,
   createdAt: (item: SyncedItem<K>) => string,
-  rowId?: (item: SyncedItem<K>) => string
+  rowId?: (item: SyncedItem<K>) => string,
+  mirrorRemovals = false
 ): SyncedCollection<K> {
   return {
     stateKey,
@@ -73,6 +81,7 @@ function documentCollection<K extends keyof AppState>(
     fromRow: (row) => canonical(row.data) as SyncedItem<K>,
     ownTimestamp: (item) => (item as { updatedAt?: string }).updatedAt || createdAt(item),
     ...(rowId ? { rowId } : {}),
+    ...(mirrorRemovals ? { mirrorRemovals } : {}),
   };
 }
 
@@ -314,6 +323,8 @@ export const SYNCED_COLLECTIONS = [
   documentCollection('badHabitLogs', 'bad_habit_logs', byCreatedAt),
   // Weekly goals merge by week, not by document id, so the week is the row id.
   documentCollection('weeklyGoals', 'weekly_goals', byCreatedAt, (w) => w.weekKey),
+  // Points ledger (batch D): complete history; deterministic ids can be excised and re-awarded.
+  documentCollection('pointsHistory', 'point_entries', (e) => e.timestamp, undefined, true),
 ] as unknown as SyncedCollection[];
 
 /**

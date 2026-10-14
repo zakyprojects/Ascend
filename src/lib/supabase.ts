@@ -389,7 +389,8 @@ export async function saveUserDataToSupabase(
         // so other members can still rank this member in a season they have left.
         season_history: toSeasonHistory(finalState.leagueArchives),
         total_points: finalState.totalPoints || 0,
-        points_history: finalState.pointsHistory || [],
+        // Public mirror for profile views, kept at its old size: the full ledger lives in point_entries.
+        points_history: (finalState.pointsHistory || []).slice(0, 500),
         stats: userStats,
         active_habits: activeHabitsList,
       };

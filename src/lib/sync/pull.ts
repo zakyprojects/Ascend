@@ -87,6 +87,29 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
   return next;
 }
 
+/** The API returns at most PAGE_SIZE rows per request, so larger tables are read page by page. */
+const PAGE_SIZE = 1000;
+
+/** Every row of the user's table (changed since `since` when given); null when a read fails. */
+async function fetchRows(
+  table: string,
+  userId: string,
+  since: string | null
+): Promise<Array<Record<string, unknown>> | null> {
+  const rows: Array<Record<string, unknown>> = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    let query = supabase.from(table).select('*').eq('user_id', userId);
+    if (since) query = query.gt('server_updated_at', since);
+    const { data, error } = await query.order('id').range(from, from + PAGE_SIZE - 1);
+    if (error || !data) {
+      console.error(`[SYNC PULL] ${table} failed, keeping local data:`, error?.message);
+      return null;
+    }
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) return rows;
+  }
+}
+
 /**
  * full: every row (app boot), so the device converges even if a delta was missed.
  * Otherwise only rows changed since the last pull (reconnect, tab focus).
@@ -98,15 +121,9 @@ export async function pullSyncedRows(userId: string, full: boolean): Promise<Rem
   const perTable = await Promise.all(
     SYNCED_COLLECTIONS.map(async (collection) => {
       const cursor = localStorage.getItem(cursorKey(userId, collection.table));
-      let query = supabase.from(collection.table).select('*').eq('user_id', userId);
-      if (cursor && !full) {
-        query = query.gt('server_updated_at', new Date(Date.parse(cursor) - CURSOR_OVERLAP_MS).toISOString());
-      }
-      const { data: rows, error } = await query;
-      if (error || !rows) {
-        console.error(`[SYNC PULL] ${collection.table} failed, keeping local data:`, error?.message);
-        return [];
-      }
+      const since = cursor && !full ? new Date(Date.parse(cursor) - CURSOR_OVERLAP_MS).toISOString() : null;
+      const rows = await fetchRows(collection.table, userId, since);
+      if (!rows) return [];
 
       const changes = prepareRemoteRows(userId, collection, rows, full);
       const latest = rows.reduce<number>(

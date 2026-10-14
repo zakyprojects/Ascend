@@ -121,7 +121,7 @@ import {
   getAppStateSeasonPoints,
 } from './habitPenalties';
 import { archiveSeasonBeforeRollover, refreshPendingSeasonStandings, toSeasonHistory } from './seasonArchive';
-import { addPointsInternal, evictHistoryOverflow } from './pointsLedger';
+import { addPointsInternal } from './pointsLedger';
 export { addPointsInternal };
 import {
   PRESET_HABIT_POINTS,
@@ -626,7 +626,7 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
     seasonEvictedNeg = 0;
   }
 
-  // Season-scoped ledgers, uncapped (see evictHistoryOverflow): they reset at rollover.
+  // Season-scoped ledgers of what the retired 500-entry cap dropped; they reset at rollover.
   const evictedExcisionRecords = (st.evictedExcisionRecords ?? [])
     .filter((r) => r && r.seasonNumber === seasonId);
 
@@ -638,14 +638,10 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
       amount: typeof r.amount === 'number' ? r.amount : 0,
     }));
 
-  const {
-    keptHistory: pointsHistory,
-    seasonPosDrop,
-    seasonNegDrop,
-    evictedEntryIds,
-  } = evictHistoryOverflow(sortedHistory, activeSeasonStart, seasonId, loadedEvictedEntryIds);
-  seasonEvictedPos += seasonPosDrop;
-  seasonEvictedNeg += seasonNegDrop;
+  // Entries already counted in the evicted counters must not be counted again.
+  const evictedEntryIds = loadedEvictedEntryIds;
+  const evictedIdSet = new Set(evictedEntryIds.map((r) => r.id));
+  const pointsHistory = sortedHistory.filter((e) => !evictedIdSet.has(e.id));
 
   const currentHistorySum = pointsHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
 
@@ -1131,15 +1127,10 @@ export function excisePointsEntriesInternal(
   // Season-scoped, uncapped: a dropped excision record would silently re-add its points to the season.
   const keptExcisionRecords = currentEvictedExcisionRecords;
 
-  const {
-    keptHistory,
-    seasonPosDrop,
-    seasonNegDrop,
-    evictedEntryIds: keptEvictedEntryIds,
-  } = evictHistoryOverflow(keptAfterExcise, activeSeasonStart, seasonId, currentEvictedEntryIds);
-
-  const newSeasonEvictedPos = prevSeasonPos + seasonPosDrop;
-  const newSeasonEvictedNeg = prevSeasonNeg + seasonNegDrop;
+  const keptHistory = keptAfterExcise;
+  const keptEvictedEntryIds = currentEvictedEntryIds;
+  const newSeasonEvictedPos = prevSeasonPos;
+  const newSeasonEvictedNeg = prevSeasonNeg;
 
   const newSeasonPoints = calculateSeasonalTotal(
     newSeasonEvictedPos,

@@ -32,8 +32,15 @@ interface DeleteOp {
 
 type OutboxOp = UpsertOp | DeleteOp;
 type Outbox = Record<string, OutboxOp>;
-/** stateKey -> item id -> row hash, as last sent to or received from the server. */
+/**
+ * stateKey -> item id -> row hash, as last sent to or received from the server.
+ * DELETED marks a row this device knows is deleted, so bringing the id back is a
+ * local re-creation (a re-awarded points entry), not an old copy.
+ */
 type Baseline = Record<string, Record<string, string>>;
+const DELETED = '';
+/** A mirror collection never deletes more than this share of its rows in one diff. */
+const MASS_REMOVAL_MIN = 20;
 
 const outboxKey = (userId: string) => `ascend_outbox_${userId}`;
 const baselineKey = (userId: string) => `ascend_sync_baseline_${userId}`;
@@ -91,7 +98,8 @@ export function diffSyncedCollections(
       if (prev[id] === hash) continue;
 
       const key = opKey(collection.table, id);
-      if (nextOutbox[key]?.kind === 'delete') continue;
+      // A pending delete wins, except in a mirror collection, where re-adding is a re-award.
+      if (nextOutbox[key]?.kind === 'delete' && !collection.mirrorRemovals) continue;
       nextOutbox[key] = {
         kind: 'upsert',
         table: collection.table,
@@ -104,9 +112,24 @@ export function diffSyncedCollections(
       changed = true;
     }
 
+    const removed = Object.keys(prev).filter((id) => !(id in next) && prev[id] !== DELETED);
+    const mirrored = collection.mirrorRemovals ? removed.filter((id) => !tombstones.has(id)) : [];
+    const knownCount = Object.values(prev).filter((hash) => hash !== DELETED).length;
+    const massRemoval = mirrored.length > MASS_REMOVAL_MIN && mirrored.length > knownCount / 2;
+    if (massRemoval) {
+      console.error(`[SYNC OUTBOX] Refused to delete ${mirrored.length} ${collection.table} rows at once.`);
+    }
+
     for (const id of Object.keys(prev)) {
-      if (id in next || !tombstones.has(id)) continue;
+      if (id in next) continue;
+      if (prev[id] === DELETED) {
+        next[id] = DELETED;
+        continue;
+      }
+      const deletes = tombstones.has(id) || (collection.mirrorRemovals && !massRemoval);
+      if (!deletes) continue;
       nextOutbox[opKey(collection.table, id)] = { kind: 'delete', table: collection.table, id };
+      next[id] = DELETED;
       changed = true;
     }
 
@@ -159,10 +182,7 @@ export function knownHashes(userId: string, stateKey: string): Record<string, st
 export function acceptServerRows(userId: string, stateKey: string, hashes: Record<string, string | null>): void {
   const baseline = readJson<Baseline>(baselineKey(userId)) || {};
   const forKey = { ...(baseline[stateKey] || {}) };
-  for (const [id, hash] of Object.entries(hashes)) {
-    if (hash === null) delete forKey[id];
-    else forKey[id] = hash;
-  }
+  for (const [id, hash] of Object.entries(hashes)) forKey[id] = hash ?? DELETED;
   baseline[stateKey] = forKey;
   writeJson(baselineKey(userId), baseline);
 }
@@ -193,7 +213,9 @@ function settle(userId: string, sent: OutboxOp[]): void {
 }
 
 async function sendUpserts(userId: string, table: string, ops: UpsertOp[]): Promise<boolean> {
-  const toRow = (op: UpsertOp) => ({ ...op.row, user_id: userId, updated_at: op.updatedAt });
+  // deleted_at null: a points entry re-awarded after a delete comes back (point_entries
+  // allows newer revivals); the other tables ignore writes to deleted rows.
+  const toRow = (op: UpsertOp) => ({ ...op.row, user_id: userId, updated_at: op.updatedAt, deleted_at: null });
   const { error } = await supabase.from(table).upsert(ops.map(toRow), { onConflict: 'user_id,id' });
   if (!error) {
     settle(userId, ops);
