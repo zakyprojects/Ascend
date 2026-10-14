@@ -5,7 +5,7 @@ import { prefersReducedMotion } from './motion';
  *  then, so the theme switch (also a view transition) keeps animating the whole screen. */
 const PAGE_TRANSITION_CLASS = 'vt-page';
 
-/** Where the page area is its own box (index.css names it only from here). Below it the window
+/** From lg up the page area is its own scroll box and transitions alone. Below it the window
  *  scrolls, so a transition would freeze and crossfade the whole screen: phones change pages at once. */
 const PAGE_TRANSITION_QUERY = '(min-width: 1024px)';
 
