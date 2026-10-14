@@ -199,6 +199,7 @@ import {
   markNotificationReadSupabase,
   markAllNotificationsReadSupabase,
   clearNotificationSupabase,
+  storedAuthSession,
 } from './supabase';
 import { GuardBlockedError } from './errors';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult } from './stateMerger';
@@ -374,6 +375,8 @@ export function applyPresetHabitRemovalMigration(state: AppState, currentWeekKey
 }
 
 const GUEST_STORAGE_KEY = 'ascend_guest_state_v2';
+/** How long the boot loader waits on a saved sign-in before offering Retry (offline). */
+const STORED_SESSION_WAIT_MS = 8000;
 export const LOCAL_THEME_STORAGE_KEY = 'ascend_theme_preference';
 
 export function getLocalThemePreference(): 'dark' | 'light' | null {
@@ -1745,6 +1748,12 @@ export function useAppState() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   // True while a sign-in made after the initial check (login, sign-up, guest) loads the user's data.
   const [isSessionLoading, setIsSessionLoading] = useState(false);
+  // The initial check found no session while this device still holds a saved sign-in (a phone's
+  // network not ready yet): the boot loader stays up until Supabase signs it in or drops it, rather
+  // than flashing the sign-in page. 'failed' once that takes too long (offline).
+  const [storedSessionWait, setStoredSessionWait] = useState<'idle' | 'waiting' | 'failed'>('idle');
+  const storedSessionWaitRef = useRef(false);
+  const storedSessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHydrated = useRef(false);
   const canPersistLocally = useRef(false);
   const authGenerationRef = useRef(0);
@@ -2277,6 +2286,25 @@ export function useAppState() {
   useEffect(() => {
     let mounted = true;
 
+    /** Starts (or continues) waiting on a saved sign-in; false when the device holds none. */
+    const holdForStoredSession = (): boolean => {
+      if (storedSessionWaitRef.current) return true;
+      if (!storedAuthSession()) return false;
+      storedSessionWaitRef.current = true;
+      setStoredSessionWait('waiting');
+      storedSessionTimerRef.current = setTimeout(() => {
+        if (mounted) setStoredSessionWait('failed');
+      }, STORED_SESSION_WAIT_MS);
+      return true;
+    };
+    const endStoredSessionWait = () => {
+      if (!storedSessionWaitRef.current) return;
+      storedSessionWaitRef.current = false;
+      if (storedSessionTimerRef.current) clearTimeout(storedSessionTimerRef.current);
+      storedSessionTimerRef.current = null;
+      setStoredSessionWait('idle');
+    };
+
     async function initSupabaseData() {
       if (!isSupabaseConfigured) {
         if (mounted) setIsAuthChecking(false);
@@ -2293,13 +2321,13 @@ export function useAppState() {
         if (mounted) {
           setCachedProfiles(profiles);
           setCachedPublicPlans(publicPlans);
-          if (!sessionRes.data?.session) {
+          if (!sessionRes.data?.session && !holdForStoredSession()) {
             setIsAuthChecking(false);
           }
         }
       } catch (e) {
         console.error('Error loading Supabase data:', e);
-        if (mounted) setIsAuthChecking(false);
+        if (mounted && !holdForStoredSession()) setIsAuthChecking(false);
       }
     }
 
@@ -2316,6 +2344,7 @@ export function useAppState() {
         if (!mounted) return;
 
         if (event === 'SIGNED_OUT') {
+          endStoredSessionWait();
           const myGeneration = ++authGenerationRef.current;
 
           if (debounceTimer.current) {
@@ -2361,9 +2390,14 @@ export function useAppState() {
         }
 
         if (
-          (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') &&
+          (event === 'INITIAL_SESSION' ||
+            event === 'SIGNED_IN' ||
+            event === 'USER_UPDATED' ||
+            // A saved sign-in coming back by a token refresh (the auto-refresh tick) after the wait.
+            (event === 'TOKEN_REFRESHED' && storedSessionWaitRef.current)) &&
           session?.user
         ) {
+          endStoredSessionWait();
           if (event !== 'USER_UPDATED' && isHydrated.current && currentUserRef.current?.id === session.user.id) {
             setIsAuthChecking(false);
             return;
@@ -2522,6 +2556,8 @@ export function useAppState() {
             if (mounted && myGeneration === authGenerationRef.current) setIsSessionLoading(false);
             if (mounted) setIsAuthChecking(false);
           }
+        } else if (!session?.user && holdForStoredSession()) {
+          // No session yet, but a saved sign-in: keep the boot loader (see storedSessionWait).
         } else {
           if (mounted) setIsAuthChecking(false);
         }
@@ -2530,6 +2566,7 @@ export function useAppState() {
 
     return () => {
       mounted = false;
+      if (storedSessionTimerRef.current) clearTimeout(storedSessionTimerRef.current);
       authListener.subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -10644,6 +10681,7 @@ export function useAppState() {
     state,
     isAuthChecking,
     isSessionLoading,
+    storedSessionWait,
     setAuthSessionState,
     logout,
     addPresetHabit,

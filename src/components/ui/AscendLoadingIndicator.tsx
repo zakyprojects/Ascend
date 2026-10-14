@@ -176,6 +176,8 @@ export interface AscendLoadingOverlayProps {
   entrance?: 'boot' | 'fade';
   /** Fades the overlay out and lifts its content, revealing the app beneath. */
   exiting?: boolean;
+  /** Buttons for a wait that stopped (offline boot); they take the loading bar's place. */
+  actions?: React.ReactNode;
 }
 
 /** The growth line along the bottom of the overlay (growthTrace.ts; styles in index.html). */
@@ -214,6 +216,7 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
   submessage,
   entrance = 'fade',
   exiting = false,
+  actions,
 }) => {
   const [bootDelay] = React.useState(() => (entrance === 'boot' ? bootEntranceDelay() : '0ms'));
   const exitStyle = { animationDuration: `${OVERLAY_EXIT_MS}ms` };
@@ -264,7 +267,7 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
         </div>
 
         {/* Primary Message */}
-        <p className="text-sm font-semibold text-content-secondary mt-1 animate-pulse">
+        <p className={`text-sm font-semibold text-content-secondary mt-1 ${actions ? '' : 'animate-pulse'}`}>
           {message}
         </p>
 
@@ -275,7 +278,10 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
           </p>
         )}
 
-        {/* Animated loader bar */}
+        {actions ? (
+          <div className="mt-5 flex flex-col items-center gap-2">{actions}</div>
+        ) : (
+        /* Animated loader bar */
         <div className="w-36 h-1 bg-bg-700 rounded-full overflow-hidden mt-5 relative">
           <div
             className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary-500 to-emerald-400 w-1/2 rounded-full animate-pulse"
@@ -284,6 +290,7 @@ export const AscendLoadingOverlay: React.FC<AscendLoadingOverlayProps> = ({
             }}
           />
         </div>
+        )}
       </div>
 
       <style>{`

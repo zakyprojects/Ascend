@@ -2,9 +2,9 @@ import { Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentT
 import { useAppState } from '@/lib/store';
 import { useViewRoute } from '@/lib/useViewRoute';
 import { authPathWithNext, nextFromSearch, pathForAuthRoute, pathForView } from '@/lib/routes';
-import { consumeSignOutByUser } from '@/lib/auth';
+import { consumeSignOutByUser, logoutUser } from '@/lib/auth';
 import type { View } from '@/lib/views';
-import { isSupabaseConfigured } from '@/lib/supabase';
+import { isSupabaseConfigured, storedAuthSession } from '@/lib/supabase';
 import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
 import { AppShell } from '@/components/AppShell';
 import {
@@ -36,6 +36,7 @@ import { PageSkeleton } from '@/components/views/PageSkeleton';
 import type { AuthPageProps, AuthScreen } from '@/components/auth/AuthPage';
 import { loadedAuthPage, preloadAuthPage } from '@/components/auth/lazyAuthPage';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { Button } from '@/components/ui/primitives';
 import { AscendLoadingOverlay, OVERLAY_EXIT_MS } from '@/components/ui/AscendLoadingIndicator';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -139,13 +140,31 @@ function App() {
     return () => clearTimeout(timer);
   }, [loaderExiting]);
 
+  // The boot check is still waiting on this device's saved sign-in and the network is not answering:
+  // offer a fresh try (a reload starts a new attempt) or, for a real account, signing in afresh.
+  // A guest is never offered that: dropping its sign-in would lose the guest account.
+  const bootOffline = store.storedSessionWait === 'failed';
+  const offlineActions = bootOffline && (
+    <>
+      <Button onClick={() => window.location.reload()}>Retry</Button>
+      {!storedAuthSession()?.isAnonymous && (
+        <Button variant="ghost" size="sm" onClick={() => logoutUser({ scope: 'local' }).catch(() => undefined)}>
+          Sign in with another account
+        </Button>
+      )}
+    </>
+  );
+
   // Rendered beside the app (not instead of it), so it is not remounted when it starts exiting.
   const loaderOverlay = (showLoader || loaderExiting) && (
     <AscendLoadingOverlay
-      message={loaderKind === 'boot' ? 'Starting up...' : 'Loading your workspace...'}
-      submessage={loaderKind === 'boot' ? 'Checking your account' : 'Loading your data'}
+      message={bootOffline ? "Can't reach Ascend" : loaderKind === 'boot' ? 'Starting up...' : 'Loading your workspace...'}
+      submessage={
+        bootOffline ? "Check your connection. You're still signed in." : loaderKind === 'boot' ? 'Checking your account' : 'Loading your data'
+      }
       entrance={loaderKind === 'boot' ? 'boot' : 'fade'}
       exiting={!showLoader}
+      actions={offlineActions || undefined}
     />
   );
 

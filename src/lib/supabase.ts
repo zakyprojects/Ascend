@@ -50,6 +50,9 @@ if (!isSupabaseConfigured) {
   console.warn('Supabase URL or Anon Key is missing or invalid in environment variables. Operating in local state fallback mode.');
 }
 
+// supabase-js's own default key, named here so the app can read it (unchanged: nobody is signed out).
+const AUTH_STORAGE_KEY = `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`;
+
 export const supabase = createClient(
   supabaseUrl,
   supabaseAnonKey,
@@ -58,9 +61,27 @@ export const supabase = createClient(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      storageKey: AUTH_STORAGE_KEY,
     },
   }
 );
+
+/**
+ * The sign-in this device still holds (a refresh token), or null. Supabase reports no session
+ * when refreshing an expired one fails on the network (a phone waking up), yet keeps it saved and
+ * signs it in again moments later; a dead sign-in is removed from storage instead.
+ */
+export function storedAuthSession(): { isAnonymous: boolean } | null {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as { refresh_token?: unknown; user?: { is_anonymous?: unknown } } | null;
+    if (typeof saved?.refresh_token !== 'string' || !saved.refresh_token) return null;
+    return { isAnonymous: saved.user?.is_anonymous === true };
+  } catch {
+    return null;
+  }
+}
 
 // BroadcastChannel fallback for multi-tab real-time sync across registered users & guest sessions
 const BROADCAST_CHANNEL_NAME = 'ascend_realtime_sync_channel';
