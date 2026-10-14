@@ -75,3 +75,14 @@ export const SYNCED_COLLECTIONS: SyncedCollection[] = [
   decisionLogs as unknown as SyncedCollection,
   emotionLogs as unknown as SyncedCollection,
 ];
+
+/**
+ * The state as stored in the user_data blob (DB normalization S4): synced
+ * collections live only in their tables, so they are left out of the blob.
+ * Local caches keep the full state for offline cold boot.
+ */
+export function withoutSyncedCollections(state: AppState): AppState {
+  const blob: Partial<AppState> = { ...state };
+  for (const { stateKey } of SYNCED_COLLECTIONS) delete blob[stateKey];
+  return blob as AppState;
+}

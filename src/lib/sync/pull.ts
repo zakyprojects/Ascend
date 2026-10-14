@@ -15,16 +15,23 @@ export interface RemoteChange {
   id: string;
   /** null = the row is soft-deleted on the server. */
   item: { id: string } | null;
+  /** The baseline already holds this exact row: add it only if the state lacks it, never overwrite a local copy. */
+  missingOnly?: boolean;
 }
 
 /** Re-reads rows this close to the cursor, so a late-committing write is not skipped. */
 const CURSOR_OVERLAP_MS = 60_000;
 
-/** Server rows -> state changes. Rows the device already holds produce nothing. */
+/**
+ * Server rows -> state changes. Rows the device already holds produce nothing.
+ * full: rows the baseline already knows still come back as missingOnly, because the
+ * state can boot without them now that the blob no longer carries synced collections (S4).
+ */
 export function prepareRemoteRows(
   userId: string,
   collection: SyncedCollection,
-  rows: Array<Record<string, unknown>>
+  rows: Array<Record<string, unknown>>,
+  full = false
 ): RemoteChange[] {
   const pending = pendingOpIds(userId, collection.table);
   const known = knownHashes(userId, collection.stateKey);
@@ -41,7 +48,10 @@ export function prepareRemoteRows(
     }
     const item = collection.fromRow(row) as { id: string };
     const hash = hashRow(collection.toRow(item as never));
-    if (known[id] === hash) continue;
+    if (known[id] === hash) {
+      if (full) changes.push({ stateKey: collection.stateKey, id, item, missingOnly: true });
+      continue;
+    }
     hashes[id] = hash;
     changes.push({ stateKey: collection.stateKey, id, item });
   }
@@ -67,7 +77,7 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
         if (index !== -1) items = items.filter((item) => item.id !== change.id);
       } else if (!tombstones.has(change.id)) {
         if (index === -1) items = [change.item, ...items];
-        else items = items.map((item, i) => (i === index ? change.item! : item));
+        else if (!change.missingOnly) items = items.map((item, i) => (i === index ? change.item! : item));
       }
     }
     if (items !== current) next = { ...next, [stateKey]: items };
@@ -97,7 +107,7 @@ export async function pullSyncedRows(userId: string, full: boolean): Promise<Rem
       continue;
     }
 
-    changes.push(...prepareRemoteRows(userId, collection, rows));
+    changes.push(...prepareRemoteRows(userId, collection, rows, full));
     const latest = rows.reduce<number>(
       (max, row) => Math.max(max, Date.parse(String(row.server_updated_at)) || 0),
       cursor ? Date.parse(cursor) : 0

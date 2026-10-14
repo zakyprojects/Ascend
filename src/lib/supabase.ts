@@ -8,6 +8,7 @@ import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { todayKey } from './dates';
 import { GuardBlockedError, PreFetchSyncError } from './errors';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
+import { withoutSyncedCollections } from './sync/syncedCollections';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -316,11 +317,14 @@ export async function saveUserDataToSupabase(
     }
   }
 
+  // Collections with their own tables are not written to the blob (DB normalization S4).
+  const blobState = withoutSyncedCollections(finalState);
+
   try {
     // Execute user_data upsert and profiles upsert in parallel for maximum speed
     const userDataPromise = supabase.from('user_data').upsert({
       user_id: userId,
-      state: finalState,
+      state: blobState,
       updated_at: new Date().toISOString(),
     });
 
@@ -434,7 +438,7 @@ export async function saveUserDataToSupabase(
         await profilePromise;
         const { error: retryErr } = await supabase.from('user_data').upsert({
           user_id: userId,
-          state: finalState,
+          state: blobState,
           updated_at: new Date().toISOString(),
         });
         if (retryErr) {
