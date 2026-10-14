@@ -9,8 +9,9 @@ import { pageLinkProps } from '@/lib/pageLink';
 
 /** Slide-down time when the sheet closes (matches .zone-sheet-closing). */
 const CLOSE_MS = 260;
-/** A drag counts once it moves this far; it then never becomes a tap on a row. */
-const DRAG_SLOP = 6;
+/** A drag counts once it moves this far (about the platform touch slop, so a finger that shifts
+ *  slightly during a tap still taps); it then never becomes a tap on a row. */
+const DRAG_SLOP = 10;
 /** Released past this share of its height, or flicked down faster than this (px/ms), it closes. */
 const CLOSE_DISTANCE = 0.3;
 const CLOSE_VELOCITY = 0.5;
