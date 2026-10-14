@@ -170,6 +170,18 @@ export function clearUserDataWatermark(userId: string) {
   userHydrationCompleteMap.delete(userId);
 }
 
+/**
+ * State that describes one device, not the account: unsyncedEntityIds lists this
+ * device's edits awaiting a save. It stays in the local cache only; when it rode in
+ * the blob, every merge re-added the server's copy, so the list never emptied and
+ * kept triggering retry saves (on every device).
+ */
+function withoutDeviceLocalKeys(state: AppState): AppState {
+  if (!('unsyncedEntityIds' in state)) return state;
+  const { unsyncedEntityIds: _deviceLocal, ...rest } = state;
+  return rest as AppState;
+}
+
 export async function fetchUserDataWithStatusFromSupabase(userId: string): Promise<{
   state: AppState | null;
   exists: boolean;
@@ -190,7 +202,7 @@ export async function fetchUserDataWithStatusFromSupabase(userId: string): Promi
     if (!data || !data.state) {
       return { state: null, exists: false, error: null };
     }
-    return { state: data.state as AppState, exists: true, error: null };
+    return { state: withoutDeviceLocalKeys(data.state as AppState), exists: true, error: null };
   } catch (e) {
     console.error('Exception fetching user_data from Supabase:', e);
     return { state: null, exists: false, error: e };
@@ -319,8 +331,9 @@ export async function saveUserDataToSupabase(
   }
 
   // Collections with their own tables are not written to the blob (DB normalization S4),
-  // nor are keys no code reads any more (a merge with an older remote blob can carry them).
-  const blobState = withoutRetiredKeys(withoutSyncedCollections(finalState));
+  // nor are keys no code reads any more (a merge with an older remote blob can carry them),
+  // nor device-local state.
+  const blobState = withoutDeviceLocalKeys(withoutRetiredKeys(withoutSyncedCollections(finalState)));
 
   try {
     // Execute user_data upsert and profiles upsert in parallel for maximum speed
