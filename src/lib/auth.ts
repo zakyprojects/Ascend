@@ -4,6 +4,7 @@ import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory } fr
 import { leagueNow, getSeasonNumber } from './leagueTime';
 import { generateNumericUID, todayKey, parseDate } from './dates';
 import { getHighestUserStreak } from './habitPenalties';
+import { clearSyncStorage } from './sync/outbox';
 import {
   supabase,
   isSupabaseConfigured,
@@ -506,6 +507,7 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
   }
 
   clearUserDataWatermark(userId);
+  clearSyncStorage(userId);
   if (typeof window !== 'undefined') {
     try {
       localStorage.removeItem(`ascend_user_cache_${userId}`);

@@ -202,6 +202,7 @@ import {
   storedAuthSession,
 } from './supabase';
 import { GuardBlockedError } from './errors';
+import { flushOutbox, recordSyncedChanges } from './sync/outbox';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult } from './stateMerger';
 import { toUserMessage } from './userMessage';
 
@@ -1803,6 +1804,8 @@ export function useAppState() {
           try {
             await persistState(stateToPersist, options);
             lastKnownGoodStateRef.current = stateToPersist;
+            // Mirror what the blob accepted into the relational tables (DB normalization S2).
+            recordSyncedChanges(stateToPersist);
             callResolve();
           } catch (err) {
             callReject(err);
@@ -2027,6 +2030,8 @@ export function useAppState() {
     const onOnline = () => {
       // Force immediate sync upon network reconnection
       handleReconnectAndSync(true);
+      const onlineUserId = stateRef.current.currentUser?.id;
+      if (onlineUserId) void flushOutbox(onlineUserId);
     };
 
     const onVisibilityChange = () => {
@@ -2437,6 +2442,8 @@ export function useAppState() {
               isHydrated.current = true;
               canPersistLocally.current = true;
               const sanitizedState = sanitizeLoadedState(hydratedState, user);
+              // Send relational ops left over from an earlier session or an offline period.
+              void flushOutbox(userId);
               if (sanitizedState.themePreference) {
                 setLocalThemePreference(sanitizedState.themePreference);
                 if (typeof document !== 'undefined') {
