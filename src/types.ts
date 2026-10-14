@@ -98,6 +98,7 @@ export interface LeagueCompetitor {
   totalPoints: number; // overall lifetime points (tier is driven by season points)
   isUser?: boolean;
   isRealUser?: boolean;
+  /** Retired seed (filler) accounts; only old saved archives still carry it, and load drops them. */
   isSeed?: boolean;
   isProfilePublic?: boolean;
   stats?: UserStats;

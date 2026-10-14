@@ -70,7 +70,6 @@ import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLoca
 import { computeLinkedGoalProgress } from './linkedGoalMetrics';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { PresetHabit } from './presets';
-import { SEED_ACCOUNTS, calculateSeedAccountPoints } from './seedAccounts';
 import {
   getLeaguePeriodStart,
   getLeaguePeriodLabel,
@@ -604,10 +603,19 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   );
 
   let seasonId = typeof st.seasonId === 'number' ? st.seasonId : 1;
-  // Archives saved before standings were slimmed still carry other members' stats and habits.
+  // Archives saved before standings were slimmed still carry other members' stats and habits,
+  // and the retired seed (filler) accounts; drop those and re-rank the user without them.
   let leagueArchives: LeagueArchive[] = (st.leagueArchives || [])
     .filter((a) => !!a.id)
-    .map((a) => ({ ...a, competitors: (a.competitors || []).map(toArchivedCompetitor) }));
+    .map((a) => {
+      const competitors = a.competitors || [];
+      const realCompetitors = competitors.filter((c) => !c.isSeed);
+      return {
+        ...a,
+        competitors: realCompetitors.map(toArchivedCompetitor),
+        ...(realCompetitors.length !== competitors.length ? { userRank: getUserRank(realCompetitors) } : {}),
+      };
+    });
 
   // Check if loaded state belongs to an older season (Rollover Check).
   // Archive the closing season first.
@@ -8562,18 +8570,7 @@ export function useAppState() {
   const getPartnerProfileStats = useCallback(async (partnerUsername: string) => {
     if (!partnerUsername) return null;
     const profile = await fetchProfileByUsernameFromSupabase(partnerUsername);
-    if (!profile) {
-      const seed = SEED_ACCOUNTS.find((s) => s.username.toLowerCase() === partnerUsername.toLowerCase());
-      if (seed) {
-        return {
-          totalPoints: seed.totalPoints,
-          seasonPoints: calculateSeedAccountPoints(seed, 'ninetyDay'),
-          stats: seed.stats,
-          avatar: seed.avatar,
-        };
-      }
-      return null;
-    }
+    if (!profile) return null;
     const rawStats = profile.stats || {};
     const habitsCompletedCount = rawStats.habitsCompletedCount || 0;
     const habitsCompletedTodayCount = rawStats.habitsCompletedTodayCount || 0;
@@ -8893,7 +8890,7 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Multi-user & Seed Competitor League Helper
+  // Multi-user Competitor League Helper
   const getLeagueData = useCallback(
     (type: LeagueType) => {
       const now = leagueNow();
@@ -10567,7 +10564,7 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
 
     const prevPoints = calculatePeriodPoints(state.pointsHistory, periodStart, periodEnd, state.totalPoints);
     if (prevPoints > 0) {
-      const rawCompetitors = generateCompetitors(
+      const competitors = generateCompetitors(
         'weekly',
         prevPoints,
         state.currentUser,
@@ -10577,7 +10574,6 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
         undefined,
         weekRefDate
       );
-      const competitors = rawCompetitors.filter((c) => !c.isSeed);
       const userRank = getUserRank(competitors);
       const periodLabel = getLeaguePeriodLabel('weekly', weekRefDate);
       newArchives.push(createArchive('weekly', competitors, userRank, prevPoints, periodLabel, periodId));
@@ -10600,7 +10596,7 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
 
     const prevPoints = calculatePeriodPoints(state.pointsHistory, periodStart, periodEnd, state.totalPoints);
     if (prevPoints > 0) {
-      const rawCompetitors = generateCompetitors(
+      const competitors = generateCompetitors(
         'monthly',
         prevPoints,
         state.currentUser,
@@ -10610,7 +10606,6 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
         undefined,
         monthRefDate
       );
-      const competitors = rawCompetitors.filter((c) => !c.isSeed);
       const userRank = getUserRank(competitors);
       const periodLabel = getLeaguePeriodLabel('monthly', monthRefDate);
       newArchives.push(createArchive('monthly', competitors, userRank, prevPoints, periodLabel, periodId));

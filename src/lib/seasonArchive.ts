@@ -51,7 +51,7 @@ export function calculateClosedSeasonPoints(state: SeasonLedgerState, seasonNumb
   return calculateSeasonalTotal(seasonHistory, start);
 }
 
-/** Standings of a closed season: every real member's final score for it, seeds excluded. */
+/** Standings of a closed season: every member's final score for it. */
 function buildSeasonStandings(state: SeasonLedgerState, seasonNumber: number, userPoints: number): LeagueCompetitor[] {
   return generateCompetitors(
     'ninetyDay',
@@ -62,7 +62,7 @@ function buildSeasonStandings(state: SeasonLedgerState, seasonNumber: number, us
     undefined,
     undefined,
     getSeasonBounds(seasonNumber).start
-  ).filter((c) => !c.isSeed);
+  );
 }
 
 /** Builds the `S:<n>` archive, or null for a zero-point season (zero seasons are not archived). */

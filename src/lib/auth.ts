@@ -1,5 +1,4 @@
 import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, PartnerInvite, Partnership, SeasonHistoryEntry } from '@/types';
-import { SEED_ACCOUNTS, calculateSeedAccountPoints } from './seedAccounts';
 import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory } from './leagues';
 import { leagueNow, getSeasonNumber } from './leagueTime';
 import { generateNumericUID, todayKey, parseDate } from './dates';
@@ -101,12 +100,6 @@ export function getProfileSeasonPointsByUsername(
   if (!username) return 0;
   const lower = username.toLowerCase();
 
-  // Check seed accounts
-  const seed = SEED_ACCOUNTS.find((s) => s.username.toLowerCase() === lower);
-  if (seed) {
-    return calculateSeedAccountPoints(seed, type, now);
-  }
-
   // Check cached profiles
   const profile = cachedProfiles.find((p) => p.username?.toLowerCase() === lower);
   if (profile) {
@@ -117,7 +110,7 @@ export function getProfileSeasonPointsByUsername(
 }
 
 /**
- * Check if a username is available (case-insensitive check against seed accounts and Supabase profiles).
+ * Check if a username is available (case-insensitive check against Supabase profiles).
  */
 export async function isUsernameAvailable(
   username: string,
@@ -138,11 +131,6 @@ export async function isUsernameAvailable(
   }
 
   const lower = trimmed.toLowerCase();
-
-  const seedMatch = SEED_ACCOUNTS.some((s) => s.username.toLowerCase() === lower);
-  if (seedMatch) {
-    return { available: false, reason: 'This username is reserved' };
-  }
 
   if (isSupabaseConfigured) {
     try {
@@ -750,7 +738,6 @@ export function getRegisteredCompetitors(
       points: periodPoints,
       totalPoints: p.total_points || 0,
       isRealUser: true,
-      isSeed: false,
       isProfilePublic: p.is_profile_public ?? true,
       stats,
       activeHabits: p.active_habits || [],
@@ -834,19 +821,6 @@ export async function fetchProfileByUidFromSupabase(
       uid: cachedMatch.uid,
       accept_partner_invites: cachedMatch.accept_partner_invites ?? cachedMatch.acceptPartnerInvites ?? true,
       acceptPartnerInvites: cachedMatch.accept_partner_invites ?? cachedMatch.acceptPartnerInvites ?? true,
-    };
-  }
-
-  // Fallback 2: Search in seed accounts
-  const seedMatch = SEED_ACCOUNTS.find((s) => s.uid === trimmed);
-  if (seedMatch) {
-    return {
-      id: seedMatch.id,
-      username: seedMatch.username,
-      avatar: seedMatch.avatar,
-      uid: seedMatch.uid,
-      accept_partner_invites: true,
-      acceptPartnerInvites: true,
     };
   }
 

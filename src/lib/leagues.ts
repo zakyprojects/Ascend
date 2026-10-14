@@ -1,5 +1,4 @@
 import { LeagueType, LeagueCompetitor, LeagueArchive, PointsEntry, UserProfile, AppState } from '@/types';
-import { getSeedCompetitors } from './seedAccounts';
 import { getRegisteredCompetitors } from './auth';
 import {
   getWeekStart,
@@ -151,7 +150,7 @@ export function sanitizePointsHistory(pointsHistory: PointsEntry[]): PointsEntry
 }
 
 /**
- * Generate full leaderboard competitors including current user, registered real users, and seed accounts.
+ * Generate full leaderboard competitors: the current user and every other registered user.
  */
 export function generateCompetitors(
   type: LeagueType,
@@ -177,7 +176,6 @@ export function generateCompetitors(
     totalPoints: totalPoints,
     isUser: true,
     isRealUser: true,
-    isSeed: false,
     isProfilePublic: currentUser?.isProfilePublic ?? true,
     stats: userStats,
     activeHabits: activeHabits,
@@ -187,14 +185,11 @@ export function generateCompetitors(
   // 2. All other registered real users
   const otherRealCompetitors = getRegisteredCompetitors(type, currentUserId, now);
 
-  // 3. Seed accounts (realistic filler accounts)
-  const seedCompetitors = getSeedCompetitors(type, now);
 
   // Merge all competitors
   const allCompetitors: LeagueCompetitor[] = [
     activeUserCompetitor,
     ...otherRealCompetitors,
-    ...seedCompetitors,
   ];
 
   // Sort descending by period points, tie-break by name
