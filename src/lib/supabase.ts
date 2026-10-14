@@ -397,6 +397,8 @@ export async function saveUserDataToSupabase(
         points_history: (finalState.pointsHistory || []).slice(0, 500),
         stats: userStats,
         active_habits: activeHabitsList,
+        // Lets the hourly penalty job find this user's local midnight.
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
 
       if (finalState.currentUser.uid) {
@@ -423,6 +425,9 @@ export async function saveUserDataToSupabase(
         }
         if (profErr.message?.includes('uid')) {
           delete profilePayload.uid;
+        }
+        if (profErr.message?.includes('timezone')) {
+          delete profilePayload.timezone;
         }
         const { error: fallbackErr } = await supabase.from('profiles').upsert(profilePayload);
         profErr = fallbackErr;

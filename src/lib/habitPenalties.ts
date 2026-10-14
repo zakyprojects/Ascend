@@ -1,5 +1,5 @@
 import { AppState, Habit, BadHabitLog, ExerciseGoal, WorkoutLog } from '@/types';
-import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, uid, addDays, addWeeks, getNow } from './dates';
+import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, addDays, addWeeks, getNow } from './dates';
 import { createNotificationSupabase } from './supabase';
 import { getEffectiveSeasonPoints } from './leagues';
 import { applyPenaltyDeductionInternal, addPointsInternal } from './pointsLedger';
@@ -9,6 +9,13 @@ import { getPointEligibleHabitIds } from './badHabitEligibility';
 export { applyPenaltyDeductionInternal };
 
 export const MAX_RETROACTIVE_PENALTY_DAYS = 90;
+
+// Ids shared with the hourly server job (supabase/migrations/20261015000000_server_side_penalties.sql):
+// whichever side issues a penalty first, the other writes the same row and nothing doubles.
+const habitMissedEntryId = (habitId: string, period: string) => `habit_missed_${habitId}_${period}`;
+const noReportLogId = (badHabitId: string, date: string) => `no_report_${badHabitId}_${date}`;
+const noReportEntryId = (badHabitId: string, date: string) => `bad_habit_no_report_${badHabitId}_${date}`;
+const exerciseMissedEntryId = (week: string) => `exercise_missed_${week}`;
 const MAX_RETROACTIVE_PENALTY_WEEKS = 52;
 
 /**
@@ -373,7 +380,9 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
             habitName: habit.name,
             period: p,
             multiplier,
-          }
+          },
+          undefined,
+          habitMissedEntryId(habit.id, p)
         );
 
         updatedState = {
@@ -416,6 +425,8 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
 
   let newLogs = [...(updatedState.badHabitLogs || [])];
   let logsAdded = false;
+  // A no-report day the user deleted stays deleted (the server keeps that row deleted too).
+  const deletedIds = new Set(updatedState.deletedEntityIds || []);
 
   for (const habit of activeHabits) {
     const createdDate = parseDate(habit.createdAt) || now;
@@ -429,7 +440,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
       const key = todayKey(cursor);
 
       const existingLog = newLogs.find((l) => l.badHabitId === habit.id && l.date === key);
-      if (!existingLog) {
+      if (!existingLog && !deletedIds.has(noReportLogId(habit.id, key))) {
         const pastLogs = newLogs
           .filter((l) => l.badHabitId === habit.id && l.date < key)
           .sort((a, b) => b.date.localeCompare(a.date));
@@ -449,7 +460,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
         const penaltyAmount = isEligible ? Math.round(BAD_HABIT_POINTS.noReportBase * multiplier) : 0;
 
         const newLog: BadHabitLog = {
-          id: uid(),
+          id: noReportLogId(habit.id, key),
           badHabitId: habit.id,
           date: key,
           status: 'no_report',
@@ -489,7 +500,9 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
               badHabitName: habit.name,
               date: key,
               multiplier,
-            }
+            },
+            undefined,
+            noReportEntryId(habit.id, key)
           );
 
           updatedState = {
@@ -528,8 +541,12 @@ export function processExerciseTargetPenalties(state: AppState, now: Date = new 
 
   const target = state.exerciseGoal.targetWeeklySessions;
   let updatedState = state;
+  // The server job may already have issued this week's penalty.
+  const alreadyPenalized = (state.pointsHistory || []).some(
+    (e) => e && (e.id === exerciseMissedEntryId(lastWeekKey) || (e.source === 'exercise_missed' && e.metadata?.weekKey === lastWeekKey))
+  );
 
-  if (loggedInLastWeek < target) {
+  if (loggedInLastWeek < target && !alreadyPenalized) {
     const consecutiveMisses = getExerciseGoalConsecutiveMisses(state.exerciseGoal, state.workouts, now);
     const seasonPts = getAppStateSeasonPoints(state, now);
     const multiplier = getMissPenaltyMultiplier(consecutiveMisses, seasonPts);
@@ -564,7 +581,9 @@ export function processExerciseTargetPenalties(state: AppState, now: Date = new 
         logged: loggedInLastWeek,
         target,
         multiplier,
-      }
+      },
+      undefined,
+      exerciseMissedEntryId(lastWeekKey)
     );
 
     updatedState = {
