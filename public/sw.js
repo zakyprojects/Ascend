@@ -1,66 +1,63 @@
-const CACHE_NAME = 'ascend-pwa-cache-v1';
+// Pages: the app's HTML, kept under one key so any page opens offline.
+const PAGE_CACHE_NAME = 'ascend-pages-v1';
+const OFFLINE_PAGE_KEY = '/';
+// Static files from public/ (icons, manifest, fonts): one entry per file, network first.
+const STATIC_CACHE_NAME = 'ascend-static-v1';
+const STATIC_FILE = /\.(?:png|svg|ico|webp|jpg|jpeg|woff2|webmanifest)$|^\/manifest\.json$/;
 // Build files (/assets/*) carry a content hash in their name and never change, so they are served
 // from this cache first. It keeps the newest ASSET_CACHE_LIMIT files; older builds' files go.
 const ASSET_CACHE_NAME = 'ascend-assets-v1';
 const ASSET_CACHE_LIMIT = 200;
+const CURRENT_CACHES = [PAGE_CACHE_NAME, STATIC_CACHE_NAME, ASSET_CACHE_NAME];
 
 // Install event - skip waiting to activate immediately
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
-// Activate event - claim clients immediately to take control of open pages
+// Activate event - drop every other cache whole (the old 'ascend-pwa-cache-v1' kept every URL it
+// ever saw, version.json?t=… polls included, and grew too large to list), then take control.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME && cacheName !== ASSET_CACHE_NAME) {
-            return caches.delete(cacheName); // Clean up old caches
-          }
-        })
-      );
-    })
-      // Build files cached here before they had a cache of their own.
-      .then(() => caches.open(CACHE_NAME))
-      .then((cache) =>
-        cache.keys().then((keys) =>
-          Promise.all(keys.filter((key) => new URL(key.url).pathname.startsWith('/assets/')).map((key) => cache.delete(key)))
-        )
-      )
+    caches
+      .keys()
+      .then((names) => Promise.all(names.filter((name) => !CURRENT_CACHES.includes(name)).map((name) => caches.delete(name))))
+      .catch(() => undefined)
       .then(() => self.clients.claim())
   );
 });
 
-// Fetch event - Network first strategy to ensure we always get the latest Vercel deployment
 self.addEventListener('fetch', (event) => {
+  const { request } = event;
   // Only handle GET requests for our origin
-  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
-    return;
-  }
+  if (request.method !== 'GET' || !request.url.startsWith(self.location.origin)) return;
+  const url = new URL(request.url);
 
-  if (new URL(event.request.url).pathname.startsWith('/assets/')) {
-    event.respondWith(cacheFirstAsset(event.request));
-    return;
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(cacheFirstAsset(request));
+  } else if (request.mode === 'navigate') {
+    event.respondWith(networkFirst(request, PAGE_CACHE_NAME, OFFLINE_PAGE_KEY));
+  } else if (!url.search && STATIC_FILE.test(url.pathname)) {
+    event.respondWith(networkFirst(request, STATIC_CACHE_NAME, request));
   }
-
-  // Network First, fallback to cache
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Clone the response and save it to the cache for offline fallback
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-        return response;
-      })
-      .catch(() => {
-        // If network fails (offline), try to serve from cache
-        return caches.match(event.request);
-      })
-  );
+  // Anything else (version.json polls, dev-server modules) goes straight to the network, uncached.
 });
+
+// Network first, so a new deployment shows at once; the cached copy only when offline.
+async function networkFirst(request, cacheName, cacheKey) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const copy = response.clone();
+      caches.open(cacheName).then((cache) => cache.put(cacheKey, copy)).catch(() => undefined);
+    }
+    return response;
+  } catch (error) {
+    const cached = await caches.match(cacheKey);
+    if (cached) return cached;
+    throw error;
+  }
+}
 
 // Cache first for immutable build files: a page's code opens at once instead of waiting on the
 // network (a slow or waking phone connection can stall a request for seconds).
@@ -71,7 +68,7 @@ async function cacheFirstAsset(request) {
   const response = await fetch(request);
   if (response.ok) {
     await cache.put(request, response.clone());
-    trimAssetCache(cache);
+    trimAssetCache(cache).catch(() => undefined);
   }
   return response;
 }
