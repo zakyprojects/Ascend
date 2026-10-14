@@ -1,9 +1,11 @@
-import { AppState, LeagueArchive } from '@/types';
+import { AppState, LeagueArchive, LeagueCompetitor, SeasonHistoryEntry } from '@/types';
+import { areProfilesLoaded } from './auth';
 import {
   calculateSeasonalTotal,
   createArchive,
   generateCompetitors,
   getLeaguePeriodLabel,
+  getSeasonLabel,
   getUserRank,
 } from './leagues';
 import { EPOCH_UTC, SEASON_LENGTH_MS, getSeasonPeriodId } from './leagueTime';
@@ -66,13 +68,9 @@ export function calculateClosedSeasonPoints(state: SeasonLedgerState, seasonNumb
   return calculateSeasonalTotal(pos, neg, seasonHistory, start, excisionRecords, seasonNumber);
 }
 
-/** Builds the `S:<n>` archive, or null for a zero-point season (zero seasons are not archived). */
-export function buildSeasonArchive(state: SeasonLedgerState, seasonNumber: number): LeagueArchive | null {
-  const userPoints = calculateClosedSeasonPoints(state, seasonNumber);
-  if (userPoints <= 0) return null;
-
-  const seasonRefDate = getSeasonBounds(seasonNumber).start;
-  const competitors = generateCompetitors(
+/** Standings of a closed season: every real member's final score for it, seeds excluded. */
+function buildSeasonStandings(state: SeasonLedgerState, seasonNumber: number, userPoints: number): LeagueCompetitor[] {
+  return generateCompetitors(
     'ninetyDay',
     userPoints,
     state.currentUser,
@@ -80,8 +78,17 @@ export function buildSeasonArchive(state: SeasonLedgerState, seasonNumber: numbe
     state.totalPoints,
     undefined,
     undefined,
-    seasonRefDate
+    getSeasonBounds(seasonNumber).start
   ).filter((c) => !c.isSeed);
+}
+
+/** Builds the `S:<n>` archive, or null for a zero-point season (zero seasons are not archived). */
+export function buildSeasonArchive(state: SeasonLedgerState, seasonNumber: number): LeagueArchive | null {
+  const userPoints = calculateClosedSeasonPoints(state, seasonNumber);
+  if (userPoints <= 0) return null;
+
+  const seasonRefDate = getSeasonBounds(seasonNumber).start;
+  const competitors = buildSeasonStandings(state, seasonNumber, userPoints);
 
   const archive = createArchive(
     'ninetyDay',
@@ -94,7 +101,39 @@ export function buildSeasonArchive(state: SeasonLedgerState, seasonNumber: numbe
   archive.seasonNumber = seasonNumber;
   // Only a state that explicitly carries this season's counters yields a complete score.
   if (state.seasonId === seasonNumber) archive.scoreSource = 'ledger';
+  // Boot can close a season before other members' profiles arrive; standings are redone then.
+  if (!areProfilesLoaded()) archive.standingsPending = true;
   return archive;
+}
+
+/**
+ * Rebuilds the standings of season archives made before profiles had loaded.
+ * The user's own points are final and kept as they are. Returns the same array when nothing changed.
+ */
+export function refreshPendingSeasonStandings(state: SeasonLedgerState): LeagueArchive[] {
+  const archives = state.leagueArchives || [];
+  if (!areProfilesLoaded() || !archives.some((a) => a && a.standingsPending)) return archives;
+
+  return archives.map((archive) => {
+    if (!archive || !archive.standingsPending || typeof archive.seasonNumber !== 'number') return archive;
+    const competitors = buildSeasonStandings(state, archive.seasonNumber, archive.userPoints);
+    const { standingsPending: _pending, ...rest } = archive;
+    return { ...rest, competitors, userRank: getUserRank(competitors) };
+  });
+}
+
+/** The member's closed seasons as published on their profile, newest first. */
+export function toSeasonHistory(archives: LeagueArchive[] = []): SeasonHistoryEntry[] {
+  return archives
+    .filter((a) => a && a.type === 'ninetyDay' && typeof a.seasonNumber === 'number' && a.userPoints > 0)
+    .sort((a, b) => (b.seasonNumber as number) - (a.seasonNumber as number))
+    .map((a) => ({
+      seasonNumber: a.seasonNumber,
+      seasonName: getSeasonLabel(getSeasonBounds(a.seasonNumber as number).start),
+      points: a.userPoints,
+      // Last day of the season (UTC), stable however often the archive is rebuilt.
+      date: new Date(getSeasonBounds(a.seasonNumber as number).end.getTime() - 1).toISOString().slice(0, 10),
+    }));
 }
 
 /**

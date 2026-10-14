@@ -34,7 +34,7 @@ export interface UserProfile {
   /** ISO timestamp string of the last username change */
   lastUsernameChangeAt?: string;
   /** Past season history and trophy badges */
-  season_history?: Array<{ seasonName: string; points: number; date: string }>;
+  season_history?: SeasonHistoryEntry[];
 }
 
 export interface UserStats {
@@ -50,7 +50,7 @@ export interface UserStats {
   exerciseMinutes: number;
   booksRead: number;
   skillsPracticedCount: number;
-  season_history?: Array<{ seasonName: string; points: number; date: string }>;
+  season_history?: SeasonHistoryEntry[];
 }
 
 export interface Habit {
@@ -102,7 +102,7 @@ export interface LeagueCompetitor {
   isProfilePublic?: boolean;
   stats?: UserStats;
   activeHabits?: { name: string; category?: string; frequency: string; isPreset: boolean }[];
-  season_history?: Array<{ seasonName: string; points: number; date: string }>;
+  season_history?: SeasonHistoryEntry[];
 }
 
 export interface LeagueArchive {
@@ -118,6 +118,17 @@ export interface LeagueArchive {
   participantCount?: number;
   /** 'ledger': scored with the season's evicted counters (complete). Absent: scored from pointsHistory alone. */
   scoreSource?: 'ledger';
+  /** Season archive built before other members' profiles had loaded; its standings are rebuilt once they have. */
+  standingsPending?: boolean;
+}
+
+/** A closed season's final score, published on the member's profile (profiles.season_history). */
+export interface SeasonHistoryEntry {
+  /** Absent on entries written before seasons were numbered. */
+  seasonNumber?: number;
+  seasonName: string;
+  points: number;
+  date: string;
 }
 
 export interface Lesson {

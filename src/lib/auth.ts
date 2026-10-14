@@ -1,4 +1,4 @@
-import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, PartnerInvite, Partnership } from '@/types';
+import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, PartnerInvite, Partnership, SeasonHistoryEntry } from '@/types';
 import { SEED_ACCOUNTS, calculateSeedAccountPoints } from './seedAccounts';
 import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory } from './leagues';
 import { leagueNow, getSeasonNumber } from './leagueTime';
@@ -19,9 +19,17 @@ import {
 
 let cachedProfiles: any[] = [];
 let cachedPublicPlans: ImprovementPlan[] = [];
+let profilesLoaded = false;
 
 export function setCachedProfiles(profiles: any[]) {
   cachedProfiles = profiles;
+  // A failed fetch also yields []; a real list always holds at least the signed-in member.
+  profilesLoaded = profiles.length > 0;
+}
+
+/** Whether other members' profiles are available for league standings. */
+export function areProfilesLoaded(): boolean {
+  return profilesLoaded;
 }
 
 export function setCachedPublicPlans(plans: ImprovementPlan[]) {
@@ -75,8 +83,10 @@ export function computeCompetitorLeaguePoints(
       // Residual fallback for legacy profiles saved without season_points
       return calculatePeriodPoints(pointsHistory, start, now, profile.total_points);
     }
-    // Competitor has not been active in the current season cycle
-    return 0;
+    // Competitor's profile is in another season: use the final score they published for this one, if any.
+    const seasonHistory: SeasonHistoryEntry[] = profile.season_history || profile.stats?.season_history || [];
+    const closed = seasonHistory.find((e) => e && e.seasonNumber === activeSeason);
+    return closed && typeof closed.points === 'number' ? closed.points : 0;
   }
 
   return calculatePeriodPoints(pointsHistory, start, now, profile.total_points);

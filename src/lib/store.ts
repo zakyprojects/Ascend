@@ -120,7 +120,7 @@ import {
   getHighestUserStreak,
   getAppStateSeasonPoints,
 } from './habitPenalties';
-import { archiveSeasonBeforeRollover, buildSeasonArchive } from './seasonArchive';
+import { archiveSeasonBeforeRollover, refreshPendingSeasonStandings, toSeasonHistory } from './seasonArchive';
 import { addPointsInternal, evictHistoryOverflow } from './pointsLedger';
 export { addPointsInternal };
 import {
@@ -9168,6 +9168,8 @@ export function useAppState() {
         exerciseMinutes,
         booksRead,
         skillsPracticedCount,
+        // Own trophy cabinet: the same closed-season scores other members read from the profile.
+        season_history: toSeasonHistory(state.leagueArchives),
       };
 
       const activeHabitsList = state.habits.map((h) => ({
@@ -9209,6 +9211,7 @@ export function useAppState() {
       state.seasonEvictedNeg,
       state.evictedExcisionRecords,
       state.evictedEntryIds,
+      state.leagueArchives,
     ]
   );
 
@@ -10904,27 +10907,17 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
     monthRefDate = new Date(periodStart.getTime() - 1);
   }
 
-  // 3. NinetyDay (Season) catch-up loop
-  // Scored by the shared season-close maths: a season whose evicted counters this state still holds
-  // (state.seasonId === targetSeason) is archived in full, older ones from pointsHistory alone.
-  const currSeasonNum = getSeasonNumber(now);
-  let targetSeason = currSeasonNum - 1;
-  for (let step = 0; step < 12 && targetSeason >= 1; step++) {
-    const periodId = getSeasonPeriodId(new Date(EPOCH_UTC.getTime() + (targetSeason - 1) * SEASON_LENGTH_MS));
+  // 3. Season: closed from the full ledger while this state still holds the closing season's counters
+  // (every season with points passes through such a state), plus standings deferred until profiles loaded.
+  const seasonArchives = refreshPendingSeasonStandings({
+    ...state,
+    leagueArchives: archiveSeasonBeforeRollover(state, getSeasonNumber(now)),
+  });
+  const seasonChanged = seasonArchives !== state.leagueArchives;
 
-    if (state.leagueArchives.some((a) => a.id === periodId)) {
-      break;
-    }
+  if (newArchives.length === 0 && !seasonChanged) return state;
 
-    const archive = buildSeasonArchive(state, targetSeason);
-    if (archive) newArchives.push(archive);
-
-    targetSeason--;
-  }
-
-  if (newArchives.length === 0) return state;
-
-  const allArchives = [...newArchives, ...state.leagueArchives];
+  const allArchives = [...newArchives, ...seasonArchives];
   const finalArchives: LeagueArchive[] = [];
   const types: LeagueType[] = ['weekly', 'monthly', 'ninetyDay'];
 

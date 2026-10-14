@@ -373,6 +373,11 @@ function mergeBadHabitLogs(
   });
 }
 
+/** Ledger-scored beats history-only (the user's points); final standings beat pending ones. */
+function archiveCompleteness(archive: LeagueArchive): number {
+  return (archive.scoreSource === 'ledger' ? 2 : 0) + (archive.standingsPending ? 0 : 1);
+}
+
 function mergeLeagueArchives(
   baseList: LeagueArchive[] = [],
   incomingList: LeagueArchive[] = []
@@ -387,8 +392,8 @@ function mergeLeagueArchives(
   for (const item of incomingList) {
     if (!item || !item.id) continue;
     const existing = map.get(item.id);
-    // First come wins, except a complete (ledger-scored) season archive replaces a history-only one.
-    if (!existing || (item.scoreSource === 'ledger' && existing.scoreSource !== 'ledger')) {
+    // First come wins, unless the incoming archive is more complete (see archiveCompleteness).
+    if (!existing || archiveCompleteness(item) > archiveCompleteness(existing)) {
       map.set(item.id, item);
     }
   }

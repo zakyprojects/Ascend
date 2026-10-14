@@ -3,6 +3,7 @@ import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, Sha
 import { getHighestUserStreak } from './habitPenalties';
 import { calculateUnifiedStreak } from './streakLogic';
 import { mergeAppState } from './stateMerger';
+import { toSeasonHistory } from './seasonArchive';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { todayKey } from './dates';
 import { GuardBlockedError, PreFetchSyncError } from './errors';
@@ -359,6 +360,9 @@ export async function saveUserDataToSupabase(
         notif_league_updates: finalState.currentUser.notifLeagueUpdates ?? true,
         season_id: finalState.seasonId || 1,
         season_points: typeof finalState.seasonPoints === 'number' ? finalState.seasonPoints : (finalState.totalPoints || 0),
+        // Final scores of closed seasons, written in the same upsert that moves season_id on,
+        // so other members can still rank this member in a season they have left.
+        season_history: toSeasonHistory(finalState.leagueArchives),
         total_points: finalState.totalPoints || 0,
         points_history: finalState.pointsHistory || [],
         stats: userStats,
