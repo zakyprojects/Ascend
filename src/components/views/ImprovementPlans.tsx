@@ -463,14 +463,13 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       .subscribe();
 
     // 3. Tab-to-tab syncBroadcaster listener for local multi-tab sync
-    const unsubscribeBroadcast = syncBroadcaster.subscribe((event: any, payload?: any) => {
+    const unsubscribeBroadcast = syncBroadcaster.subscribe((event, payload) => {
       if (!mounted) return;
-      const eventObj = typeof event === 'object' && event !== null ? event : payload;
-      if (eventObj?.type === 'PLAN_DELETED' && eventObj.data?.planId) {
-        const deletedId = eventObj.data.planId;
+      if (event === 'PLAN_DELETED' && payload?.planId) {
+        const deletedId = payload.planId;
         setRemotePublicPlans((prev) => prev.filter((p) => p.id !== deletedId));
-      } else if (eventObj?.type === 'PLAN_UPDATED' && eventObj.data) {
-        const updated = eventObj.data;
+      } else if (event === 'PLAN_UPDATED' && payload) {
+        const updated = payload;
         if (updated.id) {
           setRemotePublicPlans((prev) => {
             if (updated.isPublic === false) {

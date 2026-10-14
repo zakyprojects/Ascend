@@ -2576,7 +2576,14 @@ export function useAppState() {
   // Real-time synchronization listener for cross-tab / multi-user updates
   useEffect(() => {
     const unsubscribe = syncBroadcaster.subscribe((event, payload) => {
+      // A plan deleted in another tab leaves this tab's public-plan cache and plan list too.
+      if (event === 'PLAN_DELETED') removeCachedPublicPlan(payload.planId);
       setState((prev) => {
+        if (event === 'PLAN_DELETED') {
+          if (!prev.improvementPlans.some((p) => p.id === payload.planId)) return prev;
+          return { ...prev, improvementPlans: prev.improvementPlans.filter((p) => p.id !== payload.planId) };
+        }
+
         if (event === 'PLAN_CREATED' || event === 'PLAN_UPDATED') {
           // The channel is shared by every tab in the browser, whichever account it is signed in to.
           // Payloads can be partial ({ id, copyCount }), so they merge into a plan this tab already has,
