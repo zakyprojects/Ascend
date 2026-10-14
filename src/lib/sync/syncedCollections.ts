@@ -259,20 +259,39 @@ export const SYNCED_COLLECTIONS: SyncedCollection[] = [
 ];
 
 /**
- * The state as stored in the user_data blob (DB normalization S4): synced
- * collections live only in their tables, so they are left out of the blob.
- * Local caches keep the full state for offline cold boot.
+ * Social keys that boot hydration always reloads from their own tables
+ * (authSession: invites, partnerships, challenges, notifications). The blob
+ * copy was only a stale mirror, so it is no longer stored (batch B1).
+ */
+const TABLE_OWNED_KEYS = [
+  'partnerInvites',
+  'partnership',
+  'partnerships',
+  'sharedChallenges',
+  'notifications',
+] as const satisfies readonly (keyof AppState)[];
+
+/** Every state key whose source of truth is a table rather than the blob. */
+const TABLE_BACKED_KEYS: (keyof AppState)[] = [
+  ...SYNCED_COLLECTIONS.map((c) => c.stateKey),
+  ...TABLE_OWNED_KEYS,
+];
+
+/**
+ * The state as stored in the user_data blob (DB normalization S4): keys
+ * backed by tables are left out of it. Local caches keep the full state for
+ * offline cold boot.
  */
 export function withoutSyncedCollections(state: AppState): AppState {
   const blob: Partial<AppState> = { ...state };
-  for (const { stateKey } of SYNCED_COLLECTIONS) delete blob[stateKey];
+  for (const key of TABLE_BACKED_KEYS) delete blob[key];
   return blob as AppState;
 }
 
 /**
- * Synced collections from this device's last saved state. The blob no longer
- * carries them, so an online boot starts from these instead of empty lists
- * until the table pull lands; the pull then reconciles them.
+ * Table-backed keys from this device's last saved state. The blob no longer
+ * carries them, so a boot starts from these instead of empty values until the
+ * table reads land; those reads then reconcile them.
  */
 export function cachedSyncedCollections(userId: string): Partial<AppState> {
   try {
@@ -280,8 +299,8 @@ export function cachedSyncedCollections(userId: string): Partial<AppState> {
     const cached = raw ? (JSON.parse(raw) as Partial<AppState>) : null;
     if (!cached || typeof cached !== 'object') return {};
     const picked: Partial<AppState> = {};
-    for (const { stateKey } of SYNCED_COLLECTIONS) {
-      if (Array.isArray(cached[stateKey])) Object.assign(picked, { [stateKey]: cached[stateKey] });
+    for (const key of TABLE_BACKED_KEYS) {
+      if (key in cached) Object.assign(picked, { [key]: cached[key] });
     }
     return picked;
   } catch {
