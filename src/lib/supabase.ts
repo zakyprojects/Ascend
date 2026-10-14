@@ -9,6 +9,7 @@ import { todayKey } from './dates';
 import { GuardBlockedError, PreFetchSyncError } from './errors';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 import { withoutSyncedCollections } from './sync/syncedCollections';
+import { withoutRetiredKeys } from './retiredStateKeys';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -317,8 +318,9 @@ export async function saveUserDataToSupabase(
     }
   }
 
-  // Collections with their own tables are not written to the blob (DB normalization S4).
-  const blobState = withoutSyncedCollections(finalState);
+  // Collections with their own tables are not written to the blob (DB normalization S4),
+  // nor are keys no code reads any more (a merge with an older remote blob can carry them).
+  const blobState = withoutRetiredKeys(withoutSyncedCollections(finalState));
 
   try {
     // Execute user_data upsert and profiles upsert in parallel for maximum speed

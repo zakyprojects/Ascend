@@ -211,6 +211,21 @@ export function getUserRank(competitors: LeagueCompetitor[]): number {
   return index >= 0 ? index + 1 : competitors.length;
 }
 
+/**
+ * The fields an archived standing keeps: final standings only. A live competitor also
+ * carries that member's stats, habits and season history, which an archive never shows
+ * and must not copy into this user's data.
+ */
+const ARCHIVED_COMPETITOR_FIELDS = ['id', 'uid', 'name', 'avatar', 'points', 'totalPoints', 'isUser', 'isRealUser'] as const;
+
+export function toArchivedCompetitor(competitor: LeagueCompetitor): LeagueCompetitor {
+  const archived: Partial<LeagueCompetitor> = {};
+  for (const field of ARCHIVED_COMPETITOR_FIELDS) {
+    if (competitor[field] !== undefined) Object.assign(archived, { [field]: competitor[field] });
+  }
+  return archived as LeagueCompetitor;
+}
+
 export function createArchive(
   type: LeagueType,
   competitors: LeagueCompetitor[],
@@ -223,7 +238,7 @@ export function createArchive(
     id,
     type,
     periodLabel,
-    competitors,
+    competitors: competitors.map(toArchivedCompetitor),
     userRank,
     userPoints,
     archivedAt: new Date().toISOString(),

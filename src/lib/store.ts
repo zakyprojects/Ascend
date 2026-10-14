@@ -81,7 +81,9 @@ import {
   generateCompetitors,
   getUserRank,
   createArchive,
+  toArchivedCompetitor,
 } from './leagues';
+import { withoutRetiredKeys } from './retiredStateKeys';
 import {
   leagueNow,
   getSeasonNumber,
@@ -471,7 +473,8 @@ export function groupWeeklyGoalEntriesByWeekKey(
   return { weeklyGoalsMap, otherHistory };
 }
 
-export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile | null): AppState {
+export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProfile | null): AppState {
+  const st = withoutRetiredKeys(loaded);
   // Weekly Review Points Consolidation Migration (Idempotent)
   const rawHistory = st.pointsHistory ?? [];
   const weeklyReviewMap = new Map<string, PointsEntry[]>();
@@ -605,7 +608,10 @@ export function sanitizeLoadedState(st: Partial<AppState>, profile: UserProfile 
   let seasonId = typeof st.seasonId === 'number' ? st.seasonId : 1;
   let seasonEvictedPos = typeof st.seasonEvictedPos === 'number' && st.seasonEvictedPos >= 0 ? st.seasonEvictedPos : 0;
   let seasonEvictedNeg = typeof st.seasonEvictedNeg === 'number' && st.seasonEvictedNeg >= 0 ? st.seasonEvictedNeg : 0;
-  let leagueArchives: LeagueArchive[] = (st.leagueArchives || []).filter((a) => !!a.id);
+  // Archives saved before standings were slimmed still carry other members' stats and habits.
+  let leagueArchives: LeagueArchive[] = (st.leagueArchives || [])
+    .filter((a) => !!a.id)
+    .map((a) => ({ ...a, competitors: (a.competitors || []).map(toArchivedCompetitor) }));
 
   // Check if loaded state belongs to an older season (Rollover Check).
   // Archive the closing season first: its evicted counters are reset just below.

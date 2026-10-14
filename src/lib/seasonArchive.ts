@@ -7,6 +7,7 @@ import {
   getLeaguePeriodLabel,
   getSeasonLabel,
   getUserRank,
+  toArchivedCompetitor,
 } from './leagues';
 import { EPOCH_UTC, SEASON_LENGTH_MS, getSeasonPeriodId } from './leagueTime';
 
@@ -118,7 +119,7 @@ export function refreshPendingSeasonStandings(state: SeasonLedgerState): LeagueA
     if (!archive || !archive.standingsPending || typeof archive.seasonNumber !== 'number') return archive;
     const competitors = buildSeasonStandings(state, archive.seasonNumber, archive.userPoints);
     const { standingsPending: _pending, ...rest } = archive;
-    return { ...rest, competitors, userRank: getUserRank(competitors) };
+    return { ...rest, competitors: competitors.map(toArchivedCompetitor), userRank: getUserRank(competitors) };
   });
 }
 
