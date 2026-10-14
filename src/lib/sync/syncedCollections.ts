@@ -317,9 +317,9 @@ export const SYNCED_COLLECTIONS = [
 ] as unknown as SyncedCollection[];
 
 /**
- * Social keys that boot hydration always reloads from their own tables
- * (authSession: invites, partnerships, challenges, notifications). The blob
- * copy was only a stale mirror, so it is no longer stored (batch B1).
+ * Keys that boot hydration always reloads from their own tables (authSession:
+ * invites, partnerships, challenges, notifications, plans). The blob copy was
+ * only a mirror, so it is no longer stored (batches B1, B2).
  */
 const TABLE_OWNED_KEYS = [
   'partnerInvites',
@@ -327,6 +327,10 @@ const TABLE_OWNED_KEYS = [
   'partnerships',
   'sharedChallenges',
   'notifications',
+  // Plans keep their own direct table writes; hydration merges this device's
+  // copies (pending/failed plans, higher streaks) into the rows (batch B2).
+  'improvementPlans',
+  'followedPlans',
 ] as const satisfies readonly (keyof AppState)[];
 
 /** Every state key whose source of truth is a table rather than the blob. */

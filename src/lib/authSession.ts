@@ -358,11 +358,13 @@ export async function hydrateUserSession(
     state.notifications = fetchedNotifs.filter((n) => !tombstoneSet.has(n.id));
 
     const { data: dbPlans, error: dbPlansErr } = dbPlansResult;
+    // This device's copies (the blob no longer stores plans): offline edits,
+    // unconfirmed plans and higher streaks are merged into the table rows.
+    const localPlans = state.improvementPlans || [];
+    const localFollows = state.followedPlans || [];
 
     const savedPlansMap = new Map<string, any>();
-    if (savedState?.improvementPlans) {
-      savedState.improvementPlans.forEach((p: any) => savedPlansMap.set(p.id, p));
-    }
+    localPlans.forEach((p: any) => savedPlansMap.set(p.id, p));
 
     if (dbPlans && !dbPlansErr) {
       const dbPlanIds = new Set(dbPlans.map((r) => r.id));
@@ -417,47 +419,26 @@ export async function hydrateUserSession(
         return merged;
       });
 
-      // Preserve unconfirmed plans from savedState (syncStatus === 'pending' | 'failed') that are not yet in dbPlans
-      if (savedState?.improvementPlans) {
-        const unconfirmedPlans = savedState.improvementPlans.filter((p: any) => {
-          if (dbPlanIds.has(p.id)) return false;
-          const status = p.syncStatus || 'synced';
-          return status === 'pending' || status === 'failed';
-        });
-        if (unconfirmedPlans.length > 0) {
-          state.improvementPlans = [...state.improvementPlans, ...unconfirmedPlans];
-        }
+      // Preserve unconfirmed local plans (syncStatus === 'pending' | 'failed') that are not yet in dbPlans
+      const unconfirmedPlans = localPlans.filter((p: any) => {
+        if (dbPlanIds.has(p.id)) return false;
+        const status = p.syncStatus || 'synced';
+        return status === 'pending' || status === 'failed';
+      });
+      if (unconfirmedPlans.length > 0) {
+        state.improvementPlans = [...state.improvementPlans, ...unconfirmedPlans];
       }
-
-      // CLEANUP STALE DELETED PLANS IN USER_DATA
-      // Only prune plans that are missing from dbPlanIds AND are marked 'synced' (or undefined for backward compatibility).
-      // Plans with syncStatus 'pending' or 'failed' are not yet confirmed in DB and must never be pruned.
-      if (savedState?.improvementPlans) {
-        const cleanedPlans = savedState.improvementPlans.filter((p: any) => {
-          if (dbPlanIds.has(p.id)) return true;
-          const status = p.syncStatus || 'synced';
-          return status !== 'synced';
-        });
-        if (cleanedPlans.length !== savedState.improvementPlans.length) {
-          console.log('[HYDRATION CLEANUP] Cleaning deleted plans out of user_data');
-          saveUserDataToSupabase(userId, { ...savedState, improvementPlans: cleanedPlans }).catch((err) => {
-            console.error('[HYDRATION CLEANUP] Failed to save cleaned plans to user_data:', err);
-          });
-        }
-      }
-    } else if (savedState?.improvementPlans && savedState.improvementPlans.length > 0) {
-      state.improvementPlans = savedState.improvementPlans;
+    } else if (localPlans.length > 0) {
+      state.improvementPlans = localPlans;
     } else {
       state.improvementPlans = [];
     }
 
-    // SINGLE SOURCE OF TRUTH FOR FOLLOWED PLANS: user_plan_follows table + savedState fallback
+    // SINGLE SOURCE OF TRUTH FOR FOLLOWED PLANS: user_plan_follows table + this device's copies
     const { data: dbFollows, error: dbFollowsErr } = dbFollowsResult;
 
     const savedFollowsMap = new Map<string, any>();
-    if (savedState?.followedPlans) {
-      savedState.followedPlans.forEach((f: any) => savedFollowsMap.set(f.id, f));
-    }
+    localFollows.forEach((f: any) => savedFollowsMap.set(f.id, f));
 
     if (dbFollows && !dbFollowsErr) {
       const dbFollowIds = new Set(dbFollows.map((r) => r.id));
@@ -505,19 +486,8 @@ export async function hydrateUserSession(
 
         return merged;
       });
-
-      // CLEANUP STALE DELETED FOLLOWED PLANS IN USER_DATA
-      if (savedState?.followedPlans) {
-        const cleanedFollows = savedState.followedPlans.filter((f: any) => dbFollowIds.has(f.id));
-        if (cleanedFollows.length !== savedState.followedPlans.length) {
-          console.log('[HYDRATION CLEANUP] Cleaning deleted followed plans out of user_data');
-          saveUserDataToSupabase(userId, { ...savedState, followedPlans: cleanedFollows }).catch((err) => {
-            console.error('[HYDRATION CLEANUP] Failed to save cleaned followed plans to user_data:', err);
-          });
-        }
-      }
-    } else if (savedState?.followedPlans && savedState.followedPlans.length > 0) {
-      state.followedPlans = savedState.followedPlans;
+    } else if (localFollows.length > 0) {
+      state.followedPlans = localFollows;
     } else {
       state.followedPlans = [];
     }
