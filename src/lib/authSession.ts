@@ -4,6 +4,7 @@ import { generateNumericUID, parseDate, getNow, weekKey } from './dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { computeStateDataWeight } from './dataWeight';
 import { cachedSyncedCollections } from './sync/syncedCollections';
+import { applyRemoteChanges, pullSyncedRows } from './sync/pull';
 import { applyPresetHabitRemovalMigration } from './store';
 import {
   fetchUserDataWithStatusFromSupabase,
@@ -167,9 +168,15 @@ export async function hydrateUserSession(
   signupDefaults?: SignUpDefaults
 ): Promise<{ user: UserProfile; state: AppState }> {
   // Fetch profile and saved user_data in parallel
-  const [profileRes, userDataRes] = await Promise.all([
+  const [profileRes, userDataRes, tableChanges] = await Promise.all([
     fetchProfileForUser(userId),
     fetchUserDataWithStatusFromSupabase(userId),
+    // Table-backed modules are read before boot finishes, so points and streak
+    // reconciliation never runs on a state that is missing them.
+    pullSyncedRows(userId, true).catch((err) => {
+      console.error('[HYDRATION] Table read failed, using device cache:', err);
+      return [];
+    }),
   ]);
   const profileData = profileRes.data;
 
@@ -236,6 +243,7 @@ export async function hydrateUserSession(
       currentUser: user,
       username: user.username,
     };
+    state = applyRemoteChanges(state, tableChanges);
     state = applyPresetHabitRemovalMigration(state, weekKey(getNow()));
     setUserDataWatermark(userId, state);
   } else if (signupDefaults?.guestState) {

@@ -1,7 +1,7 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 import type { AppState } from '../../types';
 import { supabase } from '../supabase';
-import { SYNCED_COLLECTIONS } from './syncedCollections';
+import { SYNCED_COLLECTIONS, rowIdOf } from './syncedCollections';
 
 /**
  * Relational sync outbox (DB normalization, S2 dual-write).
@@ -83,7 +83,7 @@ export function diffSyncedCollections(
     const items = (state[collection.stateKey] as Array<{ id?: string }> | undefined) || [];
 
     for (const item of items) {
-      const id = item?.id;
+      const id = item ? rowIdOf(collection, item) : '';
       if (!id || tombstones.has(id)) continue;
       const row = collection.toRow(item as never);
       const hash = hashRow(row);

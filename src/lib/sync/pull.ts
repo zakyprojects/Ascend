@@ -1,7 +1,7 @@
 import type { AppState } from '../../types';
 import { supabase } from '../supabase';
 import { acceptServerRows, cursorKey, hashRow, knownHashes, pendingOpIds } from './outbox';
-import { SYNCED_COLLECTIONS, type SyncedCollection } from './syncedCollections';
+import { SYNCED_COLLECTIONS, rowIdOf, type SyncedCollection } from './syncedCollections';
 
 /**
  * Relational sync, read side (DB normalization S3). Server rows are MERGED into
@@ -65,16 +65,17 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
   const tombstones = new Set(prev.deletedEntityIds || []);
   let next = prev;
 
-  for (const { stateKey } of SYNCED_COLLECTIONS) {
+  for (const collection of SYNCED_COLLECTIONS) {
+    const { stateKey } = collection;
     const forKey = changes.filter((c) => c.stateKey === stateKey);
     if (forKey.length === 0) continue;
 
     const current = (prev[stateKey] as Array<{ id: string }> | undefined) || [];
     let items = current;
     for (const change of forKey) {
-      const index = items.findIndex((item) => item.id === change.id);
+      const index = items.findIndex((item) => rowIdOf(collection, item) === change.id);
       if (change.item === null) {
-        if (index !== -1) items = items.filter((item) => item.id !== change.id);
+        if (index !== -1) items = items.filter((_, i) => i !== index);
       } else if (!tombstones.has(change.id)) {
         if (index === -1) items = [change.item, ...items];
         else if (!change.missingOnly) items = items.map((item, i) => (i === index ? change.item! : item));
@@ -94,25 +95,28 @@ export async function pullSyncedRows(userId: string, full: boolean): Promise<Rem
   const { data } = await supabase.auth.getSession();
   if (data.session?.user.id !== userId) return [];
 
-  const changes: RemoteChange[] = [];
-  for (const collection of SYNCED_COLLECTIONS) {
-    const cursor = localStorage.getItem(cursorKey(userId, collection.table));
-    let query = supabase.from(collection.table).select('*').eq('user_id', userId);
-    if (cursor && !full) {
-      query = query.gt('server_updated_at', new Date(Date.parse(cursor) - CURSOR_OVERLAP_MS).toISOString());
-    }
-    const { data: rows, error } = await query;
-    if (error || !rows) {
-      console.error(`[SYNC PULL] ${collection.table} failed, keeping local data:`, error?.message);
-      continue;
-    }
+  const perTable = await Promise.all(
+    SYNCED_COLLECTIONS.map(async (collection) => {
+      const cursor = localStorage.getItem(cursorKey(userId, collection.table));
+      let query = supabase.from(collection.table).select('*').eq('user_id', userId);
+      if (cursor && !full) {
+        query = query.gt('server_updated_at', new Date(Date.parse(cursor) - CURSOR_OVERLAP_MS).toISOString());
+      }
+      const { data: rows, error } = await query;
+      if (error || !rows) {
+        console.error(`[SYNC PULL] ${collection.table} failed, keeping local data:`, error?.message);
+        return [];
+      }
 
-    changes.push(...prepareRemoteRows(userId, collection, rows, full));
-    const latest = rows.reduce<number>(
-      (max, row) => Math.max(max, Date.parse(String(row.server_updated_at)) || 0),
-      cursor ? Date.parse(cursor) : 0
-    );
-    if (latest > 0) localStorage.setItem(cursorKey(userId, collection.table), new Date(latest).toISOString());
-  }
+      const changes = prepareRemoteRows(userId, collection, rows, full);
+      const latest = rows.reduce<number>(
+        (max, row) => Math.max(max, Date.parse(String(row.server_updated_at)) || 0),
+        cursor ? Date.parse(cursor) : 0
+      );
+      if (latest > 0) localStorage.setItem(cursorKey(userId, collection.table), new Date(latest).toISOString());
+      return changes;
+    })
+  );
+  const changes = perTable.flat();
   return changes;
 }

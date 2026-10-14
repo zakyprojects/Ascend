@@ -2478,8 +2478,8 @@ export function useAppState() {
               isHydrated.current = true;
               canPersistLocally.current = true;
               const sanitizedState = sanitizeLoadedState(hydratedState, user);
-              // Send relational ops left over from an earlier session, then read every row.
-              void syncTables(userId, true);
+              // Send relational ops left over from an earlier session; hydration already read every row.
+              void syncTables(userId, false);
               if (sanitizedState.themePreference) {
                 setLocalThemePreference(sanitizedState.themePreference);
                 if (typeof document !== 'undefined') {
@@ -3571,10 +3571,13 @@ export function useAppState() {
           };
 
           const updatedUnsynced = Array.from(new Set([...(prev.unsyncedEntityIds || []), habit.id])).slice(-500);
+          const replacedIds = prev.habits.filter((h) => h.name.toLowerCase() === 'reading (books)').map((h) => h.id);
           return {
             ...prev,
             habits: [...prev.habits.filter((h) => h.name.toLowerCase() !== 'reading (books)'), habit],
             unsyncedEntityIds: updatedUnsynced,
+            // Tombstoned so the habits table soft-deletes them instead of serving them back.
+            deletedEntityIds: [...(prev.deletedEntityIds || []), ...replacedIds].slice(-500),
           };
         }
       },

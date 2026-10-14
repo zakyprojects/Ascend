@@ -24,12 +24,60 @@ export interface SyncedCollection<K extends keyof AppState = keyof AppState> {
   fromRow: (row: Record<string, unknown>) => SyncedItem<K>;
   /** Timestamp used as updated_at when an item is uploaded without a local edit. */
   ownTimestamp: (item: SyncedItem<K>) => string;
+  /** Row id for an item when it is not item.id (weekly goals are one row per week). */
+  rowId?: (item: SyncedItem<K>) => string;
 }
+
+/** The table row id of a state item. */
+export const rowIdOf = (collection: SyncedCollection, item: { id?: string }): string =>
+  collection.rowId ? collection.rowId(item as never) : item.id || '';
 
 /** Postgres timestamptz text back to the client's ISO form (2026-10-14T08:51:38.705Z). */
 const isoTime = (value: unknown): string => new Date(String(value)).toISOString();
 
 type SyncedItem<K extends keyof AppState> = NonNullable<AppState[K]> extends Array<infer T> ? T : never;
+
+/**
+ * Key-sorted copy without undefined values. jsonb does not keep key order, so
+ * document rows hash on this form to stay equal after a server round trip.
+ */
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value === null || typeof value !== 'object') return value;
+  const sorted: Record<string, unknown> = {};
+  for (const key of Object.keys(value).sort()) {
+    const field = (value as Record<string, unknown>)[key];
+    if (field !== undefined) sorted[key] = canonical(field);
+  }
+  return sorted;
+}
+
+/**
+ * A collection stored as one jsonb document per item (batch C): modules with
+ * nested or legacy-heavy items, kept whole so nothing is lost in a mapping.
+ */
+function documentCollection<K extends keyof AppState>(
+  stateKey: K,
+  table: string,
+  createdAt: (item: SyncedItem<K>) => string,
+  rowId?: (item: SyncedItem<K>) => string
+): SyncedCollection<K> {
+  return {
+    stateKey,
+    table,
+    toRow: (item) => ({
+      id: rowId ? rowId(item) : (item as { id: string }).id,
+      data: canonical(item),
+      created_at: createdAt(item),
+    }),
+    fromRow: (row) => canonical(row.data) as SyncedItem<K>,
+    ownTimestamp: (item) => (item as { updatedAt?: string }).updatedAt || createdAt(item),
+    ...(rowId ? { rowId } : {}),
+  };
+}
+
+type Created = { createdAt: string };
+const byCreatedAt = (item: Created) => item.createdAt;
 
 const decisionLogs: SyncedCollection<'decisionLogs'> = {
   stateKey: 'decisionLogs',
@@ -247,7 +295,7 @@ const tasks: SyncedCollection<'tasks'> = {
   ownTimestamp: (t) => t.createdAt,
 };
 
-export const SYNCED_COLLECTIONS: SyncedCollection[] = [
+export const SYNCED_COLLECTIONS = [
   decisionLogs as unknown as SyncedCollection,
   emotionLogs as unknown as SyncedCollection,
   cravingLogs as unknown as SyncedCollection,
@@ -256,7 +304,17 @@ export const SYNCED_COLLECTIONS: SyncedCollection[] = [
   goals as unknown as SyncedCollection,
   projects as unknown as SyncedCollection,
   tasks as unknown as SyncedCollection,
-];
+  documentCollection('habits', 'habits', byCreatedAt),
+  documentCollection('workouts', 'workouts', byCreatedAt),
+  documentCollection('libraryBooks', 'reading_books', (b) => b.addedAt),
+  documentCollection('readingLogs', 'reading_logs', byCreatedAt),
+  documentCollection('skills', 'skills', byCreatedAt),
+  documentCollection('skillLogs', 'skill_logs', byCreatedAt),
+  documentCollection('badHabits', 'bad_habits', byCreatedAt),
+  documentCollection('badHabitLogs', 'bad_habit_logs', byCreatedAt),
+  // Weekly goals merge by week, not by document id, so the week is the row id.
+  documentCollection('weeklyGoals', 'weekly_goals', byCreatedAt, (w) => w.weekKey),
+] as unknown as SyncedCollection[];
 
 /**
  * Social keys that boot hydration always reloads from their own tables
