@@ -30,7 +30,7 @@ interface LeaguesProps {
 
 export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const [activeLeague, setActiveLeague] = useState<LeagueType>('weekly');
-  const [showArchive, setShowArchive] = useState<LeagueType | null>(null);
+  const [openArchiveId, setOpenArchiveId] = useState<string | null>(null);
   const [selectedCompetitor, setSelectedCompetitor] = useState<LeagueCompetitor | null>(null);
   // Period labels re-render on rollover; the per-second countdown ticks inside LeagueCountdown.
   useLeaguePeriodRollover();
@@ -40,6 +40,8 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const config = LEAGUE_CONFIG[activeLeague];
   const periodLabel = getLeaguePeriodLabel(activeLeague, now);
   const archives = store.state.leagueArchives.filter((a) => a.type === activeLeague);
+  // Looked up live so a sync that removes the archive closes the dialog instead of leaving it empty.
+  const openArchive = openArchiveId ? store.state.leagueArchives.find((a) => a.id === openArchiveId) ?? null : null;
   // Tiers come from season points on every tab; weekly/monthly points only rank the table.
   const seasonPointsById = new Map(
     store.getLeagueData('ninetyDay').competitors.map((c) => [c.id, c.points] as const)
@@ -223,10 +225,10 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
                 Past standings
               </h2>
               <div className="card divide-y divide-overlay-subtle overflow-hidden">
-                {archives.map((archive, idx) => (
+                {archives.map((archive) => (
                   <button
-                    key={idx}
-                    onClick={() => setShowArchive(archive.type)}
+                    key={archive.id}
+                    onClick={() => setOpenArchiveId(archive.id ?? null)}
                     className="p-4 hover:bg-overlay-subtle transition-colors w-full flex items-center gap-3 text-left"
                   >
                     <div
@@ -252,16 +254,13 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
 
       {/* Archive detail modal */}
       <Dialog
-        open={!!showArchive}
-        onClose={() => setShowArchive(null)}
-        title={showArchive ? `${LEAGUE_CONFIG[showArchive].name}: final standings` : ''}
+        open={!!openArchive}
+        onClose={() => setOpenArchiveId(null)}
+        title={openArchive ? `${LEAGUE_CONFIG[openArchive.type].name}: final standings` : ''}
         maxWidth="max-w-lg"
       >
-        {showArchive && (() => {
-          const archive = store.state.leagueArchives.find(
-            (a) => a.type === showArchive && a.periodLabel === archives.find((ar) => ar.type === showArchive)?.periodLabel
-          );
-          if (!archive) return null;
+        {openArchive && (() => {
+          const archive = openArchive;
           return (
             <div>
               <p className="text-sm text-content-disabled mb-4">{archive.periodLabel}</p>
