@@ -2,13 +2,12 @@ import type { AppState } from '@/types';
 
 /**
  * State that describes one device, not the account, kept in the local cache only.
- * unsyncedEntityIds lists this device's edits awaiting a save: in the blob, every
- * merge re-added the server's copy, so it never emptied. deletedEntityIds and
- * restoredEntityIds tell this device's sync which rows to delete or revive; other
- * devices learn a delete from the row itself (deleted_at in the synced tables, the
- * row gone from the social tables), so the blob no longer carries them (batch H).
+ * deletedEntityIds and restoredEntityIds tell this device's sync which rows to delete
+ * or revive; other devices learn a delete from the row itself (deleted_at in the synced
+ * tables, the row gone from the social tables), so the blob no longer carries them
+ * (batch H).
  */
-const DEVICE_LOCAL_KEYS = ['unsyncedEntityIds', 'deletedEntityIds', 'restoredEntityIds'] as const;
+const DEVICE_LOCAL_KEYS = ['deletedEntityIds', 'restoredEntityIds'] as const;
 
 /** The state without device-local keys: what the blob stores and what is read back from it. */
 export function withoutDeviceLocalKeys(state: AppState): AppState {
