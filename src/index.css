@@ -1439,6 +1439,34 @@ html.vt-page::view-transition-group(nav-pill) {
   }
 }
 
+/* Page change still loading its page (AppShell, pendingView): a thin bar along the top edge, so a
+   tap on a slow phone visibly answers. It eases towards the end and never claims to finish. */
+.page-progress {
+  position: fixed;
+  inset-inline: 0;
+  top: env(safe-area-inset-top);
+  z-index: var(--z-toast);
+  height: 2px;
+  pointer-events: none;
+  transform-origin: left;
+  @apply bg-primary-500;
+  animation: page-progress 1.6s var(--ease-standard) both;
+}
+@keyframes page-progress {
+  from {
+    transform: scaleX(0.08);
+  }
+  to {
+    transform: scaleX(0.9);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-progress {
+    animation: none;
+    transform: scaleX(0.5);
+  }
+}
+
 /* Sign-in pages (auth/AuthPage.tsx). Desktop split: switching sign in <-> sign up glides the climb
    panel to the other side (its slope clip-path morphs on the way) while the form column crosses the
    other way. Only at lg+; below it the panel is a band and nothing moves sideways. */

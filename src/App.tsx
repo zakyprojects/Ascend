@@ -46,7 +46,7 @@ import { UpdateBanner } from '@/components/ui/UpdateBanner';
 function App() {
   const store = useAppState();
   // Page changes wait for the page's code first, so the view transition never shows a fallback.
-  const { view, auth, search, navigationKind, navigate: setView, goToPath } = useViewRoute(preloadView);
+  const { view, pendingView, auth, search, navigationKind, navigate: setView, goToPath } = useViewRoute(preloadView);
 
   // The last ordinary page: a bug report or idea starts out about it ("Which page?").
   const [feedbackFromView, setFeedbackFromView] = useState<View>(view);
@@ -188,6 +188,7 @@ function App() {
             <AppShell
               currentView={view}
               navigationKind={navigationKind}
+              pendingView={pendingView}
               onViewChange={setView}
               store={store}
               onOpenAuth={openAuth}

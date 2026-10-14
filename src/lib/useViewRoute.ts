@@ -26,8 +26,12 @@ import { confirmLeave, hasUnsavedChanges } from './unsavedChanges';
 /** 'push' = the user opened a page; 'pop' = browser back/forward (restore its scroll). */
 export type NavigationKind = 'push' | 'pop';
 
-/** Longest a page change waits for the page's code before showing its loading skeleton instead. */
-const PREPARE_TIMEOUT_MS = 1500;
+/** Longest a page change waits for the page's code before showing its loading skeleton instead.
+ *  Kept short: nothing on screen changes while it waits, so a long wait reads as a dead tap. */
+const PREPARE_TIMEOUT_MS = 300;
+/** A page change still waiting after this long is reported as pending (nav highlight + progress
+ *  bar). A ready page shows before it, so its view transition still glides the nav pill. */
+const PENDING_FEEDBACK_MS = 100;
 
 /** Waits for `prepare(view)` (the page's code), at most PREPARE_TIMEOUT_MS; never rejects. */
 function whenPrepared(prepare: ((view: View) => Promise<unknown>) | undefined, view: View): Promise<void> {
@@ -90,6 +94,14 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
   const targetRef = useRef(route.view);
   const prepareRef = useRef(prepare);
   prepareRef.current = prepare;
+  // The page asked for while its code is still loading, once that takes noticeably long.
+  const [pendingView, setPendingView] = useState<View | null>(null);
+  const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearPending = useCallback(() => {
+    if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
+    pendingTimerRef.current = null;
+    setPendingView(null);
+  }, []);
 
   /** Shows what the address bar names now, at once (sign-in pages and moves to or from them). */
   const syncToLocation = useCallback((kind: NavigationKind) => {
@@ -98,26 +110,44 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
     targetRef.current = target.view;
     viewRef.current = target.view;
     authRef.current = target.auth;
+    clearPending();
     setRoute({ ...target, kind, search: window.location.search });
-  }, []);
+  }, [clearPending]);
 
   const show = useCallback((view: View, kind: NavigationKind, beforeShow?: () => void) => {
     // Claimed now: the page shows a moment later, and a repeat request must not run it twice.
     if (view === targetRef.current) return;
     targetRef.current = view;
+    clearPending();
+    if (view !== viewRef.current) {
+      pendingTimerRef.current = setTimeout(() => {
+        pendingTimerRef.current = null;
+        if (targetRef.current === view) setPendingView(view);
+      }, PENDING_FEEDBACK_MS);
+    }
     whenPrepared(prepareRef.current, view).then(() => {
       if (targetRef.current !== view || view === viewRef.current) return; // superseded while loading
       beforeShow?.();
       viewRef.current = view;
-      runPageTransition(() => setRoute({ view, auth: null, kind, search: window.location.search }));
+      runPageTransition(() => {
+        clearPending();
+        setRoute({ view, auth: null, kind, search: window.location.search });
+      });
     });
-  }, []);
+  }, [clearPending]);
 
   // A layout effect, so a redirect App makes in its own layout effect (declared later) sees the
   // canonical address and is not undone by this.
   useLayoutEffect(() => {
     canonicalizeUrl({ view: viewRef.current, auth: authRef.current });
   }, []);
+
+  useEffect(
+    () => () => {
+      if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
+    },
+    []
+  );
 
   useEffect(() => {
     // The app restores each page's scroll itself (AppShell); the browser's guess would fight it.
@@ -172,6 +202,8 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
 
   return {
     view: route.view,
+    /** The page a slow page change is heading to (its code still loading), else null. */
+    pendingView,
     auth: route.auth,
     search: route.search,
     navigationKind: route.kind,

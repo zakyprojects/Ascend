@@ -55,13 +55,15 @@ interface AppShellProps {
   currentView: View;
   /** How the current view was reached: back/forward restores its scroll, a new visit starts at the top. */
   navigationKind: NavigationKind;
+  /** A page change still loading its page: the nav already highlights it and a progress bar runs. */
+  pendingView?: View | null;
   onViewChange: (view: View) => void;
   store: AppStore;
   onOpenAuth: () => void;
   children: ReactNode;
 }
 
-export function AppShell({ currentView, navigationKind, onViewChange, store, onOpenAuth, children }: AppShellProps) {
+export function AppShell({ currentView, navigationKind, pendingView = null, onViewChange, store, onOpenAuth, children }: AppShellProps) {
   const [zoneSheetOpen, setZoneSheetOpen] = useState(false);
   const closeZoneSheet = useCallback(() => setZoneSheetOpen(false), []);
   const [quickLogOpen, setQuickLogOpen] = useState(false);
@@ -74,6 +76,8 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
 
   const [lastByGroup, setLastByGroup] = useState(DEFAULT_GROUP_VIEWS);
   const activeGroupId = getGroupForView(currentView);
+  // What the nav marks as current: the page a tap is heading to, so the tap answers at once.
+  const navView = pendingView ?? currentView;
   useEffect(() => { if (activeGroupId) setLastByGroup(prev => prev[activeGroupId] === currentView ? prev : { ...prev, [activeGroupId]: currentView }); }, [currentView, activeGroupId]);
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
   // Derived once per data change (and at most once a minute for their time-of-day parts), not on
@@ -225,11 +229,12 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
   return (
     <div className="relative isolate min-h-screen lg:h-dvh bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div aria-hidden="true" className="app-atmosphere" />
+      {pendingView && <div aria-hidden="true" className="page-progress" />}
       {/* Desktop navigation: one column with every page, or its icon rail (nav/Sidebar). */}
       <aside className="relative z-sticky hidden lg:flex h-full glass border-r border-overlay-subtle shrink-0">
         <Sidebar
-          currentView={currentView}
-          activeGroup={activeGroupId}
+          currentView={navView}
+          activeGroup={getGroupForView(navView)}
           statuses={navStatuses}
           partnerBadge={pendingIncomingInvitesCount}
           collapsed={sidebarCollapsed}
@@ -308,7 +313,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
                       : undefined,
                   status: navStatuses[i.id]?.tone,
                 }))}
-                value={currentView}
+                value={navView}
                 onChange={(id) => goTo(id as View)}
                 variant="underline"
                 size="sm"
@@ -329,8 +334,8 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
 
         {/* Mobile navigation: floating zone bar; the zone on screen opens its sheet. */}
         <MobileZoneBar
-          onDashboard={currentView === NAV_DASHBOARD.id}
-          activeZone={activeGroupId}
+          onDashboard={navView === NAV_DASHBOARD.id}
+          activeZone={getGroupForView(navView)}
           playBadge={pendingIncomingInvitesCount}
           sheetOpen={zoneSheetOpen}
           zoneViews={lastByGroup}
@@ -340,7 +345,7 @@ export function AppShell({ currentView, navigationKind, onViewChange, store, onO
         <ZoneSheet
           open={zoneSheetOpen}
           group={activeGroup}
-          currentView={currentView}
+          currentView={navView}
           statuses={navStatuses}
           partnerBadge={pendingIncomingInvitesCount}
           onNavigate={goTo}
