@@ -1,6 +1,6 @@
 import type { AppState } from '../../types';
 import { supabase } from '../supabase';
-import { acceptServerRows, cursorKey, hashRow, knownHashes, pendingOpIds } from './outbox';
+import { DELETED, acceptServerRows, cursorKey, hashRow, knownHashes, pendingOpIds } from './outbox';
 import { SYNCED_COLLECTIONS, rowIdOf, type SyncedCollection } from './syncedCollections';
 
 /**
@@ -42,6 +42,9 @@ export function prepareRemoteRows(
     const id = typeof row.id === 'string' ? row.id : '';
     if (!id || pending.has(id)) continue;
     if (row.deleted_at) {
+      // A delete this device already applied: a local copy is a re-award not yet
+      // saved (the diff runs after the debounced save) and must not be removed.
+      if (collection.mirrorRemovals && known[id] === DELETED) continue;
       hashes[id] = null;
       changes.push({ stateKey: collection.stateKey, id, item: null });
       continue;

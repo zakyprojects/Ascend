@@ -38,7 +38,7 @@ type Outbox = Record<string, OutboxOp>;
  * local re-creation (a re-awarded points entry), not an old copy.
  */
 type Baseline = Record<string, Record<string, string>>;
-const DELETED = '';
+export const DELETED = '';
 /** A mirror collection never deletes more than this share of its rows in one diff. */
 const MASS_REMOVAL_MIN = 20;
 
