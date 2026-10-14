@@ -4,6 +4,7 @@ import { generateNumericUID, parseDate, getNow, weekKey } from './dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { computeStateDataWeight } from './dataWeight';
 import { cachedSyncedCollections } from './sync/syncedCollections';
+import { cachedDeviceLocalState } from './deviceLocalState';
 import { applyRemoteChanges, pullSyncedRows } from './sync/pull';
 import { applyPresetHabitRemovalMigration } from './store';
 import {
@@ -240,6 +241,8 @@ export async function hydrateUserSession(
       // Collections that live in their own tables are not in the blob (DB normalization S4).
       ...cachedSyncedCollections(userId),
       ...savedState,
+      // Tombstones and pending ids stay on this device (batch H); the blob no longer has them.
+      ...cachedDeviceLocalState(userId),
       currentUser: user,
       username: user.username,
     };

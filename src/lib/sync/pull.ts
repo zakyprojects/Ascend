@@ -67,6 +67,7 @@ export function prepareRemoteRows(
 /** Pure: returns prev itself when nothing changes, so no save is triggered. */
 export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): AppState {
   const tombstones = new Set(prev.deletedEntityIds || []);
+  const revived = new Set<string>();
   let next = prev;
 
   for (const collection of SYNCED_COLLECTIONS) {
@@ -81,7 +82,11 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
       const index = items.findIndex((item) => rowIdOf(collection, item) === change.id);
       if (change.item === null) {
         if (index !== -1) items = items.filter((_, i) => i !== index);
-      } else if (!tombstones.has(change.id)) {
+      } else if (!tombstones.has(change.id) || collection.revivable) {
+        // A revivable table only keeps a row alive over a delete when the revival is newer
+        // (and a delete still in the outbox never gets here), so another device's re-award or
+        // restore wins over this device's tombstone. Tombstones no longer sync between devices.
+        if (tombstones.has(change.id)) revived.add(change.id);
         if (index === -1) items = [change.item, ...items];
         else if (!change.missingOnly) items = items.map((item, i) => (i === index ? change.item! : item));
       }
@@ -89,6 +94,9 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
     if (items !== current) next = withItems(collection, next, items);
   }
 
+  if (revived.size > 0) {
+    next = { ...next, deletedEntityIds: (next.deletedEntityIds || []).filter((id) => !revived.has(id)) };
+  }
   return next;
 }
 

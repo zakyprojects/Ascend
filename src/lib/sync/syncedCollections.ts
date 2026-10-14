@@ -1,4 +1,5 @@
 import type {
+  AddictionTracker,
   AppState,
   CravingLog,
   DecisionLog,
@@ -443,6 +444,35 @@ const timeTrackerDays = timeTrackerCollection<TimeTrackerDay>(
   false
 );
 
+/**
+ * The sobriety tracker (batch H): one object in the state, one row per tracker id.
+ * A device holds at most one tracker; should two live rows meet (one created on each
+ * device before either synced), the newest is shown and the other row stays put.
+ */
+const addictionTracker: SyncedCollection<'addictionTracker'> = {
+  stateKey: 'addictionTracker',
+  table: 'addiction_trackers',
+  toRow: (item) => {
+    const tracker = item as unknown as AddictionTracker;
+    return { id: tracker.id, data: canonical(tracker), created_at: trackerCreatedAt(tracker) };
+  },
+  fromRow: (row) => canonical(row.data) as never,
+  ownTimestamp: (item) => trackerCreatedAt(item as unknown as AddictionTracker),
+  read: (state) => (state.addictionTracker?.id ? [state.addictionTracker] : []) as never,
+  write: (state, items) => {
+    const trackers = items as unknown as AddictionTracker[];
+    const newest = trackers.reduce<AddictionTracker | null>(
+      (best, t) => (!best || trackerCreatedAt(t) > trackerCreatedAt(best) ? t : best),
+      null
+    );
+    return { ...state, addictionTracker: newest };
+  },
+};
+
+function trackerCreatedAt(tracker: AddictionTracker): string {
+  return validIso(tracker.createdAt) ?? validIso(tracker.startDate) ?? EPOCH;
+}
+
 export const SYNCED_COLLECTIONS = [
   decisionLogs as unknown as SyncedCollection,
   emotionLogs as unknown as SyncedCollection,
@@ -472,6 +502,7 @@ export const SYNCED_COLLECTIONS = [
   // newest without a tombstone, so removals mirror; period ids are deterministic, so a
   // re-created archive revives its row.
   { ...documentCollection('leagueArchives', 'league_archives', (a) => a.archivedAt, undefined, true), revivable: true },
+  addictionTracker as unknown as SyncedCollection,
 ] as unknown as SyncedCollection[];
 
 /**

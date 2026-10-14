@@ -10,6 +10,7 @@ import { GuardBlockedError, PreFetchSyncError } from './errors';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 import { withoutSyncedCollections } from './sync/syncedCollections';
 import { withoutRetiredKeys } from './retiredStateKeys';
+import { withoutDeviceLocalKeys } from './deviceLocalState';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -168,18 +169,6 @@ export function getUserDataWatermark(userId: string): UserDataWeight | undefined
 export function clearUserDataWatermark(userId: string) {
   userWatermarkMap.delete(userId);
   userHydrationCompleteMap.delete(userId);
-}
-
-/**
- * State that describes one device, not the account: unsyncedEntityIds lists this
- * device's edits awaiting a save. It stays in the local cache only; when it rode in
- * the blob, every merge re-added the server's copy, so the list never emptied and
- * kept triggering retry saves (on every device).
- */
-function withoutDeviceLocalKeys(state: AppState): AppState {
-  if (!('unsyncedEntityIds' in state)) return state;
-  const { unsyncedEntityIds: _deviceLocal, ...rest } = state;
-  return rest as AppState;
 }
 
 export async function fetchUserDataWithStatusFromSupabase(userId: string): Promise<{
@@ -1693,11 +1682,9 @@ export async function markAllNotificationsReadSupabase(recipientId: string) {
   }
 }
 
+/** Throws when the row could not be deleted, so the caller can put the notification back. */
 export async function clearNotificationSupabase(notificationId: string) {
   if (!isSupabaseConfigured || !notificationId) return;
-  try {
-    await supabase.from('notifications').delete().eq('id', notificationId);
-  } catch (e) {
-    console.warn('clearNotificationSupabase skipped:', e);
-  }
+  const { error } = await supabase.from('notifications').delete().eq('id', notificationId);
+  if (error) throw new Error(error.message || "Couldn't clear the notification.");
 }

@@ -9208,7 +9208,7 @@ export function useAppState() {
   }, [state.currentUser?.id]);
 
   const clearNotification = useCallback((notificationId: string) => {
-    clearNotificationSupabase(notificationId);
+    const cleared = (get().notifications || []).find((n) => n.id === notificationId);
     setState((prev) => {
       const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), notificationId].slice(-500);
       return {
@@ -9216,6 +9216,18 @@ export function useAppState() {
         notifications: (prev.notifications || []).filter((n) => n.id !== notificationId),
         deletedEntityIds: updatedDeletedEntityIds,
       };
+    });
+    // The table row is the only record across devices, so a failed delete puts it back.
+    clearNotificationSupabase(notificationId).catch((err) => {
+      console.error('Failed to clear notification:', err);
+      if (!cleared) return;
+      setState((prev) => ({
+        ...prev,
+        notifications: (prev.notifications || []).some((n) => n.id === notificationId)
+          ? prev.notifications
+          : [cleared, ...(prev.notifications || [])],
+        deletedEntityIds: (prev.deletedEntityIds || []).filter((id) => id !== notificationId),
+      }));
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
