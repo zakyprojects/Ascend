@@ -1,9 +1,14 @@
 import { LeagueCompetitor } from '@/types';
 import { TierBadge } from './TierBadge';
 import { Dialog, EmptyState } from '@/components/ui/primitives';
-import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, EyeOff } from 'lucide-react';
+import { useState } from 'react';
+import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, EyeOff, type LucideIcon } from 'lucide-react';
 import { getProfileStreakStats } from '@/lib/streakLogic';
 import { getCurrentTier } from '@/lib/tiers';
+import { formatDateShort } from '@/lib/dates';
+
+/** Habits listed before "Show all" (the dialog scrolls as one; no inner scroll box). */
+const HABIT_PREVIEW_COUNT = 6;
 
 interface CompetitorProfileModalProps {
   competitor: LeagueCompetitor | null;
@@ -18,6 +23,13 @@ export function CompetitorProfileModal({
   open,
   onClose,
 }: CompetitorProfileModalProps) {
+  const [showAllHabits, setShowAllHabits] = useState(false);
+  // A different member opens with the short list again.
+  const [shownFor, setShownFor] = useState(competitor?.id);
+  if (shownFor !== competitor?.id) {
+    setShownFor(competitor?.id);
+    setShowAllHabits(false);
+  }
   if (!competitor) return null;
 
   const isSelf = competitor.isUser;
@@ -26,6 +38,8 @@ export function CompetitorProfileModal({
 
   const stats = competitor.stats;
   const seasonHistory = competitor.season_history || competitor.stats?.season_history;
+  const habits = competitor.activeHabits ?? [];
+  const shownHabits = showAllHabits ? habits : habits.slice(0, HABIT_PREVIEW_COUNT);
 
   return (
     <Dialog
@@ -36,7 +50,7 @@ export function CompetitorProfileModal({
     >
       <div className="space-y-5">
         {/* Profile Header */}
-        <div className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="w-14 h-14 rounded-2xl bg-primary-500/20 border border-primary-500/30 flex items-center justify-center text-3xl shrink-0">
               {competitor.avatar}
@@ -80,7 +94,7 @@ export function CompetitorProfileModal({
 
         {/* Reciprocal Privacy Guard Notice */}
         {!canViewDetailed ? (
-          <div className="card p-6 text-center space-y-2.5 animate-fade-in">
+          <div className="rounded-xl border border-overlay-subtle p-6 text-center space-y-2.5">
             <div className="flex items-center justify-center text-content-subtle">
               {!viewerIsPublic ? <EyeOff size={18} className="text-warning-text" /> : <Lock size={18} />}
             </div>
@@ -91,9 +105,7 @@ export function CompetitorProfileModal({
                 <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
                   While your profile is private, you can't see other members' stats and habits.
                 </p>
-                <p className="text-micro text-content-tertiary">
-                  Make your profile public in the sidebar to see them.
-                </p>
+                <p className="text-micro text-content-tertiary">Make your profile public in Settings to see them.</p>
               </>
             ) : (
               <>
@@ -107,144 +119,78 @@ export function CompetitorProfileModal({
           </div>
         ) : (
           <>
-            {/* Statistics Section */}
-            {stats && (
-              <div>
-                <h4 className="stat-label mb-2.5">
-                  Activity
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  {(() => {
-                    const streakStats = getProfileStreakStats(stats);
-                    const cDays = streakStats.currentStreakDays;
-                    const cCat = streakStats.currentStreakCategory;
-                    return (
-                      <>
-                        <StatCard
-                          icon={Flame}
-                          color="#f59e0b"
-                          label="Current streak"
-                          value={`${cDays} days`}
-                          subtitle={cCat || undefined}
-                        />
-                        <StatCard
-                          icon={CheckSquare}
-                          color="#34d399"
-                          label="Habits done"
-                          value={stats.habitsCompletedCount.toLocaleString()}
-                        />
-                        <StatCard
-                          icon={BookOpen}
-                          color="#0ea5e9"
-                          label="Journal entries"
-                          value={stats.journalEntriesCount.toLocaleString()}
-                        />
-                        <StatCard
-                          icon={Activity}
-                          color="#14b8a6"
-                          label="Exercise mins"
-                          value={`${stats.exerciseMinutes}m`}
-                        />
-                        <StatCard
-                          icon={Book}
-                          color="#fbbf24"
-                          label="Books read"
-                          value={`${stats.booksRead}`}
-                        />
-                        <StatCard
-                          icon={Target}
-                          color="#f472b6"
-                          label="Skills practiced"
-                          value={`${stats.skillsPracticedCount}`}
-                        />
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-            )}
+            {stats && <ActivityStats stats={stats} />}
 
             {/* Currently Active Habits */}
-            <div>
-              <h4 className="stat-label mb-2.5">
-                Active habits ({competitor.activeHabits?.length || 0})
-              </h4>
-              {competitor.activeHabits && competitor.activeHabits.length > 0 ? (
-                <div className="rounded-xl border border-overlay-default divide-y divide-overlay-subtle max-h-48 overflow-y-auto">
-                  {competitor.activeHabits.map((habit, idx) => (
-                    <div
-                      key={idx}
-                      className="px-3 py-2.5 flex items-center justify-between gap-2"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-2 h-2 rounded-full bg-primary-400 shrink-0" />
-                        <span className="item-name text-xs text-content-secondary truncate">
-                          {habit.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {habit.category && (
-                          <span className="text-2xs text-content-muted">
-                            {habit.category}
+            <section>
+              <h4 className="stat-label mb-2.5">Active habits ({habits.length})</h4>
+              {habits.length > 0 ? (
+                <>
+                  <ul className="rounded-xl border border-overlay-subtle divide-y divide-overlay-subtle">
+                    {shownHabits.map((habit, idx) => (
+                      <li key={idx} className="px-3 py-2.5 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-primary-400 shrink-0" />
+                          <span className="item-name text-sm text-content-secondary truncate">{habit.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {habit.category && (
+                            <span className="hidden sm:inline text-2xs text-content-muted">{habit.category}</span>
+                          )}
+                          <span className="text-2xs bg-primary-500/10 text-brand-text px-2 py-0.5 rounded-lg font-medium">
+                            {habit.frequency}
                           </span>
-                        )}
-                        <span className="text-2xs bg-primary-500/10 text-brand-text px-2 py-0.5 rounded-lg font-medium">
-                          {habit.frequency}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  {habits.length > HABIT_PREVIEW_COUNT && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllHabits((v) => !v)}
+                      className="mt-2 rounded-lg px-1 text-xs font-medium text-brand-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50"
+                    >
+                      {showAllHabits ? 'Show less' : `Show all ${habits.length}`}
+                    </button>
+                  )}
+                </>
               ) : (
-                <EmptyState
-                  size="sm"
-                  title="No active habits shared yet"
-                />
+                <EmptyState size="sm" title="No active habits shared yet" />
               )}
-            </div>
+            </section>
 
             {/* Past Seasons & Trophies */}
             {seasonHistory && seasonHistory.length > 0 && (
-              <div>
-                <h4 className="stat-label mb-2.5">
-                  Past seasons & trophies ({seasonHistory.length})
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
+              <section>
+                <h4 className="stat-label mb-2.5">Past seasons ({seasonHistory.length})</h4>
+                <ul className="rounded-xl border border-overlay-subtle divide-y divide-overlay-subtle">
                   {seasonHistory.map((historyRecord, idx) => {
                     const tier = getCurrentTier(historyRecord.points);
                     return (
-                      <div
-                        key={idx}
-                        className="card p-3 flex items-center justify-between gap-2.5"
-                      >
+                      <li key={idx} className="px-3 py-2.5 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="shrink-0">
-                            <TierBadge totalPoints={historyRecord.points} size="sm" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="item-name text-xs text-content-secondary truncate">
-                              {historyRecord.seasonName}
-                            </p>
-                            <p className="text-2xs font-medium truncate" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
-                              {tier.name} Tier
+                          <TierBadge totalPoints={historyRecord.points} size="sm" />
+                          <div className="min-w-0">
+                            <p className="item-name text-sm text-content-secondary truncate">{historyRecord.seasonName}</p>
+                            <p
+                              className="text-2xs font-medium truncate"
+                              style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}
+                            >
+                              {tier.name} tier
                             </p>
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="figure text-xs text-brand-text">
-                            {historyRecord.points.toLocaleString()} pts
-                          </p>
+                          <p className="figure text-sm text-brand-text">{historyRecord.points.toLocaleString()} pts</p>
                           {historyRecord.date && (
-                            <p className="figure text-2xs text-content-disabled">
-                              {historyRecord.date}
-                            </p>
+                            <p className="text-2xs text-content-muted">{formatDateShort(historyRecord.date, historyRecord.date)}</p>
                           )}
                         </div>
-                      </div>
+                      </li>
                     );
                   })}
-                </div>
-              </div>
+                </ul>
+              </section>
             )}
           </>
         )}
@@ -253,36 +199,38 @@ export function CompetitorProfileModal({
   );
 }
 
-function StatCard({
-  icon: Icon,
-  color,
-  label,
-  value,
-  subtitle,
-}: {
-  icon: any;
-  color: string;
-  label: string;
-  value: string;
-  subtitle?: string;
-}) {
+/** The member's activity as one hairline grid (no boxes): 2 columns on phones, 3 from sm up. */
+function ActivityStats({ stats }: { stats: NonNullable<LeagueCompetitor['stats']> }) {
+  const streak = getProfileStreakStats(stats);
+  const items: { icon: LucideIcon; color: string; label: string; value: string; hint?: string }[] = [
+    {
+      icon: Flame,
+      color: 'var(--badge-orange-text)',
+      label: 'Current streak',
+      value: `${streak.currentStreakDays} days`,
+      hint: streak.currentStreakCategory || undefined,
+    },
+    { icon: CheckSquare, color: 'var(--badge-emerald-text)', label: 'Habits done', value: stats.habitsCompletedCount.toLocaleString() },
+    { icon: BookOpen, color: 'var(--badge-sky-text)', label: 'Journal entries', value: stats.journalEntriesCount.toLocaleString() },
+    { icon: Activity, color: 'var(--badge-teal-text)', label: 'Exercise', value: `${stats.exerciseMinutes.toLocaleString()} min` },
+    { icon: Book, color: 'var(--badge-violet-text)', label: 'Books read', value: stats.booksRead.toLocaleString() },
+    { icon: Target, color: 'var(--badge-purple-text)', label: 'Skills practiced', value: stats.skillsPracticedCount.toLocaleString() },
+  ];
   return (
-    <div className="card p-3 flex items-center gap-2.5 min-w-0">
-      <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-        style={{ backgroundColor: `${color}15` }}
-      >
-        <Icon size={16} style={{ color }} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="stat-label truncate">{label}</p>
-        <p className="figure text-sm text-content-primary truncate mt-0.5">{value}</p>
-        {subtitle && (
-          <p className="text-2xs text-[color:var(--badge-orange-text)] font-medium truncate mt-0.5" title={`Source: ${subtitle}`}>
-            {subtitle}
-          </p>
-        )}
-      </div>
-    </div>
+    <section>
+      <h4 className="stat-label mb-2.5">Activity</h4>
+      <dl className="grid grid-cols-2 sm:grid-cols-3 gap-px overflow-hidden rounded-xl border border-overlay-subtle bg-overlay-subtle">
+        {items.map(({ icon: Icon, color, label, value, hint }) => (
+          <div key={label} className="min-w-0 bg-bg-800 p-3">
+            <dt className="flex items-center gap-1.5 stat-label">
+              <Icon size={14} aria-hidden="true" className="shrink-0" style={{ color }} />
+              <span className="truncate">{label}</span>
+            </dt>
+            <dd className="figure mt-1 text-lg leading-tight text-content-primary truncate">{value}</dd>
+            {hint && <dd className="mt-0.5 text-micro text-content-muted truncate">{hint}</dd>}
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
