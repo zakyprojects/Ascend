@@ -22,8 +22,6 @@ export interface TabsProps {
   variant?: 'segmented' | 'underline';
   size?: 'sm' | 'md';
   scrollable?: boolean;
-  /** The one tab row that switches pages: its indicator glides across page transitions. */
-  pageTabs?: boolean;
   ariaLabel: string;
   className?: string;
 }
@@ -35,7 +33,6 @@ export const Tabs: React.FC<TabsProps> = ({
   variant = 'segmented',
   size = 'md',
   scrollable = false,
-  pageTabs = false,
   ariaLabel,
   className,
 }) => {
@@ -114,7 +111,6 @@ export const Tabs: React.FC<TabsProps> = ({
       {indicator && (
         <span
           aria-hidden="true"
-          data-tab-pill={pageTabs ? '' : undefined}
           className={cx(
             'absolute pointer-events-none',
             isSegmented ? 'top-1 bottom-1 rounded-lg bg-primary-500 shadow-sm' : 'bottom-0 h-0.5 rounded-full bg-brand-text',
