@@ -32,12 +32,13 @@ interface DeleteOp {
 
 type OutboxOp = UpsertOp | DeleteOp;
 type Outbox = Record<string, OutboxOp>;
-/** stateKey -> item id -> row hash, as last queued for the server. */
+/** stateKey -> item id -> row hash, as last sent to or received from the server. */
 type Baseline = Record<string, Record<string, string>>;
 
 const outboxKey = (userId: string) => `ascend_outbox_${userId}`;
 const baselineKey = (userId: string) => `ascend_sync_baseline_${userId}`;
 const opKey = (table: string, id: string) => `${table}:${id}`;
+export const cursorKey = (userId: string, table: string) => `ascend_sync_cursor_${userId}_${table}`;
 const DELETE_CHUNK = 100;
 
 function readJson<T>(key: string): T | null {
@@ -54,7 +55,7 @@ function writeJson(key: string, value: unknown): void {
 }
 
 /** FNV-1a over the row JSON; toRow fixes the key order. */
-function hashRow(row: Record<string, unknown>): string {
+export function hashRow(row: Record<string, unknown>): string {
   const text = JSON.stringify(row);
   let hash = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {
@@ -140,10 +141,37 @@ export function recordSyncedChanges(state: AppState): void {
   void flushOutbox(userId);
 }
 
+/** Ids with a local op still waiting to be sent; a server row must not overwrite those. */
+export function pendingOpIds(userId: string, table: string): Set<string> {
+  const outbox = readJson<Outbox>(outboxKey(userId)) || {};
+  return new Set(
+    Object.values(outbox)
+      .filter((op) => op.table === table)
+      .map((op) => op.id)
+  );
+}
+
+export function knownHashes(userId: string, stateKey: string): Record<string, string> {
+  return (readJson<Baseline>(baselineKey(userId)) || {})[stateKey] || {};
+}
+
+/** Records server rows the state now holds, so the next diff does not send them back as edits. */
+export function acceptServerRows(userId: string, stateKey: string, hashes: Record<string, string | null>): void {
+  const baseline = readJson<Baseline>(baselineKey(userId)) || {};
+  const forKey = { ...(baseline[stateKey] || {}) };
+  for (const [id, hash] of Object.entries(hashes)) {
+    if (hash === null) delete forKey[id];
+    else forKey[id] = hash;
+  }
+  baseline[stateKey] = forKey;
+  writeJson(baselineKey(userId), baseline);
+}
+
 export function clearSyncStorage(userId: string): void {
   try {
     localStorage.removeItem(outboxKey(userId));
     localStorage.removeItem(baselineKey(userId));
+    for (const { table } of SYNCED_COLLECTIONS) localStorage.removeItem(cursorKey(userId, table));
   } catch {
     /* ignore */
   }

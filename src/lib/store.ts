@@ -203,6 +203,8 @@ import {
 } from './supabase';
 import { GuardBlockedError } from './errors';
 import { flushOutbox, recordSyncedChanges } from './sync/outbox';
+import { applyRemoteChanges, prepareRemoteRows, pullSyncedRows } from './sync/pull';
+import { SYNCED_COLLECTIONS } from './sync/syncedCollections';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult } from './stateMerger';
 import { toUserMessage } from './userMessage';
 
@@ -1935,6 +1937,41 @@ export function useAppState() {
     []
   );
 
+  // Relational tables (DB normalization): send pending ops first, then merge server rows into state.
+  const syncTables = useCallback(
+    async (userId: string, full: boolean) => {
+      await flushOutbox(userId);
+      const changes = await pullSyncedRows(userId, full);
+      if (changes.length === 0) return;
+      setState((prev) => (prev.currentUser?.id === userId ? applyRemoteChanges(prev, changes) : prev));
+    },
+    [setState]
+  );
+
+  // Live updates from the user's other devices.
+  const syncedUserId = state.currentUser?.id;
+  useEffect(() => {
+    if (!syncedUserId || !isSupabaseConfigured) return;
+    let channel = supabase.channel(`synced_tables_${syncedUserId}`);
+    for (const collection of SYNCED_COLLECTIONS) {
+      channel = channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: collection.table, filter: `user_id=eq.${syncedUserId}` },
+        (payload) => {
+          const row = payload.new as Record<string, unknown> | undefined;
+          if (!row || !row.id) return;
+          const changes = prepareRemoteRows(syncedUserId, collection, [row]);
+          if (changes.length === 0) return;
+          setState((prev) => (prev.currentUser?.id === syncedUserId ? applyRemoteChanges(prev, changes) : prev));
+        }
+      );
+    }
+    channel.subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [syncedUserId, setState]);
+
   // FIX 1: Frontend Cross-Tab Sync via BroadcastChannel
   useEffect(() => {
     if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
@@ -1991,6 +2028,7 @@ export function useAppState() {
 
       const userId = currentUserRef.current?.id;
       if (!userId || !isHydrated.current || !isSupabaseConfigured) return;
+      void syncTables(userId, false);
 
       try {
         isSyncing = true;
@@ -2030,8 +2068,6 @@ export function useAppState() {
     const onOnline = () => {
       // Force immediate sync upon network reconnection
       handleReconnectAndSync(true);
-      const onlineUserId = stateRef.current.currentUser?.id;
-      if (onlineUserId) void flushOutbox(onlineUserId);
     };
 
     const onVisibilityChange = () => {
@@ -2442,8 +2478,8 @@ export function useAppState() {
               isHydrated.current = true;
               canPersistLocally.current = true;
               const sanitizedState = sanitizeLoadedState(hydratedState, user);
-              // Send relational ops left over from an earlier session or an offline period.
-              void flushOutbox(userId);
+              // Send relational ops left over from an earlier session, then read every row.
+              void syncTables(userId, true);
               if (sanitizedState.themePreference) {
                 setLocalThemePreference(sanitizedState.themePreference);
                 if (typeof document !== 'undefined') {
