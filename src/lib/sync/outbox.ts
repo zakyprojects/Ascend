@@ -269,17 +269,24 @@ async function flushOnce(userId: string): Promise<void> {
   }
 }
 
-let flushing = false;
+let flushing: Promise<void> | null = null;
 let flushAgain = false;
 
-/** Sends pending ops; safe to call often. One tab flushes at a time. */
-export async function flushOutbox(userId: string): Promise<void> {
-  if (typeof window === 'undefined') return;
+/**
+ * Sends pending ops; safe to call often. One tab flushes at a time. The promise settles once
+ * the running flush (including a repeat this call asked for) is done.
+ */
+export function flushOutbox(userId: string): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
   if (flushing) {
     flushAgain = true;
-    return;
+    return flushing;
   }
-  flushing = true;
+  flushing = runFlush(userId);
+  return flushing;
+}
+
+async function runFlush(userId: string): Promise<void> {
   try {
     do {
       flushAgain = false;
@@ -294,6 +301,6 @@ export async function flushOutbox(userId: string): Promise<void> {
   } catch (err) {
     console.error('[SYNC OUTBOX] Flush failed, will retry:', err);
   } finally {
-    flushing = false;
+    flushing = null;
   }
 }

@@ -20,7 +20,7 @@ export function GuestLogoutWarningModal({
   if (!open) return null;
 
   return (
-    <Dialog open={open} onClose={isLoggingOut ? () => {} : onClose} title="Before you log out" maxWidth="max-w-md">
+    <Dialog open={open} onClose={onClose} title="Before you log out" maxWidth="max-w-md" preventClose={isLoggingOut}>
       <div className="space-y-4">
         <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 flex gap-3">
           <AlertTriangle size={18} className="text-warning-text shrink-0 mt-0.5" />

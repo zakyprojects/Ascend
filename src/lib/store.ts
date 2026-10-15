@@ -1803,6 +1803,9 @@ export function useAppState() {
     currentUserRef.current = state.currentUser;
   }, [state.currentUser]);
 
+  // `immediate` saves at once instead of debouncing. Deletes start that save but do not wait for
+  // it: the change is local and mirrored at once, a failed save shows its own toast, and the
+  // dirty flag retries it on reconnect.
   const setState = useCallback(
     (
       updater: AppState | ((prev: AppState) => AppState),
@@ -3018,6 +3021,7 @@ export function useAppState() {
       const localTheme = getLocalThemePreference() || 'dark';
 
       // 2. Cancel pending debounce timer if one exists
+      const hadPendingSave = Boolean(debounceTimer.current);
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
         debounceTimer.current = null;
@@ -3028,14 +3032,29 @@ export function useAppState() {
         setTimeout(() => reject(new Error('Logout network calls timed out after 15s')), 15000)
       );
 
-      // 3. Force immediate flush if there is unsaved state
+      // 3. Save before signing out, but only what is not saved yet: a clean account just waits
+      // for a save already in flight. Then send pending table changes (they stay queued on this
+      // device if this fails, and go out on the next sign-in).
       let persistError: unknown = null;
+      const userId = currentState.currentUser?.id;
       if (!accountDeleted) {
+        const hasUnsavedChanges =
+          hadPendingSave ||
+          pendingImmediateResolvers.current.length > 0 ||
+          Boolean(userId && localStorage.getItem(`ascend_dirty_${userId}`));
         try {
-          await Promise.race([enqueuePersist(currentState), timeoutPromise]);
+          await Promise.race([
+            hasUnsavedChanges ? enqueuePersist(currentState) : writeQueueRef.current,
+            timeoutPromise,
+          ]);
         } catch (persistErr) {
           persistError = persistErr;
           console.error('Failed to flush state before logout:', persistErr);
+        }
+        if (userId) {
+          await Promise.race([flushOutbox(userId), timeoutPromise]).catch((err) =>
+            console.error('Failed to send pending changes before logout:', err)
+          );
         }
       }
 
@@ -3754,7 +3773,7 @@ export function useAppState() {
   );
 
   const deleteJournalEntry = useCallback((entryId: string) => {
-    return (
+    void (
       setState(
         (prev) => {
           const entry = prev.journalEntries.find((e) => e.id === entryId);
@@ -3779,7 +3798,7 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Journal entry deletion', entityId: entryId }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4064,7 +4083,7 @@ export function useAppState() {
   }, []);
 
   const deleteWorkout = useCallback((workoutId: string) => {
-    return (
+    void (
       setState(
         (prev) => {
           const target = prev.workouts.find((w) => w.id === workoutId);
@@ -4130,7 +4149,7 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Workout deletion', entityId: workoutId }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4516,7 +4535,7 @@ export function useAppState() {
 
   const deleteBook = useCallback((bookId: string) => {
     const currentWeekKey = weekKey(getNow());
-    return (
+    void (
       setState(
         (prev) => {
           const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
@@ -4640,7 +4659,7 @@ export function useAppState() {
         };
       },
       { immediate: true, actionLabel: 'Book deletion', entityId: bookId }
-    ) || Promise.resolve()
+    )
   );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4901,9 +4920,9 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const deleteSkill = useCallback((skillId: string): Promise<void> => {
+  const deleteSkill = useCallback((skillId: string) => {
     const currentWeekKey = weekKey(getNow());
-    return (
+    void (
       setState(
         (prev) => {
           const target = prev.skills.find((s) => s.id === skillId);
@@ -4974,7 +4993,7 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Skill deletion', entityId: skillId }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5313,7 +5332,7 @@ export function useAppState() {
   }, []);
 
   const deleteBadHabit = useCallback((badHabitId: string) => {
-    return (
+    void (
       setState(
         (prev) => {
           const habitLogs = prev.badHabitLogs.filter((l) => l.badHabitId === badHabitId);
@@ -5404,7 +5423,7 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Bad habit deletion', entityId: badHabitId }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5802,7 +5821,7 @@ export function useAppState() {
   }, []);
 
   const deleteAddictionTracker = useCallback(() => {
-    return (
+    void (
       setState(
         (prev) => {
           if (!prev.addictionTracker) return prev;
@@ -5966,14 +5985,14 @@ export function useAppState() {
           actionLabel: 'Sobriety tracker deletion',
           entityId: get().addictionTracker?.id || 'sobriety_tracker',
         }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [get]);
 
   const deleteCravingLog = useCallback((logId: string) => {
-    return (
+    void (
       setState(
         (prev) => {
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
@@ -5984,7 +6003,7 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Craving log deletion', entityId: logId }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6302,7 +6321,7 @@ export function useAppState() {
     if (targetWeekKey !== currentWeek) {
       throw new Error('Reflections can only be written for the current week.');
     }
-    return (
+    void (
       setState(
         (prev) => {
           const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
@@ -6333,7 +6352,7 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Weekly reflection deletion', entityId: reflectionId }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6534,7 +6553,7 @@ export function useAppState() {
     if (targetWeekKey < currentWeek) {
       throw new Error('Past weeks are read-only.');
     }
-    return (
+    void (
       setState(
         (prev) => {
           const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
@@ -6561,7 +6580,7 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Weekly goal deletion', entityId: goalId }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6720,7 +6739,7 @@ export function useAppState() {
   );
 
   const deleteGoal = useCallback((id: string) => {
-    return (
+    void (
       setState(
         (prev) => {
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
@@ -6734,7 +6753,7 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Goal deletion', entityId: id }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6898,7 +6917,7 @@ export function useAppState() {
   }, []);
 
   const deleteProject = useCallback((id: string) => {
-    return (
+    void (
       setState(
         (prev) => {
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), id].slice(-500);
@@ -6912,7 +6931,7 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Project deletion', entityId: id }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -7000,7 +7019,7 @@ export function useAppState() {
   }, []);
 
   const deleteTask = useCallback((id: string) => {
-    return (
+    void (
       setState(
         (prev) => {
           const targetTask = prev.tasks.find((t) => t.id === id);
@@ -7013,7 +7032,7 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Task deletion', entityId: id }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -7060,7 +7079,7 @@ export function useAppState() {
   }, []);
 
   const deleteSubtask = useCallback((taskId: string, subtaskId: string) => {
-    return (
+    void (
       setState(
         (prev) => {
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), subtaskId].slice(-500);
@@ -7080,7 +7099,7 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Subtask deletion', entityId: subtaskId }
-      ) || Promise.resolve()
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps

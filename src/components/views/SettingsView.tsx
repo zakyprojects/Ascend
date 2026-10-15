@@ -964,7 +964,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
       />
 
       {/* Delete Account Confirmation Modal */}
-      <Dialog open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete account" maxWidth="max-w-md">
+      <Dialog open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete account" maxWidth="max-w-md" preventClose={isDeletingAccount}>
         <div className="space-y-4">
           <div className="p-4 border border-rose-500/30 bg-rose-500/5 rounded-xl flex gap-3">
             <AlertTriangle size={18} className="text-rose-theme shrink-0 mt-0.5" />
