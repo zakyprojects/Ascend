@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, Flame, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award, Trash2 } from 'lucide-react';
+import { HeartPulse, Flame, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -140,7 +140,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             {/* Main Sobriety Streak Card */}
             {!tracker ? (
               <EmptyState
-                icon={ShieldCheck}
+                icon={HeartPulse}
                 title="Set up your sobriety tracker"
                 description="Pick what you're recovering from (e.g. alcohol, smoking, sugar, social media) and start tracking milestones."
                 action={
