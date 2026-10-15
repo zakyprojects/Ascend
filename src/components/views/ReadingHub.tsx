@@ -16,6 +16,7 @@ import {
   Check,
   BookOpen,
   ListTodo,
+  AlertCircle,
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -1204,41 +1205,62 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   You get the +{READING_POINTS.completionBonus} point completion bonus.
                 </span>
                 <p className="text-micro text-content-muted">
-                  Span: {finishEligibility.spanDays} days (req. ≥7) • Reading days logged: {finishEligibility.loggedDays} (req. ≥5)
+                  First log {finishEligibility.spanDays} days ago (needs {READING_BONUS_MIN_SPAN_DAYS}) • Reading days logged: {finishEligibility.loggedDays} (needs {READING_BONUS_MIN_LOG_DAYS})
                 </p>
               </div>
             </div>
+          ) : finishEligibility?.alreadyAwarded ? (
+            <div className="p-3.5 border border-overlay-default rounded-xl flex items-center gap-3 text-content-secondary">
+              <CheckCircle2 size={18} className="shrink-0 text-content-muted" />
+              <p className="text-xs text-content-muted leading-relaxed">
+                The completion bonus was already awarded for this book.
+              </p>
+            </div>
           ) : (
-            <div className="p-3.5 border border-overlay-default rounded-xl flex flex-col gap-3 text-content-secondary">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 size={18} className="shrink-0 text-content-muted" />
-                <div className="text-xs space-y-0.5">
-                  <span className="font-semibold block text-content-primary">Finishing without the bonus (+0 points)</span>
-                  <p className="text-content-muted leading-relaxed">
-                    {finishEligibility?.alreadyAwarded
-                      ? 'Completion bonus was already awarded for this book.'
-                      : `The 15 pt bonus needs reading in Ascend over at least 7 days (now ${finishEligibility?.spanDays ?? 0}d) and at least 5 separate logged reading days (now ${finishEligibility?.loggedDays ?? 0}d). Daily page points you already earned stay.`}
-                  </p>
+            finishEligibility && (
+              <div
+                role="alert"
+                className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl flex flex-col gap-3 text-content-secondary"
+              >
+                <div className="flex items-start gap-3">
+                  <AlertCircle size={18} className="shrink-0 text-error-text mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <span className="font-semibold block text-error-text">Bonus conditions not met</span>
+                    <ul className="space-y-0.5 text-content-muted">
+                      {!finishEligibility.meetsSpan && (
+                        <li>
+                          First pages logged {finishEligibility.spanDays} of {READING_BONUS_MIN_SPAN_DAYS} days ago
+                        </li>
+                      )}
+                      {!finishEligibility.meetsDays && (
+                        <li>
+                          Pages logged on {finishEligibility.loggedDays} of {READING_BONUS_MIN_LOG_DAYS} separate days
+                        </li>
+                      )}
+                    </ul>
+                    <p className="text-content-muted leading-relaxed">
+                      You can keep reading and log pages to earn the +{READING_POINTS.completionBonus} bonus, or finish now
+                      without it. Daily page points you already earned stay.
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {!finishEligibility?.alreadyAwarded && finishEligibility && (
                 <div className="space-y-2 pt-2 border-t border-overlay-subtle">
                   <CapMeter
                     variant="bar"
-                    label={`Days since first log (${finishEligibility.spanDays}/7)`}
+                    label={`Days since first log (${Math.min(finishEligibility.spanDays, READING_BONUS_MIN_SPAN_DAYS)}/${READING_BONUS_MIN_SPAN_DAYS})`}
                     earned={finishEligibility.spanDays}
-                    cap={7}
+                    cap={READING_BONUS_MIN_SPAN_DAYS}
                   />
                   <CapMeter
                     variant="bar"
-                    label={`Reading days logged (${finishEligibility.loggedDays}/5)`}
+                    label={`Reading days logged (${Math.min(finishEligibility.loggedDays, READING_BONUS_MIN_LOG_DAYS)}/${READING_BONUS_MIN_LOG_DAYS})`}
                     earned={finishEligibility.loggedDays}
-                    cap={5}
+                    cap={READING_BONUS_MIN_LOG_DAYS}
                   />
                 </div>
-              )}
-            </div>
+              </div>
+            )
           )}
 
           <div>
@@ -1270,7 +1292,13 @@ export function ReadingHub({ store }: { store: AppStore }) {
               className="btn-primary text-xs flex items-center gap-1.5"
             >
               {isFinishing ? <AscendLoadingIndicator size="sm" /> : <CheckCircle2 size={14} />}
-              <span>Mark Finished</span>
+              <span>
+                {finishEligibility?.isEligible
+                  ? `Finish (+${READING_POINTS.completionBonus})`
+                  : finishEligibility?.alreadyAwarded
+                    ? 'Mark Finished'
+                    : 'Finish without bonus'}
+              </span>
             </button>
           </div>
         </form>

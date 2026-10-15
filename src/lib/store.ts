@@ -4279,11 +4279,30 @@ export function useAppState() {
           (lb) => !allMatchingIds.has(lb.id) && lb.title.toLowerCase() !== targetTitleLower
         );
 
-        // Only today's page award follows the logs; earlier days' points stay. The book's server
-        // bonus goes with it (as on the server); a bonus the app gave before that stays.
+        // Only today's page award follows the logs; earlier days' points stay. The book's finish
+        // bonus goes with it, as on the server: its server row is removed, and a bonus the app gave
+        // before server bonuses (book.pointsAwarded, no server row) is taken back with a minus row.
         const bonusIds = new Set(Array.from(allMatchingIds).map(readingBonusId));
+        const serverBonusIds = new Set((prev.pointsHistory || []).filter((e) => bonusIds.has(e.id)).map((e) => e.id));
         const { excisedEntryIds: _bonusExcised, ...withoutBonus } = excisePointsEntriesInternal(prev, (e) => bonusIds.has(e.id));
-        const awards = applyReadingAwardsInternal({ ...prev, ...withoutBonus }, remainingReadingLogs, remainingBooks, todayKey());
+        let afterBonus: AppState = { ...prev, ...withoutBonus };
+        for (const lb of prev.libraryBooks) {
+          const legacyBonus = lb.pointsAwarded ?? 0;
+          if (!allMatchingIds.has(lb.id) || legacyBonus <= 0 || serverBonusIds.has(readingBonusId(lb.id))) continue;
+          afterBonus = {
+            ...afterBonus,
+            ...addPointsInternal(
+              afterBonus,
+              -legacyBonus,
+              `Book deleted: ${lb.title || 'Book'}`,
+              'reading_bonus',
+              { bookId: lb.id, legacyMarker: true, legacyAmount: legacyBonus },
+              trustedNow().toISOString(),
+              readingBonusId(lb.id)
+            ),
+          };
+        }
+        const awards = applyReadingAwardsInternal(afterBonus, remainingReadingLogs, remainingBooks, todayKey());
         const updatedReadingLogs = awards.readingLogs;
 
         const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
