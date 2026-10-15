@@ -23,8 +23,9 @@ import { Dialog, EmptyState, PageColumns, ProgressBar, Tabs } from '@/components
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
-import { todayKey, formatDateLong, parseDate, getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
+import { todayKey, formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
+import { READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, readingBonusId } from '@/lib/readingAwards';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
@@ -120,45 +121,38 @@ export function ReadingHub({ store }: { store: AppStore }) {
     return count;
   }, [uniqueDates]);
 
-  // Derived finish bonus eligibility for the finish modal
+  // Derived finish bonus eligibility for the finish modal (same gates as meetsReadingBonusGates)
   const finishEligibility = useMemo(() => {
     if (!finishModalBook) return null;
-    const alreadyAwarded = (finishModalBook.pointsAwarded ?? 0) > 0;
-    const startStr = finishModalBook.dateStarted || finishModalBook.startedAt || finishModalBook.addedAt;
-    const startParsed = parseDate(startStr);
-    let spanDays = 0;
-    let meetsSpan = false;
-    if (startParsed) {
-      const startKeyStr = todayKey(startParsed);
-      const nowKeyStr = todayKey(trustedNow());
-      const [sY, sM, sD] = startKeyStr.split('-').map(Number);
-      const [nY, nM, nD] = nowKeyStr.split('-').map(Number);
-      const startMidnight = new Date(sY, sM - 1, sD).getTime();
-      const nowMidnight = new Date(nY, nM - 1, nD).getTime();
-      spanDays = Math.floor((nowMidnight - startMidnight) / 86400000);
-      meetsSpan = spanDays >= 7;
-    }
-
-    const allMatchingIds = new Set<string>([finishModalBook.id]);
-    if (finishModalBook.linkedBookId) allMatchingIds.add(finishModalBook.linkedBookId);
+    const alreadyAwarded =
+      (finishModalBook.pointsAwarded ?? 0) > 0 ||
+      store.state.pointsHistory.some((e) => e.id === readingBonusId(finishModalBook.id));
 
     const maxPages = finishModalBook.totalAmount ?? finishModalBook.totalPages ?? 250;
     const currentPage = finishModalBook.currentAmount ?? finishModalBook.currentPage ?? 0;
     const unreadDelta = Math.max(0, maxPages - currentPage);
 
-    const bookLogs = readingLogs.filter(
-      (l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)) && (l.pagesRead || 0) > 0
+    const today = todayKey(trustedNow());
+    const logDates = new Set(
+      readingLogs.filter((l) => l.bookId === finishModalBook.id && (l.pagesRead || 0) > 0).map((l) => l.date)
     );
-    const logDates = new Set(bookLogs.map((l) => l.date));
     if (unreadDelta > 0) {
-      logDates.add(todayKey(trustedNow()));
+      logDates.add(today);
     }
+    const firstLogDate = [...logDates].sort()[0];
+    let spanDays = 0;
+    if (firstLogDate) {
+      const [sY, sM, sD] = firstLogDate.split('-').map(Number);
+      const [nY, nM, nD] = today.split('-').map(Number);
+      spanDays = Math.round((new Date(nY, nM - 1, nD).getTime() - new Date(sY, sM - 1, sD).getTime()) / 86400000);
+    }
+    const meetsSpan = spanDays >= READING_BONUS_MIN_SPAN_DAYS;
     const loggedDays = logDates.size;
-    const meetsDays = loggedDays >= 5;
+    const meetsDays = loggedDays >= READING_BONUS_MIN_LOG_DAYS;
     const isEligible = !alreadyAwarded && meetsSpan && meetsDays;
 
     return { isEligible, spanDays, loggedDays, meetsSpan, meetsDays, alreadyAwarded };
-  }, [finishModalBook, readingLogs]);
+  }, [finishModalBook, readingLogs, store.state.pointsHistory]);
 
   // Count linked weekly goals for delete modal
   const linkedBookGoalsCount = useMemo(() => {
@@ -635,7 +629,16 @@ export function ReadingHub({ store }: { store: AppStore }) {
                         <select
                           aria-label="Update book reading status"
                           value={book.status}
-                          onChange={(e) => store.updateUserBookStatus(book.id, e.target.value as UserBookStatus)}
+                          onChange={(e) => {
+                            const status = e.target.value as UserBookStatus;
+                            // Completing goes through Finish, so its reflection and bonus checks apply.
+                            if (status === 'completed') {
+                              setFinishModalBook(book);
+                              setReflectionInput('');
+                              return;
+                            }
+                            store.updateUserBookStatus(book.id, status);
+                          }}
                           className="input text-xs py-1 px-2 bg-bg-900 border-overlay-default text-content-tertiary w-fit shrink-0 cursor-pointer"
                         >
                           <option value="to-read">Move to Library</option>
@@ -1223,7 +1226,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 <div className="space-y-2 pt-2 border-t border-overlay-subtle">
                   <CapMeter
                     variant="bar"
-                    label={`Days since start (${finishEligibility.spanDays}/7)`}
+                    label={`Days since first log (${finishEligibility.spanDays}/7)`}
                     earned={finishEligibility.spanDays}
                     cap={7}
                   />

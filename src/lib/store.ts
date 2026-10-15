@@ -73,6 +73,7 @@ import { PresetHabit } from './presets';
 import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward } from './habitAwards';
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
+import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, meetsReadingBonusGates, readingBonusId } from './readingAwards';
 import {
   getLeaguePeriodStart,
   getLeaguePeriodLabel,
@@ -426,7 +427,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   const nonReviewHistory: PointsEntry[] = [];
 
   for (const entry of rawHistory) {
-    if (entry && (isRetiredAppHabitAward(entry) || isRetiredAppBadHabitAward(entry) || isRetiredAppWorkoutAward(entry) || isRetiredAppSkillAward(entry))) continue;
+    if (entry && (isRetiredAppHabitAward(entry) || isRetiredAppBadHabitAward(entry) || isRetiredAppWorkoutAward(entry) || isRetiredAppSkillAward(entry) || isRetiredAppReadingAward(entry))) continue;
     if (entry && entry.source === 'weekly_review') {
       let weekKey: string | null = null;
       if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
@@ -1154,6 +1155,36 @@ function applySkillAwardsInternal(
     l && sessionPoints.has(l.id) && sessionPoints.get(l.id) !== l.pointsAwarded ? { ...l, pointsAwarded: sessionPoints.get(l.id)! } : l
   );
   return { points, skillLogs: nextLogs };
+}
+
+/**
+ * Replaces one local day's reading page award entry with the one the server computes for these
+ * logs and books (computeReadingDayAward), and stamps each counted log with its points. The entry
+ * is shown at once and never uploaded; the server's own row replaces it on the next pull.
+ */
+function applyReadingAwardsInternal(
+  state: AppState,
+  readingLogs: ReadingLog[],
+  books: UserBook[],
+  day: string
+): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; readingLogs: ReadingLog[] } {
+  const { entry, logPoints } = computeReadingDayAward(
+    readingLogs,
+    books,
+    day,
+    new Date(`${day}T00:00:00`).getTime(),
+    trustedNow().getTime()
+  );
+
+  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isReadingDayEntry(e, day));
+  const points = entry
+    ? addPointsInternal({ ...state, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
+    : excised;
+
+  const nextLogs = readingLogs.map((l) =>
+    l && logPoints.has(l.id) && logPoints.get(l.id) !== l.pointsAwarded ? { ...l, pointsAwarded: logPoints.get(l.id)! } : l
+  );
+  return { points, readingLogs: nextLogs };
 }
 
 export function getWeeklyReflectionNetPoints(state: AppState, weekKey: string): number {
@@ -4048,52 +4079,9 @@ export function useAppState() {
         }).filter((l): l is ReadingLog => l !== null);
       }
 
-      // Recompute chronological points across all reading logs for this date
-      const dayLogs = updatedReadingLogs.filter((l) => l.date === date);
-      const chronDayLogs = [...dayLogs].sort(
-        (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-      );
-
-      let cumulativePages = 0;
-      let cumulativePointsAllocated = 0;
-      const recalculatedMap = new Map<string, number>();
-
-      for (const log of chronDayLogs) {
-        cumulativePages += (log.pagesRead || 0);
-        const totalPointsEarnedSoFar = Math.min(
-          Math.floor(cumulativePages / READING_POINTS.pagesPerPoint),
-          READING_POINTS.dailyCap
-        );
-        const logAward = Math.max(0, totalPointsEarnedSoFar - cumulativePointsAllocated);
-        recalculatedMap.set(log.id, logAward);
-        cumulativePointsAllocated += logAward;
-      }
-
-      const oldDatePoints = (prev.readingLogs || [])
-        .filter((l) => l.date === date)
-        .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-
-      const newDatePoints = cumulativePointsAllocated;
-      const netPointDelta = newDatePoints - oldDatePoints;
-
-      let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-      if (netPointDelta !== 0) {
-        pointsUpdate = addPointsInternal(
-          prev,
-          netPointDelta,
-          netPointDelta > 0
-            ? `Read ${pageDelta} ${targetUserBook.unit || 'pages'} of ${title}`
-            : `Reading progress adjusted on ${title}`,
-          'reading'
-        );
-      }
-
-      updatedReadingLogs = updatedReadingLogs.map((l) => {
-        if (l.date === date && recalculatedMap.has(l.id)) {
-          return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
-        }
-        return l;
-      });
+      // The server writes the day's page award (applyReadingAwardsInternal shows the same row now).
+      const awards = applyReadingAwardsInternal(prev, updatedReadingLogs, prev.libraryBooks, date);
+      updatedReadingLogs = awards.readingLogs;
 
       // Calculate total pages read today across ALL books
       const totalPagesToday = updatedReadingLogs
@@ -4170,7 +4158,7 @@ export function useAppState() {
         readingLogs: updatedReadingLogs,
         habits: updatedHabits,
         deletedEntityIds: updatedDeletedEntityIds,
-        ...pointsUpdate,
+        ...awards.points,
       };
     },
     { immediate: true }
@@ -4189,56 +4177,41 @@ export function useAppState() {
         const now = trustedNow().toISOString();
         const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
 
-        // Check if bonus already awarded
-        const alreadyAwarded = (targetUserBook?.pointsAwarded ?? 0) > 0;
-
-        // Eligibility Gate:
-        // 1. Book logged & read inside Ascend across >= 7 days span
-        const startStr = targetUserBook.dateStarted || targetUserBook.startedAt || targetUserBook.addedAt;
-        const startParsed = parseDate(startStr);
-        let meetsSpanGate = false;
-        if (startParsed) {
-          const startKeyStr = todayKey(startParsed);
-          const nowKeyStr = todayKey(trustedNow());
-          const [sY, sM, sD] = startKeyStr.split('-').map(Number);
-          const [nY, nM, nD] = nowKeyStr.split('-').map(Number);
-          const startMidnight = new Date(sY, sM - 1, sD).getTime();
-          const nowMidnight = new Date(nY, nM - 1, nD).getTime();
-          const spanDays = Math.floor((nowMidnight - startMidnight) / 86400000);
-          meetsSpanGate = spanDays >= 7;
-        }
-
-        // 2. >= 5 distinct days with page logs
-        const allMatchingIds = new Set<string>([targetUserBook.id]);
-        if (targetUserBook.linkedBookId) allMatchingIds.add(targetUserBook.linkedBookId);
-
+        const today = todayKey(trustedNow());
         const currentPage = targetUserBook.currentAmount ?? targetUserBook.currentPage ?? 0;
         const unreadDelta = Math.max(0, maxPages - currentPage);
-
-        const bookLogs = (prev.readingLogs || []).filter(
-          (l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)) && (l.pagesRead || 0) > 0
-        );
-        const logDates = new Set(bookLogs.map((l) => l.date));
-        if (unreadDelta > 0) {
-          logDates.add(todayKey(trustedNow()));
-        }
-        const meetsDistinctDaysGate = logDates.size >= 5;
-
-        const isEligibleForBonus = !alreadyAwarded && meetsSpanGate && meetsDistinctDaysGate;
-        const pointsToAward = isEligibleForBonus ? READING_POINTS.completionBonus : 0;
 
         let updatedReadingLogs = prev.readingLogs || [];
         if (unreadDelta > 0) {
           const finishLog: ReadingLog = {
             id: `reading-log-${trustedNowMs()}-${Math.random().toString(36).substring(2, 9)}`,
             bookId: targetUserBook.id,
-            date: todayKey(trustedNow()),
+            date: today,
             pagesRead: unreadDelta,
             pointsAwarded: 0,
             createdAt: now,
           };
           updatedReadingLogs = [finishLog, ...updatedReadingLogs];
         }
+
+        const completedBook: UserBook = {
+          ...targetUserBook,
+          status: 'completed',
+          currentAmount: maxPages,
+          currentPage: maxPages,
+          isFinished: true,
+          reflection: reflection.trim() || targetUserBook.reflection,
+          dateCompleted: now,
+          completedAt: now,
+          updatedAt: now,
+        };
+
+        // The server gives the finish bonus once (ascend_recompute_reading_bonus); the same check here shows it now.
+        const bonusId = readingBonusId(targetUserBook.id);
+        const alreadyAwarded =
+          (targetUserBook.pointsAwarded ?? 0) > 0 || (prev.pointsHistory || []).some((e) => e.id === bonusId);
+        const pointsToAward =
+          !alreadyAwarded && meetsReadingBonusGates(completedBook, updatedReadingLogs, today) ? READING_POINTS.completionBonus : 0;
 
         const updatedLibraryBooks = prev.libraryBooks.map((lb) => {
           if (lb.id === bookId || lb.linkedBookId === bookId || lb.id === targetUserBook.id) {
@@ -4258,17 +4231,27 @@ export function useAppState() {
           return lb;
         });
 
-        let pointsUpdate = {};
-        if (pointsToAward > 0) {
-          pointsUpdate = addPointsInternal(prev, pointsToAward, `Book finished: ${title}`, 'reading_bonus');
-        }
+        // The finish log's pages count toward today's page award, as on the server.
+        const awards = applyReadingAwardsInternal(prev, updatedReadingLogs, updatedLibraryBooks, today);
+        const points =
+          pointsToAward > 0
+            ? addPointsInternal(
+                { ...prev, ...awards.points },
+                pointsToAward,
+                `Book finished: ${title}`,
+                'reading_bonus',
+                { bookId: targetUserBook.id },
+                now,
+                bonusId
+              )
+            : awards.points;
 
         return {
           ...prev,
           libraryBooks: updatedLibraryBooks,
-          readingLogs: updatedReadingLogs,
+          readingLogs: awards.readingLogs,
           books: [],
-          ...pointsUpdate,
+          ...points,
         };
       },
       { immediate: true }
@@ -4291,61 +4274,17 @@ export function useAppState() {
 
         const targetTitleLower = (targetUserBook.title || '').toLowerCase();
         const bookLogs = prev.readingLogs.filter((l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)));
-        const completionPoints = targetUserBook.pointsAwarded ?? 0;
-
         const remainingReadingLogs = prev.readingLogs.filter((l) => !l.bookId || !allMatchingIds.has(l.bookId));
+        const remainingBooks = prev.libraryBooks.filter(
+          (lb) => !allMatchingIds.has(lb.id) && lb.title.toLowerCase() !== targetTitleLower
+        );
 
-        // Get unique affected dates from the deleted book's logs
-        const affectedDates = Array.from(new Set(bookLogs.map((l) => l.date)));
-
-        const recalculatedMap = new Map<string, number>();
-        for (const affectedDate of affectedDates) {
-          const dayLogs = remainingReadingLogs.filter((l) => l.date === affectedDate);
-          const chronDayLogs = [...dayLogs].sort(
-            (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-          );
-
-          let cumulativePages = 0;
-          let cumulativePointsAllocated = 0;
-          for (const log of chronDayLogs) {
-            cumulativePages += (log.pagesRead || 0);
-            const totalPointsEarnedSoFar = Math.min(
-              Math.floor(cumulativePages / READING_POINTS.pagesPerPoint),
-              READING_POINTS.dailyCap
-            );
-            const logAward = Math.max(0, totalPointsEarnedSoFar - cumulativePointsAllocated);
-            recalculatedMap.set(log.id, logAward);
-            cumulativePointsAllocated += logAward;
-          }
-        }
-
-        const oldPointsOnAffectedDates = prev.readingLogs
-          .filter((l) => affectedDates.includes(l.date))
-          .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-
-        const newPointsOnAffectedDates = remainingReadingLogs
-          .filter((l) => affectedDates.includes(l.date))
-          .reduce((sum, l) => sum + (recalculatedMap.get(l.id) ?? l.pointsAwarded ?? 0), 0);
-
-        const logPointDelta = newPointsOnAffectedDates - oldPointsOnAffectedDates;
-        const totalNetPointDelta = logPointDelta - completionPoints;
-
-        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-        if (totalNetPointDelta !== 0) {
-          pointsUpdate = addPointsInternal(
-            prev,
-            totalNetPointDelta,
-            `Book deleted: ${targetUserBook.title}`,
-            'reading'
-          );
-        }
-
-        const updatedReadingLogs = remainingReadingLogs.map((l) => {
-          if (recalculatedMap.has(l.id)) {
-            return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
-          }
-          return l;
-        });
+        // Only today's page award follows the logs; earlier days' points stay. The book's server
+        // bonus goes with it (as on the server); a bonus the app gave before that stays.
+        const bonusIds = new Set(Array.from(allMatchingIds).map(readingBonusId));
+        const { excisedEntryIds: _bonusExcised, ...withoutBonus } = excisePointsEntriesInternal(prev, (e) => bonusIds.has(e.id));
+        const awards = applyReadingAwardsInternal({ ...prev, ...withoutBonus }, remainingReadingLogs, remainingBooks, todayKey());
+        const updatedReadingLogs = awards.readingLogs;
 
         const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
         let updatedHabits = prev.habits;
@@ -4392,14 +4331,12 @@ export function useAppState() {
         return {
           ...prev,
           books: [],
-          libraryBooks: prev.libraryBooks.filter(
-            (lb) => !allMatchingIds.has(lb.id) && lb.title.toLowerCase() !== targetTitleLower
-          ),
+          libraryBooks: remainingBooks,
           readingLogs: updatedReadingLogs,
           habits: updatedHabits,
           weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'reading', idsArray, currentWeekKey),
           deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
+          ...awards.points,
         };
       },
       { immediate: true, actionLabel: 'Book deletion', entityId: bookId }

@@ -1,0 +1,113 @@
+import type { PointsEntry, ReadingLog, UserBook } from '@/types';
+import { READING_POINTS } from './pointsConfig';
+import { addDays, todayKey } from './dates';
+
+/**
+ * Reading points are written by the server (supabase/migrations/20261015160000_server_reading_awards.sql):
+ * one row per local day for the day's pages (up to the daily cap) and one finish bonus per book.
+ * The app computes the same rows only to show them before the server's copies arrive; it never
+ * uploads them, and the server skips any app write to them. Change both sides together.
+ */
+
+/** First local day whose reading points come from the server; older app-written rows stay. */
+export const READING_AWARDS_SERVER_SINCE = '2026-10-15';
+
+/** Finish bonus gates: distinct days with logged pages, and days since the first logged page. */
+export const READING_BONUS_MIN_LOG_DAYS = 5;
+export const READING_BONUS_MIN_SPAN_DAYS = 7;
+
+export const readingAwardId = (day: string) => `reading_award_${day}`;
+export const readingBonusId = (bookId: string) => `reading_bonus_${bookId}`;
+
+/** Point entry ids only the server writes: daily page awards and finish bonuses. */
+export const isServerOwnedReadingPointId = (id: string): boolean =>
+  id.startsWith('reading_award_') || id.startsWith('reading_bonus_');
+
+const localDayOf = (timestamp: string): string | null => {
+  const at = new Date(timestamp);
+  return Number.isNaN(at.getTime()) ? null : todayKey(at);
+};
+
+/** A page award the app wrote itself ("Read N pages of …"), on the local day it was logged. */
+const appWrittenAwardDay = (entry: PointsEntry): string | null =>
+  !isServerOwnedReadingPointId(entry.id || '') && entry.source === 'reading' && entry.amount > 0
+    ? localDayOf(entry.timestamp)
+    : null;
+
+/** The day's page award row: the server's own, or one the app wrote for a day the server owns. */
+export const isReadingDayEntry = (entry: PointsEntry, day: string): boolean =>
+  entry.id === readingAwardId(day) || (day >= READING_AWARDS_SERVER_SINCE && appWrittenAwardDay(entry) === day);
+
+/** An app-written page award or finish bonus for a day the server owns: the server retired them. */
+export const isRetiredAppReadingAward = (entry: PointsEntry): boolean => {
+  if (isServerOwnedReadingPointId(entry.id || '')) return false;
+  const day =
+    entry.source === 'reading_bonus' && entry.amount > 0 ? localDayOf(entry.timestamp) : appWrittenAwardDay(entry);
+  return day !== null && day >= READING_AWARDS_SERVER_SINCE;
+};
+
+const timeOf = (value: string): number => {
+  const ms = new Date(value).getTime();
+  return Number.isNaN(ms) ? Infinity : ms;
+};
+
+/** Mirror of ascend_reading_log_pages: only a positive numeric page count counts. */
+const logPages = (log: ReadingLog): number =>
+  typeof log.pagesRead === 'number' && Number.isFinite(log.pagesRead) ? Math.max(0, log.pagesRead) : 0;
+
+/**
+ * Mirror of ascend_recompute_reading_awards: the page award entry of one local day (null when the
+ * day earns nothing), and each counted log's share in log order (shown on the log). Only logs of
+ * books still in the library count; points = floor(day pages / pagesPerPoint), capped.
+ */
+export function computeReadingDayAward(
+  logs: ReadingLog[],
+  books: UserBook[],
+  day: string,
+  dayStartMs: number,
+  nowMs: number
+): { entry: PointsEntry | null; logPoints: Map<string, number> } {
+  const bookIds = new Set(books.filter(Boolean).map((b) => b.id));
+  const dayLogs = logs
+    .filter((l) => l && l.date === day && Boolean(l.bookId && bookIds.has(l.bookId)))
+    .sort((a, b) => timeOf(a.createdAt) - timeOf(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  const logPoints = new Map<string, number>();
+  let pages = 0;
+  let used = 0;
+  for (const l of dayLogs) {
+    pages += logPages(l);
+    const earned = Math.min(Math.floor(pages / READING_POINTS.pagesPerPoint), READING_POINTS.dailyCap);
+    logPoints.set(l.id, earned - used);
+    used = earned;
+  }
+  if (used <= 0) return { entry: null, logPoints };
+
+  const lastMs = timeOf(dayLogs[dayLogs.length - 1].createdAt);
+  const at = Math.min(Math.max(Number.isFinite(lastMs) ? lastMs : nowMs, dayStartMs), nowMs);
+  const id = readingAwardId(day);
+  return {
+    entry: {
+      id,
+      amount: used,
+      reason: `Pages logged (${dayLogs.length})`,
+      source: 'reading',
+      timestamp: new Date(at).toISOString(),
+      metadata: { date: day, logs: dayLogs.length },
+    },
+    logPoints,
+  };
+}
+
+/**
+ * Mirror of ascend_recompute_reading_bonus's gates: the book is completed, its pages were logged
+ * on at least READING_BONUS_MIN_LOG_DAYS distinct days, and the first of them is at least
+ * READING_BONUS_MIN_SPAN_DAYS before today. Whether a bonus was already given is the caller's check.
+ */
+export function meetsReadingBonusGates(book: UserBook, logs: ReadingLog[], today: string): boolean {
+  if (book.status !== 'completed') return false;
+  const days = new Set(logs.filter((l) => l && l.bookId === book.id && logPages(l) > 0).map((l) => l.date));
+  if (days.size < READING_BONUS_MIN_LOG_DAYS) return false;
+  const first = [...days].sort()[0];
+  return first <= addDays(today, -READING_BONUS_MIN_SPAN_DAYS);
+}
