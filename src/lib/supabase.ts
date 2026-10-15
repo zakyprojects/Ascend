@@ -9,7 +9,7 @@ import { todayKey } from './dates';
 import { GuardBlockedError, PreFetchSyncError } from './errors';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 import { withoutSyncedCollections } from './sync/syncedCollections';
-import { withoutRetiredKeys } from './retiredStateKeys';
+import { withoutRetiredKeys, withoutUnsavedBlobKeys } from './retiredStateKeys';
 import { withoutDeviceLocalKeys } from './deviceLocalState';
 import { trustedNow, trustedNowMs } from './clock';
 
@@ -322,8 +322,10 @@ export async function saveUserDataToSupabase(
 
   // Collections with their own tables are not written to the blob (DB normalization S4),
   // nor are keys no code reads any more (a merge with an older remote blob can carry them),
-  // nor device-local state.
-  const blobState = withoutDeviceLocalKeys(withoutRetiredKeys(withoutSyncedCollections(finalState)));
+  // nor device-local state, nor values derived again on every load.
+  const blobState = withoutUnsavedBlobKeys(
+    withoutDeviceLocalKeys(withoutRetiredKeys(withoutSyncedCollections(finalState)))
+  );
 
   try {
     // Execute user_data upsert and profiles upsert in parallel for maximum speed
