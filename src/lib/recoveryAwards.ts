@@ -28,9 +28,6 @@ export type RecoveryMilestoneKey = (typeof RECOVERY_MILESTONES)[number]['key'];
 const AWARD_ID = /^recovery_([A-Za-z0-9]+)_(1w|1m|90d)_([0-9]+)(?:_s[0-9]+)?$/;
 const REVOKE_PREFIX = 'recovery_revoke_';
 
-/** Point entry ids only the server writes (awards and take-backs). */
-export const isServerOwnedRecoveryPointId = (id: string): boolean => id.startsWith('recovery_');
-
 /** 1 month is once per streak; 1 week and 90 days once per season (season 1 ids carry no suffix). */
 export const recoveryAwardId = (trackerId: string, key: RecoveryMilestoneKey, startMs: number, season: number) =>
   `recovery_${trackerId}_${key}_${startMs}${key !== '1m' && season > 1 ? `_s${season}` : ''}`;

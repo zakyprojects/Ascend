@@ -11,10 +11,6 @@ import { getCountedWeeklyGoals, getWeeklyGoalCompletionTime } from './pointsConf
  * arrive; it never uploads them. Change both sides together.
  */
 
-/** Point entry ids only the server writes. */
-export const isServerOwnedWeeklyPointId = (id: string): boolean =>
-  id.startsWith('weekly_goal_') || id.startsWith('weekly_review_');
-
 /**
  * When a week's goal points row is stamped (Zakria 2026-10-15): the completion time of its last
  * counted goal, kept between `notBefore` (the week's start, or the season start for a season's

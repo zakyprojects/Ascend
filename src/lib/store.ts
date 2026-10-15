@@ -74,6 +74,7 @@ import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './s
 import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './recoveryAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeFocusAwards, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
+import { computeTimeTrackerAward, timeTrackerAwardId } from './timeTrackerAwards';
 import { isReflectionWindowOpen, reflectionWindow, weeklyGoalAwardTimestamp } from './weeklyAwards';
 import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lessonAwards';
 import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, meetsReadingBonusGates, readingBonusId } from './readingAwards';
@@ -122,7 +123,6 @@ import {
   processHabitPenalties,
   processBadHabitNoReports,
   processExerciseTargetPenalties,
-  processTimeTrackerDailyPoints,
   getMissPenaltyMultiplier,
   getHighestUserStreak,
   getAppStateSeasonPoints,
@@ -943,8 +943,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   // Preset Habit Retirement Migration: Cleanse retired presets & retroactively claw back season points
   sweptState = applyPresetHabitRemovalMigration(sweptState, weekKey(getNow()));
 
-  const habitPenalized = processBadHabitNoReports(sweptState);
-  return processTimeTrackerDailyPoints(habitPenalized, now);
+  return processBadHabitNoReports(sweptState);
 }
 
 async function persistState(state: AppState, options?: { allowDestructiveWipe?: boolean }): Promise<void> {
@@ -3095,9 +3094,8 @@ export function useAppState() {
         const habitPenalized = processHabitPenalties(archivedState, targetNow);
         const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
         const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
-        const timeTrackerProcessed = processTimeTrackerDailyPoints(exercisePenalized, targetNow);
         const weeklyGoalsReconciledState = reconcileWeeklyGoalsPointsForAllWeeks(
-          reconcileLinkedWeeklyGoals(timeTrackerProcessed, targetNow),
+          reconcileLinkedWeeklyGoals(exercisePenalized, targetNow),
           targetNow
         );
 
@@ -8267,66 +8265,34 @@ export function useAppState() {
     []
   );
 
-  // Pure helper to recompute today's Time Tracker routine points live on block modifications
+  // Shows today's Time Tracker routine points at once (computeTimeTrackerAward). The entry is never
+  // uploaded; the server's own row replaces it on the next pull. Past days keep their points.
   const recomputeTimeTrackerDailyPointsForState = (
     baseState: AppState,
     targetDateKey: string,
     newBlocks: TimeTrackerBlock[]
   ): Partial<AppState> => {
-    const todayStr = todayKey();
-    if (targetDateKey !== todayStr) {
+    if (targetDateKey !== todayKey()) {
       return {};
     }
 
-    const prevBlocks = baseState.timeTracker?.dailyLogs?.[targetDateKey] || [];
-    const oldScore = calculateTimeTrackerDailyPoints(prevBlocks);
-    const newScore = calculateTimeTrackerDailyPoints(newBlocks);
-
-    const oldPoints = oldScore.pointsAwarded;
-    const newPoints = newScore.pointsAwarded;
-    const netPointDelta = newPoints - oldPoints;
-
-    const entryId = `time_tracker_${targetDateKey}`;
-
-    if (newPoints === 0 && oldPoints === 0) {
+    const entryId = timeTrackerAwardId(targetDateKey);
+    const entry = computeTimeTrackerAward(newBlocks, targetDateKey, trustedNow().getTime());
+    const current = (baseState.pointsHistory || []).find((e) => e && e.id === entryId);
+    if (!entry && !current) return {};
+    if (
+      entry &&
+      current &&
+      current.amount === entry.amount &&
+      JSON.stringify(current.metadata ?? null) === JSON.stringify(entry.metadata)
+    ) {
       return {};
     }
 
-    if (newPoints === 0 && oldPoints > 0) {
-      // Revert/excise existing entry if points dropped to 0
-      const exciseResult = excisePointsEntriesInternal(
-        baseState,
-        (entry) => entry.id === entryId,
-        1
-      );
-      const { excisedEntryIds, ...restPoints } = exciseResult;
-      const updatedDeleted = Array.from(
-        new Set([...(baseState.deletedEntityIds || []), ...excisedEntryIds])
-      ).slice(-500);
-
-      return {
-        ...restPoints,
-        deletedEntityIds: updatedDeleted,
-      };
-    }
-
-    // Upsert entry with newPoints (deterministic single entry per day)
-    const pointsUpdate = addPointsInternal(
-      baseState,
-      newPoints,
-      `Time Tracker daily routine completed (${Math.round(newScore.percentage)}%): ${newPoints} pts`,
-      'time_tracker',
-      { date: targetDateKey, percentage: newScore.percentage, pointsAwarded: newPoints },
-      undefined,
-      entryId
-    );
-
-    return {
-      pointsHistory: pointsUpdate.pointsHistory,
-      totalPoints: pointsUpdate.totalPoints,
-      seasonPoints: pointsUpdate.seasonPoints,
-      ...(pointsUpdate.leagueArchives !== undefined ? { leagueArchives: pointsUpdate.leagueArchives } : {}),
-    };
+    const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(baseState, (e) => e?.id === entryId);
+    return entry
+      ? addPointsInternal({ ...baseState, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
+      : excised;
   };
 
   const addDailyTimeBlock = useCallback(

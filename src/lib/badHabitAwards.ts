@@ -16,10 +16,6 @@ export const badHabitResistId = (badHabitId: string, day: string) => `bad_habit_
 export const badHabitOccurredId = (badHabitId: string, day: string) => `bad_habit_occurred_${badHabitId}_${day}`;
 export const badHabitDeleteId = (badHabitId: string) => `bad_habit_delete_${badHabitId}`;
 
-/** Point entry ids only the server writes: bad-habit points and missed-habit penalties. */
-export const isServerOwnedPenaltyPointId = (id: string): boolean =>
-  id.startsWith('bad_habit_') || id.startsWith('habit_missed_');
-
 /** Bad-habit logs only the server writes (no-report days). */
 export const isServerOwnedBadHabitLogId = (id: string): boolean => id.startsWith('no_report_');
 

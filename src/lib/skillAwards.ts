@@ -14,9 +14,6 @@ export const SKILL_AWARDS_SERVER_SINCE = '2026-10-15';
 
 export const skillAwardId = (day: string) => `skill_award_${day}`;
 
-/** Point entry ids only the server writes. */
-export const isServerOwnedSkillPointId = (id: string): boolean => id.startsWith('skill_award_');
-
 const localDayOf = (timestamp: string): string | null => {
   const at = new Date(timestamp);
   return Number.isNaN(at.getTime()) ? null : todayKey(at);

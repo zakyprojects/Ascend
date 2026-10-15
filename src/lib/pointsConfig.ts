@@ -263,10 +263,12 @@ export function calculateReadingPoints(
 export function calculateTimeTrackerDailyPoints(blocks: Array<{ completed?: boolean; skipped?: boolean }>): {
   percentage: number;
   pointsAwarded: number;
+  completedCount: number;
+  effectiveDenominator: number;
 } {
   const totalBlocks = (blocks || []).length;
   if (totalBlocks === 0) {
-    return { percentage: 0, pointsAwarded: 0 };
+    return { percentage: 0, pointsAwarded: 0, completedCount: 0, effectiveDenominator: 0 };
   }
 
   const actualSkippedCount = blocks.filter((b) => b && b.skipped === true).length;
@@ -290,7 +292,7 @@ export function calculateTimeTrackerDailyPoints(blocks: Array<{ completed?: bool
     pointsAwarded = TIME_TRACKER_POINTS.tiers.low.points;
   }
 
-  return { percentage, pointsAwarded };
+  return { percentage, pointsAwarded, completedCount, effectiveDenominator };
 }
 
 /** Time a weekly goal counts as achieved: completedAt, falling back to createdAt. */

@@ -14,10 +14,6 @@ export const WORKOUT_AWARDS_SERVER_SINCE = '2026-10-15';
 
 export const workoutAwardId = (day: string) => `workout_award_${day}`;
 
-/** Point entry ids only the server writes: workout awards and missed weekly-target penalties. */
-export const isServerOwnedWorkoutPointId = (id: string): boolean =>
-  id.startsWith('workout_award_') || id.startsWith('exercise_missed_');
-
 const localDayOf = (timestamp: string): string | null => {
   const at = new Date(timestamp);
   return Number.isNaN(at.getTime()) ? null : todayKey(at);

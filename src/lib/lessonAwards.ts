@@ -13,9 +13,6 @@ export const lessonReadId = (lessonId: string, season: number) => `${lessonId}_s
 
 export const lessonAwardId = (lessonId: string, season: number) => `lesson_award_${lessonReadId(lessonId, season)}`;
 
-/** Point entry ids only the server writes. */
-export const isServerOwnedLessonPointId = (id: string): boolean => id.startsWith('lesson_award_');
-
 /** Whether the lesson counts as read in this season (season 1 also kept bare lesson ids). */
 export const isLessonReadInSeason = (readLessonIds: string[], lessonId: string, season: number): boolean =>
   readLessonIds.includes(lessonReadId(lessonId, season)) || (season === 1 && readLessonIds.includes(lessonId));

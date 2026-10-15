@@ -15,16 +15,7 @@ import type {
   TimeTrackerTemplate,
 } from '../../types';
 import { DEFAULT_TIME_TRACKER_STATE } from '../../types';
-import { isServerOwnedPointId } from '../habitAwards';
-import { isServerOwnedBadHabitLogId, isServerOwnedPenaltyPointId } from '../badHabitAwards';
-import { isServerOwnedWorkoutPointId } from '../workoutAwards';
-import { isServerOwnedSkillPointId } from '../skillAwards';
-import { isServerOwnedReadingPointId } from '../readingAwards';
-import { isServerOwnedJournalPointId } from '../journalAwards';
-import { isServerOwnedFocusPointId } from '../focusAwards';
-import { isServerOwnedLessonPointId } from '../lessonAwards';
-import { isServerOwnedWeeklyPointId } from '../weeklyAwards';
-import { isServerOwnedRecoveryPointId } from '../recoveryAwards';
+import { isServerOwnedBadHabitLogId } from '../badHabitAwards';
 
 /**
  * Blob collections that also live in a relational table (DB normalization,
@@ -526,20 +517,12 @@ export const SYNCED_COLLECTIONS = [
   // Weekly goals merge by week, not by document id, so the week is the row id.
   documentCollection('weeklyGoals', 'weekly_goals', byCreatedAt, (w) => w.weekKey),
   // Points ledger (batch D): complete history; deterministic ids can be excised and re-awarded.
+  // Every row is the server's (20261015250000): the app shows its own preview rows but never
+  // uploads one, and the database drops any app write.
   {
     ...documentCollection('pointsHistory', 'point_entries', (e) => e.timestamp, undefined, true),
     revivable: true,
-    serverOwnedId: (id: string) =>
-      isServerOwnedPointId(id) ||
-      isServerOwnedPenaltyPointId(id) ||
-      isServerOwnedWorkoutPointId(id) ||
-      isServerOwnedSkillPointId(id) ||
-      isServerOwnedReadingPointId(id) ||
-      isServerOwnedJournalPointId(id) ||
-      isServerOwnedFocusPointId(id) ||
-      isServerOwnedLessonPointId(id) ||
-      isServerOwnedWeeklyPointId(id) ||
-      isServerOwnedRecoveryPointId(id),
+    serverOwnedId: () => true,
   },
   // Time tracker (batch E): one state object, three tables.
   timeTrackerActivities,

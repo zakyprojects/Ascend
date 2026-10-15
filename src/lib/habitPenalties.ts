@@ -2,8 +2,8 @@ import { AppState, Habit, BadHabitLog, ExerciseGoal, WorkoutLog } from '@/types'
 import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, addDays, addWeeks, getNow } from './dates';
 import { createNotificationSupabase } from './supabase';
 import { getEffectiveSeasonPoints } from './leagues';
-import { applyPenaltyDeductionInternal, addPointsInternal } from './pointsLedger';
-import { BAD_HABIT_POINTS, calculateTimeTrackerDailyPoints, POINTS_V2_START_DATE_KEY, RETRO_SCORING_WINDOW_DAYS } from './pointsConfig';
+import { applyPenaltyDeductionInternal } from './pointsLedger';
+import { BAD_HABIT_POINTS } from './pointsConfig';
 import { getPointEligibleHabitIds } from './badHabitEligibility';
 import { trustedNow, trustedNowMs } from './clock';
 
@@ -600,56 +600,4 @@ export function processExerciseTargetPenalties(state: AppState, now: Date = trus
       lastEvaluatedWeek: lastWeekKey,
     },
   };
-}
-
-/**
- * Evaluates Time Tracker routine completion points for past unfinalized days.
- * For any past day present in dailyLogs, calculates percentage and awards points
- * (0, 3, or 5 pts) idempotently via the deterministic entry ID time_tracker_${dateKey}.
- */
-export function processTimeTrackerDailyPoints(state: AppState, now: Date = trustedNow()): AppState {
-  if (!state.timeTracker?.dailyLogs) return state;
-
-  const todayStr = todayKey(now);
-  const windowStartKey = addDays(todayStr, -RETRO_SCORING_WINDOW_DAYS);
-  const minKey = windowStartKey > POINTS_V2_START_DATE_KEY ? windowStartKey : POINTS_V2_START_DATE_KEY;
-
-  const dailyLogs = state.timeTracker.dailyLogs;
-  const pastDateKeys = Object.keys(dailyLogs).filter((dateKey) => dateKey >= minKey && dateKey < todayStr);
-
-  if (pastDateKeys.length === 0) return state;
-
-  let updatedState = state;
-  const historyEntries = updatedState.pointsHistory || [];
-
-  for (const dateKey of pastDateKeys) {
-    const entryId = `time_tracker_${dateKey}`;
-    const alreadyEvaluated = historyEntries.some((e) => e && e.id === entryId);
-
-    if (!alreadyEvaluated) {
-      const blocks = dailyLogs[dateKey] || [];
-      const { percentage, pointsAwarded } = calculateTimeTrackerDailyPoints(blocks);
-
-      if (pointsAwarded > 0) {
-        const pointsUpdate = addPointsInternal(
-          updatedState,
-          pointsAwarded,
-          `Time Tracker daily routine completed (${Math.round(percentage)}%): ${pointsAwarded} pts`,
-          'time_tracker',
-          { date: dateKey, percentage, pointsAwarded },
-          // End of that day in UTC, but never later than now: east of UTC the day's UTC end can
-          // still be ahead, and the server refuses entries dated in the future.
-          new Date(Math.min(Date.parse(`${dateKey}T23:59:59.000Z`), now.getTime())).toISOString(),
-          entryId
-        );
-
-        updatedState = {
-          ...updatedState,
-          ...pointsUpdate,
-        };
-      }
-    }
-  }
-
-  return updatedState;
 }
