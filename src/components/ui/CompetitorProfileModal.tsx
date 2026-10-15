@@ -40,7 +40,7 @@ export function CompetitorProfileModal({
   const canViewDetailed = isSelf || (viewerIsPublic && targetIsPublic);
 
   const stats = competitor.stats;
-  const seasonHistory = competitor.season_history || competitor.stats?.season_history;
+  const seasonHistory = competitor.season_history;
   const habits = competitor.activeHabits ?? [];
   const shownHabits = showAllHabits ? habits : habits.slice(0, HABIT_PREVIEW_COUNT);
 

@@ -75,18 +75,14 @@ export function computeCompetitorLeaguePoints(
   const start = getLeaguePeriodStart(type, now);
 
   if (type === 'ninetyDay') {
-    const activeSeason = getSeasonNumber(now);
-    const profileSeasonId = typeof profile.season_id === 'number' ? profile.season_id : 1;
-    if (profileSeasonId === activeSeason) {
-      if (typeof profile.season_points === 'number') {
-        return profile.season_points;
-      }
-      // Residual fallback for legacy profiles saved without season_points
-      return calculatePeriodPoints(pointsHistory, start, now, profile.total_points);
+    // The server derives both: season_points for the season running now, season_history for
+    // closed ones. The member's own season_id is not trusted (it lags until they open the app).
+    const season = getSeasonNumber(now);
+    if (season === getSeasonNumber(leagueNow())) {
+      return typeof profile.season_points === 'number' ? profile.season_points : 0;
     }
-    // Competitor's profile is in another season: use the final score they published for this one, if any.
-    const seasonHistory: SeasonHistoryEntry[] = profile.season_history || profile.stats?.season_history || [];
-    const closed = seasonHistory.find((e) => e && e.seasonNumber === activeSeason);
+    const seasonHistory: SeasonHistoryEntry[] = profile.season_history || [];
+    const closed = seasonHistory.find((e) => e && e.seasonNumber === season);
     return closed && typeof closed.points === 'number' ? closed.points : 0;
   }
 
@@ -742,7 +738,7 @@ export function getRegisteredCompetitors(
       isProfilePublic: p.is_profile_public ?? true,
       stats,
       activeHabits: p.active_habits || [],
-      season_history: p.season_history || p.stats?.season_history || [],
+      season_history: p.season_history || [],
     });
   }
 
