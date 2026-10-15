@@ -70,6 +70,7 @@ import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLoca
 import { computeLinkedGoalProgress } from './linkedGoalMetrics';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { PresetHabit } from './presets';
+import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward } from './habitAwards';
 import {
   getLeaguePeriodStart,
   getLeaguePeriodLabel,
@@ -125,7 +126,6 @@ import { addPointsInternal } from './pointsLedger';
 import { clockReady, trustedNow, trustedNowMs } from './clock';
 export { addPointsInternal };
 import {
-  PRESET_HABIT_POINTS,
   PresetHabitCapItem,
   recomputeTodayPresetPoints,
   JOURNAL_POINTS,
@@ -286,9 +286,9 @@ export const RETIRED_PRESET_HABIT_NAMES = new Set<string>([
 ]);
 
 /**
- * Migration: Retires 7 preset habits from user state, retroactively claws back
- * points earned during the active season, tombstones removed IDs, detaches linked weekly goals,
- * and updates data-loss watermarks.
+ * Migration: Retires 7 preset habits from user state, tombstones removed IDs and detaches
+ * linked weekly goals. Points are not reversed here: the server retired the remaining rows
+ * (20261015120000_server_habit_awards.sql), none of which had completions.
  */
 export function applyPresetHabitRemovalMigration(state: AppState, currentWeekKey: string): AppState {
   const habitsToRetire = (state.habits || []).filter(
@@ -299,63 +299,7 @@ export function applyPresetHabitRemovalMigration(state: AppState, currentWeekKey
     return state;
   }
 
-  const now = leagueNow();
-  const activeSeasonStart = getSeasonStart(now);
-  const activeSeasonStartMs = activeSeasonStart.getTime();
-
   let runningState = state;
-  const legacyArrayHabitIds: string[] = [];
-
-  for (const habit of habitsToRetire) {
-    const idOverride = `migration_preset_habit_removal_${habit.id}`;
-    const alreadyDeducted = (runningState.pointsHistory || []).some((e) => e && e.id === idOverride);
-
-    if (!alreadyDeducted) {
-      let seasonCompletions = 0;
-      if (Array.isArray(habit.completions)) {
-        // Guard for pre-v7.1.0 string[] shape:
-        // Season-filtering is unavailable on legacy string[] completions.
-        // Explicitly reported and not silently defaulted to 0 or full lifetime count.
-        legacyArrayHabitIds.push(habit.id);
-        console.warn(
-          `[applyPresetHabitRemovalMigration] Legacy string[] completions detected on habit "${habit.name}" (${habit.id}). Season-filtered point deduction unavailable.`
-        );
-      } else if (habit.completions && typeof habit.completions === 'object') {
-        for (const [dateKey, val] of Object.entries(habit.completions)) {
-          if (!val || typeof val !== 'object') continue;
-          if (val.done !== true) continue;
-
-          const timeFromUpdate = val.updatedAt ? new Date(val.updatedAt).getTime() : NaN;
-          const completionMs = !isNaN(timeFromUpdate) && timeFromUpdate > 0
-            ? timeFromUpdate
-            : new Date(`${dateKey}T12:00:00.000Z`).getTime();
-
-          if (!isNaN(completionMs) && completionMs >= activeSeasonStartMs) {
-            seasonCompletions++;
-          }
-        }
-      }
-
-      if (seasonCompletions > 0 && habit.points > 0) {
-        const ptsToDeduct = seasonCompletions * habit.points;
-        const pointsUpdate = addPointsInternal(
-          runningState,
-          -ptsToDeduct,
-          `Preset habit retired: ${habit.name} (${seasonCompletions} completion(s) reversed)`,
-          'habit',
-          {
-            habitId: habit.id,
-            habitName: habit.name,
-            seasonCompletions,
-            migration: 'preset_habit_removal',
-          },
-          undefined,
-          idOverride
-        );
-        runningState = { ...runningState, ...pointsUpdate };
-      }
-    }
-  }
 
   const retiredHabitIds = habitsToRetire.map((h) => h.id).filter(Boolean);
   const retiredIdSet = new Set(retiredHabitIds);
@@ -480,6 +424,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   const nonReviewHistory: PointsEntry[] = [];
 
   for (const entry of rawHistory) {
+    if (entry && isRetiredAppHabitAward(entry)) continue;
     if (entry && entry.source === 'weekly_review') {
       let weekKey: string | null = null;
       if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
@@ -1061,6 +1006,49 @@ export function excisePointsEntriesInternal(
     leagueArchives,
     excisedEntryIds,
   };
+}
+
+/**
+ * Replaces one local day's habit award entries with the ones the server computes for these
+ * habits (computeHabitAwards), and stamps each checked preset's pointsAwarded. The entries
+ * are shown at once and never uploaded; the server's own rows replace them on the next pull.
+ */
+function applyHabitAwardsInternal(
+  state: AppState,
+  habits: Habit[],
+  day: string
+): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; habits: Habit[] } {
+  const { allocation, entries } = computeHabitAwards(
+    habits,
+    day,
+    new Date(`${day}T00:00:00`).getTime(),
+    trustedNow().getTime()
+  );
+
+  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(
+    state,
+    (entry) => isHabitAwardEntry(entry) && entry.metadata?.periodKey === day
+  );
+  let points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'> = excised;
+  for (const entry of entries) {
+    points = addPointsInternal(
+      { ...state, ...points },
+      entry.amount,
+      entry.reason,
+      entry.source,
+      entry.metadata,
+      entry.timestamp,
+      entry.id
+    );
+  }
+
+  const nextHabits = habits.map((h) => {
+    if (!h || !(h.id in allocation) || Array.isArray(h.completions)) return h;
+    const comp = h.completions?.[day];
+    if (!comp) return h;
+    return { ...h, completions: { ...h.completions, [day]: { ...comp, pointsAwarded: allocation[h.id] } } };
+  });
+  return { points, habits: nextHabits };
 }
 
 export function getWeeklyReflectionNetPoints(state: AppState, weekKey: string): number {
@@ -3210,7 +3198,6 @@ export function useAppState() {
         const target = prev.habits.find((h) => h.id === habitId);
         let runningState = prev;
         const today = todayKey();
-        const nowIso = trustedNow().toISOString();
 
         const remainingHabits = prev.habits.filter((h) => h.id !== habitId);
 
@@ -3227,126 +3214,12 @@ export function useAppState() {
           }
         }
 
-        if (target && targetHadTodayDone) {
-          // Excise the deleted habit's own completion & redistribution entries for today
-          const exciseResult = excisePointsEntriesInternal(
-            runningState,
-            (entry) =>
-              (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
-              entry.metadata?.habitId === target.id &&
-              entry.metadata?.periodKey === today
-          );
-          const { excisedEntryIds, ...restPoints } = exciseResult;
-          runningState = { ...runningState, ...restPoints };
-          if (excisedEntryIds && excisedEntryIds.length > 0) {
-            runningState = {
-              ...runningState,
-              deletedEntityIds: Array.from(
-                new Set([...(runningState.deletedEntityIds || []), ...excisedEntryIds])
-              ).slice(-500),
-            };
-          }
-        }
-
-        if (target && target.frequency === 'weekly') {
-          const currentWeek = periodKey(target.frequency);
-          let targetHadCurrentWeekDone = false;
-          if (Array.isArray(target.completions)) {
-            targetHadCurrentWeekDone = target.completions.includes(currentWeek);
-          } else if (target.completions && typeof target.completions === 'object') {
-            const weekRecord = target.completions[currentWeek];
-            if (weekRecord?.done) {
-              targetHadCurrentWeekDone = true;
-            }
-          }
-
-          if (targetHadCurrentWeekDone) {
-            const exciseResult = excisePointsEntriesInternal(
-              runningState,
-              (entry) =>
-                (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
-                entry.metadata?.habitId === target.id &&
-                entry.metadata?.periodKey === currentWeek
-            );
-            const { excisedEntryIds, ...restPoints } = exciseResult;
-            runningState = { ...runningState, ...restPoints };
-            if (excisedEntryIds && excisedEntryIds.length > 0) {
-              runningState = {
-                ...runningState,
-                deletedEntityIds: Array.from(
-                  new Set([...(runningState.deletedEntityIds || []), ...excisedEntryIds])
-                ).slice(-500),
-              };
-            }
-          }
-        }
-
+        // Today's award leaves with the habit and the remaining presets share the freed cap.
         let updatedHabits = remainingHabits;
         if (targetHadTodayDone) {
-          const capItems: PresetHabitCapItem[] = [];
-          for (const h of remainingHabits) {
-            if (!h || !h.isPreset || h.frequency !== 'daily' || h.points <= 0) continue;
-            const comps = Array.isArray(h.completions)
-              ? Object.fromEntries(h.completions.map((c) => [c, { done: true, updatedAt: h.updatedAt || nowIso }]))
-              : (h.completions || {});
-            const comp = comps[today];
-            if (comp?.done) {
-              capItems.push({
-                id: h.id,
-                nominalPoints: h.points,
-                updatedAt: comp.updatedAt || h.updatedAt || h.createdAt || nowIso,
-              });
-            }
-          }
-
-          const newAllocation = recomputeTodayPresetPoints(capItems, PRESET_HABIT_POINTS.dailyCap);
-
-          updatedHabits = remainingHabits.map((h) => {
-            if (!h || !h.isPreset || h.frequency !== 'daily' || !(h.id in newAllocation)) return h;
-            const newAlloc = newAllocation[h.id];
-            const comps = Array.isArray(h.completions)
-              ? Object.fromEntries(h.completions.map((c) => [c, { done: true, updatedAt: h.updatedAt || nowIso }]))
-              : { ...(h.completions || {}) };
-            const comp = comps[today];
-            const oldAwarded = typeof comp?.pointsAwarded === 'number' ? comp.pointsAwarded : h.points;
-            const delta = newAlloc - oldAwarded;
-
-            if (delta !== 0) {
-              const corrId = `habit_cap_redistribution_${h.id}_${today}_from_${habitId}_delete_${oldAwarded}to${newAlloc}`;
-              const corrUpdate = addPointsInternal(
-                runningState,
-                delta,
-                delta > 0
-                  ? `Habit daily cap top-up: ${h.name} (+${delta} pts)`
-                  : `Habit daily cap reduction: ${h.name} (${delta} pts)`,
-                'habit_cap_redistribution',
-                {
-                  habitId: h.id,
-                  habitName: h.name,
-                  periodKey: today,
-                  delta,
-                  allocatedPoints: newAlloc,
-                  triggerHabitId: habitId,
-                  triggerAction: 'delete',
-                },
-                undefined,
-                corrId
-              );
-              runningState = { ...runningState, ...corrUpdate };
-            }
-
-            return {
-              ...h,
-              completions: {
-                ...comps,
-                [today]: {
-                  ...(comp || { done: true }),
-                  pointsAwarded: newAlloc,
-                  updatedAt: comp?.updatedAt || nowIso,
-                },
-              },
-            };
-          });
+          const awards = applyHabitAwardsInternal(runningState, remainingHabits, today);
+          runningState = { ...runningState, ...awards.points };
+          updatedHabits = awards.habits;
         }
 
         const updatedDeletedEntityIds = [...(runningState.deletedEntityIds || []), habitId].slice(-500);
@@ -3369,26 +3242,12 @@ export function useAppState() {
       (prev) => {
         const existing = prev.habits.find((h) => h.linkedModule === 'reading');
         if (existing) {
-          let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-          const completedCount = Array.isArray(existing?.completions)
-            ? existing.completions.length
-            : Object.values(existing?.completions || {}).filter((c) => c && c.done).length;
-          if (existing.isPreset && existing.points > 0 && completedCount > 0) {
-            const ptsToDeduct = completedCount * existing.points;
-            pointsUpdate = addPointsInternal(
-              prev,
-              -ptsToDeduct,
-              `Habit deleted: ${existing.name} (${completedCount} completion(s) removed)`,
-              'habit'
-            );
-          }
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), existing.id].slice(-500);
           return {
             ...prev,
             habits: prev.habits.filter((h) => h.id !== existing.id),
             weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'habit', [existing.id], currentWeekKey),
             deletedEntityIds: updatedDeletedEntityIds,
-            ...pointsUpdate,
           };
         } else {
           const today = todayKey();
@@ -3489,167 +3348,11 @@ export function useAppState() {
 
             let runningState = prev;
 
-            if (habit) {
-              const currentPeriodKey = periodKey(habit.frequency);
-              const habitMeta = {
-                category: habit.category,
-                habitId: habit.id,
-                habitName: habit.name,
-                periodKey: currentPeriodKey,
-              };
-
-              const isDailyPreset = habit.isPreset && habit.frequency === 'daily';
-
-              if (!isDailyPreset) {
-                // Non-daily or non-preset habits follow standard check/uncheck point handling
-                if (completed) {
-                  if (habit.points > 0) {
-                    const checkPointsUpdate = addPointsInternal(
-                      runningState,
-                      habit.points,
-                      `Habit completed: ${habit.name}`,
-                      'habit_completed',
-                      habitMeta
-                    );
-                    runningState = { ...runningState, ...checkPointsUpdate };
-                  }
-                } else {
-                  const exciseResult = excisePointsEntriesInternal(
-                    runningState,
-                    (entry) =>
-                      (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
-                      entry.metadata?.habitId === habit.id &&
-                      entry.metadata?.periodKey === currentPeriodKey
-                  );
-                  const { excisedEntryIds, ...restPoints } = exciseResult;
-                  runningState = { ...runningState, ...restPoints };
-                  if (excisedEntryIds && excisedEntryIds.length > 0) {
-                    runningState = {
-                      ...runningState,
-                      deletedEntityIds: Array.from(
-                        new Set([...(runningState.deletedEntityIds || []), ...excisedEntryIds])
-                      ).slice(-500),
-                    };
-                  }
-                }
-              } else {
-                // Daily preset habits:
-                // If unchecking, excise the habit's own previous completion and redistribution entries
-                if (!completed) {
-                  const exciseResult = excisePointsEntriesInternal(
-                    runningState,
-                    (entry) =>
-                      (entry.source === 'habit_completed' || entry.source === 'habit_cap_redistribution') &&
-                      entry.metadata?.habitId === habit.id &&
-                      entry.metadata?.periodKey === currentPeriodKey
-                  );
-                  const { excisedEntryIds, ...restPoints } = exciseResult;
-                  runningState = { ...runningState, ...restPoints };
-                  if (excisedEntryIds && excisedEntryIds.length > 0) {
-                    runningState = {
-                      ...runningState,
-                      deletedEntityIds: Array.from(
-                        new Set([...(runningState.deletedEntityIds || []), ...excisedEntryIds])
-                      ).slice(-500),
-                    };
-                  }
-                }
-              }
-            }
-
-            // Live recompute: On check OR uncheck of daily preset habits,
-            // evaluate cap allocation across all currently-checked preset habits today
-            // from the single recomputeTodayPresetPoints pass.
+            // Daily presets share the daily cap; every other habit earns no points.
             if (habit && habit.isPreset && habit.frequency === 'daily') {
-              const today = todayKey();
-              const capItems: PresetHabitCapItem[] = [];
-
-              for (const h of habits) {
-                if (!h || !h.isPreset || h.frequency !== 'daily' || h.points <= 0) continue;
-                const comps = Array.isArray(h.completions)
-                  ? Object.fromEntries(h.completions.map((c) => [c, { done: true, updatedAt: h.updatedAt || nowIso }]))
-                  : (h.completions || {});
-                const comp = comps[today];
-                if (comp?.done) {
-                  capItems.push({
-                    id: h.id,
-                    nominalPoints: h.points,
-                    updatedAt: comp.updatedAt || h.updatedAt || h.createdAt || nowIso,
-                  });
-                }
-              }
-
-              const newAllocation = recomputeTodayPresetPoints(capItems, PRESET_HABIT_POINTS.dailyCap);
-
-              habits = habits.map((h) => {
-                if (!h || !h.isPreset || h.frequency !== 'daily' || !(h.id in newAllocation)) return h;
-                const newAlloc = newAllocation[h.id];
-                const comps = Array.isArray(h.completions)
-                  ? Object.fromEntries(h.completions.map((c) => [c, { done: true, updatedAt: h.updatedAt || nowIso }]))
-                  : { ...(h.completions || {}) };
-                const comp = comps[today];
-
-                if (h.id === habitId) {
-                  // For the toggled habit itself on check:
-                  // Its primary habit_completed entry is written with its newly computed allocation directly
-                  if (completed && newAlloc > 0) {
-                    const checkPointsUpdate = addPointsInternal(
-                      runningState,
-                      newAlloc,
-                      `Habit completed: ${h.name}`,
-                      'habit_completed',
-                      {
-                        category: h.category,
-                        habitId: h.id,
-                        habitName: h.name,
-                        periodKey: today,
-                      }
-                    );
-                    runningState = { ...runningState, ...checkPointsUpdate };
-                  }
-                } else {
-                  // For ANY OTHER habit whose allocation changed:
-                  const oldAwarded = typeof comp?.pointsAwarded === 'number' ? comp.pointsAwarded : h.points;
-                  const delta = newAlloc - oldAwarded;
-
-                  if (delta !== 0) {
-                    const action = completed ? 'check' : 'uncheck';
-                    const corrId = `habit_cap_redistribution_${h.id}_${today}_from_${habitId}_${action}_${oldAwarded}to${newAlloc}`;
-                    const corrUpdate = addPointsInternal(
-                      runningState,
-                      delta,
-                      delta > 0
-                        ? `Habit daily cap top-up: ${h.name} (+${delta} pts)`
-                        : `Habit daily cap reduction: ${h.name} (${delta} pts)`,
-                      'habit_cap_redistribution',
-                      {
-                        habitId: h.id,
-                        habitName: h.name,
-                        periodKey: today,
-                        delta,
-                        allocatedPoints: newAlloc,
-                        triggerHabitId: habitId,
-                        triggerAction: action,
-                      },
-                      undefined,
-                      corrId
-                    );
-                    runningState = { ...runningState, ...corrUpdate };
-                  }
-                }
-
-                return {
-                  ...h,
-                  completions: {
-                    ...comps,
-                    [today]: {
-                      ...(comp || { done: true }),
-                      pointsAwarded: newAlloc,
-                      updatedAt: comp?.updatedAt || nowIso,
-                    },
-                  },
-                };
-              });
+              const awards = applyHabitAwardsInternal(runningState, habits, todayKey());
+              runningState = { ...runningState, ...awards.points };
+              habits = awards.habits;
             }
 
             let updatedChallenges = prev.sharedChallenges;

@@ -90,9 +90,11 @@ export function diffSyncedCollections(
     const next: Record<string, string> = {};
     const items = itemsOf(collection, state);
 
+    const serverOwned = (id: string) => collection.serverOwnedId?.(id) === true;
+
     for (const item of items) {
       const id = item ? rowIdOf(collection, item) : '';
-      if (!id || tombstones.has(id)) continue;
+      if (!id || tombstones.has(id) || serverOwned(id)) continue;
       const row = collection.toRow(item as never);
       const hash = hashRow(row);
       next[id] = hash;
@@ -111,6 +113,11 @@ export function diffSyncedCollections(
         updatedAt: id in prev ? nowIso : collection.ownTimestamp(item as never),
       };
       changed = true;
+    }
+
+    // Server-owned rows keep the baseline the server gave them, so its next copy is compared to that.
+    for (const id of Object.keys(prev)) {
+      if (serverOwned(id)) next[id] = prev[id];
     }
 
     const removed = Object.keys(prev).filter((id) => !(id in next) && prev[id] !== DELETED);

@@ -15,6 +15,7 @@ import type {
   TimeTrackerTemplate,
 } from '../../types';
 import { DEFAULT_TIME_TRACKER_STATE } from '../../types';
+import { isServerOwnedPointId } from '../habitAwards';
 
 /**
  * Blob collections that also live in a relational table (DB normalization,
@@ -45,6 +46,11 @@ export interface SyncedCollection<K extends keyof AppState = keyof AppState> {
    * re-awards and default restores), so re-adding a deleted id is an upload.
    */
   revivable?: boolean;
+  /**
+   * Rows only the server writes (habit awards): the device shows them but never uploads or
+   * deletes them, and the server's copy always replaces the local one.
+   */
+  serverOwnedId?: (id: string) => boolean;
   /** Baseline and change key when several collections share one state key (the time tracker). */
   key?: string;
   /** Items of a collection nested inside a state key (default: state[stateKey]). */
@@ -493,7 +499,11 @@ export const SYNCED_COLLECTIONS = [
   // Weekly goals merge by week, not by document id, so the week is the row id.
   documentCollection('weeklyGoals', 'weekly_goals', byCreatedAt, (w) => w.weekKey),
   // Points ledger (batch D): complete history; deterministic ids can be excised and re-awarded.
-  { ...documentCollection('pointsHistory', 'point_entries', (e) => e.timestamp, undefined, true), revivable: true },
+  {
+    ...documentCollection('pointsHistory', 'point_entries', (e) => e.timestamp, undefined, true),
+    revivable: true,
+    serverOwnedId: isServerOwnedPointId,
+  },
   // Time tracker (batch E): one state object, three tables.
   timeTrackerActivities,
   timeTrackerTemplates,

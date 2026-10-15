@@ -17,6 +17,8 @@ export interface RemoteChange {
   item: { id: string } | null;
   /** The baseline already holds this exact row: add it only if the state lacks it, never overwrite a local copy. */
   missingOnly?: boolean;
+  /** Full pull only: every live server-owned id, so local copies the server never wrote are dropped. */
+  serverOwnedLive?: string[];
 }
 
 /** Re-reads rows this close to the cursor, so a late-committing write is not skipped. */
@@ -61,6 +63,12 @@ export function prepareRemoteRows(
   }
 
   if (Object.keys(hashes).length > 0) acceptServerRows(userId, key, hashes);
+  if (full && collection.serverOwnedId) {
+    const live = rows
+      .filter((row) => !row.deleted_at && typeof row.id === 'string' && collection.serverOwnedId!(row.id))
+      .map((row) => String(row.id));
+    changes.push({ key, id: '', item: null, serverOwnedLive: live });
+  }
   return changes;
 }
 
@@ -79,6 +87,16 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
     const current = itemsOf(collection, next);
     let items = current;
     for (const change of forKey) {
+      if (change.serverOwnedLive) {
+        const live = new Set(change.serverOwnedLive);
+        const owned = collection.serverOwnedId;
+        const kept = items.filter((item) => {
+          const id = rowIdOf(collection, item);
+          return !owned?.(id) || live.has(id);
+        });
+        if (kept.length !== items.length) items = kept;
+        continue;
+      }
       const index = items.findIndex((item) => rowIdOf(collection, item) === change.id);
       if (change.item === null) {
         if (index !== -1) items = items.filter((_, i) => i !== index);
