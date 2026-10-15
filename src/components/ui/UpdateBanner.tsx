@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { APP_BUILD_ID } from '@/lib/version';
+import { trustedNowMs } from '@/lib/clock';
 
 export function UpdateBanner() {
   const [hasUpdate, setHasUpdate] = useState(false);
@@ -8,7 +9,7 @@ export function UpdateBanner() {
   const checkForUpdate = useCallback(async () => {
     if (hasUpdate) return;
     try {
-      const res = await fetch(`/version.json?t=${Date.now()}`, {
+      const res = await fetch(`/version.json?t=${trustedNowMs()}`, {
         headers: { 'Cache-Control': 'no-cache, no-store' },
       });
       if (!res.ok) return;

@@ -1,4 +1,5 @@
 import { PlanType } from '@/types';
+import { trustedNowMs } from '@/lib/clock';
 
 export interface PlanTemplate {
   id: string;
@@ -32,7 +33,7 @@ export const STARTER_TEMPLATES: PlanTemplate[] = [
     planType: 'target_goal',
     targetValue: 12,
     targetUnit: 'books',
-    getTargetDate: () => new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+    getTargetDate: () => new Date(trustedNowMs() + 90 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: 'template_get_fit',

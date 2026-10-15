@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WifiOff, Wifi } from 'lucide-react';
+import { trustedNowMs } from '@/lib/clock';
 
 export function OfflineBanner() {
   const [isOnline, setIsOnline] = useState<boolean>(
@@ -26,7 +27,7 @@ export function OfflineBanner() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-      const res = await fetch(`/favicon.svg?_hb=${Date.now()}`, {
+      const res = await fetch(`/favicon.svg?_hb=${trustedNowMs()}`, {
         method: 'HEAD',
         cache: 'no-store',
         signal: controller.signal,

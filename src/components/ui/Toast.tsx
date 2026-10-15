@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, ReactNode, use
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { prefersReducedMotion } from '@/lib/motion';
+import { trustedNowMs } from '@/lib/clock';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -48,7 +49,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const showToast = useCallback((toast: Omit<ToastItem, 'id'>) => {
     const key = toast.dedupKey ? `${toast.type}:${toast.dedupKey}` : `${toast.type}:${toast.title}:${toast.message || ''}`;
-    const now = Date.now();
+    const now = trustedNowMs();
     const lastTime = lastShownRef.current.get(key) || 0;
 
     // Suppress identical toasts shown within the last 6 seconds to prevent spam
@@ -162,11 +163,11 @@ function ToastCard({ toast, onDismiss }: { toast: ShownToast; onDismiss: (id: st
 
   useEffect(() => {
     if (toast.duration <= 0 || paused || toast.leaving) return;
-    const startedAt = Date.now();
+    const startedAt = trustedNowMs();
     const timer = setTimeout(() => onDismiss(toast.id), remainingRef.current);
     return () => {
       clearTimeout(timer);
-      remainingRef.current = Math.max(0, remainingRef.current - (Date.now() - startedAt));
+      remainingRef.current = Math.max(0, remainingRef.current - (trustedNowMs() - startedAt));
     };
   }, [paused, toast.duration, toast.id, toast.leaving, onDismiss]);
 

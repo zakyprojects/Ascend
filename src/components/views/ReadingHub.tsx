@@ -35,6 +35,7 @@ import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { trustedNow, trustedNowMs } from '@/lib/clock';
 
 type ReadingHubTab = 'reading' | 'to-read' | 'completed' | 'discover';
 
@@ -99,12 +100,12 @@ export function ReadingHub({ store }: { store: AppStore }) {
   const streak = useMemo(() => {
     let count = 0;
     const today = todayKey();
-    let checkDate = new Date();
+    let checkDate = trustedNow();
     const hasLoggedToday = uniqueDates.includes(today);
 
-    if (hasLoggedToday || (uniqueDates.length > 0 && uniqueDates[0] === todayKey(new Date(Date.now() - 86400000)))) {
+    if (hasLoggedToday || (uniqueDates.length > 0 && uniqueDates[0] === todayKey(new Date(trustedNowMs() - 86400000)))) {
       if (!hasLoggedToday) {
-        checkDate = new Date(Date.now() - 86400000);
+        checkDate = new Date(trustedNowMs() - 86400000);
       }
       while (true) {
         const key = todayKey(checkDate);
@@ -129,7 +130,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
     let meetsSpan = false;
     if (startParsed) {
       const startKeyStr = todayKey(startParsed);
-      const nowKeyStr = todayKey(new Date());
+      const nowKeyStr = todayKey(trustedNow());
       const [sY, sM, sD] = startKeyStr.split('-').map(Number);
       const [nY, nM, nD] = nowKeyStr.split('-').map(Number);
       const startMidnight = new Date(sY, sM - 1, sD).getTime();
@@ -150,7 +151,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
     );
     const logDates = new Set(bookLogs.map((l) => l.date));
     if (unreadDelta > 0) {
-      logDates.add(todayKey(new Date()));
+      logDates.add(todayKey(trustedNow()));
     }
     const loggedDays = logDates.size;
     const meetsDays = loggedDays >= 5;

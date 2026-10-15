@@ -40,6 +40,7 @@ import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
+import { trustedNow } from '@/lib/clock';
 function GoalItemRow({
   item,
   selectedWeekKey,
@@ -305,7 +306,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         weekKey: selectedWeekKey,
         goals: [],
         reflections: [],
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       }
     );
   }, [weeklyGoals, selectedWeekKey]);

@@ -9,6 +9,7 @@ import {
   getSeasonEnd,
   getSeasonNumber,
 } from './leagueTime';
+import { trustedNow } from './clock';
 
 /** Returns formatted Season label (e.g. "Season 1") */
 export function getSeasonLabel(now: Date): string {
@@ -236,7 +237,7 @@ export function createArchive(
     competitors: competitors.map(toArchivedCompetitor),
     userRank,
     userPoints,
-    archivedAt: new Date().toISOString(),
+    archivedAt: trustedNow().toISOString(),
   };
 }
 

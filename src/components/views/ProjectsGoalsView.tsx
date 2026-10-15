@@ -54,6 +54,7 @@ import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { CountUp } from '@/components/ui/Motion';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { useScrollFade } from '@/lib/useScrollFade';
+import { trustedNow, trustedNowMs } from '@/lib/clock';
 
 // Active look of each status filter, worn by the row's SlidingPill.
 const GOAL_FILTER_PILL: Record<string, string> = {
@@ -527,7 +528,7 @@ export function ProjectsGoalsView({
   const currentWeek = weekKey();
 
   // Date input bounds (e.g. today minus 2 years to today plus 20 years)
-  const currentYear = new Date().getFullYear();
+  const currentYear = trustedNow().getFullYear();
   const minAllowedDate = `${currentYear - 2}-01-01`;
   const maxAllowedDate = `${currentYear + 20}-12-31`;
 
@@ -890,7 +891,7 @@ export function ProjectsGoalsView({
         const due = t.dueDate;
         if (due < currentToday) return false;
         // Simple 7 day check
-        const dObj = new Date();
+        const dObj = trustedNow();
         dObj.setDate(dObj.getDate() + 7);
         const maxDue = todayKey(dObj);
         if (due > maxDue) return false;
@@ -1087,7 +1088,7 @@ export function ProjectsGoalsView({
 
     if (clamped === 100 && project.status !== 'completed') {
       newStatus = 'completed';
-      newCompletedAt = new Date().toISOString();
+      newCompletedAt = trustedNow().toISOString();
     } else if (clamped < 100 && project.status === 'completed') {
       newStatus = 'in_progress';
       newCompletedAt = undefined;
@@ -1115,7 +1116,7 @@ export function ProjectsGoalsView({
         store.updateProject(projectId, {
           status: 'completed',
           manualProgress: 100,
-          completedAt: new Date().toISOString(),
+          completedAt: trustedNow().toISOString(),
         });
       } else {
         store.moveProjectStatus(projectId, newStatus);
@@ -2899,7 +2900,7 @@ export function ProjectsGoalsView({
                     if (newModalSubtaskTitle.trim()) {
                       setTaskFormSubtasks((prev) => [
                         ...prev,
-                        { id: Date.now().toString(), title: newModalSubtaskTitle.trim(), completed: false },
+                        { id: trustedNowMs().toString(), title: newModalSubtaskTitle.trim(), completed: false },
                       ]);
                       setNewModalSubtaskTitle('');
                     }
@@ -2913,7 +2914,7 @@ export function ProjectsGoalsView({
                   if (newModalSubtaskTitle.trim()) {
                     setTaskFormSubtasks((prev) => [
                       ...prev,
-                      { id: Date.now().toString(), title: newModalSubtaskTitle.trim(), completed: false },
+                      { id: trustedNowMs().toString(), title: newModalSubtaskTitle.trim(), completed: false },
                     ]);
                     setNewModalSubtaskTitle('');
                   }

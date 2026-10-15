@@ -16,6 +16,7 @@ import {
   savePartnershipSupabase,
   deletePartnershipSupabase,
 } from './supabase';
+import { trustedNow, trustedNowMs } from './clock';
 
 let cachedProfiles: any[] = [];
 let cachedPublicPlans: ImprovementPlan[] = [];
@@ -399,7 +400,7 @@ export async function updateUsernameWithCooldown(
 
     if (prof?.last_username_change_at) {
       const lastChanged = new Date(prof.last_username_change_at).getTime();
-      const now = Date.now();
+      const now = trustedNowMs();
       const msElapsed = now - lastChanged;
       const cooldownMs = 24 * 60 * 60 * 1000;
 
@@ -414,7 +415,7 @@ export async function updateUsernameWithCooldown(
     }
 
     // 3. Update profiles table and Supabase auth metadata
-    const nowIso = new Date().toISOString();
+    const nowIso = trustedNow().toISOString();
     let { error: updateErr } = await supabase
       .from('profiles')
       .update({
@@ -444,7 +445,7 @@ export async function updateUsernameWithCooldown(
     return nowIso;
   }
 
-  return new Date().toISOString();
+  return trustedNow().toISOString();
 }
 
 /**
@@ -613,7 +614,7 @@ export function reconstructStateFromProfile(p: any): AppState {
     }
   });
 
-  const nowIso = new Date().toISOString();
+  const nowIso = trustedNow().toISOString();
   const habits = activeHabits.map((h: any, i: number) => {
     const dates: string[] = habitCompletionsMap[h.name] || [];
     const completionsMap: Record<string, { done: boolean; updatedAt: string }> = {};

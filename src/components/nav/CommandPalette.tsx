@@ -4,6 +4,7 @@ import { Dialog, cx } from '@/components/ui/primitives';
 import type { View } from '@/components/AppShell';
 import { NAV_DASHBOARD, NAV_GROUPS, NAV_HELP, NAV_SETTINGS, NavEntry } from './navConfig';
 import { IS_APPLE_PLATFORM } from '@/lib/platform';
+import { trustedNowMs } from '@/lib/clock';
 
 /** "g" then this key jumps to the page. Kept to the most visited pages so the letters stay memorable. */
 const GO_KEYS: Partial<Record<View, string>> = {
@@ -75,7 +76,7 @@ export function CommandPalette({ open, onOpenChange, currentView, onViewChange }
         return;
       }
       const key = event.key.toLowerCase();
-      if (pendingG && Date.now() - pendingG < SEQUENCE_MS) {
+      if (pendingG && trustedNowMs() - pendingG < SEQUENCE_MS) {
         pendingG = 0;
         const view = VIEW_BY_GO_KEY.get(key);
         if (view) {
@@ -84,7 +85,7 @@ export function CommandPalette({ open, onOpenChange, currentView, onViewChange }
         }
         return;
       }
-      pendingG = key === 'g' && !event.shiftKey ? Date.now() : 0;
+      pendingG = key === 'g' && !event.shiftKey ? trustedNowMs() : 0;
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);

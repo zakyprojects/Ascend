@@ -17,6 +17,7 @@ import {
   prepareScreenshot,
   submitFeedback,
 } from '@/lib/feedback';
+import { trustedNowMs } from '@/lib/clock';
 
 interface FeedbackViewProps {
   kind: FeedbackKind;
@@ -114,7 +115,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sentRef, setSentRef] = useState<string | null>(null);
-  const [startedAt, setStartedAt] = useState(() => Date.now());
+  const [startedAt, setStartedAt] = useState(() => trustedNowMs());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const context = useMemo(
@@ -199,7 +200,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
     setScreenshots([]);
     setScreenshotError(null);
     setSendError(null);
-    setStartedAt(Date.now());
+    setStartedAt(trustedNowMs());
     setSentRef(null);
   };
 

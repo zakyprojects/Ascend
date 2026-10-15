@@ -47,6 +47,7 @@ import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
 import { isWeeklyGoalSeasonSplitEntryId } from './weeklyGoalSeasons';
 import { archiveSeasonBeforeRollover } from './seasonArchive';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
+import { trustedNow, trustedNowMs } from './clock';
 
 function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string; timestamp?: string }>(
   baseArr: T[] = [],
@@ -172,7 +173,7 @@ export function deduplicatePresetHabits(
         ...group[0],
         completions: normalizeHabitCompletions(
           group[0].completions,
-          group[0].updatedAt || group[0].createdAt || new Date().toISOString()
+          group[0].updatedAt || group[0].createdAt || trustedNow().toISOString()
         ),
       });
       continue;
@@ -188,7 +189,7 @@ export function deduplicatePresetHabits(
     const winner = sorted[0];
     let mergedComps = normalizeHabitCompletions(
       winner.completions,
-      winner.updatedAt || winner.createdAt || new Date().toISOString()
+      winner.updatedAt || winner.createdAt || trustedNow().toISOString()
     );
     const mergedMissedPeriods = new Set<string>(winner.missedPeriods || []);
 
@@ -200,7 +201,7 @@ export function deduplicatePresetHabits(
         newDeletedIds.add(member.id);
         const memberComps = normalizeHabitCompletions(
           member.completions,
-          member.updatedAt || member.createdAt || new Date().toISOString()
+          member.updatedAt || member.createdAt || trustedNow().toISOString()
         );
         mergedComps = mergeHabitCompletions(mergedComps, memberComps);
       }
@@ -481,8 +482,8 @@ function mergeAppStateInternal(
       const baseTime = baseH.updatedAt || baseH.createdAt || '';
       const incTime = incH.updatedAt || incH.createdAt || '';
       const winner = incTime >= baseTime ? incH : baseH;
-      const baseComps = normalizeHabitCompletions(baseH.completions, baseTime || new Date().toISOString());
-      const incComps = normalizeHabitCompletions(incH.completions, incTime || new Date().toISOString());
+      const baseComps = normalizeHabitCompletions(baseH.completions, baseTime || trustedNow().toISOString());
+      const incComps = normalizeHabitCompletions(incH.completions, incTime || trustedNow().toISOString());
       const mergedComps = mergeHabitCompletions(baseComps, incComps);
       const mergedMissed = Array.from(
         new Set([...(baseH.missedPeriods || []), ...(incH.missedPeriods || [])])
@@ -496,7 +497,7 @@ function mergeAppStateInternal(
   );
   const normalizedHabits = mergedHabitsRaw.map((h) => ({
     ...h,
-    completions: normalizeHabitCompletions(h.completions, h.updatedAt || h.createdAt || new Date().toISOString()),
+    completions: normalizeHabitCompletions(h.completions, h.updatedAt || h.createdAt || trustedNow().toISOString()),
   }));
 
   const { habits: deduplicatedHabits, deletedEntityIds: postHabitDeletedEntityIds } = deduplicatePresetHabits(
@@ -823,7 +824,7 @@ function mergeAppStateInternal(
         currentPage: legacyBook.currentPage || 0,
         unit: legacyBook.unit || 'pages',
         targetFinishDate: legacyBook.targetFinishDate,
-        addedAt: legacyBook.createdAt || new Date().toISOString(),
+        addedAt: legacyBook.createdAt || trustedNow().toISOString(),
         dateCompleted: legacyBook.finishedAt,
         completedAt: legacyBook.finishedAt,
         reflection: legacyBook.reflection,
@@ -1046,7 +1047,7 @@ function mergeAppStateInternal(
   }
 
   // Apply 30-day TTL + 50-item cap pruning
-  const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgoIso = new Date(trustedNowMs() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const notifications = Array.from(notifMap.values())
     .filter((n) => !n.createdAt || n.createdAt >= thirtyDaysAgoIso)
     .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
@@ -1265,7 +1266,7 @@ function mergeAppStateInternal(
     addictionTracker = {
       id: winningSide.id,
       title: winningSide.title || baseT.title || 'Sobriety',
-      createdAt: winningSide.createdAt || baseT.createdAt || new Date().toISOString(),
+      createdAt: winningSide.createdAt || baseT.createdAt || trustedNow().toISOString(),
       startDate: resolvedStartDate,
       milestonesUnlocked: resolvedMilestonesUnlocked,
       awardedMilestones: finalAwards,

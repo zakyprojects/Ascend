@@ -1,5 +1,6 @@
 import { AppState } from '@/types';
 import { todayKey } from './dates';
+import { trustedNow } from './clock';
 
 export interface UnifiedStreakResult {
   currentStreakDays: number;
@@ -92,7 +93,7 @@ function calculateCurrentStreakFromSortedDates(sortedDates: string[], referenceN
  */
 export function calculateUnifiedStreak(
   state?: Partial<AppState> | null,
-  referenceNowKey: string = todayKey(new Date())
+  referenceNowKey: string = todayKey(trustedNow())
 ): UnifiedStreakResult {
   if (!state) {
     return {

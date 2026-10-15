@@ -24,6 +24,7 @@ import {
   syncFollowedPlanToSupabase,
   cleanupPendingInvitesBetweenUsersSupabase,
 } from './supabase';
+import { trustedNow } from './clock';
 
 export type SignUpDefaults = {
   username: string;
@@ -88,7 +89,7 @@ export function buildUserProfile(
       email,
       username: signupDefaults.username,
       avatar: signupDefaults.avatar || '🧑',
-      createdAt: new Date().toISOString(),
+      createdAt: trustedNow().toISOString(),
       isProfilePublic: true,
       isAnonymous,
     };
@@ -118,7 +119,7 @@ export function buildUserProfile(
     createdAt:
       (profileData?.created_at as string | undefined) ||
       authUser?.created_at ||
-      new Date().toISOString(),
+      trustedNow().toISOString(),
     isProfilePublic: (profileData?.is_profile_public as boolean | undefined) ?? true,
     acceptPartnerInvites: (profileData?.accept_partner_invites as boolean | undefined) ?? true,
     notifDailyReminder: (profileData?.notif_daily_reminder as boolean | undefined) ?? true,

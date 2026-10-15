@@ -5,6 +5,7 @@ import { AppStore } from '@/lib/store';
 import { AppNotification } from '@/types';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { Badge } from '@/components/ui/primitives/Badge';
+import { trustedNow } from '@/lib/clock';
 
 const PANEL_WIDTH = 344;
 
@@ -99,7 +100,7 @@ export function NotificationCenter({
   const formatRelativeTime = (isoString: string) => {
     try {
       const date = new Date(isoString);
-      const now = new Date();
+      const now = trustedNow();
       const diffMs = now.getTime() - date.getTime();
       const diffSec = Math.floor(diffMs / 1000);
       const diffMin = Math.floor(diffSec / 60);

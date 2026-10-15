@@ -53,6 +53,7 @@ import {
 import { View } from '@/components/AppShell';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { toUserMessage } from '@/lib/userMessage';
+import { trustedNow, trustedNowMs } from '@/lib/clock';
 
 function getLaunchModules(
   primary: TimeTrackerActivity | undefined | null,
@@ -96,7 +97,7 @@ export function ScheduleTab({
   const { showSuccessToast, showErrorToast } = useToast();
   const [deleteTargetBlock, setDeleteTargetBlock] = useState<TimeTrackerBlock | null>(null);
   const [showClearDayModal, setShowClearDayModal] = useState(false);
-  const [now, setNow] = useState<Date>(new Date());
+  const [now, setNow] = useState<Date>(trustedNow());
 
   const today = todayKey();
   const isSelectedDateToday = selectedDateKey === today;
@@ -114,7 +115,7 @@ export function ScheduleTab({
   // Live timer interval to update active block & progress bar
   useEffect(() => {
     const timer = setInterval(() => {
-      setNow(new Date());
+      setNow(trustedNow());
     }, 15000); // 15 seconds
     return () => clearInterval(timer);
   }, []);
@@ -205,7 +206,7 @@ export function ScheduleTab({
   const handleConfirmClearDay = async () => {
     try {
       store.clearDailyTimeBlocks(selectedDateKey);
-      showSuccessToast('Day cleared', 'Day schedule cleared.', `clear_day_${selectedDateKey}_${Date.now()}`);
+      showSuccessToast('Day cleared', 'Day schedule cleared.', `clear_day_${selectedDateKey}_${trustedNowMs()}`);
     } catch (err: any) {
       showErrorToast("Couldn't clear day", toUserMessage(err, 'Try again.'));
     } finally {

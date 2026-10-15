@@ -1,6 +1,7 @@
+import { trustedNow, trustedNowMs } from './clock';
 /** Returns the current Date */
 export function getNow(): Date {
-  return new Date();
+  return trustedNow();
 }
 
 /** Returns local date as YYYY-MM-DD (no timezone surprises) */
@@ -283,7 +284,7 @@ export function calculateActivePlanStreak(
 }
 
 export function uid(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  return trustedNowMs().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 /** Generates a padded 6-digit numeric UID string (e.g. "049201" or "849201") */
@@ -391,9 +392,9 @@ export function formatDateKeyHuman(dateKey: string): string {
   const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
   const today = todayKey();
   if (dateKey === today) return 'Today';
-  const yesterday = todayKey(new Date(Date.now() - 86400000));
+  const yesterday = todayKey(new Date(trustedNowMs() - 86400000));
   if (dateKey === yesterday) return 'Yesterday';
-  const tomorrow = todayKey(new Date(Date.now() + 86400000));
+  const tomorrow = todayKey(new Date(trustedNowMs() + 86400000));
   if (dateKey === tomorrow) return 'Tomorrow';
   return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }

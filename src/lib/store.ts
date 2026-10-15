@@ -122,6 +122,7 @@ import {
 } from './habitPenalties';
 import { archiveSeasonBeforeRollover, refreshPendingSeasonStandings, toSeasonHistory } from './seasonArchive';
 import { addPointsInternal } from './pointsLedger';
+import { clockReady, trustedNow, trustedNowMs } from './clock';
 export { addPointsInternal };
 import {
   PRESET_HABIT_POINTS,
@@ -231,7 +232,7 @@ export function broadcastStateToTabs(state: AppState, senderTabId: string) {
       senderTabId,
       userId: state.currentUser?.id,
       state,
-      timestamp: Date.now(),
+      timestamp: trustedNowMs(),
     };
     channel.postMessage(msg);
     channel.close();
@@ -524,7 +525,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
       amount: Math.min(netAmount, firstAward?.amount || WEEKLY_REFLECTION_POINTS.awarded),
       reason: `Weekly reflection completed for ${weekKey}`,
       source: 'weekly_review',
-      timestamp: earliest.timestamp || new Date().toISOString(),
+      timestamp: earliest.timestamp || trustedNow().toISOString(),
       metadata: { weekKey },
     });
   }
@@ -576,7 +577,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
     const sorted = [...previousEntries].sort(
       (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
     );
-    const earliestTimestamp = sorted[0]?.timestamp || doc?.createdAt || new Date().toISOString();
+    const earliestTimestamp = sorted[0]?.timestamp || doc?.createdAt || trustedNow().toISOString();
 
     consolidatedWeeklyGoalEntries.push({
       id: `weekly_goal_${weekKey}`,
@@ -752,8 +753,8 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
         totalPages: b.totalPages || 200,
         currentPage: isFin ? (b.totalPages || 200) : (b.currentPage || 0),
         isFinished: isFin,
-        addedAt: b.createdAt || new Date().toISOString(),
-        startedAt: b.createdAt || new Date().toISOString(),
+        addedAt: b.createdAt || trustedNow().toISOString(),
+        startedAt: b.createdAt || trustedNow().toISOString(),
         completedAt: b.finishedAt,
         linkedBookId: b.id,
         consecutiveMisses: b.consecutiveMisses,
@@ -819,7 +820,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
         {
           id: uid(),
           content: wg.insights.trim(),
-          createdAt: wg.createdAt || new Date().toISOString(),
+          createdAt: wg.createdAt || trustedNow().toISOString(),
           pointsAwarded: Boolean(wg.isReviewed),
         },
       ];
@@ -845,7 +846,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
           carryOverDismissed: Boolean(g.carryOverDismissed),
           carriedOverFromWeekKey: g.carriedOverFromWeekKey || undefined,
           carriedOverFromGoalId: g.carriedOverFromGoalId || undefined,
-          createdAt: g.createdAt || new Date().toISOString(),
+          createdAt: g.createdAt || trustedNow().toISOString(),
         })),
     };
   });
@@ -949,7 +950,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
       )
       .map((c) => reconcileSharedChallengeLifecycle(c)),
     notifications: (st.notifications ?? [])
-      .filter((n: any) => !n.createdAt || n.createdAt >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      .filter((n: any) => !n.createdAt || n.createdAt >= new Date(trustedNowMs() - 30 * 24 * 60 * 60 * 1000).toISOString())
       .filter((n: any) => !sanitizedDeletedEntityIds.includes(n.id))
       .slice(0, 50),
     deletedEntityIds: sanitizedDeletedEntityIds.slice(-500),
@@ -1533,7 +1534,7 @@ export function reconcileReflectionPoints(
   prevState: AppState,
   weekKey: string,
   reflections: WeeklyGoalReflection[],
-  now = new Date()
+  now = trustedNow()
 ): {
   updatedReflections: WeeklyGoalReflection[];
   nextState: AppState;
@@ -1606,7 +1607,7 @@ export function reconcileReflectionPoints(
 
 export function reconcileAllWeeklyReflections(
   state: AppState,
-  now: Date = new Date()
+  now: Date = trustedNow()
 ): AppState {
   let reflectionReconciledState = state;
   let reflectionsChanged = false;
@@ -1794,7 +1795,7 @@ export function useAppState() {
   }, [destructiveWipeModal]);
 
   // Cross-tab synchronization tracking
-  const tabId = useRef<string>(Math.random().toString(36).substring(2) + Date.now().toString(36)).current;
+  const tabId = useRef<string>(Math.random().toString(36).substring(2) + trustedNowMs().toString(36)).current;
   const isRemoteBroadcastUpdate = useRef(false);
   const inFlightHabitToggles = useRef<Set<string>>(new Set());
 
@@ -1904,7 +1905,7 @@ export function useAppState() {
   }, [tabId]);
 
   // FIX 3: Network Reconnection & Tab Focus Sync (with Anti-Spam Throttle)
-  const lastSyncTimeRef = useRef<number>(Date.now());
+  const lastSyncTimeRef = useRef<number>(trustedNowMs());
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1914,7 +1915,7 @@ export function useAppState() {
 
     const handleReconnectAndSync = async (force = false) => {
       if (isSyncing) return;
-      const now = Date.now();
+      const now = trustedNowMs();
       if (!force && now - lastSyncTimeRef.current < SYNC_THROTTLE_MS) {
         return;
       }
@@ -1928,7 +1929,7 @@ export function useAppState() {
         console.log('[SYNC] Network reconnected or tab visible, reconciling server state...');
         const serverRes = await fetchUserDataWithStatusFromSupabase(userId);
         if (serverRes.exists && serverRes.state) {
-          lastSyncTimeRef.current = Date.now();
+          lastSyncTimeRef.current = trustedNowMs();
           setStateRaw((current) => {
             // Reconcile and union-merge server state with current state using mergeAppState
             // Tombstones (deletedEntityIds) prevent resurrecting deleted items while preserving offline progress
@@ -2305,6 +2306,9 @@ export function useAppState() {
               hydrateUserSession(userId, email, session.user, signupDefaults),
               timeoutPromise,
             ]);
+            // Penalties, streaks and season rollovers below decide days by the clock: wait for
+            // the server time (at most a few seconds) so a moved device clock cannot steer them.
+            await clockReady();
 
             if (mounted) {
               if (myGeneration !== authGenerationRef.current) return;
@@ -2393,7 +2397,7 @@ export function useAppState() {
                 email,
                 username: session.user.user_metadata?.username || email.split('@')[0],
                 avatar: session.user.user_metadata?.avatar || '🧑',
-                createdAt: session.user.created_at || new Date().toISOString(),
+                createdAt: session.user.created_at || trustedNow().toISOString(),
                 isProfilePublic: true,
               };
 
@@ -2499,7 +2503,7 @@ export function useAppState() {
               message: `${invite.fromUsername} sent you an accountability partner invite!`,
               payload: { inviteId: invite.id },
               read: false,
-              createdAt: new Date().toISOString(),
+              createdAt: trustedNow().toISOString(),
             };
 
             if (!updatedNotifs.some((n) => n.payload?.inviteId === invite.id || n.id === notifObject.id)) {
@@ -3093,7 +3097,7 @@ export function useAppState() {
 
   const addPresetHabit = useCallback((preset: PresetHabit) => {
     const normalizedName = preset.name.trim().toLowerCase();
-    const nowIso = new Date().toISOString();
+    const nowIso = trustedNow().toISOString();
     const habit: Habit = {
       id: uid(),
       name: preset.name,
@@ -3126,7 +3130,7 @@ export function useAppState() {
   }, []);
 
   const addCustomHabit = useCallback((name: string, frequency: Habit['frequency']) => {
-    const nowIso = new Date().toISOString();
+    const nowIso = trustedNow().toISOString();
     const habit: Habit = {
       id: uid(),
       name,
@@ -3168,7 +3172,7 @@ export function useAppState() {
               ? {
                   ...h,
                   ...updates,
-                  updatedAt: new Date().toISOString(),
+                  updatedAt: trustedNow().toISOString(),
                 }
               : h
           ),
@@ -3187,7 +3191,7 @@ export function useAppState() {
         const target = prev.habits.find((h) => h.id === habitId);
         let runningState = prev;
         const today = todayKey();
-        const nowIso = new Date().toISOString();
+        const nowIso = trustedNow().toISOString();
 
         const remainingHabits = prev.habits.filter((h) => h.id !== habitId);
 
@@ -3373,7 +3377,7 @@ export function useAppState() {
           const totalPagesToday = todayReadingLogs.reduce((sum, l) => sum + (l.pagesRead || 0), 0);
           const hasReadToday = totalPagesToday > 0;
 
-          const nowIso = new Date().toISOString();
+          const nowIso = trustedNow().toISOString();
           const dKey = periodKey('daily');
           const habit: Habit = {
             id: uid(),
@@ -3426,7 +3430,7 @@ export function useAppState() {
               return prev;
             }
 
-            const nowIso = new Date().toISOString();
+            const nowIso = trustedNow().toISOString();
 
             const currentKey = habit ? periodKey(habit.frequency) : todayKey();
             const prevCompletions = habit
@@ -3681,7 +3685,7 @@ export function useAppState() {
     []
   );
 
-  const isHabitDone = useCallback((habit: Habit, date = new Date()): boolean => {
+  const isHabitDone = useCallback((habit: Habit, date = trustedNow()): boolean => {
     const key = periodKey(habit.frequency, date);
     if (!habit.completions) return false;
     if (Array.isArray(habit.completions)) {
@@ -3727,7 +3731,7 @@ export function useAppState() {
             ...existing,
             mood,
             content: trimmed,
-            createdAt: new Date().toISOString(),
+            createdAt: trustedNow().toISOString(),
             pointsAwarded: newPointsAwarded,
           };
           return { ...prev, journalEntries: updated, ...pointsUpdate };
@@ -3738,7 +3742,7 @@ export function useAppState() {
           date,
           mood,
           content: trimmed,
-          createdAt: new Date().toISOString(),
+          createdAt: trustedNow().toISOString(),
           pointsAwarded: newPointsAwarded,
         };
         return { ...prev, journalEntries: [newEntry, ...prev.journalEntries], ...pointsUpdate };
@@ -3781,7 +3785,7 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getTodayJournalEntry = useCallback((date = new Date()): JournalEntry | null => {
+  const getTodayJournalEntry = useCallback((date = trustedNow()): JournalEntry | null => {
     const key = todayKey(date);
     return state.journalEntries.find((e) => e.date === key) ?? null;
   }, [state.journalEntries]);
@@ -3826,7 +3830,7 @@ export function useAppState() {
   }, []);
 
   const updateProfileUsername = useCallback((newUsername: string, lastChangedAt?: string) => {
-    const timestamp = lastChangedAt || new Date().toISOString();
+    const timestamp = lastChangedAt || trustedNow().toISOString();
     setState(
       (prev) => {
         if (!prev.currentUser) return prev;
@@ -4032,7 +4036,7 @@ export function useAppState() {
         pointsAwarded: pointsToAward,
         amount: safeAmount !== undefined ? safeAmount : (normalizedUnit === 'mins' ? safeDurationMinutes : undefined),
         unit: normalizedUnit,
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
 
       let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
@@ -4139,7 +4143,7 @@ export function useAppState() {
         targetWeeklySessions > 0
           ? {
               targetWeeklySessions,
-              createdAt: prev.exerciseGoal?.createdAt || new Date().toISOString(),
+              createdAt: prev.exerciseGoal?.createdAt || trustedNow().toISOString(),
               lastEvaluatedWeek: prev.exerciseGoal?.lastEvaluatedWeek,
             }
           : null,
@@ -4159,8 +4163,8 @@ export function useAppState() {
       category?: BookCategory | string,
       description?: string
     ) => {
-      const now = new Date().toISOString();
-      const id = `custom-book-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const now = trustedNow().toISOString();
+      const id = `custom-book-${trustedNowMs()}-${Math.random().toString(36).substring(2, 9)}`;
       const numPages = Math.max(1, totalPages || 200);
 
       const userBook: UserBook = {
@@ -4221,7 +4225,7 @@ export function useAppState() {
         ...prev,
         libraryBooks: prev.libraryBooks.map((lb) =>
           lb.id === bookId || lb.linkedBookId === bookId
-            ? { ...lb, targetFinishDate: formatted, updatedAt: new Date().toISOString() }
+            ? { ...lb, targetFinishDate: formatted, updatedAt: trustedNow().toISOString() }
             : lb
         ),
         books: [],
@@ -4233,7 +4237,7 @@ export function useAppState() {
 
   const updateReadingProgress = useCallback((bookId: string, pagesDelta: number, newCurrentPage: number) => {
     const date = todayKey();
-    const nowIso = new Date().toISOString();
+    const nowIso = trustedNow().toISOString();
     setState((prev) => {
       const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
       if (!targetUserBook) return prev;
@@ -4250,12 +4254,12 @@ export function useAppState() {
       let removedLogIds: string[] = [];
       if (pageDelta > 0) {
         const readingLog: ReadingLog = {
-          id: `reading-log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          id: `reading-log-${trustedNowMs()}-${Math.random().toString(36).substring(2, 9)}`,
           bookId: targetUserBook.id,
           date,
           pagesRead: pageDelta,
           pointsAwarded: 0,
-          createdAt: new Date().toISOString(),
+          createdAt: trustedNow().toISOString(),
         };
         updatedReadingLogs = [readingLog, ...updatedReadingLogs];
       } else if (pageDelta < 0) {
@@ -4263,7 +4267,7 @@ export function useAppState() {
         const validBookIds = new Set(
           [targetUserBook.id, bookId, targetUserBook.linkedBookId, targetUserBook.curatedBookId].filter(Boolean)
         );
-        const nowIso = new Date().toISOString();
+        const nowIso = trustedNow().toISOString();
         updatedReadingLogs = updatedReadingLogs.map((l) => {
           if (decreaseToApply <= 0 || l.date !== date || !l.bookId || !validBookIds.has(l.bookId)) {
             return l;
@@ -4356,11 +4360,11 @@ export function useAppState() {
       if (readingHabit) {
         const key = periodKey(readingHabit.frequency || 'daily');
         const currentCompletions = Array.isArray(readingHabit.completions)
-          ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || new Date().toISOString() }]))
+          ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || trustedNow().toISOString() }]))
           : (readingHabit.completions || {});
         const isCheckedToday = currentCompletions[key]?.done === true;
 
-        const nowIso = new Date().toISOString();
+        const nowIso = trustedNow().toISOString();
         if (totalPagesToday > 0 && !isCheckedToday) {
           // Auto-check habit (linked reading habit is zero-point system indicator or tracks completions)
           updatedHabits = prev.habits.map((h) =>
@@ -4419,7 +4423,7 @@ export function useAppState() {
         if (!targetUserBook) return prev;
 
         const title = targetUserBook.title || 'Book';
-        const now = new Date().toISOString();
+        const now = trustedNow().toISOString();
         const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
 
         // Check if bonus already awarded
@@ -4432,7 +4436,7 @@ export function useAppState() {
         let meetsSpanGate = false;
         if (startParsed) {
           const startKeyStr = todayKey(startParsed);
-          const nowKeyStr = todayKey(new Date());
+          const nowKeyStr = todayKey(trustedNow());
           const [sY, sM, sD] = startKeyStr.split('-').map(Number);
           const [nY, nM, nD] = nowKeyStr.split('-').map(Number);
           const startMidnight = new Date(sY, sM - 1, sD).getTime();
@@ -4453,7 +4457,7 @@ export function useAppState() {
         );
         const logDates = new Set(bookLogs.map((l) => l.date));
         if (unreadDelta > 0) {
-          logDates.add(todayKey(new Date()));
+          logDates.add(todayKey(trustedNow()));
         }
         const meetsDistinctDaysGate = logDates.size >= 5;
 
@@ -4463,9 +4467,9 @@ export function useAppState() {
         let updatedReadingLogs = prev.readingLogs || [];
         if (unreadDelta > 0) {
           const finishLog: ReadingLog = {
-            id: `reading-log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            id: `reading-log-${trustedNowMs()}-${Math.random().toString(36).substring(2, 9)}`,
             bookId: targetUserBook.id,
-            date: todayKey(new Date()),
+            date: todayKey(trustedNow()),
             pagesRead: unreadDelta,
             pointsAwarded: 0,
             createdAt: now,
@@ -4588,7 +4592,7 @@ export function useAppState() {
           const today = todayKey();
           const key = periodKey(readingHabit.frequency || 'daily');
           const currentCompletions = Array.isArray(readingHabit.completions)
-            ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || new Date().toISOString() }]))
+            ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || trustedNow().toISOString() }]))
             : (readingHabit.completions || {});
           const isCheckedToday = currentCompletions[key]?.done === true;
           const remainingPagesToday = updatedReadingLogs
@@ -4596,7 +4600,7 @@ export function useAppState() {
             .reduce((sum, l) => sum + (l.pagesRead || 0), 0);
 
           if (remainingPagesToday <= 0 && isCheckedToday) {
-            const nowIso = new Date().toISOString();
+            const nowIso = trustedNow().toISOString();
             updatedHabits = prev.habits.map((h) =>
               h.id === readingHabit.id
                 ? {
@@ -4655,10 +4659,10 @@ export function useAppState() {
       if (prev.libraryBooks.some((b) => b.curatedBookId === curatedBook.id)) return prev;
 
       const numPages = customTotalAmount || curatedBook.totalPages || curatedBook.totalAmount || 250;
-      const now = new Date().toISOString();
+      const now = trustedNow().toISOString();
       const unit = customUnit || 'pages';
       const newBook: UserBook = {
-        id: `library-book-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        id: `library-book-${trustedNowMs()}-${Math.random().toString(36).substring(2, 9)}`,
         curatedBookId: curatedBook.id,
         title: curatedBook.title,
         author: curatedBook.author,
@@ -4706,9 +4710,9 @@ export function useAppState() {
     targetFinishDate?: string
   ) => {
     setState((prev) => {
-      const now = new Date().toISOString();
+      const now = trustedNow().toISOString();
       const newBook: UserBook = {
-        id: `custom-book-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        id: `custom-book-${trustedNowMs()}-${Math.random().toString(36).substring(2, 9)}`,
         title: title.trim(),
         author: author.trim() || 'Unknown Author',
         description: description?.trim(),
@@ -4748,7 +4752,7 @@ export function useAppState() {
       options?: { totalAmount?: number; unit?: 'pages' | 'chapters'; targetFinishDate?: string }
     ) => {
       setState((prev) => {
-        const now = new Date().toISOString();
+        const now = trustedNow().toISOString();
         return {
           ...prev,
           libraryBooks: prev.libraryBooks.map((b) => {
@@ -4787,7 +4791,7 @@ export function useAppState() {
   const restartBook = useCallback((bookId: string) => {
     setState(
       (prev) => {
-        const now = new Date().toISOString();
+        const now = trustedNow().toISOString();
         const updatedLibraryBooks = prev.libraryBooks.map((lb) => {
           if (lb.id === bookId || lb.linkedBookId === bookId) {
             return {
@@ -4838,7 +4842,7 @@ export function useAppState() {
       name: name.trim(),
       category: category?.trim(),
       manualLevel,
-      createdAt: new Date().toISOString(),
+      createdAt: trustedNow().toISOString(),
     };
     setState((prev) => {
       return { ...prev, skills: [...prev.skills, skill] };
@@ -4868,7 +4872,7 @@ export function useAppState() {
         durationMinutes,
         note: note.trim(),
         pointsAwarded: pointsToAward,
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
 
       let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
@@ -5050,7 +5054,7 @@ export function useAppState() {
       name: name.trim(),
       commitmentDays: finalCommitment,
       isCompleted: false,
-      createdAt: new Date().toISOString(),
+      createdAt: trustedNow().toISOString(),
     };
     setState((prev) => {
       return { ...prev, badHabits: [...prev.badHabits, bh] };
@@ -5093,7 +5097,7 @@ export function useAppState() {
           };
         }
 
-        const nowIso = new Date().toISOString();
+        const nowIso = trustedNow().toISOString();
         const logId = existingLog?.id || uid();
 
         if (status === 'resisted') {
@@ -5321,7 +5325,7 @@ export function useAppState() {
           let updatedLogs = remainingLogs;
 
           if (bh && !bh.isCompleted) {
-            const nowIso = new Date().toISOString();
+            const nowIso = trustedNow().toISOString();
             const today = todayKey();
 
             let baseState = prev;
@@ -5411,7 +5415,7 @@ export function useAppState() {
       const bh = prev.badHabits.find((b) => b.id === badHabitId);
       if (!bh || bh.isCompleted) return prev;
 
-      const nowIso = new Date().toISOString();
+      const nowIso = trustedNow().toISOString();
       const nextBadHabits = prev.badHabits.map((b) =>
         b.id === badHabitId
           ? { ...b, isCompleted: true, completedAt: nowIso }
@@ -5524,10 +5528,10 @@ export function useAppState() {
       const tracker: AddictionTracker = {
         id: prev.addictionTracker?.id || uid(),
         title: title.trim() || 'Sobriety Tracker',
-        startDate: startDateIso || new Date().toISOString(),
+        startDate: startDateIso || trustedNow().toISOString(),
         milestonesUnlocked: prev.addictionTracker?.milestonesUnlocked || [],
         awardedMilestones: prev.addictionTracker?.awardedMilestones || [],
-        createdAt: prev.addictionTracker?.createdAt || new Date().toISOString(),
+        createdAt: prev.addictionTracker?.createdAt || trustedNow().toISOString(),
       };
       return { ...prev, addictionTracker: tracker };
     });
@@ -5596,7 +5600,7 @@ export function useAppState() {
         ...runningState,
         addictionTracker: {
           ...tracker,
-          startDate: new Date().toISOString(),
+          startDate: trustedNow().toISOString(),
           milestonesUnlocked: [],
           awardedMilestones: remainingAwards,
           revokedAwardIds: updatedRevokedAwardIds,
@@ -5611,7 +5615,7 @@ export function useAppState() {
     setState((prev) => {
       if (!prev.addictionTracker) return prev;
       const start = new Date(prev.addictionTracker.startDate).getTime();
-      const now = new Date().getTime();
+      const now = trustedNow().getTime();
       const hoursElapsed = (now - start) / (1000 * 60 * 60);
       const activeSeasonNum = getSeasonNumber(leagueNow());
       const trackerStartMs = start;
@@ -5731,7 +5735,7 @@ export function useAppState() {
         });
       }
 
-      const nowIso = new Date().toISOString();
+      const nowIso = trustedNow().toISOString();
       const newlyAwardedRecords: AddictionMilestoneAward[] = [];
 
       for (const m of qualifyingMilestones) {
@@ -5784,11 +5788,11 @@ export function useAppState() {
   const logCraving = useCallback((intensity: number, trigger: string, copingStrategy: string) => {
     const log: CravingLog = {
       id: uid(),
-      date: new Date().toISOString(),
+      date: trustedNow().toISOString(),
       intensity,
       trigger: trigger.trim(),
       copingStrategy: copingStrategy.trim(),
-      createdAt: new Date().toISOString(),
+      createdAt: trustedNow().toISOString(),
     };
     setState((prev) => {
       return { ...prev, cravingLogs: [log, ...prev.cravingLogs] };
@@ -5930,8 +5934,8 @@ export function useAppState() {
                   competitors: [],
                   userRank: 1,
                   userPoints: Math.max(0, pastSum),
-                  archivedAt: data.timestamp || new Date().toISOString(),
-                  completedAt: data.timestamp || new Date().toISOString(),
+                  archivedAt: data.timestamp || trustedNow().toISOString(),
+                  completedAt: data.timestamp || trustedNow().toISOString(),
                   participantCount: 1,
                 });
               }
@@ -6005,7 +6009,7 @@ export function useAppState() {
         durationMinutes,
         pointsAwarded: pointsToAward,
         reflection: reflection?.trim() || undefined,
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
       let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
       if (pointsToAward > 0) {
@@ -6051,7 +6055,7 @@ export function useAppState() {
       expectedOutcome: expectedOutcome.trim(),
       revisitDate,
       isReflected: false,
-      createdAt: new Date().toISOString(),
+      createdAt: trustedNow().toISOString(),
     };
     setState((prev) => {
       return { ...prev, decisionLogs: [decision, ...prev.decisionLogs] };
@@ -6081,12 +6085,12 @@ export function useAppState() {
   const logEmotion = useCallback((emotion: string, intensity: number, context: string) => {
     const log: EmotionLog = {
       id: uid(),
-      date: new Date().toISOString(),
+      date: trustedNow().toISOString(),
       emotion: emotion.trim(),
       intensity,
       context: context.trim(),
       pointsAwarded: 0,
-      createdAt: new Date().toISOString(),
+      createdAt: trustedNow().toISOString(),
     };
     setState((prev) => {
       return {
@@ -6211,7 +6215,7 @@ export function useAppState() {
       const newRef: WeeklyGoalReflection = {
         id: uid(),
         content: content.trim(),
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
         pointsAwarded: false,
       };
 
@@ -6229,7 +6233,7 @@ export function useAppState() {
         weekKey: targetWeekKey,
         goals: existingDoc ? existingDoc.goals : [],
         reflections: updatedReflections,
-        createdAt: existingDoc ? existingDoc.createdAt : new Date().toISOString(),
+        createdAt: existingDoc ? existingDoc.createdAt : trustedNow().toISOString(),
       };
 
       let newWeeklyGoals = [...nextState.weeklyGoals];
@@ -6267,7 +6271,7 @@ export function useAppState() {
       const updatedRef: WeeklyGoalReflection = {
         ...existingRef,
         content: content.trim(),
-        updatedAt: new Date().toISOString(),
+        updatedAt: trustedNow().toISOString(),
       };
 
       const candidateReflections = [...reflections];
@@ -6360,7 +6364,7 @@ export function useAppState() {
         isCompleted = goalData.completed !== undefined
           ? Boolean(goalData.completed)
           : (manualProgress >= targetVal);
-        completedAt = isCompleted ? (goalData.completedAt || new Date().toISOString()) : undefined;
+        completedAt = isCompleted ? (goalData.completedAt || trustedNow().toISOString()) : undefined;
       }
 
       if (targetWeekKey > currentWeek) {
@@ -6385,7 +6389,7 @@ export function useAppState() {
         completedAt,
         carriedOverFromWeekKey: goalData.carriedOverFromWeekKey,
         carriedOverFromGoalId: goalData.carriedOverFromGoalId || undefined,
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
 
       const updatedGoals = existingDoc ? [...existingDoc.goals, newItem] : [newItem];
@@ -6394,7 +6398,7 @@ export function useAppState() {
         weekKey: targetWeekKey,
         goals: updatedGoals,
         reflections: existingDoc?.reflections || [],
-        createdAt: existingDoc ? existingDoc.createdAt : new Date().toISOString(),
+        createdAt: existingDoc ? existingDoc.createdAt : trustedNow().toISOString(),
       };
 
       const newWeeklyGoals = [...prev.weeklyGoals];
@@ -6474,14 +6478,14 @@ export function useAppState() {
         if (effectiveUpdates.completed !== undefined) {
           nextCompleted = Boolean(effectiveUpdates.completed);
           if (nextCompleted) {
-            nextCompletedAt = effectiveUpdates.completedAt || existingGoal.completedAt || new Date().toISOString();
+            nextCompletedAt = effectiveUpdates.completedAt || existingGoal.completedAt || trustedNow().toISOString();
           } else {
             nextCompletedAt = undefined;
           }
         } else if (effectiveUpdates.manualProgress !== undefined || effectiveUpdates.targetValue !== undefined) {
           if (nextManualProgress !== undefined && nextManualProgress >= targetVal) {
             nextCompleted = true;
-            nextCompletedAt = existingGoal.completedAt || new Date().toISOString();
+            nextCompletedAt = existingGoal.completedAt || trustedNow().toISOString();
           } else if (nextManualProgress !== undefined && nextManualProgress < targetVal) {
             nextCompleted = false;
             nextCompletedAt = undefined;
@@ -6599,7 +6603,7 @@ export function useAppState() {
         manualProgress: options?.resumeProgress ? (targetGoal.manualProgress || 0) : 0,
         carriedOverFromWeekKey: sourceWeekKey,
         carriedOverFromGoalId: targetGoal.id,
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
 
       const newGoals = targetDoc ? [...targetDoc.goals, carriedItem] : [carriedItem];
@@ -6608,7 +6612,7 @@ export function useAppState() {
         weekKey: targetWeekKey,
         goals: newGoals,
         reflections: targetDoc?.reflections || [],
-        createdAt: targetDoc ? targetDoc.createdAt : new Date().toISOString(),
+        createdAt: targetDoc ? targetDoc.createdAt : trustedNow().toISOString(),
       };
 
       let newWeeklyGoals = [...prev.weeklyGoals];
@@ -6680,7 +6684,7 @@ export function useAppState() {
         status: data.status || 'active',
         manualProgress: data.manualProgress !== undefined ? data.manualProgress : 0,
         sequentialMode: Boolean(data.sequentialMode),
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
       setState(
         (prev) => {
@@ -6747,7 +6751,7 @@ export function useAppState() {
       return explicitCompletedAt !== undefined ? explicitCompletedAt : currentCompletedAt;
     }
     if (newStatus === 'completed') {
-      return currentCompletedAt || new Date().toISOString();
+      return currentCompletedAt || trustedNow().toISOString();
     }
     return undefined;
   };
@@ -6778,10 +6782,10 @@ export function useAppState() {
         startDate: data.startDate || undefined,
         dueDate: data.dueDate || undefined,
         status: data.status || 'not_started',
-        completedAt: isCompleted ? new Date().toISOString() : undefined,
+        completedAt: isCompleted ? trustedNow().toISOString() : undefined,
         manualProgress: data.manualProgress !== undefined ? data.manualProgress : 0,
         order: projectOrder !== undefined ? projectOrder : 0,
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
       setState(
         (prev) => {
@@ -6938,7 +6942,7 @@ export function useAppState() {
         priority: data.priority || 'medium',
         completed: isCompleted,
         subtasks,
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
       setState(
         (prev) => {
@@ -7169,7 +7173,7 @@ export function useAppState() {
           }));
 
         const reflectionNotes: PlanReflectionNote[] = typeParams?.initialReflectionNote
-          ? [{ id: uid(), createdAt: new Date().toISOString(), note: typeParams.initialReflectionNote.trim() }]
+          ? [{ id: uid(), createdAt: trustedNow().toISOString(), note: typeParams.initialReflectionNote.trim() }]
           : [];
 
         const isVision = planType === 'vision';
@@ -7179,9 +7183,9 @@ export function useAppState() {
 
         let nextReviewDueAt: string | null = null;
         if (reviewCadence === 'weekly') {
-          nextReviewDueAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+          nextReviewDueAt = new Date(trustedNowMs() + 7 * 24 * 60 * 60 * 1000).toISOString();
         } else if (reviewCadence === 'monthly') {
-          nextReviewDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          nextReviewDueAt = new Date(trustedNowMs() + 30 * 24 * 60 * 60 * 1000).toISOString();
         }
 
         newPlan = {
@@ -7196,7 +7200,7 @@ export function useAppState() {
           isPublic,
           steps,
           copyCount: 0,
-          createdAt: new Date().toISOString(),
+          createdAt: trustedNow().toISOString(),
 
           // Phase B Plan Type Properties
           planType,
@@ -7206,7 +7210,7 @@ export function useAppState() {
           targetDate: typeParams?.targetDate,
           cadence: typeParams?.cadence ?? 'daily',
           duration: typeParams?.duration ?? 30,
-          startDate: typeParams?.startDate || new Date().toISOString(),
+          startDate: typeParams?.startDate || trustedNow().toISOString(),
           streakCount: 0,
           lastCompletedDate: undefined,
           targetReviewDate: typeParams?.targetReviewDate,
@@ -7305,7 +7309,7 @@ export function useAppState() {
         return prev;
       }
 
-      const nowIso = new Date().toISOString();
+      const nowIso = trustedNow().toISOString();
       const activeStreak = calculateActivePlanStreak(
         target.streakCount || 0,
         target.lastCompletedDate,
@@ -7413,7 +7417,7 @@ export function useAppState() {
         return prev;
       }
 
-      const nowIso = new Date().toISOString();
+      const nowIso = trustedNow().toISOString();
       const activeStreak = calculateActivePlanStreak(
         target.streakCount || 0,
         target.lastCompletedDate,
@@ -7525,15 +7529,15 @@ export function useAppState() {
       const newNote: PlanReflectionNote = {
         id: generateUUID(),
         originalPlanId: planId,
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
         note: note.trim(),
       };
 
       const effectiveCadence = target.reviewCadence || (target.planType === 'vision' ? 'weekly' : null);
       if (effectiveCadence === 'weekly') {
-        nextDue = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        nextDue = new Date(trustedNowMs() + 7 * 24 * 60 * 60 * 1000).toISOString();
       } else if (effectiveCadence === 'monthly') {
-        nextDue = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        nextDue = new Date(trustedNowMs() + 30 * 24 * 60 * 60 * 1000).toISOString();
       } else {
         nextDue = target.nextReviewDueAt || null;
       }
@@ -7642,9 +7646,9 @@ export function useAppState() {
       let newNextReviewDueAt = target.nextReviewDueAt;
       if (newReviewCadence !== target.reviewCadence || (newReviewCadence && !newNextReviewDueAt)) {
         if (newReviewCadence === 'weekly') {
-          newNextReviewDueAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+          newNextReviewDueAt = new Date(trustedNowMs() + 7 * 24 * 60 * 60 * 1000).toISOString();
         } else if (newReviewCadence === 'monthly') {
-          newNextReviewDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          newNextReviewDueAt = new Date(trustedNowMs() + 30 * 24 * 60 * 60 * 1000).toISOString();
         } else {
           newNextReviewDueAt = null;
         }
@@ -7824,7 +7828,7 @@ export function useAppState() {
         steps: stepsCopy,
         isCompleted: false,
         pointsAwarded: 0,
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
 
         // Phase B Plan Type Additions (fresh starting values for follower)
         planType: originalPlan.planType || 'milestone',
@@ -7834,7 +7838,7 @@ export function useAppState() {
         targetDate: originalPlan.targetDate,
         cadence: originalPlan.cadence,
         duration: originalPlan.duration,
-        startDate: new Date().toISOString(),
+        startDate: trustedNow().toISOString(),
         streakCount: 0, // Reset streak for copier
         lastCompletedDate: undefined,
         targetReviewDate: originalPlan.targetReviewDate,
@@ -7842,7 +7846,7 @@ export function useAppState() {
 
         // Review loop cadence
         reviewCadence: originalPlan.reviewCadence || (originalPlan.planType === 'vision' ? 'weekly' : null),
-        nextReviewDueAt: originalPlan.nextReviewDueAt || (originalPlan.planType === 'vision' ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null),
+        nextReviewDueAt: originalPlan.nextReviewDueAt || (originalPlan.planType === 'vision' ? new Date(trustedNowMs() + 7 * 24 * 60 * 60 * 1000).toISOString() : null),
       };
 
       setState((prev) => {
@@ -7940,15 +7944,15 @@ export function useAppState() {
       const newNote: PlanReflectionNote = {
         id: uid(),
         followedPlanId: followId,
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
         note: note.trim(),
       };
 
       const effectiveCadence = target.reviewCadence || (target.planType === 'vision' ? 'weekly' : null);
       if (effectiveCadence === 'weekly') {
-        nextDue = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        nextDue = new Date(trustedNowMs() + 7 * 24 * 60 * 60 * 1000).toISOString();
       } else if (effectiveCadence === 'monthly') {
-        nextDue = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        nextDue = new Date(trustedNowMs() + 30 * 24 * 60 * 60 * 1000).toISOString();
       } else {
         nextDue = target.nextReviewDueAt || null;
       }
@@ -8270,7 +8274,7 @@ export function useAppState() {
         toUserId: targetUserId,
         toUsername: targetUsername,
         status: 'pending',
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
 
       const notifData = {
@@ -8359,7 +8363,7 @@ export function useAppState() {
         user1Username: fromUsername,
         user2Id: toId,
         user2Username: toUsername,
-        pairedAt: new Date().toISOString(),
+        pairedAt: trustedNow().toISOString(),
       };
 
       syncBroadcaster.broadcast('PARTNER_ACCEPTED', partnership);
@@ -8993,7 +8997,7 @@ export function useAppState() {
         ...activity,
         id: uid(),
         isSystemDefault: false,
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
       setState((prev) => {
         const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
@@ -9094,7 +9098,7 @@ export function useAppState() {
         activeDays: targetDays,
         autoApplyDays: targetDays,
         id: uid(),
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
       };
 
       setState((prev) => {
@@ -9395,7 +9399,7 @@ export function useAppState() {
         const createdBlock: TimeTrackerBlock = {
           ...splitBlocks[0],
           id: uid(),
-          createdAt: new Date().toISOString(),
+          createdAt: trustedNow().toISOString(),
           completed: false,
         };
 
@@ -9440,14 +9444,14 @@ export function useAppState() {
       const createdPart1: TimeTrackerBlock = {
         ...splitBlocks[0],
         id: uid(),
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
         completed: false,
       };
 
       const createdPart2: TimeTrackerBlock = {
         ...splitBlocks[1],
         id: uid(),
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
         completed: false,
       };
 
@@ -9511,7 +9515,7 @@ export function useAppState() {
           ...merged,
           startTime: splitBlocks[0].startTime,
           endTime: splitBlocks[0].endTime,
-          updatedAt: new Date().toISOString(),
+          updatedAt: trustedNow().toISOString(),
         };
 
         setState((prev) => {
@@ -9557,7 +9561,7 @@ export function useAppState() {
         startTime: splitBlocks[0].startTime,
         endTime: splitBlocks[0].endTime,
         id: blockId,
-        updatedAt: new Date().toISOString(),
+        updatedAt: trustedNow().toISOString(),
       };
 
       const createdPart2: TimeTrackerBlock = {
@@ -9565,7 +9569,7 @@ export function useAppState() {
         startTime: splitBlocks[1].startTime,
         endTime: splitBlocks[1].endTime,
         id: uid(),
-        createdAt: new Date().toISOString(),
+        createdAt: trustedNow().toISOString(),
         completed: false,
       };
 
@@ -9660,7 +9664,7 @@ export function useAppState() {
             completedAt: undefined,
             skipped: false,
             skippedAt: undefined,
-            updatedAt: new Date().toISOString(),
+            updatedAt: trustedNow().toISOString(),
           };
         }
 
@@ -9673,7 +9677,7 @@ export function useAppState() {
             originalStartTime: undefined,
             originalEndTime: undefined,
             pulledForwardTriggerId: undefined,
-            updatedAt: new Date().toISOString(),
+            updatedAt: trustedNow().toISOString(),
           };
         }
 
@@ -9684,7 +9688,7 @@ export function useAppState() {
             endTime: b.trimmedOriginalEndTime || b.endTime,
             trimmedOriginalEndTime: undefined,
             trimmedDueToPullId: undefined,
-            updatedAt: new Date().toISOString(),
+            updatedAt: trustedNow().toISOString(),
           };
         }
 
@@ -9733,7 +9737,7 @@ export function useAppState() {
           if (dateKey === todayKey()) {
             let timeStr = passedTimeStr;
             if (!timeStr) {
-              const now = new Date();
+              const now = trustedNow();
               timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
             }
             const currentMins = timeStringToMinutes(timeStr);
@@ -9751,10 +9755,10 @@ export function useAppState() {
             endTime: finalEndTime,
             trimmedOriginalEndTime,
             completed: true,
-            completedAt: new Date().toISOString(),
+            completedAt: trustedNow().toISOString(),
             skipped: false,
             skippedAt: undefined,
-            updatedAt: new Date().toISOString(),
+            updatedAt: trustedNow().toISOString(),
           };
         });
 
@@ -9818,7 +9822,7 @@ export function useAppState() {
           if (dateKey === todayKey()) {
             let timeStr = passedTimeStr;
             if (!timeStr) {
-              const now = new Date();
+              const now = trustedNow();
               timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
             }
             const currentMins = timeStringToMinutes(timeStr);
@@ -9838,8 +9842,8 @@ export function useAppState() {
             completed: false,
             completedAt: undefined,
             skipped: true,
-            skippedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            skippedAt: trustedNow().toISOString(),
+            updatedAt: trustedNow().toISOString(),
           };
         });
 
@@ -9937,7 +9941,7 @@ export function useAppState() {
         originalStartTime,
         originalEndTime,
         pulledForwardTriggerId: triggerBlockId,
-        updatedAt: new Date().toISOString(),
+        updatedAt: trustedNow().toISOString(),
       };
 
       // Adjust preceding blocks that overlap with newStartTime (e.g. earlier block ending after newStartTime)
@@ -9951,7 +9955,7 @@ export function useAppState() {
             endTime: newStartTime,
             trimmedOriginalEndTime: b.trimmedOriginalEndTime || b.endTime,
             trimmedDueToPullId: blockId,
-            updatedAt: new Date().toISOString(),
+            updatedAt: trustedNow().toISOString(),
           };
         }
         return b;
@@ -9979,7 +9983,7 @@ export function useAppState() {
                 endTime: newStartTime,
                 trimmedOriginalEndTime: b.trimmedOriginalEndTime || b.endTime,
                 trimmedDueToPullId: blockId,
-                updatedAt: new Date().toISOString(),
+                updatedAt: trustedNow().toISOString(),
               };
             }
             return b;
@@ -10037,7 +10041,7 @@ export function useAppState() {
                 completedAt: undefined,
                 skipped: false,
                 skippedAt: undefined,
-                updatedAt: new Date().toISOString(),
+                updatedAt: trustedNow().toISOString(),
               };
             }
             // If preceding block was trimmed to make room for the early start, restore its trimmed end time
@@ -10050,7 +10054,7 @@ export function useAppState() {
                 endTime: b.trimmedOriginalEndTime || b.endTime,
                 trimmedOriginalEndTime: undefined,
                 trimmedDueToPullId: undefined,
-                updatedAt: new Date().toISOString(),
+                updatedAt: trustedNow().toISOString(),
               };
             }
             return b;
@@ -10087,9 +10091,9 @@ export function useAppState() {
           return {
             ...b,
             breakDurationMinutes: durationMinutes,
-            breakStartedAt: new Date().toISOString(),
+            breakStartedAt: trustedNow().toISOString(),
             breakEndedAt: undefined,
-            updatedAt: new Date().toISOString(),
+            updatedAt: trustedNow().toISOString(),
           };
         });
 
@@ -10118,7 +10122,7 @@ export function useAppState() {
         const target = prevDailyBlocks.find((b) => b.id === blockId);
         if (!target) return prev;
 
-        const now = new Date();
+        const now = trustedNow();
         const startMs = target.breakStartedAt ? new Date(target.breakStartedAt).getTime() : now.getTime();
         const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - startMs) / 1000));
         const plannedMinutes = target.breakDurationMinutes || 1;
@@ -10168,7 +10172,7 @@ export function useAppState() {
           return {
             ...b,
             breakEndedAt: exactEndIso,
-            updatedAt: new Date().toISOString(),
+            updatedAt: trustedNow().toISOString(),
           };
         });
 
@@ -10213,7 +10217,7 @@ export function useAppState() {
           const createFreshBlock = (b: any) => ({
             ...b,
             id: crypto.randomUUID(),
-            createdAt: new Date().toISOString(),
+            createdAt: trustedNow().toISOString(),
             completed: false,
             skipped: false,
             completedAt: undefined,

@@ -1,3 +1,4 @@
+import { trustedNow } from './clock';
 /**
  * leagueTime.ts
  *
@@ -20,7 +21,7 @@
  * Single entry point for wall-clock time in the league/season time system.
  */
 export function leagueNow(): Date {
-  return new Date();
+  return trustedNow();
 }
 
 /**

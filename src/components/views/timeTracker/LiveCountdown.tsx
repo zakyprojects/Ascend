@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { trustedNow } from '@/lib/clock';
 
 interface LiveCountdownProps {
   endTime: string; // "HH:mm" in 24h format (e.g. "17:30")
@@ -7,7 +8,7 @@ interface LiveCountdownProps {
 
 function calculateSecondsRemaining(endTimeStr: string): number {
   if (!endTimeStr) return 0;
-  const now = new Date();
+  const now = trustedNow();
   const currentTotalSeconds =
     now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 

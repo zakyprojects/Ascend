@@ -47,6 +47,7 @@ import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { AutoNum, CountUp } from '@/components/ui/Motion';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
+import { trustedNow, trustedNowMs } from '@/lib/clock';
 
 function ExpandableDescription({ text }: { text: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -727,7 +728,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       mode !== 'read_only' &&
       !!effectiveCadence &&
       !!plan.nextReviewDueAt &&
-      new Date(plan.nextReviewDueAt).getTime() <= Date.now();
+      new Date(plan.nextReviewDueAt).getTime() <= trustedNowMs();
 
     const renderReviewDueBadge = () => {
       if (!isReviewDue) return null;
@@ -810,7 +811,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div className="divide-y divide-overlay-subtle border-t border-overlay-subtle">
               {notes.map((n) => {
                 const noteKey = n.id || n.date || n.createdAt;
-                const noteDate = n.createdAt || n.date || new Date().toISOString();
+                const noteDate = n.createdAt || n.date || trustedNow().toISOString();
                 const isEditingThisNote = editingNoteId[noteKey] ?? false;
 
                 return (

@@ -25,6 +25,7 @@ import { getBadHabitSlot } from '@/lib/badHabitEligibility';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { getCapStatus } from '@/lib/capStatus';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { trustedNow } from '@/lib/clock';
 
 export function BadHabitTracker({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
@@ -57,7 +58,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
   // Generate last 14 days dates array
   const last14Days: string[] = [];
   for (let i = 13; i >= 0; i--) {
-    const d = new Date();
+    const d = trustedNow();
     d.setDate(d.getDate() - i);
     last14Days.push(todayKey(d));
   }
@@ -70,7 +71,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
   // Calculate current "Days Resisted" overall streak
   let overallStreak = 0;
-  let cursor = new Date();
+  let cursor = trustedNow();
   const todayStr = todayKey(cursor);
   while (true) {
     const k = todayKey(cursor);
@@ -204,7 +205,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
                 // Calculate habit-specific resisted streak
                 let habitStreak = 0;
-                let c = new Date();
+                let c = trustedNow();
                 while (true) {
                   const k = todayKey(c);
                   const l = badHabitLogs.find((log) => log.badHabitId === bh.id && log.date === k);

@@ -32,6 +32,7 @@ import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { dailyHabitCompletions, dailyPoints, lastDayKeys } from '@/lib/weeklyActivity';
 import { WeekActivityCard } from './WeekActivityCard';
 import { AscentProfile } from './AscentProfile';
+import { trustedNow } from '@/lib/clock';
 
 const LEAGUE_ICONS: Record<string, LucideIcon> = {
   Calendar, CalendarDays, Brain,
@@ -103,7 +104,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
   const monthlyData = store.getLeagueData('monthly');
 
   // Summary Metrics from new modules (personal features use plain local Date)
-  const personalNow = new Date();
+  const personalNow = trustedNow();
   const startOfWeek = new Date(personalNow);
   const dayOfWeek = personalNow.getDay();
   const diffToMon = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
@@ -395,7 +396,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
 }
 
 function greeting(): string {
-  const h = new Date().getHours();
+  const h = trustedNow().getHours();
   if (h < 12) return 'Good morning';
   if (h < 18) return 'Good afternoon';
   return 'Good evening';

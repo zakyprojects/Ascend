@@ -5,6 +5,7 @@ import { getEffectiveSeasonPoints } from './leagues';
 import { applyPenaltyDeductionInternal, addPointsInternal } from './pointsLedger';
 import { BAD_HABIT_POINTS, calculateTimeTrackerDailyPoints, POINTS_V2_START_DATE_KEY, RETRO_SCORING_WINDOW_DAYS } from './pointsConfig';
 import { getPointEligibleHabitIds } from './badHabitEligibility';
+import { trustedNow, trustedNowMs } from './clock';
 
 export { applyPenaltyDeductionInternal };
 
@@ -229,7 +230,7 @@ export function getExerciseGoalConsecutiveMisses(
 
 import { calculateUnifiedStreak } from './streakLogic';
 
-export function getHighestUserStreak(state: AppState, now: Date = new Date()): StreakInfoPair {
+export function getHighestUserStreak(state: AppState, now: Date = trustedNow()): StreakInfoPair {
   const unified = calculateUnifiedStreak(state, todayKey(now));
 
   return {
@@ -247,12 +248,12 @@ export function getHighestUserStreak(state: AppState, now: Date = new Date()): S
   };
 }
 
-export function getPastDuePeriods(habit: Habit, now: Date = new Date()): string[] {
+export function getPastDuePeriods(habit: Habit, now: Date = trustedNow()): string[] {
   const pastPeriods: string[] = [];
   const freq = habit.frequency;
 
   if (freq === 'daily') {
-    const createdDate = parseDate(habit.createdAt) || new Date();
+    const createdDate = parseDate(habit.createdAt) || trustedNow();
     const start = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
     const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
 
@@ -292,7 +293,7 @@ export function getPastDuePeriods(habit: Habit, now: Date = new Date()): string[
   return pastPeriods;
 }
 
-export function processHabitPenalties(state: AppState, now: Date = new Date()): AppState {
+export function processHabitPenalties(state: AppState, now: Date = trustedNow()): AppState {
   let updatedState = state;
   let habitsChanged = false;
 
@@ -365,7 +366,7 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
         }
 
         // Apply 30-day TTL + 50-item cap pruning
-        const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const thirtyDaysAgoIso = new Date(trustedNowMs() - 30 * 24 * 60 * 60 * 1000).toISOString();
         const prunedNotifs = (updatedState.notifications || [])
           .filter((n) => !n.createdAt || n.createdAt >= thirtyDaysAgoIso)
           .slice(0, 50);
@@ -412,7 +413,7 @@ export function processHabitPenalties(state: AppState, now: Date = new Date()): 
   };
 }
 
-export function processBadHabitNoReports(state: AppState, now: Date = new Date()): AppState {
+export function processBadHabitNoReports(state: AppState, now: Date = trustedNow()): AppState {
   let updatedState = state;
   const badHabits = updatedState.badHabits || [];
   if (badHabits.length === 0) return updatedState;
@@ -466,7 +467,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
           status: 'no_report',
           consecutiveOccurrences,
           pointsAwardedOrDeducted: -penaltyAmount,
-          createdAt: new Date().toISOString(),
+          createdAt: trustedNow().toISOString(),
         };
 
         newLogs.unshift(newLog);
@@ -524,7 +525,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = new Date()
   };
 }
 
-export function processExerciseTargetPenalties(state: AppState, now: Date = new Date()): AppState {
+export function processExerciseTargetPenalties(state: AppState, now: Date = trustedNow()): AppState {
   if (!state.exerciseGoal || !state.exerciseGoal.targetWeeklySessions || state.exerciseGoal.targetWeeklySessions <= 0) {
     return state;
   }
@@ -606,7 +607,7 @@ export function processExerciseTargetPenalties(state: AppState, now: Date = new 
  * For any past day present in dailyLogs, calculates percentage and awards points
  * (0, 3, or 5 pts) idempotently via the deterministic entry ID time_tracker_${dateKey}.
  */
-export function processTimeTrackerDailyPoints(state: AppState, now: Date = new Date()): AppState {
+export function processTimeTrackerDailyPoints(state: AppState, now: Date = trustedNow()): AppState {
   if (!state.timeTracker?.dailyLogs) return state;
 
   const todayStr = todayKey(now);
@@ -636,7 +637,9 @@ export function processTimeTrackerDailyPoints(state: AppState, now: Date = new D
           `Time Tracker daily routine completed (${Math.round(percentage)}%): ${pointsAwarded} pts`,
           'time_tracker',
           { date: dateKey, percentage, pointsAwarded },
-          `${dateKey}T23:59:59.000Z`,
+          // End of that day in UTC, but never later than now: east of UTC the day's UTC end can
+          // still be ahead, and the server refuses entries dated in the future.
+          new Date(Math.min(Date.parse(`${dateKey}T23:59:59.000Z`), now.getTime())).toISOString(),
           entryId
         );
 

@@ -6,6 +6,7 @@ import {
   DEFAULT_TIME_TRACKER_ACTIVITIES,
 } from '@/types';
 import { uid, todayKey, getNow, parseDate } from './dates';
+import { trustedNow } from './clock';
 
 export const DAYS_OF_WEEK = [
   'Monday',
@@ -148,7 +149,7 @@ export function normalizeOrSplitMidnightBlock(
       {
         ...block,
         id: (block as TimeTrackerBlock).id || baseId || uid(),
-        createdAt: (block as TimeTrackerBlock).createdAt || new Date().toISOString(),
+        createdAt: (block as TimeTrackerBlock).createdAt || trustedNow().toISOString(),
         startTime: minutesToTimeString(startMins),
         endTime: minutesToTimeString(endMins),
       },
@@ -165,7 +166,7 @@ export function normalizeOrSplitMidnightBlock(
   const block1: TimeTrackerBlock = {
     ...block,
     id: (block as TimeTrackerBlock).id || baseId || uid(),
-    createdAt: (block as TimeTrackerBlock).createdAt || new Date().toISOString(),
+    createdAt: (block as TimeTrackerBlock).createdAt || trustedNow().toISOString(),
     startTime: minutesToTimeString(startMins),
     endTime: '23:59',
     customTitle: block.customTitle ? `${block.customTitle} (Part 1)` : undefined,
@@ -174,7 +175,7 @@ export function normalizeOrSplitMidnightBlock(
   const block2: TimeTrackerBlock = {
     ...block,
     id: uid(),
-    createdAt: new Date().toISOString(),
+    createdAt: trustedNow().toISOString(),
     startTime: '00:00',
     endTime: minutesToTimeString(endMins),
     customTitle: block.customTitle ? `${block.customTitle} (Part 2)` : undefined,
@@ -241,7 +242,7 @@ export function checkTimeCollision(
 export function getDayOfWeekName(dateKeyOrDate: string | Date): DayOfWeek {
   let d: Date;
   if (typeof dateKeyOrDate === 'string') {
-    d = parseDate(dateKeyOrDate) || new Date();
+    d = parseDate(dateKeyOrDate) || trustedNow();
   } else {
     d = dateKeyOrDate;
   }
@@ -291,7 +292,7 @@ export function autoHydrateDailyLog(
   const clonedBlocks: TimeTrackerBlock[] = matchingTemplate.blocks.map((b) => ({
     ...b,
     id: uid(),
-    createdAt: new Date().toISOString(),
+    createdAt: trustedNow().toISOString(),
     completed: false,
     completedAt: undefined,
     skipped: false,

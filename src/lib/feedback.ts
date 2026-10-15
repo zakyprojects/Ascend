@@ -1,3 +1,4 @@
+import { trustedNowMs } from './clock';
 /**
  * Bug reports and ideas: the browser side of POST /api/feedback (api/feedback.ts), which files
  * them as issues in the private feedback repo. No token lives here.
@@ -35,7 +36,7 @@ export interface Screenshot {
 }
 
 export const newFeedbackRef = () =>
-  `ASC-${Date.now().toString(36).slice(-4).toUpperCase()}${Math.random().toString(36).slice(2, 4).toUpperCase()}`;
+  `ASC-${trustedNowMs().toString(36).slice(-4).toUpperCase()}${Math.random().toString(36).slice(2, 4).toUpperCase()}`;
 
 function browserName(): string {
   const ua = navigator.userAgent;
@@ -92,7 +93,7 @@ export async function prepareScreenshot(file: File): Promise<Screenshot> {
   });
 
   return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `${trustedNowMs()}-${Math.random().toString(36).slice(2, 8)}`,
     name: file.name,
     previewUrl: URL.createObjectURL(blob),
     data: dataUrl.slice(dataUrl.indexOf(',') + 1),

@@ -65,6 +65,7 @@ import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { useScrollFade } from '@/lib/useScrollFade';
 import { toUserMessage } from '@/lib/userMessage';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { trustedNow, trustedNowMs } from '@/lib/clock';
 
 type PFCTab = 'focus' | 'decision' | 'emotion';
 
@@ -236,7 +237,7 @@ export function PrefrontalCortex({
   const tabRowRef = useRef<HTMLDivElement>(null);
   useScrollFade(tabRowRef);
 
-  const weekStart = getStartOfWeek(new Date());
+  const weekStart = getStartOfWeek(trustedNow());
   const weeklyFocusLogs = store.state.focusLogs.filter((l) => (parseDate(l.date) || new Date(0)) >= weekStart);
   const weeklyFocusMinutes = weeklyFocusLogs.reduce((sum, l) => sum + l.durationMinutes, 0);
 
@@ -346,7 +347,7 @@ function calculateRemainingSeconds(session: PersistedFocusSession): number {
   if (session.isPaused) {
     return session.pausedRemainingSeconds;
   }
-  const elapsedSeconds = (Date.now() - session.startTime) / 1000;
+  const elapsedSeconds = (trustedNowMs() - session.startTime) / 1000;
   const remaining = session.plannedDurationSeconds - elapsedSeconds;
   return Math.max(0, Math.ceil(remaining));
 }
@@ -444,12 +445,12 @@ function FocusTimerSubmodule({
     } catch {}
     return 'manual';
   });
-  const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
+  const [currentTime, setCurrentTime] = useState<Date>(() => trustedNow());
 
   // Clock ticker for live second-by-second countdown
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setCurrentTime(new Date());
+      setCurrentTime(trustedNow());
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -460,7 +461,7 @@ function FocusTimerSubmodule({
     try {
       // Proactively clear legacy unscoped key if left over from previous version
       localStorage.removeItem('ascend_pfc_ignition_active');
-      return localStorage.getItem(`ascend_pfc_schedule_ignited_${todayKey(new Date())}`) === 'true';
+      return localStorage.getItem(`ascend_pfc_schedule_ignited_${todayKey(trustedNow())}`) === 'true';
     } catch {
       return false;
     }
@@ -918,7 +919,7 @@ function FocusTimerSubmodule({
 
     const plannedSecs = targetFocusMins * 60;
     const newSession: PersistedFocusSession = {
-      startTime: Date.now(),
+      startTime: trustedNowMs(),
       plannedDurationSeconds: plannedSecs,
       totalSessionMinutes: targetFocusMins,
       taskName: taskName.trim() || 'Deep Focus',
@@ -929,7 +930,7 @@ function FocusTimerSubmodule({
       pausedRemainingSeconds: plannedSecs,
       isCustom,
       focusMinutes: targetFocusMins,
-      startedAtIso: new Date().toISOString(),
+      startedAtIso: trustedNow().toISOString(),
     };
 
     try {
@@ -968,7 +969,7 @@ function FocusTimerSubmodule({
     if (!activeSession) return;
     const updated: PersistedFocusSession = {
       ...activeSession,
-      startTime: Date.now(),
+      startTime: trustedNowMs(),
       plannedDurationSeconds: activeSession.pausedRemainingSeconds,
       isPaused: false,
     };

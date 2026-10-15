@@ -2,6 +2,7 @@ import type { AppState, Habit } from '@/types';
 import type { View } from '@/lib/views';
 import { todayKey } from '@/lib/dates';
 import { getActiveBadHabitsOrdered } from '@/lib/badHabitEligibility';
+import { trustedNow } from './clock';
 
 /** done = today's part is finished; pending = still open; risk = still open late in the day. */
 export type NavStatusTone = 'done' | 'pending' | 'risk';
@@ -23,7 +24,7 @@ const RISK_HOUR = 20;
  * Today's status for each page that has a clear daily task. Pages without one get no entry
  * (no status is better than a made-up one). Pure and computed on every render, never cached.
  */
-export function getNavStatuses(state: AppState, isHabitDone: (habit: Habit) => boolean, now: Date = new Date()): NavStatuses {
+export function getNavStatuses(state: AppState, isHabitDone: (habit: Habit) => boolean, now: Date = trustedNow()): NavStatuses {
   const today = todayKey(now);
   const late = now.getHours() >= RISK_HOUR;
   const statuses: NavStatuses = {};

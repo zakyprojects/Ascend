@@ -38,6 +38,7 @@ import { lastDayKeys } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 import { getDailyPrompt, JournalPrompt } from '@/data/journalPrompts';
+import { trustedNow } from '@/lib/clock';
 
 // Minimum required non-whitespace characters to save an entry
 const MIN_JOURNAL_CONTENT_LENGTH = 10;
@@ -271,7 +272,7 @@ export function Journal({ store }: { store: AppStore }) {
       isToday: boolean;
     }> = [];
 
-    const todayDate = new Date();
+    const todayDate = trustedNow();
     todayDate.setHours(0, 0, 0, 0);
 
     for (let i = chartDaysCount - 1; i >= 0; i--) {

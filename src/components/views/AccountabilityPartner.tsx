@@ -37,6 +37,7 @@ import { createNotificationSupabase, checkRecentPartnerNudgeSent } from '@/lib/s
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { toUserMessage } from '@/lib/userMessage';
 import { Partnership, SharedChallenge, SharedChallengeCategory, PartnerInvite } from '@/types';
+import { trustedNow, trustedNowMs } from '@/lib/clock';
 
 const EMPTY_PARTNERSHIPS: Partnership[] = [];
 const EMPTY_INVITES: PartnerInvite[] = [];
@@ -84,7 +85,7 @@ function createTimelineDay(
   forceFutureFalse = false
 ) {
   const dateKey = addDays(baseKey, offsetDays);
-  const d = parseDate(dateKey) || new Date();
+  const d = parseDate(dateKey) || trustedNow();
   const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
   const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const isToday = dateKey === todayStr;
@@ -414,7 +415,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     async (challenge: SharedChallenge) => {
       if (!activePartnerUserId || !activePartnerUsername) return;
 
-      const now = Date.now();
+      const now = trustedNowMs();
       const existingCooldown = nudgeCooldowns[challenge.id] || 0;
 
       if (now < existingCooldown) {
@@ -1144,8 +1145,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
                   // Nudge Cooldown check
                   const cooldownEnd = nudgeCooldowns[challenge.id] || 0;
-                  const isNudgeCooldown = Date.now() < cooldownEnd;
-                  const nudgeCooldownMinutes = isNudgeCooldown ? Math.ceil((cooldownEnd - Date.now()) / 60000) : 0;
+                  const isNudgeCooldown = trustedNowMs() < cooldownEnd;
+                  const nudgeCooldownMinutes = isNudgeCooldown ? Math.ceil((cooldownEnd - trustedNowMs()) / 60000) : 0;
 
                   return (
                     <div key={challenge.id} className="card p-5 space-y-4 relative group hover:border-emerald-500/30 transition-colors">

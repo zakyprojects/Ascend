@@ -2,6 +2,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import type { AppState } from '../../types';
 import { supabase } from '../supabase';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf } from './syncedCollections';
+import { trustedNow } from '../clock';
 
 /**
  * Relational sync outbox (DB normalization, S2 dual-write).
@@ -149,7 +150,7 @@ export function recordSyncedChanges(state: AppState): void {
     state,
     readJson<Baseline>(baselineKey(userId)) || {},
     readJson<Outbox>(outboxKey(userId)) || {},
-    new Date().toISOString()
+    trustedNow().toISOString()
   );
   if (!result.changed) return;
 
@@ -236,7 +237,7 @@ async function sendUpserts(userId: string, table: string, ops: UpsertOp[]): Prom
 async function sendDeletes(userId: string, table: string, ops: DeleteOp[]): Promise<boolean> {
   for (let i = 0; i < ops.length; i += DELETE_CHUNK) {
     const chunk = ops.slice(i, i + DELETE_CHUNK);
-    const nowIso = new Date().toISOString();
+    const nowIso = trustedNow().toISOString();
     const { error } = await supabase
       .from(table)
       .update({ deleted_at: nowIso, updated_at: nowIso })

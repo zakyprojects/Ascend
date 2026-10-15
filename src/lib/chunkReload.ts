@@ -1,3 +1,4 @@
+import { trustedNowMs } from './clock';
 const RELOADED_AT_KEY = 'ascend_chunk_reload_at';
 /** One reload per this window: a chunk that is still missing after it is a real failure, not a stale tab. */
 const RELOAD_GUARD_MS = 60_000;
@@ -11,8 +12,8 @@ export function reloadOnceForStaleChunk(): boolean {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
   try {
     const last = Number(sessionStorage.getItem(RELOADED_AT_KEY));
-    if (last && Date.now() - last < RELOAD_GUARD_MS) return false;
-    sessionStorage.setItem(RELOADED_AT_KEY, String(Date.now()));
+    if (last && trustedNowMs() - last < RELOAD_GUARD_MS) return false;
+    sessionStorage.setItem(RELOADED_AT_KEY, String(trustedNowMs()));
   } catch {
     return false;
   }

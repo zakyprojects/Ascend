@@ -38,6 +38,7 @@ import { Dialog, Switch, Tabs } from '@/components/ui/primitives';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { toUserMessage } from '@/lib/userMessage';
 import { AscendLoadingIndicator, AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
+import { trustedNowMs } from '@/lib/clock';
 
 type SettingsSection =
   | 'profile'
@@ -168,7 +169,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   // 24-hour username cooldown calculation
   const lastChangedTs = currentUser?.lastUsernameChangeAt ? new Date(currentUser.lastUsernameChangeAt).getTime() : 0;
   const cooldownMs = 24 * 60 * 60 * 1000;
-  const nowMs = Date.now();
+  const nowMs = trustedNowMs();
   const msElapsed = lastChangedTs > 0 ? nowMs - lastChangedTs : cooldownMs;
   const isCooldownActive = lastChangedTs > 0 && msElapsed < cooldownMs;
 

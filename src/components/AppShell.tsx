@@ -36,6 +36,7 @@ import { AppLogo } from './ui/AppLogo';
 import { ThemeToggle } from './ui/ThemeToggle';
 import type { View } from '@/lib/views';
 import type { NavigationKind } from '@/lib/useViewRoute';
+import { trustedNowMs } from '@/lib/clock';
 
 // Below lg the window scrolls; from lg up the shell is viewport-high and <main> scrolls.
 const DESKTOP_QUERY = '(min-width: 1024px)';
@@ -82,7 +83,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   const activeGroup = NAV_GROUPS.find((g) => g.id === activeGroupId);
   // Derived once per data change (and at most once a minute for their time-of-day parts), not on
   // every shell render (a dialog opening, a sheet toggling).
-  const minute = Math.floor(Date.now() / 60_000);
+  const minute = Math.floor(trustedNowMs() / 60_000);
   const { state: appState, isHabitDone, getLeagueData } = store;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `minute` refreshes the time-of-day status
   const navStatuses = useMemo(() => getNavStatuses(appState, isHabitDone), [appState, isHabitDone, minute]);

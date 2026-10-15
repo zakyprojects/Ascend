@@ -8,6 +8,7 @@ import '@fontsource-variable/geist-mono';
 import '@fontsource/instrument-serif/400.css';
 import '@fontsource/instrument-serif/400-italic.css';
 import './index.css';
+import { startTrustedClock } from './lib/clock';
 import { installPageVisibilityFlag, installWindowFocusFlag } from './lib/motion';
 import { installScrollRise } from './lib/scrollRise';
 import { installCardSpotlight } from './lib/cardSpotlight';
@@ -16,6 +17,8 @@ import { authRouteFromPath, nextFromSearch, viewFromLocation, viewFromPath } fro
 import { installPagePrefetch, preloadView } from './components/views/lazyViews';
 import { preloadAuthPage } from './components/auth/lazyAuthPage';
 
+// First, so the server time is known before the session's days and periods are worked out.
+startTrustedClock();
 installPageVisibilityFlag();
 installWindowFocusFlag();
 installScrollRise();

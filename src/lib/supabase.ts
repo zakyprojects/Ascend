@@ -11,6 +11,7 @@ import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 import { withoutSyncedCollections } from './sync/syncedCollections';
 import { withoutRetiredKeys } from './retiredStateKeys';
 import { withoutDeviceLocalKeys } from './deviceLocalState';
+import { trustedNow, trustedNowMs } from './clock';
 
 function getValidSupabaseUrl(url: unknown): string | null {
   if (typeof url !== 'string') return null;
@@ -329,7 +330,7 @@ export async function saveUserDataToSupabase(
     const userDataPromise = supabase.from('user_data').upsert({
       user_id: userId,
       state: blobState,
-      updated_at: new Date().toISOString(),
+      updated_at: trustedNow().toISOString(),
     });
 
     const profilePromise = (async () => {
@@ -449,7 +450,7 @@ export async function saveUserDataToSupabase(
         const { error: retryErr } = await supabase.from('user_data').upsert({
           user_id: userId,
           state: blobState,
-          updated_at: new Date().toISOString(),
+          updated_at: trustedNow().toISOString(),
         });
         if (retryErr) {
           console.error('Error retrying user_data upsert in Supabase:', retryErr);
@@ -798,7 +799,7 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
     isPublic: Boolean(row?.is_public),
     steps: Array.isArray(stepsList) ? stepsList : [],
     copyCount: typeof row?.copy_count === 'number' ? row.copy_count : 0,
-    createdAt: row?.created_at || new Date().toISOString(),
+    createdAt: row?.created_at || trustedNow().toISOString(),
 
     // Phase B Plan Type Properties
     planType: stepsMeta.planType || row?.plan_type || 'milestone',
@@ -808,7 +809,7 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
     targetDate: stepsMeta.targetDate || row?.target_date || '',
     cadence: stepsMeta.cadence || row?.cadence || 'daily',
     duration: stepsMeta.duration !== undefined ? Number(stepsMeta.duration) : (row?.duration !== undefined && row?.duration !== null ? Number(row.duration) : 30),
-    startDate: stepsMeta.startDate || row?.start_date || new Date().toISOString(),
+    startDate: stepsMeta.startDate || row?.start_date || trustedNow().toISOString(),
     streakCount: stepsMeta.streakCount !== undefined ? Number(stepsMeta.streakCount) : (row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : 0),
     lastCompletedDate: stepsMeta.lastCompletedDate || row?.last_completed_date || '',
     targetReviewDate: stepsMeta.targetReviewDate || row?.target_review_date || '',
@@ -841,7 +842,7 @@ export function mapRowToUserPlanFollow(row: any): UserPlanFollow {
     steps: Array.isArray(stepsList) ? stepsList : [],
     isCompleted: Boolean(row?.is_completed),
     pointsAwarded: row?.points_awarded || 0,
-    createdAt: row?.created_at || new Date().toISOString(),
+    createdAt: row?.created_at || trustedNow().toISOString(),
 
     // Phase B Plan Type Properties
     planType: stepsMeta.planType || row?.plan_type || 'milestone',
@@ -851,7 +852,7 @@ export function mapRowToUserPlanFollow(row: any): UserPlanFollow {
     targetDate: stepsMeta.targetDate || row?.target_date || '',
     cadence: stepsMeta.cadence || row?.cadence || 'daily',
     duration: stepsMeta.duration !== undefined ? Number(stepsMeta.duration) : (row?.duration !== undefined && row?.duration !== null ? Number(row.duration) : 30),
-    startDate: stepsMeta.startDate || row?.start_date || new Date().toISOString(),
+    startDate: stepsMeta.startDate || row?.start_date || trustedNow().toISOString(),
     streakCount: stepsMeta.streakCount !== undefined ? Number(stepsMeta.streakCount) : (row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : 0),
     lastCompletedDate: stepsMeta.lastCompletedDate || row?.last_completed_date || '',
     targetReviewDate: stepsMeta.targetReviewDate || row?.target_review_date || '',
@@ -1200,7 +1201,7 @@ export async function acceptPartnerInviteAtomicSupabase(
       user1Username,
       user2Id,
       user2Username,
-      pairedAt: new Date().toISOString(),
+      pairedAt: trustedNow().toISOString(),
     });
     await supabase.from('partner_invites').delete().eq('id', inviteId);
     await cleanupPendingInvitesBetweenUsersSupabase(user1Id, user1Username, user2Id, user2Username);
@@ -1608,7 +1609,7 @@ export async function checkRecentPartnerNudgeSent(
       if (isExplicitNudge && p.challengeId === challengeId && (p.date === dateKey || p.dedupKey === `partner_nudge_${challengeId}_${dateKey}`)) {
         // Also check if within 2 hour window
         const createdMs = new Date(n.created_at).getTime();
-        return (Date.now() - createdMs) < 2 * 60 * 60 * 1000;
+        return (trustedNowMs() - createdMs) < 2 * 60 * 60 * 1000;
       }
       return false;
     });
@@ -1661,7 +1662,7 @@ export async function createNotificationSupabase(
       message: notif.message,
       payload: notif.payload || {},
       read: false,
-      createdAt: new Date().toISOString(),
+      createdAt: trustedNow().toISOString(),
     };
   } catch (e) {
     console.error('createNotificationSupabase error:', e);

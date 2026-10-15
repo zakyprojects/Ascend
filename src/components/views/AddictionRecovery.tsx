@@ -13,6 +13,7 @@ import { recoverySeasonCapNote } from '@/lib/capCopy';
 import { Dialog, EmptyState, PageColumns } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { ProgressRing } from '@/components/ui/charts';
+import { trustedNow } from '@/lib/clock';
 
 const DISTRACTION_ACTIVITIES = [
   'Drink a cold glass of water slowly',
@@ -66,7 +67,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
 
     const updateTimer = () => {
       const start = new Date(tracker.startDate).getTime();
-      const now = new Date().getTime();
+      const now = trustedNow().getTime();
       const diff = Math.max(0, now - start);
 
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -95,7 +96,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
 
   const handleStartTracker = (e: React.FormEvent) => {
     e.preventDefault();
-    store.setAddictionTracker(trackerTitle, new Date().toISOString());
+    store.setAddictionTracker(trackerTitle, trustedNow().toISOString());
     setSetupTrackerModalOpen(false);
   };
 
