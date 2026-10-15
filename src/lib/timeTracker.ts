@@ -263,7 +263,7 @@ export function getDayOfWeekName(dateKeyOrDate: string | Date): DayOfWeek {
  * Auto-Assignment & Hydration:
  * On app load / date view, if `dailyLogs[dateKey]` is empty,
  * looks for a template where `activeDays` includes the current day name.
- * If found, copies the template blocks with new unique IDs into `dailyLogs[dateKey]`.
+ * If found, copies the template blocks into `dailyLogs[dateKey]` under deterministic ids.
  */
 export function autoHydrateDailyLog(
   timeTracker: TimeTrackerState,
@@ -288,10 +288,11 @@ export function autoHydrateDailyLog(
     return { updatedState: timeTracker, hydrated: false };
   }
 
-  // Clone blocks with new unique IDs
+  // Clone blocks with ids fixed by date, template and template block, so two devices that both
+  // fill the same empty day produce the same blocks and the merge keeps one copy.
   const clonedBlocks: TimeTrackerBlock[] = matchingTemplate.blocks.map((b) => ({
     ...b,
-    id: uid(),
+    id: b.id ? `auto_${targetDateKey}_${matchingTemplate.id}_${b.id}` : uid(),
     createdAt: trustedNow().toISOString(),
     completed: false,
     completedAt: undefined,
