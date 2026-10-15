@@ -2439,7 +2439,11 @@ function FocusTimerSubmodule({
         isDeleting={deleteModalLog ? isKeyLoading(`delete_focus_log_${deleteModalLog.id}`) : false}
         title="Delete Focus Session?"
         itemName={deleteModalLog?.taskName}
-        description={`Delete focus session "${deleteModalLog?.taskName}"? Any points awarded (+${deleteModalLog?.pointsAwarded || 0} pts) will be reversed.`}
+        description={
+          deleteModalLog?.date === todayKey()
+            ? `Delete focus session "${deleteModalLog?.taskName}"? Any points awarded today (+${deleteModalLog?.pointsAwarded || 0} pts) will be reversed.`
+            : `Delete focus session "${deleteModalLog?.taskName}"? Points already earned for that day stay.`
+        }
       />
     </div>
   );

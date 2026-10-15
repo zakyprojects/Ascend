@@ -74,6 +74,7 @@ import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward } from '.
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
+import { computeFocusAwards, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
 import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, meetsReadingBonusGates, readingBonusId } from './readingAwards';
 import {
   getLeaguePeriodStart,
@@ -133,13 +134,11 @@ import {
   PresetHabitCapItem,
   recomputeTodayPresetPoints,
   WEEKLY_REFLECTION_POINTS,
-  PFC_POINTS,
   READING_POINTS,
   BAD_HABIT_POINTS,
   SOBRIETY_MILESTONE_POINTS,
   TIME_TRACKER_POINTS,
   WEEKLY_GOALS_POINTS,
-  calculateFocusPoints,
   calculateReadingPoints,
   calculateTimeTrackerDailyPoints,
   calculateWeeklyGoalsPoints,
@@ -427,7 +426,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   const nonReviewHistory: PointsEntry[] = [];
 
   for (const entry of rawHistory) {
-    if (entry && (isRetiredAppHabitAward(entry) || isRetiredAppBadHabitAward(entry) || isRetiredAppWorkoutAward(entry) || isRetiredAppSkillAward(entry) || isRetiredAppReadingAward(entry) || isRetiredAppJournalAward(entry))) continue;
+    if (entry && (isRetiredAppHabitAward(entry) || isRetiredAppBadHabitAward(entry) || isRetiredAppWorkoutAward(entry) || isRetiredAppSkillAward(entry) || isRetiredAppReadingAward(entry) || isRetiredAppJournalAward(entry) || isRetiredAppFocusAward(entry))) continue;
     if (entry && entry.source === 'weekly_review') {
       let weekKey: string | null = null;
       if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
@@ -1155,6 +1154,34 @@ function applySkillAwardsInternal(
     l && sessionPoints.has(l.id) && sessionPoints.get(l.id) !== l.pointsAwarded ? { ...l, pointsAwarded: sessionPoints.get(l.id)! } : l
   );
   return { points, skillLogs: nextLogs };
+}
+
+/**
+ * Replaces one local day's focus award entry with the one the server computes for these
+ * sessions (computeFocusAwards), and stamps each session of the day with its points. The entry
+ * is shown at once and never uploaded; the server's own row replaces it on the next pull.
+ */
+function applyFocusAwardsInternal(
+  state: AppState,
+  focusLogs: FocusSessionLog[],
+  day: string
+): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; focusLogs: FocusSessionLog[] } {
+  const { entry, sessionPoints } = computeFocusAwards(
+    focusLogs,
+    day,
+    new Date(`${day}T00:00:00`).getTime(),
+    trustedNow().getTime()
+  );
+
+  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isFocusDayEntry(e, day));
+  const points = entry
+    ? addPointsInternal({ ...state, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
+    : excised;
+
+  const nextLogs = focusLogs.map((l) =>
+    l && sessionPoints.has(l.id) && sessionPoints.get(l.id) !== l.pointsAwarded ? { ...l, pointsAwarded: sessionPoints.get(l.id)! } : l
+  );
+  return { points, focusLogs: nextLogs };
 }
 
 /**
@@ -5331,32 +5358,19 @@ export function useAppState() {
   const logFocusSession = useCallback((taskName: string, durationMinutes: number, skillId?: string, reflection?: string) => {
     const date = todayKey();
     setState((prev) => {
-      const pointsEarnedToday = (prev.focusLogs || [])
-        .filter((l) => l.date === date)
-        .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-
-      const remainingCap = Math.max(0, PFC_POINTS.focus.dailyCap - pointsEarnedToday);
-      const { pointsToAward } = calculateFocusPoints(durationMinutes, remainingCap);
-
       const focusLog: FocusSessionLog = {
         id: uid(),
         date,
         taskName: taskName.trim() || 'Deep Focus',
         skillId,
         durationMinutes,
-        pointsAwarded: pointsToAward,
+        pointsAwarded: 0,
         reflection: reflection?.trim() || undefined,
         createdAt: trustedNow().toISOString(),
       };
-      let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-      if (pointsToAward > 0) {
-        pointsUpdate = addPointsInternal(prev, pointsToAward, `Focus session completed (${durationMinutes}m)`, 'focus');
-      }
-      return {
-        ...prev,
-        focusLogs: [focusLog, ...prev.focusLogs],
-        ...pointsUpdate,
-      };
+      // The server writes the day's award (applyFocusAwardsInternal shows the same row now).
+      const awards = applyFocusAwardsInternal(prev, [focusLog, ...prev.focusLogs], date);
+      return { ...prev, focusLogs: awards.focusLogs, ...awards.points };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5445,58 +5459,16 @@ export function useAppState() {
         const target = prev.focusLogs.find((f) => f.id === logId);
         if (!target) return prev;
 
-        const targetDate = target.date;
         const remainingFocusLogs = prev.focusLogs.filter((f) => f.id !== logId);
-
-        // Recalculate points awarded for all remaining same-date focus logs in chronological order
-        const dayLogs = remainingFocusLogs.filter((l) => l.date === targetDate);
-        const chronDayLogs = [...dayLogs].sort(
-          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-        );
-
-        let dailyCapRemaining: number = PFC_POINTS.focus.dailyCap;
-        const recalculatedMap = new Map<string, number>();
-
-        for (const log of chronDayLogs) {
-          const { pointsToAward: awarded } = calculateFocusPoints(log.durationMinutes, dailyCapRemaining);
-          recalculatedMap.set(log.id, awarded);
-          dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
-        }
-
-        const oldDatePoints = prev.focusLogs
-          .filter((l) => l.date === targetDate)
-          .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-
-        const newDatePoints = chronDayLogs.reduce(
-          (sum, l) => sum + (recalculatedMap.get(l.id) ?? 0),
-          0
-        );
-
-        const netPointDelta = newDatePoints - oldDatePoints;
-
-        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-        if (netPointDelta !== 0) {
-          pointsUpdate = addPointsInternal(
-            prev,
-            netPointDelta,
-            `Focus session deleted: ${target.taskName}`,
-            'focus'
-          );
-        }
-
-        const updatedFocusLogs = remainingFocusLogs.map((l) => {
-          if (l.date === targetDate && recalculatedMap.has(l.id)) {
-            return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
-          }
-          return l;
-        });
+        // Only today's award changes: an earlier day's points stay (the server recomputes only today).
+        const awards = applyFocusAwardsInternal(prev, remainingFocusLogs, todayKey());
 
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
         return {
           ...prev,
-          focusLogs: updatedFocusLogs,
+          focusLogs: awards.focusLogs,
           deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
+          ...awards.points,
         };
       },
       { immediate: true }
