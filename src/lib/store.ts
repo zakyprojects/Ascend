@@ -71,6 +71,7 @@ import { computeLinkedGoalProgress } from './linkedGoalMetrics';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { PresetHabit } from './presets';
 import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward } from './habitAwards';
+import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
 import {
   getLeaguePeriodStart,
   getLeaguePeriodLabel,
@@ -131,14 +132,12 @@ import {
   JOURNAL_POINTS,
   WEEKLY_REFLECTION_POINTS,
   PFC_POINTS,
-  WORKOUT_POINTS,
   SKILLS_POINTS,
   READING_POINTS,
   BAD_HABIT_POINTS,
   SOBRIETY_MILESTONE_POINTS,
   TIME_TRACKER_POINTS,
   WEEKLY_GOALS_POINTS,
-  calculateWorkoutPoints,
   calculateSkillPoints,
   calculateFocusPoints,
   calculateReadingPoints,
@@ -428,7 +427,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   const nonReviewHistory: PointsEntry[] = [];
 
   for (const entry of rawHistory) {
-    if (entry && (isRetiredAppHabitAward(entry) || isRetiredAppBadHabitAward(entry))) continue;
+    if (entry && (isRetiredAppHabitAward(entry) || isRetiredAppBadHabitAward(entry) || isRetiredAppWorkoutAward(entry))) continue;
     if (entry && entry.source === 'weekly_review') {
       let weekKey: string | null = null;
       if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
@@ -1098,6 +1097,34 @@ function applyBadHabitAwardsInternal(
       : l
   );
   return { points, logs: nextLogs };
+}
+
+/**
+ * Replaces one local day's workout award entry with the one the server computes for these
+ * workouts (computeWorkoutAwards), and stamps each of the day's workouts with its points. The
+ * entry is shown at once and never uploaded; the server's own row replaces it on the next pull.
+ */
+function applyWorkoutAwardsInternal(
+  state: AppState,
+  workouts: WorkoutLog[],
+  day: string
+): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; workouts: WorkoutLog[] } {
+  const { entry, workoutPoints } = computeWorkoutAwards(
+    workouts,
+    day,
+    new Date(`${day}T00:00:00`).getTime(),
+    trustedNow().getTime()
+  );
+
+  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isWorkoutDayEntry(e, day));
+  const points = entry
+    ? addPointsInternal({ ...state, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
+    : excised;
+
+  const nextWorkouts = workouts.map((w) =>
+    w && workoutPoints.has(w.id) && workoutPoints.get(w.id) !== w.pointsAwarded ? { ...w, pointsAwarded: workoutPoints.get(w.id)! } : w
+  );
+  return { points, workouts: nextWorkouts };
 }
 
 export function getWeeklyReflectionNetPoints(state: AppState, weekKey: string): number {
@@ -3788,15 +3815,6 @@ export function useAppState() {
       const safeDurationMinutes = Math.max(0, Number(durationMinutes) || 0);
       const safeAmount = typeof amount === 'number' && !isNaN(amount) ? Math.max(0, Number(amount)) : undefined;
 
-      const effectiveAmount = safeAmount !== undefined ? safeAmount : safeDurationMinutes;
-
-      const pointsEarnedToday = prev.workouts
-        .filter((w) => w.date === date)
-        .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
-
-      const remainingCap = Math.max(0, WORKOUT_POINTS.dailyCap - pointsEarnedToday);
-      const { pointsToAward } = calculateWorkoutPoints(normalizedUnit, safeAmount, safeDurationMinutes, remainingCap);
-
       const savedDuration = normalizedUnit === 'mins' ? (safeAmount !== undefined && safeAmount > 0 ? safeAmount : safeDurationMinutes) : 0;
 
       const workout: WorkoutLog = {
@@ -3804,30 +3822,18 @@ export function useAppState() {
         date,
         type: type.trim() || 'General Workout',
         durationMinutes: savedDuration,
-        pointsAwarded: pointsToAward,
+        pointsAwarded: 0,
         amount: safeAmount !== undefined ? safeAmount : (normalizedUnit === 'mins' ? safeDurationMinutes : undefined),
         unit: normalizedUnit,
         createdAt: trustedNow().toISOString(),
       };
 
-      let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-      if (pointsToAward > 0) {
-        const metricSuffix = workout.amount && workout.unit && workout.unit !== 'mins'
-          ? `, ${workout.amount} ${workout.unit}`
-          : (workout.durationMinutes > 0 ? ` (${workout.durationMinutes}m)` : '');
-        pointsUpdate = addPointsInternal(
-          prev,
-          pointsToAward,
-          `Workout logged: ${workout.type}${metricSuffix}`,
-          'exercise'
-        );
-      }
-
-
+      // The server writes the day's award (applyWorkoutAwardsInternal shows the same row now).
+      const awards = applyWorkoutAwardsInternal(prev, [workout, ...prev.workouts], date);
       return {
         ...prev,
-        workouts: [workout, ...prev.workouts],
-        ...pointsUpdate,
+        workouts: awards.workouts,
+        ...awards.points,
       };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -3841,63 +3847,20 @@ export function useAppState() {
           const target = prev.workouts.find((w) => w.id === workoutId);
           if (!target) return prev;
 
-          const targetDate = target.date;
           const remainingWorkouts = prev.workouts.filter((w) => w.id !== workoutId);
-
-          // Recalculate points awarded for all remaining workouts on the target date in chronological order
-          const dayWorkouts = remainingWorkouts.filter((w) => w.date === targetDate);
-          const chronDayWorkouts = [...dayWorkouts].sort(
-            (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-          );
-
-          let dailyCapRemaining: number = WORKOUT_POINTS.dailyCap;
-          const recalculatedMap = new Map<string, number>();
-
-          for (const w of chronDayWorkouts) {
-            const { pointsToAward: awarded } = calculateWorkoutPoints(
-              w.unit,
-              w.amount,
-              w.durationMinutes,
-              dailyCapRemaining
-            );
-            recalculatedMap.set(w.id, awarded);
-            dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
-          }
-
-          const oldDatePoints = prev.workouts
-            .filter((w) => w.date === targetDate)
-            .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
-
-          const newDatePoints = chronDayWorkouts.reduce(
-            (sum, w) => sum + (recalculatedMap.get(w.id) ?? 0),
-            0
-          );
-
-          const netPointDelta = newDatePoints - oldDatePoints;
-
-          let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-          if (netPointDelta !== 0) {
-            pointsUpdate = addPointsInternal(
-              prev,
-              netPointDelta,
-              `Workout deleted: ${target.type}`,
-              'exercise'
-            );
-          }
-
-          const updatedWorkouts = remainingWorkouts.map((w) => {
-            if (w.date === targetDate && recalculatedMap.has(w.id)) {
-              return { ...w, pointsAwarded: recalculatedMap.get(w.id)! };
-            }
-            return w;
-          });
-
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), workoutId].slice(-500);
+
+          // Only today's award follows the workouts; an earlier day's points stay (as on the server).
+          const today = todayKey();
+          if (target.date !== today) {
+            return { ...prev, workouts: remainingWorkouts, deletedEntityIds: updatedDeletedEntityIds };
+          }
+          const awards = applyWorkoutAwardsInternal(prev, remainingWorkouts, today);
           return {
             ...prev,
-            workouts: updatedWorkouts,
+            workouts: awards.workouts,
             deletedEntityIds: updatedDeletedEntityIds,
-            ...pointsUpdate,
+            ...awards.points,
           };
         },
         { immediate: true, actionLabel: 'Workout deletion', entityId: workoutId }

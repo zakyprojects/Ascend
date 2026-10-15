@@ -17,6 +17,7 @@ import type {
 import { DEFAULT_TIME_TRACKER_STATE } from '../../types';
 import { isServerOwnedPointId } from '../habitAwards';
 import { isServerOwnedBadHabitLogId, isServerOwnedPenaltyPointId } from '../badHabitAwards';
+import { isServerOwnedWorkoutPointId } from '../workoutAwards';
 
 /**
  * Blob collections that also live in a relational table (DB normalization,
@@ -503,7 +504,8 @@ export const SYNCED_COLLECTIONS = [
   {
     ...documentCollection('pointsHistory', 'point_entries', (e) => e.timestamp, undefined, true),
     revivable: true,
-    serverOwnedId: (id: string) => isServerOwnedPointId(id) || isServerOwnedPenaltyPointId(id),
+    serverOwnedId: (id: string) =>
+      isServerOwnedPointId(id) || isServerOwnedPenaltyPointId(id) || isServerOwnedWorkoutPointId(id),
   },
   // Time tracker (batch E): one state object, three tables.
   timeTrackerActivities,
