@@ -4,9 +4,9 @@ import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
-import { CravingLog, getAwardKey } from '@/types';
+import { CravingLog } from '@/types';
+import { recoveryAwardsThisSeason, RecoveryMilestoneKey } from '@/lib/recoveryAwards';
 import { formatDateLong } from '@/lib/dates';
-import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
 import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS } from '@/lib/pointsConfig';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { recoverySeasonCapNote } from '@/lib/capCopy';
@@ -48,11 +48,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   const tracker = store.state.addictionTracker;
   const cravingLogs = store.state.cravingLogs;
 
-  const activeSeasonNum = getSeasonNumber(leagueNow());
-  const revokedSet = new Set(tracker?.revokedAwardIds || []);
-  const heldSeasonPoints = (tracker?.awardedMilestones || [])
-    .filter((a) => !revokedSet.has(getAwardKey(a)) && a.seasonNumber === activeSeasonNum)
-    .reduce((sum, a) => sum + (a.points || 0), 0);
+  // Milestone points come from the server's ledger rows, not from the tracker document.
+  const seasonAwards = recoveryAwardsThisSeason(store.state.pointsHistory || [], tracker?.id, trustedNow().getTime());
+  const heldSeasonPoints = Array.from(seasonAwards.values()).reduce((sum, p) => sum + p, 0);
 
   // Auto-check milestones on mount
   useEffect(() => {
@@ -242,9 +240,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {milestones.map((m) => {
                       const isUnlocked = tracker.milestonesUnlocked.includes(m.key);
-                      const isAwarded = (tracker.awardedMilestones || []).some(
-                        (a) => !revokedSet.has(getAwardKey(a)) && a.milestone === m.key && a.seasonNumber === activeSeasonNum
-                      );
+                      const isAwarded = seasonAwards.has(m.key as RecoveryMilestoneKey);
                       const isCapped = !isAwarded && wouldExceedRecoverySeasonCap(heldSeasonPoints, m.points);
 
                       return (
