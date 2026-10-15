@@ -58,11 +58,12 @@ export const JOURNAL_POINTS = {
 } as const;
 
 export const WEEKLY_REFLECTION_POINTS = {
-  // store.ts:1006
+  // Server-written (ascend_recompute_weekly_reflection_award); src/lib/weeklyAwards.ts mirrors it.
   awarded: 5,
 } as const;
 
 export const WEEKLY_GOALS_POINTS = {
+  // Server-written (ascend_recompute_weekly_goal_awards); change both together.
   pointsPerGoal: 5,
   maxGoalsCounted: 3,
   maxWeeklyPoints: 15,

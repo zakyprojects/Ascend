@@ -66,7 +66,7 @@ import {
   calculateBlockDurationMinutes,
 } from './timeTracker';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekReflectionCutoff, getWeekDates, previousPeriodKey, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekDates, previousPeriodKey, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
 import { computeLinkedGoalProgress } from './linkedGoalMetrics';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { PresetHabit } from './presets';
@@ -75,6 +75,7 @@ import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } fro
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeFocusAwards, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
+import { isReflectionWindowOpen, reflectionWindow } from './weeklyAwards';
 import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lessonAwards';
 import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, meetsReadingBonusGates, readingBonusId } from './readingAwards';
 import {
@@ -937,7 +938,6 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
     }
   }
 
-  sweptState = reconcileAllWeeklyReflections(sweptState, now);
   sweptState = reconcileWeeklyGoalsPointsForAllWeeks(
     reconcileLinkedWeeklyGoals(sweptState, now),
     now
@@ -1690,7 +1690,7 @@ export function isWeeklyReflectionAwarded(
     const { start } = getWeekDates(weekKey);
     const activeSeasonStart = getSeasonStart(leagueNow());
     if (start < activeSeasonStart) {
-      return new Date(latestReflection.createdAt) <= getWeekReflectionCutoff(weekKey);
+      return new Date(latestReflection.createdAt) < reflectionWindow(weekKey).closesAt;
     }
   } catch {
     // If weekKey fails to parse, return false
@@ -1708,11 +1708,11 @@ export function reconcileReflectionPoints(
   updatedReflections: WeeklyGoalReflection[];
   nextState: AppState;
 } {
-  const cutoff = getWeekReflectionCutoff(weekKey);
   const updatedReflections = [...reflections];
   let currentState = prevState;
 
-  if (now < cutoff) {
+  // The server rewards a reflection only inside its week's Reflection Window (weeklyAwards.ts).
+  if (!isReflectionWindowOpen(weekKey, now)) {
     return {
       updatedReflections,
       nextState: currentState,
@@ -1772,41 +1772,6 @@ export function reconcileReflectionPoints(
     updatedReflections,
     nextState: currentState,
   };
-}
-
-export function reconcileAllWeeklyReflections(
-  state: AppState,
-  now: Date = trustedNow()
-): AppState {
-  let reflectionReconciledState = state;
-  let reflectionsChanged = false;
-
-  const updatedWeeklyGoals = (reflectionReconciledState.weeklyGoals || []).map((wg) => {
-    const cutoff = getWeekReflectionCutoff(wg.weekKey);
-    if (now >= cutoff) {
-      const { updatedReflections, nextState } = reconcileReflectionPoints(
-        reflectionReconciledState,
-        wg.weekKey,
-        wg.reflections || [],
-        now
-      );
-      if (nextState !== reflectionReconciledState) {
-        reflectionReconciledState = nextState;
-        reflectionsChanged = true;
-        return { ...wg, reflections: updatedReflections };
-      }
-    }
-    return wg;
-  });
-
-  if (reflectionsChanged) {
-    return {
-      ...reflectionReconciledState,
-      weeklyGoals: updatedWeeklyGoals,
-    };
-  }
-
-  return state;
 }
 
 export function useAppState() {
@@ -3120,9 +3085,8 @@ export function useAppState() {
         const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
         const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
         const timeTrackerProcessed = processTimeTrackerDailyPoints(exercisePenalized, targetNow);
-        const reflectionReconciledState = reconcileAllWeeklyReflections(timeTrackerProcessed, targetNow);
         const weeklyGoalsReconciledState = reconcileWeeklyGoalsPointsForAllWeeks(
-          reconcileLinkedWeeklyGoals(reflectionReconciledState, targetNow),
+          reconcileLinkedWeeklyGoals(timeTrackerProcessed, targetNow),
           targetNow
         );
 
@@ -5506,9 +5470,8 @@ export function useAppState() {
 
   const addWeeklyReflection = useCallback((targetWeekKey: string, content: string) => {
     if (!content.trim()) return;
-    const currentWeek = weekKey(getNow());
-    if (targetWeekKey !== currentWeek) {
-      throw new Error('Reflections can only be written for the current week.');
+    if (!isReflectionWindowOpen(targetWeekKey, getNow())) {
+      throw new Error('Reflections can only be written while the Reflection Window is open.');
     }
     setState((prev) => {
       const idx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
@@ -5558,9 +5521,8 @@ export function useAppState() {
 
   const updateWeeklyReflection = useCallback((targetWeekKey: string, reflectionId: string, content: string) => {
     if (!content.trim()) return;
-    const currentWeek = weekKey(getNow());
-    if (targetWeekKey !== currentWeek) {
-      throw new Error('Reflections can only be written for the current week.');
+    if (!isReflectionWindowOpen(targetWeekKey, getNow())) {
+      throw new Error('Reflections can only be written while the Reflection Window is open.');
     }
     setState((prev) => {
       const docIdx = prev.weeklyGoals.findIndex((w) => w.weekKey === targetWeekKey);
@@ -5602,9 +5564,8 @@ export function useAppState() {
   }, []);
 
   const deleteWeeklyReflection = useCallback((targetWeekKey: string, reflectionId: string) => {
-    const currentWeek = weekKey(getNow());
-    if (targetWeekKey !== currentWeek) {
-      throw new Error('Reflections can only be written for the current week.');
+    if (!isReflectionWindowOpen(targetWeekKey, getNow())) {
+      throw new Error('Reflections can only be written while the Reflection Window is open.');
     }
     void (
       setState(

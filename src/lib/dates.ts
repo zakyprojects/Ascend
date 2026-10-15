@@ -341,17 +341,6 @@ export function getWeekDates(targetWeekKey?: string): {
   return { start, end, dateStrings };
 }
 
-/**
- * Computes Sunday 17:00 local time cutoff for a given week key (YYYY-Www).
- */
-export function getWeekReflectionCutoff(targetWeekKey: string): Date {
-  const { start } = getWeekDates(targetWeekKey);
-  const cutoff = new Date(start);
-  cutoff.setDate(cutoff.getDate() + 6); // Sunday
-  cutoff.setHours(17, 0, 0, 0); // 17:00 local time
-  return cutoff;
-}
-
 /** Offset a week key by N weeks (+1 for next week, -1 for previous week) */
 export function offsetWeekKey(currentWeekKey: string, weeksOffset: number): string {
   const { start } = getWeekDates(currentWeekKey);

@@ -13,7 +13,6 @@ import {
   Edit3,
   Trash2,
   PenLine,
-  Clock,
 } from 'lucide-react';
 import { AppStore, isWeeklyReflectionAwarded } from '@/lib/store';
 import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoints } from '@/lib/pointsConfig';
@@ -29,9 +28,9 @@ import {
   getWeekDates,
   offsetWeekKey,
   formatWeekRange,
-  getWeekReflectionCutoff,
   getNow,
 } from '@/lib/dates';
+import { isReflectionWindowOpen, reflectionWindow } from '@/lib/weeklyAwards';
 import { WeeklyGoalItem, WeeklyGoalPriority, WeeklyGoalLinkedModule, WeeklyGoalReflection } from '@/types';
 import { computeLinkedGoalProgress, GoalProgressResult, LINKED_GOAL_METRICS, LinkedModule } from '@/lib/linkedGoalMetrics';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
@@ -263,6 +262,19 @@ function GoalItemRow({
 
 const TREND_WEEKS = 8;
 
+/** One line on where the week's Reflection Window stands, with the time left while it is open. */
+function reflectionWindowStatus(targetWeekKey: string, now: Date): string {
+  const { opensAt, closesAt } = reflectionWindow(targetWeekKey);
+  if (now < opensAt) {
+    const when = opensAt.toLocaleString(undefined, { weekday: 'long', hour: 'numeric', minute: '2-digit' });
+    return `Reflection Window opens ${when}.`;
+  }
+  if (now >= closesAt) return 'Reflection Window closed for this week.';
+  const hoursLeft = Math.ceil((closesAt.getTime() - now.getTime()) / 3600000);
+  const left = hoursLeft > 24 ? `${Math.floor(hoursLeft / 24)}d ${hoursLeft % 24}h` : `${hoursLeft}h`;
+  return `Reflection Window open: closes in ${left}.`;
+}
+
 export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
@@ -271,6 +283,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
   const isPastWeek = selectedWeekKey < currentWeekKey;
   const isFutureWeek = selectedWeekKey > currentWeekKey;
+  const previousWeekKey = offsetWeekKey(currentWeekKey, -1);
+  const reflectionWindowOpen = isReflectionWindowOpen(selectedWeekKey, getNow());
+  const previousReflectionWindowOpen = isReflectionWindowOpen(previousWeekKey, getNow());
 
   useEffect(() => {
     store.syncLinkedWeeklyGoals();
@@ -789,7 +804,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                     label={`Weekly goals points (${weeklyGoalsScore.completedGoalsCount} achieved, ${weeklyGoalsScore.countedGoalsCount} counted)`}
                     earned={weeklyGoalsScore.pointsAwarded}
                     cap={WEEKLY_GOALS_POINTS.maxWeeklyPoints}
-                    note={weeklyGoalsCapNote(getWeekReflectionCutoff(selectedWeekKey))}
+                    note={weeklyGoalsCapNote()}
                   />
                 );
               })()}
@@ -835,7 +850,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         }
         aside={
           <>
-            {/* SUNDAY EVENING REVIEW & REFLECTIONS CARD */}
+            {/* REFLECTION WINDOW & REFLECTIONS CARD */}
             <div className="card p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-overlay-subtle pb-3">
                 <div>
@@ -844,8 +859,19 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                     Weekly Reflections
                   </h3>
                   <p className="text-xs text-content-muted mt-0.5">
-                    Reflect on wins, friction, and execution velocity. The first reflection each week awards +{WEEKLY_REFLECTION_POINTS.awarded} pts.
+                    Reflect on wins, friction, and execution velocity. The first reflection in the week's Reflection Window (Friday 6:00 AM to the end of Monday) awards +{WEEKLY_REFLECTION_POINTS.awarded} pts.
                   </p>
+                  <p className="text-xs text-content-tertiary mt-1">
+                    {reflectionWindowStatus(selectedWeekKey, getNow())}
+                  </p>
+                  {selectedWeekKey === currentWeekKey && previousReflectionWindowOpen && (
+                    <button
+                      onClick={() => setSelectedWeekKey(previousWeekKey)}
+                      className="text-xs text-warning-text underline-offset-2 hover:underline mt-1"
+                    >
+                      Last week's Reflection Window is open until the end of today. Write it now
+                    </button>
+                  )}
                 </div>
 
                 {!showAddReflection && (
@@ -854,7 +880,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                       setShowAddReflection(true);
                       setNewReflectionContent('');
                     }}
-                    disabled={isPastWeek || isFutureWeek}
+                    disabled={!reflectionWindowOpen}
                     className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus size={14} />
@@ -886,7 +912,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                     </button>
                     <button
                       onClick={handleCreateReflection}
-                      disabled={isPastWeek || isFutureWeek}
+                      disabled={!reflectionWindowOpen}
                       className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Check size={14} />
@@ -899,23 +925,15 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               {/* LIST OF REFLECTIONS */}
               <div className="divide-y divide-overlay-subtle">
                 {(() => {
-                  const reflectionCutoff = getWeekReflectionCutoff(selectedWeekKey);
-                  const isBeforeCutoff = getNow() < reflectionCutoff;
                   const reflections = activeGoalDoc.reflections || [];
-                  const latestReflection = reflections.length > 0
-                    ? reflections.reduce(
-                        (prevMax, curr) => (new Date(curr.createdAt).getTime() > new Date(prevMax.createdAt).getTime() ? curr : prevMax),
-                        reflections[0]
-                      )
-                    : null;
 
                   return (
                     <>
                       {reflections.length === 0 && !showAddReflection && (
                         <EmptyState
                           icon={PenLine}
-                          title={selectedWeekKey === currentWeekKey ? `No reflections for ${selectedWeekKey} yet` : `No reflections for ${selectedWeekKey}`}
-                          description={selectedWeekKey === currentWeekKey ? 'Use "+ Add Reflection" above to write one.' : undefined}
+                          title={reflectionWindowOpen ? `No reflections for ${selectedWeekKey} yet` : `No reflections for ${selectedWeekKey}`}
+                          description={reflectionWindowOpen ? 'Use "+ Add Reflection" above to write one.' : undefined}
                           size="sm"
                           surface={false}
                         />
@@ -946,7 +964,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                                 </button>
                                 <button
                                   onClick={handleUpdateReflection}
-                                  disabled={isPastWeek || isFutureWeek}
+                                  disabled={!reflectionWindowOpen}
                                   className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   Save Changes
@@ -970,13 +988,6 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                                   <span className="badge badge-emerald figure text-2xs px-2 py-0.5 rounded-full flex items-center gap-1">
                                     <Check size={11} /> +{WEEKLY_REFLECTION_POINTS.awarded} pts
                                   </span>
-                                ) : isBeforeCutoff && latestReflection?.id === ref.id ? (
-                                  <span
-                                    className="badge badge-amber figure text-2xs px-2 py-0.5 rounded-full flex items-center gap-1"
-                                    title="Points will be awarded when cutoff passes on Sunday 17:00"
-                                  >
-                                    <Clock size={11} /> Pending +{WEEKLY_REFLECTION_POINTS.awarded} pts
-                                  </span>
                                 ) : null}
                               </div>
                         <div className="flex items-center gap-1">
@@ -987,7 +998,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                                 setEditReflectionContent(ref.content);
                               })
                             }
-                            disabled={isPastWeek || isFutureWeek}
+                            disabled={!reflectionWindowOpen}
                             className={`p-1 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
                             title="Edit reflection"
                             aria-label="Edit reflection"
@@ -996,7 +1007,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                           </button>
                           <button
                             onClick={() => setDeleteReflectionModal(ref)}
-                            disabled={isPastWeek || isFutureWeek}
+                            disabled={!reflectionWindowOpen}
                             className={`p-1 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
                             title="Delete reflection"
                             aria-label="Delete reflection"

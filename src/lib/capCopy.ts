@@ -31,13 +31,8 @@ export function recoverySeasonCapNote(): string {
   return `Total recovery points this season are capped at ${RECOVERY_POINTS.seasonCap}; a capped milestone shows "Season cap reached" until the cap is reclaimed via reset/relapse rules.`;
 }
 
-export function weeklyGoalsCapNote(cutoff: Date): string {
-  const cutoffStr = cutoff.toLocaleString(undefined, {
-    weekday: 'long',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-  return `Each achieved goal = ${WEEKLY_GOALS_POINTS.pointsPerGoal} pts; only the first ${WEEKLY_GOALS_POINTS.maxGoalsCounted} achieved goals (by completion time) count; goals max = ${WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts; the one weekly reflection's +${WEEKLY_REFLECTION_POINTS.awarded} pts is credited only after ${cutoffStr} (your local time) has passed; only the current week earns points.`;
+export function weeklyGoalsCapNote(): string {
+  return `Each achieved goal = ${WEEKLY_GOALS_POINTS.pointsPerGoal} pts; only the first ${WEEKLY_GOALS_POINTS.maxGoalsCounted} achieved goals (by completion time) count; goals max = ${WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts; the weekly reflection's +${WEEKLY_REFLECTION_POINTS.awarded} pts goes to the first reflection written in the week's Reflection Window (Friday 6:00 AM to the end of Monday, your local time); only the current week earns points.`;
 }
 
 export function timeTrackerCapNote(): string {

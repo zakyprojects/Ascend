@@ -23,6 +23,7 @@ import { isServerOwnedReadingPointId } from '../readingAwards';
 import { isServerOwnedJournalPointId } from '../journalAwards';
 import { isServerOwnedFocusPointId } from '../focusAwards';
 import { isServerOwnedLessonPointId } from '../lessonAwards';
+import { isServerOwnedWeeklyPointId } from '../weeklyAwards';
 
 /**
  * Blob collections that also live in a relational table (DB normalization,
@@ -535,7 +536,8 @@ export const SYNCED_COLLECTIONS = [
       isServerOwnedReadingPointId(id) ||
       isServerOwnedJournalPointId(id) ||
       isServerOwnedFocusPointId(id) ||
-      isServerOwnedLessonPointId(id),
+      isServerOwnedLessonPointId(id) ||
+      isServerOwnedWeeklyPointId(id),
   },
   // Time tracker (batch E): one state object, three tables.
   timeTrackerActivities,
