@@ -22,6 +22,7 @@ import { isServerOwnedSkillPointId } from '../skillAwards';
 import { isServerOwnedReadingPointId } from '../readingAwards';
 import { isServerOwnedJournalPointId } from '../journalAwards';
 import { isServerOwnedFocusPointId } from '../focusAwards';
+import { isServerOwnedLessonPointId } from '../lessonAwards';
 
 /**
  * Blob collections that also live in a relational table (DB normalization,
@@ -485,6 +486,24 @@ function trackerCreatedAt(tracker: AddictionTracker): string {
   return validIso(tracker.createdAt) ?? validIso(tracker.startDate) ?? EPOCH;
 }
 
+/**
+ * Lessons read (module 8, server-side lesson points): one row per `<lessonId>_s<season>` id
+ * of readLessonIds (season 1 also kept bare lesson ids). A read is never undone, and the
+ * server awards its points when the row arrives. The ids carry no time of their own.
+ */
+const lessonReads: SyncedCollection<'readLessonIds'> = {
+  stateKey: 'readLessonIds',
+  table: 'lesson_reads',
+  toRow: (item) => ({ id: (item as unknown as { id: string }).id, created_at: EPOCH }),
+  fromRow: (row) => ({ id: String(row.id) }) as never,
+  ownTimestamp: () => EPOCH,
+  read: (state) => (state.readLessonIds || []).filter((id) => typeof id === 'string' && id).map((id) => ({ id })) as never,
+  write: (state, items) => ({
+    ...state,
+    readLessonIds: Array.from(new Set((items as unknown as { id: string }[]).map((item) => item.id))),
+  }),
+};
+
 export const SYNCED_COLLECTIONS = [
   decisionLogs as unknown as SyncedCollection,
   emotionLogs as unknown as SyncedCollection,
@@ -515,7 +534,8 @@ export const SYNCED_COLLECTIONS = [
       isServerOwnedSkillPointId(id) ||
       isServerOwnedReadingPointId(id) ||
       isServerOwnedJournalPointId(id) ||
-      isServerOwnedFocusPointId(id),
+      isServerOwnedFocusPointId(id) ||
+      isServerOwnedLessonPointId(id),
   },
   // Time tracker (batch E): one state object, three tables.
   timeTrackerActivities,
@@ -526,6 +546,7 @@ export const SYNCED_COLLECTIONS = [
   // re-created archive revives its row.
   { ...documentCollection('leagueArchives', 'league_archives', (a) => a.archivedAt, undefined, true), revivable: true },
   addictionTracker as unknown as SyncedCollection,
+  lessonReads as unknown as SyncedCollection,
 ] as unknown as SyncedCollection[];
 
 /**

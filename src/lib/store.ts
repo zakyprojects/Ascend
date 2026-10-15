@@ -75,6 +75,7 @@ import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } fro
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeFocusAwards, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
+import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lessonAwards';
 import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, meetsReadingBonusGates, readingBonusId } from './readingAwards';
 import {
   getLeaguePeriodStart,
@@ -3656,25 +3657,19 @@ export function useAppState() {
   }, [state.journalEntries]);
 
   const markLessonRead = useCallback(
-    (lessonId: string, lessonTitle: string, points: number) => {
+    (lessonId: string) => {
       setState((prev) => {
         const activeSeasonNum = getSeasonNumber(leagueNow());
-        const seasonKey = `${lessonId}_s${activeSeasonNum}`;
-        const isAlreadyReadThisSeason =
-          prev.readLessonIds.includes(seasonKey) ||
-          (activeSeasonNum === 1 && prev.readLessonIds.includes(lessonId));
-        if (isAlreadyReadThisSeason) return prev;
+        if (isLessonReadInSeason(prev.readLessonIds, lessonId, activeSeasonNum)) return prev;
 
-        const pointsUpdate = addPointsInternal(
-          prev,
-          points,
-          `Lesson read: ${lessonTitle}`,
-          'lesson',
-          { lessonId, seasonNumber: activeSeasonNum }
-        );
+        // The server writes the award from its own catalog (computeLessonAward shows the same row now).
+        const award = computeLessonAward(lessonId, activeSeasonNum, trustedNow().toISOString());
+        const pointsUpdate = award
+          ? addPointsInternal(prev, award.amount, award.reason, award.source, award.metadata, award.timestamp, award.id)
+          : {};
         return {
           ...prev,
-          readLessonIds: [...prev.readLessonIds, seasonKey],
+          readLessonIds: [...prev.readLessonIds, lessonReadId(lessonId, activeSeasonNum)],
           ...pointsUpdate,
         };
       });

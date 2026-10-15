@@ -7,6 +7,7 @@ import { Dialog, EmptyState } from '@/components/ui/primitives';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { getSeasonNumber, leagueNow } from '@/lib/leagueTime';
+import { isLessonReadInSeason } from '@/lib/lessonAwards';
 
 export function Lessons({ store }: { store: AppStore }) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -15,10 +16,7 @@ export function Lessons({ store }: { store: AppStore }) {
 
   const readIds = store.state.readLessonIds;
   const activeSeasonNum = getSeasonNumber(leagueNow());
-  const isLessonReadThisSeason = (lessonId: string) => {
-    const seasonKey = `${lessonId}_s${activeSeasonNum}`;
-    return readIds.includes(seasonKey) || (activeSeasonNum === 1 && readIds.includes(lessonId));
-  };
+  const isLessonReadThisSeason = (lessonId: string) => isLessonReadInSeason(readIds, lessonId, activeSeasonNum);
 
   const readCount = LESSONS.filter((l) => isLessonReadThisSeason(l.id)).length;
   const totalPoints = LESSONS.reduce((sum, l) => sum + l.points, 0);
@@ -154,7 +152,7 @@ export function Lessons({ store }: { store: AppStore }) {
               ) : (
                 <button
                   onClick={() => {
-                    store.markLessonRead(openLesson.id, openLesson.title, openLesson.points);
+                    store.markLessonRead(openLesson.id);
                   }}
                   className="btn-primary w-full"
                 >
