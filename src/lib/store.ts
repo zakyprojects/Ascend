@@ -75,7 +75,7 @@ import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } fro
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeFocusAwards, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
-import { isReflectionWindowOpen, reflectionWindow } from './weeklyAwards';
+import { isReflectionWindowOpen, reflectionWindow, weeklyGoalAwardTimestamp } from './weeklyAwards';
 import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lessonAwards';
 import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, meetsReadingBonusGates, readingBonusId } from './readingAwards';
 import {
@@ -1280,7 +1280,8 @@ function recomputeSeasonSplitWeeklyGoalsPoints(
     : calculateWeeklyGoalsPointsBefore(newGoals, seasonStart);
   const newPoints = Math.max(0, score.pointsAwarded - earlierSeasonPoints);
 
-  if (existing ? existing.amount === newPoints : newPoints === 0) {
+  const timestamp = weeklyGoalAwardTimestamp(newGoals, seasonStart, leagueNow());
+  if (existing ? existing.amount === newPoints && existing.timestamp === timestamp : newPoints === 0) {
     return {};
   }
 
@@ -1305,7 +1306,7 @@ function recomputeSeasonSplitWeeklyGoalsPoints(
       countedGoalsCount: score.countedGoalsCount,
       completedGoalsCount: score.completedGoalsCount,
     },
-    existing?.timestamp || leagueNow().toISOString(),
+    timestamp,
     entryId
   );
 
@@ -1342,10 +1343,15 @@ export const recomputeWeeklyGoalsPointsForState = (
 
   const currentHistory = baseState.pointsHistory || [];
   const allWeekEntries = currentHistory.filter(isWeekEntry);
-  const existing = allWeekEntries.find((e) => e.id === entryId) || allWeekEntries[0];
+  const canonicalTimestamp = weeklyGoalAwardTimestamp(newGoals, getWeekDates(targetWeekKey).start, leagueNow());
 
-  // True no-op: exactly one canonical entry already matching current target points
-  if (allWeekEntries.length === 1 && allWeekEntries[0].id === entryId && allWeekEntries[0].amount === newPoints) {
+  // True no-op: exactly one canonical entry already matching current target points and time
+  if (
+    allWeekEntries.length === 1 &&
+    allWeekEntries[0].id === entryId &&
+    allWeekEntries[0].amount === newPoints &&
+    allWeekEntries[0].timestamp === canonicalTimestamp
+  ) {
     return {};
   }
   // No entries exist and new points are 0 -> nothing to add or remove
@@ -1383,14 +1389,6 @@ export const recomputeWeeklyGoalsPointsForState = (
         ),
       }
     : baseState;
-
-  // Preserve earliest timestamp across any legacy entries for this week
-  const sortedWeekEntries = [...allWeekEntries].sort(
-    (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
-  );
-  const canonicalTimestamp = existing?.id === entryId
-    ? existing.timestamp
-    : (sortedWeekEntries[0]?.timestamp || leagueNow().toISOString());
 
   const pointsUpdate = addPointsInternal(
     stateToUpdate,

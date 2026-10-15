@@ -1,4 +1,6 @@
+import { WeeklyGoalItem } from '@/types';
 import { getWeekDates } from './dates';
+import { getCountedWeeklyGoals, getWeeklyGoalCompletionTime } from './pointsConfig';
 
 /**
  * Weekly goal and reflection points are written by the server
@@ -12,6 +14,20 @@ import { getWeekDates } from './dates';
 /** Point entry ids only the server writes. */
 export const isServerOwnedWeeklyPointId = (id: string): boolean =>
   id.startsWith('weekly_goal_') || id.startsWith('weekly_review_');
+
+/**
+ * When a week's goal points row is stamped (Zakria 2026-10-15): the completion time of its last
+ * counted goal, kept between `notBefore` (the week's start, or the season start for a season's
+ * split row) and now. The season total floors at 0 in time order, so a row stamped when it was
+ * earned shows every check and uncheck. Must match ascend_recompute_weekly_goal_awards.
+ */
+export function weeklyGoalAwardTimestamp(goals: WeeklyGoalItem[], notBefore: Date, now: Date): string {
+  const { countedGoals } = getCountedWeeklyGoals(goals);
+  const last = countedGoals[countedGoals.length - 1];
+  const completedAt = last ? getWeeklyGoalCompletionTime(last) : Number.NaN;
+  const at = Number.isFinite(completedAt) ? Math.min(completedAt, now.getTime()) : now.getTime();
+  return new Date(Math.max(at, notBefore.getTime())).toISOString();
+}
 
 /**
  * A week's Reflection Window (Zakria 2026-10-15): from Friday 06:00 of the week until the end of
