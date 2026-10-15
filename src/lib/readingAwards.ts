@@ -58,7 +58,7 @@ const logPages = (log: ReadingLog): number =>
 /**
  * Mirror of ascend_recompute_reading_awards: the page award entry of one local day (null when the
  * day earns nothing), and each counted log's share in log order (shown on the log). Only logs of
- * books still in the library count; points = floor(day pages / pagesPerPoint), capped.
+ * books still in the library count, and not the pages Finish adds (finish: true); points = floor(day pages / pagesPerPoint), capped.
  */
 export function computeReadingDayAward(
   logs: ReadingLog[],
@@ -69,7 +69,7 @@ export function computeReadingDayAward(
 ): { entry: PointsEntry | null; logPoints: Map<string, number> } {
   const bookIds = new Set(books.filter(Boolean).map((b) => b.id));
   const dayLogs = logs
-    .filter((l) => l && l.date === day && Boolean(l.bookId && bookIds.has(l.bookId)))
+    .filter((l) => l && l.date === day && l.finish !== true && Boolean(l.bookId && bookIds.has(l.bookId)))
     .sort((a, b) => timeOf(a.createdAt) - timeOf(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
   const logPoints = new Map<string, number>();

@@ -4189,6 +4189,7 @@ export function useAppState() {
             date: today,
             pagesRead: unreadDelta,
             pointsAwarded: 0,
+            finish: true,
             createdAt: now,
           };
           updatedReadingLogs = [finishLog, ...updatedReadingLogs];
@@ -4231,7 +4232,7 @@ export function useAppState() {
           return lb;
         });
 
-        // The finish log's pages count toward today's page award, as on the server.
+        // Recompute today: the finish log earns no page points (finish: true), as on the server.
         const awards = applyReadingAwardsInternal(prev, updatedReadingLogs, updatedLibraryBooks, today);
         const points =
           pointsToAward > 0

@@ -218,6 +218,7 @@ export interface ReadingLog {
   pagesRead: number; // positive delta only
   createdAt: string; // ISO timestamp
   pointsAwarded?: number;
+  finish?: boolean; // unread pages added by Finish: no page points, still a reading day
 }
 
 export type ReadingProgressLog = ReadingLog;
