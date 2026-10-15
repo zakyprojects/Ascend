@@ -72,6 +72,7 @@ import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChalle
 import { PresetHabit } from './presets';
 import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward } from './habitAwards';
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
+import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
 import {
   getLeaguePeriodStart,
   getLeaguePeriodLabel,
@@ -132,13 +133,11 @@ import {
   JOURNAL_POINTS,
   WEEKLY_REFLECTION_POINTS,
   PFC_POINTS,
-  SKILLS_POINTS,
   READING_POINTS,
   BAD_HABIT_POINTS,
   SOBRIETY_MILESTONE_POINTS,
   TIME_TRACKER_POINTS,
   WEEKLY_GOALS_POINTS,
-  calculateSkillPoints,
   calculateFocusPoints,
   calculateReadingPoints,
   calculateTimeTrackerDailyPoints,
@@ -427,7 +426,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   const nonReviewHistory: PointsEntry[] = [];
 
   for (const entry of rawHistory) {
-    if (entry && (isRetiredAppHabitAward(entry) || isRetiredAppBadHabitAward(entry) || isRetiredAppWorkoutAward(entry))) continue;
+    if (entry && (isRetiredAppHabitAward(entry) || isRetiredAppBadHabitAward(entry) || isRetiredAppWorkoutAward(entry) || isRetiredAppSkillAward(entry))) continue;
     if (entry && entry.source === 'weekly_review') {
       let weekKey: string | null = null;
       if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
@@ -1125,6 +1124,36 @@ function applyWorkoutAwardsInternal(
     w && workoutPoints.has(w.id) && workoutPoints.get(w.id) !== w.pointsAwarded ? { ...w, pointsAwarded: workoutPoints.get(w.id)! } : w
   );
   return { points, workouts: nextWorkouts };
+}
+
+/**
+ * Replaces one local day's skill award entry with the one the server computes for these
+ * sessions and skills (computeSkillAwards), and stamps each counted session with its points.
+ * The entry is shown at once and never uploaded; the server's own row replaces it on the next pull.
+ */
+function applySkillAwardsInternal(
+  state: AppState,
+  skillLogs: SkillSessionLog[],
+  skills: Skill[],
+  day: string
+): { points: Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'>; skillLogs: SkillSessionLog[] } {
+  const { entry, sessionPoints } = computeSkillAwards(
+    skillLogs,
+    skills,
+    day,
+    new Date(`${day}T00:00:00`).getTime(),
+    trustedNow().getTime()
+  );
+
+  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isSkillDayEntry(e, day));
+  const points = entry
+    ? addPointsInternal({ ...state, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
+    : excised;
+
+  const nextLogs = skillLogs.map((l) =>
+    l && sessionPoints.has(l.id) && sessionPoints.get(l.id) !== l.pointsAwarded ? { ...l, pointsAwarded: sessionPoints.get(l.id)! } : l
+  );
+  return { points, skillLogs: nextLogs };
 }
 
 export function getWeeklyReflectionNetPoints(state: AppState, weekKey: string): number {
@@ -4592,32 +4621,22 @@ export function useAppState() {
       const targetSkill = prev.skills.find((s) => s.id === skillId);
       if (!targetSkill) return prev;
 
-      const pointsEarnedToday = prev.skillLogs
-        .filter((l) => l.date === date)
-        .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-
-      const remainingCap = Math.max(0, SKILLS_POINTS.dailyCap - pointsEarnedToday);
-      const { pointsToAward } = calculateSkillPoints(durationMinutes, remainingCap);
-
       const session: SkillSessionLog = {
         id: uid(),
         skillId,
         date,
         durationMinutes,
         note: note.trim(),
-        pointsAwarded: pointsToAward,
+        pointsAwarded: 0,
         createdAt: trustedNow().toISOString(),
       };
 
-      let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-      if (pointsToAward > 0) {
-        pointsUpdate = addPointsInternal(prev, pointsToAward, `Skill practiced: ${targetSkill.name} (${durationMinutes}m)`, 'skill');
-      }
-
+      // The server writes the day's award (applySkillAwardsInternal shows the same row now).
+      const awards = applySkillAwardsInternal(prev, [session, ...prev.skillLogs], prev.skills, date);
       return {
         ...prev,
-        skillLogs: [session, ...prev.skillLogs],
-        ...pointsUpdate,
+        skillLogs: awards.skillLogs,
+        ...awards.points,
       };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -4647,64 +4666,22 @@ export function useAppState() {
           const skillLogsToRemove = prev.skillLogs.filter((l) => l.skillId === skillId);
           const remainingSkillLogs = prev.skillLogs.filter((l) => l.skillId !== skillId);
 
-          // Get unique affected dates
-          const affectedDates = Array.from(new Set(skillLogsToRemove.map((l) => l.date)));
-
-          const recalculatedMap = new Map<string, number>();
-          for (const affectedDate of affectedDates) {
-            const dayLogs = remainingSkillLogs.filter((l) => l.date === affectedDate);
-            const chronDayLogs = [...dayLogs].sort(
-              (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-            );
-
-            let dailyCapRemaining: number = SKILLS_POINTS.dailyCap;
-            for (const log of chronDayLogs) {
-              const { pointsToAward: awarded } = calculateSkillPoints(log.durationMinutes, dailyCapRemaining);
-              recalculatedMap.set(log.id, awarded);
-              dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
-            }
-          }
-
-          const oldPointsOnAffectedDates = prev.skillLogs
-            .filter((l) => affectedDates.includes(l.date))
-            .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-
-          const newPointsOnAffectedDates = remainingSkillLogs
-            .filter((l) => affectedDates.includes(l.date))
-            .reduce((sum, l) => sum + (recalculatedMap.get(l.id) ?? l.pointsAwarded ?? 0), 0);
-
-          const netPointDelta = newPointsOnAffectedDates - oldPointsOnAffectedDates;
-
-          let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-          if (netPointDelta !== 0) {
-            pointsUpdate = addPointsInternal(
-              prev,
-              netPointDelta,
-              `Skill deleted (${skillLogsToRemove.length} session log(s) removed): ${target.name}`,
-              'skill'
-            );
-          }
-
-          const updatedSkillLogs = remainingSkillLogs.map((l) => {
-            if (recalculatedMap.has(l.id)) {
-              return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
-            }
-            return l;
-          });
-
           const updatedDeletedEntityIds = [
             ...(prev.deletedEntityIds || []),
             skillId,
             ...skillLogsToRemove.map((l) => l.id),
           ].slice(-500);
 
+          // Only today's award follows the sessions; earlier days' points stay (as on the server).
+          const awards = applySkillAwardsInternal(prev, remainingSkillLogs, remainingSkills, todayKey());
+
           return {
             ...prev,
             skills: remainingSkills,
-            skillLogs: updatedSkillLogs,
+            skillLogs: awards.skillLogs,
             weeklyGoals: removeLinkedWeeklyGoals(prev.weeklyGoals, 'skill', [skillId], currentWeekKey),
             deletedEntityIds: updatedDeletedEntityIds,
-            ...pointsUpdate,
+            ...awards.points,
           };
         },
         { immediate: true, actionLabel: 'Skill deletion', entityId: skillId }
@@ -4720,58 +4697,20 @@ export function useAppState() {
         const target = prev.skillLogs.find((s) => s.id === logId);
         if (!target) return prev;
 
-        const targetDate = target.date;
         const remainingSkillLogs = prev.skillLogs.filter((s) => s.id !== logId);
-
-        // Recalculate points awarded for all remaining same-date skill logs across all skills in chronological order
-        const dayLogs = remainingSkillLogs.filter((l) => l.date === targetDate);
-        const chronDayLogs = [...dayLogs].sort(
-          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-        );
-
-        let dailyCapRemaining: number = SKILLS_POINTS.dailyCap;
-        const recalculatedMap = new Map<string, number>();
-
-        for (const log of chronDayLogs) {
-          const { pointsToAward: awarded } = calculateSkillPoints(log.durationMinutes, dailyCapRemaining);
-          recalculatedMap.set(log.id, awarded);
-          dailyCapRemaining = Math.max(0, dailyCapRemaining - awarded);
-        }
-
-        const oldDatePoints = prev.skillLogs
-          .filter((l) => l.date === targetDate)
-          .reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
-
-        const newDatePoints = chronDayLogs.reduce(
-          (sum, l) => sum + (recalculatedMap.get(l.id) ?? 0),
-          0
-        );
-
-        const netPointDelta = newDatePoints - oldDatePoints;
-
-        let pointsUpdate: Partial<AppState> = { totalPoints: prev.totalPoints, pointsHistory: prev.pointsHistory };
-        if (netPointDelta !== 0) {
-          pointsUpdate = addPointsInternal(
-            prev,
-            netPointDelta,
-            `Skill practice log deleted`,
-            'skill'
-          );
-        }
-
-        const updatedSkillLogs = remainingSkillLogs.map((l) => {
-          if (l.date === targetDate && recalculatedMap.has(l.id)) {
-            return { ...l, pointsAwarded: recalculatedMap.get(l.id)! };
-          }
-          return l;
-        });
-
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
+
+        // Only today's award follows the sessions; an earlier day's points stay (as on the server).
+        const today = todayKey();
+        if (target.date !== today) {
+          return { ...prev, skillLogs: remainingSkillLogs, deletedEntityIds: updatedDeletedEntityIds };
+        }
+        const awards = applySkillAwardsInternal(prev, remainingSkillLogs, prev.skills, today);
         return {
           ...prev,
-          skillLogs: updatedSkillLogs,
+          skillLogs: awards.skillLogs,
           deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
+          ...awards.points,
         };
       },
       { immediate: true }
