@@ -110,14 +110,14 @@ export const READING_POINTS = {
 
 export const BAD_HABIT_POINTS = {
   eligibleSlots: 2,
-  // store.ts:4596
+  // Resist awards and occurred penalties: badHabitAwards.ts and ascend_recompute_bad_habit_awards
   resistBase: 3,
   dailyCap: 6,
   maxDailyResists: 2,
-  // store.ts:4616 (multiplied by escalation)
-  occurBase: 10,
-  // habitPenalties.ts:438 (multiplied by escalation)
-  noReportBase: 5,
+  // multiplied by the miss multiplier
+  occurBase: 5,
+  // habitPenalties.ts and ascend_process_penalties (multiplied by the miss multiplier)
+  noReportBase: 3,
 } as const;
 
 export function allocateResistPoints(

@@ -16,6 +16,7 @@ import type {
 } from '../../types';
 import { DEFAULT_TIME_TRACKER_STATE } from '../../types';
 import { isServerOwnedPointId } from '../habitAwards';
+import { isServerOwnedBadHabitLogId, isServerOwnedPenaltyPointId } from '../badHabitAwards';
 
 /**
  * Blob collections that also live in a relational table (DB normalization,
@@ -47,7 +48,7 @@ export interface SyncedCollection<K extends keyof AppState = keyof AppState> {
    */
   revivable?: boolean;
   /**
-   * Rows only the server writes (habit awards): the device shows them but never uploads or
+   * Rows only the server writes (habit awards, bad-habit points, penalties): the device shows them but never uploads or
    * deletes them, and the server's copy always replaces the local one.
    */
   serverOwnedId?: (id: string) => boolean;
@@ -495,14 +496,14 @@ export const SYNCED_COLLECTIONS = [
   documentCollection('skills', 'skills', byCreatedAt),
   documentCollection('skillLogs', 'skill_logs', byCreatedAt),
   documentCollection('badHabits', 'bad_habits', byCreatedAt),
-  documentCollection('badHabitLogs', 'bad_habit_logs', byCreatedAt),
+  { ...documentCollection('badHabitLogs', 'bad_habit_logs', byCreatedAt), serverOwnedId: isServerOwnedBadHabitLogId },
   // Weekly goals merge by week, not by document id, so the week is the row id.
   documentCollection('weeklyGoals', 'weekly_goals', byCreatedAt, (w) => w.weekKey),
   // Points ledger (batch D): complete history; deterministic ids can be excised and re-awarded.
   {
     ...documentCollection('pointsHistory', 'point_entries', (e) => e.timestamp, undefined, true),
     revivable: true,
-    serverOwnedId: isServerOwnedPointId,
+    serverOwnedId: (id: string) => isServerOwnedPointId(id) || isServerOwnedPenaltyPointId(id),
   },
   // Time tracker (batch E): one state object, three tables.
   timeTrackerActivities,
