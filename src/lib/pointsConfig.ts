@@ -53,12 +53,8 @@ export function recomputeTodayPresetPoints(
 }
 
 export const JOURNAL_POINTS = {
-  // store.ts:3204
+  // Server-written (ascend_recompute_journal_awards); src/lib/journalAwards.ts mirrors it.
   entryCompleted: 2,
-  // store.ts:3208
-  entryCleared: -2,
-  // store.ts:3255
-  entryDeleted: -2,
 } as const;
 
 export const WEEKLY_REFLECTION_POINTS = {

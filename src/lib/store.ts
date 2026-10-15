@@ -73,6 +73,7 @@ import { PresetHabit } from './presets';
 import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward } from './habitAwards';
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
 import { computeSkillAwards, isRetiredAppSkillAward, isSkillDayEntry } from './skillAwards';
+import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, meetsReadingBonusGates, readingBonusId } from './readingAwards';
 import {
   getLeaguePeriodStart,
@@ -131,7 +132,6 @@ export { addPointsInternal };
 import {
   PresetHabitCapItem,
   recomputeTodayPresetPoints,
-  JOURNAL_POINTS,
   WEEKLY_REFLECTION_POINTS,
   PFC_POINTS,
   READING_POINTS,
@@ -427,7 +427,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   const nonReviewHistory: PointsEntry[] = [];
 
   for (const entry of rawHistory) {
-    if (entry && (isRetiredAppHabitAward(entry) || isRetiredAppBadHabitAward(entry) || isRetiredAppWorkoutAward(entry) || isRetiredAppSkillAward(entry) || isRetiredAppReadingAward(entry))) continue;
+    if (entry && (isRetiredAppHabitAward(entry) || isRetiredAppBadHabitAward(entry) || isRetiredAppWorkoutAward(entry) || isRetiredAppSkillAward(entry) || isRetiredAppReadingAward(entry) || isRetiredAppJournalAward(entry))) continue;
     if (entry && entry.source === 'weekly_review') {
       let weekKey: string | null = null;
       if (entry.metadata && typeof entry.metadata.weekKey === 'string' && entry.metadata.weekKey) {
@@ -1155,6 +1155,23 @@ function applySkillAwardsInternal(
     l && sessionPoints.has(l.id) && sessionPoints.get(l.id) !== l.pointsAwarded ? { ...l, pointsAwarded: sessionPoints.get(l.id)! } : l
   );
   return { points, skillLogs: nextLogs };
+}
+
+/**
+ * Replaces one local day's journal award entry with the one the server computes for these
+ * entries (computeJournalAward). The entry is shown at once and never uploaded; the server's own
+ * row replaces it on the next pull.
+ */
+function applyJournalAwardInternal(
+  state: AppState,
+  journalEntries: JournalEntry[],
+  day: string
+): Pick<AppState, 'seasonPoints' | 'totalPoints' | 'seasonId' | 'pointsHistory' | 'leagueArchives'> {
+  const entry = computeJournalAward(journalEntries, day, new Date(`${day}T00:00:00`).getTime(), trustedNow().getTime());
+  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(state, (e) => isJournalDayEntry(e, day));
+  return entry
+    ? addPointsInternal({ ...state, ...excised }, entry.amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id)
+    : excised;
 }
 
 /**
@@ -3556,7 +3573,6 @@ export function useAppState() {
     (mood: JournalEntry['mood'], content: string, existingId?: string) => {
       const date = todayKey();
       const trimmed = content.trim();
-      const isQualifying = trimmed.length > 0;
 
       setState((prev) => {
         const existingIdx = prev.journalEntries.findIndex(
@@ -3564,46 +3580,17 @@ export function useAppState() {
         );
 
         const existing = existingIdx >= 0 ? prev.journalEntries[existingIdx] : null;
-        const wasAwarded = existing ? existing.pointsAwarded : false;
+        const saved: JournalEntry = existing
+          ? { ...existing, mood, content: trimmed, createdAt: trustedNow().toISOString() }
+          : { id: uid(), date, mood, content: trimmed, createdAt: trustedNow().toISOString(), pointsAwarded: false };
+        // Only today's entry earns (the server recomputes only today); an earlier entry keeps its flag.
+        if (saved.date === date) saved.pointsAwarded = journalEntryEarns(saved);
 
-        let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
-          totalPoints: prev.totalPoints,
-          pointsHistory: prev.pointsHistory,
-        };
-
-        let newPointsAwarded = wasAwarded;
-
-        if (isQualifying && !wasAwarded) {
-          // Award points for non-empty entry
-          pointsUpdate = addPointsInternal(prev, JOURNAL_POINTS.entryCompleted, 'Journal entry completed', 'journal');
-          newPointsAwarded = true;
-        } else if (!isQualifying && wasAwarded) {
-          // Deduct points when entry content is erased to empty
-          pointsUpdate = addPointsInternal(prev, JOURNAL_POINTS.entryCleared, 'Journal entry content removed', 'journal');
-          newPointsAwarded = false;
-        }
-
-        if (existing) {
-          const updated = [...prev.journalEntries];
-          updated[existingIdx] = {
-            ...existing,
-            mood,
-            content: trimmed,
-            createdAt: trustedNow().toISOString(),
-            pointsAwarded: newPointsAwarded,
-          };
-          return { ...prev, journalEntries: updated, ...pointsUpdate };
-        }
-
-        const newEntry: JournalEntry = {
-          id: uid(),
-          date,
-          mood,
-          content: trimmed,
-          createdAt: trustedNow().toISOString(),
-          pointsAwarded: newPointsAwarded,
-        };
-        return { ...prev, journalEntries: [newEntry, ...prev.journalEntries], ...pointsUpdate };
+        const journalEntries = existing
+          ? prev.journalEntries.map((e, i) => (i === existingIdx ? saved : e))
+          : [saved, ...prev.journalEntries];
+        // The server writes the day's award (applyJournalAwardInternal shows the same row now).
+        return { ...prev, journalEntries, ...applyJournalAwardInternal(prev, journalEntries, date) };
       });
     },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -3618,22 +3605,15 @@ export function useAppState() {
           const entry = prev.journalEntries.find((e) => e.id === entryId);
           if (!entry) return prev;
 
-          let pointsUpdate: Pick<AppState, 'totalPoints' | 'pointsHistory'> = {
-            totalPoints: prev.totalPoints,
-            pointsHistory: prev.pointsHistory,
-          };
-
-          if (entry.pointsAwarded) {
-            pointsUpdate = addPointsInternal(prev, JOURNAL_POINTS.entryDeleted, 'Journal entry deleted', 'journal');
-          }
-
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), entryId].slice(-500);
+          const journalEntries = prev.journalEntries.filter((e) => e.id !== entryId);
 
+          // Only today's award changes: an earlier day's points stay (the server recomputes only today).
           return {
             ...prev,
-            journalEntries: prev.journalEntries.filter((e) => e.id !== entryId),
+            journalEntries,
             deletedEntityIds: updatedDeletedEntityIds,
-            ...pointsUpdate,
+            ...applyJournalAwardInternal(prev, journalEntries, todayKey()),
           };
         },
         { immediate: true, actionLabel: 'Journal entry deletion', entityId: entryId }

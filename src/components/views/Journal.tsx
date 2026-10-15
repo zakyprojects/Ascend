@@ -1159,9 +1159,11 @@ export function Journal({ store }: { store: AppStore }) {
         title="Delete Journal Entry?"
         itemName={`Journal Entry (${deleteModalEntry?.date})`}
         description={
-          deleteModalEntry?.pointsAwarded
-            ? `Delete your journal entry for ${deleteModalEntry.date}? This reverses the +${JOURNAL_POINTS.entryCompleted} points awarded.`
-            : `Delete your journal entry for ${deleteModalEntry?.date}?`
+          deleteModalEntry?.pointsAwarded && deleteModalEntry.date === todayKey()
+            ? `Delete your journal entry for ${deleteModalEntry.date}? This reverses the +${JOURNAL_POINTS.entryCompleted} points awarded today.`
+            : deleteModalEntry?.pointsAwarded
+              ? `Delete your journal entry for ${deleteModalEntry.date}? Points already earned for that day stay.`
+              : `Delete your journal entry for ${deleteModalEntry?.date}?`
         }
       />
     </div>
