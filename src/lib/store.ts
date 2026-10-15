@@ -5804,11 +5804,27 @@ export function useAppState() {
           if (docIdx === -1) return prev;
 
           const doc = prev.weeklyGoals[docIdx];
+          const deletedGoal = doc.goals.find((g) => g.id === goalId);
           const updatedGoals = doc.goals.filter((g) => g.id !== goalId);
 
           const updatedDoc = { ...doc, goals: updatedGoals };
           const newWeeklyGoals = [...prev.weeklyGoals];
           newWeeklyGoals[docIdx] = updatedDoc;
+
+          // Deleting a carried-over goal settles its source (Zakria 2026-10-15): the source is
+          // marked dismissed so it does not come back as an unresolved goal from an earlier week.
+          if (deletedGoal?.carriedOverFromWeekKey && deletedGoal.carriedOverFromGoalId) {
+            const sourceIdx = newWeeklyGoals.findIndex((w) => w.weekKey === deletedGoal.carriedOverFromWeekKey);
+            const sourceDoc = sourceIdx >= 0 ? newWeeklyGoals[sourceIdx] : null;
+            if (sourceDoc?.goals.some((g) => g.id === deletedGoal.carriedOverFromGoalId && !g.carryOverDismissed)) {
+              newWeeklyGoals[sourceIdx] = {
+                ...sourceDoc,
+                goals: sourceDoc.goals.map((g) =>
+                  g.id === deletedGoal.carriedOverFromGoalId ? { ...g, carryOverDismissed: true } : g
+                ),
+              };
+            }
+          }
           const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), goalId].slice(-500);
           const pointsUpdate = recomputeWeeklyGoalsPointsForState(prev, targetWeekKey, updatedGoals, goalId);
 
@@ -5862,6 +5878,7 @@ export function useAppState() {
         ...targetGoal,
         id: uid(),
         completed: false,
+        done: false,
         completedAt: undefined,
         manualProgress: options?.resumeProgress ? (targetGoal.manualProgress || 0) : 0,
         carriedOverFromWeekKey: sourceWeekKey,

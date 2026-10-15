@@ -14,7 +14,7 @@ import {
   Trash2,
   PenLine,
 } from 'lucide-react';
-import { AppStore, isWeeklyReflectionAwarded } from '@/lib/store';
+import { AppStore, getWeeklyReflectionNetPoints, isWeeklyReflectionAwarded } from '@/lib/store';
 import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CapMeter } from '@/components/ui/CapMeter';
@@ -261,6 +261,7 @@ function GoalItemRow({
 }
 
 const TREND_WEEKS = 8;
+const CARRY_OVER_LOOKBACK_WEEKS = 4;
 
 /** One line on where the week's Reflection Window stands, with the time left while it is open. */
 function reflectionWindowStatus(targetWeekKey: string, now: Date): string {
@@ -340,7 +341,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const unaddressedPastGoals = useMemo(() => {
     if (selectedWeekKey !== currentWeekKey) return [];
 
-    const pastDocs = weeklyGoals.filter((w) => w.weekKey < currentWeekKey);
+    // Only the last CARRY_OVER_LOOKBACK_WEEKS weeks are offered (Zakria 2026-10-15); older misses are left alone.
+    const oldestOfferedWeekKey = offsetWeekKey(currentWeekKey, -CARRY_OVER_LOOKBACK_WEEKS);
+    const pastDocs = weeklyGoals.filter((w) => w.weekKey < currentWeekKey && w.weekKey >= oldestOfferedWeekKey);
 
     // Primary ID-based tracking
     const currentCarriedSourceIds = new Set(
@@ -379,7 +382,12 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         const isAddressedByTitle =
           currentGoalTitles.has(titleKey) || supersededPastGoalKeys.has(goalKey);
 
+        // A goal is settled when it was marked achieved in its week (the flag the points use) or
+        // when its live progress reached the target.
+        const wasAchieved = Boolean(g.completed || g.done);
+
         if (
+          !wasAchieved &&
           prog.percent < 100 &&
           !g.archived &&
           !g.carryOverDismissed &&
@@ -884,7 +892,10 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                     className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus size={14} />
-                    <span>Add Reflection</span>
+                    <span>
+                      Add Reflection
+                      {getWeeklyReflectionNetPoints(store.state, selectedWeekKey) <= 0 && ` (+${WEEKLY_REFLECTION_POINTS.awarded})`}
+                    </span>
                   </button>
                 )}
               </div>
