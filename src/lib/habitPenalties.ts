@@ -1,6 +1,5 @@
 import { AppState, Habit, BadHabitLog, ExerciseGoal, WorkoutLog } from '@/types';
 import { todayKey, periodKey, previousPeriodKey, weekKey, parseDate, addDays, addWeeks, getNow } from './dates';
-import { createNotificationSupabase } from './supabase';
 import { getEffectiveSeasonPoints } from './leagues';
 import { applyPenaltyDeductionInternal } from './pointsLedger';
 import { BAD_HABIT_POINTS } from './pointsConfig';
@@ -327,44 +326,7 @@ export function processHabitPenalties(state: AppState, now: Date = trustedNow())
         missedPeriods.push(p);
         habitModified = true;
 
-        if (updatedState.partnership) {
-          const partnerUserId =
-            updatedState.partnership.user1Id === updatedState.currentUser?.id
-              ? updatedState.partnership.user2Id
-              : updatedState.partnership.user1Id;
-
-          if (partnerUserId) {
-            const partnerDedupKey = `partner_missed_habit_${habit.id}_${p}`;
-            createNotificationSupabase({
-              recipientId: partnerUserId,
-              actorId: updatedState.currentUser?.id,
-              actorUsername: updatedState.username,
-              actorAvatar: updatedState.currentUser?.avatar || '🧑',
-              type: 'partner_missed_habit',
-              title: 'Streak Risk Warning',
-              message: `Your partner ${updatedState.username} missed their habit "${habit.name}". Reach out to encourage them!`,
-              payload: { habitId: habit.id, habitName: habit.name, period: p, dedupKey: partnerDedupKey },
-            });
-          }
-        }
-
-        if (updatedState.currentUser?.id) {
-          const userId = updatedState.currentUser.id;
-          const dedupKey = `missed_habit_${habit.id}_${p}`;
-          const alreadyNotified = (updatedState.notifications || []).some(
-            (n) => n.payload?.dedupKey === dedupKey || (n.payload?.habitId === habit.id && n.payload?.period === p)
-          );
-          if (!alreadyNotified) {
-            createNotificationSupabase({
-              recipientId: userId,
-              type: 'missed_habit',
-              title: 'Habit Missed Penalty',
-              message: `You missed your habit "${habit.name}" for period ${p}. ${penaltyAmount > 0 ? `${penaltyAmount} points deducted.` : ''}`,
-              payload: { habitId: habit.id, habitName: habit.name, period: p, dedupKey },
-            });
-          }
-        }
-
+        // The server penalty job sends the missed-habit notifications (user + partner).
         // Apply 30-day TTL + 50-item cap pruning
         const thirtyDaysAgoIso = new Date(trustedNowMs() - 30 * 24 * 60 * 60 * 1000).toISOString();
         const prunedNotifs = (updatedState.notifications || [])
@@ -474,23 +436,7 @@ export function processBadHabitNoReports(state: AppState, now: Date = trustedNow
         logsAdded = true;
 
         if (penaltyAmount > 0) {
-          if (updatedState.currentUser?.id) {
-            const userId = updatedState.currentUser.id;
-            const alreadyNotified = (updatedState.notifications || []).some(
-              (n) => n.payload?.badHabitId === habit.id && n.payload?.date === key
-            );
-            if (!alreadyNotified) {
-              const dedupKey = `bad_habit_${habit.id}_${key}`;
-              createNotificationSupabase({
-                recipientId: userId,
-                type: 'bad_habit_no_report',
-                title: 'Bad Habit No-Report Penalty',
-                message: `No status reported for "${habit.name}" on ${key}. ${penaltyAmount > 0 ? `${penaltyAmount} points deducted.` : ''}`,
-                payload: { badHabitId: habit.id, badHabitName: habit.name, date: key, dedupKey },
-              });
-            }
-          }
-
+          // The server penalty job sends the no-report notification.
           const penaltyUpdate = applyPenaltyDeductionInternal(
             updatedState,
             penaltyAmount,
@@ -558,20 +504,7 @@ export function processExerciseTargetPenalties(state: AppState, now: Date = trus
     const baseAward = avgDuration;
     const penaltyAmount = Math.round(baseAward * multiplier);
 
-    if (updatedState.currentUser?.id) {
-      const dedupKey = `missed_exercise_${lastWeekKey}`;
-      const recipientId = updatedState.currentUser.id;
-      setTimeout(() => {
-        void createNotificationSupabase({
-          recipientId,
-          type: 'missed_exercise_target',
-          title: 'Exercise Goal Missed',
-          message: `You logged ${loggedInLastWeek}/${target} workout sessions for week ${lastWeekKey}. ${penaltyAmount > 0 ? `${penaltyAmount} points deducted.` : ''}`,
-          payload: { weekKey: lastWeekKey, logged: loggedInLastWeek, target, dedupKey },
-        });
-      }, 0);
-    }
-
+    // The server penalty job sends the missed-target notification.
     const penaltyUpdate = applyPenaltyDeductionInternal(
       updatedState,
       penaltyAmount,
