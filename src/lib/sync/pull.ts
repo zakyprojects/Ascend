@@ -7,7 +7,8 @@ import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf, withItems, type Synced
  * Relational sync, read side (DB normalization S3). Server rows are MERGED into
  * the state collection by id, never replace it: a local item the server lacks
  * stays (the outbox uploads it), a row with a pending local op is skipped, and a
- * soft-deleted row removes the local item.
+ * soft-deleted row removes the local item. A local edit not yet in the outbox
+ * (debounced save, offline) is kept over another device's row and uploaded next.
  */
 
 export interface RemoteChange {
@@ -17,6 +18,8 @@ export interface RemoteChange {
   item: { id: string } | null;
   /** The baseline already holds this exact row: add it only if the state lacks it, never overwrite a local copy. */
   missingOnly?: boolean;
+  /** Baseline hash before this row was accepted: a local item matching neither it nor the row is an unsent edit. */
+  baseHash?: string;
   /** Full pull only: every live server-owned id, so local copies the server never wrote are dropped. */
   serverOwnedLive?: string[];
 }
@@ -59,7 +62,7 @@ export function prepareRemoteRows(
       continue;
     }
     hashes[id] = hash;
-    changes.push({ key, id, item });
+    changes.push({ key, id, item, baseHash: known[id] });
   }
 
   if (Object.keys(hashes).length > 0) acceptServerRows(userId, key, hashes);
@@ -70,6 +73,17 @@ export function prepareRemoteRows(
     changes.push({ key, id: '', item: null, serverOwnedLive: live });
   }
   return changes;
+}
+
+/**
+ * The local copy changed since the last sync and the change has not reached the outbox yet.
+ * It is kept: the baseline now holds the server hash, so the next save uploads it as a local
+ * edit (updatedAt = now). Without a baseline (or a known delete) the server row wins.
+ */
+function isUnsentEdit(collection: SyncedCollection, local: unknown, change: RemoteChange): boolean {
+  if (!change.baseHash || !change.item || collection.serverOwnedId?.(change.id)) return false;
+  const localHash = hashRow(collection.toRow(local as never));
+  return localHash !== change.baseHash && localHash !== hashRow(collection.toRow(change.item as never));
 }
 
 /** Pure: returns prev itself when nothing changes, so no save is triggered. */
@@ -106,7 +120,9 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
         // restore wins over this device's tombstone. Tombstones no longer sync between devices.
         if (tombstones.has(change.id)) revived.add(change.id);
         if (index === -1) items = [change.item, ...items];
-        else if (!change.missingOnly) items = items.map((item, i) => (i === index ? change.item! : item));
+        else if (!change.missingOnly && !isUnsentEdit(collection, items[index], change)) {
+          items = items.map((item, i) => (i === index ? change.item! : item));
+        }
       }
     }
     if (items !== current) next = withItems(collection, next, items);
