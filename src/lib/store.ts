@@ -7680,10 +7680,7 @@ export function useAppState() {
         isDoneToday = !myDoneDates.includes(today);
       }
 
-      const wereBothDoneBefore =
-        (target.user1DoneDates || (target.user1DoneDate ? [target.user1DoneDate] : [])).includes(today) &&
-        (target.user2DoneDates || (target.user2DoneDate ? [target.user2DoneDate] : [])).includes(today);
-      const { updated, becameCompleted } = applyPledgeToggle(target, isUser1, isDoneToday);
+      const { updated } = applyPledgeToggle(target, isUser1, isDoneToday);
 
       // Optimistically update local UI state targeting only this challenge
       setState((prev) => ({
@@ -7694,39 +7691,7 @@ export function useAppState() {
       try {
         await saveSharedChallengeSupabase(updated);
         syncBroadcaster.broadcast('CHALLENGE_UPDATED', updated);
-
-        if (challengePartnership) {
-          const partnerUserId = isUser1 ? challengePartnership.user2Id : challengePartnership.user1Id;
-          const partnerUsername = isUser1 ? challengePartnership.user2Username : challengePartnership.user1Username;
-
-          if (isDoneToday && !wereBothDoneBefore) {
-            const dedupKey = `partner_pledge_done_${target.id}_${today}`;
-            createNotificationSupabase({
-              recipientId: partnerUserId,
-              actorId: state.currentUser?.id,
-              actorUsername: state.username,
-              actorAvatar: state.currentUser?.avatar || '🧑',
-              type: 'partner_pledge_done',
-              title: 'Partner Completed Challenge Today',
-              message: `${state.username} completed today's target for "${target.title}"! Don't break your joint streak!`,
-              payload: { challengeId: target.id, dateKey: today, dedupKey },
-            }).catch(() => {});
-          }
-
-          if (becameCompleted) {
-            const dedupKey = `challenge_completed_${target.id}`;
-            createNotificationSupabase({
-              recipientId: partnerUserId,
-              actorId: state.currentUser?.id,
-              actorUsername: state.username,
-              actorAvatar: state.currentUser?.avatar || '🧑',
-              type: 'challenge_completed',
-              title: 'Shared Challenge Completed! 🎉',
-              message: `Congratulations! You and ${state.username} completed the "${target.title}" challenge!`,
-              payload: { challengeId: target.id, dedupKey },
-            }).catch(() => {});
-          }
-        }
+        // The partner's notices come from the server (shared_challenges trigger).
       } catch (err: any) {
         console.error('Failed to log shared challenge day in Supabase:', err);
         // Rollback only this specific challenge object by ID
