@@ -1005,6 +1005,23 @@ export function excisePointsEntriesInternal(
 }
 
 /**
+ * Every point entry is the server's (20261015250000). The hydrated state already holds exactly the
+ * server's rows (the boot table read drops app previews the server never wrote), so after the boot
+ * merge with this device's cache only those rows stay; otherwise a rejected preview (a past-day
+ * tick, a waiting timezone change) would come back from the cache on every reload. An empty
+ * hydrated ledger is not trusted (a failed or missing read), and the merge is kept as it is.
+ */
+function withHydratedPoints(merged: AppState, hydrated: AppState): AppState {
+  const serverPoints = hydrated.pointsHistory || [];
+  if (serverPoints.length === 0) return merged;
+  const live = new Set(serverPoints.map((entry) => entry.id));
+  const pointsHistory = (merged.pointsHistory || []).filter((entry) => live.has(entry.id));
+  if (pointsHistory.length === (merged.pointsHistory || []).length) return merged;
+  const seasonPoints = calculateSeasonalTotal(pointsHistory, getSeasonStart(leagueNow()));
+  return { ...merged, pointsHistory, seasonPoints, totalPoints: seasonPoints };
+}
+
+/**
  * Replaces one local day's habit award entries with the ones the server computes for these
  * habits (computeHabitAwards), and stamps each checked preset's pointsAwarded. The entries
  * are shown at once and never uploaded; the server's own rows replace them on the next pull.
@@ -2485,7 +2502,7 @@ export function useAppState() {
 
               const rawMergedState = guardResult.hasSuspiciousDrop
                 ? guardResult.retainedState
-                : guardResult.mergedState;
+                : withHydratedPoints(guardResult.mergedState, sanitizedState);
               const reconciledMergedState = reconcileWeeklyGoalsPointsForAllWeeks(
                 reconcileLinkedWeeklyGoals(rawMergedState, leagueNow()),
                 leagueNow()
