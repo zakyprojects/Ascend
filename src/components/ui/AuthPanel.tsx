@@ -4,6 +4,8 @@ import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnony
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 import { PasswordInput } from './PasswordInput';
+import { PasswordStaircase } from './PasswordStaircase';
+import { newPasswordProblem } from '@/lib/passwordRules';
 import { toUserMessage } from '@/lib/userMessage';
 
 /** How long the sign-in/sign-up success screen shows before `onDone` runs. */
@@ -134,10 +136,6 @@ function caretFraction(input: HTMLInputElement): number {
 const EMAIL_PATTERN =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
-/** Minimum password length for a new account (sign-up, save progress). Existing accounts sign in
- *  with whatever they have; lib/auth changeUserPassword keeps its own minimum of 6. */
-const NEW_PASSWORD_MIN = 8;
-
 // Screen order for the slide direction: moving forward slides in from the right, back from the left.
 const SCREEN_ORDER: Record<AuthScreen, number> = { login: 0, 'signup-choice': 1, 'signup-form': 2, upgrade: 1 };
 
@@ -222,36 +220,6 @@ function FocusLine() {
       aria-hidden="true"
       className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary-500 origin-left scale-x-0 transition-transform duration-enter ease-emphasized group-focus-within:scale-x-100"
     />
-  );
-}
-
-/** 0 (empty) to 4: under the minimum length is always 1; then length and character variety add steps. */
-function passwordScore(password: string): number {
-  if (!password) return 0;
-  if (password.length < NEW_PASSWORD_MIN) return 1;
-  const classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((re) => re.test(password)).length;
-  return Math.min(4, 1 + Number(password.length >= 10) + Number(classes >= 2) + Number(classes >= 3));
-}
-
-const STRENGTH_LABELS = ['', 'Weak password', 'Fair password', 'Good password', 'Strong password'];
-const STAIR_HEIGHTS = ['h-1', 'h-1.5', 'h-2', 'h-2.5'];
-
-/** Password strength for a new password: four ascending steps that fill as it gets stronger. */
-function PasswordStaircase({ password }: { password: string }) {
-  const score = passwordScore(password);
-  const label = password.length < NEW_PASSWORD_MIN ? `Use ${NEW_PASSWORD_MIN} characters or more` : STRENGTH_LABELS[score];
-  return (
-    <div className="mt-1.5 flex items-center gap-2">
-      <div aria-hidden="true" className="flex items-end gap-1">
-        {STAIR_HEIGHTS.map((height, i) => (
-          <span
-            key={height}
-            className={`w-5 rounded-sm transition-colors duration-base ${height} ${i < score ? 'bg-emerald-500' : 'bg-bg-600'}`}
-          />
-        ))}
-      </div>
-      <p className="text-micro text-content-muted">{label}</p>
-    </div>
   );
 }
 
@@ -391,7 +359,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const usernameValid = usernameChecked || (mode === 'upgrade' && !trimmedUsername);
   const avatarValid = Boolean(avatar);
   const emailValid = EMAIL_PATTERN.test(email.trim());
-  const passwordValid = isNewAccount ? password.length >= NEW_PASSWORD_MIN : password.length > 0;
+  const passwordValid = isNewAccount ? !newPasswordProblem(password) : password.length > 0;
   const confirmValid = confirmPassword.length > 0 && confirmPassword === password;
 
   const steps = screen === 'login' ? 2 : screen === 'signup-choice' ? 0 : 5;
@@ -480,8 +448,9 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       return;
     }
 
-    if (isNewAccount && password.length < NEW_PASSWORD_MIN) {
-      showError(`Use ${NEW_PASSWORD_MIN} characters or more for your password.`);
+    const passwordProblem = isNewAccount ? newPasswordProblem(password) : null;
+    if (passwordProblem) {
+      showError(`Password: ${passwordProblem.toLowerCase()}.`);
       return;
     }
 

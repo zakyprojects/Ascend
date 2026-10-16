@@ -1,4 +1,5 @@
 import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, SeasonHistoryEntry } from '@/types';
+import { newPasswordProblem } from './passwordRules';
 import { sanitizePointsHistory } from './leagues';
 import { leagueNow, getSeasonNumber, getWeekPeriodId, getMonthPeriodId } from './leagueTime';
 import { generateNumericUID, todayKey, parseDate } from './dates';
@@ -479,8 +480,9 @@ export async function updateUserAvatar(userId: string, newAvatar: string): Promi
  * Change current user password in Supabase Auth.
  */
 export async function changeUserPassword(newPassword: string): Promise<void> {
-  if (newPassword.length < 6) {
-    throw new Error('Password must be at least 6 characters long.');
+  const problem = newPasswordProblem(newPassword);
+  if (problem) {
+    throw new Error(`Password: ${problem.toLowerCase()}.`);
   }
 
   const { error } = await supabase.auth.updateUser({ password: newPassword });

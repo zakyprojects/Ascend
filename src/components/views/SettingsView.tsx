@@ -32,6 +32,8 @@ import {
   deleteOwnAccount,
 } from '@/lib/auth';
 import { PasswordInput } from '@/components/ui/PasswordInput';
+import { PasswordStaircase } from '@/components/ui/PasswordStaircase';
+import { newPasswordProblem } from '@/lib/passwordRules';
 import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
 import { Dialog, Switch, Tabs } from '@/components/ui/primitives';
@@ -247,6 +249,11 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
 
     if (!newPassword || !confirmPassword) {
       setPasswordMsg({ type: 'error', text: 'Please fill in both password fields.' });
+      return;
+    }
+    const passwordProblem = newPasswordProblem(newPassword);
+    if (passwordProblem) {
+      setPasswordMsg({ type: 'error', text: `Password: ${passwordProblem.toLowerCase()}.` });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -619,6 +626,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                       />
+                      <PasswordStaircase password={newPassword} />
                       <PasswordInput
                         label="Confirm new password"
                         required
