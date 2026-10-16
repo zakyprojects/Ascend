@@ -55,6 +55,58 @@ export async function fetchProfileForUser(userId: string): Promise<{ data: Recor
   }
 }
 
+const PROFILE_INSERT_ATTEMPTS = 3;
+
+/**
+ * Creates the account's profile row. The username was checked before sign-up, but someone can take
+ * it in between (unique index on lower(username)), and the random uid can collide: either one gets a
+ * fresh value and another try, so the account never stays without a profile. Throws when it still fails.
+ */
+async function insertInitialProfile(userId: string, user: UserProfile): Promise<UserProfile> {
+  let candidate = user;
+  for (let attempt = 1; attempt <= PROFILE_INSERT_ATTEMPTS; attempt++) {
+    // profiles.email is copied from the auth user by the database.
+    const { error } = await supabase.from('profiles').insert({
+      id: userId,
+      uid: candidate.uid,
+      username: candidate.username,
+      avatar: candidate.avatar,
+      is_profile_public: candidate.isProfilePublic ?? true,
+    });
+    if (!error) {
+      if (candidate.username !== user.username && typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast-error', {
+            detail: {
+              title: `@${user.username} was just taken`,
+              message: `You're @${candidate.username} for now. You can change it in Settings.`,
+            },
+          })
+        );
+      }
+      return candidate;
+    }
+    // Another tab or an earlier boot created it already: use the row as it is.
+    if (error.code === '23505' && /profiles_pkey/.test(error.message)) return candidate;
+    if (error.code !== '23505' || attempt === PROFILE_INSERT_ATTEMPTS) {
+      throw new Error(`Failed to create profile for ${userId}: ${error.message}`);
+    }
+    if (/uid/.test(error.message)) {
+      const uid = generateNumericUID();
+      try {
+        localStorage.setItem(`ascend_uid_${userId}`, uid);
+      } catch {
+        /* ignore */
+      }
+      candidate = { ...candidate, uid };
+    } else {
+      const suffix = String(Math.floor(1000 + Math.random() * 9000));
+      candidate = { ...candidate, username: `${user.username.slice(0, 16)}${suffix}` };
+    }
+  }
+  return candidate;
+}
+
 export function buildUserProfile(
   userId: string,
   email: string,
@@ -211,22 +263,11 @@ export async function hydrateUserSession(
     );
   }
 
-  const user = buildUserProfile(userId, email, profileData, authUser, signupDefaults);
+  let user = buildUserProfile(userId, email, profileData, authUser, signupDefaults);
 
   // If DB profile row does not exist yet, insert it ONCE with permanent uid
   if (!profileData && !profileRes.error) {
-    try {
-      await supabase.from('profiles').insert({
-        id: userId,
-        uid: user.uid,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar,
-        is_profile_public: user.isProfilePublic ?? true,
-      });
-    } catch (e) {
-      console.warn('Initial profile row creation skipped:', e);
-    }
+    user = await insertInitialProfile(userId, user);
   } else if (profileData && !profileData.uid) {
     // DB profile exists but lacks uid (created prior to migration) — backfill it once
     try {
@@ -271,7 +312,7 @@ export async function hydrateUserSession(
       dbFollowsResult,
     ] = await Promise.all([
       fetchPartnerInvitesSupabase(userId, user.username),
-      fetchPartnershipsSupabase(userId, user.username),
+      fetchPartnershipsSupabase(userId),
       fetchNotificationsSupabase(userId),
       supabase.from('improvement_plans').select('*').eq('creator_id', userId),
       supabase.from('user_plan_follows').select('*').eq('user_id', userId),

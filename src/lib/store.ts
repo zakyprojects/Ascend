@@ -2783,7 +2783,7 @@ export function useAppState() {
       }
       try {
         const fetchedInvites = await fetchPartnerInvitesSupabase(userId, username);
-        const activePartnerships = await fetchPartnershipsSupabase(userId, username);
+        const activePartnerships = await fetchPartnershipsSupabase(userId);
         const pIds = activePartnerships.map((p) => p.id);
         const challenges = pIds.length > 0 ? await fetchSharedChallengesSupabase(pIds) : [];
         const fetchedNotifs = await fetchNotificationsSupabase(userId);
@@ -7120,7 +7120,7 @@ export function useAppState() {
         throw new Error("You can't send an accountability invite to yourself.");
       }
 
-      const targetPartnerships = await fetchPartnershipsSupabase(targetUserId, targetUsername);
+      const targetPartnerships = await fetchPartnershipsSupabase(targetUserId);
       if (targetPartnerships.length >= 5) {
         throw new Error(`The user '${targetUsername}' has reached the maximum limit of 5 accountability partners.`);
       }
@@ -7269,7 +7269,7 @@ export function useAppState() {
       if (!fromId) fromId = crypto.randomUUID();
       if (!toId) toId = crypto.randomUUID();
 
-      const inviterPartnerships = await fetchPartnershipsSupabase(fromId, fromUsername);
+      const inviterPartnerships = await fetchPartnershipsSupabase(fromId);
       if (inviterPartnerships.length >= 5) {
         throw new Error(`The inviter '${fromUsername}' has reached the maximum limit of 5 accountability partners.`);
       }

@@ -18,7 +18,7 @@ import { Card, EmptyState, Button, PageColumns } from '@/components/ui/primitive
 import { TAP_TARGET, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
-import { calculateStreak, todayKey, formatDateLong, parseDate } from '@/lib/dates';
+import { calculateStreak, formatDateLong, parseDate } from '@/lib/dates';
 import { ProgressRing } from '@/components/ui/charts';
 import { LEAGUE_CONFIG, getSeasonLabel } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
@@ -29,6 +29,7 @@ import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { dailyHabitCompletions, dailyPoints, lastDayKeys } from '@/lib/weeklyActivity';
 import { WeekActivityCard } from './WeekActivityCard';
 import { AscentProfile } from './AscentProfile';
@@ -99,6 +100,8 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
   // Re-render when a league period rolls over, so ranks and the season label never go stale.
   // The per-second countdowns tick inside LeagueCountdown and never re-render the page.
   useLeaguePeriodRollover();
+  // Today's chip, week chart and time-tracker summary roll over at local midnight.
+  const today = useLocalDayKey();
 
   const weeklyData = store.getLeagueData('weekly');
   const monthlyData = store.getLeagueData('monthly');
@@ -126,7 +129,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
   const badHabitCount = store.state.badHabits.length;
   const activeAddiction = store.state.addictionTracker;
 
-  const todayBlocks = store.state.timeTracker?.dailyLogs?.[todayKey()] || [];
+  const todayBlocks = store.state.timeTracker?.dailyLogs?.[today] || [];
   const todayScheduledMins = todayBlocks.reduce(
     (sum, b) => sum + calculateBlockDurationMinutes(b.startTime, b.endTime),
     0
@@ -139,7 +142,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
         <h1 className="page-title">
           {greeting()}
         </h1>
-        <p className="page-subtitle">{formatDateLong(todayKey())}</p>
+        <p className="page-subtitle">{formatDateLong(today)}</p>
       </div>
 
       {/* Guest Mode Banner on Dashboard */}

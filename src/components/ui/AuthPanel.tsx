@@ -640,11 +640,17 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                     <FieldLabel required valid={avatarValid}>
                       Leaderboard avatar
                     </FieldLabel>
-                    <div className="grid grid-cols-8 gap-1.5 p-2 bg-bg-800 rounded-xl border border-overlay-subtle">
+                    <div
+                      role="group"
+                      aria-label="Leaderboard avatar"
+                      className="grid grid-cols-8 gap-1.5 p-2 bg-bg-800 rounded-xl border border-overlay-subtle"
+                    >
                       {EMOJI_AVATARS.map((emoji) => (
                         <button
                           key={emoji}
                           type="button"
+                          aria-label={`Select avatar ${emoji}`}
+                          aria-pressed={avatar === emoji}
                           onClick={() => setAvatar(emoji)}
                           className={`w-8 h-8 rounded-lg text-lg flex items-center justify-center transition-all ${
                             avatar === emoji

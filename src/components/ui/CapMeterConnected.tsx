@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
 import { AppState } from '@/types';
 import { CapId, getCapStatus } from '@/lib/capStatus';
 import { capLabels, capNote, capReachedText } from '@/lib/capCopy';
 import { CapMeter } from '@/components/ui/CapMeter';
-import { getNow, todayKey } from '@/lib/dates';
+import { getNow } from '@/lib/dates';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 
 export interface CapMeterConnectedProps {
   state: Pick<
@@ -22,26 +22,8 @@ export interface CapMeterConnectedProps {
 }
 
 export function CapMeterConnected({ state, capId, bare = false }: CapMeterConnectedProps) {
-  const [, setTick] = useState(0);
-  const lastTodayKeyRef = useRef(todayKey(getNow()));
-
-  useEffect(() => {
-    const checkDateRollover = () => {
-      const currentTodayKey = todayKey(getNow());
-      if (currentTodayKey !== lastTodayKeyRef.current) {
-        lastTodayKeyRef.current = currentTodayKey;
-        setTick((t) => t + 1);
-      }
-    };
-
-    const intervalId = setInterval(checkDateRollover, 30000);
-    document.addEventListener('visibilitychange', checkDateRollover);
-
-    return () => {
-      clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', checkDateRollover);
-    };
-  }, []);
+  // Re-render when the local day changes, so the cap resets at midnight.
+  useLocalDayKey();
 
   const status = getCapStatus(state, capId, getNow());
   const variant = capId === 'badHabitsResisted' || capId === 'journal' ? 'slots' : 'bar';

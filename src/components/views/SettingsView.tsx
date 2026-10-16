@@ -544,7 +544,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                   )}
                 </div>
 
-                <div className="grid grid-cols-8 gap-2">
+                <div role="group" aria-label="Avatar" className="grid grid-cols-8 gap-2">
                   {EMOJI_AVATARS.map((emoji) => {
                     const selected = selectedAvatar === emoji;
                     return (

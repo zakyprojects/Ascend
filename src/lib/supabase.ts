@@ -1257,24 +1257,13 @@ export async function fetchPartnershipSupabase(userId: string, username?: string
   }
 }
 
-export async function fetchPartnershipsSupabase(userId: string, username?: string): Promise<Partnership[]> {
-  if (!isSupabaseConfigured || (!userId && !username)) return [];
+export async function fetchPartnershipsSupabase(userId: string): Promise<Partnership[]> {
+  if (!isSupabaseConfigured || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) return [];
   try {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-    let filterString = '';
-    if (isUuid) {
-      filterString = `user1_id.eq.${userId},user2_id.eq.${userId}`;
-    }
-    if (username) {
-      const userFilter = `user1_username.ilike.${username},user2_username.ilike.${username}`;
-      filterString = filterString ? `${filterString},${userFilter}` : userFilter;
-    }
-    if (!filterString) return [];
-
     const { data, error } = await supabase
       .from('partnerships')
       .select('*')
-      .or(filterString);
+      .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
 
     if (error || !data) return [];
 
@@ -1287,30 +1276,13 @@ export async function fetchPartnershipsSupabase(userId: string, username?: strin
       pairedAt: row.paired_at,
     }));
 
-    // Reconcile user IDs if they were stored with old/placeholder IDs
-    for (const p of mapped) {
-      if (userId && isUuid) {
-        if (username && p.user1Username.toLowerCase() === username.toLowerCase() && p.user1Id !== userId) {
-          console.info(`[Partnership Reconciliation] Reconciling partnership ${p.id}: updating user1_id from '${p.user1Id}' to canonical UUID '${userId}' for user '@${username}'.`);
-          p.user1Id = userId;
-          void supabase.from('partnerships').update({ user1_id: userId }).eq('id', p.id);
-        } else if (username && p.user2Username.toLowerCase() === username.toLowerCase() && p.user2Id !== userId) {
-          console.info(`[Partnership Reconciliation] Reconciling partnership ${p.id}: updating user2_id from '${p.user2Id}' to canonical UUID '${userId}' for user '@${username}'.`);
-          p.user2Id = userId;
-          void supabase.from('partnerships').update({ user2_id: userId }).eq('id', p.id);
-        }
-      }
-    }
-
     // Sort deterministically by id before deduplication so both partners always select the exact same record
     mapped.sort((a, b) => a.id.localeCompare(b.id));
 
-    // Deduplicate by partner user pair & username
+    // One partnership per pair of users
     const dedupMap = new Map<string, Partnership>();
     for (const p of mapped) {
-      const u1 = (p.user1Username || '').toLowerCase();
-      const u2 = (p.user2Username || '').toLowerCase();
-      const key = [u1, u2].sort().join(':::');
+      const key = [p.user1Id, p.user2Id].sort().join(':::');
       if (!dedupMap.has(key)) {
         dedupMap.set(key, p);
       }
