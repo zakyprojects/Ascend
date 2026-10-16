@@ -2,7 +2,6 @@ import { User } from '@supabase/supabase-js';
 import { AppState, DEFAULT_STATE, UserProfile, PlanStep, Partnership } from '@/types';
 import { generateNumericUID, parseDate, getNow, weekKey } from './dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
-import { computeStateDataWeight } from './dataWeight';
 import { cachedSyncedCollections } from './sync/syncedCollections';
 import { cachedDeviceLocalState } from './deviceLocalState';
 import { applyRemoteChanges, pullSyncedRows } from './sync/pull';
@@ -29,7 +28,6 @@ import { trustedNow } from './clock';
 export type SignUpDefaults = {
   username: string;
   avatar: string;
-  guestState?: AppState;
 };
 
 export async function fetchProfileForUser(userId: string): Promise<{ data: Record<string, unknown> | null; error: any | null }> {
@@ -60,11 +58,8 @@ export function buildUserProfile(
 ): UserProfile {
   const isAnonymous = authUser?.is_anonymous ?? false;
 
-  // Retrieve stable UID: 1. DB profile, 2. Guest state, 3. Cached localStorage key, 4. Generate once & cache
+  // Retrieve stable UID: 1. DB profile, 2. Cached localStorage key, 3. Generate once & cache
   let userUid = profileData?.uid as string | undefined;
-  if (!userUid && signupDefaults?.guestState?.currentUser?.uid) {
-    userUid = signupDefaults.guestState.currentUser.uid;
-  }
   if (!userUid) {
     try {
       const cached = localStorage.getItem(`ascend_uid_${userId}`);
@@ -250,43 +245,14 @@ export async function hydrateUserSession(
     state = applyRemoteChanges(state, tableChanges);
     state = applyPresetHabitRemovalMigration(state, weekKey(getNow()));
     setUserDataWatermark(userId, state);
-  } else if (signupDefaults?.guestState) {
+  } else {
+    // A new account starts empty. A guest keeps their data by upgrading their anonymous
+    // account (same id), so nothing local is carried over here.
     state = {
       ...DEFAULT_STATE,
-      ...signupDefaults.guestState,
       currentUser: user,
       username: user.username,
     };
-    state = applyPresetHabitRemovalMigration(state, weekKey(getNow()));
-    setUserDataWatermark(userId, state);
-  } else {
-    // Check if there is pre-existing guest state in localStorage to preserve
-    let localState: AppState | null = null;
-    try {
-      const raw = localStorage.getItem('ascend_guest_state_v2');
-      if (raw) {
-        localState = JSON.parse(raw);
-      }
-    } catch {
-      /* ignore */
-    }
-
-    if (localState && computeStateDataWeight(localState).itemCount > 0) {
-      state = {
-        ...DEFAULT_STATE,
-        ...localState,
-        currentUser: user,
-        username: user.username,
-      };
-      state = applyPresetHabitRemovalMigration(state, weekKey(getNow()));
-      setUserDataWatermark(userId, state);
-    } else {
-      state = {
-        ...DEFAULT_STATE,
-        currentUser: user,
-        username: user.username,
-      };
-    }
   }
 
   // Authoritative real-time fetch in parallel for partner invites, active partnerships, notifications, improvement plans, and followed plans

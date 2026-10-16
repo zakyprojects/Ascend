@@ -163,15 +163,14 @@ export type SignUpResult =
  * It does NOT hydrate profile/user_data or set any app state.
  * All state setup is handled by onAuthStateChange in store.ts (single source of truth).
  *
- * Also stores signup metadata (username, avatar, guestState) in sessionStorage so the
+ * Also stores signup metadata (username, avatar) in sessionStorage so the
  * onAuthStateChange listener can pick it up and use it when creating the profile.
  */
 export async function signUpUser(
   email: string,
   password: string,
   username: string,
-  avatar: string,
-  guestStateToMigrate?: AppState
+  avatar: string
 ): Promise<SignUpResult> {
   const trimmedEmail = email.trim().toLowerCase();
   const trimmedUsername = username.trim();
@@ -188,7 +187,6 @@ export async function signUpUser(
       JSON.stringify({
         username: trimmedUsername,
         avatar,
-        guestState: guestStateToMigrate ?? null,
       })
     );
   } catch {

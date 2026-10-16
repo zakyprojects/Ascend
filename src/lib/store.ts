@@ -2429,7 +2429,7 @@ export function useAppState() {
           const email = session.user.email || '';
 
           // Read signup defaults stored by signUpUser(), if this is a fresh signup
-          let signupDefaults: { username: string; avatar: string; guestState?: AppState } | undefined;
+          let signupDefaults: { username: string; avatar: string } | undefined;
           try {
             const raw = sessionStorage.getItem('ascend_signup_defaults');
             if (raw) {

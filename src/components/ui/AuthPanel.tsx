@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mail, User, Check, AlertCircle, LogIn, UserPlus, UserCheck, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Mail, User, Check, AlertCircle, LogIn, UserPlus, ArrowLeft, ArrowRight } from 'lucide-react';
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
@@ -267,7 +267,6 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
   const [avatar, setAvatar] = useState('');
-  const [keepGuestProgress, setKeepGuestProgress] = useState(true);
 
   // `checkedFor` is the trimmed username the result belongs to, so a result for an older value never counts as valid.
   const [usernameStatus, setUsernameStatus] = useState<{ available: boolean; reason?: string; checkedFor?: string } | null>(null);
@@ -436,10 +435,6 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     });
   }, [screen, progress, steps, phase, shownTrail, previewUsername, previewAvatar, shownFocus, shownCaret, passwordVisible, errorTick, upset]);
 
-  const guestPoints = guestState.seasonPoints ?? guestState.totalPoints ?? 0;
-  const guestHabitsCount = guestState.habits.length;
-  const hasGuestData = guestPoints > 0 || guestHabitsCount > 0;
-
   /** Shows the success screen, then runs `next`. Reduced motion skips straight to `next`. */
   const finishWithSuccess = async (title: string, next: () => void) => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -522,8 +517,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
             email,
             password,
             username,
-            avatar,
-            keepGuestProgress && hasGuestData ? guestState : undefined
+            avatar
           )
         );
 
@@ -799,27 +793,6 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                       Passwords do not match
                     </p>
                   )}
-                </div>
-              )}
-
-              {mode === 'signup' && hasGuestData && (
-                <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-xl space-y-2">
-                  <div className="flex items-center gap-2 text-brand-text text-xs font-medium">
-                    <UserCheck size={14} />
-                    <span>You have guest progress</span>
-                  </div>
-                  <p className="text-xs text-content-tertiary">
-                    You have <strong className="figure">{guestPoints} points</strong> and <strong className="figure">{guestHabitsCount} habits</strong> created before signing up.
-                  </p>
-                  <label className="flex items-center gap-2 cursor-pointer pt-1">
-                    <input
-                      type="checkbox"
-                      checked={keepGuestProgress}
-                      onChange={(e) => setKeepGuestProgress(e.target.checked)}
-                      className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500"
-                    />
-                    <span className="text-xs text-content-secondary">Move this progress to my new account</span>
-                  </label>
                 </div>
               )}
 
