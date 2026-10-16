@@ -115,6 +115,8 @@ import {
   getAllPublicImprovementPlans,
   setCachedProfiles,
   setCachedLeaguePoints,
+  areProfilesLoaded,
+  areLeaguePointsLoaded,
   setCachedPublicPlans,
   updateCachedPublicPlan,
   getCachedPublicPlanById,
@@ -2350,7 +2352,7 @@ export function useAppState() {
         ]);
 
         if (mounted) {
-          setCachedLeaguePoints(leaguePoints ?? {});
+          setCachedLeaguePoints(leaguePoints);
           setCachedProfiles(profiles);
           setCachedPublicPlans(publicPlans);
           if (!sessionRes.data?.session && !holdForStoredSession()) {
@@ -9421,11 +9423,14 @@ function getArchivePeriodStart(a: LeagueArchive): number {
 
 function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
   const newArchives: LeagueArchive[] = [];
+  // Closed weeks/months are archived only once other members' points have arrived; an archive made
+  // earlier would save everyone else at 0 and is never rebuilt. The catch-up loops make it later.
+  const standingsReady = areProfilesLoaded() && areLeaguePointsLoaded();
 
   // 1. Weekly catch-up loop
   const currWeekStart = getWeekStart(now);
   let weekRefDate = new Date(currWeekStart.getTime() - 1);
-  for (let step = 0; step < 12; step++) {
+  for (let step = 0; standingsReady && step < 12; step++) {
     const periodStart = getWeekStart(weekRefDate);
     // Points before a season start in the same week do not count (a new season restarts leagues).
     const scoreStart = clampToSeasonStart(periodStart, weekRefDate);
@@ -9459,7 +9464,7 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
   // 2. Monthly catch-up loop
   const currMonthStart = getMonthStart(now);
   let monthRefDate = new Date(currMonthStart.getTime() - 1);
-  for (let step = 0; step < 12; step++) {
+  for (let step = 0; standingsReady && step < 12; step++) {
     const periodStart = getMonthStart(monthRefDate);
     // Points before a season start in the same month do not count (a new season restarts leagues).
     const scoreStart = clampToSeasonStart(periodStart, monthRefDate);

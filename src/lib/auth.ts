@@ -29,9 +29,17 @@ export function setCachedProfiles(profiles: any[]) {
 
 /** Weekly/monthly league points per period id, then per member id (from ascend_league_points). */
 let cachedLeaguePoints: Record<string, Record<string, number>> = {};
+let leaguePointsLoaded = false;
 
-export function setCachedLeaguePoints(points: Record<string, Record<string, number>>) {
-  cachedLeaguePoints = points;
+/** null = the fetch failed: standings read as 0 and closed periods wait to be archived. */
+export function setCachedLeaguePoints(points: Record<string, Record<string, number>> | null) {
+  cachedLeaguePoints = points ?? {};
+  leaguePointsLoaded = points !== null;
+}
+
+/** Whether other members' weekly/monthly points are available (closed periods can be archived). */
+export function areLeaguePointsLoaded(): boolean {
+  return leaguePointsLoaded;
 }
 
 /** Whether other members' profiles are available for league standings. */
