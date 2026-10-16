@@ -76,7 +76,6 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   // Username form state
   const [usernameInput, setUsernameInput] = useState(currentUser?.username || '');
   const [usernameStatus, setUsernameStatus] = useState<{ available: boolean; reason?: string } | null>(null);
-  const [usernameSaving, setUsernameSaving] = useState(false);
   const [usernameMsg, setUsernameMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   // The Available / Not available badge sits inside the input; the input reserves room for it
   // only while it shows, so long usernames never run under it.
@@ -95,7 +94,6 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Notifications state
@@ -173,9 +171,9 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   const msElapsed = lastChangedTs > 0 ? nowMs - lastChangedTs : cooldownMs;
   const isCooldownActive = lastChangedTs > 0 && msElapsed < cooldownMs;
 
-  const msLeft = cooldownMs - msElapsed;
-  const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
-  const minsLeft = Math.ceil((msLeft % (1000 * 60 * 60)) / (1000 * 60));
+  const totalMinsLeft = Math.ceil((cooldownMs - msElapsed) / (1000 * 60));
+  const hoursLeft = Math.floor(totalMinsLeft / 60);
+  const minsLeft = totalMinsLeft % 60;
 
   const {
     isLoading: isDeletingAccount,
@@ -191,6 +189,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   // Save username handler
   const handleSaveUsername = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isUsernameSaving) return;
     setUsernameMsg(null);
 
     const trimmed = usernameInput.trim();
@@ -243,6 +242,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   // Change password handler
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPasswordSaving) return;
     setPasswordMsg(null);
 
     if (!newPassword || !confirmPassword) {
@@ -467,7 +467,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                     id="settings-username"
                     type="text"
                     required
-                    disabled={isCooldownActive || usernameSaving}
+                    disabled={isCooldownActive || isUsernameSaving}
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
                     className={`w-full input-has-icon ${usernameBadgeShown ? 'pr-32' : 'pr-3'} py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all disabled:opacity-60`}
@@ -508,13 +508,20 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                     type="submit"
                     disabled={
                       isCooldownActive ||
-                      usernameSaving ||
+                      isUsernameSaving ||
                       usernameInput.trim() === currentUser?.username ||
                       (usernameStatus !== null && !usernameStatus.available)
                     }
-                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-on-brand font-semibold text-xs rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-on-brand font-semibold text-xs rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5"
                   >
-                    {usernameSaving ? 'Saving...' : 'Update Username'}
+                    {isUsernameSaving ? (
+                      <>
+                        <AscendLoadingIndicator size="sm" />
+                        <span>Updating…</span>
+                      </>
+                    ) : (
+                      'Update Username'
+                    )}
                   </button>
                 </div>
               </form>
@@ -636,10 +643,17 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
 
                       <button
                         type="submit"
-                        disabled={passwordSaving}
-                        className="w-full py-2 bg-primary-600 hover:bg-primary-700 text-on-brand font-semibold text-xs rounded-lg transition-colors disabled:opacity-50"
+                        disabled={isPasswordSaving}
+                        className="w-full py-2 bg-primary-600 hover:bg-primary-700 text-on-brand font-semibold text-xs rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
                       >
-                        {passwordSaving ? 'Updating Password...' : 'Save New Password'}
+                        {isPasswordSaving ? (
+                          <>
+                            <AscendLoadingIndicator size="sm" />
+                            <span>Updating password…</span>
+                          </>
+                        ) : (
+                          'Save New Password'
+                        )}
                       </button>
                     </form>
                   )}
