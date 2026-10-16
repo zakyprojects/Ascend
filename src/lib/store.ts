@@ -67,6 +67,7 @@ import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekDates, previousPeriodKey, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
 import { computeLinkedGoalProgress } from './linkedGoalMetrics';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
+import { isPartnershipUser1 } from './partnershipSide';
 import { PresetHabit } from './presets';
 import { computeHabitAwards, isHabitAwardEntry, isRetiredAppHabitAward } from './habitAwards';
 import { computeWorkoutAwards, isRetiredAppWorkoutAward, isWorkoutDayEntry } from './workoutAwards';
@@ -2687,7 +2688,9 @@ export function useAppState() {
 
         if (event === 'PARTNER_ACCEPTED') {
           if (prev.deletedEntityIds?.includes(payload.id)) return prev;
+          const myId = prev.currentUser?.id;
           if (
+            (myId && (payload.user1Id === myId || payload.user2Id === myId)) ||
             payload.user1Username.toLowerCase() === prev.username.toLowerCase() ||
             payload.user2Username.toLowerCase() === prev.username.toLowerCase()
           ) {
@@ -3530,9 +3533,7 @@ export function useAppState() {
 
                 if (!challengePartnership) return target;
 
-                const isUser1 =
-                  (prev.currentUser?.id && challengePartnership.user1Id === prev.currentUser.id) ||
-                  challengePartnership.user1Username.toLowerCase() === prev.username.toLowerCase();
+                const isUser1 = isPartnershipUser1(challengePartnership, prev.currentUser?.id, prev.username);
 
                 const myCategory = isUser1 ? (target.user1Category || 'habit') : (target.user2Category || 'habit');
                 const myTarget = (isUser1 ? (target.user1Target || target.targetHabitName) : (target.user2Target || target.targetHabitName)).trim().toLowerCase();
@@ -7675,8 +7676,7 @@ export function useAppState() {
         (state.partnerships || []).find((p) => p.id === target.partnershipId) || state.partnership;
 
       const isUser1 = challengePartnership
-        ? (state.currentUser?.id && challengePartnership.user1Id === state.currentUser.id) ||
-          challengePartnership.user1Username.toLowerCase() === state.username.toLowerCase()
+        ? isPartnershipUser1(challengePartnership, state.currentUser?.id, state.username)
         : true;
 
       const myDoneDates = isUser1

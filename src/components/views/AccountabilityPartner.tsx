@@ -32,6 +32,7 @@ import { TAP_TARGET, TAP_AREA } from '@/components/ui/primitives/shared';
 import { getCurrentTier } from '@/lib/tiers';
 import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
+import { isPartnershipUser1 } from '@/lib/partnershipSide';
 import { todayKey, formatDateShort, parseDate, calculateElapsedDays, addDays } from '@/lib/dates';
 import { createNotificationSupabase, checkRecentPartnerNudgeSent } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
@@ -148,11 +149,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     const map = new Map<string, Partnership>();
     for (const p of list) {
       if (!p) continue;
-      const partnerName = (
-        p.user1Username.toLowerCase() === currentUsername.toLowerCase() ? p.user2Username : p.user1Username
-      ).toLowerCase();
-      const partnerId =
-        (currentUser?.id && p.user1Id === currentUser.id ? p.user2Id : p.user1Id) || partnerName;
+      const isU1 = isPartnershipUser1(p, currentUser?.id, currentUsername);
+      const partnerName = (isU1 ? p.user2Username : p.user1Username).toLowerCase();
+      const partnerId = (isU1 ? p.user2Id : p.user1Id) || partnerName;
       const key = partnerId || partnerName || p.id;
       if (!map.has(key)) {
         map.set(key, p);
@@ -182,7 +181,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
   // Identify partner username and roles for current user
   const isUser1InActive = activePartnership
-    ? activePartnership.user1Username.toLowerCase() === currentUsername.toLowerCase()
+    ? isPartnershipUser1(activePartnership, currentUser?.id, currentUsername)
     : true;
 
   const activePartnerUsername = activePartnership
@@ -565,8 +564,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
       // Check user completed challenge pledge on this date across active pacts
       const myDone = hasActivePacts && activePactsOnDay.some((c) => {
-        const isU1 = (currentUser?.id && activePartnership.user1Id === currentUser.id) ||
-          activePartnership.user1Username.toLowerCase() === currentUsername.toLowerCase();
+        const isU1 = isPartnershipUser1(activePartnership, currentUser?.id, currentUsername);
         const doneDates = isU1
           ? (c.user1DoneDates || (c.user1DoneDate ? [c.user1DoneDate] : []))
           : (c.user2DoneDates || (c.user2DoneDate ? [c.user2DoneDate] : []));
@@ -575,8 +573,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
       // Check partner completed challenge pledge on this date across active pacts
       const partnerDone = hasActivePacts && activePactsOnDay.some((c) => {
-        const isU1 = (currentUser?.id && activePartnership.user1Id === currentUser.id) ||
-          activePartnership.user1Username.toLowerCase() === currentUsername.toLowerCase();
+        const isU1 = isPartnershipUser1(activePartnership, currentUser?.id, currentUsername);
         const doneDates = isU1
           ? (c.user2DoneDates || (c.user2DoneDate ? [c.user2DoneDate] : []))
           : (c.user1DoneDates || (c.user1DoneDate ? [c.user1DoneDate] : []));
@@ -725,7 +722,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {partnerships.map((p) => {
-              const pUsername = p.user1Username.toLowerCase() === currentUsername.toLowerCase() ? p.user2Username : p.user1Username;
+              const pUsername = isPartnershipUser1(p, currentUser?.id, currentUsername) ? p.user2Username : p.user1Username;
               const isSelected = activePartnership?.id === p.id;
               const pChallenges = sharedChallenges.filter((c) => c.partnershipId === p.id && c.status === 'active');
 
@@ -1120,8 +1117,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     partnerships.find((p) => p.id === challenge.partnershipId) || activePartnership;
 
                   const isUser1ForChallenge = challengePartnership
-                    ? (currentUser?.id && challengePartnership.user1Id === currentUser.id) ||
-                      challengePartnership.user1Username.toLowerCase() === currentUsername.toLowerCase()
+                    ? isPartnershipUser1(challengePartnership, currentUser?.id, currentUsername)
                     : isUser1InActive;
 
                   const myCategory = isUser1ForChallenge ? (challenge.user1Category || 'habit') : (challenge.user2Category || 'habit');
@@ -1357,9 +1353,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       const isExpired = challenge.status === 'expired';
                       const totalCompleted = challenge.totalJointDaysCompleted ?? challenge.jointStreak ?? 0;
 
-                      const isUser1ForChallenge =
-                        (currentUser?.id && activePartnership?.user1Id === currentUser.id) ||
-                        activePartnership?.user1Username.toLowerCase() === currentUsername.toLowerCase();
+                      const isUser1ForChallenge = activePartnership
+                        ? isPartnershipUser1(activePartnership, currentUser?.id, currentUsername)
+                        : false;
 
                       const myCategory = isUser1ForChallenge ? (challenge.user1Category || 'habit') : (challenge.user2Category || 'habit');
                       const myTarget = isUser1ForChallenge ? (challenge.user1Target || challenge.targetHabitName) : (challenge.user2Target || challenge.targetHabitName);
