@@ -368,13 +368,6 @@ export async function saveUserDataToSupabase(
         skillsPracticedCount,
       };
 
-      const activeHabitsList = (finalState.habits || []).map((h) => ({
-        name: h.name,
-        category: h.category,
-        frequency: h.frequency,
-        isPreset: h.isPreset,
-      }));
-
       const profilePayload: Record<string, any> = {
         id: userId,
         username: finalState.currentUser.username,
@@ -387,7 +380,8 @@ export async function saveUserDataToSupabase(
         notif_league_updates: finalState.currentUser.notifLeagueUpdates ?? true,
         season_id: finalState.seasonId || 1,
         stats: userStats,
-        active_habits: activeHabitsList,
+        // Habit names are not published: other members no longer see which habits someone keeps.
+        active_habits: [],
         // The device's timezone. The server derives profiles.timezone (the user's "today") from it,
         // never letting the local date go backwards (supabase/migrations/20261016120000).
         device_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,

@@ -7845,13 +7845,6 @@ export function useAppState() {
         season_history: toSeasonHistory(state.leagueArchives),
       };
 
-      const activeHabitsList = state.habits.map((h) => ({
-        name: h.name,
-        category: h.category,
-        frequency: h.frequency,
-        isPreset: h.isPreset,
-      }));
-
       const competitors = generateCompetitors(
         type,
         userPoints,
@@ -7859,7 +7852,7 @@ export function useAppState() {
         state.username,
         state.totalPoints,
         userStats,
-        activeHabitsList,
+        undefined,
         now
       );
       const userRank = getUserRank(competitors);

@@ -1,14 +1,10 @@
 import { LeagueCompetitor } from '@/types';
 import { TierBadge } from './TierBadge';
-import { Dialog, EmptyState } from '@/components/ui/primitives';
-import { useState } from 'react';
+import { Dialog } from '@/components/ui/primitives';
 import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, EyeOff, type LucideIcon } from 'lucide-react';
 import { getProfileStreakStats } from '@/lib/streakLogic';
 import { getCurrentTier } from '@/lib/tiers';
 import { formatDateShort } from '@/lib/dates';
-
-/** Habits listed before "Show all" (the dialog scrolls as one; no inner scroll box). */
-const HABIT_PREVIEW_COUNT = 6;
 
 interface CompetitorProfileModalProps {
   competitor: LeagueCompetitor | null;
@@ -26,13 +22,6 @@ export function CompetitorProfileModal({
   open,
   onClose,
 }: CompetitorProfileModalProps) {
-  const [showAllHabits, setShowAllHabits] = useState(false);
-  // A different member opens with the short list again.
-  const [shownFor, setShownFor] = useState(competitor?.id);
-  if (shownFor !== competitor?.id) {
-    setShownFor(competitor?.id);
-    setShowAllHabits(false);
-  }
   if (!competitor) return null;
 
   const isSelf = competitor.isUser;
@@ -41,8 +30,6 @@ export function CompetitorProfileModal({
 
   const stats = competitor.stats;
   const seasonHistory = competitor.season_history;
-  const habits = competitor.activeHabits ?? [];
-  const shownHabits = showAllHabits ? habits : habits.slice(0, HABIT_PREVIEW_COUNT);
 
   return (
     <Dialog
@@ -106,7 +93,7 @@ export function CompetitorProfileModal({
               <>
                 <h4 className="text-base font-semibold leading-tight text-content-secondary">Your profile is private</h4>
                 <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
-                  While your profile is private, you can't see other members' stats and habits.
+                  While your profile is private, you can't see other members' stats.
                 </p>
                 <p className="text-micro text-content-tertiary">Make your profile public in Settings to see them.</p>
               </>
@@ -114,7 +101,7 @@ export function CompetitorProfileModal({
               <>
                 <h4 className="text-base font-semibold leading-tight text-content-secondary">Private profile</h4>
                 <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
-                  This member keeps their stats and habits private. Their username, rank, and league points
+                  This member keeps their stats private. Their username, rank, and league points
                   are still visible.
                 </p>
               </>
@@ -123,44 +110,6 @@ export function CompetitorProfileModal({
         ) : (
           <>
             {stats && <ActivityStats stats={stats} />}
-
-            {/* Currently Active Habits */}
-            <section>
-              <h4 className="stat-label mb-2.5">Active habits ({habits.length})</h4>
-              {habits.length > 0 ? (
-                <>
-                  <ul className="rounded-xl border border-overlay-subtle divide-y divide-overlay-subtle">
-                    {shownHabits.map((habit, idx) => (
-                      <li key={idx} className="px-3 py-2.5 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-primary-400 shrink-0" />
-                          <span className="item-name text-sm text-content-secondary truncate">{habit.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {habit.category && (
-                            <span className="hidden sm:inline text-2xs text-content-muted">{habit.category}</span>
-                          )}
-                          <span className="text-2xs bg-primary-500/10 text-brand-text px-2 py-0.5 rounded-lg font-medium">
-                            {habit.frequency}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                  {habits.length > HABIT_PREVIEW_COUNT && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAllHabits((v) => !v)}
-                      className="mt-2 rounded-lg px-1 text-xs font-medium text-brand-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50"
-                    >
-                      {showAllHabits ? 'Show less' : `Show all ${habits.length}`}
-                    </button>
-                  )}
-                </>
-              ) : (
-                <EmptyState size="sm" title="No active habits shared yet" />
-              )}
-            </section>
 
             {/* Past Seasons & Trophies */}
             {seasonHistory && seasonHistory.length > 0 && (
