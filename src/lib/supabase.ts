@@ -479,6 +479,8 @@ export async function fetchMyPrivateProfile(): Promise<Record<string, unknown> |
 /** Profile columns members cannot read back; an upsert (ON CONFLICT DO UPDATE) cannot write them. */
 const PRIVATE_PROFILE_COLUMNS = [
   'email',
+  'stats',
+  'active_habits',
   'notif_daily_reminder',
   'notif_partner_activity',
   'notif_league_updates',
