@@ -9,7 +9,7 @@ import {
   getUserRank,
   toArchivedCompetitor,
 } from './leagues';
-import { EPOCH_UTC, SEASON_LENGTH_MS, getSeasonPeriodId } from './leagueTime';
+import { getSeasonPeriodId, getSeasonStartByNumber } from './leagueTime';
 
 /**
  * Season close (90-day league archive). The points ledger is complete (point_entries table),
@@ -27,8 +27,7 @@ type SeasonLedgerState = Pick<
 > & { seasonId?: number };
 
 function getSeasonBounds(seasonNumber: number): { start: Date; end: Date } {
-  const start = new Date(EPOCH_UTC.getTime() + (seasonNumber - 1) * SEASON_LENGTH_MS);
-  return { start, end: new Date(start.getTime() + SEASON_LENGTH_MS) };
+  return { start: getSeasonStartByNumber(seasonNumber), end: getSeasonStartByNumber(seasonNumber + 1) };
 }
 
 /** Season this state belongs to (missing seasonId = Season 1, as in addPointsInternal). */

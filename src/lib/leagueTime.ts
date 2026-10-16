@@ -25,14 +25,63 @@ export function leagueNow(): Date {
 }
 
 /**
- * Anchored Season 1 Epoch: August 1, 2026 00:00:00.000 UTC
+ * The season calendar's master values live on the server (public.ascend_season_epoch() /
+ * ascend_season_length(), read through the ascend_season_config RPC), so the season changes at
+ * one UTC instant for everyone. These defaults (Season 1 starts August 1, 2026 00:00 UTC; 90
+ * days) are only used until the server's values arrive, and then the last copy this device saw.
  */
-export const EPOCH_UTC: Date = new Date(Date.UTC(2026, 7, 1, 0, 0, 0, 0));
+const DEFAULT_EPOCH_MS = Date.UTC(2026, 7, 1, 0, 0, 0, 0);
+const DEFAULT_SEASON_LENGTH_MS = 90 * 24 * 60 * 60 * 1000;
+const SEASON_CONFIG_KEY = 'ascend_season_config';
+const SEASON_CONFIG_TIMEOUT_MS = 3000;
+
+let seasonEpochMs = DEFAULT_EPOCH_MS;
+let seasonLengthMs = DEFAULT_SEASON_LENGTH_MS;
+
+function applySeasonConfig(value: unknown): boolean {
+  const config = value as { epochMs?: unknown; lengthMs?: unknown } | null;
+  const epochMs = Number(config?.epochMs);
+  const lengthMs = Number(config?.lengthMs);
+  if (!Number.isFinite(epochMs) || !Number.isFinite(lengthMs) || lengthMs <= 0) return false;
+  seasonEpochMs = epochMs;
+  seasonLengthMs = lengthMs;
+  return true;
+}
+
+try {
+  const cached = localStorage.getItem(SEASON_CONFIG_KEY);
+  if (cached) applySeasonConfig(JSON.parse(cached));
+} catch {
+  /* storage unavailable or unreadable: keep the defaults */
+}
 
 /**
- * 90-day season length in milliseconds (7,776,000,000 ms)
+ * Reads the season master values from the server and keeps a copy for offline starts.
+ * Waits at most a few seconds; never rejects (the current values stay on any failure).
  */
-export const SEASON_LENGTH_MS: number = 90 * 24 * 60 * 60 * 1000;
+export async function syncSeasonConfig(): Promise<void> {
+  try {
+    // Loaded lazily: supabase.ts reads the clock, so a static import would be a cycle.
+    const { supabase, isSupabaseConfigured } = await import('./supabase');
+    if (!isSupabaseConfigured) return;
+    const request = supabase.rpc('ascend_season_config');
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), SEASON_CONFIG_TIMEOUT_MS));
+    const result = await Promise.race([request, timeout]);
+    if (!result || result.error || !applySeasonConfig(result.data)) return;
+    try {
+      localStorage.setItem(SEASON_CONFIG_KEY, JSON.stringify(result.data));
+    } catch {
+      /* storage unavailable */
+    }
+  } catch {
+    /* offline or server error: keep the current values */
+  }
+}
+
+/** First instant of season `seasonNumber` (1-based). */
+export function getSeasonStartByNumber(seasonNumber: number): Date {
+  return new Date(seasonEpochMs + (Math.max(seasonNumber, 1) - 1) * seasonLengthMs);
+}
 
 /**
  * Computes UTC Monday 00:00:00.000 of the week containing `now`.
@@ -66,30 +115,27 @@ export function getMonthEnd(now: Date): Date {
 }
 
 /**
- * Computes the 1-indexed season number based on EPOCH_UTC and SEASON_LENGTH_MS.
+ * Computes the 1-indexed season number from the season master values.
  */
 export function getSeasonNumber(now: Date): number {
-  const elapsed = now.getTime() - EPOCH_UTC.getTime();
+  const elapsed = now.getTime() - seasonEpochMs;
   // Pre-epoch dates clamp to Season 1 — no wrong-clock protection at this layer; server-side clock validation was descoped for this phase per 2026-09-20 decision.
   if (elapsed < 0) return 1;
-  return 1 + Math.floor(elapsed / SEASON_LENGTH_MS);
+  return 1 + Math.floor(elapsed / seasonLengthMs);
 }
 
 /**
  * Computes the UTC start instant of the season containing `now`.
  */
 export function getSeasonStart(now: Date): Date {
-  const elapsed = now.getTime() - EPOCH_UTC.getTime();
-  const cyclesPassed = elapsed < 0 ? 0 : Math.floor(elapsed / SEASON_LENGTH_MS);
-  return new Date(EPOCH_UTC.getTime() + cyclesPassed * SEASON_LENGTH_MS);
+  return getSeasonStartByNumber(getSeasonNumber(now));
 }
 
 /**
- * Computes the exclusive end instant of the season containing `now` (getSeasonStart(now) + SEASON_LENGTH_MS).
+ * Computes the exclusive end instant of the season containing `now` (the next season's start).
  */
 export function getSeasonEnd(now: Date): Date {
-  const start = getSeasonStart(now);
-  return new Date(start.getTime() + SEASON_LENGTH_MS);
+  return getSeasonStartByNumber(getSeasonNumber(now) + 1);
 }
 
 /**

@@ -102,8 +102,8 @@ import {
   getWeekPeriodId,
   getMonthPeriodId,
   getSeasonPeriodId,
-  EPOCH_UTC,
-  SEASON_LENGTH_MS,
+  getSeasonStartByNumber,
+  syncSeasonConfig,
 } from './leagueTime';
 import {
   logoutUser,
@@ -2458,8 +2458,9 @@ export function useAppState() {
               timeoutPromise,
             ]);
             // Penalties, streaks and season rollovers below decide days by the clock: wait for
-            // the server time (at most a few seconds) so a moved device clock cannot steer them.
-            await clockReady();
+            // the server time and the season master values (at most a few seconds each) so a
+            // moved device clock cannot steer them.
+            await Promise.all([clockReady(), syncSeasonConfig()]);
 
             if (mounted) {
               if (myGeneration !== authGenerationRef.current) return;
@@ -9415,7 +9416,7 @@ function getArchivePeriodStart(a: LeagueArchive): number {
     } else if (a.id.startsWith('S:')) {
       const sNum = parseInt(a.id.slice(2), 10);
       if (!isNaN(sNum)) {
-        return EPOCH_UTC.getTime() + (sNum - 1) * SEASON_LENGTH_MS;
+        return getSeasonStartByNumber(sNum).getTime();
       }
     }
   }

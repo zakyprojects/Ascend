@@ -1,7 +1,6 @@
 import {
   leagueNow,
-  EPOCH_UTC,
-  SEASON_LENGTH_MS,
+  getSeasonStartByNumber,
   getWeekStart,
   getWeekEnd,
   getMonthStart,
@@ -27,9 +26,9 @@ function runFixtures() {
   const now = leagueNow();
   assert(now instanceof Date && !isNaN(now.getTime()), 'leagueNow() must return a valid Date instance');
 
-  // Test 2: EPOCH_UTC & SEASON_LENGTH_MS
-  assert(EPOCH_UTC.toISOString() === '2026-08-01T00:00:00.000Z', 'EPOCH_UTC must be 2026-08-01T00:00:00.000Z');
-  assert(SEASON_LENGTH_MS === 90 * 24 * 60 * 60 * 1000, 'SEASON_LENGTH_MS must be 90 days in ms');
+  // Test 2: season master defaults (Season 1 start, 90-day length)
+  assert(getSeasonStartByNumber(1).getTime() === Date.UTC(2026, 7, 1), 'Season 1 must start 2026-08-01 00:00 UTC');
+  assert(getSeasonStartByNumber(2).getTime() - getSeasonStartByNumber(1).getTime() === 90 * 24 * 60 * 60 * 1000, 'A season must be 90 days');
 
   // Test 3: Week boundary test cases
   const oldWeekDate = new Date('2026-09-13T23:59:59.999Z'); // Sunday before Monday Sep 14
