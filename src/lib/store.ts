@@ -120,9 +120,6 @@ import {
 } from './auth';
 import { hydrateUserSession } from './authSession';
 import {
-  processHabitPenalties,
-  processBadHabitNoReports,
-  processExerciseTargetPenalties,
   getMissPenaltyMultiplier,
   getHighestUserStreak,
   getAppStateSeasonPoints,
@@ -943,7 +940,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   // Preset Habit Retirement Migration: Cleanse retired presets & retroactively claw back season points
   sweptState = applyPresetHabitRemovalMigration(sweptState, weekKey(getNow()));
 
-  return processBadHabitNoReports(sweptState);
+  return sweptState;
 }
 
 async function persistState(state: AppState, options?: { allowDestructiveWipe?: boolean }): Promise<void> {
@@ -3091,11 +3088,9 @@ export function useAppState() {
       setState((prev) => {
         challengesToSync.length = 0;
         const archivedState = checkAndArchiveLeagues(prev, targetNow);
-        const habitPenalized = processHabitPenalties(archivedState, targetNow);
-        const badHabitPenalized = processBadHabitNoReports(habitPenalized, targetNow);
-        const exercisePenalized = processExerciseTargetPenalties(badHabitPenalized, targetNow);
+        // Missed-habit, no-report and exercise-target penalties come from the hourly server job.
         const weeklyGoalsReconciledState = reconcileWeeklyGoalsPointsForAllWeeks(
-          reconcileLinkedWeeklyGoals(exercisePenalized, targetNow),
+          reconcileLinkedWeeklyGoals(archivedState, targetNow),
           targetNow
         );
 

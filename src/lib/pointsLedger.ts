@@ -69,26 +69,3 @@ export function addPointsInternal(
     leagueArchives,
   };
 }
-
-/**
- * Applies a penalty deduction to AppState using the canonical addPointsInternal reducer.
- * `idOverride` gives a penalty the same id the server job writes, so the two never double up.
- */
-export function applyPenaltyDeductionInternal(
-  state: AppState,
-  penaltyAmount: number,
-  reason: string,
-  source: string,
-  metadata?: Record<string, any>,
-  customTimestamp?: string,
-  idOverride?: string
-): Pick<
-  AppState,
-  | 'seasonId'
-  | 'seasonPoints'
-  | 'totalPoints'
-  | 'pointsHistory'
-  | 'leagueArchives'
-> {
-  return addPointsInternal(state, -penaltyAmount, reason, source, metadata, customTimestamp, idOverride);
-}
