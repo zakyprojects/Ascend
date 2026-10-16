@@ -120,6 +120,7 @@ import {
   setCachedLeaguePoints,
   areProfilesLoaded,
   areLeaguePointsLoaded,
+  getLeaguePointsFetchedAt,
   setCachedPublicPlans,
   updateCachedPublicPlan,
   getCachedPublicPlanById,
@@ -127,6 +128,7 @@ import {
   fetchProfileByUidFromSupabase,
 } from './auth';
 import { hydrateUserSession } from './authSession';
+import { createLeagueStandingsRefresher, leaguePeriodKey } from './leagueStandingsRefresh';
 import {
   getMissPenaltyMultiplier,
   getHighestUserStreak,
@@ -1828,6 +1830,34 @@ export function useAppState() {
   const lastPersistedStateRef = useRef<AppState>(state);
   const lastKnownGoodStateRef = useRef<AppState>(state);
 
+  // Other members' standings live in module caches (auth.ts); this version re-renders league views
+  // when a refresh writes them.
+  const [leagueDataVersion, setLeagueDataVersion] = useState(0);
+  const [leagueRefresher] = useState(() =>
+    createLeagueStandingsRefresher({
+      sessionUserId: async () =>
+        isSupabaseConfigured ? (await supabase.auth.getSession()).data?.session?.user?.id ?? null : null,
+      fetchProfiles: fetchAllProfilesFromSupabase,
+      fetchPoints: (now) => fetchLeaguePointsFromSupabase(getLeaguePointsPeriods(now)),
+      now: leagueNow,
+      isOnline: () => typeof navigator === 'undefined' || navigator.onLine !== false,
+      apply: ({ profiles, points, fetchedAtMs }) => {
+        if (profiles) setCachedProfiles(profiles);
+        if (points) setCachedLeaguePoints(points, fetchedAtMs);
+        setLeagueDataVersion((v) => v + 1);
+      },
+    })
+  );
+  /** Refetches other members' standings; `full` skips the 15 s throttle (sign-in, new period). */
+  const refreshLeagueStandings = leagueRefresher.refresh;
+  /** Sign-out: the next account must not see this viewer's standings. */
+  const clearLeagueStandings = useCallback(() => {
+    leagueRefresher.reset();
+    setCachedProfiles([]);
+    setCachedLeaguePoints(null);
+    setLeagueDataVersion((v) => v + 1);
+  }, [leagueRefresher]);
+
   const [destructiveWipeModal, setDestructiveWipeModal] = useState<{
     open: boolean;
     title: string;
@@ -2346,16 +2376,13 @@ export function useAppState() {
       }
 
       try {
-        const [profiles, leaguePoints, publicPlans, sessionRes] = await Promise.all([
-          fetchAllProfilesFromSupabase(),
-          fetchLeaguePointsFromSupabase(getLeaguePointsPeriods(leagueNow())),
+        const [publicPlans, sessionRes] = await Promise.all([
           fetchPublicPlansFromSupabase(),
           supabase.auth.getSession(),
+          refreshLeagueStandings({ full: true }),
         ]);
 
         if (mounted) {
-          setCachedLeaguePoints(leaguePoints);
-          setCachedProfiles(profiles);
           setCachedPublicPlans(publicPlans);
           if (!sessionRes.data?.session && !holdForStoredSession()) {
             setIsAuthChecking(false);
@@ -2382,6 +2409,7 @@ export function useAppState() {
         if (event === 'SIGNED_OUT') {
           endStoredSessionWait();
           const myGeneration = ++authGenerationRef.current;
+          clearLeagueStandings();
 
           if (debounceTimer.current) {
             clearTimeout(debounceTimer.current);
@@ -2441,6 +2469,8 @@ export function useAppState() {
 
           const myGeneration = ++authGenerationRef.current;
           if (event === 'SIGNED_IN') setIsSessionLoading(true);
+          // A member signed in after boot (or a different one) gets the standings their session can see.
+          void refreshLeagueStandings({ full: leagueRefresher.fetchedUserId() !== session.user.id });
 
           const userId = session.user.id;
           const email = session.user.email || '';
@@ -3105,6 +3135,13 @@ export function useAppState() {
       const targetNow = simulatedNow || leagueNow();
       const challengesToSync: SharedChallenge[] = [];
 
+      // A new week, month or season: other members' points for it (and final ones for the period
+      // that just closed, which archiving waits for) need a fresh fetch.
+      const fetchedPeriod = leagueRefresher.fetchedPeriodKey();
+      if (fetchedPeriod && fetchedPeriod !== leaguePeriodKey(targetNow)) {
+        void refreshLeagueStandings({ full: true });
+      }
+
       setState((prev) => {
         challengesToSync.length = 0;
         const archivedState = checkAndArchiveLeagues(prev, targetNow);
@@ -3238,6 +3275,7 @@ export function useAppState() {
 
       // 5. Unconditionally reset local state to guest (unless superseded by a newer auth event)
       if (myLogoutGeneration !== authGenerationRef.current) return;
+      clearLeagueStandings();
 
       const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
       let guestState = DEFAULT_STATE;
@@ -7831,6 +7869,7 @@ export function useAppState() {
       state.totalPoints,
       state.seasonId,
       state.leagueArchives,
+      leagueDataVersion,
     ]
   );
 
@@ -9209,6 +9248,7 @@ export function useAppState() {
     toggleNotifPartnerActivity,
     toggleNotifLeagueUpdates,
     getLeagueData,
+    refreshLeagueStandings,
     getPublicImprovementPlans,
     // New Module Actions
     logWorkout,
@@ -9383,6 +9423,8 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
   // Closed weeks/months are archived only once other members' points have arrived; an archive made
   // earlier would save everyone else at 0 and is never rebuilt. The catch-up loops make it later.
   const standingsReady = areProfilesLoaded() && areLeaguePointsLoaded();
+  // A period that ended after those points were requested waits for a refresh with its final scores.
+  const pointsFetchedAt = getLeaguePointsFetchedAt();
 
   // 1. Weekly catch-up loop
   const currWeekStart = getWeekStart(now);
@@ -9399,7 +9441,7 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
     }
 
     const prevPoints = calculatePeriodPoints(state.pointsHistory, scoreStart, periodEnd, state.totalPoints);
-    if (prevPoints > 0) {
+    if (prevPoints > 0 && periodEnd.getTime() <= pointsFetchedAt) {
       const competitors = generateCompetitors(
         'weekly',
         prevPoints,
@@ -9433,7 +9475,7 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
     }
 
     const prevPoints = calculatePeriodPoints(state.pointsHistory, scoreStart, periodEnd, state.totalPoints);
-    if (prevPoints > 0) {
+    if (prevPoints > 0 && periodEnd.getTime() <= pointsFetchedAt) {
       const competitors = generateCompetitors(
         'monthly',
         prevPoints,

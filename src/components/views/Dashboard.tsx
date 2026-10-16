@@ -29,6 +29,7 @@ import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
+import { useLeagueStandingsRefresh } from '@/lib/useLeagueStandingsRefresh';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { dailyHabitCompletions, dailyPoints, lastDayKeys } from '@/lib/weeklyActivity';
 import { WeekActivityCard } from './WeekActivityCard';
@@ -100,6 +101,8 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
   // Re-render when a league period rolls over, so ranks and the season label never go stale.
   // The per-second countdowns tick inside LeagueCountdown and never re-render the page.
   useLeaguePeriodRollover();
+  // League card ranks: other members' points refetched on open and on return to the tab (no poll).
+  useLeagueStandingsRefresh(store, { poll: false });
   // Today's chip, week chart and time-tracker summary roll over at local midnight.
   const today = useLocalDayKey();
 

@@ -10,6 +10,7 @@ import { CompetitorProfileModal } from '@/components/ui/CompetitorProfileModal';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
+import { useLeagueStandingsRefresh } from '@/lib/useLeagueStandingsRefresh';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 
 const LEAGUE_ICONS: Record<string, typeof Trophy> = {
@@ -34,6 +35,8 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const [selectedCompetitor, setSelectedCompetitor] = useState<LeagueCompetitor | null>(null);
   // Period labels re-render on rollover; the per-second countdown ticks inside LeagueCountdown.
   useLeaguePeriodRollover();
+  // Other members' points: refetched on open, on return to the tab and every minute while visible.
+  useLeagueStandingsRefresh(store);
 
   const now = leagueNow();
   const leagueData = store.getLeagueData(activeLeague);
