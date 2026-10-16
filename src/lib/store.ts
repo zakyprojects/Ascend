@@ -80,6 +80,7 @@ import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lesson
 import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, meetsReadingBonusGates, readingBonusId } from './readingAwards';
 import {
   getLeaguePeriodStart,
+  getLeaguePointsPeriods,
   clampToSeasonStart,
   getLeaguePeriodLabel,
   calculatePeriodPoints,
@@ -113,6 +114,7 @@ import {
   updateProfileNotificationPreferences,
   getAllPublicImprovementPlans,
   setCachedProfiles,
+  setCachedLeaguePoints,
   setCachedPublicPlans,
   updateCachedPublicPlan,
   getCachedPublicPlanById,
@@ -181,6 +183,7 @@ import {
   resetUserDataWatermark,
   saveUserDataToSupabase,
   fetchAllProfilesFromSupabase,
+  fetchLeaguePointsFromSupabase,
   fetchProfileByUsernameFromSupabase,
   fetchPublicPlansFromSupabase,
   fetchPartnerInvitesSupabase,
@@ -2339,13 +2342,15 @@ export function useAppState() {
       }
 
       try {
-        const [profiles, publicPlans, sessionRes] = await Promise.all([
+        const [profiles, leaguePoints, publicPlans, sessionRes] = await Promise.all([
           fetchAllProfilesFromSupabase(),
+          fetchLeaguePointsFromSupabase(getLeaguePointsPeriods(leagueNow())),
           fetchPublicPlansFromSupabase(),
           supabase.auth.getSession(),
         ]);
 
         if (mounted) {
+          setCachedLeaguePoints(leaguePoints ?? {});
           setCachedProfiles(profiles);
           setCachedPublicPlans(publicPlans);
           if (!sessionRes.data?.session && !holdForStoredSession()) {

@@ -458,7 +458,7 @@ export async function fetchAllProfilesFromSupabase() {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, uid, username, avatar, total_points, season_points, season_id, points_history, stats, active_habits, is_profile_public, season_history, created_at, accept_partner_invites');
+      .select('id, uid, username, avatar, total_points, season_points, season_id, stats, active_habits, is_profile_public, season_history, created_at, accept_partner_invites');
     if (error || !data) return [];
     return data;
   } catch (e) {
@@ -467,12 +467,46 @@ export async function fetchAllProfilesFromSupabase() {
   }
 }
 
+/** A league period whose points the server sums: [start, end], start already clamped to the season. */
+export interface LeaguePointsPeriod {
+  id: string;
+  start: Date;
+  end: Date;
+}
+
+/**
+ * Every member's net points in each period, from the server ledger (ascend_league_points).
+ * Returns periodId -> userId -> points (members with 0 points are absent), or null on failure.
+ */
+export async function fetchLeaguePointsFromSupabase(
+  periods: LeaguePointsPeriod[]
+): Promise<Record<string, Record<string, number>> | null> {
+  if (!isSupabaseConfigured || periods.length === 0) return null;
+  try {
+    const { data, error } = await supabase.rpc('ascend_league_points', {
+      p_starts: periods.map((p) => p.start.toISOString()),
+      p_ends: periods.map((p) => p.end.toISOString()),
+    });
+    if (error || !Array.isArray(data)) return null;
+    const result: Record<string, Record<string, number>> = {};
+    for (const p of periods) result[p.id] = {};
+    for (const row of data as { period: number; user_id: string; points: number }[]) {
+      const period = periods[row.period - 1];
+      if (period) result[period.id][row.user_id] = row.points;
+    }
+    return result;
+  } catch (e) {
+    console.error('Error fetching league points from Supabase:', e);
+    return null;
+  }
+}
+
 export async function fetchProfileByUsernameFromSupabase(username: string) {
   if (!isSupabaseConfigured) return null;
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, uid, username, avatar, total_points, season_points, season_id, points_history, stats, active_habits, is_profile_public, season_history, created_at, accept_partner_invites')
+      .select('id, uid, username, avatar, total_points, season_points, season_id, stats, active_habits, is_profile_public, season_history, created_at, accept_partner_invites')
       .ilike('username', username.trim())
       .maybeSingle();
 

@@ -1,6 +1,6 @@
 import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, SeasonHistoryEntry } from '@/types';
-import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory } from './leagues';
-import { leagueNow, getSeasonNumber } from './leagueTime';
+import { sanitizePointsHistory } from './leagues';
+import { leagueNow, getSeasonNumber, getWeekPeriodId, getMonthPeriodId } from './leagueTime';
 import { generateNumericUID, todayKey, parseDate } from './dates';
 import { getHighestUserStreak } from './habitPenalties';
 import { clearSyncStorage } from './sync/outbox';
@@ -25,6 +25,13 @@ export function setCachedProfiles(profiles: any[]) {
   cachedProfiles = profiles;
   // A failed fetch also yields []; a real list always holds at least the signed-in member.
   profilesLoaded = profiles.length > 0;
+}
+
+/** Weekly/monthly league points per period id, then per member id (from ascend_league_points). */
+let cachedLeaguePoints: Record<string, Record<string, number>> = {};
+
+export function setCachedLeaguePoints(points: Record<string, Record<string, number>>) {
+  cachedLeaguePoints = points;
 }
 
 /** Whether other members' profiles are available for league standings. */
@@ -70,9 +77,6 @@ export function computeCompetitorLeaguePoints(
   type: LeagueType,
   now: Date
 ): number {
-  const pointsHistory = profile.points_history || [];
-  const start = getLeaguePeriodStart(type, now);
-
   if (type === 'ninetyDay') {
     // The server derives both: season_points for the season running now, season_history for
     // closed ones. The member's own season_id is not trusted (it lags until they open the app).
@@ -85,7 +89,9 @@ export function computeCompetitorLeaguePoints(
     return closed && typeof closed.points === 'number' ? closed.points : 0;
   }
 
-  return calculatePeriodPoints(pointsHistory, start, now, profile.total_points);
+  // Weekly / monthly: summed by the server from the full ledger (profiles carry no point entries).
+  const periodId = type === 'weekly' ? getWeekPeriodId(now) : getMonthPeriodId(now);
+  return cachedLeaguePoints[periodId]?.[profile.id] ?? 0;
 }
 
 export function getProfileSeasonPointsByUsername(
