@@ -22,6 +22,7 @@ import {
   syncPlanToSupabase,
   syncFollowedPlanToSupabase,
   cleanupPendingInvitesBetweenUsersSupabase,
+  fetchMyPrivateProfile,
 } from './supabase';
 import { trustedNow } from './clock';
 
@@ -32,17 +33,22 @@ export type SignUpDefaults = {
 
 export async function fetchProfileForUser(userId: string): Promise<{ data: Record<string, unknown> | null; error: any | null }> {
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, uid, username, avatar, created_at, is_profile_public, accept_partner_invites, notif_daily_reminder, notif_partner_activity, notif_league_updates, notif_sunday_planning, last_username_change_at')
-      .eq('id', userId)
-      .maybeSingle();
+    // Private columns (notification settings, last username change) come from ascend_my_profile.
+    const [{ data, error }, privateCols] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, uid, username, avatar, created_at, is_profile_public, accept_partner_invites')
+        .eq('id', userId)
+        .maybeSingle(),
+      fetchMyPrivateProfile(),
+    ]);
 
     if (error) {
       console.warn('Failed to fetch user profile:', error.message);
       return { data: null, error };
     }
-    return { data: (data as Record<string, unknown> | null) ?? null, error: null };
+    if (!data) return { data: null, error: null };
+    return { data: { ...privateCols, ...(data as Record<string, unknown>) }, error: null };
   } catch (e) {
     console.error('Error fetching profile from Supabase:', e);
     return { data: null, error: e };

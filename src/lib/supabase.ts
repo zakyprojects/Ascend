@@ -395,7 +395,7 @@ export async function saveUserDataToSupabase(
         profilePayload.last_username_change_at = finalState.currentUser.lastUsernameChangeAt;
       }
 
-      let { error: profErr } = await supabase.from('profiles').upsert(profilePayload);
+      let profErr = await writeOwnProfile(userId, profilePayload);
 
       if (profErr) {
         if (profErr.message?.includes('accept_partner_invites')) {
@@ -415,8 +415,7 @@ export async function saveUserDataToSupabase(
         if (profErr.message?.includes('device_timezone')) {
           delete profilePayload.device_timezone;
         }
-        const { error: fallbackErr } = await supabase.from('profiles').upsert(profilePayload);
-        profErr = fallbackErr;
+        profErr = await writeOwnProfile(userId, profilePayload);
       }
 
       if (profErr) {
@@ -465,6 +464,40 @@ export async function fetchAllProfilesFromSupabase() {
     console.error('Error fetching profiles from Supabase:', e);
     return [];
   }
+}
+
+/**
+ * The signed-in member's own private profile columns (email, notification settings, timezones,
+ * last username change). Members cannot SELECT these columns on profiles; null on failure.
+ */
+export async function fetchMyPrivateProfile(): Promise<Record<string, unknown> | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data, error } = await supabase.rpc('ascend_my_profile');
+  if (error || !data || typeof data !== 'object') return null;
+  return data as Record<string, unknown>;
+}
+
+/** Profile columns members cannot read back; an upsert (ON CONFLICT DO UPDATE) cannot write them. */
+const PRIVATE_PROFILE_COLUMNS = [
+  'email',
+  'notif_daily_reminder',
+  'notif_partner_activity',
+  'notif_league_updates',
+  'last_username_change_at',
+  'device_timezone',
+];
+
+/** Upserts the public profile columns, then writes the private ones with a plain update. */
+async function writeOwnProfile(userId: string, payload: Record<string, any>) {
+  const publicPart: Record<string, any> = {};
+  const privatePart: Record<string, any> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    (PRIVATE_PROFILE_COLUMNS.includes(key) ? privatePart : publicPart)[key] = value;
+  }
+  const { error } = await supabase.from('profiles').upsert(publicPart);
+  if (error || Object.keys(privatePart).length === 0) return error;
+  const { error: privateErr } = await supabase.from('profiles').update(privatePart).eq('id', userId);
+  return privateErr;
 }
 
 /** A league period whose points the server sums: [start, end], start already clamped to the season. */

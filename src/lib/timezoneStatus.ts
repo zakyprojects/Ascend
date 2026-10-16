@@ -1,6 +1,6 @@
 import { trustedNow } from './clock';
 import { todayKey } from './dates';
-import { supabase, isSupabaseConfigured } from './supabase';
+import { supabase, isSupabaseConfigured, fetchMyPrivateProfile } from './supabase';
 
 /**
  * A westward timezone change waits on the server until the new local date catches up with the
@@ -31,12 +31,8 @@ export async function readTimezoneWait(): Promise<TimezoneWait | null> {
   const userId = sessionData.session?.user?.id;
   if (!userId) return null;
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('timezone, timezone_waiting_since')
-    .eq('id', userId)
-    .maybeSingle();
-  if (error || !data?.timezone || !data.timezone_waiting_since) return null;
+  const data = (await fetchMyPrivateProfile()) as { timezone?: string; timezone_waiting_since?: string } | null;
+  if (!data?.timezone || !data.timezone_waiting_since) return null;
 
   const now = trustedNow();
   const serverDate = dateInZone(now, data.timezone);

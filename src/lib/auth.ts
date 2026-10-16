@@ -10,6 +10,7 @@ import {
   clearUserDataWatermark,
   fetchProfileByUsernameFromSupabase,
   fetchAllProfilesFromSupabase,
+  fetchMyPrivateProfile,
   fetchPublicPlansFromSupabase,
   fetchPartnerInvitesSupabase,
   savePartnershipSupabase,
@@ -395,14 +396,10 @@ export async function updateUsernameWithCooldown(
 
   if (isSupabaseConfigured) {
     // 2. Fetch current user profile to check last_username_change_at timestamp
-    const { data: prof, error: fetchErr } = await supabase
-      .from('profiles')
-      .select('last_username_change_at')
-      .eq('id', userId)
-      .maybeSingle();
+    const prof = (await fetchMyPrivateProfile()) as { last_username_change_at?: string } | null;
 
-    if (fetchErr) {
-      console.warn('Failed to check last username change timestamp:', fetchErr.message);
+    if (!prof) {
+      console.warn('Failed to check last username change timestamp.');
     }
 
     if (prof?.last_username_change_at) {
