@@ -166,6 +166,15 @@ export async function isUsernameAvailable(
   return { available: true };
 }
 
+/** Never confirms that an email already has an account; other Supabase messages pass through. */
+function signUpErrorMessage(message?: string): string {
+  if (!message) return "Couldn't create your account. Try again.";
+  if (/already (been )?registered|already exists|email_exists|user_already_exists/i.test(message)) {
+    return "Couldn't create an account with this email. If you already have one, log in instead.";
+  }
+  return message;
+}
+
 export type SignUpResult =
   | { type: 'session' }
   | { type: 'email_confirmation'; email: string };
@@ -220,7 +229,7 @@ export async function signUpUser(
 
   if (authError) {
     sessionStorage.removeItem('ascend_signup_defaults');
-    throw new Error(authError.message || "Couldn't create your account. Try again.");
+    throw new Error(signUpErrorMessage(authError.message));
   }
 
   if (!authData.user) {
@@ -306,16 +315,19 @@ export async function upgradeAnonymousUser(
   }
 
   // 3. Update profiles table FIRST so DB row is authoritative before auth events fire
-  const updates: Record<string, any> = { email: trimmedEmail };
+  // profiles.email is copied from the auth user by the database, never written here.
+  const updates: Record<string, any> = {};
   if (trimmedUsername) updates.username = trimmedUsername;
   if (newAvatar) updates.avatar = newAvatar;
 
   // Stop here if the profile refuses the name (the database keeps usernames unique in any case),
   // so the account is never created under a username the profile does not have.
-  const { error: profileError } = await supabase.from('profiles').update(updates).eq('id', user.id);
-  if (profileError) {
-    if (profileError.code === '23505') throw new Error('Username is already taken');
-    throw new Error("Couldn't save your profile. Try again.");
+  if (Object.keys(updates).length > 0) {
+    const { error: profileError } = await supabase.from('profiles').update(updates).eq('id', user.id);
+    if (profileError) {
+      if (profileError.code === '23505') throw new Error('Username is already taken');
+      throw new Error("Couldn't save your profile. Try again.");
+    }
   }
 
   // 4. Clear stale local cache
@@ -340,7 +352,7 @@ export async function upgradeAnonymousUser(
   });
 
   if (error) {
-    throw new Error(error.message || "Couldn't create your account. Try again.");
+    throw new Error(signUpErrorMessage(error.message));
   }
 }
 
@@ -490,11 +502,18 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
     }
   }
 
+  clearLocalUserData(userId);
+}
+
+/** Removes everything this device keeps for one account (cache, sync queue, ids). */
+export function clearLocalUserData(userId: string): void {
   clearUserDataWatermark(userId);
   clearSyncStorage(userId);
   if (typeof window !== 'undefined') {
     try {
       localStorage.removeItem(`ascend_user_cache_${userId}`);
+      localStorage.removeItem(`ascend_dirty_${userId}`);
+      localStorage.removeItem(`ascend_uid_${userId}`);
     } catch {
       /* ignore */
     }

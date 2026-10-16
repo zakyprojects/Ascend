@@ -182,6 +182,11 @@ export function pendingOpIds(userId: string, table: string): Set<string> {
   );
 }
 
+/** True while any local op is still waiting to be sent. */
+export function hasPendingSyncOps(userId: string): boolean {
+  return Object.keys(readJson<Outbox>(outboxKey(userId)) || {}).length > 0;
+}
+
 export function knownHashes(userId: string, key: string): Record<string, string> {
   return (readJson<Baseline>(baselineKey(userId)) || {})[key] || {};
 }

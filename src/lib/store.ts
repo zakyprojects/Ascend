@@ -111,6 +111,7 @@ import {
 import {
   logoutUser,
   deleteOwnAccount,
+  clearLocalUserData,
   updateProfilePrivacy,
   updateProfileAcceptPartnerInvites,
   updateProfileNotificationPreferences,
@@ -208,7 +209,7 @@ import {
   storedAuthSession,
 } from './supabase';
 import { GuardBlockedError } from './errors';
-import { flushOutbox, recordSyncedChanges } from './sync/outbox';
+import { flushOutbox, hasPendingSyncOps, recordSyncedChanges } from './sync/outbox';
 import { applyRemoteChanges, prepareRemoteRows, pullSyncedRows } from './sync/pull';
 import { SYNCED_COLLECTIONS } from './sync/syncedCollections';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId } from './stateMerger';
@@ -3212,6 +3213,18 @@ export function useAppState() {
             console.error('Failed to send pending changes before logout:', err)
           );
         }
+      }
+
+      // 3b. Nothing waits to be sent: remove this account's data from the device, so the next
+      // person on a shared browser cannot read it. Unsent changes keep it for the next sign-in.
+      if (
+        !accountDeleted &&
+        userId &&
+        !persistError &&
+        !hasPendingSyncOps(userId) &&
+        !localStorage.getItem(`ascend_dirty_${userId}`)
+      ) {
+        clearLocalUserData(userId);
       }
 
       // 4. Attempt remote sign-out
@@ -6269,12 +6282,6 @@ export function useAppState() {
     });
 
     if (updatedPlan) {
-      console.log('[REAL-USER DEBUG: MARK DONE SUCCESS]', {
-        planId: (updatedPlan as any).id,
-        title: (updatedPlan as any).title,
-        newStreakCount: (updatedPlan as any).streakCount,
-        lastCompletedDate: (updatedPlan as any).lastCompletedDate,
-      });
       updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
       syncPlanToSupabase(updatedPlan);
@@ -6378,10 +6385,6 @@ export function useAppState() {
 
     if (updatedFollow) {
       const follow = updatedFollow as UserPlanFollow;
-      console.log('[REAL-USER DEBUG: MARK FOLLOWED DONE SUCCESS]', {
-        followId: follow.id,
-        newStreakCount: follow.streakCount,
-      });
       syncFollowedPlanToSupabase(follow);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
