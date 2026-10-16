@@ -66,7 +66,10 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.ascend_change_username(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ascend_change_username(text) FROM PUBLIC, anon;
+-- Supabase's default privileges also grant new functions to anon directly; signed-out visitors
+-- need neither function (guests sign in anonymously and are 'authenticated').
+REVOKE ALL ON FUNCTION public.ascend_my_profile() FROM anon;
 GRANT EXECUTE ON FUNCTION public.ascend_change_username(text) TO authenticated;
 
 COMMIT;
