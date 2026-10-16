@@ -41,6 +41,7 @@ import { AscendLoadingOverlay, OVERLAY_EXIT_MS } from '@/components/ui/AscendLoa
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
+import { TimezoneWaitBanner } from '@/components/ui/TimezoneWaitBanner';
 import { DiscardChangesDialog } from '@/components/ui/DiscardChangesDialog';
 import { UpdateBanner } from '@/components/ui/UpdateBanner';
 
@@ -189,6 +190,7 @@ function App() {
         <ToastProvider>
           <UpdateBanner />
           <OfflineBanner />
+          <TimezoneWaitBanner />
           <DiscardChangesDialog />
           {authScreen && AuthPageView && (
             <AuthPageView
