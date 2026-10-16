@@ -291,11 +291,9 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   const handleGuestLogoutAnyway = async () => {
     await executeLogout(async () => {
       try {
-        await store.logout();
+        if (await store.logoutGuest()) setShowGuestLogoutWarning(false);
       } catch (err) {
         console.error('Guest logout error in SettingsView:', err);
-      } finally {
-        setShowGuestLogoutWarning(false);
       }
     });
   };

@@ -110,6 +110,7 @@ import {
 } from './leagueTime';
 import {
   logoutUser,
+  deleteOwnAccount,
   updateProfilePrivacy,
   updateProfileAcceptPartnerInvites,
   updateProfileNotificationPreferences,
@@ -3269,6 +3270,28 @@ export function useAppState() {
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * Logging out of a guest account deletes it: a guest cannot sign back in, so the account would
+   * stay behind in the leagues forever. When the server refuses, the guest stays signed in.
+   * Returns false on failure (an error toast is shown).
+   */
+  const logoutGuest = useCallback(async (): Promise<boolean> => {
+    const user = stateRef.current.currentUser;
+    if (!user?.id || !user.isAnonymous) {
+      await logout();
+      return true;
+    }
+    try {
+      await deleteOwnAccount(user.id);
+    } catch (err) {
+      console.error('Guest account deletion failed:', err);
+      dispatchToastError("Couldn't delete your guest account", 'Check your connection and try again.');
+      return false;
+    }
+    await logout({ accountDeleted: true });
+    return true;
+  }, [logout]);
 
   const addPresetHabit = useCallback((preset: PresetHabit) => {
     const normalizedName = preset.name.trim().toLowerCase();
@@ -9230,6 +9253,7 @@ export function useAppState() {
     storedSessionWait,
     setAuthSessionState,
     logout,
+    logoutGuest,
     addPresetHabit,
     addCustomHabit,
     updateHabit,

@@ -209,11 +209,10 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   const handleGuestLogoutAnyway = async () => {
     setIsLoggingOut(true);
     try {
-      await store.logout();
+      if (await store.logoutGuest()) setGuestLogoutWarningOpen(false);
     } catch (err) {
       console.error('Guest logout error in AppShell:', err);
     } finally {
-      setGuestLogoutWarningOpen(false);
       setIsLoggingOut(false);
     }
   };
