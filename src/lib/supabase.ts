@@ -455,9 +455,8 @@ export async function saveUserDataToSupabase(
 export async function fetchAllProfilesFromSupabase() {
   if (!isSupabaseConfigured) return [];
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, uid, username, avatar, total_points, season_points, season_id, stats, active_habits, is_profile_public, season_history, created_at, accept_partner_invites');
+    // Stats and past seasons come back only for members this viewer may see in detail.
+    const { data, error } = await supabase.rpc('ascend_member_profiles');
     if (error || !data) return [];
     return data;
   } catch (e) {
@@ -537,11 +536,8 @@ export async function fetchLeaguePointsFromSupabase(
 export async function fetchProfileByUsernameFromSupabase(username: string) {
   if (!isSupabaseConfigured) return null;
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, uid, username, avatar, total_points, season_points, season_id, stats, active_habits, is_profile_public, season_history, created_at, accept_partner_invites')
-      .ilike('username', username.trim())
-      .maybeSingle();
+    const { data: rows, error } = await supabase.rpc('ascend_member_profiles', { p_username: username.trim() });
+    const data = Array.isArray(rows) ? rows[0] : null;
 
     if (error || !data) return null;
     return data;

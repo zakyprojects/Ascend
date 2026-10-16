@@ -310,9 +310,12 @@ export async function upgradeAnonymousUser(
   if (trimmedUsername) updates.username = trimmedUsername;
   if (newAvatar) updates.avatar = newAvatar;
 
+  // Stop here if the profile refuses the name (the database keeps usernames unique in any case),
+  // so the account is never created under a username the profile does not have.
   const { error: profileError } = await supabase.from('profiles').update(updates).eq('id', user.id);
   if (profileError) {
-    console.warn('Warning updating profile during upgrade:', profileError.message);
+    if (profileError.code === '23505') throw new Error('Username is already taken');
+    throw new Error("Couldn't save your profile. Try again.");
   }
 
   // 4. Clear stale local cache
