@@ -1018,34 +1018,10 @@ export async function sendPartnerInviteSupabase(invite: PartnerInvite) {
     return;
   }
 
-  if (rpcErr) {
-    console.warn('send_partner_invite_atomic RPC fallback:', rpcErr.message);
-  }
-
-  // 2. Direct table INSERT fallback
-  const payload: Record<string, any> = {
-    id: inviteId,
-    from_user_id: fromUserId,
-    from_username: invite.fromUsername,
-    from_avatar: invite.fromAvatar || '🧑',
-    to_user_id: invite.toUserId,
-    to_username: invite.toUsername,
-    status: invite.status,
-  };
-
-  let { error } = await supabase.from('partner_invites').insert(payload);
-  if (error && error.message?.includes('duplicate key')) {
-    const { error: updateErr } = await supabase
-      .from('partner_invites')
-      .update({ status: invite.status })
-      .eq('id', inviteId);
-    error = updateErr;
-  }
-
-  if (error) {
-    console.error('Error sending partner invite to Supabase:', error);
-    throw new Error(error.message || "Couldn't send the invite. Try again.");
-  }
+  // No direct table insert fallback: the server only accepts invites through the RPC,
+  // which enforces the 5-partner cap. Its errors (e.g. invites turned off) reach the user.
+  console.error('send_partner_invite_atomic failed:', rpcErr?.message);
+  throw new Error(rpcErr?.message || "Couldn't send the invite. Try again.");
 }
 
 export async function fetchPartnerInvitesSupabase(userId: string, username: string): Promise<PartnerInvite[]> {

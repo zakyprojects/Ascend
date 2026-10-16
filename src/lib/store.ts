@@ -7120,12 +7120,7 @@ export function useAppState() {
         throw new Error("You can't send an accountability invite to yourself.");
       }
 
-      const targetPartnerships = await fetchPartnershipsSupabase(targetUserId);
-      if (targetPartnerships.length >= 5) {
-        throw new Error(`The user '${targetUsername}' has reached the maximum limit of 5 accountability partners.`);
-      }
-
-      // 1. Check if target user is ALREADY an active partner with current user (local + DB)
+      // 1. Check if target user is ALREADY an active partner with current user (server re-checks)
       const isAlreadyPartnerLocal = (state.partnerships || []).some(
         (p) =>
           p.user1Id === targetUserId ||
@@ -7134,17 +7129,6 @@ export function useAppState() {
           p.user2Username?.toLowerCase() === targetUsername.toLowerCase()
       );
       if (isAlreadyPartnerLocal) {
-        throw new Error(`You are already accountability partners with '${targetUsername}'.`);
-      }
-
-      const isAlreadyPartnerDb = targetPartnerships.some(
-        (p) =>
-          p.user1Id === state.currentUser?.id ||
-          p.user2Id === state.currentUser?.id ||
-          p.user1Username?.toLowerCase() === state.username.toLowerCase() ||
-          p.user2Username?.toLowerCase() === state.username.toLowerCase()
-      );
-      if (isAlreadyPartnerDb) {
         throw new Error(`You are already accountability partners with '${targetUsername}'.`);
       }
 
@@ -7268,11 +7252,6 @@ export function useAppState() {
 
       if (!fromId) fromId = crypto.randomUUID();
       if (!toId) toId = crypto.randomUUID();
-
-      const inviterPartnerships = await fetchPartnershipsSupabase(fromId);
-      if (inviterPartnerships.length >= 5) {
-        throw new Error(`The inviter '${fromUsername}' has reached the maximum limit of 5 accountability partners.`);
-      }
 
       const result = await acceptPartnerInviteAtomicSupabase(inviteId, fromId, fromUsername, toId, toUsername);
 
