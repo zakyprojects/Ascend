@@ -3628,8 +3628,9 @@ export function useAppState() {
         );
 
         const existing = existingIdx >= 0 ? prev.journalEntries[existingIdx] : null;
+        // An edit keeps createdAt (the first write), as the server does, so its echo is a no-op.
         const saved: JournalEntry = existing
-          ? { ...existing, mood, content: trimmed, createdAt: trustedNow().toISOString() }
+          ? { ...existing, mood, content: trimmed }
           : { id: uid(), date, mood, content: trimmed, createdAt: trustedNow().toISOString(), pointsAwarded: false };
         // Only today's entry earns (the server recomputes only today); an earlier entry keeps its flag.
         if (saved.date === date) saved.pointsAwarded = journalEntryEarns(saved);
