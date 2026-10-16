@@ -4233,12 +4233,9 @@ export function useAppState() {
         if (targetUserBook.id) allMatchingIds.add(targetUserBook.id);
         if (targetUserBook.linkedBookId) allMatchingIds.add(targetUserBook.linkedBookId);
 
-        const targetTitleLower = (targetUserBook.title || '').toLowerCase();
         const bookLogs = prev.readingLogs.filter((l) => Boolean(l.bookId && allMatchingIds.has(l.bookId)));
         const remainingReadingLogs = prev.readingLogs.filter((l) => !l.bookId || !allMatchingIds.has(l.bookId));
-        const remainingBooks = prev.libraryBooks.filter(
-          (lb) => !allMatchingIds.has(lb.id) && lb.title.toLowerCase() !== targetTitleLower
-        );
+        const remainingBooks = prev.libraryBooks.filter((lb) => !allMatchingIds.has(lb.id));
 
         // Only today's page award follows the logs; earlier days' points stay. The book's finish
         // bonus goes with it, as on the server: its server row is removed, and a bonus the app gave
