@@ -21,42 +21,17 @@ import { trustedNow, trustedNowMs } from './clock';
 
 let cachedProfiles: any[] = [];
 let cachedPublicPlans: ImprovementPlan[] = [];
-let profilesLoaded = false;
 
 export function setCachedProfiles(profiles: any[]) {
   cachedProfiles = profiles;
-  // A failed fetch also yields []; a real list always holds at least the signed-in member.
-  profilesLoaded = profiles.length > 0;
 }
 
 /** Weekly/monthly league points per period id, then per member id (from ascend_league_points). */
 let cachedLeaguePoints: Record<string, Record<string, number>> = {};
-let leaguePointsLoaded = false;
-let leaguePointsFetchedAtMs = 0;
 
-/**
- * null = none yet (signed out): standings read as 0 and closed periods wait to be archived.
- * `fetchedAtMs`: when the points were requested, so a period that ended later is not archived from them.
- */
-export function setCachedLeaguePoints(points: Record<string, Record<string, number>> | null, fetchedAtMs = 0) {
+/** null = none yet (signed out): standings read as 0. */
+export function setCachedLeaguePoints(points: Record<string, Record<string, number>> | null) {
   cachedLeaguePoints = points ?? {};
-  leaguePointsLoaded = points !== null;
-  leaguePointsFetchedAtMs = points !== null ? fetchedAtMs : 0;
-}
-
-/** When the cached weekly/monthly points were requested (league clock ms; 0 when none). */
-export function getLeaguePointsFetchedAt(): number {
-  return leaguePointsFetchedAtMs;
-}
-
-/** Whether other members' weekly/monthly points are available (closed periods can be archived). */
-export function areLeaguePointsLoaded(): boolean {
-  return leaguePointsLoaded;
-}
-
-/** Whether other members' profiles are available for league standings. */
-export function areProfilesLoaded(): boolean {
-  return profilesLoaded;
 }
 
 export function setCachedPublicPlans(plans: ImprovementPlan[]) {

@@ -117,10 +117,12 @@ export interface LeagueArchive {
   archivedAt: string;
   completedAt?: string;
   participantCount?: number;
-  /** 'ledger': scored with the season's evicted counters (complete). Absent: scored from pointsHistory alone. */
+  /** 'ledger': scored from the complete points ledger. Absent: scored from pointsHistory alone (old archives). */
   scoreSource?: 'ledger';
-  /** Season archive built before other members' profiles had loaded; its standings are rebuilt once they have. */
-  standingsPending?: boolean;
+  /** 'server': written by ascend_run_league_archives. 'client': written by the app before that (kept as history). */
+  source?: 'server' | 'client';
+  /** Server archive past its 48-hour recompute window: its standings no longer change. */
+  final?: boolean;
 }
 
 /** A closed season's final score, published on the member's profile (profiles.season_history). */

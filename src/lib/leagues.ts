@@ -10,9 +10,9 @@ import {
   getSeasonNumber,
   getWeekPeriodId,
   getMonthPeriodId,
+  getSeasonStartByNumber,
 } from './leagueTime';
 import type { LeaguePointsPeriod } from './supabase';
-import { trustedNow } from './clock';
 
 /** Returns formatted Season label (e.g. "Season 1") */
 export function getSeasonLabel(now: Date): string {
@@ -109,7 +109,12 @@ export function formatCountdown(ms: number): string {
   return `${seconds}s`;
 }
 
-/** Calculate net points earned within a given time range from the points history (including additions and deductions) */
+const entryIdOrder = new Intl.Collator('en-US');
+
+/**
+ * Calculate net points earned within a given time range from the points history (including additions and deductions).
+ * Same maths as the server's public.ascend_period_points (league boards and archives); change both together.
+ */
 export function calculatePeriodPoints(
   pointsHistory: PointsEntry[],
   start: Date,
@@ -121,9 +126,11 @@ export function calculatePeriodPoints(
     return 0;
   }
 
-  // Sort history ascending by timestamp
+  // Sort history ascending by timestamp, then id (the server's order for entries at the same instant)
   const history = [...pointsHistory].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    (a, b) =>
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime() ||
+      entryIdOrder.compare(a.id || '', b.id || '')
   );
 
   let periodScore = 0;
@@ -225,10 +232,15 @@ export function generateCompetitors(
     ...otherRealCompetitors,
   ];
 
-  // Sort descending by period points, tie-break by name
+  // Sort descending by period points, then lower-cased name, then id (as the server's archives)
   allCompetitors.sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
-    return a.name.localeCompare(b.name);
+    const aName = a.name.toLowerCase();
+    const bName = b.name.toLowerCase();
+    if (aName !== bName) return aName < bName ? -1 : 1;
+    const aId = a.id ?? '';
+    const bId = b.id ?? '';
+    return aId < bId ? -1 : aId > bId ? 1 : 0;
   });
 
   return allCompetitors;
@@ -254,23 +266,41 @@ export function toArchivedCompetitor(competitor: LeagueCompetitor): LeagueCompet
   return archived as LeagueCompetitor;
 }
 
-export function createArchive(
-  type: LeagueType,
-  competitors: LeagueCompetitor[],
-  userRank: number,
-  userPoints: number,
-  periodLabel: string,
-  id?: string
-): LeagueArchive {
-  return {
-    id,
-    type,
-    periodLabel,
-    competitors: competitors.map(toArchivedCompetitor),
-    userRank,
-    userPoints,
-    archivedAt: trustedNow().toISOString(),
-  };
+/** Archives the Leagues page lists per league type (newest first); the server keeps every one. */
+export const ARCHIVES_SHOWN_PER_TYPE = 12;
+
+/** First instant of an archive's period, from its id (W:/M:/S:), for newest-first ordering. */
+export function getArchivePeriodStart(a: LeagueArchive): number {
+  if (a.id) {
+    if (a.id.startsWith('W:')) {
+      const parts = a.id.slice(2).split('-W');
+      if (parts.length === 2) {
+        const year = parseInt(parts[0], 10);
+        const week = parseInt(parts[1], 10);
+        const jan4 = new Date(Date.UTC(year, 0, 4, 0, 0, 0, 0));
+        const jan4DayNr = (jan4.getUTCDay() + 6) % 7;
+        const firstMon = new Date(Date.UTC(year, 0, 4 - jan4DayNr, 0, 0, 0, 0));
+        const mon = new Date(firstMon.getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000);
+        return mon.getTime();
+      }
+    } else if (a.id.startsWith('M:')) {
+      const parts = a.id.slice(2).split('-');
+      if (parts.length === 2) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        return Date.UTC(year, month, 1, 0, 0, 0, 0);
+      }
+    } else if (a.id.startsWith('S:')) {
+      const sNum = parseInt(a.id.slice(2), 10);
+      if (!isNaN(sNum)) {
+        return getSeasonStartByNumber(sNum).getTime();
+      }
+    }
+  }
+  if (a.archivedAt) {
+    return new Date(a.archivedAt).getTime();
+  }
+  return 0;
 }
 
 export function getLocalResetDetail(type: LeagueType, now: Date): string {

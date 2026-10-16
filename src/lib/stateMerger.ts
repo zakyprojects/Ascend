@@ -45,7 +45,6 @@ import { parseDate } from './dates';
 import { calculateSeasonalTotal } from './leagues';
 import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
 import { isWeeklyGoalSeasonSplitEntryId } from './weeklyGoalSeasons';
-import { archiveSeasonBeforeRollover } from './seasonArchive';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 import { trustedNow, trustedNowMs } from './clock';
 
@@ -373,11 +372,6 @@ function mergeBadHabitLogs(
   });
 }
 
-/** Ledger-scored beats history-only (the user's points); final standings beat pending ones. */
-function archiveCompleteness(archive: LeagueArchive): number {
-  return (archive.scoreSource === 'ledger' ? 2 : 0) + (archive.standingsPending ? 0 : 1);
-}
-
 function mergeLeagueArchives(
   baseList: LeagueArchive[] = [],
   incomingList: LeagueArchive[] = []
@@ -391,11 +385,8 @@ function mergeLeagueArchives(
 
   for (const item of incomingList) {
     if (!item || !item.id) continue;
-    const existing = map.get(item.id);
-    // First come wins, unless the incoming archive is more complete (see archiveCompleteness).
-    if (!existing || archiveCompleteness(item) > archiveCompleteness(existing)) {
-      map.set(item.id, item);
-    }
+    // First come wins (archives are the server's; both sides hold the same rows).
+    if (!map.has(item.id)) map.set(item.id, item);
   }
 
   return Array.from(map.values()).sort(
@@ -1054,12 +1045,7 @@ function mergeAppStateInternal(
     .slice(0, 50);
 
   // 15. Leagues, Lessons, Trackers
-  // A side still in an older season moves into the current one in the merge above,
-  // so its closing season is archived here first.
-  const leagueArchives = mergeLeagueArchives(
-    archiveSeasonBeforeRollover(baseState, currentSeason),
-    archiveSeasonBeforeRollover(incomingState, currentSeason)
-  );
+  const leagueArchives = mergeLeagueArchives(baseState.leagueArchives, incomingState.leagueArchives);
 
   const readLessonIds = Array.from(
     new Set([...(baseState.readLessonIds || []), ...(incomingState.readLessonIds || [])])

@@ -3,7 +3,14 @@ import { Dialog, PageColumns } from '@/components/ui/primitives';
 import { Trophy, Crown, Brain, Calendar, CalendarDays, ChevronDown, ChevronRight } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LeagueType, LeagueCompetitor } from '@/types';
-import { LEAGUE_CONFIG, getLeaguePeriodLabel, getSeasonLabel, getLocalResetDetail } from '@/lib/leagues';
+import {
+  LEAGUE_CONFIG,
+  ARCHIVES_SHOWN_PER_TYPE,
+  getArchivePeriodStart,
+  getLeaguePeriodLabel,
+  getSeasonLabel,
+  getLocalResetDetail,
+} from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { CompetitorProfileModal } from '@/components/ui/CompetitorProfileModal';
@@ -42,7 +49,10 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const leagueData = store.getLeagueData(activeLeague);
   const config = LEAGUE_CONFIG[activeLeague];
   const periodLabel = getLeaguePeriodLabel(activeLeague, now);
-  const archives = store.state.leagueArchives.filter((a) => a.type === activeLeague);
+  const archives = store.state.leagueArchives
+    .filter((a) => a.type === activeLeague)
+    .sort((a, b) => getArchivePeriodStart(b) - getArchivePeriodStart(a))
+    .slice(0, ARCHIVES_SHOWN_PER_TYPE);
   // Looked up live so a sync that removes the archive closes the dialog instead of leaving it empty.
   const openArchive = openArchiveId ? store.state.leagueArchives.find((a) => a.id === openArchiveId) ?? null : null;
   // Tiers come from season points on every tab; weekly/monthly points only rank the table.

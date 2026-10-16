@@ -528,10 +528,13 @@ export const SYNCED_COLLECTIONS = [
   timeTrackerActivities,
   timeTrackerTemplates,
   timeTrackerDays,
-  // League archives (batch F): one row per period id. The client trims each type to its 12
-  // newest without a tombstone, so removals mirror; period ids are deterministic, so a
-  // re-created archive revives its row.
-  { ...documentCollection('leagueArchives', 'league_archives', (a) => a.archivedAt, undefined, true), revivable: true },
+  // League archives (batch F): one row per period id. Every row is the server's
+  // (20261017060000, ascend_run_league_archives): the app never uploads or deletes one.
+  {
+    ...documentCollection('leagueArchives', 'league_archives', (a) => a.archivedAt),
+    revivable: true,
+    serverOwnedId: () => true,
+  },
   addictionTracker as unknown as SyncedCollection,
   lessonReads as unknown as SyncedCollection,
 ] as unknown as SyncedCollection[];

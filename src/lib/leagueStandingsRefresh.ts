@@ -12,8 +12,6 @@ export interface LeagueStandingsResult {
   /** null when that fetch failed: the cache keeps what it had. */
   profiles: any[] | null;
   points: Record<string, Record<string, number>> | null;
-  /** When the fetch was sent (league clock); the server's sums include everything before it. */
-  fetchedAtMs: number;
 }
 
 export interface LeagueStandingsDeps {
@@ -56,7 +54,7 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
       // A real member list always holds at least the signed-in member, so [] means it failed.
       const okProfiles = profiles.length > 0 ? profiles : null;
       if (!okProfiles && !points) return;
-      deps.apply({ profiles: okProfiles, points, fetchedAtMs: now.getTime() });
+      deps.apply({ profiles: okProfiles, points });
       if (points) fetchedPeriodKey = leaguePeriodKey(now);
       if (okProfiles && points) {
         lastSuccessMs = now.getTime();

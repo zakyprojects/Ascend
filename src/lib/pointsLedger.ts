@@ -4,12 +4,11 @@ import {
   calculateSeasonalTotal,
 } from './leagues';
 import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
-import { archiveSeasonBeforeRollover } from './seasonArchive';
 
 /**
  * Pure reducer function to add points (or apply point deductions) to AppState.
  * Manages:
- * 1. Automatic season rollover & league archiving
+ * 1. Automatic season rollover (the closing season's archive comes from the server)
  * 2. Deterministic recalculation of seasonPoints via calculateSeasonalTotal
  */
 export function addPointsInternal(
@@ -33,11 +32,10 @@ export function addPointsInternal(
   const activeSeasonStart = getSeasonStart(now);
 
   let seasonId = typeof prev.seasonId === 'number' ? prev.seasonId : 1;
-  let leagueArchives: LeagueArchive[] = prev.leagueArchives ? [...prev.leagueArchives] : [];
+  const leagueArchives: LeagueArchive[] = prev.leagueArchives ? [...prev.leagueArchives] : [];
 
-  // Season Rollover Check (archive the closing season before moving on)
+  // Season Rollover Check (the closing season's archive comes from the server)
   if (seasonId < activeSeasonNumber) {
-    leagueArchives = archiveSeasonBeforeRollover(prev, activeSeasonNumber);
     seasonId = activeSeasonNumber;
   }
 

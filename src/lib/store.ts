@@ -82,14 +82,11 @@ import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, me
 import {
   getLeaguePeriodStart,
   getLeaguePointsPeriods,
-  clampToSeasonStart,
-  getLeaguePeriodLabel,
   calculatePeriodPoints,
   calculateSeasonalTotal,
   getEffectiveSeasonPoints,
   generateCompetitors,
   getUserRank,
-  createArchive,
   toArchivedCompetitor,
 } from './leagues';
 import { withoutRetiredKeys } from './retiredStateKeys';
@@ -97,15 +94,8 @@ import {
   leagueNow,
   getSeasonNumber,
   getSeasonStart,
-  getWeekStart,
-  getWeekEnd,
-  getMonthStart,
-  getMonthEnd,
   getSeasonEnd,
-  getWeekPeriodId,
-  getMonthPeriodId,
   getSeasonPeriodId,
-  getSeasonStartByNumber,
   syncSeasonConfig,
 } from './leagueTime';
 import {
@@ -118,9 +108,6 @@ import {
   getAllPublicImprovementPlans,
   setCachedProfiles,
   setCachedLeaguePoints,
-  areProfilesLoaded,
-  areLeaguePointsLoaded,
-  getLeaguePointsFetchedAt,
   setCachedPublicPlans,
   updateCachedPublicPlan,
   getCachedPublicPlanById,
@@ -134,7 +121,7 @@ import {
   getHighestUserStreak,
   getAppStateSeasonPoints,
 } from './habitPenalties';
-import { archiveSeasonBeforeRollover, refreshPendingSeasonStandings, toSeasonHistory } from './seasonArchive';
+import { toSeasonHistory } from './seasonArchive';
 import { addPointsInternal } from './pointsLedger';
 import { clockReady, trustedNow, trustedNowMs } from './clock';
 export { addPointsInternal };
@@ -559,7 +546,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
   let seasonId = typeof st.seasonId === 'number' ? st.seasonId : 1;
   // Archives saved before standings were slimmed still carry other members' stats and habits,
   // and the retired seed (filler) accounts; drop those and re-rank the user without them.
-  let leagueArchives: LeagueArchive[] = (st.leagueArchives || [])
+  const leagueArchives: LeagueArchive[] = (st.leagueArchives || [])
     .filter((a) => !!a.id)
     .map((a) => {
       const competitors = a.competitors || [];
@@ -572,19 +559,8 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
     });
 
   // Check if loaded state belongs to an older season (Rollover Check).
-  // Archive the closing season first.
+  // The closing season's archive comes from the server.
   if (st.seasonId === undefined || st.seasonId < activeSeasonNumber) {
-    leagueArchives = archiveSeasonBeforeRollover(
-      {
-        pointsHistory: sortedHistory,
-        seasonId: st.seasonId,
-        leagueArchives,
-        currentUser: profile,
-        username: profile ? profile.username : (st.username ?? 'Guest User'),
-        totalPoints: typeof st.totalPoints === 'number' ? st.totalPoints : 0,
-      },
-      activeSeasonNumber
-    );
     seasonId = activeSeasonNumber;
   }
 
@@ -979,11 +955,10 @@ export function excisePointsEntriesInternal(
   const activeSeasonStart = getSeasonStart(now);
 
   let seasonId = typeof prev.seasonId === 'number' ? prev.seasonId : 1;
-  let leagueArchives: LeagueArchive[] = prev.leagueArchives ? [...prev.leagueArchives] : [];
+  const leagueArchives: LeagueArchive[] = prev.leagueArchives ? [...prev.leagueArchives] : [];
 
-  // Season Rollover Check (archive the closing season before moving on)
+  // Season Rollover Check (the closing season's archive comes from the server)
   if (seasonId < activeSeasonNumber) {
-    leagueArchives = archiveSeasonBeforeRollover(prev, activeSeasonNumber);
     seasonId = activeSeasonNumber;
   }
 
@@ -1841,9 +1816,9 @@ export function useAppState() {
       fetchPoints: (now) => fetchLeaguePointsFromSupabase(getLeaguePointsPeriods(now)),
       now: leagueNow,
       isOnline: () => typeof navigator === 'undefined' || navigator.onLine !== false,
-      apply: ({ profiles, points, fetchedAtMs }) => {
+      apply: ({ profiles, points }) => {
         if (profiles) setCachedProfiles(profiles);
-        if (points) setCachedLeaguePoints(points, fetchedAtMs);
+        if (points) setCachedLeaguePoints(points);
         setLeagueDataVersion((v) => v + 1);
       },
     })
@@ -3144,10 +3119,9 @@ export function useAppState() {
 
       setState((prev) => {
         challengesToSync.length = 0;
-        const archivedState = checkAndArchiveLeagues(prev, targetNow);
-        // Missed-habit, no-report and exercise-target penalties come from the hourly server job.
+        // League archives and missed-habit, no-report and exercise-target penalties come from hourly server jobs.
         const weeklyGoalsReconciledState = reconcileWeeklyGoalsPointsForAllWeeks(
-          reconcileLinkedWeeklyGoals(archivedState, targetNow),
+          reconcileLinkedWeeklyGoals(prev, targetNow),
           targetNow
         );
 
@@ -9384,138 +9358,3 @@ export function useAppState() {
 }
 
 export type AppStore = ReturnType<typeof useAppState>;
-
-function getArchivePeriodStart(a: LeagueArchive): number {
-  if (a.id) {
-    if (a.id.startsWith('W:')) {
-      const parts = a.id.slice(2).split('-W');
-      if (parts.length === 2) {
-        const year = parseInt(parts[0], 10);
-        const week = parseInt(parts[1], 10);
-        const jan4 = new Date(Date.UTC(year, 0, 4, 0, 0, 0, 0));
-        const jan4DayNr = (jan4.getUTCDay() + 6) % 7;
-        const firstMon = new Date(Date.UTC(year, 0, 4 - jan4DayNr, 0, 0, 0, 0));
-        const mon = new Date(firstMon.getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000);
-        return mon.getTime();
-      }
-    } else if (a.id.startsWith('M:')) {
-      const parts = a.id.slice(2).split('-');
-      if (parts.length === 2) {
-        const year = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1;
-        return Date.UTC(year, month, 1, 0, 0, 0, 0);
-      }
-    } else if (a.id.startsWith('S:')) {
-      const sNum = parseInt(a.id.slice(2), 10);
-      if (!isNaN(sNum)) {
-        return getSeasonStartByNumber(sNum).getTime();
-      }
-    }
-  }
-  if (a.archivedAt) {
-    return new Date(a.archivedAt).getTime();
-  }
-  return 0;
-}
-
-function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
-  const newArchives: LeagueArchive[] = [];
-  // Closed weeks/months are archived only once other members' points have arrived; an archive made
-  // earlier would save everyone else at 0 and is never rebuilt. The catch-up loops make it later.
-  const standingsReady = areProfilesLoaded() && areLeaguePointsLoaded();
-  // A period that ended after those points were requested waits for a refresh with its final scores.
-  const pointsFetchedAt = getLeaguePointsFetchedAt();
-
-  // 1. Weekly catch-up loop
-  const currWeekStart = getWeekStart(now);
-  let weekRefDate = new Date(currWeekStart.getTime() - 1);
-  for (let step = 0; standingsReady && step < 12; step++) {
-    const periodStart = getWeekStart(weekRefDate);
-    // Points before a season start in the same week do not count (a new season restarts leagues).
-    const scoreStart = clampToSeasonStart(periodStart, weekRefDate);
-    const periodEnd = getWeekEnd(weekRefDate);
-    const periodId = getWeekPeriodId(weekRefDate);
-
-    if (state.leagueArchives.some((a) => a.id === periodId)) {
-      break;
-    }
-
-    const prevPoints = calculatePeriodPoints(state.pointsHistory, scoreStart, periodEnd, state.totalPoints);
-    if (prevPoints > 0 && periodEnd.getTime() <= pointsFetchedAt) {
-      const competitors = generateCompetitors(
-        'weekly',
-        prevPoints,
-        state.currentUser,
-        state.username,
-        state.totalPoints,
-        undefined,
-        undefined,
-        weekRefDate
-      );
-      const userRank = getUserRank(competitors);
-      const periodLabel = getLeaguePeriodLabel('weekly', weekRefDate);
-      newArchives.push(createArchive('weekly', competitors, userRank, prevPoints, periodLabel, periodId));
-    }
-
-    weekRefDate = new Date(periodStart.getTime() - 1);
-  }
-
-  // 2. Monthly catch-up loop
-  const currMonthStart = getMonthStart(now);
-  let monthRefDate = new Date(currMonthStart.getTime() - 1);
-  for (let step = 0; standingsReady && step < 12; step++) {
-    const periodStart = getMonthStart(monthRefDate);
-    // Points before a season start in the same month do not count (a new season restarts leagues).
-    const scoreStart = clampToSeasonStart(periodStart, monthRefDate);
-    const periodEnd = getMonthEnd(monthRefDate);
-    const periodId = getMonthPeriodId(monthRefDate);
-
-    if (state.leagueArchives.some((a) => a.id === periodId)) {
-      break;
-    }
-
-    const prevPoints = calculatePeriodPoints(state.pointsHistory, scoreStart, periodEnd, state.totalPoints);
-    if (prevPoints > 0 && periodEnd.getTime() <= pointsFetchedAt) {
-      const competitors = generateCompetitors(
-        'monthly',
-        prevPoints,
-        state.currentUser,
-        state.username,
-        state.totalPoints,
-        undefined,
-        undefined,
-        monthRefDate
-      );
-      const userRank = getUserRank(competitors);
-      const periodLabel = getLeaguePeriodLabel('monthly', monthRefDate);
-      newArchives.push(createArchive('monthly', competitors, userRank, prevPoints, periodLabel, periodId));
-    }
-
-    monthRefDate = new Date(periodStart.getTime() - 1);
-  }
-
-  // 3. Season: closed from the full ledger while this state still holds the closing season's counters
-  // (every season with points passes through such a state), plus standings deferred until profiles loaded.
-  const seasonArchives = refreshPendingSeasonStandings({
-    ...state,
-    leagueArchives: archiveSeasonBeforeRollover(state, getSeasonNumber(now)),
-  });
-  const seasonChanged = seasonArchives !== state.leagueArchives;
-
-  if (newArchives.length === 0 && !seasonChanged) return state;
-
-  const allArchives = [...newArchives, ...seasonArchives];
-  const finalArchives: LeagueArchive[] = [];
-  const types: LeagueType[] = ['weekly', 'monthly', 'ninetyDay'];
-
-  for (const type of types) {
-    const typeArchives = allArchives.filter((a) => a.type === type);
-    typeArchives.sort((a, b) => getArchivePeriodStart(b) - getArchivePeriodStart(a));
-    finalArchives.push(...typeArchives.slice(0, 12));
-  }
-
-  return {
-    ...state,
-    leagueArchives: finalArchives,
-  };
-}
