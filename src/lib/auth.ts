@@ -409,37 +409,25 @@ export async function updateUsernameWithCooldown(
       const cooldownMs = 24 * 60 * 60 * 1000;
 
       if (msElapsed < cooldownMs) {
-        const msLeft = cooldownMs - msElapsed;
-        const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
-        const minsLeft = Math.ceil((msLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const totalMinsLeft = Math.ceil((cooldownMs - msElapsed) / (1000 * 60));
+        const hoursLeft = Math.floor(totalMinsLeft / 60);
+        const minsLeft = totalMinsLeft % 60;
         throw new Error(
           `Username can only be changed once per 24 hours. Next change available in ${hoursLeft}h ${minsLeft}m.`
         );
       }
     }
 
-    // 3. Update profiles table and Supabase auth metadata
-    const nowIso = trustedNow().toISOString();
-    let { error: updateErr } = await supabase
-      .from('profiles')
-      .update({
-        username: trimmed,
-        last_username_change_at: nowIso,
-      })
-      .eq('id', userId);
-
-    if (updateErr && (updateErr.message?.includes('last_username_change_at') || updateErr.code === 'PGRST204')) {
-      console.warn('last_username_change_at column missing in Supabase schema cache, updating username only.');
-      const { error: fallbackErr } = await supabase
-        .from('profiles')
-        .update({ username: trimmed })
-        .eq('id', userId);
-      updateErr = fallbackErr;
-    }
+    // 3. Rename on the server, which enforces the format, uniqueness and the 24-hour cooldown
+    // (ascend_change_username) and stamps the change on its own clock.
+    const { data: changedAt, error: updateErr } = await supabase.rpc('ascend_change_username', {
+      p_username: trimmed,
+    });
 
     if (updateErr) {
       throw new Error(updateErr.message || "Couldn't change your username. Try again.");
     }
+    const nowIso = typeof changedAt === 'string' ? changedAt : trustedNow().toISOString();
 
     // Propagate metadata to Auth
     await supabase.auth.updateUser({
