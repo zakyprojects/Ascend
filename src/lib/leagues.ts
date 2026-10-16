@@ -16,10 +16,19 @@ export function getSeasonLabel(now: Date): string {
   return `Season ${getSeasonNumber(now)}`;
 }
 
+/**
+ * A new season restarts every league from zero: a week or month that began in the previous
+ * season counts only from the season's start (its dates and end stay the same).
+ */
+export function clampToSeasonStart(periodStart: Date, now: Date): Date {
+  const seasonStart = getSeasonStart(now);
+  return periodStart.getTime() < seasonStart.getTime() ? seasonStart : periodStart;
+}
+
 export function getLeaguePeriodStart(type: LeagueType, now: Date): Date {
   switch (type) {
-    case 'weekly': return getWeekStart(now);
-    case 'monthly': return getMonthStart(now);
+    case 'weekly': return clampToSeasonStart(getWeekStart(now), now);
+    case 'monthly': return clampToSeasonStart(getMonthStart(now), now);
     case 'ninetyDay': return getSeasonStart(now);
   }
 }

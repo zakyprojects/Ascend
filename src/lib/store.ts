@@ -80,6 +80,7 @@ import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lesson
 import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, meetsReadingBonusGates, readingBonusId } from './readingAwards';
 import {
   getLeaguePeriodStart,
+  clampToSeasonStart,
   getLeaguePeriodLabel,
   calculatePeriodPoints,
   calculateSeasonalTotal,
@@ -9434,6 +9435,8 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
   let weekRefDate = new Date(currWeekStart.getTime() - 1);
   for (let step = 0; step < 12; step++) {
     const periodStart = getWeekStart(weekRefDate);
+    // Points before a season start in the same week do not count (a new season restarts leagues).
+    const scoreStart = clampToSeasonStart(periodStart, weekRefDate);
     const periodEnd = getWeekEnd(weekRefDate);
     const periodId = getWeekPeriodId(weekRefDate);
 
@@ -9441,7 +9444,7 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
       break;
     }
 
-    const prevPoints = calculatePeriodPoints(state.pointsHistory, periodStart, periodEnd, state.totalPoints);
+    const prevPoints = calculatePeriodPoints(state.pointsHistory, scoreStart, periodEnd, state.totalPoints);
     if (prevPoints > 0) {
       const competitors = generateCompetitors(
         'weekly',
@@ -9466,6 +9469,8 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
   let monthRefDate = new Date(currMonthStart.getTime() - 1);
   for (let step = 0; step < 12; step++) {
     const periodStart = getMonthStart(monthRefDate);
+    // Points before a season start in the same month do not count (a new season restarts leagues).
+    const scoreStart = clampToSeasonStart(periodStart, monthRefDate);
     const periodEnd = getMonthEnd(monthRefDate);
     const periodId = getMonthPeriodId(monthRefDate);
 
@@ -9473,7 +9478,7 @@ function checkAndArchiveLeagues(state: AppState, now: Date): AppState {
       break;
     }
 
-    const prevPoints = calculatePeriodPoints(state.pointsHistory, periodStart, periodEnd, state.totalPoints);
+    const prevPoints = calculatePeriodPoints(state.pointsHistory, scoreStart, periodEnd, state.totalPoints);
     if (prevPoints > 0) {
       const competitors = generateCompetitors(
         'monthly',
