@@ -40,7 +40,6 @@ export function TierBadge({ totalPoints, size = 'md', showName = false }: TierBa
         style={{
           backgroundColor: `var(--rank-${tierKey}-bg)`,
           border: `1.5px solid var(--rank-${tierKey}-border)`,
-          boxShadow: `0 2px 8px var(--rank-${tierKey}-glow)`,
         }}
       >
         <Icon size={s.icon} style={{ color: `var(--rank-${tierKey}-text)` }} />

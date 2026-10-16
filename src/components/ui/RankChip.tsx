@@ -59,8 +59,7 @@ export function RankChip({ seasonPoints, latestEntryTimestamp }: RankChipProps) 
           key={rankUpId}
           aria-hidden="true"
           className="pointer-events-none absolute -inset-3 rounded-2xl animate-rank-glow"
-          // The --rank-*-glow tokens (8-10% alpha) are tuned for resting shadows and
-          // are too faint for a moment, so the glow is mixed from the rank's text colour.
+          // The rank-up flash (an allowed exception to the no-glow rule) is mixed from the rank's text colour.
           style={{
             background: `radial-gradient(closest-side, color-mix(in srgb, var(--rank-${tierKey}-text) 35%, transparent), transparent)`,
           }}

@@ -140,47 +140,38 @@
     --rank-beginner-text: #94a3b8;
     --rank-beginner-bg: rgba(148, 163, 184, 0.08);
     --rank-beginner-border: rgba(148, 163, 184, 0.25);
-    --rank-beginner-glow: rgba(148, 163, 184, 0.08);
 
     --rank-starter-text: #38bdf8;
     --rank-starter-bg: rgba(56, 189, 248, 0.08);
     --rank-starter-border: rgba(56, 189, 248, 0.25);
-    --rank-starter-glow: rgba(56, 189, 248, 0.08);
 
     --rank-learner-text: #34d399;
     --rank-learner-bg: rgba(52, 211, 153, 0.08);
     --rank-learner-border: rgba(52, 211, 153, 0.25);
-    --rank-learner-glow: rgba(52, 211, 153, 0.08);
 
     --rank-trainer-text: #fb923c;
     --rank-trainer-bg: rgba(251, 146, 60, 0.08);
     --rank-trainer-border: rgba(251, 146, 60, 0.25);
-    --rank-trainer-glow: rgba(251, 146, 60, 0.08);
 
     --rank-achiever-text: #f59e0b;
     --rank-achiever-bg: rgba(245, 158, 11, 0.08);
     --rank-achiever-border: rgba(245, 158, 11, 0.25);
-    --rank-achiever-glow: rgba(245, 158, 11, 0.08);
 
     --rank-performer-text: #a78bfa;
     --rank-performer-bg: rgba(167, 139, 250, 0.08);
     --rank-performer-border: rgba(167, 139, 250, 0.25);
-    --rank-performer-glow: rgba(167, 139, 250, 0.08);
 
     --rank-expert-text: #14b8a6;
     --rank-expert-bg: rgba(20, 184, 166, 0.08);
     --rank-expert-border: rgba(20, 184, 166, 0.25);
-    --rank-expert-glow: rgba(20, 184, 166, 0.08);
 
     --rank-leader-text: #ef4444;
     --rank-leader-bg: rgba(239, 68, 68, 0.08);
     --rank-leader-border: rgba(239, 68, 68, 0.25);
-    --rank-leader-glow: rgba(239, 68, 68, 0.08);
 
     --rank-master-text: #eab308;
     --rank-master-bg: rgba(234, 179, 8, 0.08);
     --rank-master-border: rgba(234, 179, 8, 0.25);
-    --rank-master-glow: rgba(234, 179, 8, 0.08);
 
     /* Motion tokens (theme-independent) */
     --duration-fast: 150ms;
@@ -360,47 +351,38 @@
     --rank-beginner-text: #475569;
     --rank-beginner-bg: #f1f5f9;
     --rank-beginner-border: #cbd5e1;
-    --rank-beginner-glow: rgba(71, 85, 105, 0.10);
 
     --rank-starter-text: #0369a1;
     --rank-starter-bg: #e0f2fe;
     --rank-starter-border: #7dd3fc;
-    --rank-starter-glow: rgba(3, 105, 161, 0.10);
 
     --rank-learner-text: #047857;
     --rank-learner-bg: #ecfdf5;
     --rank-learner-border: #6ee7b7;
-    --rank-learner-glow: rgba(4, 120, 87, 0.10);
 
     --rank-trainer-text: #c2410c;
     --rank-trainer-bg: #fff7ed;
     --rank-trainer-border: #fdba74;
-    --rank-trainer-glow: rgba(194, 65, 12, 0.10);
 
     --rank-achiever-text: #b45309;
     --rank-achiever-bg: #fef3c7;
     --rank-achiever-border: #fcd34d;
-    --rank-achiever-glow: rgba(180, 83, 9, 0.10);
 
     --rank-performer-text: #6d28d9;
     --rank-performer-bg: #f5f3ff;
     --rank-performer-border: #c4b5fd;
-    --rank-performer-glow: rgba(109, 40, 217, 0.10);
 
     --rank-expert-text: #0f766e;
     --rank-expert-bg: #f0fdfa;
     --rank-expert-border: #5eead4;
-    --rank-expert-glow: rgba(15, 118, 110, 0.10);
 
     --rank-leader-text: #b91c1c;
     --rank-leader-bg: #fef2f2;
     --rank-leader-border: #fca5a5;
-    --rank-leader-glow: rgba(185, 28, 28, 0.10);
 
     --rank-master-text: #854d0e;
     --rank-master-bg: #fefce8;
     --rank-master-border: #fde047;
-    --rank-master-glow: rgba(133, 77, 14, 0.10);
   }
 
   * {
