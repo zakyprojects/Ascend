@@ -569,7 +569,12 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       </Dialog>
 
       {/* Delete Confirmation Modal */}
-      <Dialog open={!!deleteModalHabit} onClose={() => setDeleteModalHabit(null)} title="Delete Bad Habit?">
+      <Dialog
+        open={!!deleteModalHabit}
+        onClose={() => setDeleteModalHabit(null)}
+        preventClose={!!deleteModalHabit && isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
+        title="Delete Bad Habit?"
+      >
         {deleteModalHabit && (
           <div className="space-y-4">
             {deleteModalHabit.isCompleted ? (

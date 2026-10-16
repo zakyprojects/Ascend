@@ -1467,6 +1467,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       {/* INVITE PARTNER MODAL */}
       <Dialog
         open={inviteModalOpen}
+        preventClose={isSubmittingInvite}
         onClose={() => {
           setInviteModalOpen(false);
           setInviteError(null);
@@ -1528,6 +1529,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       {/* ITEM 1: START MULTI-CATEGORY SHARED CHALLENGE MODAL (PLEDGE JOINT PACT) */}
       <Dialog
         open={challengeModalOpen}
+        preventClose={isSubmittingChallenge}
         onClose={() => {
           setChallengeModalOpen(false);
           setChallengeError(null);

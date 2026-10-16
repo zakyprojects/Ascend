@@ -2542,6 +2542,7 @@ export function ProjectsGoalsView({
       {/* -------------------------------------------------------------------- */}
       <Dialog
         open={goalModalOpen}
+        preventClose={isKeyLoading('save_goal')}
         onClose={() => setGoalModalOpen(false)}
         dirty={goalForm.dirty}
         title={editingGoal ? 'Edit Goal' : 'Create New Goal'}
@@ -2675,6 +2676,7 @@ export function ProjectsGoalsView({
       {/* -------------------------------------------------------------------- */}
       <Dialog
         open={projectModalOpen}
+        preventClose={isKeyLoading('save_project')}
         onClose={() => setProjectModalOpen(false)}
         dirty={projectForm.dirty}
         title={editingProject ? 'Edit Project' : 'Create New Project'}
@@ -2792,6 +2794,7 @@ export function ProjectsGoalsView({
       {/* -------------------------------------------------------------------- */}
       <Dialog
         open={taskModalOpen}
+        preventClose={isKeyLoading('save_task_modal')}
         onClose={() => setTaskModalOpen(false)}
         dirty={taskForm.dirty}
         title={editingTask ? 'Edit Task' : 'Create New Task'}

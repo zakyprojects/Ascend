@@ -896,6 +896,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       {/* MODAL: ADD CUSTOM BOOK */}
       <Dialog
         open={addCustomModalOpen}
+        preventClose={isAdding}
         onClose={() => setAddCustomModalOpen(false)}
         dirty={addBookForm.dirty}
         title="Add Book"
@@ -1123,6 +1124,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       {/* MODAL: LOG PROGRESS (ABSOLUTE CURRENT PAGE MODEL) */}
       <Dialog
         open={Boolean(progressModalBook)}
+        preventClose={isUpdatingProgress}
         onClose={() => setProgressModalBook(null)}
         title={progressModalBook ? `Log Progress: ${progressModalBook.title}` : 'Log Progress'}
       >
@@ -1191,6 +1193,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       {/* MODAL: FINISH BOOK & REFLECTION (COMPULSORY REFLECTION) */}
       <Dialog
         open={Boolean(finishModalBook)}
+        preventClose={isFinishing}
         onClose={() => setFinishModalBook(null)}
         dirty={finishForm.dirty}
         title={finishModalBook ? `Finish: ${finishModalBook.title}` : 'Finish Book'}

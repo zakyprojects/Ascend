@@ -291,7 +291,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       </PageColumns>
 
       {/* Log Workout Modal */}
-      <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} title="Log Workout">
+      <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} title="Log Workout" preventClose={isLogging}>
         <form onSubmit={handleLogSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-type-select">Workout type</label>
@@ -447,7 +447,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       />
 
       {/* Target Weekly Goal Modal */}
-      <Dialog open={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set Weekly Goal">
+      <Dialog open={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set Weekly Goal" preventClose={isSavingGoal}>
         <form
           onSubmit={async (e) => {
             e.preventDefault();
