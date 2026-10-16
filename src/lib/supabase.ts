@@ -138,10 +138,6 @@ export function isUserHydrationComplete(userId: string): boolean {
   return userHydrationCompleteMap.get(userId) === true;
 }
 
-export function clearUserHydrationComplete(userId: string) {
-  userHydrationCompleteMap.delete(userId);
-}
-
 export function setUserDataWatermark(userId: string, stateOrWeight: AppState | UserDataWeight) {
   if (!userId) return;
   const weight = 'itemCount' in stateOrWeight ? stateOrWeight : computeStateDataWeight(stateOrWeight);
@@ -924,35 +920,6 @@ export async function fetchPublicPlansFromSupabase(options?: FetchPublicPlansPar
     });
   } catch (e) {
     console.error('Error fetching public plans from Supabase:', e);
-    return [];
-  }
-}
-
-export async function fetchPlanReflectionNotes(
-  planId: string,
-  isFollowed: boolean = false
-): Promise<PlanReflectionNote[]> {
-  if (!isSupabaseConfigured) return [];
-  try {
-    const col = isFollowed ? 'followed_plan_id' : 'original_plan_id';
-    const { data, error } = await supabase
-      .from('plan_reflection_notes')
-      .select('*')
-      .eq(col, planId)
-      .order('created_at', { ascending: false });
-
-    if (error || !data) return [];
-
-    return data.map((r) => ({
-      id: r.id,
-      originalPlanId: r.original_plan_id,
-      followedPlanId: r.followed_plan_id,
-      ownerId: r.owner_id,
-      note: r.note,
-      createdAt: r.created_at,
-    }));
-  } catch (e) {
-    console.error('Error fetching reflection notes:', e);
     return [];
   }
 }

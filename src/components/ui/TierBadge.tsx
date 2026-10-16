@@ -1,5 +1,4 @@
-import { getCurrentTier, getProgressToNextTier, getNextTier } from '@/lib/tiers';
-import { ProgressBar } from './primitives/ProgressBar';
+import { getCurrentTier } from '@/lib/tiers';
 import { LucideIcon } from 'lucide-react';
 import { Compass, Rocket, BookOpen, Dumbbell, Trophy, Star, Gem, Shield, Crown } from 'lucide-react';
 
@@ -63,41 +62,3 @@ export function TierBadge({ totalPoints, size = 'md', showName = false }: TierBa
   );
 }
 
-interface TierProgressProps {
-  totalPoints: number;
-}
-
-export function TierProgress({ totalPoints }: TierProgressProps) {
-  const tier = getCurrentTier(totalPoints);
-  const next = getNextTier(totalPoints);
-  const progress = getProgressToNextTier(totalPoints);
-  const tierKey = tier.name.toLowerCase();
-  const nextKey = next ? next.name.toLowerCase() : tierKey;
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        {next ? (
-          <span className="text-xs text-content-disabled ml-auto">
-            {next.name} at <span className="figure">{next.minPoints.toLocaleString()}</span>
-          </span>
-        ) : (
-          <span className="text-xs text-content-disabled ml-auto">Max tier reached</span>
-        )}
-      </div>
-      <ProgressBar
-        value={progress.percent}
-        label={next ? `Progress to ${next.name}` : 'Rank progress'}
-        size="lg"
-        fillStyle={{ backgroundImage: `linear-gradient(90deg, var(--rank-${tierKey}-text), var(--rank-${nextKey}-text))` }}
-      />
-      {next && (
-        <div className="flex items-center justify-between mt-1.5">
-          <span className="text-xs text-content-disabled ml-auto">
-            <span className="figure">{(next.minPoints - totalPoints).toLocaleString()}</span> to go
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}

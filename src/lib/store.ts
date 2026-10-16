@@ -1255,16 +1255,6 @@ export function getWeeklyReflectionNetPoints(state: AppState, weekKey: string): 
   return total;
 }
 
-export function getWeeklyGoalsNetPoints(state: AppState, weekKey: string): number {
-  let total = 0;
-  for (const e of state.pointsHistory || []) {
-    if (e && e.source === 'weekly_goal_achieved' && e.metadata?.weekKey === weekKey) {
-      total += e.amount || 0;
-    }
-  }
-  return total;
-}
-
 /**
  * Weekly Goals points for a week the active season started in.
  * The earlier season's entry (`weekly_goal_<weekKey>`) is frozen with that season; this season
@@ -4804,47 +4794,6 @@ export function useAppState() {
         ),
       };
     });
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const deleteBadHabitLog = useCallback((badHabitId: string, date: string) => {
-    setState(
-      (prev) => {
-        const target = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
-        let pointsUpdate = {};
-        let excisedIds: string[] = [];
-        if (target && target.pointsAwardedOrDeducted !== 0) {
-          const exciseResult = excisePointsEntriesInternal(
-            prev,
-            (entry) => {
-              if (entry.metadata?.badHabitId === badHabitId && entry.metadata?.date === date) return true;
-              if (entry.source === 'bad_habit_occurred' || entry.source === 'bad_habit_resisted' || entry.source === 'bad_habit_no_report') {
-                if (entry.metadata?.badHabitId === badHabitId && entry.metadata?.date === date) return true;
-              }
-              return false;
-            },
-            1
-          );
-          const { excisedEntryIds, ...restPoints } = exciseResult;
-          pointsUpdate = restPoints;
-          excisedIds = excisedEntryIds;
-        }
-        const toTombstone = [
-          ...(prev.deletedEntityIds || []),
-          ...(target?.id ? [target.id] : []),
-          ...excisedIds,
-        ];
-        const updatedDeletedEntityIds = Array.from(new Set(toTombstone)).slice(-500);
-        return {
-          ...prev,
-          badHabitLogs: prev.badHabitLogs.filter((l) => !(l.badHabitId === badHabitId && l.date === date)),
-          deletedEntityIds: updatedDeletedEntityIds,
-          ...pointsUpdate,
-        };
-      },
-      { immediate: true }
-    );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -9314,7 +9263,6 @@ export function useAppState() {
     deleteBadHabit,
     completeBadHabit,
     updateBadHabit,
-    deleteBadHabitLog,
     setAddictionTracker,
     deleteAddictionTracker,
     resetAddictionStreak,

@@ -1,4 +1,4 @@
-import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, PartnerInvite, Partnership, SeasonHistoryEntry } from '@/types';
+import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, SeasonHistoryEntry } from '@/types';
 import { getLeaguePeriodStart, calculatePeriodPoints, sanitizePointsHistory } from './leagues';
 import { leagueNow, getSeasonNumber } from './leagueTime';
 import { generateNumericUID, todayKey, parseDate } from './dates';
@@ -7,7 +7,6 @@ import { clearSyncStorage } from './sync/outbox';
 import {
   supabase,
   isSupabaseConfigured,
-  saveUserDataToSupabase,
   clearUserDataWatermark,
   fetchProfileByUsernameFromSupabase,
   fetchAllProfilesFromSupabase,
@@ -820,26 +819,4 @@ export async function fetchProfileByUidFromSupabase(
   }
 
   return null;
-}
-
-/**
- * Legacy compatibility functions (no-ops or redirected to Supabase)
- */
-export function getCurrentSessionUserId(): string | null {
-  return null;
-}
-export function getRegisteredUsers(): Record<string, any> {
-  return {};
-}
-export function saveUserState(userId: string, state: AppState) {
-  saveUserDataToSupabase(userId, state).catch((err) => {
-    console.error('Failed to save user state in saveUserState:', err);
-  });
-}
-export function addPartnerInviteAcrossUsers(invite: PartnerInvite) {}
-export function updatePartnerInviteStatusAcrossUsers(inviteId: string, status: 'accepted' | 'declined') {}
-export function setPartnershipAcrossUsers(partnership: Partnership) {}
-export function removePartnershipAcrossUsers(user1Username: string, user2Username: string) {}
-export function getAllPartnerInvitesForUser(username: string): PartnerInvite[] {
-  return [];
 }

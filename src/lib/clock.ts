@@ -47,11 +47,6 @@ export function trustedNow(): Date {
   return new Date(trustedNowMs());
 }
 
-/** True once the server time has been read in this session. */
-export function isClockTrusted(): boolean {
-  return anchor !== null;
-}
-
 function remember(): void {
   if (!anchor) return;
   try {

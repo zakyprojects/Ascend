@@ -6,7 +6,6 @@ import { WeeklyGoalItem } from '@/types';
  * Days/weeks before this date are never scored retroactively.
  */
 export const POINTS_V2_START_DATE_KEY = '2026-10-01';
-export const RETRO_SCORING_WINDOW_DAYS = 7;
 
 export const PRESET_HABIT_POINTS = {
   dailyCap: 10,
@@ -116,25 +115,6 @@ export const BAD_HABIT_POINTS = {
   // habitPenalties.ts and ascend_process_penalties (multiplied by the miss multiplier)
   noReportBase: 3,
 } as const;
-
-export function allocateResistPoints(
-  sameDayResistLogs: ReadonlyArray<{ id: string; createdAt?: string }>
-): Map<string, number> {
-  const sorted = [...sameDayResistLogs].sort(
-    (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-  );
-  let cumulativePoints = 0;
-  const result = new Map<string, number>();
-  for (let i = 0; i < sorted.length; i++) {
-    let logPts = 0;
-    if (i < BAD_HABIT_POINTS.maxDailyResists && cumulativePoints + BAD_HABIT_POINTS.resistBase <= BAD_HABIT_POINTS.dailyCap) {
-      logPts = BAD_HABIT_POINTS.resistBase;
-      cumulativePoints += logPts;
-    }
-    result.set(sorted[i].id, logPts);
-  }
-  return result;
-}
 
 export const SOBRIETY_MILESTONE_POINTS = {
   '1w': 10,

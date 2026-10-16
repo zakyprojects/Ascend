@@ -5,13 +5,6 @@ export interface JournalPrompt {
   prompt: string;
 }
 
-export const JOURNAL_PROMPT_CATEGORIES = [
-  { name: 'Gratitude', color: 'badge-amber' },
-  { name: 'Reflection', color: 'badge-emerald' },
-  { name: 'Challenges', color: 'badge-sky' },
-  { name: 'Forward-Looking', color: 'badge-purple' },
-] as const;
-
 export const JOURNAL_PROMPTS: JournalPrompt[] = [
   // Gratitude
   {
