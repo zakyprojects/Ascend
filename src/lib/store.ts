@@ -7501,21 +7501,15 @@ export function useAppState() {
     const bestStreakDays = rawStats.bestStreakDays ?? rawStats.streakDays ?? 0;
     const bestStreakCategory = rawStats.bestStreakCategory ?? rawStats.streakSource ?? '';
 
-    const now = leagueNow();
-    const start = getLeaguePeriodStart('ninetyDay', now);
-    const seasonPoints = calculatePeriodPoints(profile.points_history || [], start, now, profile.total_points);
-
-    const activeSeasonNumber = getSeasonNumber(now);
-    const profileSeasonId = typeof profile.season_id === 'number' ? profile.season_id : 1;
-    const computedSeasonPts = profileSeasonId === activeSeasonNumber
-      ? (typeof profile.season_points === 'number' ? profile.season_points : seasonPoints)
-      : 0;
+    // The server derives season_points for the running season (refreshed at every season start).
+    const computedSeasonPts = typeof profile.season_points === 'number' ? profile.season_points : 0;
+    const activeSeasonNumber = getSeasonNumber(leagueNow());
 
     return {
       totalPoints: profile.total_points || 0,
       seasonPoints: computedSeasonPts,
-      seasonId: profileSeasonId,
-      season_id: profileSeasonId,
+      seasonId: activeSeasonNumber,
+      season_id: activeSeasonNumber,
       season_points: computedSeasonPts,
       stats: {
         ...rawStats,
