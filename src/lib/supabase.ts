@@ -388,8 +388,9 @@ export async function saveUserDataToSupabase(
         season_id: finalState.seasonId || 1,
         stats: userStats,
         active_habits: activeHabitsList,
-        // Lets the hourly penalty job find this user's local midnight.
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        // The device's timezone. The server derives profiles.timezone (the user's "today") from it,
+        // never letting the local date go backwards (supabase/migrations/20261016120000).
+        device_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
 
       if (finalState.currentUser.uid) {
@@ -417,8 +418,8 @@ export async function saveUserDataToSupabase(
         if (profErr.message?.includes('uid')) {
           delete profilePayload.uid;
         }
-        if (profErr.message?.includes('timezone')) {
-          delete profilePayload.timezone;
+        if (profErr.message?.includes('device_timezone')) {
+          delete profilePayload.device_timezone;
         }
         const { error: fallbackErr } = await supabase.from('profiles').upsert(profilePayload);
         profErr = fallbackErr;
