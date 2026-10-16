@@ -174,7 +174,6 @@ import {
   syncBroadcaster,
   syncPlanToSupabase,
   deletePlanFromSupabase,
-  incrementPlanCopyCountSupabase,
   syncFollowedPlanToSupabase,
   deleteFollowedPlanFromSupabase,
   addReflectionNoteToSupabase,
@@ -6734,24 +6733,10 @@ export function useAppState() {
         return;
       }
 
-      // 2. ATOMIC RPC EXECUTION FIRST (Do not wait for user_plan_follows)
-      console.log(`[Copy Plan] Calling RPC increment_plan_copy_count...`);
-      const { data: newCount, error: rpcError } = await supabase
-        .rpc('increment_plan_copy_count', { target_plan_id: planId });
+      // 2. Optimistic count; the server derives the real copy_count from user_plan_follows.
+      updatePlanCopyCount(planId, (originalPlan.copyCount || 0) + 1);
 
-      if (rpcError) {
-        console.error("[Copy Plan] RPC FAILED:", rpcError);
-        dispatchToastError("Couldn't copy plan", 'Try again in a moment.');
-        throw rpcError;
-      }
-
-      console.log(`[Copy Plan] RPC Success! New copy count is: ${newCount}`);
-      const finalCount = typeof newCount === 'number' && newCount > 0 ? newCount : (originalPlan.copyCount || 0) + 1;
-
-      // 3. Update the global Zustand state optimistically
-      updatePlanCopyCount(planId, finalCount);
-
-      // 4. NOW attempt to create the follow record
+      // 3. Create the follow record
       console.log(`[Copy Plan] Inserting into user_plan_follows...`);
       const stepsCopy: PlanStep[] = (originalPlan.steps || []).map((s) => ({
         ...s,

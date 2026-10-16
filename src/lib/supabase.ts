@@ -589,17 +589,6 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const planId = uuidPattern.test(plan.id) ? plan.id : crypto.randomUUID();
 
-    // Preserve existing database copy_count so updates/saves never reset copy_count to 0
-    const { data: existingPlanRow } = await supabase
-      .from('improvement_plans')
-      .select('copy_count')
-      .eq('id', planId)
-      .maybeSingle();
-
-    const dbCopyCount = existingPlanRow?.copy_count ?? 0;
-    const rawCopyCount = plan.copyCount !== undefined && plan.copyCount !== null ? plan.copyCount : 0;
-    const finalCopyCount = Math.max(rawCopyCount, dbCopyCount);
-    
     // Build steps JSONB object containing step items and plan type metadata
     const anyPlan = plan as any;
     const stepsItems = Array.isArray(plan.steps)
@@ -638,7 +627,6 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
       description: plan.description || '',
       category: plan.category || 'Personal Growth',
       is_public: Boolean(plan.isPublic ?? anyPlan.is_public ?? false),
-      copy_count: finalCopyCount,
       steps: stepsPayload,
       review_cadence: plan.reviewCadence || null,
       next_review_due_at: plan.nextReviewDueAt || null,
@@ -741,63 +729,6 @@ export async function syncFollowedPlanToSupabase(followedPlan: UserPlanFollow) {
     }
   } catch (e) {
     console.warn('Supabase followed plan sync error:', e);
-  }
-}
-
-export async function incrementPlanCopyCountSupabase(planId: string): Promise<number> {
-  if (!isSupabaseConfigured) return 0;
-  console.log('[Supabase] Executing incrementPlanCopyCountSupabase for planId:', planId);
-  try {
-    // 1. Attempt RPC call (atomic SECURITY DEFINER execution)
-    const { data: rpcData, error: rpcErr } = await supabase.rpc('increment_plan_copy_count', {
-      target_plan_id: planId,
-    });
-
-    if (rpcErr) {
-      console.error('[Supabase] RPC increment_plan_copy_count error:', rpcErr);
-    } else {
-      console.log('[Supabase] RPC increment_plan_copy_count success, return value:', rpcData);
-      if (typeof rpcData === 'number' && rpcData > 0) {
-        return rpcData;
-      }
-    }
-
-    // 2. Direct atomic SQL update attempt (if RLS update policy granted)
-    const { data: fetchCurrent } = await supabase
-      .from('improvement_plans')
-      .select('copy_count')
-      .eq('id', planId)
-      .maybeSingle();
-
-    const newCount = (fetchCurrent?.copy_count || 0) + 1;
-    const { data: updatedRows, error: updateErr } = await supabase
-      .from('improvement_plans')
-      .update({ copy_count: newCount })
-      .eq('id', planId)
-      .select();
-
-    if (updateErr) {
-      console.error('[Supabase] Direct update copy_count error:', updateErr);
-    }
-
-    if (updatedRows && updatedRows.length > 0) {
-      return updatedRows[0].copy_count;
-    }
-
-    // 3. Fallback count from user_plan_follows table
-    const { count, error: countErr } = await supabase
-      .from('user_plan_follows')
-      .select('*', { count: 'exact', head: true })
-      .eq('original_plan_id', planId);
-
-    if (countErr) {
-      console.error('[Supabase] Follow count query error:', countErr);
-    }
-
-    return count || newCount;
-  } catch (e) {
-    console.error('Error incrementing plan copy count:', e);
-    return 0;
   }
 }
 
