@@ -26,12 +26,14 @@ export type {
 export { Dialog } from './Dialog';
 export type { DialogProps } from './Dialog';
 
-export { Input, Select, Textarea } from './Field';
+export { Input, Select, Textarea, NumberField, Form, FieldRow } from './Field';
 export type {
   BaseFieldProps,
   InputProps,
   SelectProps,
   TextareaProps,
+  NumberFieldProps,
+  FormProps,
 } from './Field';
 
 export { Badge } from './Badge';

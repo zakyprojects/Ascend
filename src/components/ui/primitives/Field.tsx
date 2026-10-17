@@ -6,7 +6,12 @@ export interface BaseFieldProps {
   label?: string;
   hint?: string;
   error?: string;
+  /** Adds a quiet "Optional" marker after the label. */
+  optional?: boolean;
 }
+
+/** Field id -> message, filled by <Form> when a submit fails validation. */
+export const FormErrorsContext = React.createContext<Record<string, string>>({});
 
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement>,
@@ -25,10 +30,11 @@ interface FieldShellProps {
   label?: string;
   hint?: string;
   error?: string;
+  optional?: boolean;
   children: React.ReactElement;
 }
 
-function FieldShell({ id, label, hint, error, children }: FieldShellProps) {
+function FieldShell({ id, label, hint, error, optional, children }: FieldShellProps) {
   const hasLabel = Boolean(label);
   const hasHint = Boolean(hint);
   const hasError = Boolean(error);
@@ -42,6 +48,7 @@ function FieldShell({ id, label, hint, error, children }: FieldShellProps) {
       {hasLabel && (
         <label htmlFor={id} className="label block mb-1.5">
           {label}
+          {optional && <span className="ml-1 font-normal text-content-muted">(optional)</span>}
         </label>
       )}
       {children}
@@ -80,10 +87,12 @@ function useFieldLinking(
     }
   }, [hasName, id]);
 
-  const errorId = error ? `${id}-error` : undefined;
+  const formError = React.useContext(FormErrorsContext)[id];
+  const shownError = error || formError;
+  const errorId = shownError ? `${id}-error` : undefined;
   const hintId = hint ? `${id}-hint` : undefined;
 
-  return { id, errorId, hintId };
+  return { id, errorId, hintId, error: shownError };
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
@@ -91,7 +100,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     {
       label,
       hint,
-      error,
+      error: errorProp,
+      optional,
       id: idProp,
       className,
       'aria-describedby': describedByProp,
@@ -99,17 +109,17 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
-    const { id, errorId, hintId } = useFieldLinking(
+    const { id, errorId, hintId, error } = useFieldLinking(
       idProp,
       label,
       props['aria-label'],
       props['aria-labelledby'],
-      error,
+      errorProp,
       hint
     );
 
     return (
-      <FieldShell id={id} label={label} hint={hint} error={error}>
+      <FieldShell id={id} label={label} hint={hint} error={error} optional={optional}>
         <input
           ref={ref}
           id={id}
@@ -138,7 +148,8 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     {
       label,
       hint,
-      error,
+      error: errorProp,
+      optional,
       id: idProp,
       className,
       children,
@@ -147,17 +158,17 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     },
     ref
   ) => {
-    const { id, errorId, hintId } = useFieldLinking(
+    const { id, errorId, hintId, error } = useFieldLinking(
       idProp,
       label,
       props['aria-label'],
       props['aria-labelledby'],
-      error,
+      errorProp,
       hint
     );
 
     return (
-      <FieldShell id={id} label={label} hint={hint} error={error}>
+      <FieldShell id={id} label={label} hint={hint} error={error} optional={optional}>
         <div className="relative w-full">
           <select
             ref={ref}
@@ -195,7 +206,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     {
       label,
       hint,
-      error,
+      error: errorProp,
+      optional,
       id: idProp,
       className,
       'aria-describedby': describedByProp,
@@ -203,17 +215,17 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     },
     ref
   ) => {
-    const { id, errorId, hintId } = useFieldLinking(
+    const { id, errorId, hintId, error } = useFieldLinking(
       idProp,
       label,
       props['aria-label'],
       props['aria-labelledby'],
-      error,
+      errorProp,
       hint
     );
 
     return (
-      <FieldShell id={id} label={label} hint={hint} error={error}>
+      <FieldShell id={id} label={label} hint={hint} error={error} optional={optional}>
         <textarea
           ref={ref}
           id={id}
@@ -237,3 +249,130 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 );
 
 Textarea.displayName = 'Textarea';
+
+export interface NumberFieldProps
+  extends Omit<InputProps, 'type' | 'value' | 'onChange' | 'defaultValue'> {
+  value: number;
+  onValueChange: (value: number) => void;
+  /** Allow a decimal point (decimal keypad on phones). Whole numbers by default. */
+  decimal?: boolean;
+}
+
+/**
+ * A number input that can be cleared while typing. A plain controlled `type="number"` writes
+ * `Number('') = 0` back the moment the field is emptied, so "30" can't be replaced by "45" on a
+ * phone. Here the text is kept as typed and only a valid number is reported; an empty field is
+ * caught by `required`/`min` on submit, and on blur it shows the last valid value again.
+ */
+export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
+  ({ value, onValueChange, decimal = false, onBlur, step, ...props }, ref) => {
+    const [draft, setDraft] = React.useState(() => String(value));
+    // Follow the value when the parent changes it (reset on open, a preset button).
+    const [lastValue, setLastValue] = React.useState(value);
+    if (value !== lastValue) {
+      setLastValue(value);
+      if (Number(draft) !== value || draft.trim() === '') setDraft(String(value));
+    }
+
+    return (
+      <Input
+        ref={ref}
+        type="number"
+        inputMode={decimal ? 'decimal' : 'numeric'}
+        step={step ?? (decimal ? 'any' : 1)}
+        value={draft}
+        onChange={(e) => {
+          const text = e.target.value;
+          setDraft(text);
+          const next = Number(text);
+          if (text.trim() !== '' && Number.isFinite(next)) onValueChange(next);
+        }}
+        onBlur={(e) => {
+          if (draft.trim() === '' || !Number.isFinite(Number(draft))) setDraft(String(value));
+          onBlur?.(e);
+        }}
+        {...props}
+      />
+    );
+  }
+);
+
+NumberField.displayName = 'NumberField';
+
+export interface FormProps extends Omit<React.FormHTMLAttributes<HTMLFormElement>, 'onSubmit'> {
+  /** Runs only when every field passes its rules (required, min/max, length, type). */
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+}
+
+function messageFor(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): string {
+  const v = el.validity;
+  if (v.valueMissing) return el instanceof HTMLSelectElement ? 'Choose one.' : 'Required.';
+  if (v.rangeUnderflow) return `Must be ${(el as HTMLInputElement).min} or more.`;
+  if (v.rangeOverflow) return `Must be ${(el as HTMLInputElement).max} or less.`;
+  if (v.tooLong) return `Keep it under ${(el as HTMLInputElement).maxLength} characters.`;
+  if (v.tooShort) return `Use at least ${(el as HTMLInputElement).minLength} characters.`;
+  if (v.stepMismatch) return 'Use a whole number.';
+  if (v.badInput) return 'Enter a number.';
+  return el.validationMessage || 'Check this field.';
+}
+
+/**
+ * A form that shows its rule errors under each field (Ascend style) instead of the browser's
+ * bubble. Fields are linked by id: the Field primitives pick their message up from context.
+ * A field's message clears as soon as it is edited.
+ */
+export const Form = React.forwardRef<HTMLFormElement, FormProps>(
+  ({ onSubmit, children, onInput, ...props }, ref) => {
+    const [errors, setErrors] = React.useState<Record<string, string>>({});
+
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      if (!form.checkValidity()) {
+        const next: Record<string, string> = {};
+        let first: HTMLElement | null = null;
+        for (const el of Array.from(form.elements)) {
+          if (
+            (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) &&
+            !el.validity.valid
+          ) {
+            if (el.id) next[el.id] = messageFor(el);
+            first ??= el;
+          }
+        }
+        setErrors(next);
+        first?.focus();
+        return;
+      }
+      setErrors({});
+      void onSubmit(event);
+    };
+
+    return (
+      <FormErrorsContext.Provider value={errors}>
+        <form
+          ref={ref}
+          noValidate
+          onSubmit={handleSubmit}
+          onInput={(e) => {
+            const id = (e.target as HTMLElement).id;
+            if (id && errors[id]) {
+              setErrors(({ [id]: _cleared, ...rest }) => rest);
+            }
+            onInput?.(e);
+          }}
+          {...props}
+        >
+          {children}
+        </form>
+      </FormErrorsContext.Provider>
+    );
+  }
+);
+
+Form.displayName = 'Form';
+
+/** Two fields side by side from sm up; stacked on phones so selects and numbers keep their room. */
+export function FieldRow({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cx('grid grid-cols-1 gap-4 sm:grid-cols-2', className)}>{children}</div>;
+}
