@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ImagePlus, X } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
-import { Button, Card, Input, Select, Textarea, cx } from '@/components/ui/primitives';
+import { Button, Card, FieldErrorBubble, Form, FormAlert, Input, Select, Textarea, cx, useFormController } from '@/components/ui/primitives';
 import { FOCUS_RING, TAP_TARGET } from '@/components/ui/primitives/shared';
 import { NAV_DASHBOARD, NAV_GROUPS, NAV_SETTINGS, getViewLabel } from '@/components/nav/navConfig';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
@@ -113,7 +113,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
   const [isPreparing, setIsPreparing] = useState(false);
   const [website, setWebsite] = useState(''); // honeypot
   const [isSending, setIsSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
+  const sendIssues = useFormController();
   const [sentRef, setSentRef] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState(() => trustedNowMs());
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -165,9 +165,8 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!isValid || isSending) return;
+    if (!isValid || isSending) return; // the required fields say why
     setIsSending(true);
-    setSendError(null);
     try {
       const ref = await submitFeedback({
         kind,
@@ -181,7 +180,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
       });
       setSentRef(ref);
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : 'Something went wrong sending it. Please try again.');
+      sendIssues.showError(err instanceof Error ? err.message : 'Something went wrong sending it. Please try again.');
     } finally {
       setIsSending(false);
     }
@@ -199,7 +198,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
     setImpact('');
     setScreenshots([]);
     setScreenshotError(null);
-    setSendError(null);
+    sendIssues.clear();
     setStartedAt(trustedNowMs());
     setSentRef(null);
   };
@@ -246,7 +245,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
           </div>
         </Card>
       ) : (
-        <form onSubmit={handleSubmit} noValidate>
+        <Form onSubmit={handleSubmit} controller={sendIssues} alert="manual">
           <Card padding="lg" className="relative space-y-5">
             <Input
               label="Title"
@@ -362,9 +361,11 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
                   e.target.value = '';
                 }}
               />
-              <p className="mt-1.5 text-xs text-content-muted">
-                {screenshotError ?? `Up to ${MAX_SCREENSHOTS}. They’re resized before sending.`}
-              </p>
+              {screenshotError ? (
+                <FieldErrorBubble message={screenshotError} />
+              ) : (
+                <p className="mt-1.5 text-xs text-content-muted">Up to {MAX_SCREENSHOTS}. They’re resized before sending.</p>
+              )}
             </div>
 
             {/* Honeypot: off-screen and skipped by keyboard and screen readers; bots fill it. */}
@@ -385,19 +386,15 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
               <p className="mt-1 text-xs text-content-muted">None of your habits, journal or points.</p>
             </div>
 
-            {sendError && (
-              <p role="alert" className="text-sm text-error-text">
-                {sendError}
-              </p>
-            )}
+            <FormAlert />
 
             <div className="flex justify-end">
-              <Button type="submit" variant="primary" loading={isSending} disabled={!isValid || isSending || isPreparing}>
+              <Button type="submit" variant="primary" loading={isSending} disabled={isSending || isPreparing}>
                 {copy.send}
               </Button>
             </div>
           </Card>
-        </form>
+        </Form>
       )}
     </div>
   );
