@@ -1767,7 +1767,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What this plan is for and the result you want..."
-              className="input min-h-[70px] text-xs"
+              className="input min-h-[70px]"
               required
             />
           </div>
@@ -1831,7 +1831,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       value={step}
                       onChange={(e) => handleStepChange(idx, e.target.value)}
                       placeholder={`Step #${idx + 1}...`}
-                      className="input text-xs flex-1"
+                      className="input flex-1"
                       required
                     />
                     {steps.length > 1 && (
@@ -1961,7 +1961,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   value={initialReflectionNote}
                   onChange={(e) => setInitialReflectionNote(e.target.value)}
                   placeholder="Your first check-in note..."
-                  className="input min-h-[60px] text-xs"
+                  className="input min-h-[60px]"
                 />
               </div>
             </div>
@@ -2007,7 +2007,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               id="pip-edit-description"
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
-              className="input min-h-[70px] text-xs"
+              className="input min-h-[70px]"
               required
             />
           </div>
@@ -2079,7 +2079,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                         setEditSteps(next);
                       }}
                       placeholder={`Step #${idx + 1}...`}
-                      className="input text-xs flex-1"
+                      className="input flex-1"
                       required
                     />
                     {editSteps.length > 1 && (
