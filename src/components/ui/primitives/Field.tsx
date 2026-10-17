@@ -304,9 +304,19 @@ export interface FormProps extends Omit<React.FormHTMLAttributes<HTMLFormElement
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
 }
 
-function messageFor(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): string {
+type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
+const TEXT_TYPES = new Set(['text', 'search', 'email', 'url', 'tel', 'password']);
+
+// Native `required` accepts a value of only spaces; a required text field must hold real text.
+function isBlankText(el: Control): boolean {
+  const isText = el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && TEXT_TYPES.has(el.type));
+  return isText && el.required && !el.disabled && el.value.trim() === '';
+}
+
+function messageFor(el: Control): string {
   const v = el.validity;
-  if (v.valueMissing) return el instanceof HTMLSelectElement ? 'Choose one.' : 'Required.';
+  if (v.valueMissing || isBlankText(el)) return el instanceof HTMLSelectElement ? 'Choose one.' : 'Required.';
   if (v.rangeUnderflow) return `Must be ${(el as HTMLInputElement).min} or more.`;
   if (v.rangeOverflow) return `Must be ${(el as HTMLInputElement).max} or less.`;
   if (v.tooLong) return `Keep it under ${(el as HTMLInputElement).maxLength} characters.`;
@@ -328,20 +338,20 @@ export const Form = React.forwardRef<HTMLFormElement, FormProps>(
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       const form = event.currentTarget;
-      if (!form.checkValidity()) {
-        const next: Record<string, string> = {};
-        let first: HTMLElement | null = null;
-        for (const el of Array.from(form.elements)) {
-          if (
-            (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) &&
-            !el.validity.valid
-          ) {
-            if (el.id) next[el.id] = messageFor(el);
-            first ??= el;
-          }
+      const next: Record<string, string> = {};
+      let first: HTMLElement | null = null;
+      for (const el of Array.from(form.elements)) {
+        if (
+          (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) &&
+          (!el.validity.valid || isBlankText(el))
+        ) {
+          if (el.id) next[el.id] = messageFor(el);
+          first ??= el;
         }
+      }
+      if (first) {
         setErrors(next);
-        first?.focus();
+        first.focus();
         return;
       }
       setErrors({});
