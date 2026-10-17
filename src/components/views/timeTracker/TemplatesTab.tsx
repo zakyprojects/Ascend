@@ -33,7 +33,6 @@ import {
   Brain,
   Heart,
   Moon,
-  AlertTriangle,
   RotateCcw,
   ChevronDown,
 } from 'lucide-react';
@@ -110,7 +109,6 @@ export function TemplatesTab({
   };
 
   const handleToggleDay = (template: TimeTrackerTemplate, day: string) => {
-    console.log(`[TRACER] handleToggleDay clicked for template: ${template.title}, day: ${day}`);
     const getDays = (t: TimeTrackerTemplate): string[] => {
       if (Array.isArray(t.activeDays) && t.activeDays.length > 0) return t.activeDays;
       if (Array.isArray(t.autoApplyDays) && t.autoApplyDays.length > 0) return t.autoApplyDays;
@@ -118,10 +116,8 @@ export function TemplatesTab({
     };
 
     const currentDays = getDays(template);
-    console.log(`[TRACER] currentDays:`, currentDays);
 
     const isAdding = !currentDays.some((d) => d.toLowerCase() === day.toLowerCase());
-    console.log(`[TRACER] isAdding:`, isAdding);
 
     if (isAdding) {
       const conflictingTemplate = templates.find((t) => {
@@ -129,7 +125,6 @@ export function TemplatesTab({
         const tDays = getDays(t);
         return tDays.some((d) => d.toLowerCase() === day.toLowerCase());
       });
-      console.log(`[TRACER] conflictingTemplate found:`, conflictingTemplate?.title);
 
       if (conflictingTemplate) {
         setConflictState({
@@ -142,9 +137,7 @@ export function TemplatesTab({
       }
     }
 
-    console.log(`[TRACER] Firing store.toggleTemplateAutoApplyDay...`);
     store.toggleTemplateAutoApplyDay(template.id, day);
-    console.log(`[TRACER] Store function fired successfully.`);
   };
 
   const confirmTransfer = () => {
@@ -493,8 +486,8 @@ export function TemplatesTab({
           open={Boolean(deleteTargetTemplate)}
           onClose={() => setDeleteTargetTemplate(null)}
           onConfirm={handleConfirmDeleteTemplate}
-          title="Delete Blueprint Template?"
-          description={`Are you sure you want to permanently delete "${deleteTargetTemplate.title}"? Existing scheduled days will not be affected.`}
+          title="Delete template?"
+          description={`Delete "${deleteTargetTemplate.title}"? Days already scheduled stay as they are.`}
         />
       )}
 
@@ -503,31 +496,26 @@ export function TemplatesTab({
         <Dialog
           open={conflictState.isOpen}
           onClose={() => setConflictState(null)}
-          title="Transfer Auto-Apply Day?"
+          title="Move this day?"
           maxWidth="max-w-md"
+          description={
+            <>
+              <strong className="text-content-primary">{conflictState.day}</strong> is set to auto-apply{' '}
+              <strong className="text-content-primary">{conflictState.conflictingTitle}</strong>. Move it to this template instead?
+            </>
+          }
+          footer={
+            <>
+              <button type="button" onClick={() => setConflictState(null)} className="btn-secondary">
+                Cancel
+              </button>
+              <button type="button" onClick={confirmTransfer} className="btn-primary">
+                Move day
+              </button>
+            </>
+          }
         >
-          <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 flex items-start gap-3 mb-6">
-            <AlertTriangle className="text-warning-text shrink-0 mt-0.5" size={18} />
-            <p className="text-sm text-warning-text-muted leading-relaxed">
-              Are you sure you want to replace it? The day <strong className="text-warning-text">{conflictState.day}</strong> is currently assigned to <strong className="text-warning-text">{conflictState.conflictingTitle}</strong>.
-            </p>
-          </div>
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setConflictState(null)}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-content-tertiary hover:text-content-primary hover:bg-bg-700 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={confirmTransfer}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-warning hover:bg-warning transition-colors cursor-pointer"
-            >
-              Transfer Day
-            </button>
-          </div>
+          {null}
         </Dialog>
       )}
     </div>
