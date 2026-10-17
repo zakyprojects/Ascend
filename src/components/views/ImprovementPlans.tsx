@@ -2015,7 +2015,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           id="pip-edit-form"
           onSubmit={handleEditSubmit}
           validate={() =>
-            editingPlanType === 'target' && isNewPastDate(editTargetDate, editingPlan?.targetDate)
+            editingPlanType === 'target_goal' && isNewPastDate(editTargetDate, editingPlan?.targetDate)
               ? { message: 'Pick a later date.', field: 'pip-edit-target-date' }
               : editingPlanType === 'vision' && isNewPastDate(editTargetReviewDate, editingPlan?.targetReviewDate)
               ? { message: 'Pick a later date.', field: 'pip-edit-target-review-date' }
