@@ -532,6 +532,12 @@ export function ProjectsGoalsView({
   const minAllowedDate = `${currentYear - 2}-01-01`;
   const maxAllowedDate = `${currentYear + 20}-12-31`;
 
+  // A due/target date can't be set in the past. An old past date already on an item can stay
+  // when editing it (it is just overdue), so only a new or changed date is checked.
+  const earliestDue = (saved?: string) => (saved && saved < currentToday ? saved : currentToday);
+  const pastDueIssue = (value: string, saved: string | undefined, field: string) =>
+    value && value < currentToday && value !== (saved ?? '') ? { message: 'Pick a later date.', field } : null;
+
   const sanitizeDateBounds = (dateStr?: string): string | undefined => {
     if (!dateStr || !dateStr.trim()) return undefined;
     const trimmed = dateStr.trim();
@@ -2579,7 +2585,12 @@ export function ProjectsGoalsView({
           </>
         }
       >
-        <Form id="pg-goal-form" onSubmit={handleSaveGoal} controller={goalIssues} className="space-y-4">
+        <Form
+          id="pg-goal-form"
+          onSubmit={handleSaveGoal}
+          controller={goalIssues}
+          validate={() => pastDueIssue(goalFormTargetDate, editingGoal?.targetDate, 'pg-goal-target-date')}
+          className="space-y-4">
           <Input
             id="pg-goal-title"
             label="Goal"
@@ -2656,7 +2667,7 @@ export function ProjectsGoalsView({
               label="Target date"
               optional
               type="date"
-              min={minAllowedDate}
+              min={earliestDue(editingGoal?.targetDate)}
               max={maxAllowedDate}
               value={goalFormTargetDate}
               onChange={(e) => setGoalFormTargetDate(e.target.value)}
@@ -2701,7 +2712,12 @@ export function ProjectsGoalsView({
           </>
         }
       >
-        <Form id="pg-project-form" onSubmit={handleSaveProject} controller={projectIssues} className="space-y-4">
+        <Form
+          id="pg-project-form"
+          onSubmit={handleSaveProject}
+          controller={projectIssues}
+          validate={() => pastDueIssue(projectFormDueDate, editingProject?.dueDate, 'pg-project-due-date')}
+          className="space-y-4">
           <Input
             id="pg-project-title"
             label="Project"
@@ -2756,7 +2772,7 @@ export function ProjectsGoalsView({
               label="Due date"
               optional
               type="date"
-              min={projectFormStartDate || minAllowedDate}
+              min={projectFormStartDate > earliestDue(editingProject?.dueDate) ? projectFormStartDate : earliestDue(editingProject?.dueDate)}
               max={maxAllowedDate}
               value={projectFormDueDate}
               onChange={(e) => setProjectFormDueDate(e.target.value)}
@@ -2803,7 +2819,12 @@ export function ProjectsGoalsView({
           </>
         }
       >
-        <Form id="pg-task-form" onSubmit={handleSaveTaskModal} controller={taskIssues} className="space-y-4">
+        <Form
+          id="pg-task-form"
+          onSubmit={handleSaveTaskModal}
+          controller={taskIssues}
+          validate={() => pastDueIssue(taskFormDueDate, editingTask?.dueDate, 'pg-task-due-date')}
+          className="space-y-4">
           <Input
             id="pg-task-title"
             label="Task"
@@ -2859,7 +2880,7 @@ export function ProjectsGoalsView({
             label="Due date"
             optional
             type="date"
-            min={minAllowedDate}
+            min={earliestDue(editingTask?.dueDate)}
             max={maxAllowedDate}
             value={taskFormDueDate}
             onChange={(e) => setTaskFormDueDate(e.target.value)}
