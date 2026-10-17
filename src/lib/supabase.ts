@@ -302,8 +302,9 @@ export async function saveUserDataToSupabase(
     }
   }
 
-  // Update session watermark with valid save
-  setUserDataWatermark(userId, incomingWeight);
+  // The saved state is the new baseline. (Keeping the session's highest count instead made a run
+  // of ordinary one-by-one deletes add up to an "abnormal drop" and ask to confirm.)
+  resetUserDataWatermark(userId, incomingWeight);
 
   // Always mirror authenticated user state to local cache for resilient cold boot and offline recovery
   if (typeof window !== 'undefined') {
