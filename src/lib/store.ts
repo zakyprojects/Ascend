@@ -305,6 +305,8 @@ export function applyPresetHabitRemovalMigration(state: AppState, currentWeekKey
 const GUEST_STORAGE_KEY = 'ascend_guest_state_v2';
 /** How long the boot loader waits on a saved sign-in before offering Retry (offline). */
 const STORED_SESSION_WAIT_MS = 8000;
+/** Most workout logs one "Clear older logs" removes (tombstones must fit the 500-id list). */
+const CLEAR_WORKOUTS_MAX = 300;
 export const LOCAL_THEME_STORAGE_KEY = 'ascend_theme_preference';
 
 export function getLocalThemePreference(): 'dark' | 'light' | null {
@@ -3882,6 +3884,34 @@ export function useAppState() {
           };
         },
         { immediate: true, actionLabel: 'Workout deletion', entityId: workoutId }
+      )
+    );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Removes workout logs dated before `beforeDate` (a local day key). Points already earned stay:
+   * no earlier day's award is recomputed, here or on the server. Capped per call so the ids
+   * fit in the tombstone list (deletedEntityIds keeps the last 500).
+   */
+  const clearWorkoutsBefore = useCallback((beforeDate: string) => {
+    void (
+      setState(
+        (prev) => {
+          const ids = prev.workouts
+            .filter((w) => w.date < beforeDate && w.date !== todayKey())
+            .slice(0, CLEAR_WORKOUTS_MAX)
+            .map((w) => w.id);
+          if (ids.length === 0) return prev;
+          const cleared = new Set(ids);
+          return {
+            ...prev,
+            workouts: prev.workouts.filter((w) => !cleared.has(w.id)),
+            deletedEntityIds: [...(prev.deletedEntityIds || []), ...ids].slice(-500),
+          };
+        },
+        { immediate: true, actionLabel: 'Clearing old workouts' }
       )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -9070,6 +9100,7 @@ export function useAppState() {
     // New Module Actions
     logWorkout,
     deleteWorkout,
+    clearWorkoutsBefore,
     addBook,
     updateBookTargetDate,
     updateReadingProgress,

@@ -59,6 +59,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   const [measure, setMeasure] = useState<Measure>('mins');
   const [amount, setAmount] = useState<number>(30);
   const [daysShown, setDaysShown] = useState(DAYS_PAGE);
+  const [clearOpen, setClearOpen] = useState(false);
 
   const workouts = store.state.workouts;
   const today = todayKey();
@@ -112,6 +113,9 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       isToday: key === today,
     };
   });
+  // "Clear older logs" removes everything before this week, so this week's goals keep counting.
+  const weekStartKey = todayKey(weekStart);
+  const olderLogCount = workouts.filter((w) => w.date < weekStartKey).length;
   const workoutsThisWeek = weekDays.reduce((sum, d) => sum + d.count, 0);
   const activeDaysThisWeek = weekDays.filter((d) => d.count > 0).length;
   const todayChartIndex = weekDays.findIndex((d) => d.isToday);
@@ -271,6 +275,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                 </li>
                 <li>You can only log today's workouts.</li>
                 <li>Deleting today's workout takes its points back. Earlier days keep their points.</li>
+                <li>Deleting old logs can break your exercise streak.</li>
               </ul>
             </Disclosure>
           </>
@@ -328,7 +333,14 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
 
             {earlierDays.length > 0 && (
               <div className="space-y-4">
-                <h2 className="section-title">Earlier</h2>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="section-title">Earlier</h2>
+                  {olderLogCount > 0 && (
+                    <button type="button" onClick={() => setClearOpen(true)} className="btn-ghost text-xs text-content-muted hover:text-rose-theme flex items-center gap-1.5 max-sm:px-2 max-sm:py-1">
+                      <Trash2 size={14} /> Clear older logs
+                    </button>
+                  )}
+                </div>
                 {earlierDays.slice(0, daysShown).map(([day, list]) => {
                   const dayPoints = list.reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
                   return (
@@ -465,9 +477,26 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         itemName={deleteModalWorkout ? `${deleteModalWorkout.type} (${formatAmount(amountOf(deleteModalWorkout), measureOf(deleteModalWorkout))})` : ''}
         description={
           deletingToday
-            ? "Its points come off today's total."
-            : 'The points you earned that day stay.'
+            ? "Its points come off today's total. Your exercise streak and exercise minutes may go down."
+            : 'The points you earned that day stay. Your exercise streak and exercise minutes may go down.'
         }
+      />
+
+      <ConfirmDeleteModal
+        open={clearOpen}
+        onClose={() => setClearOpen(false)}
+        isDeleting={isDeleting}
+        onConfirm={async () => {
+          await executeDelete(async () => {
+            await store.clearWorkoutsBefore(weekStartKey);
+            setClearOpen(false);
+            showSuccessToast('Older logs cleared', 'Your points stay as they were.', 'workouts_cleared');
+          });
+        }}
+        title="Clear older logs?"
+        itemName={`${olderLogCount} ${olderLogCount === 1 ? 'workout' : 'workouts'} before this week`}
+        description="The points you earned stay. Your exercise streak can break, and the exercise minutes on your profile go down. This week's logs are kept."
+        confirmText="Clear logs"
       />
     </div>
   );
