@@ -25,7 +25,8 @@ import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
-import { Dialog, EmptyState, Skeleton } from '@/components/ui/primitives';
+import { Dialog, EmptyState, Form, Input, Skeleton } from '@/components/ui/primitives';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { CountUp } from '@/components/ui/Motion';
 import { ProgressRing } from '@/components/ui/charts';
 import { TAP_TARGET, TAP_AREA } from '@/components/ui/primitives/shared';
@@ -313,6 +314,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   });
 
   const [inviteError, setInviteError] = useState<string | null>(null);
+
+  const inviteForm = useUnsavedChanges(inviteModalOpen, partnerUidInput);
+  const pactForm = useUnsavedChanges(challengeModalOpen, [challengeTitle, challengeDuration, user1Category, user1Target, user2Category, user2Target]);
 
   const handleSendInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1477,62 +1481,56 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       <Dialog
         open={inviteModalOpen}
         preventClose={isSubmittingInvite}
+        dirty={inviteForm.dirty}
         onClose={() => {
           setInviteModalOpen(false);
           setInviteError(null);
         }}
-        title="Invite Accountability Partner"
-      >
-        <form onSubmit={handleSendInviteSubmit} className="space-y-4">
-          <p className="text-xs text-content-muted">
-            Enter your partner's 6-digit ID (it's in their Settings). You can have up to 5 partners.
-          </p>
-
-          <div>
-            <label htmlFor="partner-invite-uid" className="block label mb-1">Partner's ID</label>
-            <input
-              id="partner-invite-uid"
-              type="text"
-              placeholder="e.g. 049201"
-              value={partnerUidInput}
-              onChange={(e) => {
-                setPartnerUidInput(e.target.value);
-                if (inviteError) setInviteError(null);
-              }}
-              className="w-full bg-bg-700 border border-overlay-default text-content-primary placeholder:text-content-disabled rounded-xl px-3.5 py-2.5 text-sm font-mono tabular-nums tracking-widest focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-              maxLength={6}
-            />
-          </div>
-
-          {inviteError && <div className="text-xs text-rose-theme font-medium">{inviteError}</div>}
-
-          <div className="flex justify-end gap-2 pt-2">
+        title="Invite a partner"
+        description="Enter your partner's 6-digit ID (it's in their Settings). You can have up to 5 partners."
+        footer={
+          <>
             <button
               type="button"
-              onClick={() => {
-                setInviteModalOpen(false);
-                setInviteError(null);
-              }}
-              className="btn-secondary text-xs"
+              disabled={isSubmittingInvite}
+              onClick={() =>
+                inviteForm.confirmDiscard(() => {
+                  setInviteModalOpen(false);
+                  setInviteError(null);
+                })
+              }
+              className="btn-secondary"
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isSubmittingInvite}
-              className={`btn-primary text-xs flex items-center gap-1.5 ${
-                isSubmittingInvite ? 'opacity-50 cursor-not-allowed hover:shadow-none' : ''
-              }`}
-            >
-              {isSubmittingInvite ? (
-                <AscendLoadingIndicator size="sm" />
-              ) : (
-                <UserPlus size={16} />
-              )}
-              <span>{isSubmittingInvite ? 'Sending...' : 'Send Invite'}</span>
+            <button type="submit" form="partner-invite-form" disabled={isSubmittingInvite} className="btn-primary">
+              {isSubmittingInvite ? <AscendLoadingIndicator size="sm" /> : <UserPlus size={16} />}
+              <span>{isSubmittingInvite ? 'Sending…' : 'Send invite'}</span>
             </button>
-          </div>
-        </form>
+          </>
+        }
+      >
+        <Form id="partner-invite-form" onSubmit={handleSendInviteSubmit}>
+          <Input
+            id="partner-invite-uid"
+            label="Partner's ID"
+            placeholder="e.g. 049201"
+            value={partnerUidInput}
+            onChange={(e) => {
+              setPartnerUidInput(e.target.value.replace(/\D/g, ''));
+              if (inviteError) setInviteError(null);
+            }}
+            error={inviteError ?? undefined}
+            className="font-mono tabular-nums tracking-widest"
+            inputMode="numeric"
+            autoComplete="off"
+            enterKeyHint="send"
+            maxLength={6}
+            pattern="\d{6}"
+            title="Enter the 6-digit ID."
+            required
+          />
+        </Form>
       </Dialog>
 
       {/* ITEM 1: START MULTI-CATEGORY SHARED CHALLENGE MODAL (PLEDGE JOINT PACT) */}
@@ -1543,35 +1541,50 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           setChallengeModalOpen(false);
           setChallengeError(null);
         }}
-        title={`Pledge Joint Pact with ${activePartnerUsername || 'Partner'}`}
+        dirty={pactForm.dirty}
+        title={`Joint pact with ${activePartnerUsername || 'partner'}`}
         maxWidth="max-w-xl"
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isSubmittingChallenge}
+              onClick={() => pactForm.confirmDiscard(() => setChallengeModalOpen(false))}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" form="pact-create-form" disabled={isSubmittingChallenge} className="btn-primary">
+              {isSubmittingChallenge ? <AscendLoadingIndicator size="sm" /> : <Plus size={16} />}
+              <span>{isSubmittingChallenge ? 'Locking in…' : 'Lock in pact'}</span>
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleCreateChallengeSubmit} className="space-y-5">
-          {/* Title */}
-          <div>
-            <label htmlFor="pact-create-title" className="block label mb-1">Pact title</label>
-            <input
-              id="pact-create-title"
-              type="text"
-              placeholder="e.g. 14-day morning routine"
-              value={challengeTitle}
-              onChange={(e) => {
-                setChallengeTitle(e.target.value);
-                if (challengeError) setChallengeError(null);
-              }}
-              className={`input-field text-sm ${challengeError ? 'border-rose-500/60 focus:border-rose-500 focus:ring-rose-500/30' : ''}`}
-            />
-            {challengeError && (
-              <div className="text-xs text-rose-theme font-medium mt-1.5 flex items-center gap-1.5">
-                <AlertCircle size={14} className="shrink-0" />
-                <span>{challengeError}</span>
-              </div>
-            )}
-          </div>
+        <Form id="pact-create-form" onSubmit={handleCreateChallengeSubmit} className="space-y-5">
+          {challengeError && (
+            <div role="alert" className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
+              <AlertCircle size={15} className="shrink-0 mt-0.5" />
+              <span>{challengeError}</span>
+            </div>
+          )}
 
-          {/* Duration Selector: Visual Pill Segments */}
-          <div>
-            <label className="block label mb-1.5">Duration</label>
+          <Input
+            id="pact-create-title"
+            label="Pact title"
+            optional
+            placeholder="e.g. 14-day morning routine"
+            value={challengeTitle}
+            onChange={(e) => {
+              setChallengeTitle(e.target.value);
+              if (challengeError) setChallengeError(null);
+            }}
+            maxLength={80}
+            autoComplete="off"
+          />
+
+          <div role="group" aria-labelledby="pact-duration-label">
+            <p id="pact-duration-label" className="block label mb-1.5">Duration</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {DURATION_OPTIONS.map((opt) => {
                 const isSelected = challengeDuration === opt.days;
@@ -1580,7 +1593,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                     key={opt.days}
                     type="button"
                     onClick={() => setChallengeDuration(opt.days)}
-                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
+                    aria-pressed={isSelected}
+                    className={`min-h-11 p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
                       isSelected
                         ? 'bg-emerald-500/15 border-emerald-500/60 text-success-text'
                         : 'border-overlay-subtle hover:bg-overlay-subtle text-content-muted'
@@ -1597,10 +1611,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           {/* User 1 (Your Pledge) Section */}
           <div className="rounded-xl border border-overlay-default p-4 space-y-3.5">
             <div className="flex items-center justify-between">
-              <label className="block text-base font-semibold leading-tight text-success-text">
+              <p className="text-sm font-semibold leading-tight text-success-text">
                 Your daily pledge
-              </label>
-              <span className="text-micro text-content-disabled">Pick a category and target</span>
+              </p>
+              <span className="text-xs text-content-muted">Pick a category and target</span>
             </div>
 
             {/* Visual Category Grid */}
@@ -1616,7 +1630,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       setUser1Category(cat.value);
                       setUser1Target('');
                     }}
-                    className={`p-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
+                        aria-pressed={isSelected}
+                    className={`min-h-11 p-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
                       isSelected
                         ? `${cat.bgColor} ${cat.borderColor} ring-1 ring-emerald-400/60`
                         : 'border-overlay-subtle hover:bg-overlay-subtle text-content-muted'
@@ -1633,19 +1648,20 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
             {/* Target Input & Smart Suggestions */}
             <div className="space-y-1.5">
-              <label htmlFor="pact-create-user1-target" className="block text-micro text-content-muted font-medium">Target</label>
-              <input
+              <Input
                 id="pact-create-user1-target"
-                type="text"
+                label="Target"
+                optional
                 placeholder="e.g. Read 20 pages / 30m Gym / 10k Steps"
                 value={user1Target}
                 onChange={(e) => setUser1Target(e.target.value)}
-                className="input-field text-xs"
+                maxLength={60}
+                autoComplete="off"
               />
 
               {/* Suggestions chips */}
               <div className="space-y-1 pt-1">
-                <span className="text-2xs text-content-disabled block">Suggestions</span>
+                <span className="text-xs text-content-muted block">Suggestions</span>
                 <div className="flex flex-wrap gap-1.5">
                   {(user1Category === 'habit' && userHabitNames.length > 0
                     ? userHabitNames
@@ -1655,7 +1671,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       key={suggestion}
                       type="button"
                       onClick={() => setUser1Target(suggestion)}
-                      className={`text-2xs px-2 py-0.5 rounded-lg border transition-all ${
+                      className={`min-h-9 sm:min-h-0 text-xs px-2.5 py-1 rounded-lg border transition-all ${
                         user1Target === suggestion
                           ? 'bg-emerald-500/20 text-success-text border-emerald-500/40'
                           : 'text-content-muted border-overlay-subtle hover:border-overlay-strong hover:text-content-secondary'
@@ -1672,10 +1688,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           {/* User 2 (Partner's Pledge) Section */}
           <div className="rounded-xl border border-overlay-default p-4 space-y-3.5">
             <div className="flex items-center justify-between">
-              <label className="block text-base font-semibold leading-tight text-sky-theme">
+              <p className="text-sm font-semibold leading-tight text-sky-theme">
                 {activePartnerUsername}'s daily pledge
-              </label>
-              <span className="text-micro text-content-disabled">Partner objective</span>
+              </p>
+              <span className="text-xs text-content-muted">Their target</span>
             </div>
 
             {/* Visual Category Grid */}
@@ -1691,7 +1707,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       setUser2Category(cat.value);
                       setUser2Target('');
                     }}
-                    className={`p-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
+                        aria-pressed={isSelected}
+                    className={`min-h-11 p-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
                       isSelected
                         ? `${cat.bgColor} ${cat.borderColor} ring-1 ring-sky-400/60`
                         : 'border-overlay-subtle hover:bg-overlay-subtle text-content-muted'
@@ -1708,26 +1725,27 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
             {/* Partner Target Input & Suggestions */}
             <div className="space-y-1.5">
-              <label htmlFor="pact-create-user2-target" className="block text-micro text-content-muted font-medium">Target</label>
-              <input
+              <Input
                 id="pact-create-user2-target"
-                type="text"
+                label="Target"
+                optional
                 placeholder="e.g. 5km Run / Cold Shower / 30m Coding"
                 value={user2Target}
                 onChange={(e) => setUser2Target(e.target.value)}
-                className="input-field text-xs"
+                maxLength={60}
+                autoComplete="off"
               />
 
               {/* Suggestions chips */}
               <div className="space-y-1 pt-1">
-                <span className="text-2xs text-content-disabled block">Suggestions</span>
+                <span className="text-xs text-content-muted block">Suggestions</span>
                 <div className="flex flex-wrap gap-1.5">
                   {SUGGESTIONS_BY_CATEGORY[user2Category].slice(0, 5).map((suggestion) => (
                     <button
                       key={suggestion}
                       type="button"
                       onClick={() => setUser2Target(suggestion)}
-                      className={`text-2xs px-2 py-0.5 rounded-lg border transition-all ${
+                      className={`min-h-9 sm:min-h-0 text-xs px-2.5 py-1 rounded-lg border transition-all ${
                         user2Target === suggestion
                           ? 'badge-sky'
                           : 'text-content-muted border-overlay-subtle hover:border-overlay-strong hover:text-content-secondary'
@@ -1741,27 +1759,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             </div>
           </div>
 
-          {/* Form Actions */}
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={() => setChallengeModalOpen(false)} className="btn-secondary text-xs">
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmittingChallenge}
-              className={`btn-primary text-xs flex items-center gap-1.5 ${
-                isSubmittingChallenge ? 'opacity-50 cursor-not-allowed hover:shadow-none' : ''
-              }`}
-            >
-              {isSubmittingChallenge ? (
-                <AscendLoadingIndicator size="sm" />
-              ) : (
-                <Plus size={16} />
-              )}
-              <span>{isSubmittingChallenge ? 'Locking In...' : 'Lock In Pact'}</span>
-            </button>
-          </div>
-        </form>
+        </Form>
       </Dialog>
 
       {/* END PAIRING CONFIRMATION MODAL */}
