@@ -40,9 +40,9 @@ export function GuestLogoutWarningModal({
               onClose();
               onSaveProgressFirst();
             }}
-            className="w-full py-3 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-on-brand font-semibold text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-2"
+            className="btn-primary w-full min-h-11"
           >
-            <span>Save Progress First (Create Account)</span>
+            <span>Create an account first</span>
           </button>
 
           <button
@@ -51,17 +51,17 @@ export function GuestLogoutWarningModal({
             onClick={async () => {
               await onLogoutAnyway();
             }}
-            className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 disabled:opacity-50 text-rose-theme border border-rose-500/30 font-medium text-xs rounded-xl transition-colors flex items-center justify-center gap-2"
+            className="btn-danger w-full min-h-11"
           >
             {isLoggingOut ? (
               <>
                 <AscendLoadingIndicator size="sm" />
-                <span>Logging Out...</span>
+                <span>Logging out…</span>
               </>
             ) : (
               <>
                 <LogOut size={15} />
-                <span>Log Out Anyway (Delete Progress)</span>
+                <span>Log out and lose progress</span>
               </>
             )}
           </button>
