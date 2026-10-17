@@ -129,7 +129,11 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
     .filter((l) => (parseDate(l.date) || new Date(0)) >= startOfWeek)
     .reduce((sum, l) => sum + l.durationMinutes, 0);
 
-  const badHabitCount = store.state.badHabits.length;
+  // Bad habits: how many of the active ones were reported resisted today (date keys are local).
+  const activeBadHabits = store.state.badHabits.filter((h) => !h.isCompleted);
+  const resistedTodayCount = activeBadHabits.filter((h) =>
+    (store.state.badHabitLogs || []).some((l) => l.badHabitId === h.id && l.date === today && l.status === 'resisted')
+  ).length;
   const activeAddiction = store.state.addictionTracker;
 
   const todayBlocks = store.state.timeTracker?.dailyLogs?.[today] || [];
@@ -356,8 +360,8 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
 
                 <ModuleCard tone="rose" icon={ShieldAlert} title="Bad Habits" onClick={() => onViewChange('bad-habits')}>
                   <div>
-                    <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={badHabitCount} /> <span className="font-sans text-xs text-content-muted">habits reduced</span></div>
-                    <div className="text-micro text-content-disabled">Escalating penalties enabled</div>
+                    <div className="text-2xl font-medium leading-tight text-content-primary tabular-nums"><CountUp value={resistedTodayCount} /> <span className="font-sans text-xs text-content-muted">resisted today</span></div>
+                    <div className="text-micro text-content-disabled">of <CountUp value={activeBadHabits.length} /> active {activeBadHabits.length === 1 ? 'habit' : 'habits'}</div>
                   </div>
                 </ModuleCard>
 
