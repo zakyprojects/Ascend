@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog } from '@/components/ui/primitives';
+import { Dialog, Form, Input } from '@/components/ui/primitives';
 import {
   TimeTrackerActivity,
   TimeTrackerBlock,
@@ -22,7 +22,6 @@ import { ActivityIcon } from './ActivityIcon';
 import { TimeBlockModal } from './TimeBlockModal';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Plus, Trash2, Edit2, Clock, Calendar, AlertTriangle, Layers, Check } from 'lucide-react';
-import { useToast } from '@/components/ui/Toast';
 import { uid } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
@@ -49,7 +48,6 @@ export function TemplateEditorModal({
   templates = [],
   editingTemplate,
 }: TemplateEditorModalProps) {
-  const { showErrorToast } = useToast();
   const [title, setTitle] = useState<string>('');
   const [activeDays, setActiveDays] = useState<string[]>([]);
   const [blocks, setBlocks] = useState<TimeTrackerBlock[]>([]);
@@ -90,12 +88,13 @@ export function TemplateEditorModal({
     setTargetBlockForModal(null);
     setValidationError(null);
     setConflictState(null);
-  }, [open, editingTemplate, activities]);
+    // Prefill once per open (and per edited template): re-running when `activities` changes
+    // would wipe the user's edits whenever a sync or realtime update lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editingTemplate?.id]);
 
   const toggleDay = (day: string) => {
-    console.log(`[TRACER MODAL] toggleDay clicked for day: ${day}`);
     const isAdding = !activeDays.some((d) => d.toLowerCase() === day.toLowerCase());
-    console.log(`[TRACER MODAL] isAdding:`, isAdding, `current activeDays:`, activeDays);
 
     if (isAdding) {
       const conflictingTemplate = (templates || []).find((t) => {
@@ -108,7 +107,6 @@ export function TemplateEditorModal({
             : [];
         return currentDays.some((d) => d.toLowerCase() === day.toLowerCase());
       });
-      console.log(`[TRACER MODAL] conflictingTemplate:`, conflictingTemplate?.title);
 
       if (conflictingTemplate) {
         setConflictState({
@@ -120,7 +118,6 @@ export function TemplateEditorModal({
       }
     }
 
-    console.log(`[TRACER MODAL] Updating local state setActiveDays...`);
     setActiveDays((prev) =>
       prev.some((d) => d.toLowerCase() === day.toLowerCase())
         ? prev.filter((d) => d.toLowerCase() !== day.toLowerCase())
@@ -195,14 +192,12 @@ export function TemplateEditorModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      setValidationError('Please enter a template title.');
-      showErrorToast('Add a title', 'Please enter a template title.');
+      setValidationError('Give the template a name.');
       return;
     }
 
     if (blocks.length === 0) {
-      setValidationError('A template must have at least 1 time block.');
-      showErrorToast('Add a block', 'A template must have at least 1 time block.');
+      setValidationError('Add at least one time block.');
       return;
     }
 
@@ -227,41 +222,46 @@ export function TemplateEditorModal({
         open={open}
         onClose={onClose}
         dirty={form.dirty}
-        title={editingTemplate ? 'Edit Template' : 'Create Template'}
+        title={editingTemplate ? 'Edit template' : 'Create template'}
         maxWidth="max-w-xl"
         preventClose={isSaving}
+        footer={
+          <>
+            <button type="button" onClick={() => form.confirmDiscard(onClose)} disabled={isSaving} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="tt-template-form" disabled={isSaving} className="btn-primary">
+              {isSaving ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
+              <span>{isSaving ? 'Saving…' : editingTemplate ? 'Save changes' : 'Create template'}</span>
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Validation Error Banner */}
+        <Form id="tt-template-form" onSubmit={handleSubmit} className="space-y-4">
           {validationError && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
+            <div role="alert" className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
               <AlertTriangle size={15} className="shrink-0 mt-0.5" />
               <span>{validationError}</span>
             </div>
           )}
 
           {/* Template Title */}
-          <div>
-            <label htmlFor="tt-tpl-title" className="block label mb-1.5">
-              Template Title
-            </label>
-            <input
-              id="tt-tpl-title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Standard Weekday Template, Focus Day, Weekend Recovery..."
-              className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
-              required
-            />
-          </div>
+          <Input
+            id="tt-tpl-title"
+            label="Name"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Weekday, Focus Day, Weekend Recovery"
+            maxLength={60}
+            autoComplete="off"
+            required
+          />
 
-          {/* Active Days of Week (Auto-Apply Assignment) */}
-          <div>
-            <label className="block label mb-1.5">
-              Auto-Apply Days
-            </label>
-            <p className="text-micro text-content-muted mb-2">
+          <div role="group" aria-labelledby="tt-tpl-days-label">
+            <p id="tt-tpl-days-label" className="block label mb-1">
+              Auto-apply days
+            </p>
+            <p className="text-xs text-content-muted mb-2">
               On these days, an empty schedule gets this template automatically.
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -272,9 +272,10 @@ export function TemplateEditorModal({
                     type="button"
                     key={day}
                     onClick={() => toggleDay(day)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                    aria-pressed={isSelected}
+                    className={`min-h-11 sm:min-h-8 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-emerald-600/20 border-emerald-500/70 text-success-text'
+                        ? 'bg-primary-500/15 border-primary-500/50 text-brand-text'
                         : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
                     }`}
                   >
@@ -288,23 +289,23 @@ export function TemplateEditorModal({
           {/* Blueprint Blocks Section */}
           <div className="pt-2">
             <div className="flex items-center justify-between mb-2">
-              <label className="label">
-                Template Blocks ({blocks.length})
-              </label>
+              <p className="label">
+                Blocks ({blocks.length})
+              </p>
               <button
                 type="button"
                 onClick={handleOpenAddBlock}
-                className="flex items-center gap-1 text-xs font-medium text-success-text hover:opacity-80 cursor-pointer"
+                className="btn-ghost text-xs px-2.5 py-1.5 text-brand-text"
               >
-                <Plus size={13} />
-                <span>Add Block</span>
+                <Plus size={14} />
+                <span>Add block</span>
               </button>
             </div>
 
             {/* Block List */}
             {blocks.length === 0 ? (
               <div className="p-5 border border-dashed border-overlay-default rounded-xl text-center text-content-disabled text-xs">
-                No blocks in this template yet. Click &ldquo;Add Block&rdquo; to build the template schedule.
+                No blocks yet. Use &ldquo;Add block&rdquo; to build the schedule.
               </div>
             ) : (
               <div className="divide-y divide-overlay-subtle max-h-56 overflow-y-auto pr-1">
@@ -386,35 +387,7 @@ export function TemplateEditorModal({
             )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-overlay-subtle">
-            <button
-              type="button"
-              onClick={() => form.confirmDiscard(onClose)}
-              disabled={isSaving}
-              className="px-4 py-2 text-xs font-medium text-content-muted hover:text-content-secondary transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
-            >
-              {isSaving ? (
-                <>
-                  <AscendLoadingIndicator size="sm" />
-                  <span>Saving Template...</span>
-                </>
-              ) : (
-                <>
-                  <Check size={14} />
-                  <span>{editingTemplate ? 'Save Changes' : 'Create Template'}</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
+        </Form>
       </Dialog>
 
       {/* Add / Edit Block Inside Template Modal */}
@@ -437,31 +410,26 @@ export function TemplateEditorModal({
         <Dialog
           open={conflictState.isOpen}
           onClose={() => setConflictState(null)}
-          title="Transfer Auto-Apply Day?"
+          title="Move this day?"
           maxWidth="max-w-md"
+          description={
+            <>
+              <strong className="text-content-primary">{conflictState.day}</strong> is set to auto-apply{' '}
+              <strong className="text-content-primary">{conflictState.conflictingTitle}</strong>. Move it to this template instead?
+            </>
+          }
+          footer={
+            <>
+              <button type="button" onClick={() => setConflictState(null)} className="btn-secondary">
+                Cancel
+              </button>
+              <button type="button" onClick={confirmTransfer} className="btn-primary">
+                Move day
+              </button>
+            </>
+          }
         >
-          <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 flex items-start gap-3 mb-6">
-            <AlertTriangle className="text-warning-text shrink-0 mt-0.5" size={18} />
-            <p className="text-sm text-warning-text-muted leading-relaxed">
-              Are you sure you want to replace it? The day <strong className="text-warning-text">{conflictState.day}</strong> is currently assigned to <strong className="text-warning-text">{conflictState.conflictingTitle}</strong>.
-            </p>
-          </div>
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setConflictState(null)}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-content-tertiary hover:text-content-primary hover:bg-bg-700 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={confirmTransfer}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-warning hover:bg-warning transition-colors cursor-pointer"
-            >
-              Transfer Day
-            </button>
-          </div>
+          {null}
         </Dialog>
       )}
     </>
