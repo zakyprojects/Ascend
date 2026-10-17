@@ -569,7 +569,36 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
         open={!!deleteModalHabit}
         onClose={() => setDeleteModalHabit(null)}
         preventClose={!!deleteModalHabit && isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
-        title="Delete Bad Habit?"
+        title="Delete bad habit?"
+        footer={
+          deleteModalHabit && (
+            <>
+              <button
+                type="button"
+                disabled={isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
+                onClick={() => setDeleteModalHabit(null)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
+                onClick={handleConfirmDelete}
+                className="btn-danger-solid"
+              >
+                {isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`) ? <AscendLoadingIndicator size="sm" /> : null}
+                <span>
+                  {isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)
+                    ? 'Deleting…'
+                    : deleteModalHabit.isCompleted
+                      ? 'Delete record'
+                      : 'Delete habit'}
+                </span>
+              </button>
+            </>
+          )
+        }
       >
         {deleteModalHabit && (
           <div className="space-y-4">
@@ -601,31 +630,6 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               </div>
             )}
 
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                disabled={isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
-                onClick={() => setDeleteModalHabit(null)}
-                className="btn-secondary flex-1"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
-                onClick={handleConfirmDelete}
-                className="btn-primary bg-rose-600 hover:bg-rose-500 flex-1 flex items-center justify-center gap-2"
-              >
-                {isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`) ? (
-                  <>
-                    <AscendLoadingIndicator size="sm" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  deleteModalHabit.isCompleted ? 'Delete Record' : 'Confirm Delete'
-                )}
-              </button>
-            </div>
           </div>
         )}
       </Dialog>
