@@ -12,7 +12,6 @@ import {
   Trash2,
   Lock,
   Link as LinkIcon,
-  Sparkles,
   ShieldCheck,
   CheckCircle2,
 } from 'lucide-react';

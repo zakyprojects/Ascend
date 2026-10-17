@@ -466,7 +466,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
       <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Skill">
         <form onSubmit={handleAddSkillSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-name-input">Skill name</label>
+            <label className="block label mb-1" htmlFor="skill-name-input">Skill name</label>
             <input
               id="skill-name-input"
               type="text"
@@ -479,7 +479,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           </div>
 
           <div className="relative">
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-category-input">Category (optional)</label>
+            <label className="block label mb-1" htmlFor="skill-category-input">Category (optional)</label>
             <input
               id="skill-category-input"
               type="text"
@@ -543,7 +543,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleLogPracticeSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-duration-input">Practice time (minutes)</label>
+            <label className="block label mb-1" htmlFor="skill-duration-input">Practice time (minutes)</label>
             <input
               id="skill-duration-input"
               type="number"
@@ -557,7 +557,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="skill-note-input">What did you practice?</label>
+            <label className="block label mb-1" htmlFor="skill-note-input">What did you practice?</label>
             <textarea
               id="skill-note-input"
               autoFocus

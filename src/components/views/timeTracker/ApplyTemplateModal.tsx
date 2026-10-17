@@ -54,7 +54,7 @@ export function ApplyTemplateModal({
         <div>
           {/* Target Date Picker */}
           <div className="mb-3">
-            <label htmlFor="tt-apply-date" className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
+            <label htmlFor="tt-apply-date" className="block label mb-1.5 flex items-center gap-1.5">
               <Calendar size={13} className="text-success-text" />
               <span>Target Schedule Date</span>
             </label>
@@ -68,7 +68,7 @@ export function ApplyTemplateModal({
             />
           </div>
 
-          <label className="block text-xs font-medium text-content-tertiary mb-2">
+          <label className="block label mb-2">
             Select Template
           </label>
           <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
@@ -106,7 +106,7 @@ export function ApplyTemplateModal({
 
         {/* Application Mode */}
         <div>
-          <label className="block text-xs font-medium text-content-tertiary mb-2">
+          <label className="block label mb-2">
             Application Mode
           </label>
           <div className="grid grid-cols-2 gap-2">

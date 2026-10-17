@@ -1489,7 +1489,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           </p>
 
           <div>
-            <label htmlFor="partner-invite-uid" className="block text-xs font-medium text-content-tertiary mb-1">Partner's ID</label>
+            <label htmlFor="partner-invite-uid" className="block label mb-1">Partner's ID</label>
             <input
               id="partner-invite-uid"
               type="text"
@@ -1549,7 +1549,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         <form onSubmit={handleCreateChallengeSubmit} className="space-y-5">
           {/* Title */}
           <div>
-            <label htmlFor="pact-create-title" className="block text-xs font-medium text-content-tertiary mb-1">Pact title</label>
+            <label htmlFor="pact-create-title" className="block label mb-1">Pact title</label>
             <input
               id="pact-create-title"
               type="text"
@@ -1571,7 +1571,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
           {/* Duration Selector: Visual Pill Segments */}
           <div>
-            <label className="block text-xs font-medium text-content-tertiary mb-1.5">Duration</label>
+            <label className="block label mb-1.5">Duration</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {DURATION_OPTIONS.map((opt) => {
                 const isSelected = challengeDuration === opt.days;

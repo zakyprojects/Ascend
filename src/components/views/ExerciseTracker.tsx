@@ -294,7 +294,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} title="Log Workout" preventClose={isLogging}>
         <form onSubmit={handleLogSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-type-select">Workout type</label>
+            <label className="block label mb-1" htmlFor="workout-type-select">Workout type</label>
             <select
               id="workout-type-select"
               value={workoutType}
@@ -322,7 +322,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           {metricType === 'mins' ? (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-metric-type">Measure</label>
+                <label className="block label mb-1" htmlFor="workout-metric-type">Measure</label>
                 <select
                   id="workout-metric-type"
                   value={metricType}
@@ -344,7 +344,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-duration-input">
+                <label className="block label mb-1" htmlFor="workout-duration-input">
                   Duration (minutes)
                 </label>
                 <input
@@ -366,7 +366,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-metric-type">Measure</label>
+                <label className="block label mb-1" htmlFor="workout-metric-type">Measure</label>
                 <select
                   id="workout-metric-type"
                   value={metricType}
@@ -388,7 +388,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="workout-amount-input">
+                <label className="block label mb-1" htmlFor="workout-amount-input">
                   Amount ({metricType})
                 </label>
                 <input
@@ -462,7 +462,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             Set how many workouts you aim for each week. Finishing the week below your target applies a miss penalty.
           </p>
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="target-sessions-input">Workouts per week</label>
+            <label className="block label mb-1" htmlFor="target-sessions-input">Workouts per week</label>
             <input
               id="target-sessions-input"
               type="number"

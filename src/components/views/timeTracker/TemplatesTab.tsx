@@ -26,7 +26,6 @@ import {
   Trash2,
   Calendar,
   Clock,
-  Sparkles,
   ArrowRight,
   Check,
   Zap,

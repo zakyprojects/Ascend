@@ -40,7 +40,7 @@ function FieldShell({ id, label, hint, error, children }: FieldShellProps) {
   return (
     <div className="w-full">
       {hasLabel && (
-        <label htmlFor={id} className="block text-sm font-medium text-content-muted mb-1.5">
+        <label htmlFor={id} className="label block mb-1.5">
           {label}
         </label>
       )}

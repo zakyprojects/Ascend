@@ -22,7 +22,6 @@ import {
   Filter,
   Search,
   ChevronRight,
-  Sparkles,
   Tag,
   ListTodo,
   TrendingUp,
@@ -2549,7 +2548,7 @@ export function ProjectsGoalsView({
       >
         <div className="space-y-4">
           <div>
-            <label htmlFor="pg-goal-title" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="pg-goal-title" className="block label mb-1">
               Goal Title <span className="text-rose-theme">*</span>
             </label>
             <input
@@ -2563,7 +2562,7 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label htmlFor="pg-goal-description" className="block text-xs font-medium text-content-tertiary mb-1">Description (Optional)</label>
+            <label htmlFor="pg-goal-description" className="block label mb-1">Description (Optional)</label>
             <textarea
               id="pg-goal-description"
               rows={2}
@@ -2575,7 +2574,7 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label htmlFor="pg-goal-category" className="block text-xs font-medium text-content-tertiary mb-1">Category Tag</label>
+            <label htmlFor="pg-goal-category" className="block label mb-1">Category Tag</label>
             <input
               id="pg-goal-category"
               type="text"
@@ -2619,7 +2618,7 @@ export function ProjectsGoalsView({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label htmlFor="pg-goal-target-date" className="block text-xs font-medium text-content-tertiary mb-1">Target Completion Date</label>
+              <label htmlFor="pg-goal-target-date" className="block label mb-1">Target Completion Date</label>
               <input
                 id="pg-goal-target-date"
                 type="date"
@@ -2632,7 +2631,7 @@ export function ProjectsGoalsView({
             </div>
 
             <div>
-              <label htmlFor="pg-goal-status" className="block text-xs font-medium text-content-tertiary mb-1">Status</label>
+              <label htmlFor="pg-goal-status" className="block label mb-1">Status</label>
               <select
                 id="pg-goal-status"
                 value={goalFormStatus}
@@ -2679,7 +2678,7 @@ export function ProjectsGoalsView({
       >
         <div className="space-y-4">
           <div>
-            <label htmlFor="pg-project-title" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="pg-project-title" className="block label mb-1">
               Project Title <span className="text-rose-theme">*</span>
             </label>
             <input
@@ -2693,7 +2692,7 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label htmlFor="pg-project-description" className="block text-xs font-medium text-content-tertiary mb-1">Description (Optional)</label>
+            <label htmlFor="pg-project-description" className="block label mb-1">Description (Optional)</label>
             <textarea
               id="pg-project-description"
               rows={2}
@@ -2705,7 +2704,7 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label htmlFor="pg-project-goal-id" className="block text-xs font-medium text-content-tertiary mb-1">Link to Goal (Optional)</label>
+            <label htmlFor="pg-project-goal-id" className="block label mb-1">Link to Goal (Optional)</label>
             <select
               id="pg-project-goal-id"
               value={projectFormGoalId}
@@ -2723,7 +2722,7 @@ export function ProjectsGoalsView({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label htmlFor="pg-project-start-date" className="block text-xs font-medium text-content-tertiary mb-1">Start Date</label>
+              <label htmlFor="pg-project-start-date" className="block label mb-1">Start Date</label>
               <input
                 id="pg-project-start-date"
                 type="date"
@@ -2736,7 +2735,7 @@ export function ProjectsGoalsView({
             </div>
 
             <div>
-              <label htmlFor="pg-project-due-date" className="block text-xs font-medium text-content-tertiary mb-1">Due Date</label>
+              <label htmlFor="pg-project-due-date" className="block label mb-1">Due Date</label>
               <input
                 id="pg-project-due-date"
                 type="date"
@@ -2750,7 +2749,7 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label htmlFor="pg-project-status" className="block text-xs font-medium text-content-tertiary mb-1">Status</label>
+            <label htmlFor="pg-project-status" className="block label mb-1">Status</label>
             <select
               id="pg-project-status"
               value={projectFormStatus}
@@ -2797,7 +2796,7 @@ export function ProjectsGoalsView({
       >
         <div className="space-y-4">
           <div>
-            <label htmlFor="pg-task-title" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="pg-task-title" className="block label mb-1">
               Task Title <span className="text-rose-theme">*</span>
             </label>
             <input
@@ -2811,7 +2810,7 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label htmlFor="pg-task-description" className="block text-xs font-medium text-content-tertiary mb-1">Description (Optional)</label>
+            <label htmlFor="pg-task-description" className="block label mb-1">Description (Optional)</label>
             <textarea
               id="pg-task-description"
               rows={2}
@@ -2824,7 +2823,7 @@ export function ProjectsGoalsView({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label htmlFor="pg-task-project-id" className="block text-xs font-medium text-content-tertiary mb-1">Linked Project</label>
+              <label htmlFor="pg-task-project-id" className="block label mb-1">Linked Project</label>
               <select
                 id="pg-task-project-id"
                 value={taskFormProjectId}
@@ -2841,7 +2840,7 @@ export function ProjectsGoalsView({
             </div>
 
             <div>
-              <label htmlFor="pg-task-priority" className="block text-xs font-medium text-content-tertiary mb-1">Priority</label>
+              <label htmlFor="pg-task-priority" className="block label mb-1">Priority</label>
               <select
                 id="pg-task-priority"
                 value={taskFormPriority}
@@ -2856,7 +2855,7 @@ export function ProjectsGoalsView({
           </div>
 
           <div>
-            <label htmlFor="pg-task-due-date" className="block text-xs font-medium text-content-tertiary mb-1">Due Date</label>
+            <label htmlFor="pg-task-due-date" className="block label mb-1">Due Date</label>
             <input
               id="pg-task-due-date"
               type="date"
@@ -2870,7 +2869,7 @@ export function ProjectsGoalsView({
 
           {/* Subtasks in Modal */}
           <div>
-            <label className="block text-xs font-medium text-content-tertiary mb-1">Subtasks Checklist</label>
+            <label className="block label mb-1">Subtasks Checklist</label>
             <div className="space-y-1.5 mb-2">
               {taskFormSubtasks.map((st, idx) => (
                 <div key={st.id} className="flex items-center justify-between gap-2 p-1.5 bg-bg-900 rounded-lg border border-overlay-subtle">

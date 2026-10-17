@@ -244,7 +244,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
               ← Back
             </button>
             <div>
-              <label className="label" htmlFor="habit-name-input">Habit name</label>
+              <label className="label block mb-1.5" htmlFor="habit-name-input">Habit name</label>
               <input
                 id="habit-name-input"
                 type="text"
@@ -257,7 +257,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
               />
             </div>
             <div>
-              <label className="label">Frequency</label>
+              <label className="label block mb-1.5">Frequency</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setFrequency('daily')}

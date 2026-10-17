@@ -41,7 +41,6 @@ import {
   Play,
   Trash2,
   Edit2,
-  Sparkles,
   Flame,
   AlertCircle,
   Activity,

@@ -388,7 +388,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="craving-trigger" className="block text-xs font-medium text-content-muted mb-1">What triggered this craving?</label>
+            <label htmlFor="craving-trigger" className="block label mb-1">What triggered this craving?</label>
             <input
               type="text"
               id="craving-trigger"
@@ -401,7 +401,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="craving-coping" className="block text-xs font-medium text-content-muted mb-1">Coping strategy (used or planned)</label>
+            <label htmlFor="craving-coping" className="block label mb-1">Coping strategy (used or planned)</label>
             <input
               type="text"
               id="craving-coping"
@@ -428,7 +428,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       <Dialog open={setupTrackerModalOpen} onClose={() => setSetupTrackerModalOpen(false)} title="Set up sobriety tracker">
         <form onSubmit={handleStartTracker} className="space-y-4">
           <div>
-            <label htmlFor="setup-tracker-title" className="block text-xs font-medium text-content-muted mb-1">What are you abstaining from?</label>
+            <label htmlFor="setup-tracker-title" className="block label mb-1">What are you abstaining from?</label>
             <input
               type="text"
               id="setup-tracker-title"

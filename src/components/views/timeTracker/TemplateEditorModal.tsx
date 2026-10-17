@@ -242,7 +242,7 @@ export function TemplateEditorModal({
 
           {/* Template Title */}
           <div>
-            <label htmlFor="tt-tpl-title" className="block text-xs font-medium text-content-tertiary mb-1.5">
+            <label htmlFor="tt-tpl-title" className="block label mb-1.5">
               Template Title
             </label>
             <input
@@ -258,7 +258,7 @@ export function TemplateEditorModal({
 
           {/* Active Days of Week (Auto-Apply Assignment) */}
           <div>
-            <label className="block text-xs font-medium text-content-tertiary mb-1.5">
+            <label className="block label mb-1.5">
               Auto-Apply Days
             </label>
             <p className="text-micro text-content-muted mb-2">
@@ -288,7 +288,7 @@ export function TemplateEditorModal({
           {/* Blueprint Blocks Section */}
           <div className="pt-2">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium text-content-tertiary">
+              <label className="label">
                 Template Blocks ({blocks.length})
               </label>
               <button

@@ -143,7 +143,7 @@ export function ActivityModal({
 
         {/* Category Name */}
         <div>
-          <label htmlFor="tt-act-name" className="block text-xs font-medium text-content-tertiary mb-1.5">
+          <label htmlFor="tt-act-name" className="block label mb-1.5">
             Category Name <span className="text-rose-theme">*</span>
           </label>
           <input
@@ -159,7 +159,7 @@ export function ActivityModal({
 
         {/* Color Picker */}
         <div>
-          <label className="block text-xs font-medium text-content-tertiary mb-2">
+          <label className="block label mb-2">
             Color Accent <span className="text-rose-theme">*</span>
           </label>
           <div className="flex flex-wrap gap-2">
@@ -185,7 +185,7 @@ export function ActivityModal({
 
         {/* Icon Picker */}
         <div>
-          <label className="block text-xs font-medium text-content-tertiary mb-2">
+          <label className="block label mb-2">
             Category Icon <span className="text-rose-theme">*</span>
           </label>
           <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-36 overflow-y-auto p-1 bg-bg-900/50 rounded-xl border border-overlay-subtle">
@@ -212,7 +212,7 @@ export function ActivityModal({
 
         {/* Ascend Module Linkage */}
         <div>
-          <label htmlFor="tt-act-module" className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
+          <label htmlFor="tt-act-module" className="block label mb-1.5 flex items-center gap-1.5">
             <LinkIcon size={13} className="text-success-text" />
             Link to an Ascend module (optional)
           </label>

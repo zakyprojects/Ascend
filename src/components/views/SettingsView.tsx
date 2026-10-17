@@ -459,7 +459,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
               {/* Permanent 6-Digit User UID */}
               <div className="p-3 rounded-xl border border-overlay-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-content-tertiary">
+                  <label className="block label">
                     Your ID
                   </label>
                   <p className="text-micro text-content-muted">
@@ -490,7 +490,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
               {/* Username Change Form */}
               <form onSubmit={handleSaveUsername} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="settings-username" className="block text-xs font-medium text-content-tertiary">
+                  <label htmlFor="settings-username" className="block label">
                     Leaderboard username
                   </label>
                   {isCooldownActive && (
@@ -571,7 +571,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
               {/* Avatar Picker (32 Emojis) */}
               <div className="space-y-2 pt-2 border-t border-overlay-subtle">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-medium text-content-tertiary">
+                  <label className="block label">
                     Leaderboard avatar
                   </label>
                   {avatarMsg && (
@@ -619,7 +619,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
 
               {/* Read-only Email display */}
               <div>
-                <label htmlFor="settings-email" className="block text-xs font-medium text-content-tertiary mb-1">
+                <label htmlFor="settings-email" className="block label mb-1">
                   Email
                 </label>
                 <div className="relative">

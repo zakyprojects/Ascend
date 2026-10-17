@@ -1337,7 +1337,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <label className="text-xs font-medium text-content-muted flex items-center gap-1">
+                <label className="label flex items-center gap-1">
                   <Filter size={13} className="text-blue-theme" /> Sort:
                 </label>
                 <select
@@ -1659,7 +1659,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           {/* STEP 1: PLAN TYPE SELECTOR */}
           <div>
-            <label className="block text-xs font-medium text-content-tertiary mb-2">Select Plan Type</label>
+            <label className="block label mb-2">Select Plan Type</label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -1725,7 +1725,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           {/* SHARED FIELDS */}
           <div>
-            <label htmlFor="pip-create-title" className="block text-xs font-medium text-content-muted mb-1">Plan Title</label>
+            <label htmlFor="pip-create-title" className="block label mb-1">Plan Title</label>
             <input
               id="pip-create-title"
               type="text"
@@ -1746,7 +1746,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="pip-create-description" className="block text-xs font-medium text-content-muted mb-1">Goal & Description</label>
+            <label htmlFor="pip-create-description" className="block label mb-1">Goal & Description</label>
             <textarea
               id="pip-create-description"
               value={description}
@@ -1759,7 +1759,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="pip-create-category" className="block text-xs font-medium text-content-muted mb-1">Category</label>
+              <label htmlFor="pip-create-category" className="block label mb-1">Category</label>
               <select id="pip-create-category" value={category} onChange={(e) => setCategory(e.target.value)} className="input text-xs">
                 {PLAN_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
@@ -1769,7 +1769,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               </select>
             </div>
             <div>
-              <label htmlFor="pip-create-visibility" className="block text-xs font-medium text-content-muted mb-1">Visibility</label>
+              <label htmlFor="pip-create-visibility" className="block label mb-1">Visibility</label>
               <select
                 id="pip-create-visibility"
                 value={isPublic ? 'public' : 'private'}
@@ -1785,7 +1785,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {/* Phase C Review Cadence Selector - Hidden for Vision & Reflection plans */}
           {planType !== 'vision' && (
             <div>
-              <label htmlFor="pip-create-review-cadence" className="block text-xs font-medium text-content-muted mb-1">Review Cadence (Check-in Loop)</label>
+              <label htmlFor="pip-create-review-cadence" className="block label mb-1">Review Cadence (Check-in Loop)</label>
               <select
                 id="pip-create-review-cadence"
                 value={reviewCadence || ''}
@@ -1803,7 +1803,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {planType === 'milestone' && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-medium text-content-muted">Steps & Milestones</label>
+                <label className="block label">Steps & Milestones</label>
                 <button type="button" onClick={handleAddStepField} className="text-xs text-blue-theme hover:text-content-primary hover:underline">
                   + Add Step
                 </button>
@@ -1839,7 +1839,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div className="card space-y-3 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="pip-create-target-value" className="block text-xs font-medium text-content-muted mb-1">Target Value (Number)</label>
+                  <label htmlFor="pip-create-target-value" className="block label mb-1">Target Value (Number)</label>
                   <input
                     id="pip-create-target-value"
                     type="number"
@@ -1851,7 +1851,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="pip-create-target-unit" className="block text-xs font-medium text-content-muted mb-1">Unit Label</label>
+                  <label htmlFor="pip-create-target-unit" className="block label mb-1">Unit Label</label>
                   <input
                     id="pip-create-target-unit"
                     type="text"
@@ -1865,7 +1865,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="pip-create-initial-progress" className="block text-xs font-medium text-content-muted mb-1">Initial Progress</label>
+                  <label htmlFor="pip-create-initial-progress" className="block label mb-1">Initial Progress</label>
                   <input
                     id="pip-create-initial-progress"
                     type="number"
@@ -1876,7 +1876,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="pip-create-target-date" className="block text-xs font-medium text-content-muted mb-1">Target Date</label>
+                  <label htmlFor="pip-create-target-date" className="block label mb-1">Target Date</label>
                   <input
                     id="pip-create-target-date"
                     type="date"
@@ -1893,7 +1893,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div className="card space-y-3 p-3">
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label htmlFor="pip-create-cadence" className="block text-xs font-medium text-content-muted mb-1">Cadence</label>
+                  <label htmlFor="pip-create-cadence" className="block label mb-1">Cadence</label>
                   <select
                     id="pip-create-cadence"
                     value={cadence}
@@ -1905,7 +1905,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="pip-create-duration" className="block text-xs font-medium text-content-muted mb-1">Duration ({cadence === 'weekly' ? 'Weeks' : 'Days'})</label>
+                  <label htmlFor="pip-create-duration" className="block label mb-1">Duration ({cadence === 'weekly' ? 'Weeks' : 'Days'})</label>
                   <input
                     id="pip-create-duration"
                     type="number"
@@ -1917,7 +1917,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="pip-create-start-date" className="block text-xs font-medium text-content-muted mb-1">Start Date</label>
+                  <label htmlFor="pip-create-start-date" className="block label mb-1">Start Date</label>
                   <input
                     id="pip-create-start-date"
                     type="date"
@@ -1933,7 +1933,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {planType === 'vision' && (
             <div className="card space-y-3 p-3">
               <div>
-                <label htmlFor="pip-create-target-review-date" className="block text-xs font-medium text-content-muted mb-1">Target Review Date (Optional)</label>
+                <label htmlFor="pip-create-target-review-date" className="block label mb-1">Target Review Date (Optional)</label>
                 <input
                   id="pip-create-target-review-date"
                   type="date"
@@ -1943,7 +1943,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 />
               </div>
               <div>
-                <label htmlFor="pip-create-initial-reflection-note" className="block text-xs font-medium text-content-muted mb-1">Initial Reflection Check-in Note (Optional)</label>
+                <label htmlFor="pip-create-initial-reflection-note" className="block label mb-1">Initial Reflection Check-in Note (Optional)</label>
                 <textarea
                   id="pip-create-initial-reflection-note"
                   value={initialReflectionNote}
@@ -1979,7 +1979,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleEditSubmit} className="space-y-4">
           <div>
-            <label htmlFor="pip-edit-title" className="block text-xs font-medium text-content-muted mb-1">Plan Title</label>
+            <label htmlFor="pip-edit-title" className="block label mb-1">Plan Title</label>
             <input
               id="pip-edit-title"
               type="text"
@@ -1991,7 +1991,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="pip-edit-description" className="block text-xs font-medium text-content-muted mb-1">Goal & Description</label>
+            <label htmlFor="pip-edit-description" className="block label mb-1">Goal & Description</label>
             <textarea
               id="pip-edit-description"
               value={editDescription}
@@ -2003,7 +2003,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="pip-edit-category" className="block text-xs font-medium text-content-muted mb-1">Category</label>
+              <label htmlFor="pip-edit-category" className="block label mb-1">Category</label>
               <select id="pip-edit-category" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="input text-xs">
                 {PLAN_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
@@ -2013,7 +2013,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               </select>
             </div>
             <div>
-              <label htmlFor="pip-edit-visibility" className="block text-xs font-medium text-content-muted mb-1">Visibility</label>
+              <label htmlFor="pip-edit-visibility" className="block label mb-1">Visibility</label>
               <select
                 id="pip-edit-visibility"
                 value={editIsPublic ? 'public' : 'private'}
@@ -2029,7 +2029,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {/* Phase C Review Cadence Selector - Hidden for Vision & Reflection plans */}
           {editingPlanType !== 'vision' && (
             <div>
-              <label htmlFor="pip-edit-review-cadence" className="block text-xs font-medium text-content-muted mb-1">Review Cadence (Check-in Loop)</label>
+              <label htmlFor="pip-edit-review-cadence" className="block label mb-1">Review Cadence (Check-in Loop)</label>
               <select
                 id="pip-edit-review-cadence"
                 value={editReviewCadence || ''}
@@ -2047,7 +2047,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {editingPlanType === 'milestone' && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-medium text-content-muted">Steps & Milestones</label>
+                <label className="block label">Steps & Milestones</label>
                 <button
                   type="button"
                   onClick={() => setEditSteps([...editSteps, `Step ${editSteps.length + 1}`])}
@@ -2091,7 +2091,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             <div className="card space-y-3 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="pip-edit-target-value" className="block text-xs font-medium text-content-muted mb-1">Target Value</label>
+                  <label htmlFor="pip-edit-target-value" className="block label mb-1">Target Value</label>
                   <input
                     id="pip-edit-target-value"
                     type="number"
@@ -2103,7 +2103,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="pip-edit-target-unit" className="block text-xs font-medium text-content-muted mb-1">Unit Label</label>
+                  <label htmlFor="pip-edit-target-unit" className="block label mb-1">Unit Label</label>
                   <input
                     id="pip-edit-target-unit"
                     type="text"
@@ -2116,7 +2116,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 </div>
               </div>
               <div>
-                <label htmlFor="pip-edit-target-date" className="block text-xs font-medium text-content-muted mb-1">Target Date</label>
+                <label htmlFor="pip-edit-target-date" className="block label mb-1">Target Date</label>
                 <input
                   id="pip-edit-target-date"
                   type="date"
@@ -2131,7 +2131,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {editingPlanType === 'habit_journey' && (
             <div className="grid grid-cols-2 gap-3 bg-bg-800/50 p-3 rounded-lg border border-overlay-subtle">
               <div>
-                <label htmlFor="pip-edit-cadence" className="block text-xs font-medium text-content-muted mb-1">Cadence</label>
+                <label htmlFor="pip-edit-cadence" className="block label mb-1">Cadence</label>
                 <select
                   id="pip-edit-cadence"
                   value={editCadence}
@@ -2143,7 +2143,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 </select>
               </div>
               <div>
-                <label htmlFor="pip-edit-duration" className="block text-xs font-medium text-content-muted mb-1">Duration (Days/Weeks)</label>
+                <label htmlFor="pip-edit-duration" className="block label mb-1">Duration (Days/Weeks)</label>
                 <input
                   id="pip-edit-duration"
                   type="number"
@@ -2159,7 +2159,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           {editingPlanType === 'vision' && (
             <div className="bg-bg-800/50 p-3 rounded-lg border border-overlay-subtle">
-              <label htmlFor="pip-edit-target-review-date" className="block text-xs font-medium text-content-muted mb-1">Target Review Date</label>
+              <label htmlFor="pip-edit-target-review-date" className="block label mb-1">Target Review Date</label>
               <input
                 id="pip-edit-target-review-date"
                 type="date"

@@ -64,7 +64,7 @@ interface ChoiceGroupProps {
 function ChoiceGroup({ legend, name, options, value, onChange }: ChoiceGroupProps) {
   return (
     <fieldset>
-      <legend className="block text-sm font-medium text-content-muted mb-1.5">{legend}</legend>
+      <legend className="label block mb-1.5">{legend}</legend>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         {options.map((option) => (
           <label key={option.value} className="relative cursor-pointer">
@@ -317,7 +317,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
             </Select>
 
             <div>
-              <span className="block text-sm font-medium text-content-muted mb-1.5">Screenshots (optional)</span>
+              <span className="label block mb-1.5">Screenshots (optional)</span>
               <div className="flex flex-wrap gap-2">
                 {screenshots.map((shot) => (
                   <div key={shot.id} className="enter-item relative h-20 w-20 overflow-hidden rounded-xl border border-overlay-default">

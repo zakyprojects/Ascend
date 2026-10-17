@@ -1136,7 +1136,7 @@
   }
 
   .label {
-    @apply block text-sm font-medium text-content-muted mb-1.5;
+    @apply text-xs font-medium text-content-tertiary;
   }
 
   .badge {
@@ -1223,7 +1223,7 @@
      section-title  heading of a block on a page (sans; serif is kept for page titles and hero numbers)
      item-name      the name of a thing in a list (a user, a rank, a habit), medium not bold
      figure         points, ranks, counts: even-width digits (mono only for running timers)
-     stat-value / stat-label   a hero number and its eyebrow */
+     stat-label     the small caption under or over a number */
   .section-title {
     @apply text-lg font-semibold leading-snug tracking-[-0.01em] text-content-primary;
   }
@@ -1234,10 +1234,6 @@
 
   .figure {
     @apply font-medium tabular-nums tracking-[-0.01em];
-  }
-
-  .stat-value {
-    @apply text-2xl font-display font-semibold tracking-tight text-content-primary tabular-nums;
   }
 
   .stat-label {

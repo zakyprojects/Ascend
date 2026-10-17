@@ -215,7 +215,7 @@ export function TimeBlockModal({
         {/* Activity Category Selection */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-medium text-content-tertiary">
+            <label className="label">
               Activity Categories
             </label>
             <span className="text-micro text-content-muted">
@@ -275,7 +275,7 @@ export function TimeBlockModal({
         <div className="grid grid-cols-2 gap-3 pt-1">
           <div className="flex flex-col h-full space-y-1.5">
             <div className="flex items-center justify-between gap-1">
-              <label htmlFor="tt-block-start" className="text-xs font-medium text-content-tertiary truncate">Start Time (24h)</label>
+              <label htmlFor="tt-block-start" className="label truncate">Start Time (24h)</label>
               <span className="figure text-micro text-content-muted bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(startTime)}
               </span>
@@ -295,7 +295,7 @@ export function TimeBlockModal({
 
           <div className="flex flex-col h-full space-y-1.5">
             <div className="flex items-center justify-between gap-1">
-              <label htmlFor="tt-block-end" className="text-xs font-medium text-content-tertiary truncate">End Time (24h)</label>
+              <label htmlFor="tt-block-end" className="label truncate">End Time (24h)</label>
               <span className="figure text-micro text-content-muted bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                 {formatTime12h(endTime)}
               </span>
@@ -349,7 +349,7 @@ export function TimeBlockModal({
 
         {/* Custom Title (Optional) */}
         <div>
-          <label htmlFor="tt-block-title" className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
+          <label htmlFor="tt-block-title" className="block label mb-1.5 flex items-center gap-1.5">
             <Tag size={13} className="text-content-muted" />
             Custom Label / Task (Optional)
           </label>
@@ -365,7 +365,7 @@ export function TimeBlockModal({
 
         {/* Notes (Optional) */}
         <div>
-          <label htmlFor="tt-block-notes" className="block text-xs font-medium text-content-tertiary mb-1.5 flex items-center gap-1.5">
+          <label htmlFor="tt-block-notes" className="block label mb-1.5 flex items-center gap-1.5">
             <FileText size={13} className="text-content-muted" />
             Notes & Intentions (Optional)
           </label>

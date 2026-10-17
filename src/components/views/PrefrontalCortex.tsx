@@ -2264,7 +2264,7 @@ function FocusTimerSubmodule({
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-medium text-content-tertiary">
+            <label className="block label">
               Break length
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -2391,7 +2391,7 @@ function FocusTimerSubmodule({
           </div>
 
           <div>
-            <label htmlFor="pfc-session-reflection" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="pfc-session-reflection" className="block label mb-1">
               Reflection (optional)
             </label>
             <textarea
@@ -2562,7 +2562,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)} dirty={decisionForm.dirty} title="Log Decision">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="pfc-decision-title" className="block text-xs font-medium text-content-muted mb-1">Decision</label>
+            <label htmlFor="pfc-decision-title" className="block label mb-1">Decision</label>
             <input
               id="pfc-decision-title"
               type="text"
@@ -2575,7 +2575,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="pfc-decision-rationale" className="block text-xs font-medium text-content-muted mb-1">Why are you deciding this?</label>
+            <label htmlFor="pfc-decision-rationale" className="block label mb-1">Why are you deciding this?</label>
             <textarea
               id="pfc-decision-rationale"
               value={rationale}
@@ -2587,7 +2587,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="pfc-decision-outcome" className="block text-xs font-medium text-content-muted mb-1">Expected outcome</label>
+            <label htmlFor="pfc-decision-outcome" className="block label mb-1">Expected outcome</label>
             <input
               id="pfc-decision-outcome"
               type="text"
@@ -2599,7 +2599,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="pfc-decision-revisit-date" className="block text-xs font-medium text-content-muted mb-1">Revisit on</label>
+            <label htmlFor="pfc-decision-revisit-date" className="block label mb-1">Revisit on</label>
             <input
               id="pfc-decision-revisit-date"
               type="date"
@@ -2633,7 +2633,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
         title={`Reflect: ${reflectModalDecision?.title}`}>
         <form onSubmit={handleReflectionSubmit} className="space-y-4">
           <div>
-            <label htmlFor="pfc-decision-reflection-notes" className="block text-xs font-medium text-content-muted mb-1">What actually happened? What did you learn?</label>
+            <label htmlFor="pfc-decision-reflection-notes" className="block label mb-1">What actually happened? What did you learn?</label>
             <textarea
               id="pfc-decision-reflection-notes"
               value={reflectionText}
@@ -2784,7 +2784,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)} dirty={emotionForm.dirty} title="Label Emotion">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="pfc-emotion-select" className="block text-xs font-medium text-content-muted mb-1">Emotion</label>
+            <label htmlFor="pfc-emotion-select" className="block label mb-1">Emotion</label>
             <select id="pfc-emotion-select" value={emotion} onChange={(e) => setEmotion(e.target.value)} className="input mb-2">
               {COMMON_EMOTIONS.map((e) => (
                 <option key={e} value={e}>{e}</option>
@@ -2823,7 +2823,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="pfc-emotion-context" className="block text-xs font-medium text-content-muted mb-1">What triggered it?</label>
+            <label htmlFor="pfc-emotion-context" className="block label mb-1">What triggered it?</label>
             <textarea
               id="pfc-emotion-context"
               value={context}

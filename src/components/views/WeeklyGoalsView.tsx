@@ -903,7 +903,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               {/* ADD REFLECTION FORM */}
               {showAddReflection && (
                 <div className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
-                  <label htmlFor="new-reflection-content" className="block text-xs font-medium text-content-tertiary">
+                  <label htmlFor="new-reflection-content" className="block label">
                     New Reflection Entry
                   </label>
                   <textarea
@@ -956,7 +956,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
                         if (isEditingThis) {
                           return (
                             <div key={ref.id} className="py-3.5 first:pt-0 space-y-3">
-                              <label htmlFor="edit-reflection-content" className="block text-xs font-medium text-content-tertiary">
+                              <label htmlFor="edit-reflection-content" className="block label">
                                 Edit Reflection
                               </label>
                               <textarea
@@ -1051,7 +1051,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       >
         <div className="space-y-4 pt-2">
           <div>
-            <label htmlFor="goal-title" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="goal-title" className="block label mb-1">
               Goal Title <span className="text-rose-theme">*</span>
             </label>
             <input
@@ -1066,7 +1066,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="goal-description" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="goal-description" className="block label mb-1">
               Description
             </label>
             <textarea
@@ -1080,7 +1080,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="goal-priority" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="goal-priority" className="block label mb-1">
                 Priority Level
               </label>
               <select
@@ -1096,7 +1096,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             </div>
 
             <div>
-              <label htmlFor="goal-linked-module" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="goal-linked-module" className="block label mb-1">
                 Link Tracker Module
               </label>
               <select
@@ -1122,7 +1122,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {/* ITEM SELECTOR DEPENDING ON LINKED MODULE */}
           {linkedModule === 'exercise' && (
             <div>
-              <label htmlFor="goal-workout-item" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="goal-workout-item" className="block label mb-1">
                 Select Workout <span className="text-rose-theme">*</span>
               </label>
               <select
@@ -1143,7 +1143,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           {linkedModule === 'habit' && (
             <div>
-              <label htmlFor="goal-habit-item" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="goal-habit-item" className="block label mb-1">
                 Select Habit <span className="text-rose-theme">*</span>
               </label>
               <select
@@ -1164,7 +1164,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           {linkedModule === 'reading' && (
             <div>
-              <label htmlFor="goal-book-item" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="goal-book-item" className="block label mb-1">
                 Select Book <span className="text-rose-theme">*</span>
               </label>
               <select
@@ -1185,7 +1185,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
           {linkedModule === 'skill' && (
             <div>
-              <label htmlFor="goal-skill-item" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="goal-skill-item" className="block label mb-1">
                 Select Skill <span className="text-rose-theme">*</span>
               </label>
               <select
@@ -1207,7 +1207,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           {/* TARGET VALUE & METRIC / UNIT INPUTS */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="goal-target-amount" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="goal-target-amount" className="block label mb-1">
                 Target Goal Amount
               </label>
               <input
@@ -1222,7 +1222,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
             {linkedModule !== 'none' ? (
               <div>
-                <label htmlFor="goal-metric-key" className="block text-xs font-medium text-content-tertiary mb-1">
+                <label htmlFor="goal-metric-key" className="block label mb-1">
                   Select Metric <span className="text-rose-theme">*</span>
                 </label>
                 <select
@@ -1241,7 +1241,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
               </div>
             ) : (
               <div>
-                <label htmlFor="goal-unit-label" className="block text-xs font-medium text-content-tertiary mb-1">
+                <label htmlFor="goal-unit-label" className="block label mb-1">
                   Unit Label
                 </label>
                 <input

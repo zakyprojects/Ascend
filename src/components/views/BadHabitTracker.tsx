@@ -471,7 +471,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Bad Habit">
         <form onSubmit={handleAddSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1" htmlFor="bad-habit-name-input">Habit name</label>
+            <label className="block label mb-1" htmlFor="bad-habit-name-input">Habit name</label>
             <input
               id="bad-habit-name-input"
               type="text"
@@ -484,7 +484,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-content-muted mb-1">Commitment length</label>
+            <label className="block label mb-1">Commitment length</label>
             <div className="relative isolate grid grid-cols-4 gap-2 mb-2">
               <SlidingPill active={durationMode} className="rounded-xl bg-primary-500/15 border border-primary-500/40" />
               <button

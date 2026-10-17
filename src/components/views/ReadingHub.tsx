@@ -903,7 +903,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       >
         <form onSubmit={handleAddCustomSubmit} className="space-y-4">
           <div>
-            <label htmlFor="rh-add-title" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="rh-add-title" className="block label mb-1">
               Book Title <span className="text-rose-theme">*</span>
             </label>
             <input
@@ -919,7 +919,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="rh-add-author" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="rh-add-author" className="block label mb-1">
               Author
             </label>
             <input
@@ -934,7 +934,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="rh-add-category" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="rh-add-category" className="block label mb-1">
                 Category
               </label>
               <select
@@ -953,7 +953,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             </div>
 
             <div>
-              <label htmlFor="rh-add-status" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="rh-add-status" className="block label mb-1">
                 Status
               </label>
               <select
@@ -971,7 +971,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="rh-add-total" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="rh-add-total" className="block label mb-1">
                 Length
               </label>
               <input
@@ -985,7 +985,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               />
             </div>
             <div>
-              <label htmlFor="rh-add-unit" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="rh-add-unit" className="block label mb-1">
                 Unit
               </label>
               <select
@@ -1001,7 +1001,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="rh-add-date" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="rh-add-date" className="block label mb-1">
               Target finish date (optional)
             </label>
             <input
@@ -1014,7 +1014,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="rh-add-notes" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="rh-add-notes" className="block label mb-1">
               Notes (optional)
             </label>
             <textarea
@@ -1059,7 +1059,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="rh-start-total" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="rh-start-total" className="block label mb-1">
                 Total Length <span className="text-rose-theme">*</span>
               </label>
               <input
@@ -1074,7 +1074,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               />
             </div>
             <div>
-              <label htmlFor="rh-start-unit" className="block text-xs font-medium text-content-tertiary mb-1">
+              <label htmlFor="rh-start-unit" className="block label mb-1">
                 Unit
               </label>
               <select
@@ -1090,7 +1090,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </div>
 
           <div>
-            <label htmlFor="rh-start-date" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="rh-start-date" className="block label mb-1">
               Target finish date (optional)
             </label>
             <input
@@ -1135,7 +1135,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </p>
 
           <div>
-            <label htmlFor="rh-progress-current" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="rh-progress-current" className="block label mb-1">
               What {progressModalBook?.unit === 'chapters' ? 'chapter' : 'page'} are you on currently?
             </label>
             <input
@@ -1267,7 +1267,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           )}
 
           <div>
-            <label htmlFor="rh-finish-insights" className="block text-xs font-medium text-content-tertiary mb-1">
+            <label htmlFor="rh-finish-insights" className="block label mb-1">
               Key takeaways <span className="text-rose-theme">*</span>
             </label>
             <textarea

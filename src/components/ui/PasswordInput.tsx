@@ -32,7 +32,7 @@ export function PasswordInput({
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-xs font-medium text-content-tertiary mb-1"
+          className="block label mb-1"
         >
           {label} {required && <span className="text-error-text">*</span>}
         </label>

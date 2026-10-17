@@ -205,7 +205,7 @@ function FieldLabel({
 }) {
   return (
     <div className="flex items-center justify-between gap-2 mb-1.5">
-      <label htmlFor={htmlFor} className="block text-xs font-medium text-content-tertiary">
+      <label htmlFor={htmlFor} className="block label">
         {children} {required && <span className="text-error-text">*</span>}
       </label>
       <FieldCheck show={valid} />
