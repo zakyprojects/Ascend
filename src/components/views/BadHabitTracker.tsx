@@ -20,7 +20,8 @@ import { todayKey, formatDateLong, getNow } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
-import { Dialog, Disclosure, EmptyState, PageColumns, ProgressBar, SlidingPill } from '@/components/ui/primitives';
+import { Dialog, Disclosure, EmptyState, Form, Input, NumberField, PageColumns, ProgressBar, SlidingPill } from '@/components/ui/primitives';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { getBadHabitSlot } from '@/lib/badHabitEligibility';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { getCapStatus } from '@/lib/capStatus';
@@ -33,8 +34,8 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [habitName, setHabitName] = useState('');
   const [durationMode, setDurationMode] = useState<'30' | '60' | '90' | 'custom'>('30');
-  const [customDays, setCustomDays] = useState<number | ''>(30);
-  const [durationError, setDurationError] = useState('');
+  const [customDays, setCustomDays] = useState(30);
+  const addForm = useUnsavedChanges(addModalOpen, { habitName, durationMode, customDays });
 
   // Delete Confirmation Modal State
   const [deleteModalHabit, setDeleteModalHabit] = useState<BadHabit | null>(null);
@@ -91,9 +92,16 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
     }
   }
 
+  // Every open starts clean: a dismissed draft is not shown again.
+  const openAddModal = () => {
+    setHabitName('');
+    setDurationMode('30');
+    setCustomDays(30);
+    setAddModalOpen(true);
+  };
+
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setDurationError('');
     if (!habitName.trim()) return;
 
     let targetDays = 30;
@@ -101,12 +109,8 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
     else if (durationMode === '60') targetDays = 60;
     else if (durationMode === '90') targetDays = 90;
     else if (durationMode === 'custom') {
-      const parsed = Number(customDays);
-      if (isNaN(parsed) || parsed < 30) {
-        setDurationError('Custom duration must be at least 30 days.');
-        return;
-      }
-      targetDays = parsed;
+      if (!Number.isInteger(customDays) || customDays < 30) return; // the field's min/step say why
+      targetDays = customDays;
     }
 
     store.addBadHabit(habitName, targetDays);
@@ -114,7 +118,6 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
     setHabitName('');
     setDurationMode('30');
     setCustomDays(30);
-    setDurationError('');
   };
 
   const handleConfirmDelete = async () => {
@@ -135,7 +138,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           <h1 className="page-title">Bad Habits</h1>
           <p className="page-subtitle">Resist each day and let the streak do the work.</p>
         </div>
-        <button onClick={() => setAddModalOpen(true)} className="btn-primary flex items-center gap-2 sm:shrink-0">
+        <button onClick={openAddModal} className="btn-primary flex items-center gap-2 sm:shrink-0">
           <Plus size={18} />
           <span>Add Bad Habit</span>
         </button>
@@ -190,7 +193,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
               title="No bad habits tracked yet"
               description="Add a habit you want to cut back on (e.g. doomscrolling, junk food, late-night gaming) and log each day you resist it."
               action={
-                <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
+                <button onClick={openAddModal} className="btn-primary mx-auto">
                   Add Bad Habit
                 </button>
               }
@@ -468,60 +471,74 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
       </PageColumns>
 
       {/* Add Bad Habit Modal */}
-      <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Bad Habit">
-        <form onSubmit={handleAddSubmit} className="space-y-4">
-          <div>
-            <label className="block label mb-1" htmlFor="bad-habit-name-input">Habit name</label>
-            <input
-              id="bad-habit-name-input"
-              type="text"
-              value={habitName}
-              onChange={(e) => setHabitName(e.target.value)}
-              placeholder="e.g. Doomscrolling, junk food, late-night gaming"
-              className="input"
-              required
-            />
-          </div>
+      <Dialog
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        dirty={addForm.dirty}
+        title="Add bad habit"
+        footer={
+          <>
+            <button type="button" onClick={() => addForm.confirmDiscard(() => setAddModalOpen(false))} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="bad-habit-add-form" className="btn-primary">
+              Start tracking
+            </button>
+          </>
+        }
+      >
+        <Form id="bad-habit-add-form" onSubmit={handleAddSubmit} className="space-y-4">
+          <Input
+            id="bad-habit-name-input"
+            label="Habit name"
+            value={habitName}
+            onChange={(e) => setHabitName(e.target.value)}
+            placeholder="e.g. Doomscrolling, junk food, late-night gaming"
+            maxLength={80}
+            enterKeyHint="done"
+            autoComplete="off"
+            required
+          />
 
-          <div>
-            <label className="block label mb-1">Commitment length</label>
+          <div role="group" aria-labelledby="bad-habit-length-label">
+            <p id="bad-habit-length-label" className="block label mb-1.5">Commitment length</p>
             <div className="relative isolate grid grid-cols-4 gap-2 mb-2">
               <SlidingPill active={durationMode} className="rounded-xl bg-primary-500/15 border border-primary-500/40" />
               <button
                 type="button"
                 data-pill-id="30"
                 onClick={() => setDurationMode('30')}
-                className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
+                className={`min-h-11 sm:min-h-9 py-2 text-xs rounded-xl border font-semibold transition-colors ${
                   durationMode === '30' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
-                30 Days
+                30 days
               </button>
               <button
                 type="button"
                 data-pill-id="60"
                 onClick={() => setDurationMode('60')}
-                className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
+                className={`min-h-11 sm:min-h-9 py-2 text-xs rounded-xl border font-semibold transition-colors ${
                   durationMode === '60' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
-                60 Days
+                60 days
               </button>
               <button
                 type="button"
                 data-pill-id="90"
                 onClick={() => setDurationMode('90')}
-                className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
+                className={`min-h-11 sm:min-h-9 py-2 text-xs rounded-xl border font-semibold transition-colors ${
                   durationMode === '90' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
-                90 Days
+                90 days
               </button>
               <button
                 type="button"
                 data-pill-id="custom"
                 onClick={() => setDurationMode('custom')}
-                className={`py-2 text-xs rounded-xl border font-semibold transition-colors ${
+                className={`min-h-11 sm:min-h-9 py-2 text-xs rounded-xl border font-semibold transition-colors ${
                   durationMode === 'custom' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
                 }`}
               >
@@ -530,42 +547,21 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
             </div>
 
             {durationMode === 'custom' && (
-              <div className="mt-2">
-                <label className="block text-micro text-content-disabled mb-1" htmlFor="bad-habit-custom-days-input">Custom length (at least 30 days)</label>
-                <input
+              <div className="mt-3">
+                <NumberField
                   id="bad-habit-custom-days-input"
-                  type="number"
-                  min="30"
+                  label="Custom length in days"
+                  hint="At least 30 days."
+                  min={30}
                   value={customDays}
-                  onChange={(e) => {
-                    setCustomDays(e.target.value === '' ? '' : Number(e.target.value));
-                    setDurationError('');
-                  }}
-                  className="input"
+                  onValueChange={setCustomDays}
+                  enterKeyHint="done"
                   required
                 />
               </div>
             )}
-
-            {durationError && <p className="text-xs text-error-text mt-1">{durationError}</p>}
           </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                setAddModalOpen(false);
-                setDurationError('');
-              }}
-              className="btn-secondary flex-1"
-            >
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary flex-1">
-              Start Tracking
-            </button>
-          </div>
-        </form>
+        </Form>
       </Dialog>
 
       {/* Delete Confirmation Modal */}
