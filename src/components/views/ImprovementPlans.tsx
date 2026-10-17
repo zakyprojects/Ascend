@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Dialog, EmptyState, Form, NumberField, ProgressBar, Skeleton, SlidingPill } from '@/components/ui/primitives';
+import { Dialog, EmptyState, FieldMessage, Form, Input, NumberField, ProgressBar, Skeleton, SlidingPill } from '@/components/ui/primitives';
 import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
 import { getCurrentTier } from '@/lib/tiers';
 import { todayKey } from '@/lib/dates';
@@ -1624,6 +1624,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               placeholder="e.g. 20"
               required
             />
+            <FieldMessage htmlFor="plan-new-target" />
             <p className="text-xs text-content-muted">Goal done. Progress starts again from 0.</p>
           </div>
         </Form>
@@ -1758,6 +1759,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               className="input"
               required
             />
+            <FieldMessage htmlFor="pip-create-title" />
           </div>
 
           <div>
@@ -1770,6 +1772,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               className="input min-h-[70px]"
               required
             />
+            <FieldMessage htmlFor="pip-create-description" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1825,21 +1828,23 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               </div>
               <div className="space-y-2">
                 {steps.map((step, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <input
-                      type="text"
+                  <div key={idx} className="flex items-start gap-2">
+                    <Input
+                      id={`pip-create-step-${idx}`}
+                      aria-label={`Step ${idx + 1}`}
                       value={step}
                       onChange={(e) => handleStepChange(idx, e.target.value)}
-                      placeholder={`Step #${idx + 1}...`}
-                      className="input flex-1"
+                      placeholder={`Step ${idx + 1}`}
+                      maxLength={200}
+                      autoComplete="off"
                       required
                     />
                     {steps.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveStepField(idx)}
-                        className={`text-content-subtle hover:text-rose-theme p-1 ${TAP_TARGET}`}
-                        aria-label={`Remove step "${step}"`}
+                        className={`mt-2.5 text-content-muted hover:text-rose-theme p-1 ${TAP_TARGET}`}
+                        aria-label={`Remove step ${idx + 1}`}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -1875,6 +1880,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     className="input"
                     required
                   />
+                  <FieldMessage htmlFor="pip-create-target-unit" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1999,6 +2005,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               className="input"
               required
             />
+            <FieldMessage htmlFor="pip-edit-title" />
           </div>
 
           <div>
@@ -2010,6 +2017,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               className="input min-h-[70px]"
               required
             />
+            <FieldMessage htmlFor="pip-edit-description" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2069,25 +2077,27 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               </div>
               <div className="space-y-2">
                 {editSteps.map((step, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <input
-                      type="text"
+                  <div key={idx} className="flex items-start gap-2">
+                    <Input
+                      id={`pip-edit-step-${idx}`}
+                      aria-label={`Step ${idx + 1}`}
                       value={step}
                       onChange={(e) => {
                         const next = [...editSteps];
                         next[idx] = e.target.value;
                         setEditSteps(next);
                       }}
-                      placeholder={`Step #${idx + 1}...`}
-                      className="input flex-1"
+                      placeholder={`Step ${idx + 1}`}
+                      maxLength={200}
+                      autoComplete="off"
                       required
                     />
                     {editSteps.length > 1 && (
                       <button
                         type="button"
                         onClick={() => setEditSteps(editSteps.filter((_, i) => i !== idx))}
-                        className={`text-content-subtle hover:text-rose-theme p-1 ${TAP_TARGET}`}
-                        aria-label={`Remove step "${step}"`}
+                        className={`mt-2.5 text-content-muted hover:text-rose-theme p-1 ${TAP_TARGET}`}
+                        aria-label={`Remove step ${idx + 1}`}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -2123,6 +2133,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     className="input"
                     required
                   />
+                  <FieldMessage htmlFor="pip-edit-target-unit" />
                 </div>
               </div>
               <div>
