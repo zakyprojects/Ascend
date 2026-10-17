@@ -1,7 +1,7 @@
 -- Partners redesign (2026-10-17): removing a partner or deleting a shared challenge tells the
 -- other member, and removing a partner is one atomic server step.
--- Run AFTER the production push (the studio app also works before it: the old direct deletes
--- stay as the fallback path when end_partnership_atomic is missing).
+-- Safe to run BEFORE the studio test: additive only. Older app builds keep their direct
+-- deletes (no notice); the new app falls back to them while end_partnership_atomic is missing.
 
 -- 1. Two new server-issued notice types: partner_removed, challenge_deleted.
 CREATE OR REPLACE FUNCTION public.create_notification_atomic(p_recipient_id uuid, p_actor_id uuid DEFAULT NULL::uuid, p_actor_username text DEFAULT NULL::text, p_actor_avatar text DEFAULT NULL::text, p_type character varying DEFAULT 'system'::character varying, p_title text DEFAULT NULL::text, p_message text DEFAULT ''::text, p_payload jsonb DEFAULT '{}'::jsonb)
