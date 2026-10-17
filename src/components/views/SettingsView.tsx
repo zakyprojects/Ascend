@@ -68,7 +68,7 @@ const NOTIFICATION_PREFERENCES: { key: NotificationPreferenceKey; title: string;
   {
     key: 'notifPartnerActivity',
     title: 'Partner activity',
-    description: 'Nudges, finished pacts and missed habits from your partners.',
+    description: 'Nudges, finished challenges and missed habits from your partners.',
   },
   {
     key: 'notifSundayPlanning',

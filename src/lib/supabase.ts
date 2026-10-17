@@ -1267,7 +1267,17 @@ export async function fetchPartnershipsSupabase(userId: string): Promise<Partner
 export async function deletePartnershipSupabase(partnershipId: string) {
   if (!isSupabaseConfigured || !partnershipId) return;
   try {
-    // Delete associated shared challenges first
+    // One server step: tells the partner, then removes the pair's challenges and the partnership.
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('end_partnership_atomic', { p_partnership_id: partnershipId });
+    if (!rpcErr) {
+      if (rpcData?.success === false) {
+        throw new Error(rpcData.error || "Couldn't remove the partner. Try again.");
+      }
+      return;
+    }
+    console.warn('RPC end_partnership_atomic unavailable, falling back to direct delete:', rpcErr);
+
+    // Fallback (database without the RPC yet): delete associated shared challenges first
     const { error: chalErr } = await supabase.from('shared_challenges').delete().eq('partnership_id', partnershipId);
     if (chalErr) {
       console.error('Error deleting associated shared challenges in Supabase:', chalErr);
@@ -1477,39 +1487,6 @@ export async function fetchNotificationsSupabase(recipientId: string): Promise<A
   } catch (e) {
     console.error('Error fetching notifications from Supabase:', e);
     return [];
-  }
-}
-
-export async function checkRecentPartnerNudgeSent(
-  recipientId: string,
-  challengeId: string,
-  dateKey: string
-): Promise<boolean> {
-  if (!isSupabaseConfigured || !recipientId || !challengeId) return false;
-  try {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('id, created_at, payload')
-      .eq('recipient_id', recipientId)
-      .eq('type', 'partner_nudge')
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (error || !data || data.length === 0) return false;
-
-    return data.some((n: any) => {
-      const p = n.payload || {};
-      const isExplicitNudge = p.dedupKey ? String(p.dedupKey).startsWith('partner_nudge_') : true;
-      if (isExplicitNudge && p.challengeId === challengeId && (p.date === dateKey || p.dedupKey === `partner_nudge_${challengeId}_${dateKey}`)) {
-        // Also check if within 2 hour window
-        const createdMs = new Date(n.created_at).getTime();
-        return (trustedNowMs() - createdMs) < 2 * 60 * 60 * 1000;
-      }
-      return false;
-    });
-  } catch (e) {
-    console.warn('checkRecentPartnerNudgeSent check failed:', e);
-    return false;
   }
 }
 

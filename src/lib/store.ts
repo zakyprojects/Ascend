@@ -6985,8 +6985,14 @@ export function useAppState() {
         throw new Error("You can't send an accountability invite to yourself.");
       }
 
-      if ((state.partnerships || []).length >= 5) {
-        throw new Error("You've reached the maximum limit of 5 accountability partners. Remove one to add another.");
+      // Waiting invites hold a place, so accepting them all can never go over 5.
+      const pendingSent = (state.partnerInvites || []).filter(
+        (i) =>
+          i.status === 'pending' &&
+          (i.fromUserId === state.currentUser?.id || i.fromUsername?.toLowerCase() === state.username.toLowerCase())
+      ).length;
+      if ((state.partnerships || []).length + pendingSent >= 5) {
+        throw new Error('You can have 5 partners, waiting invites included. Cancel an invite or remove a partner first.');
       }
 
       const profileData = await fetchProfileByUidFromSupabase(trimmedUid);
@@ -7408,7 +7414,7 @@ export function useAppState() {
       const normTitle = trimmedTitle.toLowerCase();
 
       if (!trimmedTitle) {
-        throw new Error('Please enter a pact title.');
+        throw new Error('Write what you will do every day.');
       }
 
       // Prevent duplicate creation if an active challenge with the same title already exists on this partnership
@@ -7421,7 +7427,7 @@ export function useAppState() {
       );
       if (existingActive) {
         throw new Error(
-          `You already have an active pact called "${existingActive.title}" with this partner — choose a different name or view your existing pact.`
+          `You already have a running challenge "${existingActive.title}" with this partner.`
         );
       }
 

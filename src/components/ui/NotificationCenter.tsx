@@ -134,6 +134,7 @@ export function NotificationCenter({
       case 'partner_invite':
       case 'partner_invite_accepted':
       case 'partner_invite_declined':
+      case 'partner_removed':
         return <Users size={16} className="text-sky-theme" />;
       case 'partner_nudge':
         return <Zap size={16} className="text-warning-text" />;
@@ -141,6 +142,7 @@ export function NotificationCenter({
         return <CheckCircle2 size={16} className="text-success-text" />;
       case 'missed_habit':
       case 'partner_missed_habit':
+      case 'challenge_deleted':
       case 'streak_risk':
         return <AlertTriangle size={16} className="text-rose-theme" />;
       case 'challenge_completed':

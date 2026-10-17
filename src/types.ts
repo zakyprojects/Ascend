@@ -617,7 +617,7 @@ export interface AppNotification {
   actorId?: string;
   actorUsername?: string;
   actorAvatar?: string;
-  type: 'partner_invite' | 'partner_invite_accepted' | 'partner_invite_declined' | 'partner_nudge' | 'partner_pledge_done' | 'partner_missed_habit' | 'missed_habit' | 'challenge_completed' | string;
+  type: 'partner_invite' | 'partner_invite_accepted' | 'partner_invite_declined' | 'partner_removed' | 'challenge_deleted' | 'partner_nudge' | 'partner_pledge_done' | 'partner_missed_habit' | 'missed_habit' | 'challenge_completed' | string;
   title?: string;
   message: string;
   payload?: Record<string, unknown>;

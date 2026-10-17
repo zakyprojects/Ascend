@@ -1,107 +1,45 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Check, Clock, Flame, Plus, RotateCcw, Trash2, UserPlus, UserMinus, Users, Zap } from 'lucide-react';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
-import {
-  UserPlus,
-  Plus,
-  Zap,
-  Trash2,
-  X,
-  Clock,
-  CheckCircle2,
-  BookOpen,
-  Dumbbell,
-  AlertTriangle,
-  ShieldAlert,
-  FileText,
-  ChevronDown,
-  ChevronRight,
-  RotateCcw,
-  Flame,
-  Users,
-} from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
-import { Dialog, EmptyState, Form, Input, Skeleton, useFormController } from '@/components/ui/primitives';
+import { Dialog, Disclosure, EmptyState, Form, Input, Skeleton, Switch, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { CountUp } from '@/components/ui/Motion';
-import { ProgressRing } from '@/components/ui/charts';
-import { TAP_TARGET, TAP_AREA } from '@/components/ui/primitives/shared';
-import { getCurrentTier } from '@/lib/tiers';
-import { leagueNow, getSeasonNumber } from '@/lib/leagueTime';
+import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
+import { leagueNow } from '@/lib/leagueTime';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { isPartnershipUser1 } from '@/lib/partnershipSide';
-import { todayKey, formatDateShort, parseDate, calculateElapsedDays, addDays } from '@/lib/dates';
-import { createNotificationSupabase, checkRecentPartnerNudgeSent } from '@/lib/supabase';
+import { todayKey, calculateElapsedDays } from '@/lib/dates';
+import { createNotificationSupabase } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { toUserMessage } from '@/lib/userMessage';
-import { Partnership, SharedChallenge, SharedChallengeCategory, PartnerInvite } from '@/types';
-import { trustedNow, trustedNowMs } from '@/lib/clock';
+import { Partnership, SharedChallenge, PartnerInvite } from '@/types';
 
 const EMPTY_PARTNERSHIPS: Partnership[] = [];
 const EMPTY_INVITES: PartnerInvite[] = [];
 const EMPTY_CHALLENGES: SharedChallenge[] = [];
 
-const CATEGORY_OPTIONS: {
-  value: SharedChallengeCategory;
-  label: string;
-  icon: typeof CheckCircle2;
-  color: string;
-  borderColor: string;
-  bgColor: string;
-}[] = [
-  { value: 'habit', label: 'Habit', icon: CheckCircle2, color: 'text-success-text', borderColor: 'border-emerald-500/40', bgColor: 'bg-emerald-500/10' },
-  { value: 'exercise', label: 'Workout', icon: Dumbbell, color: 'text-warning-text', borderColor: 'border-amber-500/40', bgColor: 'bg-amber-500/10' },
-  { value: 'reading', label: 'Reading', icon: BookOpen, color: 'text-sky-theme', borderColor: 'border-sky-500/40', bgColor: 'bg-sky-500/10' },
-  { value: 'bad_habit', label: 'Reduction', icon: AlertTriangle, color: 'text-rose-theme', borderColor: 'border-rose-500/40', bgColor: 'bg-rose-500/10' },
-  { value: 'skill', label: 'Skill', icon: Zap, color: 'text-purple-hierarchy', borderColor: 'border-purple-500/40', bgColor: 'bg-purple-500/10' },
-  { value: 'journal', label: 'Journal', icon: FileText, color: 'text-indigo-theme', borderColor: 'border-indigo-500/40', bgColor: 'bg-indigo-500/10' },
-  { value: 'recovery', label: 'Sobriety', icon: ShieldAlert, color: 'text-teal-theme', borderColor: 'border-teal-500/40', bgColor: 'bg-teal-500/10' },
-];
+const MAX_PARTNERS = 5;
+const LENGTH_OPTIONS = [7, 14, 30];
+// One nudge per partner per day (partnerKey -> dateKey of the last nudge, this device).
+const NUDGE_STORAGE_KEY = 'ascend_partner_nudged_on';
 
-const SUGGESTIONS_BY_CATEGORY: Record<SharedChallengeCategory, string[]> = {
-  exercise: ['30m Strength Training', '5km Morning Run', '10,000 Daily Steps', '20m HIIT Workout', 'Core & Mobility Session'],
-  reading: ['Read 20 Pages', 'Read 1 Chapter', '30m Deep Reading', 'Audiobook 20m'],
-  habit: ['Morning Meditation', 'Drink 3L Water', 'No Sugar Today', 'Sleep by 11pm', 'Cold Shower'],
-  bad_habit: ['Zero Junk Food', 'No Screen Before Bed', 'No Social Media Scroll', 'Zero Alcohol', 'No Snoozing Alarm'],
-  skill: ['30m Coding Practice', 'Language Lesson', 'Guitar Practice', 'Design Study', 'Writing 500 Words'],
-  journal: ['Morning Intention Log', 'Evening Reflection', 'Gratitude (3 items)', 'Mindful Check-in'],
-  recovery: ['One Day Clean & Sober', 'Urge Surfing (10m)', 'Support Session', 'Trigger Journaling'],
-};
+function doneDates(c: SharedChallenge, user1: boolean): string[] {
+  return user1
+    ? c.user1DoneDates || (c.user1DoneDate ? [c.user1DoneDate] : [])
+    : c.user2DoneDates || (c.user2DoneDate ? [c.user2DoneDate] : []);
+}
 
-const DURATION_OPTIONS = [
-  { days: 7, label: '7 Days', bonus: '+50 XP', desc: 'Sprint' },
-  { days: 14, label: '14 Days', bonus: '+120 XP', desc: 'Habit Builder' },
-  { days: 30, label: '30 Days', bonus: '+300 XP', desc: 'Lock-In' },
-  { days: 90, label: '90 Days', bonus: '+1,000 XP', desc: 'Mastery' },
-];
+function goalOf(c: SharedChallenge, user1: boolean): string {
+  return (user1 ? c.user1Target : c.user2Target) || c.targetHabitName || c.title;
+}
 
-function createTimelineDay(
-  baseKey: string,
-  offsetDays: number,
-  dayNumber: number,
-  todayStr: string,
-  forceFutureFalse = false
-) {
-  const dateKey = addDays(baseKey, offsetDays);
-  const d = parseDate(dateKey) || trustedNow();
-  const dayLabel = d.toLocaleDateString('en-US', { weekday: 'narrow' });
-  const shortDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const isToday = dateKey === todayStr;
-  const isPast = dateKey < todayStr;
-  const isFuture = forceFutureFalse ? false : dateKey > todayStr;
-
-  return {
-    dateKey,
-    dayLabel,
-    shortDate,
-    dayNumber,
-    isToday,
-    isPast,
-    isFuture,
-  };
+function initial(name: string | null | undefined): string {
+  return (name || '?').charAt(0).toUpperCase();
 }
 
 export function AccountabilityPartner({ store }: { store: AppStore }) {
@@ -113,26 +51,21 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [challengeModalOpen, setChallengeModalOpen] = useState(false);
-  const [endConfirmOpen, setEndConfirmOpen] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
   const [challengeToDelete, setChallengeToDelete] = useState<SharedChallenge | null>(null);
   const [inviteToCancel, setInviteToCancel] = useState<PartnerInvite | null>(null);
 
   const [partnerUidInput, setPartnerUidInput] = useState('');
-  const [showPastPacts, setShowPastPacts] = useState(false);
 
-  // Shared Challenge Creation Form States
-  const [challengeTitle, setChallengeTitle] = useState('');
-  const [challengeDuration, setChallengeDuration] = useState(14);
-  const [user1Category, setUser1Category] = useState<SharedChallengeCategory>('habit');
-  const [user1Target, setUser1Target] = useState('');
-  const [user2Category, setUser2Category] = useState<SharedChallengeCategory>('habit');
-  const [user2Target, setUser2Target] = useState('');
+  // New challenge form
+  const [myGoal, setMyGoal] = useState('');
+  const [differentGoal, setDifferentGoal] = useState(false);
+  const [partnerGoal, setPartnerGoal] = useState('');
+  const [lengthDays, setLengthDays] = useState(14);
 
-  // Local Nudge Cooldowns Map (challengeId -> timestamp ms)
-  const [nudgeCooldowns, setNudgeCooldowns] = useState<Record<string, number>>(() => {
+  const [nudgedOn, setNudgedOn] = useState<Record<string, string>>(() => {
     try {
-      const saved = localStorage.getItem('ascend_partner_nudge_cooldowns');
-      return saved ? JSON.parse(saved) : {};
+      return JSON.parse(localStorage.getItem(NUDGE_STORAGE_KEY) || '{}') || {};
     } catch {
       return {};
     }
@@ -140,6 +73,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
   const currentUser = store.state.currentUser;
   const currentUsername = store.state.username;
+  const today = todayKey();
 
   const rawPartnerships = store.state.partnerships;
   const singlePartnership = store.state.partnership;
@@ -150,11 +84,8 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       if (!p) continue;
       const isU1 = isPartnershipUser1(p, currentUser?.id, currentUsername);
       const partnerName = (isU1 ? p.user2Username : p.user1Username).toLowerCase();
-      const partnerId = (isU1 ? p.user2Id : p.user1Id) || partnerName;
-      const key = partnerId || partnerName || p.id;
-      if (!map.has(key)) {
-        map.set(key, p);
-      }
+      const key = (isU1 ? p.user2Id : p.user1Id) || partnerName || p.id;
+      if (!map.has(key)) map.set(key, p);
     }
     return Array.from(map.values());
   }, [rawPartnerships, singlePartnership, currentUsername, currentUser?.id]);
@@ -162,1322 +93,593 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const partnerInvites = store.state.partnerInvites || EMPTY_INVITES;
   const sharedChallenges = store.state.sharedChallenges || EMPTY_CHALLENGES;
 
-  // Selected partner relationship state
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
-
   useEffect(() => {
-    if (partnerships.length > 0) {
-      if (!selectedPartnerId || !partnerships.some((p) => p.id === selectedPartnerId)) {
-        setSelectedPartnerId(partnerships[0].id);
-      }
-    } else {
+    if (partnerships.length === 0) {
       setSelectedPartnerId(null);
+    } else if (!selectedPartnerId || !partnerships.some((p) => p.id === selectedPartnerId)) {
+      setSelectedPartnerId(partnerships[0].id);
     }
   }, [partnerships, selectedPartnerId]);
 
   const activePartnership: Partnership | null =
     partnerships.find((p) => p.id === selectedPartnerId) || partnerships[0] || null;
+  const amUser1 = activePartnership ? isPartnershipUser1(activePartnership, currentUser?.id, currentUsername) : true;
+  const partnerName = activePartnership ? (amUser1 ? activePartnership.user2Username : activePartnership.user1Username) : null;
+  const partnerUserId = activePartnership ? (amUser1 ? activePartnership.user2Id : activePartnership.user1Id) : null;
 
-  // Identify partner username and roles for current user
-  const isUser1InActive = activePartnership
-    ? isPartnershipUser1(activePartnership, currentUser?.id, currentUsername)
-    : true;
-
-  const activePartnerUsername = activePartnership
-    ? isUser1InActive
-      ? activePartnership.user2Username
-      : activePartnership.user1Username
-    : null;
-
-  const activePartnerUserId = activePartnership
-    ? isUser1InActive
-      ? activePartnership.user2Id
-      : activePartnership.user1Id
-    : null;
-
-  // Real Partner high-level stats state loaded from Supabase
-  const [partnerStatsData, setPartnerStatsData] = useState<{
-    totalPoints: number;
-    seasonPoints?: number;
-    stats: {
-      streakDays: number;
-      streakSource?: string;
-      currentStreakDays?: number;
-      currentStreakCategory?: string;
-      currentStreakIsActive?: boolean;
-      bestStreakDays?: number;
-      bestStreakCategory?: string;
-      habitsCompletedCount: number;
-      habitsCompletedTodayCount?: number;
-      exerciseMinutes?: number;
-      journalEntriesCount?: number;
-      booksRead?: number;
-    };
-    avatar?: string;
-    isProfilePublic?: boolean;
-  } | null>(null);
-
+  // Partner's published season points + streak
+  const [partnerStats, setPartnerStats] = useState<{ seasonPoints?: number; streak: number; avatar?: string } | null>(null);
   const { getPartnerProfileStats } = store;
-
   useEffect(() => {
     let mounted = true;
-    if (activePartnerUsername) {
+    if (partnerName) {
       executeStatsFetch(async () => {
         try {
-          const res = await getPartnerProfileStats(activePartnerUsername);
-          if (mounted) {
-            if (res) {
-              setPartnerStatsData(res as any);
-            } else {
-              setPartnerStatsData(null);
-            }
-          }
+          const res = await getPartnerProfileStats(partnerName);
+          if (!mounted) return;
+          setPartnerStats(
+            res
+              ? {
+                  seasonPoints: res.seasonPoints,
+                  streak: res.stats?.currentStreakDays ?? res.stats?.streakDays ?? 0,
+                  avatar: res.avatar,
+                }
+              : null
+          );
         } catch {
-          if (mounted) setPartnerStatsData(null);
+          if (mounted) setPartnerStats(null);
         }
       });
     } else {
-      setPartnerStatsData(null);
+      setPartnerStats(null);
     }
     return () => {
       mounted = false;
     };
-  }, [activePartnerUsername, getPartnerProfileStats, executeStatsFetch]);
+  }, [partnerName, getPartnerProfileStats, executeStatsFetch]);
 
-  // Current Season & Lazy Client-Side Evaluation
-  const currentSeason = getSeasonNumber(leagueNow());
-
-  // Current User Stats
   const mySeasonPoints = store.getLeagueData('ninetyDay').userPoints;
-  const myTier = getCurrentTier(mySeasonPoints);
-  const myHabitsCompletedToday = (store.state.habits || []).filter((h) => {
-    const today = todayKey();
-    return Array.isArray(h.completions)
-      ? h.completions.includes(today)
-      : h.completions?.[today]?.done === true;
-  }).length;
-  const myHabitsCompletedTotal = (store.state.habits || []).reduce(
-    (acc, h) =>
-      acc +
-      (Array.isArray(h.completions)
-        ? h.completions.length
-        : Object.values(h.completions || {}).filter((c) => c && c.done).length),
-    0
-  );
-  const myStreakData = useMemo(() => calculateUnifiedStreak(store.state), [store.state]);
-  const myCurrentStreakDays = myStreakData.currentStreakDays || 0;
+  const myStreak = useMemo(() => calculateUnifiedStreak(store.state).currentStreakDays || 0, [store.state]);
+  const partnerSeasonPoints =
+    partnerStats?.seasonPoints ?? (partnerName ? getProfileSeasonPointsByUsername(partnerName, 'ninetyDay', leagueNow()) : 0);
 
-  // Partner Stats (Lazy Client-Side Evaluation)
-  const partnerSeason = (partnerStatsData as any)?.season_id ?? (partnerStatsData as any)?.seasonId ?? 1;
-  const partnerPoints = (partnerSeason === currentSeason)
-    ? (partnerStatsData?.seasonPoints ?? (partnerStatsData as any)?.season_points ?? partnerStatsData?.totalPoints ?? (activePartnerUsername ? getProfileSeasonPointsByUsername(activePartnerUsername, 'ninetyDay', leagueNow()) : 0))
-    : 0;
-  const partnerSeasonPoints = partnerPoints;
-  const partnerTier = getCurrentTier(partnerSeasonPoints);
-  const partnerHabitsCompleted = partnerStatsData?.stats?.habitsCompletedCount ?? 0;
-  const partnerHabitsCompletedToday = partnerStatsData?.stats?.habitsCompletedTodayCount ?? 0;
-  const partnerCurrentStreakDays =
-    partnerStatsData?.stats?.currentStreakDays ?? partnerStatsData?.stats?.streakDays ?? 0;
-
-  // Sets of active partner usernames & user IDs
-  const activePartnerUsernamesSet = useMemo(
+  // Requests (pending only, never with someone who is already a partner)
+  const partnerNames = useMemo(
     () => new Set(partnerships.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])),
     [partnerships]
   );
-  const activePartnerUserIdsSet = useMemo(
-    () => new Set(partnerships.flatMap((p) => [p.user1Id, p.user2Id])),
-    [partnerships]
+  const partnerIds = useMemo(() => new Set(partnerships.flatMap((p) => [p.user1Id, p.user2Id])), [partnerships]);
+  const incomingInvites = partnerInvites.filter(
+    (i) =>
+      i.status === 'pending' &&
+      i.toUsername.toLowerCase() === currentUsername.toLowerCase() &&
+      !partnerIds.has(i.fromUserId) &&
+      !partnerNames.has(i.fromUsername.toLowerCase())
+  );
+  const sentInvites = partnerInvites.filter(
+    (i) =>
+      i.status === 'pending' &&
+      (i.fromUserId === currentUser?.id || i.fromUsername.toLowerCase() === currentUsername.toLowerCase()) &&
+      !partnerIds.has(i.toUserId) &&
+      !partnerNames.has(i.toUsername.toLowerCase())
+  );
+  // Waiting invites hold a place: once all are accepted you'd be over the limit.
+  const placesUsed = partnerships.length + sentInvites.length;
+  const canInvite = placesUsed < MAX_PARTNERS;
+  const atPartnerLimit = partnerships.length >= MAX_PARTNERS;
+
+  const challengesFor = useCallback(
+    (p: Partnership) => sharedChallenges.filter((c) => c.partnershipId === p.id),
+    [sharedChallenges]
+  );
+  const myChallenges = activePartnership ? challengesFor(activePartnership) : EMPTY_CHALLENGES;
+  const runningChallenges = myChallenges.filter((c) => c.status === 'active');
+  const finishedChallenges = myChallenges.filter((c) => c.status === 'completed' || c.status === 'expired');
+  const partnerDoneAllToday =
+    runningChallenges.length > 0 && runningChallenges.every((c) => doneDates(c, !amUser1).includes(today));
+
+  const myHabitNames = useMemo(
+    () => Array.from(new Set((store.state.habits || []).map((h) => h.name.trim()).filter(Boolean))),
+    [store.state.habits]
   );
 
-  // Pending incoming & sent invites excluding users who are already active partners
-  const incomingInvites = partnerInvites.filter((i) => {
-    if (i.status !== 'pending') return false;
-    if (i.toUsername.toLowerCase() !== currentUsername.toLowerCase()) return false;
-    const isPartnerAlready =
-      activePartnerUserIdsSet.has(i.fromUserId) ||
-      activePartnerUsernamesSet.has(i.fromUsername.toLowerCase());
-    return !isPartnerAlready;
-  });
-
-  const sentInvites = partnerInvites.filter((i) => {
-    if (i.status !== 'pending') return false;
-    const isFromMe = i.fromUserId === currentUser?.id || i.fromUsername.toLowerCase() === currentUsername.toLowerCase();
-    if (!isFromMe) return false;
-    const isPartnerAlready =
-      activePartnerUserIdsSet.has(i.toUserId) ||
-      activePartnerUsernamesSet.has(i.toUsername.toLowerCase());
-    return !isPartnerAlready;
-  });
-
-  const [inviteError, setInviteError] = useState<string | null>(null);
-
   const inviteForm = useUnsavedChanges(inviteModalOpen, partnerUidInput);
-  const pactForm = useUnsavedChanges(challengeModalOpen, [challengeTitle, challengeDuration, user1Category, user1Target, user2Category, user2Target]);
-
+  const challengeForm = useUnsavedChanges(challengeModalOpen, [myGoal, differentGoal, partnerGoal, lengthDays]);
   const inviteIssues = useFormController();
-  const pactIssues = useFormController();
+  const challengeIssues = useFormController();
 
-  const handleSendInviteSubmit = async (e: React.FormEvent) => {
+  const openChallengeForm = (from?: SharedChallenge) => {
+    const mine = from ? goalOf(from, amUser1) : '';
+    const theirs = from ? goalOf(from, !amUser1) : '';
+    setMyGoal(mine);
+    setPartnerGoal(theirs === mine ? '' : theirs);
+    setDifferentGoal(Boolean(from) && theirs !== mine);
+    setLengthDays(from && LENGTH_OPTIONS.includes(from.durationDays) ? from.durationDays : 14);
+    setChallengeModalOpen(true);
+  };
+
+  const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmittingInvite) return;
-    const trimmed = partnerUidInput.trim();
-    if (!trimmed) return;
-
-    if (currentUser?.uid && trimmed === currentUser.uid) {
-      inviteIssues.showError("That's your own ID. Enter your partner's.", 'partner-invite-uid');
+    const uid = partnerUidInput.trim();
+    if (!uid) return;
+    if (currentUser?.uid && uid === currentUser.uid) {
+      inviteIssues.showError("That's your own ID. Enter your friend's.", 'partner-invite-uid');
       return;
     }
-
-    if (partnerships.length >= 5) {
-      inviteIssues.showError('You already have 5 partners, the maximum. Remove one to add another.');
+    if (!canInvite) {
+      inviteIssues.showError(`You can have ${MAX_PARTNERS} partners, waiting invites included. Cancel an invite or remove a partner first.`);
       return;
     }
-
-    const targetUid = trimmed;
     await executeSendInvite(async () => {
       try {
-        await store.sendPartnerInvite(targetUid);
+        await store.sendPartnerInvite(uid);
         setInviteModalOpen(false);
         setPartnerUidInput('');
-        showSuccessToast('Invite sent', 'Your partner invite is on its way.');
+        showSuccessToast('Invite sent', "You'll be partners once they accept.");
       } catch (err: any) {
-        // "No one has the ID ..." belongs to the ID field; anything else to the form.
-        const errorMessage = toUserMessage(err, "Couldn't send the invite. Try again.");
-        inviteIssues.showError(errorMessage, /\bID\b/.test(errorMessage) ? 'partner-invite-uid' : undefined);
+        const message = toUserMessage(err, "Couldn't send the invite. Try again.");
+        inviteIssues.showError(message, /\bID\b/.test(message) ? 'partner-invite-uid' : undefined);
       }
     });
   };
 
-  const handleCreateChallengeSubmit = async (e: React.FormEvent) => {
+  const handleCreateChallenge = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activePartnership || isSubmittingChallenge) return;
-
+    const mine = myGoal.trim();
+    const theirs = differentGoal ? partnerGoal.trim() : mine;
+    if (!mine) {
+      challengeIssues.showError('Write what you will do every day.', 'challenge-my-goal');
+      return;
+    }
+    if (!theirs) {
+      challengeIssues.showError(`Write what ${partnerName} will do every day.`, 'challenge-partner-goal');
+      return;
+    }
     await executeCreateChallenge(async () => {
       try {
-        const u1Target = user1Target.trim() || 'Daily Activity';
-        const u2Target = user2Target.trim() || 'Daily Activity';
-        const title = challengeTitle.trim() || `${user1Category.toUpperCase()} & ${user2Category.toUpperCase()} Pact`;
-
         await store.createSharedChallenge(
-          title,
-          Number(challengeDuration),
-          isUser1InActive ? user1Category : user2Category,
-          isUser1InActive ? u1Target : u2Target,
-          isUser1InActive ? user2Category : user1Category,
-          isUser1InActive ? u2Target : u1Target,
+          mine,
+          lengthDays,
+          'habit',
+          amUser1 ? mine : theirs,
+          'habit',
+          amUser1 ? theirs : mine,
           activePartnership.id
         );
-
         setChallengeModalOpen(false);
-        setChallengeTitle('');
-        setUser1Target('');
-        setUser2Target('');
-        showSuccessToast('Joint pact locked in!', `"${title}" has begun with @${activePartnerUsername}.`);
+        showSuccessToast('Challenge started', `${lengthDays} days with ${partnerName}. Day 1 is today.`);
       } catch (err: any) {
-        pactIssues.showError(toUserMessage(err, "Couldn't create the pact. Try again."));
+        challengeIssues.showError(toUserMessage(err, "Couldn't start the challenge. Try again."));
       }
     });
   };
 
-  const handleAcceptInvite = async (inviteId: string) => {
-    setInviteError(null);
-    await executeWithKey(`accept_invite_${inviteId}`, async () => {
+  const handleAccept = (inviteId: string) =>
+    executeWithKey(`accept_invite_${inviteId}`, async () => {
       try {
         await store.acceptPartnerInvite(inviteId);
-        showSuccessToast('Partner connected', "You're now accountability partners.");
+        showSuccessToast('Partner added', "You're partners now. Start a challenge together.");
       } catch (err: any) {
-        setInviteError(toUserMessage(err, "Couldn't accept the invite. Try again."));
+        showErrorToast("Couldn't accept", toUserMessage(err, 'Try again.'));
       }
     });
-  };
 
-  const handleDeclineInvite = async (inviteId: string) => {
-    setInviteError(null);
-    await executeWithKey(`decline_invite_${inviteId}`, async () => {
+  const handleDecline = (inviteId: string) =>
+    executeWithKey(`decline_invite_${inviteId}`, async () => {
       try {
         await store.declinePartnerInvite(inviteId);
       } catch (err: any) {
-        setInviteError(toUserMessage(err, "Couldn't decline the invite. Try again."));
+        showErrorToast("Couldn't decline", toUserMessage(err, 'Try again.'));
+      }
+    });
+
+  const handleToggleToday = (challenge: SharedChallenge) =>
+    executeWithKey(`log_${challenge.id}`, async () => {
+      try {
+        await store.logSharedChallengeHabit(challenge.id);
+      } catch (err: any) {
+        showErrorToast("Couldn't save", toUserMessage(err, 'Try again.'));
+      }
+    });
+
+  const nudgeKey = activePartnership ? activePartnership.id : '';
+  const nudgedToday = Boolean(nudgeKey) && nudgedOn[nudgeKey] === today;
+
+  const handleNudge = () => {
+    if (!activePartnership || !partnerUserId || !partnerName || nudgedToday) return;
+    const key = activePartnership.id;
+    return executeWithKey(`nudge_${key}`, async () => {
+      try {
+        await createNotificationSupabase({
+          recipientId: partnerUserId,
+          actorId: currentUser?.id,
+          actorUsername: currentUsername,
+          actorAvatar: currentUser?.avatar || '🧑',
+          type: 'partner_nudge',
+          title: 'Your partner nudged you',
+          message: `${currentUsername} is waiting for you to finish today's challenges.`,
+          payload: { date: today, dedupKey: `partner_nudge_${currentUser?.id || currentUsername}_${today}` },
+        });
+        const next = { ...nudgedOn, [key]: today };
+        setNudgedOn(next);
+        try {
+          localStorage.setItem(NUDGE_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // storage full or blocked: the nudge itself was sent
+        }
+        showSuccessToast('Nudge sent', `${partnerName} got a reminder.`);
+      } catch (err: any) {
+        showErrorToast("Couldn't send nudge", toUserMessage(err, 'Try again later.'));
       }
     });
   };
 
-  // Challenges specific to the currently selected partner relationship
-  const isolatedChallenges = useMemo(() => {
-    return sharedChallenges.filter(
-      (c) => activePartnership && c.partnershipId === activePartnership.id
+  const renderChallenge = (c: SharedChallenge) => {
+    const mineDone = doneDates(c, amUser1).includes(today);
+    const theirsDone = doneDates(c, !amUser1).includes(today);
+    const together = c.totalJointDaysCompleted ?? 0;
+    const length = c.durationDays || 1;
+    const day = Math.min(length, calculateElapsedDays(c.createdAt));
+    const daysLeft = Math.max(0, length - day);
+    const mine = goalOf(c, amUser1);
+    const theirs = goalOf(c, !amUser1);
+    const busy = isKeyLoading(`log_${c.id}`);
+
+    return (
+      <div key={c.id} className="card enter-item p-4 card-hover">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => handleToggleToday(c)}
+            aria-pressed={mineDone}
+            aria-label={mineDone ? `Undo today for ${mine}` : `Mark ${mine} done today`}
+            className={cx(
+              'shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90',
+              mineDone
+                ? 'bg-primary-600 text-on-brand'
+                : 'bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-secondary'
+            )}
+          >
+            {busy ? <AscendLoadingIndicator size="sm" /> : <Check size={22} />}
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <h3 className="item-name truncate text-content-secondary">{mine}</h3>
+            {theirs !== mine && (
+              <p className="text-xs text-content-muted truncate">
+                {partnerName}: {theirs}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs">
+              <span className={mineDone ? 'text-success-text' : 'text-content-muted'}>
+                You {mineDone ? '✓' : '·'}
+              </span>
+              <span className={theirsDone ? 'text-success-text' : 'text-content-muted'}>
+                {partnerName} {theirsDone ? '✓' : '·'}
+              </span>
+              {(c.jointStreak || 0) > 0 && (
+                <span className="flex items-center gap-1 text-brand-text">
+                  <Flame size={13} />
+                  <span className="figure">{c.jointStreak}d together</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setChallengeToDelete(c)}
+            aria-label={`Delete challenge ${mine}`}
+            className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+
+        <div className="mt-3 space-y-1.5">
+          <div
+            className="h-1.5 rounded-full bg-overlay-subtle overflow-hidden"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={length}
+            aria-valuenow={together}
+            aria-label="Days done together"
+          >
+            <div className="h-full rounded-full bg-primary-500 transition-all" style={{ width: `${Math.min(100, (together / length) * 100)}%` }} />
+          </div>
+          <div className="flex items-center justify-between text-micro text-content-muted">
+            <span>
+              <span className="figure text-content-secondary">{together}</span> of {length} days done together
+            </span>
+            <span>{daysLeft === 0 ? 'Last day' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}</span>
+          </div>
+        </div>
+      </div>
     );
-  }, [sharedChallenges, activePartnership]);
-
-  const activePacts = useMemo(() => {
-    return isolatedChallenges.filter((c) => c.status === 'active');
-  }, [isolatedChallenges]);
-
-  const pastPacts = useMemo(() => {
-    return isolatedChallenges.filter((c) => c.status === 'completed' || c.status === 'expired');
-  }, [isolatedChallenges]);
-
-  // Nudge Partner Handler with DB check fallback for cross-device support
-  const handleNudgePartner = useCallback(
-    async (challenge: SharedChallenge) => {
-      if (!activePartnerUserId || !activePartnerUsername) return;
-
-      const now = trustedNowMs();
-      const existingCooldown = nudgeCooldowns[challenge.id] || 0;
-
-      if (now < existingCooldown) {
-        const remainingMinutes = Math.ceil((existingCooldown - now) / 60000);
-        showInfoToast('Nudge on cooldown', `You can nudge ${activePartnerUsername} again in ${remainingMinutes}m.`);
-        return;
-      }
-
-      const today = todayKey();
-
-      await executeWithKey(`nudge_${challenge.id}`, async () => {
-        // Check remote notifications table to prevent bypassing cooldown on alternate devices/browsers
-        const wasRecentlySent = await checkRecentPartnerNudgeSent(activePartnerUserId, challenge.id, today);
-        if (wasRecentlySent) {
-          const newCooldown = now + 2 * 60 * 60 * 1000;
-          const updatedCooldowns = { ...nudgeCooldowns, [challenge.id]: newCooldown };
-          setNudgeCooldowns(updatedCooldowns);
-          try {
-            localStorage.setItem('ascend_partner_nudge_cooldowns', JSON.stringify(updatedCooldowns));
-          } catch {
-            // ignore
-          }
-          showInfoToast('Nudge on cooldown', `You already nudged @${activePartnerUsername} in the last 2 hours.`);
-          return;
-        }
-
-        const dedupKey = `partner_nudge_${challenge.id}_${today}`;
-
-        try {
-          await createNotificationSupabase({
-            recipientId: activePartnerUserId,
-            actorId: currentUser?.id,
-            actorUsername: currentUsername,
-            actorAvatar: currentUser?.avatar || '🧑',
-            type: 'partner_nudge',
-            title: 'Accountability Pact Nudge',
-            message: `${currentUsername} is waiting on you to lock in today's pledge for "${challenge.title}"!`,
-            payload: {
-              challengeId: challenge.id,
-              challengeTitle: challenge.title,
-              date: today,
-              dedupKey,
-            },
-          });
-
-          const newCooldown = now + 2 * 60 * 60 * 1000; // 2 hours
-          const updatedCooldowns = { ...nudgeCooldowns, [challenge.id]: newCooldown };
-          setNudgeCooldowns(updatedCooldowns);
-          try {
-            localStorage.setItem('ascend_partner_nudge_cooldowns', JSON.stringify(updatedCooldowns));
-          } catch {
-            // ignore localStorage err
-          }
-
-          showSuccessToast('Nudge sent', `Reminded @${activePartnerUsername} about today's pledge.`);
-        } catch (err: any) {
-          showErrorToast("Couldn't send nudge", toUserMessage(err, 'Try again later.'));
-        }
-      });
-    },
-    [activePartnerUserId, activePartnerUsername, currentUser, currentUsername, nudgeCooldowns, showInfoToast, showSuccessToast, showErrorToast, executeWithKey]
-  );
-
-  // Activity Matrix Timeline anchored to pact creation start date and bounded by pact duration
-  const matrixTimeline = useMemo(() => {
-    if (!activePartnership) return [];
-
-    const targetPacts = activePacts.length > 0 ? activePacts : isolatedChallenges;
-
-    let earliestStartIso = activePartnership.pairedAt;
-    if (targetPacts.length > 0) {
-      const sortedPactDates = targetPacts
-        .map((c) => c.createdAt)
-        .filter(Boolean)
-        .sort();
-      if (sortedPactDates.length > 0) {
-        earliestStartIso = sortedPactDates[0];
-      }
-    }
-
-    const todayStr = todayKey();
-
-    const parsedStart = parseDate(earliestStartIso);
-    const startKey = parsedStart ? todayKey(parsedStart) : todayStr;
-
-    // Calculate days elapsed from local start date to today using shared utility (1-indexed, Day 1 = start date)
-    const elapsedDays = calculateElapsedDays(earliestStartIso);
-
-    // Max duration for target pacts (default 14 if none)
-    const maxDuration = targetPacts.length > 0
-      ? Math.max(...targetPacts.map((c) => c.durationDays || 14))
-      : 14;
-
-    const days: {
-      dateKey: string;
-      dayLabel: string;
-      shortDate: string;
-      dayNumber: number;
-      isToday: boolean;
-      isPast: boolean;
-      isFuture: boolean;
-    }[] = [];
-
-    if (maxDuration <= 14) {
-      // For pacts <= 14 days, show exactly maxDuration day cells (Days 1..maxDuration)
-      for (let i = 0; i < maxDuration; i++) {
-        days.push(createTimelineDay(startKey, i, i + 1, todayStr));
-      }
-    } else {
-      // For pacts > 14 days
-      if (elapsedDays <= 14) {
-        // First 14 days: Day 1..14
-        for (let i = 0; i < 14; i++) {
-          days.push(createTimelineDay(startKey, i, i + 1, todayStr));
-        }
-      } else if (elapsedDays <= maxDuration) {
-        // Rolling 14 trailing calendar days ending today
-        for (let i = 13; i >= 0; i--) {
-          days.push(createTimelineDay(todayStr, -i, elapsedDays - i, todayStr, true));
-        }
-      } else {
-        // Pact duration window has fully elapsed -> freeze at the final 14 days (up to maxDuration)
-        const finalPactDayKey = addDays(startKey, maxDuration - 1);
-        for (let i = 13; i >= 0; i--) {
-          days.push(createTimelineDay(finalPactDayKey, -i, maxDuration - i, todayStr));
-        }
-      }
-    }
-
-    return days;
-  }, [activePartnership, isolatedChallenges, activePacts]);
-
-  const heatmapData = useMemo(() => {
-    if (!activePartnership || matrixTimeline.length === 0) return [];
-
-    return matrixTimeline.map((day) => {
-      // Filter pacts that were active on this day (between creation date and creation date + durationDays - 1)
-      const activePactsOnDay = isolatedChallenges.filter((c) => {
-        const pDate = parseDate(c.createdAt);
-        const pKey = pDate ? todayKey(pDate) : (c.createdAt ? c.createdAt.slice(0, 10) : '2000-01-01');
-        const duration = c.durationDays || 14;
-        const endKey = addDays(pKey, duration - 1);
-        return pKey <= day.dateKey && day.dateKey <= endKey;
-      });
-
-      const hasActivePacts = activePactsOnDay.length > 0;
-
-      // Check user completed challenge pledge on this date across active pacts
-      const myDone = hasActivePacts && activePactsOnDay.some((c) => {
-        const isU1 = isPartnershipUser1(activePartnership, currentUser?.id, currentUsername);
-        const doneDates = isU1
-          ? (c.user1DoneDates || (c.user1DoneDate ? [c.user1DoneDate] : []))
-          : (c.user2DoneDates || (c.user2DoneDate ? [c.user2DoneDate] : []));
-        return doneDates.includes(day.dateKey);
-      });
-
-      // Check partner completed challenge pledge on this date across active pacts
-      const partnerDone = hasActivePacts && activePactsOnDay.some((c) => {
-        const isU1 = isPartnershipUser1(activePartnership, currentUser?.id, currentUsername);
-        const doneDates = isU1
-          ? (c.user2DoneDates || (c.user2DoneDate ? [c.user2DoneDate] : []))
-          : (c.user1DoneDates || (c.user1DoneDate ? [c.user1DoneDate] : []));
-        return doneDates.includes(day.dateKey);
-      });
-
-      let status: 'both' | 'you_only' | 'partner_only' | 'none' = 'none';
-      if (myDone && partnerDone) status = 'both';
-      else if (myDone) status = 'you_only';
-      else if (partnerDone) status = 'partner_only';
-
-      return {
-        ...day,
-        hasActivePacts,
-        myDone,
-        partnerDone,
-        status,
-      };
-    });
-  }, [activePartnership, currentUsername, currentUser, isolatedChallenges, matrixTimeline]);
-
-  // Compute sync rate strictly across days that have actually elapsed with active pacts
-  const elapsedDaysList = useMemo(() => heatmapData.filter((d) => !d.isFuture && d.hasActivePacts), [heatmapData]);
-  const elapsedDaysCount = Math.max(1, elapsedDaysList.length);
-  const jointSyncCount = useMemo(() => elapsedDaysList.filter((d) => d.status === 'both').length, [elapsedDaysList]);
-  const jointSyncRate = Math.round((jointSyncCount / elapsedDaysCount) * 100);
-
-  // User's active habit names for suggestion pills
-  const userHabitNames = useMemo(() => {
-    return (store.state.habits || []).map((h) => h.name);
-  }, [store.state.habits]);
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="page-header">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="page-title">Accountability Partners</h1>
-            <span className="text-xs text-content-muted tabular-nums">
-              {partnerships.length} / 5 Partners
-            </span>
-          </div>
-          <p className="page-subtitle">Make pacts with friends and keep each other on track.</p>
+          <h1 className="page-title">Partners</h1>
+          <p className="page-subtitle">Do a daily challenge with a friend and keep each other going.</p>
         </div>
-
-        <div>
-          {partnerships.length < 5 ? (
-            <button onClick={() => setInviteModalOpen(true)} className="btn-primary flex items-center gap-2">
-              <UserPlus size={18} />
-              <span>Invite Partner</span>
-            </button>
-          ) : (
-            <button disabled className="btn-secondary opacity-50 cursor-not-allowed text-xs py-2 px-3">
-              Partner limit reached (5/5)
-            </button>
-          )}
-        </div>
+        <button
+          onClick={() => setInviteModalOpen(true)}
+          disabled={!canInvite}
+          className="btn-primary sm:shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <UserPlus size={18} />
+          <span>{canInvite ? 'Add partner' : `${MAX_PARTNERS} of ${MAX_PARTNERS} used`}</span>
+        </button>
       </div>
 
-      {inviteError && (
-        <div className="rounded-xl border border-rose-500/30 border-l-4 border-l-rose-500 bg-rose-500/10 p-4 text-xs text-rose-theme flex items-center justify-between">
-          <span>{inviteError}</span>
-          <button
-            onClick={() => setInviteError(null)}
-            aria-label="Dismiss error"
-            className={`text-content-muted hover:text-content-primary ${TAP_TARGET}`}
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
-
-      {/* PENDING INVITES SECTION (INCOMING & SENT) */}
       {(incomingInvites.length > 0 || sentInvites.length > 0) && (
-        <div className="card p-4 space-y-3">
-          <h2 className="section-title">
-            Partner requests
-          </h2>
-
-          {/* Incoming Requests */}
-          {incomingInvites.length > 0 && (
-            <div className="space-y-2">
-              <span className="stat-label block">Incoming invites</span>
-              {incomingInvites.map((invite) => (
-                <div key={invite.id} className="flex items-center justify-between py-3 border-t border-overlay-subtle text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-xl">{invite.fromAvatar || '🧑'}</span>
-                    <div>
-                      <span className="item-name">{invite.fromUsername}</span>
-                      <span className="text-content-muted ml-1.5">wants to be your accountability partner</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      disabled={isKeyLoading(`accept_invite_${invite.id}`) || isKeyLoading(`decline_invite_${invite.id}`)}
-                      onClick={() => handleAcceptInvite(invite.id)}
-                      className="px-3 py-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed text-on-brand font-semibold rounded-lg transition-colors flex items-center gap-1.5"
-                    >
-                      {isKeyLoading(`accept_invite_${invite.id}`) ? (
-                        <AscendLoadingIndicator size="sm" />
-                      ) : null}
-                      <span>{isKeyLoading(`accept_invite_${invite.id}`) ? 'Accepting...' : 'Accept'}</span>
-                    </button>
-                    <button
-                      disabled={isKeyLoading(`accept_invite_${invite.id}`) || isKeyLoading(`decline_invite_${invite.id}`)}
-                      onClick={() => handleDeclineInvite(invite.id)}
-                      className="px-3 py-1 hover:bg-overlay-subtle disabled:opacity-60 disabled:cursor-not-allowed text-content-tertiary font-medium rounded-lg border border-overlay-default transition-colors flex items-center gap-1.5"
-                    >
-                      {isKeyLoading(`decline_invite_${invite.id}`) ? <AscendLoadingIndicator size="sm" /> : null}
-                      <span>{isKeyLoading(`decline_invite_${invite.id}`) ? 'Declining...' : 'Decline'}</span>
-                    </button>
-                  </div>
+        <div className="card p-4 space-y-1">
+          <h2 className="section-title mb-2">Requests</h2>
+          {incomingInvites.map((invite) => {
+            const accepting = isKeyLoading(`accept_invite_${invite.id}`);
+            const declining = isKeyLoading(`decline_invite_${invite.id}`);
+            return (
+              <div key={invite.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2.5 border-t border-overlay-subtle first:border-t-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-xl shrink-0">{invite.fromAvatar || '🧑'}</span>
+                  <p className="text-sm text-content-muted truncate">
+                    <span className="item-name text-content-secondary">{invite.fromUsername}</span> wants to be your partner
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Sent Invites */}
-          {sentInvites.length > 0 && (
-            <div className="space-y-2 pt-1">
-              <span className="stat-label block">Sent invites (pending)</span>
-              {sentInvites.map((invite) => (
-                <div key={invite.id} className="flex items-center justify-between py-2.5 border-t border-overlay-subtle text-xs">
-                  <div className="flex items-center gap-2 text-content-tertiary">
-                    <Clock size={14} className="text-warning-text" />
-                    <span>Invite sent to <strong className="item-name text-content-secondary">{invite.toUsername}</strong></span>
-                  </div>
+                <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={() => setInviteToCancel(invite)}
-                    className="bg-rose-500/10 text-xs text-rose-theme hover:text-rose-theme-muted font-medium transition-colors px-2 py-1 rounded-lg hover:bg-rose-500/20"
+                    disabled={accepting || declining || atPartnerLimit}
+                    onClick={() => handleAccept(invite.id)}
+                    className="btn-primary text-xs py-1.5 px-3 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Cancel Invite
+                    {accepting && <AscendLoadingIndicator size="sm" />}
+                    <span>{accepting ? 'Accepting…' : 'Accept'}</span>
+                  </button>
+                  <button
+                    disabled={accepting || declining}
+                    onClick={() => handleDecline(invite.id)}
+                    className="btn-secondary text-xs py-1.5 px-3 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {declining && <AscendLoadingIndicator size="sm" />}
+                    <span>{declining ? 'Declining…' : 'Decline'}</span>
                   </button>
                 </div>
-              ))}
-            </div>
+              </div>
+            );
+          })}
+          {atPartnerLimit && incomingInvites.length > 0 && (
+            <p className="text-xs text-content-muted pt-1">You have {MAX_PARTNERS} partners. Remove one to accept.</p>
           )}
-        </div>
-      )}
-
-      {/* MULTI-PARTNER SELECTOR */}
-      {partnerships.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="section-title">Partners ({partnerships.length}/5)</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {partnerships.map((p) => {
-              const pUsername = isPartnershipUser1(p, currentUser?.id, currentUsername) ? p.user2Username : p.user1Username;
-              const isSelected = activePartnership?.id === p.id;
-              const pChallenges = sharedChallenges.filter((c) => c.partnershipId === p.id && c.status === 'active');
-
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => setSelectedPartnerId(p.id)}
-                  className={`p-3.5 rounded-2xl border text-left transition-colors relative flex flex-col justify-between gap-3 ${
-                    isSelected
-                      ? 'bg-emerald-500/5 border-emerald-500/50 ring-1 ring-emerald-500/30'
-                      : 'border-overlay-subtle hover:bg-overlay-subtle text-content-tertiary'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-success-text flex items-center justify-center text-sm font-semibold leading-none">
-                        {pUsername.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="item-name text-sm truncate max-w-[100px]">{pUsername}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-micro text-content-muted pt-2 border-t border-overlay-subtle">
-                    <span>Active pacts</span>
-                    <span className="figure text-success-text">{pChallenges.length}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ACTIVE PARTNER DETAIL VIEW */}
-      {activePartnership ? (
-        <div className="space-y-6 animate-fade-in">
-          {/* Active Relationship Sub-Header & Actions */}
-          <div className="card p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-overlay-subtle pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-success-text text-lg font-semibold leading-none">
-                  {activePartnerUsername?.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h2 className="section-title flex items-center gap-2">
-                    <span>Partner: {activePartnerUsername}</span>
-                    <span className="text-2xs font-medium text-success-text bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">Active</span>
-                  </h2>
-                  <p className="text-xs text-content-muted mt-0.5">Paired on {formatDateShort(activePartnership.pairedAt)}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <button onClick={() => setChallengeModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5">
-                  <Plus size={15} />
-                  <span>Pledge Joint Pact</span>
-                </button>
-                <button onClick={() => setEndConfirmOpen(true)} className="btn-secondary text-xs text-rose-theme hover:text-rose-theme-muted">
-                  End Pairing
-                </button>
-              </div>
-            </div>
-
-            {/* ITEM 4: "YOU VS PARTNER" SIDE-BY-SIDE HEAD-TO-HEAD COMPARISON CARD */}
-            {isStatsLoading && !partnerStatsData ? (
-              <div
-                role="status"
-                aria-label={`Loading ${activePartnerUsername}'s stats`}
-                className="pt-1 space-y-4"
-              >
-                <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
-                  <Skeleton className="h-4 w-44" />
-                  <Skeleton className="h-4 w-28" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[0, 1].map((col) => (
-                    <div key={col} className="p-4 rounded-xl border border-overlay-subtle space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <div className="space-y-1.5">
-                          <Skeleton className="h-3.5 w-24" />
-                          <Skeleton className="h-2.5 w-14" />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[0, 1, 2, 3].map((cell) => (
-                          <Skeleton key={cell} className="h-12" />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="pt-1 space-y-4 relative">
-                {isStatsLoading && (
-                  <div className="absolute top-0 right-0 flex items-center gap-1.5 text-micro text-content-muted bg-bg-900/80 px-2 py-1 rounded-lg">
-                    <AscendLoadingIndicator size="sm" />
-                    <span>Updating...</span>
-                  </div>
-                )}
-                {/* Versus Header */}
-                <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="section-title">Head-to-head</span>
-                  </div>
-
-                  <div className="text-xs font-medium">
-                    {mySeasonPoints > partnerSeasonPoints ? (
-                      <span className="text-success-text flex items-center gap-1">
-                        You lead by <CountUp value={mySeasonPoints - partnerSeasonPoints} className="figure" /> pts
-                      </span>
-                    ) : partnerSeasonPoints > mySeasonPoints ? (
-                      <span className="text-warning-text flex items-center gap-1">
-                        {activePartnerUsername} leads by <CountUp value={partnerSeasonPoints - mySeasonPoints} className="figure" /> pts
-                      </span>
-                    ) : (
-                      <span className="text-content-muted">Tied in points</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Dual Column Head-to-Head */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* You Column */}
-                  <div
-                    className={`p-4 rounded-xl border transition-all ${
-                      mySeasonPoints > partnerSeasonPoints
-                        ? 'border-primary-500/40 bg-primary-500/5'
-                        : 'border-overlay-subtle'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{currentUser?.avatar || '🧑'}</span>
-                        <div>
-                          <span className="item-name text-sm">You ({currentUsername})</span>
-                          {mySeasonPoints > partnerSeasonPoints && (
-                            <span className="badge badge-emerald text-2xs px-2 py-0.5 rounded-full ml-1.5">Leading</span>
-                          )}
-                          <span className="block text-2xs text-success-text">{myTier.name} Tier</span>
-                        </div>
-                      </div>
-                      <TierBadge totalPoints={mySeasonPoints} size="sm" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Points</span>
-                        <CountUp value={mySeasonPoints} className="figure text-base text-warning-text" />
-                      </div>
-                      <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Current streak</span>
-                        <span className="figure text-base text-[color:var(--badge-orange-text)]">{myCurrentStreakDays}d</span>
-                      </div>
-                      <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Habits done today</span>
-                        <span className="figure text-base text-sky-theme">{myHabitsCompletedToday}</span>
-                      </div>
-                      <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Total habits</span>
-                        <span className="figure text-base text-success-text">{myHabitsCompletedTotal}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Partner Column */}
-                  <div
-                    className={`p-4 rounded-xl border transition-all ${
-                      partnerSeasonPoints > mySeasonPoints
-                        ? 'border-primary-500/40 bg-primary-500/5'
-                        : 'border-overlay-subtle'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{partnerStatsData?.avatar || '🧑'}</span>
-                        <div>
-                          <span className="item-name text-sm">{activePartnerUsername}</span>
-                          {partnerSeasonPoints > mySeasonPoints && (
-                            <span className="badge badge-emerald text-2xs px-2 py-0.5 rounded-full ml-1.5">Leading</span>
-                          )}
-                          <span className="block text-2xs text-success-text">{partnerTier.name} Tier</span>
-                        </div>
-                      </div>
-                      <TierBadge totalPoints={partnerSeasonPoints} size="sm" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Points</span>
-                        <CountUp value={partnerSeasonPoints} className="figure text-base text-warning-text" />
-                      </div>
-                      <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Current streak</span>
-                        <span className="figure text-base text-[color:var(--badge-orange-text)]">{partnerCurrentStreakDays}d</span>
-                      </div>
-                      <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Habits done today</span>
-                        <span className="figure text-base text-sky-theme">{partnerHabitsCompletedToday}</span>
-                      </div>
-                      <div className="py-1.5">
-                        <span className="stat-label block mb-0.5">Total habits</span>
-                        <span className="figure text-base text-success-text">{partnerHabitsCompleted}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ITEM 5: 14-DAY DUAL-TRACK ACTIVITY HEATMAP */}
-            <div className="pt-4 border-t border-overlay-subtle space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-overlay-subtle pb-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="section-title">
-                    {matrixTimeline.length > 0 ? `${matrixTimeline.length}-day` : '14-day'} consistency
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 text-micro flex-wrap">
-                  <span className="text-content-muted">
-                    Both done: <strong className="figure text-success-text">{jointSyncRate}%</strong> <span className="tabular-nums">({jointSyncCount}/{elapsedDaysCount} active {elapsedDaysCount === 1 ? 'day' : 'days'})</span>
-                  </span>
-                  <div className="flex items-center gap-2 text-2xs text-content-muted flex-wrap">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" /> Both done</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-500/80 inline-block" /> You only</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-sky-500/80 inline-block" /> Partner only</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-rose-500/15 border border-rose-500/40 text-rose-theme font-semibold text-3xs inline-flex items-center justify-center leading-none">!</span> Missed day</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-bg-900 border border-amber-500/40 text-warning-text text-3xs inline-flex items-center justify-center">·</span> Pending</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Matrix Grid */}
-              <div className="space-y-2 pt-1 overflow-x-auto pb-1">
-                {/* Day Header Row */}
-                <div className="flex items-center gap-1 min-w-[500px]">
-                  <div className="w-20 stat-label text-content-disabled">Day</div>
-                  {heatmapData.map((d) => (
-                    <div key={d.dateKey} className="flex-1 text-center">
-                      <span className={`text-2xs font-medium block ${d.isToday ? 'text-success-text font-semibold' : d.isFuture ? 'text-content-subtle' : 'text-content-muted'}`}>
-                        {d.dayLabel}
-                      </span>
-                      <span className={`tabular-nums text-3xs block ${d.isToday ? 'text-success-text font-semibold' : d.isFuture ? 'text-content-subtle' : 'text-content-disabled'}`}>
-                        D{d.dayNumber}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* You Row */}
-                <div className="flex items-center gap-1 min-w-[500px]">
-                  <div className="w-20 item-name text-xs text-content-tertiary truncate">You</div>
-                  {heatmapData.map((d) => {
-                    let cellContent = '·';
-                    let cellStyle = 'bg-bg-900 border border-overlay-subtle text-content-subtle';
-                    let tooltip = `${d.shortDate} (Day ${d.dayNumber}): No activity`;
-
-                    if (d.myDone) {
-                      cellContent = '✓';
-                      if (d.status === 'both') {
-                        cellStyle = 'bg-emerald-500 text-white';
-                      } else {
-                        cellStyle = 'bg-amber-500/80 text-white';
-                      }
-                      tooltip = `${d.shortDate} (Day ${d.dayNumber}): You completed your pledge`;
-                    } else if (d.isPast) {
-                      if (d.hasActivePacts) {
-                        cellContent = '!';
-                        cellStyle = 'bg-rose-500/15 border border-rose-500/40 text-rose-theme';
-                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): Missed pledge`;
-                      } else {
-                        cellContent = '·';
-                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
-                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): No active pacts`;
-                      }
-                    } else if (d.isToday) {
-                      if (d.hasActivePacts) {
-                        cellContent = '·';
-                        cellStyle = 'bg-bg-900 border border-amber-500/40 text-warning-text';
-                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): Pending today`;
-                      } else {
-                        cellContent = '·';
-                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
-                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): No active pacts`;
-                      }
-                    } else {
-                      cellContent = '·';
-                      cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
-                      tooltip = `${d.shortDate} (Day ${d.dayNumber}): Upcoming`;
-                    }
-
-                    return (
-                      <div
-                        key={`you-${d.dateKey}`}
-                        className="flex-1 flex justify-center py-0.5"
-                        title={tooltip}
-                      >
-                        <div
-                          className={`w-6 h-6 rounded-lg flex items-center justify-center text-2xs font-semibold transition-all duration-200 ${cellStyle}`}
-                        >
-                          {cellContent}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Partner Row */}
-                <div className="flex items-center gap-1 min-w-[500px]">
-                  <div className="w-20 item-name text-xs text-content-tertiary truncate">{activePartnerUsername}</div>
-                  {heatmapData.map((d) => {
-                    let cellContent = '·';
-                    let cellStyle = 'bg-bg-900 border border-overlay-subtle text-content-subtle';
-                    let tooltip = `${d.shortDate} (Day ${d.dayNumber}): No activity`;
-
-                    if (d.partnerDone) {
-                      cellContent = '✓';
-                      if (d.status === 'both') {
-                        cellStyle = 'bg-emerald-500 text-white';
-                      } else {
-                        cellStyle = 'bg-sky-500/80 text-white';
-                      }
-                      tooltip = `${d.shortDate} (Day ${d.dayNumber}): ${activePartnerUsername} completed their pledge`;
-                    } else if (d.isPast) {
-                      if (d.hasActivePacts) {
-                        cellContent = '!';
-                        cellStyle = 'bg-rose-500/15 border border-rose-500/40 text-rose-theme';
-                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): ${activePartnerUsername} missed their pledge`;
-                      } else {
-                        cellContent = '·';
-                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
-                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): No active pacts`;
-                      }
-                    } else if (d.isToday) {
-                      if (d.hasActivePacts) {
-                        cellContent = '·';
-                        cellStyle = 'bg-bg-900 border border-amber-500/40 text-warning-text';
-                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): Pending today`;
-                      } else {
-                        cellContent = '·';
-                        cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
-                        tooltip = `${d.shortDate} (Day ${d.dayNumber}): No active pacts`;
-                      }
-                    } else {
-                      cellContent = '·';
-                      cellStyle = 'bg-bg-900/40 border border-overlay-subtle text-content-subtle';
-                      tooltip = `${d.shortDate} (Day ${d.dayNumber}): Upcoming`;
-                    }
-
-                    return (
-                      <div
-                        key={`partner-${d.dateKey}`}
-                        className="flex-1 flex justify-center py-0.5"
-                        title={tooltip}
-                      >
-                        <div
-                          className={`w-6 h-6 rounded-lg flex items-center justify-center text-2xs font-semibold transition-all duration-200 ${cellStyle}`}
-                        >
-                          {cellContent}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* SHARED CHALLENGES SECTION (JOINT PACTS) */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="section-title">
-                <span>Active pacts with {activePartnerUsername} ({activePacts.length})</span>
-              </h2>
-              <button onClick={() => setChallengeModalOpen(true)} className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5">
-                <Plus size={14} />
-                <span>Pledge Joint Pact</span>
+          {sentInvites.map((invite) => (
+            <div key={invite.id} className="flex items-center justify-between gap-2 py-2.5 border-t border-overlay-subtle first:border-t-0">
+              <p className="flex items-center gap-2 text-sm text-content-muted min-w-0">
+                <Clock size={14} className="shrink-0" />
+                <span className="truncate">
+                  Waiting for <span className="item-name text-content-secondary">{invite.toUsername}</span> to accept
+                </span>
+              </p>
+              <button onClick={() => setInviteToCancel(invite)} className="btn-secondary text-xs py-1.5 px-3 shrink-0">
+                Cancel
               </button>
             </div>
+          ))}
+        </div>
+      )}
 
-            {activePacts.length === 0 ? (
-              <EmptyState
-                title="No active pacts"
-                description={`Nothing running with ${activePartnerUsername} right now.`}
-              />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {activePacts.map((challenge) => {
-                  const today = todayKey();
-                  const challengePartnership =
-                    partnerships.find((p) => p.id === challenge.partnershipId) || activePartnership;
+      {partnerships.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No partners yet"
+          description="Add a friend with their 6-digit ID (it's in their Settings). Then pick something you'll both do every day and tick it off together."
+          action={
+            canInvite ? (
+              <button onClick={() => setInviteModalOpen(true)} className="btn-primary mx-auto">
+                <UserPlus size={16} />
+                <span>Add partner</span>
+              </button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <>
+          {partnerships.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="Partners">
+              {partnerships.map((p) => {
+                const u1 = isPartnershipUser1(p, currentUser?.id, currentUsername);
+                const name = u1 ? p.user2Username : p.user1Username;
+                const selected = activePartnership?.id === p.id;
+                const running = challengesFor(p).filter((c) => c.status === 'active');
+                const doneToday = running.filter((c) => doneDates(c, u1).includes(today)).length;
+                return (
+                  <button
+                    key={p.id}
+                    role="tab"
+                    aria-selected={selected}
+                    onClick={() => setSelectedPartnerId(p.id)}
+                    className={cx(
+                      'shrink-0 flex items-center gap-2 rounded-full border pl-1.5 pr-3 py-1.5 text-sm transition-colors',
+                      selected
+                        ? 'border-primary-500/60 bg-primary-500/10 text-content-primary'
+                        : 'border-overlay-subtle text-content-tertiary hover:bg-overlay-subtle'
+                    )}
+                  >
+                    <span className="w-7 h-7 rounded-full bg-primary-500/20 text-brand-text flex items-center justify-center text-xs font-semibold">
+                      {initial(name)}
+                    </span>
+                    <span className="item-name max-w-[120px] truncate">{name}</span>
+                    {running.length > 0 && (
+                      <span className="figure text-micro text-content-muted">
+                        {doneToday}/{running.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-                  const isUser1ForChallenge = challengePartnership
-                    ? isPartnershipUser1(challengePartnership, currentUser?.id, currentUsername)
-                    : isUser1InActive;
+          {activePartnership && (
+            <div className="space-y-6">
+              <div className="card p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-primary-500/20 text-brand-text flex items-center justify-center text-lg font-semibold shrink-0">
+                    {partnerStats?.avatar && partnerStats.avatar !== '🧑' ? partnerStats.avatar : initial(partnerName)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="section-title truncate">{partnerName}</h2>
+                    <p className="text-xs text-content-muted">
+                      {mySeasonPoints === partnerSeasonPoints
+                        ? 'Level on points this season'
+                        : mySeasonPoints > partnerSeasonPoints
+                        ? `You're ahead by ${mySeasonPoints - partnerSeasonPoints} pts this season`
+                        : `${partnerName} is ahead by ${partnerSeasonPoints - mySeasonPoints} pts this season`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setRemoveConfirmOpen(true)}
+                    aria-label={`Remove ${partnerName} as partner`}
+                    title="Remove partner"
+                    className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+                  >
+                    <UserMinus size={18} />
+                  </button>
+                </div>
 
-                  const myCategory = isUser1ForChallenge ? (challenge.user1Category || 'habit') : (challenge.user2Category || 'habit');
-                  const myTarget = isUser1ForChallenge ? (challenge.user1Target || challenge.targetHabitName) : (challenge.user2Target || challenge.targetHabitName);
-
-                  const partnerCategory = isUser1ForChallenge ? (challenge.user2Category || 'habit') : (challenge.user1Category || 'habit');
-                  const partnerTarget = isUser1ForChallenge ? (challenge.user2Target || challenge.targetHabitName) : (challenge.user1Target || challenge.targetHabitName);
-
-                  const myDoneDates = isUser1ForChallenge
-                    ? (challenge.user1DoneDates || (challenge.user1DoneDate ? [challenge.user1DoneDate] : []))
-                    : (challenge.user2DoneDates || (challenge.user2DoneDate ? [challenge.user2DoneDate] : []));
-                  const partnerDoneDates = isUser1ForChallenge
-                    ? (challenge.user2DoneDates || (challenge.user2DoneDate ? [challenge.user2DoneDate] : []))
-                    : (challenge.user1DoneDates || (challenge.user1DoneDate ? [challenge.user1DoneDate] : []));
-
-                  const myDone = myDoneDates.includes(today);
-                  const partnerDone = partnerDoneDates.includes(today);
-
-                  const totalCompleted = challenge.totalJointDaysCompleted ?? challenge.jointStreak ?? 0;
-                  const totalProgressPercent = Math.min(100, Math.round((totalCompleted / (challenge.durationDays || 1)) * 100));
-
-                  // Nudge Cooldown check
-                  const cooldownEnd = nudgeCooldowns[challenge.id] || 0;
-                  const isNudgeCooldown = trustedNowMs() < cooldownEnd;
-                  const nudgeCooldownMinutes = isNudgeCooldown ? Math.ceil((cooldownEnd - trustedNowMs()) / 60000) : 0;
-
-                  return (
-                    <div key={challenge.id} className="card p-5 space-y-4 relative group hover:border-emerald-500/30 transition-colors">
-                      <button
-                        onClick={() => setChallengeToDelete(challenge)}
-                        aria-label={`Delete joint pact "${challenge.title}"`}
-                        className={`absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer ${TAP_AREA}`}
-                        title="Delete joint pact"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-
-                      {/* Header + Joint Streak Progress Ring */}
-                      <div className="flex items-start justify-between gap-4 pr-6">
-                        <div className="space-y-1">
-                          <h3 className="section-title">{challenge.title}</h3>
-                          <div className="flex items-center gap-2 text-xs text-content-muted">
-                            <span className="figure text-success-text">
-                              Streak {challenge.jointStreak}d · {totalCompleted} of {challenge.durationDays} days done
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Circular Progress Ring */}
-                        <ProgressRing
-                          value={challenge.jointStreak || 0}
-                          max={challenge.durationDays || 1}
-                          label="Pact streak progress"
-                          tone="success"
-                          size={80}
-                        >
-                          <Flame size={16} className="text-brand-text mb-0.5" />
-                          <span className="figure text-sm text-content-primary leading-none">
-                            {challenge.jointStreak}d
-                          </span>
-                          <span className="text-3xs text-content-muted mt-0.5">streak</span>
-                        </ProgressRing>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'You', points: mySeasonPoints, streak: myStreak, loading: false },
+                    { label: partnerName || 'Partner', points: partnerSeasonPoints, streak: partnerStats?.streak ?? 0, loading: isStatsLoading && !partnerStats },
+                  ].map((side) => (
+                    <div key={side.label} className="rounded-xl border border-overlay-subtle p-3 space-y-1.5 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-content-muted truncate">{side.label}</span>
+                        {!side.loading && <TierBadge totalPoints={side.points} size="sm" />}
                       </div>
-
-                      {/* Milestone Checkpoints */}
-                      <div className="grid grid-cols-4 gap-1.5 pt-1">
-                        {[
-                          { pct: 25, label: 'Quarter' },
-                          { pct: 50, label: 'Halfway' },
-                          { pct: 75, label: 'Mastery' },
-                          { pct: 100, label: 'Done' },
-                        ].map((m) => {
-                          const achieved = totalProgressPercent >= m.pct;
-                          return (
-                            <div
-                              key={m.pct}
-                              className={`text-center py-1 px-1.5 rounded-lg text-2xs ${
-                                achieved
-                                  ? 'bg-emerald-500/15 text-success-text'
-                                  : 'bg-overlay-subtle text-content-disabled'
-                              }`}
-                            >
-                              <span className="block figure">{m.pct}%</span>
-                              <span className="text-3xs opacity-80">{m.label}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Multi-Category Activity Targets */}
-                      <div className="grid grid-cols-2 gap-2.5 text-xs p-3.5 rounded-xl border border-overlay-subtle">
-                        {/* Your Commitment */}
-                        <div className="space-y-1.5">
-                          <span className="block text-micro text-content-muted">Your pledge ({myCategory})</span>
-                          <span className="item-name text-content-secondary block truncate">{myTarget}</span>
-                          <div className="pt-0.5">
-                            {myDone ? (
-                              <span className="text-success-text font-medium flex items-center gap-1 text-micro">
-                                <CheckCircle2 size={13} /> Pledge Locked In
-                              </span>
-                            ) : (
-                              <span className="text-warning-text font-medium flex items-center gap-1 text-micro">
-                                <Clock size={12} /> Pending today
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Partner Commitment + Nudge Button */}
-                        <div className="space-y-1.5 border-l border-overlay-subtle pl-2.5">
-                          <span className="block text-micro text-content-muted">{activePartnerUsername}'s pledge ({partnerCategory})</span>
-                          <span className="item-name text-content-secondary block truncate">{partnerTarget}</span>
-                          <div className="pt-0.5">
-                            {partnerDone ? (
-                              <span className="text-success-text font-medium flex items-center gap-1 text-micro">
-                                <CheckCircle2 size={13} /> Pledge Locked In
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={isNudgeCooldown || isKeyLoading(`nudge_${challenge.id}`)}
-                                onClick={() => handleNudgePartner(challenge)}
-                                className={`px-2 py-0.5 rounded-lg text-micro font-medium transition-colors flex items-center gap-1 cursor-pointer select-none ${
-                                  isNudgeCooldown || isKeyLoading(`nudge_${challenge.id}`)
-                                    ? 'text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
-                                    : 'bg-amber-500/20 hover:bg-amber-500/30 text-warning-text border border-amber-500/40'
-                                }`}
-                              >
-                                {isKeyLoading(`nudge_${challenge.id}`) ? (
-                                  <AscendLoadingIndicator size="sm" />
-                                ) : (
-                                  <Zap size={11} className={isNudgeCooldown ? 'text-content-disabled' : 'text-warning-text fill-warning-text'} />
-                                )}
-                                <span>
-                                  {isKeyLoading(`nudge_${challenge.id}`)
-                                    ? 'Nudging...'
-                                    : isNudgeCooldown
-                                    ? `Nudged (${nudgeCooldownMinutes}m)`
-                                    : `Nudge ${activePartnerUsername}`}
-                                </span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Dual-Pill Sync Status & Log Action */}
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1 border-t border-overlay-subtle">
-                        {/* Dual-Pill Indicator */}
-                        <div>
-                          {myDone && partnerDone ? (
-                            <div className="inline-flex items-center gap-1.5 rounded-full bg-primary-500/10 px-2.5 py-1 text-xs font-medium text-brand-text">
-                              <CheckCircle2 size={13} /> Both locked in today
-                            </div>
-                          ) : myDone && !partnerDone ? (
-                            <div className="badge-amber inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full">
-                              <Clock size={13} /> You locked in · waiting on {activePartnerUsername}
-                            </div>
-                          ) : !myDone && partnerDone ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-500/15 border border-sky-500/30 text-sky-theme text-xs font-medium rounded-full">
-                              <Clock size={13} /> {activePartnerUsername} locked in · log your pledge
-                            </div>
-                          ) : (
-                            <div className="inline-flex items-center gap-1.5 text-xs text-content-muted">
-                              <Clock size={13} /> Waiting on today's pledges
-                            </div>
-                          )}
-                        </div>
-
-                        <button
-                          type="button"
-                          disabled={isKeyLoading(`log_pledge_${challenge.id}`)}
-                          onClick={async () => {
-                            await executeWithKey(`log_pledge_${challenge.id}`, async () => {
-                              try {
-                                await store.logSharedChallengeHabit(challenge.id);
-                              } catch (err: any) {
-                                showErrorToast("Couldn't log pledge", toUserMessage(err, "Your progress wasn't saved. Try again."));
-                              }
-                            });
-                          }}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer select-none flex items-center gap-1.5 ${
-                            isKeyLoading(`log_pledge_${challenge.id}`)
-                              ? 'opacity-70 cursor-not-allowed'
-                              : ''
-                          } ${
-                            myDone
-                              ? 'bg-emerald-500/20 text-success-text border border-emerald-500/40 hover:bg-emerald-500/30'
-                              : 'bg-primary-600 hover:bg-primary-700 text-on-brand'
-                          }`}
-                        >
-                          {isKeyLoading(`log_pledge_${challenge.id}`) ? (
-                            <AscendLoadingIndicator size="sm" />
-                          ) : (
-                            <CheckCircle2 size={14} />
-                          )}
-                          <span>
-                            {isKeyLoading(`log_pledge_${challenge.id}`)
-                              ? 'Logging...'
-                              : myDone
-                              ? 'Pledge Locked In'
-                              : "Log Today's Pledge"}
-                          </span>
-                        </button>
-                      </div>
+                      {side.loading ? (
+                        <Skeleton className="h-6 w-20" />
+                      ) : (
+                        <>
+                          <p className="text-base">
+                            <CountUp value={side.points} className="figure text-content-primary" />
+                            <span className="text-xs text-content-muted"> pts</span>
+                          </p>
+                          <p className="flex items-center gap-1 text-xs text-content-muted">
+                            <Flame size={12} className="text-brand-text" />
+                            <span className="figure">{side.streak}</span> day streak
+                          </p>
+                        </>
+                      )}
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+
+                {runningChallenges.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleNudge}
+                    disabled={nudgedToday || partnerDoneAllToday || isKeyLoading(`nudge_${nudgeKey}`)}
+                    className="btn-secondary w-full sm:w-auto disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isKeyLoading(`nudge_${nudgeKey}`) ? <AscendLoadingIndicator size="sm" /> : <Zap size={15} />}
+                    <span>
+                      {partnerDoneAllToday
+                        ? `${partnerName} is done for today`
+                        : nudgedToday
+                        ? 'Nudged today'
+                        : `Nudge ${partnerName}`}
+                    </span>
+                  </button>
+                )}
               </div>
-            )}
 
-            {/* PAST JOINT PACTS (COMPLETED & EXPIRED) */}
-            {pastPacts.length > 0 && (
-              <div className="pt-3 space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setShowPastPacts((prev) => !prev)}
-                  className="w-full flex items-center justify-between py-2 text-content-tertiary hover:text-content-primary transition-colors cursor-pointer select-none"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-lg font-semibold leading-snug">Past joint pacts ({pastPacts.length})</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-content-muted">
-                    <span>{showPastPacts ? 'Hide' : 'Show'}</span>
-                    {showPastPacts ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  </div>
-                </button>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="section-title">Challenges</h2>
+                  <button onClick={() => openChallengeForm()} className="btn-primary text-xs py-1.5 px-3">
+                    <Plus size={15} />
+                    <span>New challenge</span>
+                  </button>
+                </div>
 
-                {showPastPacts && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {pastPacts.map((challenge) => {
-                      const isCompleted = challenge.status === 'completed';
-                      const isExpired = challenge.status === 'expired';
-                      const totalCompleted = challenge.totalJointDaysCompleted ?? challenge.jointStreak ?? 0;
+                {runningChallenges.length === 0 ? (
+                  <EmptyState
+                    title="No challenge running"
+                    description={`Pick one thing you and ${partnerName} will both do every day, like "Read 20 pages". Tick it each day you do it.`}
+                  />
+                ) : (
+                  <div className="space-y-2.5">{runningChallenges.map(renderChallenge)}</div>
+                )}
 
-                      const isUser1ForChallenge = activePartnership
-                        ? isPartnershipUser1(activePartnership, currentUser?.id, currentUsername)
-                        : false;
+                <Disclosure title="How challenges work">
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    <li>Tick your challenge each day you do it. A day counts when you both tick it.</li>
+                    <li>Fill every day of the challenge together to finish it.</li>
+                    <li>If your goal is one of your habits, ticking the habit ticks the challenge too.</li>
+                    <li>Challenges don't give points. They're for keeping each other going.</li>
+                  </ul>
+                </Disclosure>
 
-                      const myCategory = isUser1ForChallenge ? (challenge.user1Category || 'habit') : (challenge.user2Category || 'habit');
-                      const myTarget = isUser1ForChallenge ? (challenge.user1Target || challenge.targetHabitName) : (challenge.user2Target || challenge.targetHabitName);
-                      const partnerCategory = isUser1ForChallenge ? (challenge.user2Category || 'habit') : (challenge.user1Category || 'habit');
-                      const partnerTarget = isUser1ForChallenge ? (challenge.user2Target || challenge.targetHabitName) : (challenge.user1Target || challenge.targetHabitName);
-
+                {finishedChallenges.length > 0 && (
+                  <div className="pt-2 space-y-2.5">
+                    <h2 className="section-title">Finished</h2>
+                    {finishedChallenges.map((c) => {
+                      const completed = c.status === 'completed';
                       return (
-                        <div
-                          key={challenge.id}
-                          className={`card p-5 space-y-4 relative ${
-                            isCompleted ? 'border border-emerald-500/30' : 'opacity-90'
-                          }`}
-                        >
+                        <div key={c.id} className="card p-4 flex items-center gap-3 opacity-90">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="item-name truncate text-content-secondary">{goalOf(c, amUser1)}</h3>
+                              <span className={cx('badge text-2xs px-2 py-0.5 rounded-full shrink-0', completed ? 'badge-emerald' : 'badge-amber')}>
+                                {completed ? 'Completed' : 'Ended'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-content-muted mt-0.5">
+                              <span className="figure">{c.totalJointDaysCompleted ?? 0}</span> of {c.durationDays} days done together
+                            </p>
+                          </div>
                           <button
-                            onClick={() => setChallengeToDelete(challenge)}
-                            aria-label={`Delete pact history "${challenge.title}"`}
-                            className={`absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer ${TAP_AREA}`}
-                            title="Delete pact history"
+                            type="button"
+                            onClick={() => openChallengeForm(c)}
+                            aria-label={`Start ${goalOf(c, amUser1)} again`}
+                            title="Start again"
+                            className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+                          >
+                            <RotateCcw size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setChallengeToDelete(c)}
+                            aria-label={`Delete challenge ${goalOf(c, amUser1)}`}
+                            className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
                           >
                             <Trash2 size={16} />
                           </button>
-
-                          <div className="flex items-start justify-between gap-3 pr-6">
-                            <div className="space-y-1.5">
-                              <div className="flex items-center gap-2">
-                                <h3 className="text-lg font-semibold leading-snug text-content-secondary">{challenge.title}</h3>
-                                {isCompleted ? (
-                                  <span className="px-2 py-0.5 rounded-full text-2xs font-medium bg-emerald-500/20 text-success-text">
-                                    Completed
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded-full text-2xs font-medium bg-amber-500/20 text-warning-text">
-                                    Expired
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-content-muted">
-                                {isCompleted
-                                  ? `Locked in all ${challenge.durationDays} of ${challenge.durationDays} days.`
-                                  : `Locked in ${totalCompleted} of ${challenge.durationDays} days.`}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Multi-Category Targets Info (Read-Only) */}
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                              <span className="block text-2xs text-content-muted">Your pledge ({myCategory})</span>
-                              <span className="item-name text-content-tertiary block truncate">{myTarget}</span>
-                            </div>
-                            <div className="border-l border-overlay-subtle pl-2">
-                              <span className="block text-2xs text-content-muted">{activePartnerUsername}'s pledge ({partnerCategory})</span>
-                              <span className="item-name text-content-tertiary block truncate">{partnerTarget}</span>
-                            </div>
-                          </div>
-
-                          {/* Action: Pledge New Pact if expired */}
-                          <div className="flex items-center justify-between pt-1 border-t border-overlay-subtle text-xs text-content-muted">
-                            <span className="text-micro italic">
-                              {isCompleted ? 'Pact completed' : 'Pact ended'}
-                            </span>
-                            {isExpired && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setChallengeTitle(challenge.title);
-                                  setChallengeDuration(challenge.durationDays);
-                                  setUser1Category(challenge.user1Category || 'habit');
-                                  setUser1Target(challenge.user1Target || challenge.targetHabitName);
-                                  setUser2Category(challenge.user2Category || 'habit');
-                                  setUser2Target(challenge.user2Target || challenge.targetHabitName);
-                                  setChallengeModalOpen(true);
-                                }}
-                                className="btn-primary text-xs py-1 px-2.5 flex items-center gap-1"
-                              >
-                                <RotateCcw size={13} />
-                                <span>Pledge New Pact</span>
-                              </button>
-                            )}
-                          </div>
                         </div>
                       );
                     })}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* NO ACTIVE PARTNERS EMPTY STATE */
-        <EmptyState
-          icon={Users}
-          title="No partners yet"
-          description="Enter a friend's 6-digit ID to send an invite. You can have up to 5 partners."
-          action={
-            <button onClick={() => setInviteModalOpen(true)} className="btn-secondary mx-auto text-xs flex items-center gap-1.5">
-              <UserPlus size={14} />
-              <span>Invite a partner</span>
-            </button>
-          }
-        />
+            </div>
+          )}
+        </>
       )}
 
-      {/* INVITE PARTNER MODAL */}
       <Dialog
         open={inviteModalOpen}
         preventClose={isSubmittingInvite}
         dirty={inviteForm.dirty}
         onClose={() => setInviteModalOpen(false)}
-        title="Invite a partner"
-        description="Enter your partner's 6-digit ID (it's in their Settings). You can have up to 5 partners."
+        title="Add a partner"
+        description={`Enter your friend's 6-digit ID. They can find it in their Settings. You can have up to ${MAX_PARTNERS} partners.`}
         footer={
           <>
             <button
@@ -1495,15 +697,13 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           </>
         }
       >
-        <Form id="partner-invite-form" onSubmit={handleSendInviteSubmit} controller={inviteIssues}>
+        <Form id="partner-invite-form" onSubmit={handleSendInvite} controller={inviteIssues}>
           <Input
             id="partner-invite-uid"
-            label="Partner's ID"
+            label="Friend's ID"
             placeholder="e.g. 049201"
             value={partnerUidInput}
-            onChange={(e) => {
-              setPartnerUidInput(e.target.value.replace(/\D/g, ''));
-            }}
+            onChange={(e) => setPartnerUidInput(e.target.value.replace(/\D/g, ''))}
             className="font-mono tabular-nums tracking-widest"
             inputMode="numeric"
             autoComplete="off"
@@ -1516,283 +716,165 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         </Form>
       </Dialog>
 
-      {/* ITEM 1: START MULTI-CATEGORY SHARED CHALLENGE MODAL (PLEDGE JOINT PACT) */}
       <Dialog
         open={challengeModalOpen}
         preventClose={isSubmittingChallenge}
+        dirty={challengeForm.dirty}
         onClose={() => setChallengeModalOpen(false)}
-        dirty={pactForm.dirty}
-        title={`Joint pact with ${activePartnerUsername || 'partner'}`}
-        maxWidth="max-w-xl"
+        title={`New challenge with ${partnerName || 'partner'}`}
         footer={
           <>
             <button
               type="button"
               disabled={isSubmittingChallenge}
-              onClick={() => pactForm.confirmDiscard(() => setChallengeModalOpen(false))}
+              onClick={() => challengeForm.confirmDiscard(() => setChallengeModalOpen(false))}
               className="btn-secondary"
             >
               Cancel
             </button>
-            <button type="submit" form="pact-create-form" disabled={isSubmittingChallenge} className="btn-primary">
+            <button type="submit" form="challenge-create-form" disabled={isSubmittingChallenge} className="btn-primary">
               {isSubmittingChallenge ? <AscendLoadingIndicator size="sm" /> : <Plus size={16} />}
-              <span>{isSubmittingChallenge ? 'Locking in…' : 'Lock in pact'}</span>
+              <span>{isSubmittingChallenge ? 'Starting…' : 'Start challenge'}</span>
             </button>
           </>
         }
       >
-        <Form id="pact-create-form" onSubmit={handleCreateChallengeSubmit} controller={pactIssues} className="space-y-5">
-
-          <Input
-            id="pact-create-title"
-            label="Pact title"
-            optional
-            placeholder="e.g. 14-day morning routine"
-            value={challengeTitle}
-            onChange={(e) => setChallengeTitle(e.target.value)}
-            maxLength={80}
-            autoComplete="off"
-          />
-
-          <div role="group" aria-labelledby="pact-duration-label">
-            <p id="pact-duration-label" className="block label mb-1.5">Duration</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {DURATION_OPTIONS.map((opt) => {
-                const isSelected = challengeDuration === opt.days;
-                return (
-                  <button
-                    key={opt.days}
-                    type="button"
-                    onClick={() => setChallengeDuration(opt.days)}
-                    aria-pressed={isSelected}
-                    className={`min-h-11 p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
-                      isSelected
-                        ? 'bg-emerald-500/15 border-emerald-500/60 text-success-text'
-                        : 'border-overlay-subtle hover:bg-overlay-subtle text-content-muted'
-                    }`}
-                  >
-                    <span className="item-name text-xs">{opt.label}</span>
-                    <span className="figure text-2xs text-success-text mt-0.5">{opt.bonus}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* User 1 (Your Pledge) Section */}
-          <div className="rounded-xl border border-overlay-default p-4 space-y-3.5">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold leading-tight text-success-text">
-                Your daily pledge
-              </p>
-              <span className="text-xs text-content-muted">Pick a category and target</span>
-            </div>
-
-            {/* Visual Category Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              {CATEGORY_OPTIONS.map((cat) => {
-                const Icon = cat.icon;
-                const isSelected = user1Category === cat.value;
-                return (
-                  <button
-                    key={cat.value}
-                    type="button"
-                    onClick={() => {
-                      setUser1Category(cat.value);
-                      setUser1Target('');
-                    }}
-                        aria-pressed={isSelected}
-                    className={`min-h-11 p-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
-                      isSelected
-                        ? `${cat.bgColor} ${cat.borderColor} ring-1 ring-emerald-400/60`
-                        : 'border-overlay-subtle hover:bg-overlay-subtle text-content-muted'
-                    }`}
-                  >
-                    <Icon size={16} className={cat.color} />
-                    <span className={`text-xs font-medium ${isSelected ? 'text-content-primary' : 'text-content-tertiary'}`}>
-                      {cat.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Target Input & Smart Suggestions */}
-            <div className="space-y-1.5">
-              <Input
-                id="pact-create-user1-target"
-                label="Target"
-                optional
-                placeholder="e.g. Read 20 pages / 30m Gym / 10k Steps"
-                value={user1Target}
-                onChange={(e) => setUser1Target(e.target.value)}
-                maxLength={60}
-                autoComplete="off"
-              />
-
-              {/* Suggestions chips */}
-              <div className="space-y-1 pt-1">
-                <span className="text-xs text-content-muted block">Suggestions</span>
+        <Form id="challenge-create-form" onSubmit={handleCreateChallenge} controller={challengeIssues} className="space-y-5">
+          <div className="space-y-2">
+            <Input
+              id="challenge-my-goal"
+              label={differentGoal ? 'What will you do every day?' : 'What will you both do every day?'}
+              placeholder="e.g. Read 20 pages"
+              value={myGoal}
+              onChange={(e) => setMyGoal(e.target.value)}
+              maxLength={60}
+              autoComplete="off"
+            />
+            {myHabitNames.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs text-content-muted">Your habits (ticking the habit ticks the challenge too)</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {(user1Category === 'habit' && userHabitNames.length > 0
-                    ? userHabitNames
-                    : SUGGESTIONS_BY_CATEGORY[user1Category]
-                  ).slice(0, 5).map((suggestion) => (
+                  {myHabitNames.slice(0, 8).map((name) => (
                     <button
-                      key={suggestion}
+                      key={name}
                       type="button"
-                      onClick={() => setUser1Target(suggestion)}
-                      className={`min-h-9 sm:min-h-0 text-xs px-2.5 py-1 rounded-lg border transition-all ${
-                        user1Target === suggestion
-                          ? 'bg-emerald-500/20 text-success-text border-emerald-500/40'
+                      onClick={() => setMyGoal(name)}
+                      aria-pressed={myGoal.trim() === name}
+                      className={cx(
+                        'min-h-9 sm:min-h-0 text-xs px-2.5 py-1 rounded-lg border transition-colors',
+                        myGoal.trim() === name
+                          ? 'bg-primary-500/15 text-brand-text border-primary-500/40'
                           : 'text-content-muted border-overlay-subtle hover:border-overlay-strong hover:text-content-secondary'
-                      }`}
+                      )}
                     >
-                      + {suggestion}
+                      {name}
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* User 2 (Partner's Pledge) Section */}
-          <div className="rounded-xl border border-overlay-default p-4 space-y-3.5">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold leading-tight text-sky-theme">
-                {activePartnerUsername}'s daily pledge
-              </p>
-              <span className="text-xs text-content-muted">Their target</span>
-            </div>
-
-            {/* Visual Category Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              {CATEGORY_OPTIONS.map((cat) => {
-                const Icon = cat.icon;
-                const isSelected = user2Category === cat.value;
-                return (
-                  <button
-                    key={cat.value}
-                    type="button"
-                    onClick={() => {
-                      setUser2Category(cat.value);
-                      setUser2Target('');
-                    }}
-                        aria-pressed={isSelected}
-                    className={`min-h-11 p-2 rounded-xl border text-left transition-all flex items-center gap-2 ${
-                      isSelected
-                        ? `${cat.bgColor} ${cat.borderColor} ring-1 ring-sky-400/60`
-                        : 'border-overlay-subtle hover:bg-overlay-subtle text-content-muted'
-                    }`}
-                  >
-                    <Icon size={16} className={cat.color} />
-                    <span className={`text-xs font-medium ${isSelected ? 'text-content-primary' : 'text-content-tertiary'}`}>
-                      {cat.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Partner Target Input & Suggestions */}
-            <div className="space-y-1.5">
-              <Input
-                id="pact-create-user2-target"
-                label="Target"
-                optional
-                placeholder="e.g. 5km Run / Cold Shower / 30m Coding"
-                value={user2Target}
-                onChange={(e) => setUser2Target(e.target.value)}
-                maxLength={60}
-                autoComplete="off"
-              />
-
-              {/* Suggestions chips */}
-              <div className="space-y-1 pt-1">
-                <span className="text-xs text-content-muted block">Suggestions</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {SUGGESTIONS_BY_CATEGORY[user2Category].slice(0, 5).map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      onClick={() => setUser2Target(suggestion)}
-                      className={`min-h-9 sm:min-h-0 text-xs px-2.5 py-1 rounded-lg border transition-all ${
-                        user2Target === suggestion
-                          ? 'badge-sky'
-                          : 'text-content-muted border-overlay-subtle hover:border-overlay-strong hover:text-content-secondary'
-                      }`}
-                    >
-                      + {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-content-secondary">{partnerName} does something different</span>
+            <Switch
+              checked={differentGoal}
+              onChange={() => setDifferentGoal((v) => !v)}
+              label={`${partnerName} does something different`}
+            />
           </div>
 
+          {differentGoal && (
+            <Input
+              id="challenge-partner-goal"
+              label={`What will ${partnerName} do every day?`}
+              placeholder="e.g. 30 min workout"
+              value={partnerGoal}
+              onChange={(e) => setPartnerGoal(e.target.value)}
+              maxLength={60}
+              autoComplete="off"
+            />
+          )}
+
+          <div role="group" aria-labelledby="challenge-length-label">
+            <p id="challenge-length-label" className="block label mb-1.5">How long?</p>
+            <div className="grid grid-cols-3 gap-2">
+              {LENGTH_OPTIONS.map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() => setLengthDays(days)}
+                  aria-pressed={lengthDays === days}
+                  className={cx(
+                    'min-h-11 rounded-xl border text-sm font-medium transition-colors',
+                    lengthDays === days
+                      ? 'bg-primary-500/15 border-primary-500/60 text-brand-text'
+                      : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
+                  )}
+                >
+                  {days} days
+                </button>
+              ))}
+            </div>
+          </div>
         </Form>
       </Dialog>
 
-      {/* END PAIRING CONFIRMATION MODAL */}
       <ConfirmDeleteModal
-        open={endConfirmOpen}
-        onClose={() => setEndConfirmOpen(false)}
+        open={removeConfirmOpen}
+        onClose={() => setRemoveConfirmOpen(false)}
         onConfirm={async () => {
-          if (activePartnership) {
-            await executeWithKey(`end_partnership_${activePartnership.id}`, async () => {
-              await store.endPartnership(activePartnership.id);
-              showSuccessToast('Pairing ended', `You're no longer partners with ${activePartnerUsername}.`);
-              setEndConfirmOpen(false);
-            });
-          }
+          if (!activePartnership) return;
+          const id = activePartnership.id;
+          const name = partnerName;
+          await executeWithKey(`remove_partner_${id}`, async () => {
+            await store.endPartnership(id);
+            setRemoveConfirmOpen(false);
+            showSuccessToast('Partner removed', `${name} is no longer your partner.`);
+          });
         }}
-        isDeleting={activePartnership ? isKeyLoading(`end_partnership_${activePartnership.id}`) : false}
-        title={`End Pairing with ${activePartnerUsername || 'Partner'}?`}
-        itemName={activePartnerUsername || undefined}
-        description={`End your partnership with ${activePartnerUsername}? All joint pacts with them will be removed.`}
-        confirmText="End partnership"
+        isDeleting={activePartnership ? isKeyLoading(`remove_partner_${activePartnership.id}`) : false}
+        title={`Remove ${partnerName || 'partner'}?`}
+        itemName={partnerName || undefined}
+        description={`Your challenges with ${partnerName} are deleted for both of you, and ${partnerName} is told.`}
+        confirmText="Remove partner"
       />
 
-      {/* DELETE SHARED CHALLENGE CONFIRMATION MODAL */}
       <ConfirmDeleteModal
         open={Boolean(challengeToDelete)}
         onClose={() => setChallengeToDelete(null)}
         onConfirm={async () => {
-          if (challengeToDelete) {
-            const challengeId = challengeToDelete.id;
-            const challengeTitle = challengeToDelete.title;
-            await executeWithKey(`delete_pact_${challengeId}`, async () => {
-              await store.deleteSharedChallenge(challengeId);
-              setChallengeToDelete(null);
-              showSuccessToast('Pact removed', `Deleted "${challengeTitle}".`, `challenge_${challengeId}`);
-            });
-          }
+          if (!challengeToDelete) return;
+          const id = challengeToDelete.id;
+          await executeWithKey(`delete_challenge_${id}`, async () => {
+            await store.deleteSharedChallenge(id);
+            setChallengeToDelete(null);
+            showInfoToast('Challenge deleted', `${partnerName} is told.`);
+          });
         }}
-        isDeleting={challengeToDelete ? isKeyLoading(`delete_pact_${challengeToDelete.id}`) : false}
-        title="Delete joint pact?"
-        itemName={challengeToDelete?.title}
-        description={`Delete "${challengeToDelete?.title}"? This removes the pact for both of you, for good.`}
-        confirmText="Delete pact"
+        isDeleting={challengeToDelete ? isKeyLoading(`delete_challenge_${challengeToDelete.id}`) : false}
+        title="Delete challenge?"
+        itemName={challengeToDelete ? goalOf(challengeToDelete, amUser1) : undefined}
+        description={`It's deleted for both you and ${partnerName}, with all its days.`}
+        confirmText="Delete challenge"
       />
 
-      {/* CANCEL SENT INVITE CONFIRMATION MODAL */}
       <ConfirmDeleteModal
         open={Boolean(inviteToCancel)}
         onClose={() => setInviteToCancel(null)}
         onConfirm={async () => {
-          if (inviteToCancel) {
-            const inviteId = inviteToCancel.id;
-            const toUser = inviteToCancel.toUsername;
-            await executeWithKey(`cancel_invite_${inviteId}`, async () => {
-              await store.cancelPartnerInvite(inviteId);
-              setInviteToCancel(null);
-              showSuccessToast('Invite cancelled', `Cancelled invite to ${toUser}.`, `invite_${inviteId}`);
-            });
-          }
+          if (!inviteToCancel) return;
+          const id = inviteToCancel.id;
+          const to = inviteToCancel.toUsername;
+          await executeWithKey(`cancel_invite_${id}`, async () => {
+            await store.cancelPartnerInvite(id);
+            setInviteToCancel(null);
+            showSuccessToast('Invite cancelled', `Your invite to ${to} is cancelled.`);
+          });
         }}
         isDeleting={inviteToCancel ? isKeyLoading(`cancel_invite_${inviteToCancel.id}`) : false}
-        title="Cancel partner invite?"
-        itemName={`Invite to ${inviteToCancel?.toUsername}`}
+        title="Cancel invite?"
+        itemName={inviteToCancel ? `Invite to ${inviteToCancel.toUsername}` : undefined}
         description={`Cancel your invite to ${inviteToCancel?.toUsername}?`}
         confirmText="Cancel invite"
       />
