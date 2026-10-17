@@ -10,7 +10,6 @@ import {
   TIME_TRACKER_POINTS,
   WEEKLY_GOALS_POINTS,
   WEEKLY_REFLECTION_POINTS,
-  RECOVERY_POINTS,
 } from '@/lib/pointsConfig';
 
 export const capLabels: Record<CapId, string> = {
@@ -25,10 +24,6 @@ export const capLabels: Record<CapId, string> = {
 
 export function capReachedText(earned: number, cap: number): string {
   return `Daily cap reached (${earned}/${cap}). More activity today won't earn points. Resets at midnight.`;
-}
-
-export function recoverySeasonCapNote(): string {
-  return `Total recovery points this season are capped at ${RECOVERY_POINTS.seasonCap}; a capped milestone shows "Season cap reached" until the cap is reclaimed via reset/relapse rules.`;
 }
 
 export function weeklyGoalsCapNote(): string {

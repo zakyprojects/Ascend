@@ -308,6 +308,7 @@ const STORED_SESSION_WAIT_MS = 8000;
 /** Most logs one "Clear older logs" removes (tombstones must fit the 500-id list). */
 const CLEAR_WORKOUTS_MAX = 300;
 const CLEAR_SKILL_LOGS_MAX = 300;
+const CLEAR_CRAVING_LOGS_MAX = 300;
 export const LOCAL_THEME_STORAGE_KEY = 'ascend_theme_preference';
 
 export function getLocalThemePreference(): 'dark' | 'light' | null {
@@ -4950,6 +4951,32 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Removes up to CLEAR_CRAVING_LOGS_MAX craving logs from before `beforeDate` (local day key). No points ride on cravings. */
+  const clearCravingLogsBefore = useCallback((beforeDate: string) => {
+    void (
+      setState(
+        (prev) => {
+          const toClear = prev.cravingLogs
+            .filter((l) => {
+              const at = new Date(l?.date || '');
+              return !Number.isNaN(at.getTime()) && todayKey(at) < beforeDate;
+            })
+            .slice(0, CLEAR_CRAVING_LOGS_MAX);
+          if (toClear.length === 0) return prev;
+          const cleared = new Set(toClear.map((l) => l.id));
+          return {
+            ...prev,
+            cravingLogs: prev.cravingLogs.filter((l) => !cleared.has(l.id)),
+            deletedEntityIds: [...(prev.deletedEntityIds || []), ...cleared].slice(-500),
+          };
+        },
+        { immediate: true, actionLabel: 'Clearing old craving logs' }
+      )
+    );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- MODULE 7: PREFRONTAL CORTEX ACTIONS ---
   const logFocusSession = useCallback((taskName: string, durationMinutes: number, skillId?: string, reflection?: string) => {
     const date = todayKey();
@@ -9168,6 +9195,7 @@ export function useAppState() {
     checkAddictionMilestones,
     logCraving,
     deleteCravingLog,
+    clearCravingLogsBefore,
     logFocusSession,
     updateFocusLogReflection,
     deleteFocusLog,

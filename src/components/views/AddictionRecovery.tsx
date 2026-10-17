@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
-import { HeartPulse, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award, Trash2 } from 'lucide-react';
+import { HeartPulse, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Trash2, Medal, Trophy, Crown, Check, Plus } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { CravingLog } from '@/types';
-import { recoveryAwardsThisSeason, RecoveryMilestoneKey } from '@/lib/recoveryAwards';
-import { formatDateLong } from '@/lib/dates';
-import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS } from '@/lib/pointsConfig';
+import { recoveryAwardsThisSeason, RecoveryMilestoneKey, RECOVERY_MILESTONES } from '@/lib/recoveryAwards';
+import { formatDateLong, todayKey, startOfWeek } from '@/lib/dates';
+import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS, SOBRIETY_MILESTONE_POINTS } from '@/lib/pointsConfig';
 import { CapMeter } from '@/components/ui/CapMeter';
-import { recoverySeasonCapNote } from '@/lib/capCopy';
-import { Dialog, EmptyState, Form, Input, PageColumns } from '@/components/ui/primitives';
+import { PageHero } from '@/components/ui/PageHero';
+import { CountUp, Reveal } from '@/components/ui/Motion';
+import { Dialog, Disclosure, EmptyState, Form, Input, PageColumns } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { TAP_TARGET } from '@/components/ui/primitives/shared';
-import { ProgressRing } from '@/components/ui/charts';
+import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { trustedNow } from '@/lib/clock';
+
+const CRAVINGS_PAGE = 10;
 
 const DISTRACTION_ACTIVITIES = [
   'Drink a cold glass of water slowly',
@@ -26,6 +28,20 @@ const DISTRACTION_ACTIVITIES = [
   'Call or message a trusted friend or family member',
 ];
 
+const MILESTONE_ICON: Record<RecoveryMilestoneKey, typeof Medal> = { '1w': Medal, '1m': Trophy, '90d': Crown };
+
+const formatSpan = (hours: number): string => {
+  const d = Math.floor(hours / 24);
+  const h = hours % 24;
+  return d > 0 ? `${d}d ${h}h` : `${h}h`;
+};
+
+/** The craving's local day, or null when its timestamp does not parse. */
+const cravingDay = (log: CravingLog): string | null => {
+  const at = new Date(log.date);
+  return Number.isNaN(at.getTime()) ? null : todayKey(at);
+};
+
 export function AddictionRecovery({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
@@ -35,15 +51,14 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [deleteTrackerConfirmOpen, setDeleteTrackerConfirmOpen] = useState(false);
   const [deleteCravingModalLog, setDeleteCravingModalLog] = useState<CravingLog | null>(null);
-  const [celebrationMilestone, setCelebrationMilestone] = useState<string | null>(null);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [cravingsShown, setCravingsShown] = useState(CRAVINGS_PAGE);
 
   // Form states
   const [trackerTitle, setTrackerTitle] = useState('Sobriety');
   const [intensity, setIntensity] = useState(5);
   const [triggerText, setTriggerText] = useState('');
   const [copingText, setCopingText] = useState('');
-
-  // Distraction index
   const [distractionIdx, setDistractionIdx] = useState(0);
 
   const tracker = store.state.addictionTracker;
@@ -53,50 +68,42 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   const seasonAwards = recoveryAwardsThisSeason(store.state.pointsHistory || [], tracker?.id, trustedNow().getTime());
   const heldSeasonPoints = Array.from(seasonAwards.values()).reduce((sum, p) => sum + p, 0);
 
-  // Auto-check milestones on mount
   useEffect(() => {
     store.checkAddictionMilestones();
   }, [store]);
 
-  // Calculate live streak counter
-  const [timeElapsed, setTimeElapsed] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-
+  // Live time clean, refreshed every 15 seconds (minutes are the smallest unit shown).
+  const [nowMs, setNowMs] = useState(() => trustedNow().getTime());
   useEffect(() => {
     if (!tracker?.startDate) return;
-
-    const updateTimer = () => {
-      const start = new Date(tracker.startDate).getTime();
-      const now = trustedNow().getTime();
-      const diff = Math.max(0, now - start);
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      setTimeElapsed({ days, hours, minutes, seconds });
-    };
-
-    updateTimer();
-    const timer = setInterval(updateTimer, 1000);
+    setNowMs(trustedNow().getTime());
+    const timer = setInterval(() => setNowMs(trustedNow().getTime()), 15000);
     return () => clearInterval(timer);
   }, [tracker?.startDate]);
 
-  const milestones = [
-    { key: '1w', label: '1 Week Clean', requiredHours: 168, points: 10, icon: '🏅' },
-    { key: '1m', label: '1 Month Clean', requiredHours: 720, points: 25, icon: '🏆' },
-    { key: '90d', label: '90 Days Clean', requiredHours: 2160, points: 50, icon: '👑' },
-  ];
+  const startMs = tracker ? new Date(tracker.startDate).getTime() : NaN;
+  const elapsedMs = Number.isNaN(startMs) ? 0 : Math.max(0, nowMs - startMs);
+  const elapsedHours = Math.floor(elapsedMs / 3600000);
+  const days = Math.floor(elapsedHours / 24);
+  const hours = elapsedHours % 24;
+  const minutes = Math.floor((elapsedMs % 3600000) / 60000);
 
-  // Ring towards the next milestone, from the live counter (whole hours clean).
-  const elapsedHours = timeElapsed.days * 24 + timeElapsed.hours;
-  const nextMilestone = milestones.find((m) => elapsedHours < m.requiredHours);
-  const hoursToNext = nextMilestone ? nextMilestone.requiredHours - elapsedHours : 0;
+  const nextMilestone = RECOVERY_MILESTONES.find((m) => elapsedHours < m.hours);
+  const prevHours = nextMilestone ? RECOVERY_MILESTONES[RECOVERY_MILESTONES.indexOf(nextMilestone) - 1]?.hours ?? 0 : 0;
+
+  // Cravings: newest first; "Clear older cravings" removes those before this week's Monday.
+  const sortedCravings = [...cravingLogs].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const weekStartKey = todayKey(startOfWeek());
+  const cravingsThisWeek = cravingLogs.filter((l) => (cravingDay(l) ?? '') >= weekStartKey).length;
+  const olderCravingCount = cravingLogs.filter((l) => {
+    const day = cravingDay(l);
+    return day !== null && day < weekStartKey;
+  }).length;
 
   const cravingForm = useUnsavedChanges(cravingModalOpen, [intensity, triggerText, copingText]);
   const setupForm = useUnsavedChanges(setupTrackerModalOpen, trackerTitle);
 
-  // Every open starts clean: a dismissed draft is not shown again.
+  // Every open starts clean.
   const openCravingModal = () => {
     setIntensity(5);
     setTriggerText('');
@@ -116,238 +123,257 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
     if (!triggerText.trim() || !copingText.trim()) return;
     store.logCraving(intensity, triggerText, copingText);
     setCravingModalOpen(false);
-    setIntensity(5);
-    setTriggerText('');
-    setCopingText('');
+    showSuccessToast('Craving logged', 'Well done for noticing it.');
   };
+
+  const pointsLine =
+    heldSeasonPoints > 0
+      ? `This streak's ${heldSeasonPoints} milestone points from this season come off. Earlier seasons keep theirs, and your new streak can earn the milestones again.`
+      : 'No points change: this streak holds no milestone points this season.';
 
   return (
     <div className="space-y-6">
-      {/* Top Header + Emergency Button */}
-      {/* Phones keep the button in the top-right corner too (compact), instead of a full-width row. */}
       <div className="page-header max-sm:flex-row max-sm:items-start max-sm:justify-between">
         <div>
-          <h1 className="page-title">Addiction Recovery</h1>
-          <p className="page-subtitle">Your sobriety streak, craving log and emergency support.</p>
+          <h1 className="page-title">Recovery</h1>
+          <p className="page-subtitle">Your clean streak, cravings and support when it gets hard.</p>
         </div>
-
-        <button
-          onClick={() => setEmergencyModalOpen(true)}
-          className="shrink-0 px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-1.5 sm:gap-2"
-        >
-          <PhoneCall size={14} aria-hidden="true" />
-          <span>Emergency<span className="max-sm:hidden"> Support</span></span>
-        </button>
+        <div className="flex shrink-0 gap-2">
+          <button
+            onClick={() => setEmergencyModalOpen(true)}
+            className="btn bg-rose-600 hover:bg-rose-500 text-white max-sm:px-3 max-sm:py-1.5 max-sm:text-xs"
+          >
+            <PhoneCall size={16} aria-hidden="true" />
+            <span>
+              Emergency<span className="max-sm:hidden"> support</span>
+            </span>
+          </button>
+          {tracker && (
+            <button onClick={openCravingModal} className="btn-primary max-sm:hidden">
+              <Plus size={18} />
+              <span>Log craving</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Persistent Disclaimer Banner */}
-      <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 flex gap-3">
-        <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
-        <div className="text-xs text-content-tertiary leading-relaxed">
-          <span className="font-semibold text-warning-text">Medical disclaimer:</span> This is a self-help tool. It does <span className="underline">not replace</span> medical treatment or therapy. If you are in crisis, have severe withdrawal, or a serious addiction, contact a licensed professional or a helpline (e.g. SAMHSA Helpline: 1-800-662-4357).
-        </div>
-      </div>
+      {!tracker ? (
+        <EmptyState
+          icon={HeartPulse}
+          title="Start your clean streak"
+          description="Pick what you're stepping away from, like smoking, alcohol, sugar or social media. Your clock starts now."
+          action={
+            <button
+              onClick={() => {
+                setTrackerTitle('Sobriety');
+                setSetupTrackerModalOpen(true);
+              }}
+              className="btn-primary mx-auto"
+            >
+              <Plus size={18} /> Start tracker
+            </button>
+          }
+        />
+      ) : (
+        <Reveal index={0}>
+          <PageHero
+            ariaLabel="Your clean streak"
+            ring={{
+              value: nextMilestone ? elapsedHours - prevHours : 1,
+              max: nextMilestone ? nextMilestone.hours - prevHours : 1,
+              label: nextMilestone ? `Progress to ${nextMilestone.label}` : 'All milestones reached',
+              center: nextMilestone ? formatSpan(nextMilestone.hours - elapsedHours) : <Check size={28} />,
+              caption: nextMilestone ? `to ${nextMilestone.label.replace(' Clean', '')}` : 'all reached',
+            }}
+            lead={{
+              label: `${tracker.title} free`,
+              value: <CountUp value={days} />,
+              hint: `${days === 1 ? 'day' : 'days'}, ${hours}h ${minutes}m`,
+              valueClassName: 'text-success-text',
+            }}
+            stats={[
+              { label: 'Points this season', value: <>+<CountUp value={heldSeasonPoints} /></>, valueClassName: 'text-purple-hierarchy' },
+              { label: 'Cravings this week', value: <CountUp value={cravingsThisWeek} />, valueClassName: 'text-brand-text' },
+            ]}
+            side={<CapMeter variant="bar" label="Recovery points this season" earned={heldSeasonPoints} cap={RECOVERY_POINTS.seasonCap} />}
+          />
+        </Reveal>
+      )}
 
       <PageColumns
-        lead={
-          <>
-            {/* Main Sobriety Streak Card */}
-            {!tracker ? (
-              <EmptyState
-                icon={HeartPulse}
-                title="Set up your sobriety tracker"
-                description="Pick what you're recovering from (e.g. alcohol, smoking, sugar, social media) and start tracking milestones."
-                action={
-                  <button onClick={() => setSetupTrackerModalOpen(true)} className="btn-primary">
-                    Start Sobriety Tracker
-                  </button>
-                }
-              />
-            ) : (
-              <div className="card p-6 relative overflow-hidden space-y-6">
-                <div className="flex items-start justify-between gap-3 border-b border-overlay-subtle pb-4 sm:items-center">
-                  <div className="min-w-0">
-                    <span className="stat-label">Sobriety counter</span>
-                    <h2 className="section-title mt-1">{tracker.title}</h2>
-                  </div>
-                  {/* Phones: the two actions stack in the corner instead of taking a row of their own. */}
-                  <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
-                    <button
-                      onClick={() => setResetConfirmOpen(true)}
-                      className="btn-ghost text-xs text-content-muted hover:text-warning-text flex items-center gap-1.5 max-sm:px-2 max-sm:py-1"
-                    >
-                      <RefreshCw size={14} />
-                      <span>Reset Timer</span>
-                    </button>
-                    <button
-                      onClick={() => setDeleteTrackerConfirmOpen(true)}
-                      className="btn-ghost text-xs text-content-muted hover:text-rose-theme flex items-center gap-1.5 max-sm:px-2 max-sm:py-1"
-                      title="Delete sobriety tracker"
-                    >
-                      <Trash2 size={14} />
-                      <span>Delete Tracker</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Live Counter Display */}
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <div className="p-3">
-                    <div className="figure text-3xl sm:text-4xl text-rose-theme">{timeElapsed.days}</div>
-                    <div className="stat-label mt-1">Days</div>
-                  </div>
-                  <div className="p-3">
-                    <div className="figure text-3xl sm:text-4xl text-content-primary">{timeElapsed.hours}</div>
-                    <div className="stat-label mt-1">Hours</div>
-                  </div>
-                  <div className="p-3">
-                    <div className="figure text-3xl sm:text-4xl text-content-primary">{timeElapsed.minutes}</div>
-                    <div className="stat-label mt-1">Mins</div>
-                  </div>
-                  <div className="p-3">
-                    <div className="figure text-3xl sm:text-4xl text-content-primary">{timeElapsed.seconds}</div>
-                    <div className="stat-label mt-1">Secs</div>
-                  </div>
-                </div>
-
-                {/* Next milestone */}
-                <div className="flex items-center gap-4 pt-4 border-t border-overlay-subtle">
-                  <ProgressRing
-                    value={nextMilestone ? elapsedHours : 1}
-                    max={nextMilestone ? nextMilestone.requiredHours : 1}
-                    label={nextMilestone ? `Progress to ${nextMilestone.label}` : 'All milestones reached'}
-                    tone="warning"
-                    size={56}
-                    thickness={5}
-                  >
-                    <span className="text-xl" aria-hidden="true">{nextMilestone ? nextMilestone.icon : '👑'}</span>
-                  </ProgressRing>
-                  <div className="min-w-0">
-                    <div className="stat-label">Next milestone</div>
-                    {nextMilestone ? (
-                      <p className="item-name text-sm mt-0.5">
-                        {nextMilestone.label}{' '}
-                        <span className="figure font-normal text-content-muted">
-                          in {hoursToNext >= 24 ? `${Math.floor(hoursToNext / 24)}d ${hoursToNext % 24}h` : `${hoursToNext}h`}
-                        </span>
-                      </p>
-                    ) : (
-                      <p className="item-name text-sm mt-0.5">All milestones reached</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Milestones Celebrations */}
-                <div className="space-y-3">
-                  <CapMeter
-                    variant="bar"
-                    label="Recovery points this season"
-                    earned={heldSeasonPoints}
-                    cap={RECOVERY_POINTS.seasonCap}
-                    note={recoverySeasonCapNote()}
-                  />
-
-                  <div className="section-title mb-3 flex items-center gap-2">
-                    <Award size={16} className="text-warning-text" />
-                    Milestones and badges
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {milestones.map((m) => {
-                      const isUnlocked = tracker.milestonesUnlocked.includes(m.key);
-                      const isAwarded = seasonAwards.has(m.key as RecoveryMilestoneKey);
-                      const isCapped = !isAwarded && wouldExceedRecoverySeasonCap(heldSeasonPoints, m.points);
-
-                      return (
-                        <button
-                          key={m.key}
-                          onClick={() => {
-                            if (isUnlocked) setCelebrationMilestone(m.label);
-                          }}
-                          className={`rounded-xl p-3 flex items-center gap-3 text-left transition-colors ${
-                            isUnlocked
-                              ? 'bg-amber-500/10 border border-amber-500/40 text-content-secondary cursor-pointer hover:bg-amber-500/20'
-                              : isCapped
-                              ? 'text-content-disabled opacity-50'
-                              : 'text-content-disabled opacity-60'
-                          }`}
-                        >
-                          <span className="text-2xl">{m.icon}</span>
-                          <div>
-                            <div className="item-name text-xs !text-current">{m.label}</div>
-                            <div className="text-2xs text-content-muted">
-                              {isUnlocked
-                                ? `Unlocked (+${m.points} pts)`
-                                : isCapped
-                                ? 'Season cap reached'
-                                : `Requires ${m.requiredHours}h`}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        }
+        stickyAside
         aside={
           <>
-            {/* Craving Log Section */}
-            <div className="card p-5 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="section-title">Craving log and triggers</h2>
-                  <p className="text-xs text-content-disabled">Log intensity (1-10), triggers and what helped.</p>
-                </div>
-                <button onClick={openCravingModal} className="btn-primary text-xs flex items-center gap-1.5 shrink-0">
-                  <Activity size={14} />
-                  <span>Log Craving</span>
-                </button>
-              </div>
-
-              {cravingLogs.length === 0 ? (
-                <EmptyState
-                  icon={Activity}
-                  title="No cravings logged yet"
-                  description="Logging cravings shows you what triggers them and what helps."
-                />
-              ) : (
-                <div className="space-y-3">
-                  {/* Craving History */}
-                  <div className="divide-y divide-overlay-subtle">
-                    {cravingLogs.slice(0, 10).map((log) => (
-                      <div key={log.id} className="enter-item py-3 space-y-1 text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-content-secondary flex items-center gap-2">
-                            Intensity: <span className={`figure ${log.intensity >= 7 ? 'text-rose-theme' : log.intensity >= 4 ? 'text-warning-text' : 'text-brand-text'}`}>{log.intensity}/10</span>
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-content-disabled text-2xs tabular-nums">{formatDateLong(log.date)}</span>
-                            <button
-                              onClick={() => setDeleteCravingModalLog(log)}
-                              className={`text-content-subtle hover:text-rose-theme p-0.5 transition-colors ${TAP_TARGET}`}
-                              title="Delete craving log"
-                              aria-label="Delete craving log"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                        {log.trigger && <p className="text-content-muted"><span className="text-content-disabled font-medium">Trigger:</span> {log.trigger}</p>}
-                        {log.copingStrategy && <p className="text-success-text"><span className="text-content-disabled font-medium">Coping strategy:</span> {log.copingStrategy}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <Disclosure title="How points work">
+              <ul className="list-disc pl-4 space-y-0.5">
+                <li>
+                  7 days clean = <span className="figure text-success-text">+{SOBRIETY_MILESTONE_POINTS['1w']}</span>, 30 days ={' '}
+                  <span className="figure text-success-text">+{SOBRIETY_MILESTONE_POINTS['1m']}</span>, 90 days ={' '}
+                  <span className="figure text-success-text">+{SOBRIETY_MILESTONE_POINTS['90d']}</span>.
+                </li>
+                <li>Up to {RECOVERY_POINTS.seasonCap} pts a season. Points arrive within the hour, even with the app closed.</li>
+                <li>Reset or delete: the streak's milestone points from this season come off. Earlier seasons keep theirs.</li>
+                <li>A new streak can earn the milestones again. Cravings never change points.</li>
+              </ul>
+            </Disclosure>
+            <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 flex gap-3">
+              <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
+              <p className="text-xs text-content-tertiary leading-relaxed">
+                <span className="font-semibold text-warning-text">Medical disclaimer:</span> This is a self-help tool. It does not replace
+                medical treatment or therapy. If you are in crisis, have severe withdrawal, or a serious addiction, contact a licensed
+                professional or a helpline (e.g. SAMHSA Helpline: 1-800-662-4357).
+              </p>
             </div>
           </>
         }
-      />
+      >
+        {tracker && (
+          <div className="space-y-6">
+            <div className="card p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="section-title">Milestones</h2>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setResetConfirmOpen(true)}
+                    className="btn-ghost text-xs text-content-muted hover:text-warning-text max-sm:px-2 max-sm:py-1"
+                  >
+                    <RefreshCw size={14} /> Reset streak
+                  </button>
+                  <button
+                    onClick={() => setDeleteTrackerConfirmOpen(true)}
+                    className="btn-ghost text-xs text-content-muted hover:text-rose-theme max-sm:px-2 max-sm:py-1"
+                  >
+                    <Trash2 size={14} /> Delete tracker
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {RECOVERY_MILESTONES.map((m) => {
+                  const Icon = MILESTONE_ICON[m.key];
+                  const points = SOBRIETY_MILESTONE_POINTS[m.key];
+                  const held = seasonAwards.has(m.key);
+                  const reached = elapsedHours >= m.hours;
+                  const capped = !held && !reached && wouldExceedRecoverySeasonCap(heldSeasonPoints, points);
+                  return (
+                    <div
+                      key={m.key}
+                      className={cx(
+                        'rounded-xl border p-3 flex items-center gap-3',
+                        held ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-overlay-subtle'
+                      )}
+                    >
+                      <div
+                        className={cx(
+                          'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
+                          held ? 'bg-emerald-500/20 text-success-text' : 'bg-overlay-subtle text-content-muted'
+                        )}
+                      >
+                        <Icon size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="item-name text-sm text-content-secondary">{m.label}</p>
+                        <p className="text-xs text-content-muted">
+                          {held ? (
+                            <span className="figure text-success-text">+{seasonAwards.get(m.key)} pts this season</span>
+                          ) : reached ? (
+                            'Reached'
+                          ) : capped ? (
+                            'Season cap reached'
+                          ) : (
+                            <>
+                              +{points} pts in <span className="figure">{formatSpan(m.hours - elapsedHours)}</span>
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-content-muted">Started {formatDateLong(todayKey(new Date(tracker.startDate)))}</p>
+            </div>
 
-      {/* Emergency Support Modal (Breathing + Distraction) */}
-      <Dialog open={emergencyModalOpen} onClose={() => setEmergencyModalOpen(false)} title="Emergency support"
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="section-title">Cravings</h2>
+                <div className="flex items-center gap-1">
+                  {olderCravingCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setClearOpen(true)}
+                      className="btn-ghost text-xs text-content-muted hover:text-rose-theme max-sm:px-2 max-sm:py-1"
+                    >
+                      <Trash2 size={14} /> Clear older cravings
+                    </button>
+                  )}
+                  <button onClick={openCravingModal} className="btn-secondary text-xs sm:hidden">
+                    <Plus size={14} /> Log craving
+                  </button>
+                </div>
+              </div>
+              {sortedCravings.length === 0 ? (
+                <EmptyState
+                  icon={Activity}
+                  title="No cravings logged yet"
+                  description="Log a craving when it hits. Over time you'll see what triggers it and what helps."
+                  action={
+                    <button onClick={openCravingModal} className="btn-secondary mx-auto">
+                      <Plus size={16} /> Log craving
+                    </button>
+                  }
+                />
+              ) : (
+                <>
+                  <div className="card overflow-hidden divide-y divide-overlay-subtle">
+                    {sortedCravings.slice(0, cravingsShown).map((log) => (
+                      <div key={log.id} className="enter-item p-3.5 flex items-start gap-3 transition-colors hover:bg-overlay-subtle">
+                        <span
+                          className={cx(
+                            'figure w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-sm',
+                            log.intensity >= 7
+                              ? 'bg-rose-500/15 text-rose-theme'
+                              : log.intensity >= 4
+                                ? 'bg-overlay-subtle text-content-secondary'
+                                : 'bg-emerald-500/15 text-success-text'
+                          )}
+                          title={`Intensity ${log.intensity} of 10`}
+                          aria-label={`Intensity ${log.intensity} of 10`}
+                        >
+                          {log.intensity}
+                        </span>
+                        <div className="min-w-0 flex-1 text-xs space-y-0.5">
+                          <p className="item-name text-sm text-content-secondary truncate">{log.trigger || 'Craving'}</p>
+                          {log.copingStrategy && <p className="text-content-muted truncate">Helped: {log.copingStrategy}</p>}
+                          <p className="text-content-disabled">{cravingDay(log) ? formatDateLong(cravingDay(log)!) : ''}</p>
+                        </div>
+                        <button
+                          onClick={() => setDeleteCravingModalLog(log)}
+                          className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
+                          title="Delete craving"
+                          aria-label="Delete craving"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {sortedCravings.length > cravingsShown && (
+                    <button type="button" onClick={() => setCravingsShown((n) => n + CRAVINGS_PAGE)} className="btn-secondary w-full">
+                      Show older cravings
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </PageColumns>
+
+      {/* Emergency support (breathing + distraction) */}
+      <Dialog
+        open={emergencyModalOpen}
+        onClose={() => setEmergencyModalOpen(false)}
+        title="Emergency support"
         maxWidth="max-w-lg"
         footer={
           <button type="button" onClick={() => setEmergencyModalOpen(false)} className="btn-secondary">
@@ -356,16 +382,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         }
       >
         <div className="space-y-6">
-          {/* Guided Breathing Box */}
-          <div className="card p-5 text-center border border-purple-500/30 space-y-4">
-            <h3 className="text-purple-hierarchy section-title flex items-center justify-center gap-2">
-              4-4-4-4 box breathing
-            </h3>
+          <div className="rounded-2xl border border-overlay-default p-5 text-center space-y-2">
+            <h3 className="section-title">4-4-4-4 box breathing</h3>
             <BreathingCircle />
           </div>
-
-          {/* Quick Distraction Activity Suggestion */}
-          <div className="pt-4 space-y-3 border-t border-overlay-subtle">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="item-name text-sm">Quick distraction</h4>
               <button
@@ -376,15 +397,13 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                 <RefreshCw size={14} /> Next idea
               </button>
             </div>
-            <div className="p-3 bg-primary-500/10 rounded-xl border border-primary-500/20 text-base font-medium leading-snug text-brand-text text-center">
+            <p className="p-3 rounded-xl border border-primary-500/20 bg-primary-500/10 text-base font-medium leading-snug text-brand-text text-center">
               {DISTRACTION_ACTIVITIES[distractionIdx]}
-            </div>
+            </p>
           </div>
-
         </div>
       </Dialog>
 
-      {/* Log Craving Modal */}
       <Dialog
         open={cravingModalOpen}
         onClose={() => setCravingModalOpen(false)}
@@ -404,8 +423,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         <Form id="craving-form" onSubmit={handleLogCravingSubmit} className="space-y-4">
           <div>
             <div className="flex justify-between mb-1.5">
-              <label htmlFor="craving-intensity" className="label">Intensity</label>
-              <span className="figure text-xs text-warning-text">{intensity} / 10</span>
+              <label htmlFor="craving-intensity" className="label">
+                How strong is it?
+              </label>
+              <span className="figure text-xs text-content-secondary">{intensity} / 10</span>
             </div>
             <input
               type="range"
@@ -417,7 +438,6 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               id="craving-intensity"
             />
           </div>
-
           <Input
             id="craving-trigger"
             label="What triggered it?"
@@ -428,10 +448,9 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             autoComplete="off"
             required
           />
-
           <Input
             id="craving-coping"
-            label="Coping strategy (used or planned)"
+            label="What helped, or what will you try?"
             value={copingText}
             onChange={(e) => setCopingText(e.target.value)}
             placeholder="e.g. Box breathing, drank water, went for a walk"
@@ -443,19 +462,18 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         </Form>
       </Dialog>
 
-      {/* Setup Tracker Modal */}
       <Dialog
         open={setupTrackerModalOpen}
         onClose={() => setSetupTrackerModalOpen(false)}
         dirty={setupForm.dirty}
-        title="Set up sobriety tracker"
+        title="Start tracker"
         footer={
           <>
             <button type="button" onClick={() => setupForm.confirmDiscard(() => setSetupTrackerModalOpen(false))} className="btn-secondary">
               Cancel
             </button>
             <button type="submit" form="setup-tracker-form" className="btn-primary">
-              Start timer now
+              Start clock now
             </button>
           </>
         }
@@ -463,10 +481,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         <Form id="setup-tracker-form" onSubmit={handleStartTracker}>
           <Input
             id="setup-tracker-title"
-            label="What are you abstaining from?"
+            label="What are you stepping away from?"
             value={trackerTitle}
             onChange={(e) => setTrackerTitle(e.target.value)}
-            placeholder="e.g. Alcohol, Smoking, Junk Food, Gambling"
+            placeholder="e.g. Alcohol, Smoking, Junk food, Gambling"
             maxLength={60}
             autoComplete="off"
             enterKeyHint="done"
@@ -475,12 +493,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         </Form>
       </Dialog>
 
-      {/* Reset Confirmation Modal */}
       <Dialog
         open={resetConfirmOpen}
         onClose={() => setResetConfirmOpen(false)}
-        title="Reset sobriety streak?"
-        description="This restarts your clock from 00:00:00. A slip is a setback, not the end."
+        title="Reset your streak?"
+        description={`Your clock starts again from now. ${pointsLine} A slip is a setback, not the end.`}
         footer={
           <>
             <button type="button" onClick={() => setResetConfirmOpen(false)} className="btn-secondary">
@@ -491,10 +508,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               onClick={() => {
                 store.resetAddictionStreak();
                 setResetConfirmOpen(false);
+                showSuccessToast('Streak reset', 'Your clock starts again now. One day at a time.');
               }}
               className="btn-danger-solid"
             >
-              Reset timer
+              Reset streak
             </button>
           </>
         }
@@ -502,23 +520,6 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         {null}
       </Dialog>
 
-      {/* Milestone Unlocked Modal */}
-      <Dialog open={!!celebrationMilestone} onClose={() => setCelebrationMilestone(null)} title="Milestone unlocked">
-        <div className="text-center space-y-4 py-2">
-          <div className="mx-auto w-14 h-14 rounded-full bg-primary-500/15 flex items-center justify-center animate-celebrate">
-            <Award size={28} className="text-brand-text" />
-          </div>
-          <h3 className="text-2xl font-semibold leading-tight text-content-primary">{celebrationMilestone}</h3>
-          <p className="text-xs text-content-muted max-w-sm mx-auto">
-            Well done. Keep going one day at a time.
-          </p>
-          <button type="button" onClick={() => setCelebrationMilestone(null)} className="btn-primary min-h-11 sm:min-h-10 mx-auto px-8">
-            Done
-          </button>
-        </div>
-      </Dialog>
-
-      {/* Delete Tracker Modal */}
       <ConfirmDeleteModal
         open={deleteTrackerConfirmOpen}
         onClose={() => setDeleteTrackerConfirmOpen(false)}
@@ -526,39 +527,55 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           await executeWithKey('delete_addiction_tracker', async () => {
             await store.deleteAddictionTracker();
             setDeleteTrackerConfirmOpen(false);
-            showSuccessToast('Tracker deleted', 'Sobriety tracker and history removed.', `tracker_${tracker?.id || 'main'}`);
+            showSuccessToast('Tracker deleted', 'Your tracker and cravings were removed.', `tracker_${tracker?.id || 'main'}`);
           });
         }}
         isDeleting={isKeyLoading('delete_addiction_tracker')}
-        title="Delete sobriety tracker?"
+        title="Delete tracker?"
         itemName={tracker?.title}
-        description={`Delete your "${tracker?.title}" sobriety counter? This clears the current streak and all logged cravings. Any milestone points earned will be deducted.`}
+        description={`This ends your streak and deletes all ${cravingLogs.length} logged ${cravingLogs.length === 1 ? 'craving' : 'cravings'}. ${pointsLine.replace('your new streak', 'a new tracker')}`}
         confirmText="Delete tracker"
       />
 
-      {/* Delete Craving Log Modal */}
       <ConfirmDeleteModal
         open={Boolean(deleteCravingModalLog)}
         onClose={() => setDeleteCravingModalLog(null)}
         onConfirm={async () => {
-          if (deleteCravingModalLog) {
-            const logId = deleteCravingModalLog.id;
-            await executeWithKey(`delete_craving_log_${logId}`, async () => {
-              await store.deleteCravingLog(logId);
-              setDeleteCravingModalLog(null);
-              showSuccessToast('Log deleted', 'Craving log removed.', `craving_log_${logId}`);
-            });
-          }
+          if (!deleteCravingModalLog) return;
+          const logId = deleteCravingModalLog.id;
+          await executeWithKey(`delete_craving_log_${logId}`, async () => {
+            await store.deleteCravingLog(logId);
+            setDeleteCravingModalLog(null);
+            showSuccessToast('Craving deleted', 'Removed from your list.', `craving_log_${logId}`);
+          });
         }}
         isDeleting={deleteCravingModalLog ? isKeyLoading(`delete_craving_log_${deleteCravingModalLog.id}`) : false}
-        title="Delete craving log?"
-        description="Delete this craving log entry?"
+        title="Delete craving?"
+        itemName={deleteCravingModalLog?.trigger || undefined}
+        description="Your streak and points don't change. Cravings this week may go down."
+      />
+
+      <ConfirmDeleteModal
+        open={clearOpen}
+        onClose={() => setClearOpen(false)}
+        onConfirm={async () => {
+          await executeWithKey('clear_old_cravings', async () => {
+            await store.clearCravingLogsBefore(weekStartKey);
+            setClearOpen(false);
+            showSuccessToast('Older cravings cleared', 'Your streak and points stay as they were.', 'cravings_cleared');
+          });
+        }}
+        isDeleting={isKeyLoading('clear_old_cravings')}
+        title="Clear older cravings?"
+        itemName={`${olderCravingCount} ${olderCravingCount === 1 ? 'craving' : 'cravings'} before this week`}
+        description="Your streak and points don't change. Their triggers and what helped are deleted for good. This week's cravings are kept."
+        confirmText="Clear cravings"
       />
     </div>
   );
 }
 
-// Guided Box Breathing Animated Circle
+// Guided box breathing
 function BreathingCircle() {
   const [phase, setPhase] = useState<'Inhale' | 'Hold' | 'Exhale' | 'Rest'>('Inhale');
   const [seconds, setSeconds] = useState(4);
@@ -569,55 +586,28 @@ function BreathingCircle() {
     const interval = setInterval(() => {
       setSeconds((prev) => {
         if (prev > 1) return prev - 1;
-        // Phase transition
-        setPhase((currentPhase) => {
-          switch (currentPhase) {
-            case 'Inhale':
-              return 'Hold';
-            case 'Hold':
-              return 'Exhale';
-            case 'Exhale':
-              return 'Rest';
-            case 'Rest':
-              return 'Inhale';
-          }
-        });
+        setPhase((current) => (current === 'Inhale' ? 'Hold' : current === 'Hold' ? 'Exhale' : current === 'Exhale' ? 'Rest' : 'Inhale'));
         return 4;
       });
     }, 1000);
-
     return () => clearInterval(interval);
   }, [isActive]);
 
-  const getCircleScale = () => {
-    switch (phase) {
-      case 'Inhale':
-        return 'scale-125 bg-purple-500/30 border-purple-400';
-      case 'Hold':
-        return 'scale-125 bg-purple-500/40 border-purple-300';
-      case 'Exhale':
-        return 'scale-90 bg-purple-500/10 border-purple-500/30';
-      case 'Rest':
-        return 'scale-90 bg-purple-500/10 border-purple-500/20';
-    }
-  };
+  const circleClass =
+    phase === 'Inhale' || phase === 'Hold'
+      ? 'scale-125 bg-purple-500/30 border-purple-400'
+      : 'scale-90 bg-purple-500/10 border-purple-500/30';
 
   return (
     <div className="flex flex-col items-center justify-center space-y-4 py-4">
       <div className="relative w-36 h-36 flex items-center justify-center">
-        <div
-          className={`w-28 h-28 rounded-full border-2 transition-all duration-1000 flex flex-col items-center justify-center ${getCircleScale()}`}
-        >
+        <div className={`w-28 h-28 rounded-full border-2 transition-all duration-1000 flex flex-col items-center justify-center ${circleClass}`}>
           <span className="text-xs font-medium text-purple-hierarchy">{phase}</span>
           <span className="figure text-2xl text-content-primary mt-0.5">{seconds}s</span>
         </div>
       </div>
-
       <div className="flex items-center gap-2">
-        <button
-          onClick={() => setIsActive(!isActive)}
-          className="btn-ghost text-xs text-purple-hierarchy flex items-center gap-1"
-        >
+        <button onClick={() => setIsActive(!isActive)} className="btn-ghost text-xs text-purple-hierarchy flex items-center gap-1">
           {isActive ? <Pause size={14} /> : <Play size={14} />}
           <span>{isActive ? 'Pause' : 'Start'}</span>
         </button>
