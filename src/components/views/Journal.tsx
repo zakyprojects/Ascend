@@ -29,7 +29,7 @@ import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { useToast } from '@/components/ui/Toast';
-import { Dialog, EmptyState, PageColumns, Tabs } from '@/components/ui/primitives';
+import { Dialog, EmptyState, FieldMessage, Form, FormAlert, PageColumns, Tabs, useFormController } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { useIntroMotion, useSeen } from '@/lib/motion';
 import { CountUp, Reveal } from '@/components/ui/Motion';
@@ -219,14 +219,10 @@ export function Journal({ store }: { store: AppStore }) {
   const hasEnoughContent = trimmedContent.length >= MIN_JOURNAL_CONTENT_LENGTH;
   const charsNeeded = Math.max(0, MIN_JOURNAL_CONTENT_LENGTH - trimmedContent.length);
 
+  const entryIssues = useFormController();
+
   const handleSave = async () => {
-    if (!hasEnoughContent) {
-      showErrorToast(
-        'Write a little more',
-        `Write at least ${MIN_JOURNAL_CONTENT_LENGTH} characters before saving. One sentence is enough.`
-      );
-      return;
-    }
+    if (!hasEnoughContent) return; // validate() shows why at the notes field
 
     try {
       await executeSave(async () => {
@@ -243,7 +239,7 @@ export function Journal({ store }: { store: AppStore }) {
       });
       setIsEditingToday(false);
     } catch (err: any) {
-      showErrorToast("Couldn't save entry", toUserMessage(err, 'Try again.'));
+      entryIssues.showError(toUserMessage(err, "Couldn't save your entry. Try again."));
     }
   };
 
@@ -452,7 +448,20 @@ export function Journal({ store }: { store: AppStore }) {
                 </div>
               ) : (
                 /* STATE 1: WRITING / EDITING MODE */
-                <div className="space-y-5 animate-fade-in">
+                <Form
+                  onSubmit={handleSave}
+                  controller={entryIssues}
+                  alert="manual"
+                  validate={() =>
+                    hasEnoughContent
+                      ? null
+                      : {
+                          message: `Write at least ${MIN_JOURNAL_CONTENT_LENGTH} characters. One sentence is enough.`,
+                          field: 'journal-notes',
+                        }
+                  }
+                  className="space-y-5 animate-fade-in"
+                >
                   {/* Status notice */}
                   <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-xl flex items-center justify-between gap-2 text-xs text-brand-text">
                     <div className="flex items-center gap-2">
@@ -564,6 +573,7 @@ export function Journal({ store }: { store: AppStore }) {
                         className="input min-h-[140px] resize-y leading-relaxed text-content-primary placeholder:text-content-disabled font-sans caret-primary-500"
                       />
                     </div>
+                    <FieldMessage htmlFor="journal-notes" />
 
                     {/* Inline Validation Helper */}
                     <div className="flex items-center justify-between text-xs pt-1 px-1">
@@ -592,18 +602,18 @@ export function Journal({ store }: { store: AppStore }) {
                     </div>
                   </div>
 
+                  <FormAlert />
+
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2.5 pt-2">
                     <button
-                      type="button"
-                      onClick={handleSave}
-                      disabled={isSaving || !hasEnoughContent}
+                      type="submit"
+                      disabled={isSaving}
                       className={`btn flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all shadow-sm ${
                         hasEnoughContent
                           ? 'btn-primary'
                           : 'bg-overlay-subtle text-content-disabled cursor-not-allowed'
                       }`}
-                      title={!hasEnoughContent ? `Write at least ${MIN_JOURNAL_CONTENT_LENGTH} characters to enable saving` : ''}
                     >
                       {isSaving ? (
                         <AscendLoadingIndicator size="sm" />
@@ -630,7 +640,7 @@ export function Journal({ store }: { store: AppStore }) {
                       </button>
                     )}
                   </div>
-                </div>
+                </Form>
               )}
             </div>
 
