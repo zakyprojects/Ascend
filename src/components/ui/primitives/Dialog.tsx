@@ -9,7 +9,13 @@ export interface DialogProps {
   open: boolean;
   onClose: () => void;
   title: string;
+  /** One short line under the title saying what the dialog is for. */
+  description?: React.ReactNode;
   children: React.ReactNode;
+  /** The action row (Cancel / Save). Pinned under the scrolling body so it stays reachable on
+   *  phones and above the keyboard; laid out by `.dialog-actions`. A submit button here points
+   *  at its form with `form="<form id>"`. */
+  footer?: React.ReactNode;
   maxWidth?: string;
   preventClose?: boolean;
   /** 'top' keeps the panel's top edge still while its content changes height (search results). */
@@ -32,7 +38,9 @@ export const Dialog: React.FC<DialogProps> = ({
   open,
   onClose,
   title,
+  description,
   children,
+  footer,
   maxWidth = 'max-w-md',
   preventClose = false,
   placement = 'center',
@@ -58,11 +66,12 @@ export const Dialog: React.FC<DialogProps> = ({
     }, EXIT_MS);
     return () => clearTimeout(timer);
   }, [exiting]);
-  const lastOpenContent = React.useRef({ title, children });
-  if (open) lastOpenContent.current = { title, children };
-  const content = open ? { title, children } : lastOpenContent.current;
+  const lastOpenContent = React.useRef({ title, description, children, footer });
+  if (open) lastOpenContent.current = { title, description, children, footer };
+  const content = open ? { title, description, children, footer } : lastOpenContent.current;
 
   const titleId = React.useId();
+  const descriptionId = React.useId();
   const panelRef = React.useRef<HTMLDivElement>(null);
   const rootRef = React.useRef<HTMLDivElement>(null);
   // A leaving dialog is inert, not aria-hidden: inert also drops focus from the button that
@@ -164,8 +173,22 @@ export const Dialog: React.FC<DialogProps> = ({
 
     document.addEventListener('keydown', handleKeyDown);
 
+    // Touch: the on-screen keyboard opens after the field takes focus and shrinks the viewport,
+    // so bring the focused field back into the dialog's visible body once it has settled.
+    let focusTimer: ReturnType<typeof setTimeout> | undefined;
+    const handleFocusIn = (event: FocusEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.matches('input, textarea, select') || window.matchMedia('(pointer: fine)').matches) return;
+      clearTimeout(focusTimer);
+      focusTimer = setTimeout(() => target.scrollIntoView({ block: 'nearest' }), 300);
+    };
+    const panel = panelRef.current;
+    panel?.addEventListener('focusin', handleFocusIn);
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      panel?.removeEventListener('focusin', handleFocusIn);
+      clearTimeout(focusTimer);
 
       const idx = dialogStack.indexOf(dialogId);
       if (idx !== -1) {
@@ -209,25 +232,33 @@ export const Dialog: React.FC<DialogProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={content.description ? descriptionId : undefined}
         tabIndex={-1}
         className={cx(
-          'modal-panel relative w-full bg-bg-800 border border-bg-700 rounded-2xl shadow-xl z-10 max-h-full overflow-y-auto overscroll-contain',
+          'modal-panel relative flex w-full max-h-full flex-col overflow-hidden bg-bg-800 border border-bg-700 rounded-2xl shadow-xl z-10',
           maxWidth,
           exiting ? 'animate-dialog-out' : 'motion-safe:animate-dialog-in'
         )}
       >
-        <div className="sticky top-0 bg-bg-800 z-10 border-b border-bg-700">
-          <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:py-4">
-            <h2 id={titleId} className="min-w-0 text-base sm:text-lg font-semibold text-content-primary">
-              {content.title}
-            </h2>
+        <div className="shrink-0 border-b border-bg-700">
+          <div className="flex items-start justify-between gap-3 px-4 py-3.5 sm:py-4">
+            <div className="min-w-0 pt-0.5">
+              <h2 id={titleId} className="text-base sm:text-lg font-semibold text-content-primary">
+                {content.title}
+              </h2>
+              {content.description && (
+                <p id={descriptionId} className="mt-1 text-sm text-content-muted">
+                  {content.description}
+                </p>
+              )}
+            </div>
             {!preventClose && (
               <button
                 type="button"
                 aria-label="Close"
                 onClick={requestClose}
                 className={cx(
-                  'inline-flex h-8 w-8 items-center justify-center rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-700',
+                  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-700',
                   TAP_TARGET,
                   FOCUS_RING,
                   TRANSITION
@@ -238,7 +269,10 @@ export const Dialog: React.FC<DialogProps> = ({
             )}
           </div>
         </div>
-        <div className="p-4">{content.children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">{content.children}</div>
+        {content.footer && (
+          <div className="dialog-actions shrink-0 border-t border-bg-700 px-4 py-3">{content.footer}</div>
+        )}
       </div>
     </div>,
     document.body
