@@ -317,8 +317,11 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
           if (text.trim() !== '' && Number.isFinite(next)) onValueChange(next);
         }}
         onBlur={(e) => {
-          // Empty, or adjusted by the parent (clamped): show the value that is actually kept.
-          if (draft.trim() === '' || Number(draft) !== value) setDraft(String(value));
+          // A required field left empty stays empty, so Save shows "Enter a number." instead of
+          // quietly saving the old value (blur runs before the Save click). An optional one shows
+          // the value that is kept, as does a value the parent adjusted (clamped).
+          const empty = draft.trim() === '';
+          if ((empty && !props.required) || (!empty && Number(draft) !== value)) setDraft(String(value));
           onBlur?.(e);
         }}
         {...props}
