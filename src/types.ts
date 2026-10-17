@@ -207,6 +207,7 @@ export interface Book {
   lastPenalizedDate?: string;
 }
 
+/** @deprecated The weekly exercise goal was removed 2026-10-17 (weekly goals can link exercise). Kept so old saved state still loads. */
 export interface ExerciseGoal {
   targetWeeklySessions: number;
   /** @deprecated Phase A: Replaced with dynamic derivation from AppState.workouts. Kept for schema compatibility. */

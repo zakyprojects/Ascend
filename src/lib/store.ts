@@ -3888,22 +3888,6 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setExerciseGoal = useCallback((targetWeeklySessions: number) => {
-    setState((prev) => ({
-      ...prev,
-      exerciseGoal:
-        targetWeeklySessions > 0
-          ? {
-              targetWeeklySessions,
-              createdAt: prev.exerciseGoal?.createdAt || trustedNow().toISOString(),
-              lastEvaluatedWeek: prev.exerciseGoal?.lastEvaluatedWeek,
-            }
-          : null,
-    }));
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // --- MODULE 2: UNIFIED READING HUB & LIBRARY ACTIONS ---
   const addBook = useCallback(
     (
@@ -9086,7 +9070,6 @@ export function useAppState() {
     // New Module Actions
     logWorkout,
     deleteWorkout,
-    setExerciseGoal,
     addBook,
     updateBookTargetDate,
     updateReadingProgress,

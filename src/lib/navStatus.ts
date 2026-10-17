@@ -75,11 +75,9 @@ export function getNavStatuses(state: AppState, isHabitDone: (habit: Habit) => b
     };
   }
 
-  // Exercise: a workout logged today; open only once a weekly goal is set.
+  // Exercise: a workout logged today (there is no daily target, so no open state).
   if ((state.workouts ?? []).some((w) => w.date === today)) {
     statuses.exercise = { tone: 'done', label: 'workout logged today' };
-  } else if (state.exerciseGoal) {
-    statuses.exercise = { tone: 'pending', label: 'no workout logged today' };
   }
 
   // Reading: pages logged today; open only while a book is being read.

@@ -1,310 +1,357 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Dumbbell, Calendar, Activity } from 'lucide-react';
+import { Activity, Calendar, Dumbbell, Flame, Plus, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
-import { todayKey, formatDateLong, parseDate, startOfWeek, formatWeekdayDate } from '@/lib/dates';
+import { todayKey, formatDateLong, startOfWeek, formatWeekdayDate } from '@/lib/dates';
+import { trustedNow } from '@/lib/clock';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
-import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, Select } from '@/components/ui/primitives';
+import { Dialog, Disclosure, EmptyState, Form, Input, NumberField, PageColumns, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
-import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
+import { CountUp, Reveal } from '@/components/ui/Motion';
 
-const DEFAULT_WORKOUT_TYPES = [
-  'Running',
-  'Cycling',
-  'Weightlifting',
-  'HIIT',
-  'Yoga',
-  'Swimming',
-  'Walking',
-  'Boxing',
-  'Pilates',
+const DEFAULT_WORKOUT_TYPES = ['Running', 'Walking', 'Push-ups', 'Weightlifting', 'Cycling', 'Yoga', 'Swimming', 'HIIT'];
+
+type Measure = 'mins' | 'reps' | 'sets' | 'km';
+const MEASURES: { id: Measure; label: string; start: number }[] = [
+  { id: 'mins', label: 'Minutes', start: 30 },
+  { id: 'reps', label: 'Reps', start: 30 },
+  { id: 'sets', label: 'Sets', start: 5 },
+  { id: 'km', label: 'Km', start: 5 },
 ];
+const DAYS_PAGE = 7;
+
+const measureOf = (w: WorkoutLog): Measure => {
+  const u = (w.unit || 'mins').trim().toLowerCase();
+  return u === 'reps' || u === 'sets' || u === 'km' ? u : 'mins';
+};
+const amountOf = (w: WorkoutLog): number =>
+  measureOf(w) === 'mins' ? (w.amount && w.amount > 0 ? w.amount : w.durationMinutes || 0) : w.amount ?? 0;
+const formatAmount = (value: number, measure: Measure): string => {
+  const n = Number.isInteger(value) ? value : Math.round(value * 100) / 100;
+  return measure === 'mins' ? `${n} min` : `${n} ${measure}`;
+};
+
+/** Days in a row with a workout, ending today (or yesterday while today has none yet). */
+function workoutStreak(workoutDays: Set<string>, today: string): number {
+  const cursor = trustedNow();
+  if (!workoutDays.has(today)) cursor.setDate(cursor.getDate() - 1);
+  let count = 0;
+  while (workoutDays.has(todayKey(cursor))) {
+    count++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return count;
+}
 
 export function ExerciseTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
   const [logModalOpen, setLogModalOpen] = useState(false);
-  const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [deleteModalWorkout, setDeleteModalWorkout] = useState<WorkoutLog | null>(null);
-  const [workoutType, setWorkoutType] = useState('Running');
-  const [customType, setCustomType] = useState('');
-  const [metricType, setMetricType] = useState<string>('mins');
+  const [workoutName, setWorkoutName] = useState('');
+  const [measure, setMeasure] = useState<Measure>('mins');
   const [amount, setAmount] = useState<number>(30);
-  const [duration, setDuration] = useState(30);
-
-  const availableWorkoutTypes = useMemo(() => {
-    const fromHistory = (store.state.workouts || [])
-      .map((w) => (w.type || '').trim())
-      .filter((t) => Boolean(t) && t !== 'Other');
-    return Array.from(new Set([...fromHistory, ...DEFAULT_WORKOUT_TYPES]));
-  }, [store.state.workouts]);
-
-  const exerciseGoal = store.state.exerciseGoal;
-  const [targetSessionsInput, setTargetSessionsInput] = useState<number>(exerciseGoal?.targetWeeklySessions || 3);
+  const [daysShown, setDaysShown] = useState(DAYS_PAGE);
 
   const workouts = store.state.workouts;
   const today = todayKey();
 
-  // Compute stats for current week
-  const startOfWeekDate = startOfWeek();
-
-  const thisWeekWorkouts = workouts.filter((w) => (parseDate(w.date) || new Date(0)) >= startOfWeekDate);
-  const totalWeeklySessions = thisWeekWorkouts.length;
-
-  // Dynamic weekly stats computation: group by unit, find dominant unit
-  const weeklyUnitTotals = useMemo(() => {
-    const totals: Record<string, number> = {};
-    for (const w of thisWeekWorkouts) {
-      const u = (w.unit || 'mins').trim().toLowerCase();
-      const val = typeof w.amount === 'number' && !isNaN(w.amount)
-        ? w.amount
-        : (w.durationMinutes || 0);
-      totals[u] = (totals[u] || 0) + val;
+  // Newest first, then grouped by day.
+  const sorted = useMemo(
+    () => [...workouts].sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || '').localeCompare(a.createdAt || '')),
+    [workouts]
+  );
+  const todayWorkouts = sorted.filter((w) => w.date === today);
+  const earlierDays = useMemo(() => {
+    const byDay = new Map<string, WorkoutLog[]>();
+    for (const w of sorted) {
+      if (w.date === today) continue;
+      byDay.set(w.date, [...(byDay.get(w.date) || []), w]);
     }
-    return totals;
-  }, [thisWeekWorkouts]);
+    return Array.from(byDay.entries());
+  }, [sorted, today]);
 
-  const dominantUnitInfo = useMemo(() => {
-    const entries = Object.entries(weeklyUnitTotals);
-    if (entries.length === 0) {
-      return { label: "This Week's Minutes", value: 0, unit: 'mins' };
+  // Recent distinct workouts, for one-tap "log again".
+  const recentWorkouts = useMemo(() => {
+    const seen = new Set<string>();
+    const list: WorkoutLog[] = [];
+    for (const w of sorted) {
+      const key = `${w.type.trim().toLowerCase()}|${measureOf(w)}`;
+      if (!w.type.trim() || seen.has(key)) continue;
+      seen.add(key);
+      list.push(w);
+      if (list.length === 6) break;
     }
-    entries.sort((a, b) => {
-      const ptsB = calculateWorkoutPoints(b[0], b[1], b[1], 9999).rawPoints;
-      const ptsA = calculateWorkoutPoints(a[0], a[1], a[1], 9999).rawPoints;
-      return ptsB - ptsA;
-    });
-    const [bestUnit, bestAmount] = entries[0];
-    const unitTitle = bestUnit.charAt(0).toUpperCase() + bestUnit.slice(1);
-    const displayAmount = Number.isInteger(bestAmount) ? bestAmount : Math.round(bestAmount * 100) / 100;
-    return {
-      label: `This Week's ${unitTitle}`,
-      value: displayAmount,
-      unit: bestUnit,
-    };
-  }, [weeklyUnitTotals]);
+    return list;
+  }, [sorted]);
 
-  // Build daily breakdown for Mon - Sun (7 days) plotting points
-  const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const dailyPoints = daysOfWeek.map((dayLabel, idx) => {
-    const d = new Date(startOfWeekDate);
-    d.setDate(startOfWeekDate.getDate() + idx);
-    const key = todayKey(d);
-    const points = workouts
-      .filter((w) => w.date === key)
-      .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
-    return { dayLabel, key, points, isToday: key === today };
-  });
-  const todayChartIndex = dailyPoints.findIndex((d) => d.isToday);
-
-  const maxPointsInChart = Math.max(WORKOUT_POINTS.dailyCap, ...dailyPoints.map((d) => d.points));
-
-  // Daily points earned today
-  const pointsEarnedToday = workouts
-    .filter((w) => w.date === today)
-    .reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
-
-  // Dynamic preview points calculation for the modal
-  const effectiveInputValue = metricType === 'mins' ? duration : amount;
-  const remainingCap = Math.max(0, WORKOUT_POINTS.dailyCap - pointsEarnedToday);
-  const { pointsToAward: previewPointsToEarn } = calculateWorkoutPoints(
-    metricType,
-    effectiveInputValue,
-    effectiveInputValue,
-    remainingCap
+  const nameSuggestions = useMemo(
+    () => Array.from(new Set([...recentWorkouts.map((w) => w.type.trim()), ...DEFAULT_WORKOUT_TYPES])).slice(0, 8),
+    [recentWorkouts]
   );
 
-  const logForm = useUnsavedChanges(logModalOpen, { workoutType, customType, metricType, amount, duration });
-  const goalForm = useUnsavedChanges(goalModalOpen, targetSessionsInput);
+  // This week (Mon–Sun)
+  const weekStart = startOfWeek();
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayLabel, idx) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + idx);
+    const key = todayKey(d);
+    const dayWorkouts = workouts.filter((w) => w.date === key);
+    return {
+      dayLabel,
+      key,
+      count: dayWorkouts.length,
+      points: dayWorkouts.reduce((sum, w) => sum + (w.pointsAwarded || 0), 0),
+      isToday: key === today,
+    };
+  });
+  const workoutsThisWeek = weekDays.reduce((sum, d) => sum + d.count, 0);
+  const activeDaysThisWeek = weekDays.filter((d) => d.count > 0).length;
+  const todayChartIndex = weekDays.findIndex((d) => d.isToday);
+  const maxPointsInChart = Math.max(WORKOUT_POINTS.dailyCap, ...weekDays.map((d) => d.points));
 
-  // Every open starts clean: a dismissed draft is not shown again.
-  const openLogModal = () => {
-    setWorkoutType('Running');
-    setCustomType('');
-    setMetricType('mins');
-    setDuration(30);
-    setAmount(30);
+  const streak = useMemo(() => workoutStreak(new Set(workouts.map((w) => w.date)), today), [workouts, today]);
+  const pointsEarnedToday = todayWorkouts.reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
+
+  // Points preview for the dialog
+  const remainingCap = Math.max(0, WORKOUT_POINTS.dailyCap - pointsEarnedToday);
+  const { rawPoints: previewRaw, pointsToAward: previewPoints } = calculateWorkoutPoints(measure, amount, measure === 'mins' ? amount : 0, remainingCap);
+
+  const logForm = useUnsavedChanges(logModalOpen, { workoutName, measure, amount });
+  const logIssues = useFormController();
+
+  // Every open starts clean (or from the workout being logged again).
+  const openLogModal = (from?: WorkoutLog) => {
+    const m = from ? measureOf(from) : 'mins';
+    setWorkoutName(from ? from.type.trim() : '');
+    setMeasure(m);
+    setAmount(from ? amountOf(from) || MEASURES.find((x) => x.id === m)!.start : 30);
     setLogModalOpen(true);
   };
 
+  const pickMeasure = (next: Measure) => {
+    if (next === measure) return;
+    setMeasure(next);
+    setAmount(MEASURES.find((m) => m.id === next)!.start);
+  };
+
   const { isLoading: isLogging, executeFn: executeLog } = useAsyncAction();
-  const { isLoading: isSavingGoal, executeFn: executeGoalSave } = useAsyncAction();
   const { isLoading: isDeleting, executeFn: executeDelete } = useAsyncAction();
 
   const handleLogSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalType = (workoutType === 'Other' ? customType : workoutType).trim();
-    if (!finalType) return;
-
-    if (metricType === 'mins') {
-      if (duration <= 0) return;
-    } else {
-      if (amount <= 0) return;
+    const name = workoutName.trim();
+    if (!name) {
+      logIssues.showError('Write what you did, like Running.', 'workout-name-input');
+      return;
     }
-
-    const finalAmount = metricType === 'mins' ? Number(duration) : Number(amount);
-    const finalDuration = metricType === 'mins' ? Number(duration) : 0;
-
+    if (!(amount > 0)) {
+      logIssues.showError('Enter how much you did.', 'workout-amount-input');
+      return;
+    }
     await executeLog(async () => {
-      await store.logWorkout(finalType, finalDuration, finalAmount, metricType);
+      await store.logWorkout(name, measure === 'mins' ? amount : 0, amount, measure);
       setLogModalOpen(false);
-      setCustomType('');
-      setDuration(30);
-      setAmount(30);
-      setMetricType('mins');
+      showSuccessToast('Workout logged', previewPoints > 0 ? `+${previewPoints} pts` : `${name} saved.`);
     });
   };
 
+  const renderRow = (w: WorkoutLog) => (
+    <div key={w.id} className="enter-item p-3.5 flex items-center justify-between gap-3 transition-colors hover:bg-overlay-subtle">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
+          <Activity size={18} />
+        </div>
+        <div className="min-w-0">
+          <h3 className="item-name text-sm text-content-secondary truncate">{w.type}</h3>
+          <p className="figure text-xs text-content-muted">{formatAmount(amountOf(w), measureOf(w))}</p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {(w.pointsAwarded || 0) > 0 && (
+          <span className="figure text-xs text-success-text whitespace-nowrap">+{w.pointsAwarded} pts</span>
+        )}
+        <button
+          onClick={() => setDeleteModalWorkout(w)}
+          aria-label={`Delete ${w.type}`}
+          title="Delete workout"
+          className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </div>
+  );
+
+  const deletingToday = deleteModalWorkout?.date === today;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Exercise</h1>
-          <p className="page-subtitle">Log workouts and keep your weekly rhythm.</p>
+          <p className="page-subtitle">Log what you did today. The more you move, the more points.</p>
         </div>
-        <div className="page-header-actions">
-          <button
-            onClick={() => {
-              setTargetSessionsInput(exerciseGoal?.targetWeeklySessions || 3);
-              setGoalModalOpen(true);
-            }}
-            className="btn-secondary flex items-center gap-2 text-xs"
-          >
-            <span>{exerciseGoal ? `Goal: ${exerciseGoal.targetWeeklySessions}/wk` : 'Set Weekly Goal'}</span>
-          </button>
-          <button
-            onClick={openLogModal}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Plus size={18} />
-            <span>Log Workout</span>
-          </button>
-        </div>
+        <button onClick={() => openLogModal()} className="btn-primary sm:shrink-0">
+          <Plus size={18} />
+          <span>Log workout</span>
+        </button>
       </div>
 
       <Reveal index={0}>
         <PageHero
-          ariaLabel="Your training this week"
-          ring={
-            exerciseGoal
-              ? {
-                  value: totalWeeklySessions,
-                  max: exerciseGoal.targetWeeklySessions,
-                  label: `Weekly sessions: ${totalWeeklySessions} of ${exerciseGoal.targetWeeklySessions}`,
-                  center: (
-                    <>
-                      {totalWeeklySessions}
-                      <span className="text-sm font-medium text-content-muted">/{exerciseGoal.targetWeeklySessions}</span>
-                    </>
-                  ),
-                  caption: 'weekly goal',
-                }
-              : undefined
-          }
+          ariaLabel="Your exercise today"
+          ring={{
+            value: pointsEarnedToday,
+            max: WORKOUT_POINTS.dailyCap,
+            label: `Points today: ${pointsEarnedToday} of ${WORKOUT_POINTS.dailyCap}`,
+            center: (
+              <>
+                {pointsEarnedToday}
+                <span className="text-sm font-medium text-content-muted">/{WORKOUT_POINTS.dailyCap}</span>
+              </>
+            ),
+            caption: 'points today',
+          }}
           lead={{
-            label: dominantUnitInfo.label,
-            value: <AutoNum text={String(dominantUnitInfo.value)} />,
-            hint: dominantUnitInfo.unit,
+            label: 'Workouts this week',
+            value: <CountUp value={workoutsThisWeek} />,
+            hint: `${activeDaysThisWeek} of 7 days active`,
             valueClassName: 'text-success-text',
           }}
           stats={[
-            { label: 'Sessions this week', value: <CountUp value={totalWeeklySessions} />, valueClassName: 'text-blue-theme' },
-            { label: 'Points today', value: <CountUp value={pointsEarnedToday} />, hint: `of ${WORKOUT_POINTS.dailyCap} a day`, valueClassName: 'text-brand-text' },
+            {
+              label: 'Streak',
+              value: <CountUp value={streak} />,
+              hint: streak === 1 ? 'day in a row' : 'days in a row',
+              valueClassName: 'text-brand-text',
+            },
           ]}
           side={<CapMeterConnected state={store.state} capId="exercise" bare />}
         />
       </Reveal>
 
-      <PageColumns stickyAside
+      <PageColumns
+        stickyAside
         aside={
           <>
-            {/* Weekly Activity Chart */}
             <Reveal index={1} className="card p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="section-title flex items-center gap-2">
                   <Calendar size={18} className="text-brand-text" />
                   This week
                 </h2>
-                <span className="text-xs text-content-disabled">Mon–Sun, points</span>
+                <span className="text-xs text-content-disabled">points a day</span>
               </div>
-
               {/* Scaled to the daily cap so a capped day reads as a full bar. */}
               <BarChart
-                data={dailyPoints.map((d) => ({ label: d.dayLabel, value: d.points }))}
+                data={weekDays.map((d) => ({ label: d.dayLabel, value: d.points }))}
                 label={`Workout points per day this week, daily cap ${WORKOUT_POINTS.dailyCap}`}
                 highlightIndex={todayChartIndex >= 0 ? todayChartIndex : undefined}
                 max={maxPointsInChart}
                 height={140}
-                formatTooltip={(datum, i) => `${formatWeekdayDate(dailyPoints[i].key)}: ${datum.value} pts`}
+                formatTooltip={(datum, i) => `${formatWeekdayDate(weekDays[i].key)}: ${datum.value} pts`}
               />
             </Reveal>
+            <Disclosure title="How points work">
+              <ul className="list-disc pl-4 space-y-0.5">
+                <li>
+                  <span className="figure">{WORKOUT_POINTS.units.minsPerPoint}</span> minutes, <span className="figure">{WORKOUT_POINTS.units.repsPerPoint}</span> reps, 1 set or 1 km ={' '}
+                  <span className="figure text-success-text">1 pt</span>.
+                </li>
+                <li>
+                  Up to <span className="figure">{WORKOUT_POINTS.dailyCap}</span> pts a day. More workouts still save, without points.
+                </li>
+                <li>You can only log today's workouts.</li>
+                <li>Deleting today's workout takes its points back. Earlier days keep their points.</li>
+              </ul>
+            </Disclosure>
           </>
         }
       >
-        {/* Workout Logs List */}
-        <div>
-          <h2 className="section-title mb-3">Recent workouts</h2>
-
-          {workouts.length === 0 ? (
-            <EmptyState
-              icon={Dumbbell}
-              title="No workouts logged yet"
-              description="Log a workout to start earning points."
-              action={
-                <button onClick={openLogModal} className="btn-primary mx-auto">
-                  Log Your First Workout
-                </button>
-              }
-            />
-          ) : (
-            <div className="card overflow-hidden divide-y divide-overlay-subtle">
-              {workouts.map((w) => (
-                <div key={w.id} className="enter-item p-3.5 flex items-center justify-between gap-3 transition-colors hover:bg-overlay-subtle">
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center text-success-text shrink-0">
-                      <Activity size={18} />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="item-name text-sm text-content-secondary">{w.type}</h3>
-                      <p className="text-xs text-content-disabled">
-                        {formatDateLong(w.date)} • {w.amount !== undefined && w.unit && w.unit !== 'mins' ? (
-                          <span className="figure text-success-text">{w.amount} {w.unit}</span>
-                        ) : (
-                          <span className="figure text-content-muted">{w.amount ?? w.durationMinutes} mins</span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="figure text-xs text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 whitespace-nowrap">
-                      +{w.pointsAwarded} pts
-                    </span>
+        {workouts.length === 0 ? (
+          <EmptyState
+            icon={Dumbbell}
+            title="No workouts yet"
+            description="Did a run, some push-ups or a gym session today? Log it and earn points."
+            action={
+              <button onClick={() => openLogModal()} className="btn-primary mx-auto">
+                <Plus size={18} /> Log your first workout
+              </button>
+            }
+          />
+        ) : (
+          <div className="space-y-6">
+            {recentWorkouts.length > 0 && (
+              <div>
+                <h2 className="section-title mb-3">Log again</h2>
+                <div className="flex flex-wrap gap-2">
+                  {recentWorkouts.map((w) => (
                     <button
-                      onClick={() => setDeleteModalWorkout(w)}
-                      aria-label="Delete workout"
-                      className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
-                      title="Delete workout"
+                      key={w.id}
+                      type="button"
+                      onClick={() => openLogModal(w)}
+                      className="min-h-10 flex items-center gap-1.5 rounded-xl border border-overlay-subtle px-3 py-1.5 text-sm text-content-secondary hover:bg-overlay-subtle hover:border-overlay-strong transition-colors"
                     >
-                      <Trash2 size={16} />
+                      <Plus size={14} className="text-success-text" />
+                      <span className="item-name">{w.type}</span>
+                      <span className="figure text-xs text-content-muted">{formatAmount(amountOf(w), measureOf(w))}</span>
                     </button>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            )}
+
+            <div>
+              <h2 className="section-title mb-3 flex items-center gap-2">
+                Today
+                {streak > 1 && (
+                  <span className="flex items-center gap-1 text-xs font-normal text-brand-text">
+                    <Flame size={13} />
+                    <span className="figure">{streak} days in a row</span>
+                  </span>
+                )}
+              </h2>
+              {todayWorkouts.length === 0 ? (
+                <p className="card p-4 text-sm text-content-muted">Nothing logged today yet.</p>
+              ) : (
+                <div className="card overflow-hidden divide-y divide-overlay-subtle">{todayWorkouts.map(renderRow)}</div>
+              )}
             </div>
-          )}
-        </div>
+
+            {earlierDays.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="section-title">Earlier</h2>
+                {earlierDays.slice(0, daysShown).map(([day, list]) => {
+                  const dayPoints = list.reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
+                  return (
+                    <div key={day}>
+                      <div className="flex items-center justify-between mb-1.5 px-1 text-xs text-content-muted">
+                        <span>{formatDateLong(day)}</span>
+                        {dayPoints > 0 && <span className="figure">+{dayPoints} pts</span>}
+                      </div>
+                      <div className="card overflow-hidden divide-y divide-overlay-subtle">{list.map(renderRow)}</div>
+                    </div>
+                  );
+                })}
+                {earlierDays.length > daysShown && (
+                  <button type="button" onClick={() => setDaysShown((n) => n + DAYS_PAGE)} className="btn-secondary w-full">
+                    Show older days
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </PageColumns>
 
-      {/* Log Workout Modal */}
       <Dialog
         open={logModalOpen}
         onClose={() => setLogModalOpen(false)}
@@ -313,12 +360,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         preventClose={isLogging}
         footer={
           <>
-            <button
-              type="button"
-              disabled={isLogging}
-              onClick={() => logForm.confirmDiscard(() => setLogModalOpen(false))}
-              className="btn-secondary"
-            >
+            <button type="button" disabled={isLogging} onClick={() => logForm.confirmDiscard(() => setLogModalOpen(false))} className="btn-secondary">
               Cancel
             </button>
             <button type="submit" form="workout-log-form" disabled={isLogging} className="btn-primary">
@@ -328,154 +370,105 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           </>
         }
       >
-        <Form id="workout-log-form" onSubmit={handleLogSubmit} className="space-y-4">
-          <Select
-            id="workout-type-select"
-            label="Workout type"
-            value={workoutType}
-            onChange={(e) => setWorkoutType(e.target.value)}
-          >
-            {availableWorkoutTypes.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-            <option value="Other">Other…</option>
-          </Select>
-
-          {workoutType === 'Other' && (
+        <Form id="workout-log-form" onSubmit={handleLogSubmit} controller={logIssues} className="space-y-5">
+          <div className="space-y-2">
             <Input
-              id="workout-custom-type-input"
-              label="Workout name"
-              value={customType}
-              onChange={(e) => setCustomType(e.target.value)}
-              placeholder="e.g. Swimming"
+              id="workout-name-input"
+              label="What did you do?"
+              value={workoutName}
+              onChange={(e) => setWorkoutName(e.target.value)}
+              placeholder="e.g. Running"
               maxLength={60}
               autoComplete="off"
-              required
             />
-          )}
+            <div className="flex flex-wrap gap-1.5">
+              {nameSuggestions.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => setWorkoutName(name)}
+                  aria-pressed={workoutName.trim() === name}
+                  className={cx(
+                    'min-h-9 sm:min-h-0 text-xs px-2.5 py-1 rounded-lg border transition-colors',
+                    workoutName.trim() === name
+                      ? 'bg-primary-500/15 text-brand-text border-primary-500/40'
+                      : 'text-content-muted border-overlay-subtle hover:border-overlay-strong hover:text-content-secondary'
+                  )}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <FieldRow>
-            <Select
-              id="workout-metric-type"
-              label="Measure"
-              value={metricType}
-              onChange={(e) => {
-                const val = e.target.value;
-                setMetricType(val);
-                if (val === 'mins') setDuration(30);
-                else if (val === 'reps') setAmount(30);
-                else if (val === 'sets') setAmount(5);
-                else if (val === 'km') setAmount(5);
-              }}
-            >
-              <option value="mins">Minutes</option>
-              <option value="reps">Reps</option>
-              <option value="sets">Sets</option>
-              <option value="km">Distance (km)</option>
-            </Select>
+          <div role="group" aria-labelledby="workout-measure-label">
+            <p id="workout-measure-label" className="block label mb-1.5">Count it in</p>
+            <div className="grid grid-cols-4 gap-2">
+              {MEASURES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => pickMeasure(m.id)}
+                  aria-pressed={measure === m.id}
+                  className={cx(
+                    'min-h-11 rounded-xl border text-sm font-medium transition-colors',
+                    measure === m.id
+                      ? 'bg-primary-500/15 border-primary-500/60 text-brand-text'
+                      : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
+                  )}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-            {metricType === 'mins' ? (
-              <NumberField
-                key="duration"
-                id="workout-duration-input"
-                label="Duration (minutes)"
-                decimal
-                min={1}
-                max={300}
-                value={duration}
-                onValueChange={setDuration}
-                enterKeyHint="done"
-                required
-              />
-            ) : (
-              <NumberField
-                key="amount"
-                id="workout-amount-input"
-                label={metricType === 'km' ? 'Distance (km)' : `Amount (${metricType})`}
-                decimal={metricType === 'km'}
-                min={metricType === 'km' ? 0.1 : 1}
-                max={100000}
-                value={amount}
-                onValueChange={setAmount}
-                enterKeyHint="done"
-                required
-              />
-            )}
-          </FieldRow>
+          <NumberField
+            key={measure}
+            id="workout-amount-input"
+            label={measure === 'mins' ? 'How many minutes?' : measure === 'km' ? 'How many km?' : `How many ${measure}?`}
+            decimal={measure === 'mins' || measure === 'km'}
+            min={measure === 'km' ? 0.1 : 1}
+            max={measure === 'mins' ? 300 : 100000}
+            value={amount}
+            onValueChange={setAmount}
+            enterKeyHint="done"
+          />
 
-          <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between border border-overlay-default">
-            <span>Points to earn</span>
-            <span className="figure text-success-text">+{previewPointsToEarn} pts</span>
+          <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between gap-3 border border-overlay-default">
+            <span>
+              {remainingCap === 0
+                ? `Today's ${WORKOUT_POINTS.dailyCap} pts are reached. It still saves.`
+                : previewRaw > previewPoints
+                ? `Only ${remainingCap} pts left today.`
+                : 'You earn'}
+            </span>
+            <span className="figure text-success-text shrink-0">+{previewPoints} pts</span>
           </div>
         </Form>
       </Dialog>
 
-      {/* Confirm Delete Modal */}
       <ConfirmDeleteModal
         open={!!deleteModalWorkout}
         onClose={() => setDeleteModalWorkout(null)}
         isDeleting={isDeleting}
         onConfirm={async () => {
-          if (deleteModalWorkout) {
-            await executeDelete(async () => {
-              await store.deleteWorkout(deleteModalWorkout.id);
-              setDeleteModalWorkout(null);
-              showSuccessToast('Workout deleted', 'Workout removed successfully.', `workout_${deleteModalWorkout.id}`);
-            });
-          }
+          if (!deleteModalWorkout) return;
+          const target = deleteModalWorkout;
+          await executeDelete(async () => {
+            await store.deleteWorkout(target.id);
+            setDeleteModalWorkout(null);
+            showSuccessToast('Workout deleted', `${target.type} removed.`, `workout_${target.id}`);
+          });
         }}
-        title="Delete workout log?"
-        itemName={deleteModalWorkout ? `${deleteModalWorkout.type} (${deleteModalWorkout.amount && deleteModalWorkout.unit && deleteModalWorkout.unit !== 'mins' ? `${deleteModalWorkout.amount} ${deleteModalWorkout.unit}` : `${deleteModalWorkout.durationMinutes} mins`})` : ''}
-        description={`Delete this ${deleteModalWorkout?.type} workout? Any points awarded (+${deleteModalWorkout?.pointsAwarded || 0} pts) will be reversed.`}
-      />
-
-      {/* Target Weekly Goal Modal */}
-      <Dialog
-        open={goalModalOpen}
-        onClose={() => setGoalModalOpen(false)}
-        dirty={goalForm.dirty}
-        title="Set weekly goal"
-        description="How many workouts you aim for each week. Finishing the week below it applies a miss penalty."
-        preventClose={isSavingGoal}
-        footer={
-          <>
-            <button
-              type="button"
-              disabled={isSavingGoal}
-              onClick={() => goalForm.confirmDiscard(() => setGoalModalOpen(false))}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-            <button type="submit" form="exercise-goal-form" disabled={isSavingGoal} className="btn-primary">
-              {isSavingGoal ? <AscendLoadingIndicator size="sm" /> : null}
-              <span>{isSavingGoal ? 'Saving…' : 'Save goal'}</span>
-            </button>
-          </>
+        title="Delete workout?"
+        itemName={deleteModalWorkout ? `${deleteModalWorkout.type} (${formatAmount(amountOf(deleteModalWorkout), measureOf(deleteModalWorkout))})` : ''}
+        description={
+          deletingToday
+            ? "Its points come off today's total."
+            : 'The points you earned that day stay.'
         }
-      >
-        <Form
-          id="exercise-goal-form"
-          onSubmit={async () => {
-            await executeGoalSave(async () => {
-              store.setExerciseGoal(targetSessionsInput);
-              setGoalModalOpen(false);
-            });
-          }}
-        >
-          <NumberField
-            id="target-sessions-input"
-            label="Workouts per week"
-            hint="Set to 0 to turn off the weekly penalty."
-            min={0}
-            max={21}
-            value={targetSessionsInput}
-            onValueChange={setTargetSessionsInput}
-            enterKeyHint="done"
-            required
-          />
-        </Form>
-      </Dialog>
+      />
     </div>
   );
 }
