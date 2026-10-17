@@ -362,6 +362,8 @@ export interface FormProps extends Omit<React.FormHTMLAttributes<HTMLFormElement
   controller?: FormController;
   /** Where a form-wide message goes: 'end' of the form (default) or wherever `<FormAlert />` sits. */
   alert?: 'end' | 'manual';
+  /** Told each time a problem is shown (e.g. the auth mascot reacts). */
+  onIssue?: (issue: FormIssue) => void;
 }
 
 type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
@@ -420,15 +422,20 @@ function revealField(form: HTMLFormElement | null, fieldId: string | undefined) 
  * Never pair a form with an error toast.
  */
 export const Form = React.forwardRef<HTMLFormElement, FormProps>(
-  ({ onSubmit, validate, controller, alert = 'end', children, onInput, onClick, ...props }, ref) => {
+  ({ onSubmit, validate, controller, alert = 'end', onIssue, children, onInput, onClick, ...props }, ref) => {
     const [issue, setIssue] = React.useState<FormIssue | null>(null);
     // Bumped on every new problem so the same message shown twice still moves to its field.
     const [revealTick, setRevealTick] = React.useState(0);
     const formRef = React.useRef<HTMLFormElement | null>(null);
 
+    const onIssueRef = React.useRef(onIssue);
+    onIssueRef.current = onIssue;
     const show = React.useCallback((next: FormIssue | null) => {
       setIssue(next);
-      if (next) setRevealTick((t) => t + 1);
+      if (next) {
+        setRevealTick((t) => t + 1);
+        onIssueRef.current?.(next);
+      }
     }, []);
 
     React.useEffect(() => {

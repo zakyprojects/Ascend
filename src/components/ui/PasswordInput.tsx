@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 import { TAP_AREA } from '@/components/ui/primitives/shared';
+import { FieldErrorBubble, useFieldIssue } from '@/components/ui/primitives';
 
 export interface PasswordInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
@@ -8,6 +9,8 @@ export interface PasswordInputProps
   required?: boolean;
   error?: string;
   leftIcon?: React.ReactNode;
+  /** The parent places the error message itself (e.g. outside a decorated wrapper). */
+  hideMessage?: boolean;
   /** Called when the show/hide toggle changes whether the password is shown. */
   onVisibilityChange?: (visible: boolean) => void;
 }
@@ -22,13 +25,15 @@ export function PasswordInput({
   autoComplete,
   placeholder = '••••••••',
   onVisibilityChange,
+  hideMessage = false,
   ...props
 }: PasswordInputProps) {
   const [showPassword, setShowPassword] = useState(false);
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+  const message = useFieldIssue(inputId ?? '', error);
 
   return (
-    <div className="w-full">
+    <div className="w-full" data-field={inputId}>
       {label && (
         <label
           htmlFor={inputId}
@@ -49,9 +54,11 @@ export function PasswordInput({
           required={required}
           autoComplete={autoComplete}
           placeholder={placeholder}
+          aria-invalid={message ? true : undefined}
+          aria-describedby={message && inputId ? `${inputId}-error` : undefined}
           className={`w-full ${
             leftIcon ? 'input-has-icon' : 'px-3'
-          } pr-10 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all ${className}`}
+          } pr-10 py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 aria-[invalid=true]:border-rose-500/70 transition-all ${className}`}
           {...props}
         />
         <button
@@ -70,11 +77,7 @@ export function PasswordInput({
           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
       </div>
-      {error && (
-        <p className="text-micro text-error-text mt-1 flex items-center gap-1 font-medium">
-          {error}
-        </p>
-      )}
+      {message && !hideMessage && <FieldErrorBubble id={inputId ? `${inputId}-error` : undefined} message={message} />}
     </div>
   );
 }

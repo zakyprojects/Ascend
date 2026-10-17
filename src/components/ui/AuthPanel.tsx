@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mail, User, Check, AlertCircle, LogIn, UserPlus, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Mail, User, Check, LogIn, UserPlus, ArrowLeft, ArrowRight } from 'lucide-react';
 import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 import { PasswordInput } from './PasswordInput';
+import { FieldErrorBubble, FieldMessage, Form, FormAlert, useFormController } from './primitives';
 import { PasswordStaircase } from './PasswordStaircase';
 import { newPasswordProblem } from '@/lib/passwordRules';
 import { toUserMessage } from '@/lib/userMessage';
@@ -175,7 +176,7 @@ function inAppClick(href: string, navigate: (href: string) => void) {
 const PAGE_LINK_CLASS = 'font-medium text-brand-text hover:underline underline-offset-2';
 
 const INPUT_CLASS =
-  'w-full py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all';
+  'w-full py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 aria-[invalid=true]:border-rose-500/70 transition-all';
 
 /** A small check that fades and scales in when its field is valid. */
 function FieldCheck({ show }: { show: boolean }) {
@@ -297,12 +298,14 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     setErrorInputs(null);
   }, [screen]);
 
-  /** Shows an error message (and counts it, so the page can react to each one). */
-  const showError = (message: string) => {
-    setErrorMsg(message);
+  const form = useFormController();
+  /** Counts each problem shown, so the page (mascot) can react to it. */
+  const noteError = () => {
     setErrorTick((tick) => tick + 1);
     setErrorInputs(inputsKey);
   };
+  /** Shows a problem in the form's bubble: on `field` when it names one, else above the submit button. */
+  const showError = (message: string, field?: string) => form.showError(message, field);
 
   const trackCaret = (target: EventTarget) => {
     if (!(target instanceof HTMLInputElement)) return;
@@ -427,37 +430,26 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       onDone();
     } catch (err: unknown) {
       console.error('Guest sign-in failed:', err);
-      showError(toUserMessage(err, 'Couldn’t sign in as a guest. Try again.'));
+      setErrorMsg(toUserMessage(err, 'Couldn’t sign in as a guest. Try again.'));
+      noteError();
     } finally {
       setLoading(false);
     }
+  };
+
+  // Rules the fields can't express; the fields' own rules (required, email) are checked first.
+  const validateAuth = () => {
+    if ((mode === 'signup' || mode === 'upgrade') && !avatar) return { message: 'Pick an avatar.', field: 'auth-avatar' };
+    const passwordProblem = isNewAccount ? newPasswordProblem(password) : null;
+    if (passwordProblem) return { message: `${passwordProblem}.`, field: 'auth-password' };
+    if (isNewAccount && password !== confirmPassword) return { message: 'Passwords don’t match.', field: 'auth-confirm-password' };
+    return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
-
-    if (!email || !password || (mode !== 'login' && !confirmPassword)) {
-      showError('Fill in all required fields.');
-      return;
-    }
-
-    if ((mode === 'signup' || mode === 'upgrade') && !avatar) {
-      showError('Pick an avatar.');
-      return;
-    }
-
-    const passwordProblem = isNewAccount ? newPasswordProblem(password) : null;
-    if (passwordProblem) {
-      showError(`Password: ${passwordProblem.toLowerCase()}.`);
-      return;
-    }
-
-    if (mode !== 'login' && password !== confirmPassword) {
-      showError('Passwords do not match.');
-      return;
-    }
 
     setLoading(true);
 
@@ -466,7 +458,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
         if (username.trim()) {
           const check = await isUsernameAvailable(username, guestState.currentUser?.id);
           if (!check.available && username.trim() !== guestState.currentUser?.username) {
-            showError(check.reason || 'Pick a valid username that isn’t taken.');
+            showError(check.reason || 'Pick a valid username that isn’t taken.', 'auth-username');
             return;
           }
         }
@@ -549,13 +541,6 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       {title}
       <div className="mt-2 space-y-4">
         {/* Error / Success Notifications */}
-        {errorMsg && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-2 text-error-text text-xs">
-            <AlertCircle size={16} className="shrink-0" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
         {successMsg && (
           <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-2 text-success-text text-xs">
             <Check size={16} className="shrink-0" />
@@ -624,6 +609,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                     <ArrowRight size={18} className="shrink-0 text-content-muted transition-transform duration-base group-hover:translate-x-0.5" />
                   )}
                 </button>
+                {errorMsg && <FieldErrorBubble message={errorMsg} attached={false} />}
                 <p className="text-xs text-content-muted text-center">
                   Already have an account?{' '}
                   <a href={pageLinks.login} onClick={inAppClick(pageLinks.login, pageLinks.navigate)} className={PAGE_LINK_CLASS}>
@@ -633,17 +619,27 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
               </div>
             ) : (
             <>
-            <form onSubmit={handleSubmit} className="space-y-3.5" {...formFocusHandlers}>
+            <Form
+              onSubmit={handleSubmit}
+              validate={validateAuth}
+              controller={form}
+              alert="manual"
+              onIssue={noteError}
+              className="space-y-3.5"
+              {...formFocusHandlers}
+            >
               {(mode === 'signup' || mode === 'upgrade') && (
                 <>
-                  <div>
+                  <div data-field="auth-avatar">
                     <FieldLabel required valid={avatarValid}>
                       Leaderboard avatar
                     </FieldLabel>
                     <div
+                      id="auth-avatar"
                       role="group"
                       aria-label="Leaderboard avatar"
-                      className="grid grid-cols-8 gap-1.5 p-2 bg-bg-800 rounded-xl border border-overlay-subtle"
+                      tabIndex={-1}
+                      className="grid grid-cols-8 gap-1.5 p-2 bg-bg-800 rounded-xl border border-overlay-subtle outline-none aria-[invalid=true]:border-rose-500/70"
                     >
                       {EMOJI_AVATARS.map((emoji) => (
                         <button
@@ -662,9 +658,10 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                         </button>
                       ))}
                     </div>
+                    <FieldMessage htmlFor="auth-avatar" />
                   </div>
 
-                  <div>
+                  <div data-field="auth-username">
                     <FieldLabel htmlFor="auth-username" required={mode === 'signup'} valid={usernameChecked}>
                       Leaderboard username
                     </FieldLabel>
@@ -696,14 +693,16 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                         </div>
                       )}
                     </div>
-                    {usernameStatus && !usernameStatus.available && (
-                      <p className="text-micro text-error-text mt-1">{usernameStatus.reason}</p>
+                    {usernameStatus && !usernameStatus.available && usernameStatus.reason ? (
+                      <FieldErrorBubble message={usernameStatus.reason} />
+                    ) : (
+                      <FieldMessage htmlFor="auth-username" />
                     )}
                   </div>
                 </>
               )}
 
-              <div>
+              <div data-field="auth-email">
                 <FieldLabel htmlFor="auth-email" required valid={emailValid}>
                   Email
                 </FieldLabel>
@@ -723,9 +722,10 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                   />
                   <FocusLine />
                 </div>
+                <FieldMessage htmlFor="auth-email" />
               </div>
 
-              <div>
+              <div data-field="auth-password">
                 <FieldLabel htmlFor="auth-password" required valid={passwordValid}>
                   Password
                 </FieldLabel>
@@ -739,14 +739,16 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onVisibilityChange={(visible) => setShownPasswords((shown) => ({ ...shown, password: visible }))}
+                    hideMessage
                   />
                   <FocusLine />
                 </div>
+                <FieldMessage htmlFor="auth-password" />
                 {isNewAccount && <PasswordStaircase password={password} />}
               </div>
 
               {isNewAccount && (
-                <div>
+                <div data-field="auth-confirm-password">
                   <FieldLabel htmlFor="auth-confirm-password" required valid={confirmValid}>
                     Confirm password
                   </FieldLabel>
@@ -760,16 +762,16 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       onVisibilityChange={(visible) => setShownPasswords((shown) => ({ ...shown, confirm: visible }))}
+                      hideMessage
                     />
                     <FocusLine />
                   </div>
-                  {confirmPassword && password !== confirmPassword && (
-                    <p className="text-micro text-error-text mt-1 flex items-center gap-1 font-medium">
-                      Passwords do not match
-                    </p>
-                  )}
+                  <FieldMessage htmlFor="auth-confirm-password" />
+
                 </div>
               )}
+
+              <FormAlert />
 
               {/* Muted until every required field is valid, then primary. Always clickable, so the
                   form's own messages still show for a missing field. */}
@@ -809,7 +811,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
               >
                 {statusLine}
               </p>
-            </form>
+            </Form>
 
             {mode === 'login' && (
               <p className="text-xs text-content-muted text-center pt-1">
