@@ -44,6 +44,7 @@ import { leagueNow } from '@/lib/leagueTime';
 import { isTodayLocal, calculateActivePlanStreak, formatDateShort, parseDate } from '@/lib/dates';
 import { STARTER_TEMPLATES } from '@/data/planTemplates';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
+import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { AutoNum, CountUp } from '@/components/ui/Motion';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
@@ -141,7 +142,15 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   const [discoverSortBy, setDiscoverSortBy] = useState<'recent' | 'followed' | 'creator_rank'>('recent');
 
   // Interactive inline UI state (Progress inputs & Reflection note inputs)
-  const [progressInput, setProgressInput] = useState<{ [planId: string]: string }>({});
+  // The target-goal plan whose progress is being updated (a snapshot for the dialog).
+  const [progressUpdate, setProgressUpdate] = useState<{
+    planId: string;
+    mode: string;
+    title: string;
+    current: number;
+    target: number;
+    unit: string;
+  } | null>(null);
   const [reflectionInput, setReflectionInput] = useState<{ [planId: string]: string }>({});
   const [expandedReflections, setExpandedReflections] = useState<{ [planId: string]: boolean }>({});
   const [editingNoteId, setEditingNoteId] = useState<{ [noteKey: string]: boolean }>({});
@@ -168,7 +177,6 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     } else {
       store.setNewFollowedTargetGoal(newTargetFor.planId, newTargetNumber);
     }
-    setProgressInput((prev) => ({ ...prev, [newTargetFor.planId]: '0' }));
     closeNewTarget();
   };
 
@@ -923,32 +931,21 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             ) : (
               /* Interactive mode in My Plans */
               <div className="pt-1 flex flex-wrap items-center gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  value={progressInput[planId] !== undefined ? progressInput[planId] : (plan.currentProgress || 0)}
-                  onChange={(e) => setProgressInput({ ...progressInput, [planId]: e.target.value })}
-                  className="input text-xs w-24 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="Value"
-                  disabled={isGoalCompleted}
-                />
-                <button
-                  onClick={() => {
-                    const val = Number(progressInput[planId]);
-                    if (!isNaN(val)) {
-                      if (mode === 'creator_interactive') {
-                        store.updateTargetGoalProgress(planId, val);
-                      } else {
-                        store.updateFollowedTargetGoalProgress(planId, val);
-                      }
+                {!isGoalCompleted && (
+                  <UpdateProgressButton
+                    onClick={() =>
+                      setProgressUpdate({
+                        planId,
+                        mode,
+                        title: plan.title,
+                        current: curProg,
+                        target: targetVal,
+                        unit: plan.targetUnit || 'units',
+                      })
                     }
-                  }}
-                  className="btn-secondary text-xs py-1 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={isGoalCompleted}
-                >
-                  Update Progress
-                </button>
-                
+                  />
+                )}
+
                 {isGoalCompleted && (
                   <button
                     onClick={() => setNewTargetFor({ planId, mode })}
@@ -1588,6 +1585,24 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
         </div>
       )}
+
+      {/* UPDATE TARGET-GOAL PROGRESS */}
+      <ProgressUpdateDialog
+        open={Boolean(progressUpdate)}
+        onClose={() => setProgressUpdate(null)}
+        title={progressUpdate ? `Update progress: ${progressUpdate.title}` : 'Update progress'}
+        current={progressUpdate?.current ?? 0}
+        target={progressUpdate?.target ?? 1}
+        format={(n) => `${n} ${progressUpdate?.unit ?? ''}`.trim()}
+        addLabel="Amount to add"
+        setLabel="New total"
+        tone="warning"
+        onSave={(next) => {
+          if (!progressUpdate) return;
+          if (progressUpdate.mode === 'creator_interactive') store.updateTargetGoalProgress(progressUpdate.planId, next);
+          else store.updateFollowedTargetGoalProgress(progressUpdate.planId, next);
+        }}
+      />
 
       {/* NEW TARGET (completed target goal) */}
       <Dialog
