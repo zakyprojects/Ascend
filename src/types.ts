@@ -13,6 +13,9 @@ export const EMOJI_AVATARS = [
   '🌱', '🐢', '🥋', '🏃‍♂️', '🐉', '🌙', '🐬', '🎮'
 ];
 
+/** The UserProfile fields that switch a server-sent notification type on or off. */
+export type NotificationPreferenceKey = 'notifDailyReminder' | 'notifPartnerActivity' | 'notifSundayPlanning';
+
 export interface UserProfile {
   id: string;
   uid: string; // Permanent 6-digit numeric User ID (e.g. "849201")
@@ -27,7 +30,6 @@ export interface UserProfile {
   /** Notification preferences (default true) */
   notifDailyReminder?: boolean;
   notifPartnerActivity?: boolean;
-  notifLeagueUpdates?: boolean;
   notifSundayPlanning?: boolean;
   /** Whether the user is currently an anonymous guest account */
   isAnonymous?: boolean;

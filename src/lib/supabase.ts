@@ -375,9 +375,6 @@ export async function saveUserDataToSupabase(
         avatar: finalState.currentUser.avatar || '🧑',
         is_profile_public: finalState.currentUser.isProfilePublic ?? true,
         accept_partner_invites: finalState.currentUser.acceptPartnerInvites ?? true,
-        notif_daily_reminder: finalState.currentUser.notifDailyReminder ?? true,
-        notif_partner_activity: finalState.currentUser.notifPartnerActivity ?? true,
-        notif_league_updates: finalState.currentUser.notifLeagueUpdates ?? true,
         season_id: finalState.seasonId || 1,
         stats: userStats,
         // Habit names are not published: other members no longer see which habits someone keeps.
@@ -400,11 +397,6 @@ export async function saveUserDataToSupabase(
       if (profErr) {
         if (profErr.message?.includes('accept_partner_invites')) {
           delete profilePayload.accept_partner_invites;
-        }
-        if (profErr.message?.includes('notif_')) {
-          delete profilePayload.notif_daily_reminder;
-          delete profilePayload.notif_partner_activity;
-          delete profilePayload.notif_league_updates;
         }
         if (profErr.message?.includes('last_username_change_at')) {
           delete profilePayload.last_username_change_at;
@@ -481,9 +473,6 @@ const PRIVATE_PROFILE_COLUMNS = [
   'email',
   'stats',
   'active_habits',
-  'notif_daily_reminder',
-  'notif_partner_activity',
-  'notif_league_updates',
   'last_username_change_at',
   'device_timezone',
 ];

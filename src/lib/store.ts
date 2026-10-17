@@ -53,6 +53,7 @@ import {
   TimeTrackerBlock,
   DEFAULT_TIME_TRACKER_ACTIVITIES,
   DEFAULT_TIME_TRACKER_STATE,
+  NotificationPreferenceKey,
 } from '@/types';
 import {
   ensureDefaultActivities,
@@ -3836,77 +3837,31 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser]);
 
-  const toggleNotifDailyReminder = useCallback(async () => {
-    const current = state.currentUser;
-    if (!current) return;
+  // Flips one notification preference: the switch moves at once, and if the profile write
+  // fails it moves back and says so, so the switch never shows a setting the server does not hold.
+  const toggleNotificationPreference = useCallback(async (key: NotificationPreferenceKey) => {
+    const current = get().currentUser;
+    if (!current?.id) return;
+    const nextSetting = !(current[key] ?? true);
+    const apply = (value: boolean) =>
+      setState(
+        (prev) => ({
+          ...prev,
+          currentUser: prev.currentUser ? { ...prev.currentUser, [key]: value } : null,
+        }),
+        { immediate: true }
+      );
 
-    const currentSetting = current.notifDailyReminder ?? true;
-    const nextSetting = !currentSetting;
-
-    setState(
-      (prev) => ({
-        ...prev,
-        currentUser: prev.currentUser
-          ? { ...prev.currentUser, notifDailyReminder: nextSetting }
-          : null,
-      }),
-      { immediate: true }
-    );
-
-    if (current.id) {
-      await updateProfileNotificationPreferences(current.id, { notifDailyReminder: nextSetting });
+    apply(nextSetting);
+    try {
+      await updateProfileNotificationPreferences(current.id, { [key]: nextSetting });
+    } catch (err) {
+      apply(!nextSetting);
+      dispatchToastError("Couldn't change this notification", toUserMessage(err, 'Check your connection and try again.'));
     }
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // False positive: setState/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.currentUser]);
-
-  const toggleNotifPartnerActivity = useCallback(async () => {
-    const current = state.currentUser;
-    if (!current) return;
-
-    const currentSetting = current.notifPartnerActivity ?? true;
-    const nextSetting = !currentSetting;
-
-    setState(
-      (prev) => ({
-        ...prev,
-        currentUser: prev.currentUser
-          ? { ...prev.currentUser, notifPartnerActivity: nextSetting }
-          : null,
-      }),
-      { immediate: true }
-    );
-
-    if (current.id) {
-      await updateProfileNotificationPreferences(current.id, { notifPartnerActivity: nextSetting });
-    }
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.currentUser]);
-
-  const toggleNotifLeagueUpdates = useCallback(async () => {
-    const current = state.currentUser;
-    if (!current) return;
-
-    const currentSetting = current.notifLeagueUpdates ?? true;
-    const nextSetting = !currentSetting;
-
-    setState(
-      (prev) => ({
-        ...prev,
-        currentUser: prev.currentUser
-          ? { ...prev.currentUser, notifLeagueUpdates: nextSetting }
-          : null,
-      }),
-      { immediate: true }
-    );
-
-    if (current.id) {
-      await updateProfileNotificationPreferences(current.id, { notifLeagueUpdates: nextSetting });
-    }
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.currentUser]);
+  }, []);
 
   // --- MODULE 1: EXERCISE TRACKER ACTIONS ---
   const logWorkout = useCallback((type: string, durationMinutes: number, amount?: number, unit?: string) => {
@@ -5612,25 +5567,6 @@ export function useAppState() {
         leagueNow()
       )
     );
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const toggleNotifSundayPlanning = useCallback(() => {
-    setState((prev) => {
-      if (!prev.currentUser) return prev;
-      const nextVal = !(prev.currentUser.notifSundayPlanning ?? true);
-      const updatedUser: UserProfile = {
-        ...prev.currentUser,
-        notifSundayPlanning: nextVal,
-      };
-
-      if (prev.currentUser.id) {
-        updateProfileNotificationPreferences(prev.currentUser.id, { notifSundayPlanning: nextVal });
-      }
-
-      return { ...prev, currentUser: updatedUser };
-    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -9204,9 +9140,7 @@ export function useAppState() {
     toggleThemePreference,
     toggleProfilePrivacy,
     toggleAcceptPartnerInvites,
-    toggleNotifDailyReminder,
-    toggleNotifPartnerActivity,
-    toggleNotifLeagueUpdates,
+    toggleNotificationPreference,
     getLeagueData,
     refreshLeagueStandings,
     getPublicImprovementPlans,
@@ -9252,7 +9186,6 @@ export function useAppState() {
     deleteWeeklyGoalItem,
     carryOverGoal,
     syncLinkedWeeklyGoals,
-    toggleNotifSundayPlanning,
     // Self Improvement Books Library Actions
     addCuratedBookToLibrary,
     addCustomBookToLibrary,

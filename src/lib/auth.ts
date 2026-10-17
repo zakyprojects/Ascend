@@ -1,4 +1,4 @@
-import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, SeasonHistoryEntry } from '@/types';
+import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, SeasonHistoryEntry, NotificationPreferenceKey } from '@/types';
 import { newPasswordProblem } from './passwordRules';
 import { sanitizePointsHistory } from './leagues';
 import { leagueNow, getSeasonNumber, getWeekPeriodId, getMonthPeriodId } from './leagueTime';
@@ -564,36 +564,21 @@ export async function updateProfileAcceptPartnerInvites(
 }
 
 /**
- * Update notification preferences in Supabase profiles.
+ * Writes notification preferences to the user's profile. Throws when the write fails,
+ * so the caller can put the switch back.
  */
 export async function updateProfileNotificationPreferences(
   userId: string,
-  prefs: {
-    notifDailyReminder?: boolean;
-    notifPartnerActivity?: boolean;
-    notifLeagueUpdates?: boolean;
-    notifSundayPlanning?: boolean;
-  }
+  prefs: Partial<Record<NotificationPreferenceKey, boolean>>
 ): Promise<void> {
   if (!isSupabaseConfigured) return;
-  try {
-    const payload: Record<string, boolean> = {};
-    if (prefs.notifDailyReminder !== undefined) payload.notif_daily_reminder = prefs.notifDailyReminder;
-    if (prefs.notifPartnerActivity !== undefined) payload.notif_partner_activity = prefs.notifPartnerActivity;
-    if (prefs.notifLeagueUpdates !== undefined) payload.notif_league_updates = prefs.notifLeagueUpdates;
-    if (prefs.notifSundayPlanning !== undefined) payload.notif_sunday_planning = prefs.notifSundayPlanning;
+  const payload: Record<string, boolean> = {};
+  if (prefs.notifDailyReminder !== undefined) payload.notif_daily_reminder = prefs.notifDailyReminder;
+  if (prefs.notifPartnerActivity !== undefined) payload.notif_partner_activity = prefs.notifPartnerActivity;
+  if (prefs.notifSundayPlanning !== undefined) payload.notif_sunday_planning = prefs.notifSundayPlanning;
 
-    const { error } = await supabase
-      .from('profiles')
-      .update(payload)
-      .eq('id', userId);
-
-    if (error) {
-      console.warn('Error updating notification preferences in Supabase:', error.message);
-    }
-  } catch (e) {
-    console.warn('updateProfileNotificationPreferences error:', e);
-  }
+  const { error } = await supabase.from('profiles').update(payload).eq('id', userId);
+  if (error) throw error;
 }
 
 export function reconstructStateFromProfile(p: any): AppState {

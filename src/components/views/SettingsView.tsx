@@ -23,7 +23,7 @@ import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
 import { NAV_HELP } from '@/components/nav/navConfig';
-import { EMOJI_AVATARS } from '@/types';
+import { EMOJI_AVATARS, NotificationPreferenceKey } from '@/types';
 import {
   isUsernameAvailable,
   updateUsernameWithCooldown,
@@ -59,6 +59,25 @@ interface SettingsViewProps {
   /** Opens another page (the Help links under About). */
   onNavigate: (view: View) => void;
 }
+
+/** Server-sent notification types the user can switch off; off means the server never creates them. */
+const NOTIFICATION_PREFERENCES: { key: NotificationPreferenceKey; title: string; description: string }[] = [
+  {
+    key: 'notifDailyReminder',
+    title: 'Daily reminder',
+    description: '8 PM: a reminder when something for today is still unchecked.',
+  },
+  {
+    key: 'notifPartnerActivity',
+    title: 'Partner activity',
+    description: 'Nudges, finished pacts and missed habits from your partners.',
+  },
+  {
+    key: 'notifSundayPlanning',
+    title: 'Sunday planning reminder',
+    description: "Sundays at 7 PM: review last week's goals and plan the next.",
+  },
+];
 
 export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProps) {
   const currentUser = store.state.currentUser;
@@ -101,10 +120,6 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Notifications state
-  const [notifDailyReminder, setNotifDailyReminder] = useState(true);
-  const [notifPartnerActivity, setNotifPartnerActivity] = useState(true);
-  const [notifLeagueUpdates, setNotifLeagueUpdates] = useState(true);
-  const [notifSundayPlanning, setNotifSundayPlanning] = useState(true);
   const [focusNotifsEnabled, setFocusNotifsEnabled] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     try {
@@ -166,10 +181,6 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
     if (currentUser) {
       setUsernameInput(currentUser.username);
       setSelectedAvatar(currentUser.avatar || '🧑');
-      setNotifDailyReminder(currentUser.notifDailyReminder ?? true);
-      setNotifPartnerActivity(currentUser.notifPartnerActivity ?? true);
-      setNotifLeagueUpdates(currentUser.notifLeagueUpdates ?? true);
-      setNotifSundayPlanning(currentUser.notifSundayPlanning ?? true);
     }
   }, [currentUser]);
 
@@ -707,7 +718,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
 
               <div className="space-y-4">
               <div className="divide-y divide-overlay-subtle">
-                <label className={`flex items-center justify-between gap-4 py-3 ${pushStatus === 'unsupported' ? '' : 'cursor-pointer'}`}>
+                <div className="flex items-center justify-between gap-4 py-3">
                   <div>
                     <span className="item-name text-xs text-content-secondary block">Push notifications on this device</span>
                     <span className="text-micro text-content-muted">
@@ -719,87 +730,35 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                   {isPushSaving ? (
                     <AscendLoadingIndicator size="sm" />
                   ) : (
-                    <input
-                      type="checkbox"
+                    <Switch
                       checked={pushStatus === 'on'}
                       disabled={pushStatus === 'unsupported' || pushStatus === 'denied'}
                       onChange={handlePushToggle}
-                      className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                      label="Push notifications on this device"
                     />
                   )}
-                </label>
+                </div>
 
-                <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
-                  <div>
-                    <span className="item-name text-xs text-content-secondary block">Daily habit reminders</span>
-                    <span className="text-micro text-content-muted">A daily nudge to check off your habits.</span>
+                {NOTIFICATION_PREFERENCES.map((pref) => (
+                  <div key={pref.key} className="flex items-center justify-between gap-4 py-3">
+                    <div>
+                      <span className="item-name text-xs text-content-secondary block">{pref.title}</span>
+                      <span className="text-micro text-content-muted">{pref.description}</span>
+                    </div>
+                    <Switch
+                      checked={currentUser?.[pref.key] ?? true}
+                      onChange={() => store.toggleNotificationPreference(pref.key)}
+                      label={pref.title}
+                    />
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={notifDailyReminder}
-                    onChange={() => {
-                      setNotifDailyReminder(!notifDailyReminder);
-                      store.toggleNotifDailyReminder();
-                    }}
-                    className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
-                  />
-                </label>
+                ))}
 
-                <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
-                  <div>
-                    <span className="item-name text-xs text-content-secondary block">Partner activity</span>
-                    <span className="text-micro text-content-muted">When a partner completes a habit or challenge.</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={notifPartnerActivity}
-                    onChange={() => {
-                      setNotifPartnerActivity(!notifPartnerActivity);
-                      store.toggleNotifPartnerActivity();
-                    }}
-                    className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
-                  <div>
-                    <span className="item-name text-xs text-content-secondary block">Weekly league updates</span>
-                    <span className="text-micro text-content-muted">A weekly summary of your league placement and promotions.</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={notifLeagueUpdates}
-                    onChange={() => {
-                      setNotifLeagueUpdates(!notifLeagueUpdates);
-                      store.toggleNotifLeagueUpdates();
-                    }}
-                    className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
-                  <div>
-                    <span className="item-name text-xs text-content-secondary block">Sunday planning reminder</span>
-                    <span className="text-micro text-content-muted">Sundays at 7 PM: review last week's goals and plan the next.</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={notifSundayPlanning}
-                    onChange={() => {
-                      setNotifSundayPlanning(!notifSundayPlanning);
-                      store.toggleNotifSundayPlanning();
-                    }}
-                    className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
+                <div className="flex items-center justify-between gap-4 py-3">
                   <div>
                     <span className="item-name text-xs text-content-secondary block">Focus session alerts</span>
-                    <span className="text-micro text-content-muted">Try to send a system alert when a focus session ends.</span>
+                    <span className="text-micro text-content-muted">A system alert on this device when a focus session ends.</span>
                   </div>
-                  <input
-                    type="checkbox"
+                  <Switch
                     checked={focusNotifsEnabled}
                     onChange={async () => {
                       const next = !focusNotifsEnabled;
@@ -815,9 +774,9 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                         }
                       }
                     }}
-                    className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                    label="Focus session alerts"
                   />
-                </label>
+                </div>
               </div>
 
                 {notifBrowserPerm === 'denied' && (
