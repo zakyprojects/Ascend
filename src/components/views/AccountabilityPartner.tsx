@@ -16,7 +16,6 @@ import {
   FileText,
   ChevronDown,
   ChevronRight,
-  AlertCircle,
   RotateCcw,
   Flame,
   Users,
@@ -25,7 +24,7 @@ import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { useToast } from '@/components/ui/Toast';
-import { Dialog, EmptyState, Form, Input, Skeleton } from '@/components/ui/primitives';
+import { Dialog, EmptyState, Form, Input, Skeleton, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { CountUp } from '@/components/ui/Motion';
 import { ProgressRing } from '@/components/ui/charts';
@@ -128,7 +127,6 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const [user1Target, setUser1Target] = useState('');
   const [user2Category, setUser2Category] = useState<SharedChallengeCategory>('habit');
   const [user2Target, setUser2Target] = useState('');
-  const [challengeError, setChallengeError] = useState<string | null>(null);
 
   // Local Nudge Cooldowns Map (challengeId -> timestamp ms)
   const [nudgeCooldowns, setNudgeCooldowns] = useState<Record<string, number>>(() => {
@@ -318,20 +316,22 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const inviteForm = useUnsavedChanges(inviteModalOpen, partnerUidInput);
   const pactForm = useUnsavedChanges(challengeModalOpen, [challengeTitle, challengeDuration, user1Category, user1Target, user2Category, user2Target]);
 
+  const inviteIssues = useFormController();
+  const pactIssues = useFormController();
+
   const handleSendInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmittingInvite) return;
-    setInviteError(null);
     const trimmed = partnerUidInput.trim();
     if (!trimmed) return;
 
     if (currentUser?.uid && trimmed === currentUser.uid) {
-      setInviteError("You can't send an accountability invite to yourself.");
+      inviteIssues.showError("That's your own ID. Enter your partner's.", 'partner-invite-uid');
       return;
     }
 
     if (partnerships.length >= 5) {
-      setInviteError("You already have 5 partners, the maximum. Remove one to add another.");
+      inviteIssues.showError('You already have 5 partners, the maximum. Remove one to add another.');
       return;
     }
 
@@ -341,12 +341,11 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         await store.sendPartnerInvite(targetUid);
         setInviteModalOpen(false);
         setPartnerUidInput('');
-        setInviteError(null);
         showSuccessToast('Invite sent', 'Your partner invite is on its way.');
       } catch (err: any) {
+        // "No one has the ID ..." belongs to the ID field; anything else to the form.
         const errorMessage = toUserMessage(err, "Couldn't send the invite. Try again.");
-        setInviteError(errorMessage);
-        showErrorToast("Couldn't send invite", errorMessage);
+        inviteIssues.showError(errorMessage, /\bID\b/.test(errorMessage) ? 'partner-invite-uid' : undefined);
       }
     });
   };
@@ -355,7 +354,6 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     e.preventDefault();
     if (!activePartnership || isSubmittingChallenge) return;
 
-    setChallengeError(null);
     await executeCreateChallenge(async () => {
       try {
         const u1Target = user1Target.trim() || 'Daily Activity';
@@ -376,12 +374,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         setChallengeTitle('');
         setUser1Target('');
         setUser2Target('');
-        setChallengeError(null);
         showSuccessToast('Joint pact locked in!', `"${title}" has begun with @${activePartnerUsername}.`);
       } catch (err: any) {
-        const errorMessage = toUserMessage(err, "Couldn't create the pact. Try again.");
-        setChallengeError(errorMessage);
-        showErrorToast("Couldn't create pact", errorMessage);
+        pactIssues.showError(toUserMessage(err, "Couldn't create the pact. Try again."));
       }
     });
   };
@@ -1482,10 +1477,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         open={inviteModalOpen}
         preventClose={isSubmittingInvite}
         dirty={inviteForm.dirty}
-        onClose={() => {
-          setInviteModalOpen(false);
-          setInviteError(null);
-        }}
+        onClose={() => setInviteModalOpen(false)}
         title="Invite a partner"
         description="Enter your partner's 6-digit ID (it's in their Settings). You can have up to 5 partners."
         footer={
@@ -1493,12 +1485,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             <button
               type="button"
               disabled={isSubmittingInvite}
-              onClick={() =>
-                inviteForm.confirmDiscard(() => {
-                  setInviteModalOpen(false);
-                  setInviteError(null);
-                })
-              }
+              onClick={() => inviteForm.confirmDiscard(() => setInviteModalOpen(false))}
               className="btn-secondary"
             >
               Cancel
@@ -1510,7 +1497,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           </>
         }
       >
-        <Form id="partner-invite-form" onSubmit={handleSendInviteSubmit}>
+        <Form id="partner-invite-form" onSubmit={handleSendInviteSubmit} controller={inviteIssues}>
           <Input
             id="partner-invite-uid"
             label="Partner's ID"
@@ -1518,9 +1505,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             value={partnerUidInput}
             onChange={(e) => {
               setPartnerUidInput(e.target.value.replace(/\D/g, ''));
-              if (inviteError) setInviteError(null);
             }}
-            error={inviteError ?? undefined}
             className="font-mono tabular-nums tracking-widest"
             inputMode="numeric"
             autoComplete="off"
@@ -1537,10 +1522,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
       <Dialog
         open={challengeModalOpen}
         preventClose={isSubmittingChallenge}
-        onClose={() => {
-          setChallengeModalOpen(false);
-          setChallengeError(null);
-        }}
+        onClose={() => setChallengeModalOpen(false)}
         dirty={pactForm.dirty}
         title={`Joint pact with ${activePartnerUsername || 'partner'}`}
         maxWidth="max-w-xl"
@@ -1561,13 +1543,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           </>
         }
       >
-        <Form id="pact-create-form" onSubmit={handleCreateChallengeSubmit} className="space-y-5">
-          {challengeError && (
-            <div role="alert" className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
-              <AlertCircle size={15} className="shrink-0 mt-0.5" />
-              <span>{challengeError}</span>
-            </div>
-          )}
+        <Form id="pact-create-form" onSubmit={handleCreateChallengeSubmit} controller={pactIssues} className="space-y-5">
 
           <Input
             id="pact-create-title"
@@ -1575,10 +1551,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             optional
             placeholder="e.g. 14-day morning routine"
             value={challengeTitle}
-            onChange={(e) => {
-              setChallengeTitle(e.target.value);
-              if (challengeError) setChallengeError(null);
-            }}
+            onChange={(e) => setChallengeTitle(e.target.value)}
             maxLength={80}
             autoComplete="off"
           />
