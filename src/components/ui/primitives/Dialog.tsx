@@ -208,6 +208,7 @@ export const Dialog: React.FC<DialogProps> = ({
   }, [open, dialogId]);
 
   if (!rendered) return null;
+  const hasBody = content.children != null && content.children !== false;
 
   return createPortal(
     <div
@@ -270,11 +271,11 @@ export const Dialog: React.FC<DialogProps> = ({
             )}
           </div>
         </div>
-        {content.children != null && content.children !== false && (
+        {hasBody && (
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">{content.children}</div>
         )}
         {content.footer && (
-          <div className="dialog-actions shrink-0 border-t border-bg-700 px-4 py-3">{content.footer}</div>
+          <div className={cx('dialog-actions shrink-0 px-4 py-3', hasBody && 'border-t border-bg-700')}>{content.footer}</div>
         )}
       </div>
     </div>,
