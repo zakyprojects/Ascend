@@ -11,7 +11,6 @@ import {
   Shield,
   Copy,
   Check,
-  AlertCircle,
   Clock,
   Mail,
   LogOut,
@@ -35,7 +34,7 @@ import { PasswordStaircase } from '@/components/ui/PasswordStaircase';
 import { newPasswordProblem } from '@/lib/passwordRules';
 import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
-import { Dialog, Switch, Tabs } from '@/components/ui/primitives';
+import { Dialog, FieldErrorBubble, FieldMessage, Form, FormAlert, Switch, Tabs, useFormController } from '@/components/ui/primitives';
 import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { toUserMessage } from '@/lib/userMessage';
 import { AscendLoadingIndicator, AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
@@ -116,7 +115,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   // Notifications state
   const [focusNotifsEnabled, setFocusNotifsEnabled] = useState<boolean>(() => {
@@ -131,7 +130,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   const [notifBrowserPerm, setNotifBrowserPerm] = useState<NotificationPermission>('default');
   const [pushStatus, setPushStatus] = useState<PushStatus>('off');
   const { isLoading: isPushSaving, executeFn: executePushToggle } = useAsyncAction();
-  const { showErrorToast } = useToast();
+  const { showErrorToast, showSuccessToast } = useToast();
 
   useEffect(() => {
     getPushStatus().then(setPushStatus).catch(() => setPushStatus('off'));
@@ -225,25 +224,22 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
 
   // Save username handler
+  const usernameForm = useFormController();
+  const passwordForm = useFormController();
+
   const handleSaveUsername = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isUsernameSaving) return;
     setUsernameMsg(null);
 
     const trimmed = usernameInput.trim();
-    if (!trimmed) {
-      setUsernameMsg({ type: 'error', text: 'Username cannot be empty.' });
-      return;
-    }
+    if (!trimmed) return; // the field's required rule says so
     if (trimmed === currentUser?.username) {
       return;
     }
 
     if (isCooldownActive) {
-      setUsernameMsg({
-        type: 'error',
-        text: `Username can only be changed once per 24 hours. Next change available in ${hoursLeft}h ${minsLeft}m.`,
-      });
+      usernameForm.showError(`You can change it again in ${hoursLeft}h ${minsLeft}m.`, 'settings-username');
       return;
     }
 
@@ -254,7 +250,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
         setUsernameMsg({ type: 'success', text: 'Username updated.' });
         setUsernameStatus(null);
       } catch (err: unknown) {
-        setUsernameMsg({ type: 'error', text: toUserMessage(err, "Couldn't change your username. Try again.") });
+        usernameForm.showError(toUserMessage(err, "Couldn't change your username. Try again."), 'settings-username');
       }
     });
   };
@@ -262,8 +258,10 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   // Avatar change handler
   const handleSelectAvatar = async (emoji: string) => {
     if (emoji === currentUser?.avatar) return;
+    const previous = selectedAvatar;
     setSelectedAvatar(emoji);
     setAvatarMsg(null);
+    setAvatarError(null);
 
     await executeWithKey(`avatar-${emoji}`, async () => {
       try {
@@ -273,39 +271,35 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
         setTimeout(() => setAvatarMsg(null), 3000);
       } catch (err: unknown) {
         console.error('Failed to update avatar:', err);
+        // Not saved: show the avatar that is really on the account, and say why.
+        setSelectedAvatar(previous);
+        setAvatarError(toUserMessage(err, "Couldn't change your avatar. Try again."));
       }
     });
+  };
+
+  const validatePassword = () => {
+    const passwordProblem = newPasswordProblem(newPassword);
+    if (passwordProblem) return { message: `${passwordProblem}.`, field: 'settings-new-password' };
+    if (newPassword !== confirmPassword) return { message: 'Passwords don’t match.', field: 'settings-confirm-password' };
+    return null;
   };
 
   // Change password handler
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isPasswordSaving) return;
-    setPasswordMsg(null);
 
-    if (!newPassword || !confirmPassword) {
-      setPasswordMsg({ type: 'error', text: 'Please fill in both password fields.' });
-      return;
-    }
-    const passwordProblem = newPasswordProblem(newPassword);
-    if (passwordProblem) {
-      setPasswordMsg({ type: 'error', text: `Password: ${passwordProblem.toLowerCase()}.` });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordMsg({ type: 'error', text: 'Passwords do not match.' });
-      return;
-    }
 
     await executePasswordSave(async () => {
       try {
         await changeUserPassword(newPassword);
-        setPasswordMsg({ type: 'success', text: 'Password changed.' });
+        showSuccessToast('Password changed');
         setNewPassword('');
         setConfirmPassword('');
         setShowPasswordForm(false);
       } catch (err: unknown) {
-        setPasswordMsg({ type: 'error', text: toUserMessage(err, "Couldn't change your password. Try again.") });
+        passwordForm.showError(toUserMessage(err, "Couldn't change your password. Try again."));
       }
     });
   };
@@ -487,7 +481,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
               </div>
 
               {/* Username Change Form */}
-              <form onSubmit={handleSaveUsername} className="space-y-2">
+              <Form onSubmit={handleSaveUsername} controller={usernameForm} className="space-y-2" data-field="settings-username">
                 <div className="flex items-center justify-between">
                   <label htmlFor="settings-username" className="block label">
                     Leaderboard username
@@ -532,17 +526,11 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                   )}
                 </div>
 
+                <FieldMessage htmlFor="settings-username" />
                 {usernameMsg && (
-                  <div
-                    className={`p-2.5 rounded-xl text-xs flex items-center gap-2 ${
-                      usernameMsg.type === 'success'
-                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-success-text'
-                        : 'bg-rose-500/10 border border-rose-500/30 text-rose-theme'
-                    }`}
-                  >
-                    {usernameMsg.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
-                    <span>{usernameMsg.text}</span>
-                  </div>
+                  <p role="status" className="text-xs text-success-text flex items-center gap-1.5">
+                    <Check size={14} /> {usernameMsg.text}
+                  </p>
                 )}
 
                 <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
@@ -569,7 +557,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                     )}
                   </button>
                 </div>
-              </form>
+              </Form>
 
               {/* Avatar Picker (32 Emojis) */}
               <div className="space-y-2 pt-2 border-t border-overlay-subtle">
@@ -606,9 +594,13 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                     );
                   })}
                 </div>
-                <p className="text-xs text-content-muted">
-                  Tap an avatar to use it. It updates everywhere right away.
-                </p>
+                {avatarError ? (
+                  <FieldErrorBubble message={avatarError} attached={false} />
+                ) : (
+                  <p className="text-xs text-content-muted">
+                    Tap an avatar to use it. It updates everywhere right away.
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -657,8 +649,9 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                   </div>
 
                   {showPasswordForm && (
-                    <form onSubmit={handleChangePassword} className="space-y-3 pt-1">
+                    <Form onSubmit={handleChangePassword} validate={validatePassword} controller={passwordForm} alert="manual" className="space-y-3 pt-1">
                       <PasswordInput
+                        id="settings-new-password"
                         label="New password"
                         required
                         autoComplete="new-password"
@@ -668,6 +661,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                       />
                       <PasswordStaircase password={newPassword} />
                       <PasswordInput
+                        id="settings-confirm-password"
                         label="Confirm new password"
                         required
                         autoComplete="new-password"
@@ -676,16 +670,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                         onChange={(e) => setConfirmPassword(e.target.value)}
                       />
 
-                      {passwordMsg && (
-                        <div
-                          className={`p-2 rounded-lg text-xs flex items-center gap-2 ${
-                            passwordMsg.type === 'success' ? 'bg-emerald-500/10 text-success-text' : 'bg-rose-500/10 text-error-text'
-                          }`}
-                        >
-                          {passwordMsg.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
-                          <span>{passwordMsg.text}</span>
-                        </div>
-                      )}
+<FormAlert />
 
                       <button
                         type="submit"
@@ -701,7 +686,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                           'Save new password'
                         )}
                       </button>
-                    </form>
+                    </Form>
                   )}
                 </div>
               )}
