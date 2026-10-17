@@ -523,6 +523,10 @@
   input[type='week'] {
     color-scheme: dark;
   }
+  /* The light theme's pickers open light, matching the page. */
+  [data-theme='light'] :is(input[type='time'], input[type='date'], input[type='datetime-local'], input[type='month'], input[type='week']) {
+    color-scheme: light;
+  }
 
   input[type='time']::-webkit-calendar-picker-indicator,
   input[type='date']::-webkit-calendar-picker-indicator,
@@ -1050,8 +1054,34 @@
     @apply btn bg-error/20 text-error hover:bg-error/30;
   }
 
+  /* Same look as the Field primitives (Input/Select/Textarea): 16px text on phones, 14px from sm. */
   .input, .input-field {
-    @apply w-full bg-bg-700 border border-overlay-default text-content-primary placeholder:text-content-disabled rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 transition-all;
+    @apply w-full bg-bg-700 border border-overlay-default text-content-primary placeholder:text-content-disabled rounded-xl px-3.5 py-2.5 text-base sm:text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-60 disabled:cursor-not-allowed transition-[border-color,box-shadow] duration-200;
+  }
+  .input[aria-invalid='true'] {
+    @apply border-error focus:border-error focus:ring-error/20;
+  }
+
+  /* Solid destructive confirm (delete, reset, log out); .btn-danger is the soft variant. */
+  .btn-danger-solid {
+    @apply btn bg-rose-600 text-white hover:bg-rose-700;
+  }
+
+  /* A dialog's action row (Dialog `footer`): buttons share the width on phones with a 44px
+     tap height, and sit right-aligned at their natural width from sm. */
+  .dialog-actions {
+    @apply flex items-center gap-2;
+  }
+  .dialog-actions > :is(button, a) {
+    @apply min-h-11 flex-1 text-sm;
+  }
+  @media (min-width: 640px) {
+    .dialog-actions {
+      @apply justify-end;
+    }
+    .dialog-actions > :is(button, a) {
+      @apply min-h-10 flex-none;
+    }
   }
 
   /* Fields answer the pointer too: the border lifts on hover (not while focused or disabled). */
