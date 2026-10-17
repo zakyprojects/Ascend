@@ -185,13 +185,13 @@ import {
   fetchPartnershipsSupabase,
   deletePartnershipSupabase,
   deletePartnerInviteSupabase,
+  declinePartnerInviteSupabase,
   saveSharedChallengeSupabase,
   fetchSharedChallengesSupabase,
   deleteSharedChallengeSupabase,
   acceptPartnerInviteAtomicSupabase,
   cleanupPendingInvitesBetweenUsersSupabase,
   fetchNotificationsSupabase,
-  createNotificationSupabase,
   markNotificationReadSupabase,
   markAllNotificationsReadSupabase,
   clearNotificationSupabase,
@@ -7288,16 +7288,7 @@ export function useAppState() {
 
       syncBroadcaster.broadcast('PARTNER_ACCEPTED', partnership);
 
-      await createNotificationSupabase({
-        recipientId: fromId,
-        actorId: toId,
-        actorUsername: toUsername,
-        actorAvatar: state.currentUser?.avatar || '🧑',
-        type: 'partner_invite_accepted',
-        title: 'Partner Invite Accepted 🎉',
-        message: `${toUsername} accepted your partner invite!`,
-        payload: { partnershipId, dedupKey: `partner_invite_accepted_${partnershipId}` },
-      });
+      // The sender's "accepted" notice is sent by accept_partner_invite_atomic.
 
       // Clear/mark-read the recipient's incoming partner_invite notification so it doesn't linger unread
       const staleNotif = (state.notifications || []).find(
@@ -7382,18 +7373,6 @@ export function useAppState() {
 
   const declinePartnerInvite = useCallback(async (inviteId: string) => {
     const invite = state.partnerInvites.find((i) => i.id === inviteId);
-    if (invite) {
-      await createNotificationSupabase({
-        recipientId: invite.fromUserId,
-        actorId: state.currentUser?.id,
-        actorUsername: state.username,
-        actorAvatar: state.currentUser?.avatar || '🧑',
-        type: 'partner_invite_declined',
-        title: 'Partner Invite Declined',
-        message: `${state.username} declined your partner invite.`,
-        payload: { inviteId, dedupKey: `partner_invite_declined_${inviteId}` },
-      });
-    }
 
     const staleNotif = (state.notifications || []).find(
       (n) => n.type === 'partner_invite' && (n.payload?.inviteId === inviteId || (invite && n.actorId === invite.fromUserId))
@@ -7402,7 +7381,8 @@ export function useAppState() {
       markNotificationReadSupabase(staleNotif.id);
     }
 
-    await deletePartnerInviteSupabase(inviteId);
+    // The server sends the sender's "declined" notice in the same step.
+    await declinePartnerInviteSupabase(inviteId);
     setState(
       (prev) => {
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), inviteId].slice(-500);

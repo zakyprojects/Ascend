@@ -1183,6 +1183,16 @@ export async function savePartnershipSupabase(partnership: Partnership) {
   }
 }
 
+/** Recipient declines: the server sends the "declined" notice and removes the invite in one step. */
+export async function declinePartnerInviteSupabase(inviteId: string) {
+  if (!isSupabaseConfigured || !inviteId) return;
+  const { data, error } = await supabase.rpc('decline_partner_invite_atomic', { p_invite_id: inviteId });
+  if (error || (data && data.success === false)) {
+    console.error('declinePartnerInviteSupabase failed:', error ?? data);
+    throw new Error("Couldn't decline the invite. Try again.");
+  }
+}
+
 export async function deletePartnerInviteSupabase(inviteId: string) {
   if (!isSupabaseConfigured || !inviteId) return;
   try {
