@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, Form, Input, Select } from '@/components/ui/primitives';
+import { Dialog, FieldGroup, Form, Input, Select, useFormController } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TimeTrackerActivity } from '@/types';
 import { ActivityIcon } from './ActivityIcon';
@@ -11,7 +11,7 @@ import {
 } from '@/lib/timeTracker';
 import { getLocalThemePreference } from '@/lib/store';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { Shapes, AlertTriangle, Check } from 'lucide-react';
+import { Shapes, Check } from 'lucide-react';
 import { toUserMessage } from '@/lib/userMessage';
 
 interface ActivityModalProps {
@@ -47,7 +47,7 @@ export function ActivityModal({
   const [icon, setIcon] = useState<string>('');
   const [ascendModule, setAscendModule] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const formIssues = useFormController();
   const theme = getLocalThemePreference() || 'dark';
   const resolvedPreviewColor = color ? getActivityThemeColor(color, theme) : '';
   const form = useUnsavedChanges(open ? (editingActivity?.id ?? 'new') : null, [name, color, icon, ascendModule]);
@@ -66,26 +66,14 @@ export function ActivityModal({
       setIcon('');
       setAscendModule('');
     }
-    setError(null);
-  }, [open, editingActivity]);
+    formIssues.clear();
+  }, [open, editingActivity, formIssues]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError('Activity name is required.');
-      return;
-    }
-    if (!color) {
-      setError('Pick a colour for this category.');
-      return;
-    }
-    if (!icon) {
-      setError('Pick an icon for this category.');
-      return;
-    }
+    if (!name.trim()) return; // the name field's required rule says so
 
     setIsSaving(true);
-    setError(null);
     try {
       await onSave({
         name: name.trim(),
@@ -95,7 +83,7 @@ export function ActivityModal({
       });
       onClose();
     } catch (err: any) {
-      setError(toUserMessage(err, "Couldn't save this activity. Try again."));
+      formIssues.showError(toUserMessage(err, "Couldn't save this activity. Try again."));
     } finally {
       setIsSaving(false);
     }
@@ -121,14 +109,19 @@ export function ActivityModal({
         </>
       }
     >
-      <Form id="tt-activity-form" onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div role="alert" className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
-            <AlertTriangle size={15} className="shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
-
+      <Form
+        id="tt-activity-form"
+        onSubmit={handleSubmit}
+        controller={formIssues}
+        validate={() =>
+          !color
+            ? { message: 'Pick a colour.', field: 'tt-act-colour' }
+            : !icon
+              ? { message: 'Pick an icon.', field: 'tt-act-icon' }
+              : null
+        }
+        className="space-y-4"
+      >
         {/* Live preview */}
         <div className="flex items-center gap-3 p-3 rounded-xl border border-overlay-default">
           <div
@@ -166,8 +159,7 @@ export function ActivityModal({
           required
         />
 
-        <div role="group" aria-labelledby="tt-act-colour-label">
-          <p id="tt-act-colour-label" className="block label mb-2">Colour</p>
+        <FieldGroup id="tt-act-colour" label="Colour">
           <div className="flex flex-wrap gap-2">
             {AVAILABLE_ACTIVITY_COLORS.map((col) => {
               const isSelected = color === col.value;
@@ -188,10 +180,9 @@ export function ActivityModal({
               );
             })}
           </div>
-        </div>
+        </FieldGroup>
 
-        <div role="group" aria-labelledby="tt-act-icon-label">
-          <p id="tt-act-icon-label" className="block label mb-2">Icon</p>
+        <FieldGroup id="tt-act-icon" label="Icon">
           <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-40 overflow-y-auto p-1 rounded-xl border border-overlay-subtle">
             {AVAILABLE_ACTIVITY_ICONS.map((ic) => {
               const isSelected = icon === ic;
@@ -213,7 +204,7 @@ export function ActivityModal({
               );
             })}
           </div>
-        </div>
+        </FieldGroup>
 
         <Select
           id="tt-act-module"

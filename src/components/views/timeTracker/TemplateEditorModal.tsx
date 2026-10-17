@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, Form, Input } from '@/components/ui/primitives';
+import { Dialog, FieldMessage, Form, Input, useFormController } from '@/components/ui/primitives';
 import {
   TimeTrackerActivity,
   TimeTrackerBlock,
@@ -21,7 +21,7 @@ import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
 import { TimeBlockModal } from './TimeBlockModal';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { Plus, Trash2, Edit2, Clock, Calendar, AlertTriangle, Layers, Check } from 'lucide-react';
+import { Plus, Trash2, Edit2, Clock, Calendar, Layers, Check } from 'lucide-react';
 import { uid } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
@@ -52,7 +52,7 @@ export function TemplateEditorModal({
   const [activeDays, setActiveDays] = useState<string[]>([]);
   const [blocks, setBlocks] = useState<TimeTrackerBlock[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const formIssues = useFormController();
   const form = useUnsavedChanges(open && (editingTemplate?.id ?? 'new'), [title, activeDays, blocks]);
 
   // Block Modal State (for both Add and Edit)
@@ -86,7 +86,7 @@ export function TemplateEditorModal({
     }
     setShowBlockModal(false);
     setTargetBlockForModal(null);
-    setValidationError(null);
+    formIssues.clear();
     setConflictState(null);
     // Prefill once per open (and per edited template): re-running when `activities` changes
     // would wipe the user's edits whenever a sync or realtime update lands.
@@ -192,12 +192,11 @@ export function TemplateEditorModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      setValidationError('Give the template a name.');
-      return;
+      return; // the name field's required rule says so
     }
 
     if (blocks.length === 0) {
-      setValidationError('Add at least one time block.');
+      formIssues.showError('Add at least one time block.', 'tt-tpl-blocks');
       return;
     }
 
@@ -210,7 +209,7 @@ export function TemplateEditorModal({
       });
       onClose();
     } catch (err: any) {
-      setValidationError(toUserMessage(err, "Couldn't save this template. Try again."));
+      formIssues.showError(toUserMessage(err, "Couldn't save this template. Try again."));
     } finally {
       setIsSaving(false);
     }
@@ -237,13 +236,7 @@ export function TemplateEditorModal({
           </>
         }
       >
-        <Form id="tt-template-form" onSubmit={handleSubmit} className="space-y-4">
-          {validationError && (
-            <div role="alert" className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
-              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
-              <span>{validationError}</span>
-            </div>
-          )}
+        <Form id="tt-template-form" onSubmit={handleSubmit} controller={formIssues} className="space-y-4">
 
           {/* Template Title */}
           <Input
@@ -287,7 +280,7 @@ export function TemplateEditorModal({
           </div>
 
           {/* Blueprint Blocks Section */}
-          <div className="pt-2">
+          <div className="pt-2" data-field="tt-tpl-blocks">
             <div className="flex items-center justify-between mb-2">
               <p className="label">
                 Blocks ({blocks.length})
@@ -304,9 +297,16 @@ export function TemplateEditorModal({
 
             {/* Block List */}
             {blocks.length === 0 ? (
-              <div className="p-5 border border-dashed border-overlay-default rounded-xl text-center text-content-disabled text-xs">
+              <>
+              <div
+                id="tt-tpl-blocks"
+                tabIndex={-1}
+                className="p-5 border border-dashed border-overlay-default rounded-xl text-center text-content-muted text-xs outline-none aria-[invalid=true]:border-rose-500/70"
+              >
                 No blocks yet. Use &ldquo;Add block&rdquo; to build the schedule.
               </div>
+              <FieldMessage htmlFor="tt-tpl-blocks" />
+              </>
             ) : (
               <div className="divide-y divide-overlay-subtle max-h-56 overflow-y-auto pr-1">
                 {blocks.map((block) => {

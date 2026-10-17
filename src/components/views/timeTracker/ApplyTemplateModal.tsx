@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Dialog, Form, Input } from '@/components/ui/primitives';
+import { Dialog, Form, Input, useFormController } from '@/components/ui/primitives';
+import { toUserMessage } from '@/lib/userMessage';
 import { TimeTrackerTemplate } from '@/types';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Check, RefreshCw, Plus } from 'lucide-react';
@@ -28,6 +29,7 @@ export function ApplyTemplateModal({
   );
   const [mode, setMode] = useState<'merge' | 'replace'>('merge');
   const [isApplying, setIsApplying] = useState<boolean>(false);
+  const formIssues = useFormController();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,8 +39,8 @@ export function ApplyTemplateModal({
     try {
       await onApply(selectedTemplateId, mode, selectedDate);
       onClose();
-    } catch {
-      // The caller already showed the failure toast; the dialog stays open to retry.
+    } catch (err) {
+      formIssues.showError(toUserMessage(err, "Couldn't apply this template. Try again."));
     } finally {
       setIsApplying(false);
     }
@@ -63,7 +65,7 @@ export function ApplyTemplateModal({
         </>
       }
     >
-      <Form id="tt-apply-form" onSubmit={handleSubmit} className="space-y-4">
+      <Form id="tt-apply-form" onSubmit={handleSubmit} controller={formIssues} className="space-y-4">
         <Input
           id="tt-apply-date"
           label="Date"

@@ -18,7 +18,6 @@ import { useToast } from '@/components/ui/Toast';
 import { Tabs } from '@/components/ui/primitives';
 import { Clock, Layers, Tag, Calendar } from 'lucide-react';
 import { View } from '@/components/AppShell';
-import { toUserMessage } from '@/lib/userMessage';
 
 interface TimeTrackerViewProps {
   store: AppStore;
@@ -28,7 +27,7 @@ interface TimeTrackerViewProps {
 type TabType = 'schedule' | 'templates' | 'activities';
 
 export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
-  const { showSuccessToast, showErrorToast } = useToast();
+  const { showSuccessToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<TabType>('schedule');
   const [selectedDateKey, setSelectedDateKey] = useState<string>(todayKey());
@@ -79,17 +78,13 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
     customTitle?: string;
     notes?: string;
   }) => {
-    try {
-      if (editingBlock) {
-        store.updateDailyTimeBlock(selectedDateKey, editingBlock.id, blockData);
-        showSuccessToast('Time block updated');
-      } else {
-        store.addDailyTimeBlock(selectedDateKey, blockData);
-        showSuccessToast('Time block scheduled');
-      }
-    } catch (err: any) {
-      showErrorToast("Couldn't schedule block", toUserMessage(err, 'Try again.'));
-      throw err;
+    // A failure reaches the dialog, which shows it in the form and stays open.
+    if (editingBlock) {
+      store.updateDailyTimeBlock(selectedDateKey, editingBlock.id, blockData);
+      showSuccessToast('Time block updated');
+    } else {
+      store.addDailyTimeBlock(selectedDateKey, blockData);
+      showSuccessToast('Time block scheduled');
     }
   };
 
@@ -109,17 +104,13 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
     activeDays: string[];
     blocks: TimeTrackerBlock[];
   }) => {
-    try {
-      if (editingTemplate) {
-        store.updateTimeTrackerTemplate(editingTemplate.id, templateData);
-        showSuccessToast('Blueprint template updated');
-      } else {
-        store.createTimeTrackerTemplate(templateData);
-        showSuccessToast('Blueprint template created');
-      }
-    } catch (err: any) {
-      showErrorToast("Couldn't save blueprint", toUserMessage(err, 'Try again.'));
-      throw err;
+    // A failure reaches the dialog, which shows it in the form and stays open.
+    if (editingTemplate) {
+      store.updateTimeTrackerTemplate(editingTemplate.id, templateData);
+      showSuccessToast('Template updated');
+    } else {
+      store.createTimeTrackerTemplate(templateData);
+      showSuccessToast('Template created');
     }
   };
 
@@ -130,26 +121,21 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
   };
 
   const handleApplyTemplate = async (templateId: string, mode: 'merge' | 'replace', targetDate: string) => {
-    try {
-      const dateToApply = targetDate || selectedDateKey;
-      const result = store.applyTemplateToDate(dateToApply, templateId, mode);
+    // A failure reaches the dialog, which shows it in the form and stays open.
+    const dateToApply = targetDate || selectedDateKey;
+    const result = store.applyTemplateToDate(dateToApply, templateId, mode);
 
-      if (mode === 'replace') {
-        showSuccessToast('Blueprint applied', `Blueprint applied: ${result.added} blocks scheduled.`);
-      } else {
-        if (result.added > 0 && result.rejected === 0) {
-          showSuccessToast('Blueprint merged', `Blueprint merged: ${result.added} blocks added.`);
-        } else if (result.added > 0 && result.rejected > 0) {
-          showSuccessToast('Blueprint merged', `Blueprint merged: ${result.added} added, ${result.rejected} skipped (overlap).`);
-        } else if (result.added === 0 && result.rejected > 0) {
-          showErrorToast('Nothing merged', `All ${result.rejected} blocks overlapped with existing schedule.`);
-        } else {
-          showSuccessToast('Blueprint applied', 'Blueprint applied.');
-        }
-      }
-    } catch (err: any) {
-      showErrorToast("Couldn't apply blueprint", toUserMessage(err, 'Try again.'));
-      throw err;
+    if (mode === 'replace') {
+      showSuccessToast('Template applied', `${result.added} blocks scheduled.`);
+    } else if (result.added > 0 && result.rejected === 0) {
+      showSuccessToast('Template merged', `${result.added} blocks added.`);
+    } else if (result.added > 0 && result.rejected > 0) {
+      showSuccessToast('Template merged', `${result.added} added, ${result.rejected} skipped (overlap).`);
+    } else if (result.added === 0 && result.rejected > 0) {
+      // Nothing changed: the dialog stays open and says why.
+      throw new Error(`All ${result.rejected} blocks overlap what's already scheduled. Pick Replace to use this template.`);
+    } else {
+      showSuccessToast('Template applied');
     }
   };
 
@@ -170,17 +156,13 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
     icon: string;
     ascendModule?: string;
   }) => {
-    try {
-      if (editingActivity) {
-        store.updateTimeTrackerActivity(editingActivity.id, activityData);
-        showSuccessToast('Activity category updated');
-      } else {
-        store.addTimeTrackerActivity({ ...activityData, isSystemDefault: false });
-        showSuccessToast('Activity category created');
-      }
-    } catch (err: any) {
-      showErrorToast("Couldn't save activity", toUserMessage(err, 'Try again.'));
-      throw err;
+    // A failure reaches the dialog, which shows it in the form and stays open.
+    if (editingActivity) {
+      store.updateTimeTrackerActivity(editingActivity.id, activityData);
+      showSuccessToast('Activity updated');
+    } else {
+      store.addTimeTrackerActivity({ ...activityData, isSystemDefault: false });
+      showSuccessToast('Activity created');
     }
   };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, Form, Input, Textarea } from '@/components/ui/primitives';
+import { Dialog, FieldGroup, Form, Input, Textarea, useFormController } from '@/components/ui/primitives';
 import {
   TimeTrackerActivity,
   TimeTrackerBlock,
@@ -55,7 +55,7 @@ export function TimeBlockModal({
   const [customTitle, setCustomTitle] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const formIssues = useFormController();
   const form = useUnsavedChanges(open && (editingBlock?.id ?? 'new'), [
     activityId,
     secondaryActivityIds,
@@ -106,7 +106,7 @@ export function TimeBlockModal({
       setCustomTitle('');
       setNotes('');
     }
-    setValidationError(null);
+    formIssues.clear();
     // Prefill once per open (and per edited block). Re-running on `existingBlocks`/`activities`
     // changes would wipe what the user is typing whenever a sync or realtime update lands.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -144,11 +144,11 @@ export function TimeBlockModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activityId) {
-      setValidationError('Choose an activity for this block.');
+      formIssues.showError('Choose an activity for this block.', 'tt-block-activity');
       return;
     }
     if (isZeroDuration) {
-      setValidationError('Start and end time can’t be the same.');
+      formIssues.showError('End time can’t be the same as the start.', 'tt-block-end');
       return;
     }
 
@@ -160,7 +160,7 @@ export function TimeBlockModal({
         editingBlock?.id
       );
       if (collision.hasCollision) {
-        setValidationError(collision.message || 'This overlaps another block.');
+        formIssues.showError(collision.message || 'This overlaps another block.', 'tt-block-start');
         return;
       }
     } else {
@@ -170,12 +170,11 @@ export function TimeBlockModal({
       const col1 = checkTimeCollision(part1, existingBlocks, editingBlock?.id);
       const col2 = checkTimeCollision(part2, existingBlocks, editingBlock?.id);
       if (col1.hasCollision || col2.hasCollision) {
-        setValidationError('Part of this block overlaps another scheduled block.');
+        formIssues.showError('Part of this block overlaps another scheduled block.', 'tt-block-start');
         return;
       }
     }
 
-    setValidationError(null);
     setIsSaving(true);
     try {
       await onSave({
@@ -188,7 +187,7 @@ export function TimeBlockModal({
       });
       onClose();
     } catch (err: any) {
-      setValidationError(toUserMessage(err, "Couldn't save this block. Try again."));
+      formIssues.showError(toUserMessage(err, "Couldn't save this block. Try again."));
     } finally {
       setIsSaving(false);
     }
@@ -214,19 +213,8 @@ export function TimeBlockModal({
         </>
       }
     >
-      <Form id="tt-block-form" onSubmit={handleSubmit} className="space-y-4">
-        {validationError && (
-          <div role="alert" className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2.5 text-rose-theme text-xs">
-            <AlertTriangle size={16} className="shrink-0 mt-0.5 text-rose-theme" />
-            <span className="leading-relaxed">{validationError}</span>
-          </div>
-        )}
-
-        <div role="group" aria-labelledby="tt-block-activity-label">
-          <div className="flex items-baseline justify-between gap-2 mb-2">
-            <p id="tt-block-activity-label" className="label">Activity</p>
-            <span className="text-xs text-content-muted">First pick is primary, more are secondary</span>
-          </div>
+      <Form id="tt-block-form" onSubmit={handleSubmit} controller={formIssues} className="space-y-4">
+        <FieldGroup id="tt-block-activity" label="Activity" hint="First pick is the primary activity; more are secondary.">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
             {activities.map((act) => {
               const isPrimary = act.id === activityId;
@@ -265,7 +253,7 @@ export function TimeBlockModal({
               );
             })}
           </div>
-        </div>
+        </FieldGroup>
 
         <div className="grid grid-cols-2 gap-3">
           <Input
