@@ -10,7 +10,8 @@ import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
-import { Dialog, EmptyState, PageColumns } from '@/components/ui/primitives';
+import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, Select } from '@/components/ui/primitives';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
@@ -120,14 +121,27 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
     remainingCap
   );
 
+  const logForm = useUnsavedChanges(logModalOpen, { workoutType, customType, metricType, amount, duration });
+  const goalForm = useUnsavedChanges(goalModalOpen, targetSessionsInput);
+
+  // Every open starts clean: a dismissed draft is not shown again.
+  const openLogModal = () => {
+    setWorkoutType('Running');
+    setCustomType('');
+    setMetricType('mins');
+    setDuration(30);
+    setAmount(30);
+    setLogModalOpen(true);
+  };
+
   const { isLoading: isLogging, executeFn: executeLog } = useAsyncAction();
   const { isLoading: isSavingGoal, executeFn: executeGoalSave } = useAsyncAction();
   const { isLoading: isDeleting, executeFn: executeDelete } = useAsyncAction();
 
   const handleLogSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalType = workoutType === 'Other' ? customType : workoutType;
-    if (!finalType.trim()) return;
+    const finalType = (workoutType === 'Other' ? customType : workoutType).trim();
+    if (!finalType) return;
 
     if (metricType === 'mins') {
       if (duration <= 0) return;
@@ -167,7 +181,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             <span>{exerciseGoal ? `Goal: ${exerciseGoal.targetWeeklySessions}/wk` : 'Set Weekly Goal'}</span>
           </button>
           <button
-            onClick={() => setLogModalOpen(true)}
+            onClick={openLogModal}
             className="btn-primary flex items-center gap-2"
           >
             <Plus size={18} />
@@ -245,7 +259,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               title="No workouts logged yet"
               description="Log a workout to start earning points."
               action={
-                <button onClick={() => setLogModalOpen(true)} className="btn-primary mx-auto">
+                <button onClick={openLogModal} className="btn-primary mx-auto">
                   Log Your First Workout
                 </button>
               }
@@ -291,140 +305,109 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       </PageColumns>
 
       {/* Log Workout Modal */}
-      <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} title="Log Workout" preventClose={isLogging}>
-        <form onSubmit={handleLogSubmit} className="space-y-4">
-          <div>
-            <label className="block label mb-1" htmlFor="workout-type-select">Workout type</label>
-            <select
-              id="workout-type-select"
-              value={workoutType}
-              onChange={(e) => setWorkoutType(e.target.value)}
-              className="input mb-2"
+      <Dialog
+        open={logModalOpen}
+        onClose={() => setLogModalOpen(false)}
+        dirty={logForm.dirty}
+        title="Log workout"
+        preventClose={isLogging}
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isLogging}
+              onClick={() => logForm.confirmDiscard(() => setLogModalOpen(false))}
+              className="btn-secondary"
             >
-              {availableWorkoutTypes.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-              <option value="Other">Other…</option>
-            </select>
+              Cancel
+            </button>
+            <button type="submit" form="workout-log-form" disabled={isLogging} className="btn-primary">
+              {isLogging ? <AscendLoadingIndicator size="sm" /> : null}
+              <span>{isLogging ? 'Saving…' : 'Save workout'}</span>
+            </button>
+          </>
+        }
+      >
+        <Form id="workout-log-form" onSubmit={handleLogSubmit} className="space-y-4">
+          <Select
+            id="workout-type-select"
+            label="Workout type"
+            value={workoutType}
+            onChange={(e) => setWorkoutType(e.target.value)}
+          >
+            {availableWorkoutTypes.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+            <option value="Other">Other…</option>
+          </Select>
 
-            {workoutType === 'Other' && (
-              <input
-                type="text"
-                value={customType}
-                onChange={(e) => setCustomType(e.target.value)}
-                placeholder="Workout name"
-                className="input"
+          {workoutType === 'Other' && (
+            <Input
+              id="workout-custom-type-input"
+              label="Workout name"
+              value={customType}
+              onChange={(e) => setCustomType(e.target.value)}
+              placeholder="e.g. Swimming"
+              maxLength={60}
+              autoComplete="off"
+              required
+            />
+          )}
+
+          <FieldRow>
+            <Select
+              id="workout-metric-type"
+              label="Measure"
+              value={metricType}
+              onChange={(e) => {
+                const val = e.target.value;
+                setMetricType(val);
+                if (val === 'mins') setDuration(30);
+                else if (val === 'reps') setAmount(30);
+                else if (val === 'sets') setAmount(5);
+                else if (val === 'km') setAmount(5);
+              }}
+            >
+              <option value="mins">Minutes</option>
+              <option value="reps">Reps</option>
+              <option value="sets">Sets</option>
+              <option value="km">Distance (km)</option>
+            </Select>
+
+            {metricType === 'mins' ? (
+              <NumberField
+                key="duration"
+                id="workout-duration-input"
+                label="Duration (minutes)"
+                decimal
+                min={1}
+                max={300}
+                value={duration}
+                onValueChange={setDuration}
+                enterKeyHint="done"
+                required
+              />
+            ) : (
+              <NumberField
+                key="amount"
+                id="workout-amount-input"
+                label={metricType === 'km' ? 'Distance (km)' : `Amount (${metricType})`}
+                decimal={metricType === 'km'}
+                min={metricType === 'km' ? 0.1 : 1}
+                max={100000}
+                value={amount}
+                onValueChange={setAmount}
+                enterKeyHint="done"
                 required
               />
             )}
-          </div>
-
-          {metricType === 'mins' ? (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block label mb-1" htmlFor="workout-metric-type">Measure</label>
-                <select
-                  id="workout-metric-type"
-                  value={metricType}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setMetricType(val);
-                    if (val === 'mins') setDuration(30);
-                    else if (val === 'reps') setAmount(30);
-                    else if (val === 'sets') setAmount(5);
-                    else if (val === 'km') setAmount(5);
-                  }}
-                  className="input w-full"
-                >
-                  <option value="mins">Minutes (mins)</option>
-                  <option value="reps">Reps (repetitions)</option>
-                  <option value="sets">Sets</option>
-                  <option value="km">Distance (km)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block label mb-1" htmlFor="workout-duration-input">
-                  Duration (minutes)
-                </label>
-                <input
-                  id="workout-duration-input"
-                  type="number"
-                  step="any"
-                  min="1"
-                  max="300"
-                  value={duration}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    setDuration(val);
-                  }}
-                  className="input w-full"
-                  required
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block label mb-1" htmlFor="workout-metric-type">Measure</label>
-                <select
-                  id="workout-metric-type"
-                  value={metricType}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setMetricType(val);
-                    if (val === 'mins') setDuration(30);
-                    else if (val === 'reps') setAmount(30);
-                    else if (val === 'sets') setAmount(5);
-                    else if (val === 'km') setAmount(5);
-                  }}
-                  className="input w-full"
-                >
-                  <option value="mins">Minutes (mins)</option>
-                  <option value="reps">Reps (repetitions)</option>
-                  <option value="sets">Sets</option>
-                  <option value="km">Distance (km)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block label mb-1" htmlFor="workout-amount-input">
-                  Amount ({metricType})
-                </label>
-                <input
-                  id="workout-amount-input"
-                  type="number"
-                  step="any"
-                  min="0.1"
-                  max="100000"
-                  value={amount}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    setAmount(val);
-                  }}
-                  placeholder={metricType === 'reps' ? 'e.g. 30' : metricType === 'km' ? 'e.g. 5' : 'Amount'}
-                  className="input w-full"
-                  required
-                />
-              </div>
-            </div>
-          )}
+          </FieldRow>
 
           <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between border border-overlay-default">
-            <span>Points to earn:</span>
+            <span>Points to earn</span>
             <span className="figure text-success-text">+{previewPointsToEarn} pts</span>
           </div>
-
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setLogModalOpen(false)} className="btn-secondary flex-1">
-              Cancel
-            </button>
-            <button type="submit" disabled={isLogging} className="btn-primary flex-1 flex items-center justify-center gap-2">
-              {isLogging ? <AscendLoadingIndicator size="sm" /> : null}
-              <span>{isLogging ? 'Saving...' : 'Save Workout'}</span>
-            </button>
-          </div>
-        </form>
+        </Form>
       </Dialog>
 
       {/* Confirm Delete Modal */}
@@ -447,44 +430,51 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       />
 
       {/* Target Weekly Goal Modal */}
-      <Dialog open={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set Weekly Goal" preventClose={isSavingGoal}>
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
+      <Dialog
+        open={goalModalOpen}
+        onClose={() => setGoalModalOpen(false)}
+        dirty={goalForm.dirty}
+        title="Set weekly goal"
+        description="How many workouts you aim for each week. Finishing the week below it applies a miss penalty."
+        preventClose={isSavingGoal}
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isSavingGoal}
+              onClick={() => goalForm.confirmDiscard(() => setGoalModalOpen(false))}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" form="exercise-goal-form" disabled={isSavingGoal} className="btn-primary">
+              {isSavingGoal ? <AscendLoadingIndicator size="sm" /> : null}
+              <span>{isSavingGoal ? 'Saving…' : 'Save goal'}</span>
+            </button>
+          </>
+        }
+      >
+        <Form
+          id="exercise-goal-form"
+          onSubmit={async () => {
             await executeGoalSave(async () => {
               store.setExerciseGoal(targetSessionsInput);
               setGoalModalOpen(false);
             });
           }}
-          className="space-y-4"
         >
-          <p className="text-xs text-content-muted">
-            Set how many workouts you aim for each week. Finishing the week below your target applies a miss penalty.
-          </p>
-          <div>
-            <label className="block label mb-1" htmlFor="target-sessions-input">Workouts per week</label>
-            <input
-              id="target-sessions-input"
-              type="number"
-              min="0"
-              max="21"
-              value={targetSessionsInput}
-              onChange={(e) => setTargetSessionsInput(Number(e.target.value))}
-              className="input"
-              required
-            />
-            <span className="text-micro text-content-disabled mt-1 block">Set to 0 to turn off the weekly penalty.</span>
-          </div>
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setGoalModalOpen(false)} className="btn-secondary flex-1">
-              Cancel
-            </button>
-            <button type="submit" disabled={isSavingGoal} className="btn-primary flex-1 flex items-center justify-center gap-2">
-              {isSavingGoal ? <AscendLoadingIndicator size="sm" /> : null}
-              <span>{isSavingGoal ? 'Saving...' : 'Save Goal'}</span>
-            </button>
-          </div>
-        </form>
+          <NumberField
+            id="target-sessions-input"
+            label="Workouts per week"
+            hint="Set to 0 to turn off the weekly penalty."
+            min={0}
+            max={21}
+            value={targetSessionsInput}
+            onValueChange={setTargetSessionsInput}
+            enterKeyHint="done"
+            required
+          />
+        </Form>
       </Dialog>
     </div>
   );
