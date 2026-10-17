@@ -1069,6 +1069,25 @@ export function Journal({ store }: { store: AppStore }) {
         onClose={() => setSelectedEntry(null)}
         title={selectedEntry ? `Journal entry, ${formatDateLong(selectedEntry.date)}` : ''}
         maxWidth="max-w-lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                const target = selectedEntry;
+                setSelectedEntry(null);
+                setDeleteModalEntry(target);
+              }}
+              className="btn-danger sm:mr-auto"
+            >
+              <Trash2 size={16} />
+              <span>Delete</span>
+            </button>
+            <button type="button" onClick={() => setSelectedEntry(null)} className="btn-secondary">
+              Close
+            </button>
+          </>
+        }
       >
         {selectedEntry && (() => {
           const moodMeta = MOOD_MAP[selectedEntry.mood] || MOOD_MAP.neutral;
@@ -1121,27 +1140,6 @@ export function Journal({ store }: { store: AppStore }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const target = selectedEntry;
-                    setSelectedEntry(null);
-                    setDeleteModalEntry(target);
-                  }}
-                  className="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-theme text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
-                >
-                  <Trash2 size={14} />
-                  <span>Delete</span>
-                </button>
-
-                <button
-                  onClick={() => setSelectedEntry(null)}
-                  className="btn-secondary text-xs px-4 py-2 rounded-lg"
-                >
-                  Close
-                </button>
-              </div>
             </div>
           );
         })()}
