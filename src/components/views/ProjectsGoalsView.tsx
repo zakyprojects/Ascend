@@ -315,11 +315,21 @@ function TaskItemRow({
           </button>
 
           {subtasks.length > 0 && (
-            <span className="figure text-2xs text-content-disabled">
+            <span className="figure text-2xs text-content-muted">
               {Math.round((completedSubtasks / subtasks.length) * 100)}%
             </span>
           )}
         </div>
+        {subtasks.length > 0 && (
+          <ProgressBar
+            value={completedSubtasks}
+            max={subtasks.length}
+            label="Subtask progress"
+            tone={completedSubtasks === subtasks.length ? 'success' : 'cyan'}
+            size="sm"
+            className="mt-1.5"
+          />
+        )}
 
         {isExpanded && (
           <div className="mt-2.5 pl-4 border-l-2 border-overlay-default space-y-2 animate-fade-in">
