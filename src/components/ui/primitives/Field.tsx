@@ -391,9 +391,14 @@ function messageFor(el: Control): string {
   }
   if (v.badInput) return isNumber ? 'Enter a number.' : 'Check this field.';
   if (v.typeMismatch) return (el as HTMLInputElement).type === 'email' ? 'Enter a valid email address.' : 'Check the format.';
-  if (v.rangeUnderflow) return isDateLike ? 'Pick a later date.' : `Enter ${(el as HTMLInputElement).min} or more.`;
-  if (v.rangeOverflow) return isDateLike ? 'Pick an earlier date.' : `Enter ${(el as HTMLInputElement).max} or less.`;
-  if (v.stepMismatch) return 'Enter a whole number.';
+  const isTime = el instanceof HTMLInputElement && el.type === 'time';
+  if (v.rangeUnderflow) return isTime ? 'Pick a later time.' : isDateLike ? 'Pick a later date.' : `Enter ${(el as HTMLInputElement).min} or more.`;
+  if (v.rangeOverflow) return isTime ? 'Pick an earlier time.' : isDateLike ? 'Pick an earlier date.' : `Enter ${(el as HTMLInputElement).max} or less.`;
+  if (v.stepMismatch) {
+    const step = (el as HTMLInputElement).step;
+    if (!isNumber) return 'Check this field.';
+    return !step || step === '1' ? 'Enter a whole number.' : `Use steps of ${step}.`;
+  }
   if (v.tooLong) return `Keep it to ${(el as HTMLInputElement).maxLength} characters.`;
   if (v.tooShort) return `Use at least ${(el as HTMLInputElement).minLength} characters.`;
   if (v.patternMismatch) return el.title || 'Check the format.';
