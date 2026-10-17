@@ -999,9 +999,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
         }
       >
         {deleteAccountError ? (
-          <p role="alert" className="text-sm text-rose-theme">
-            {toUserMessage(deleteAccountError, "Couldn't delete your account. Try again.")}
-          </p>
+          <FieldErrorBubble message={toUserMessage(deleteAccountError, "Couldn't delete your account. Try again.")} attached={false} />
         ) : null}
       </Dialog>
       {/* Loading Overlays for Major Actions */}

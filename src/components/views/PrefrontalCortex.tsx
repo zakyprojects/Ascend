@@ -35,7 +35,7 @@ import {
 import { AppStore } from '@/lib/store';
 import { DEFAULT_TIME_TRACKER_ACTIVITIES } from '@/types';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { cx, Dialog, EmptyState, Form, Input, NumberField, ProgressBar, Select, SlidingPill, Textarea } from '@/components/ui/primitives';
+import { cx, Dialog, EmptyState, FieldErrorBubble, Form, Input, NumberField, ProgressBar, Select, SlidingPill, Textarea } from '@/components/ui/primitives';
 import {
   todayKey,
   formatDateLong,
@@ -683,6 +683,7 @@ function FocusTimerSubmodule({
   }, [activeBlock, activeBlockRemainingSeconds]);
 
   const [showTakeBreakModal, setShowTakeBreakModal] = useState(false);
+  const [breakError, setBreakError] = useState<string | null>(null);
   const [selectedBreakMinutes, setSelectedBreakMinutes] = useState(5);
 
   // Natural Break Expiry Auto-Finalize Effect (guarded to run once per break instance)
@@ -912,7 +913,7 @@ function FocusTimerSubmodule({
     const targetBreakMins = isCustom ? Number(customBreakMins) : breakMinutes;
 
     if (isCustom && (isNaN(targetFocusMins) || targetFocusMins < 1)) {
-      setCustomError('Custom focus duration must be at least 1 minute.');
+      setCustomError('Enter 1 minute or more.');
       return;
     }
     setCustomError(null);
@@ -1064,7 +1065,7 @@ function FocusTimerSubmodule({
   const handleCustomFocusChange = (val: number) => {
     setCustomFocusMins(val);
     if (val < 1) {
-      setCustomError('Custom focus duration must be at least 1 minute.');
+      setCustomError('Enter 1 minute or more.');
     } else {
       setCustomError(null);
       if (!activeSession && isCustom) {
@@ -1288,12 +1289,7 @@ function FocusTimerSubmodule({
                 />
               </div>
 
-              {customError && (
-                <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-theme text-micro flex items-center gap-2">
-                  <AlertTriangle size={14} className="shrink-0" />
-                  <span>{customError}</span>
-                </div>
-              )}
+              {customError && <FieldErrorBubble message={customError} />}
             </div>
           )}
 
@@ -1620,6 +1616,7 @@ function FocusTimerSubmodule({
                               return;
                             }
                             setSelectedBreakMinutes(Math.min(5, maxAllowedBreakMinutes));
+                            setBreakError(null);
                             setShowTakeBreakModal(true);
                           }}
                           className={`flex-1 min-w-[100px] sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap ${
@@ -2259,7 +2256,7 @@ function FocusTimerSubmodule({
                   setShowTakeBreakModal(false);
                   showSuccessToast('Break started', `${selectedBreakMinutes}-minute break started.`);
                 } catch (err: any) {
-                  showErrorToast("Couldn't start break", toUserMessage(err, 'Try again.'));
+                  setBreakError(toUserMessage(err, "Couldn't start the break. Try again."));
                 }
               }}
               className="btn-primary"
@@ -2343,6 +2340,7 @@ function FocusTimerSubmodule({
             </div>
           </div>
 
+          {breakError && <FieldErrorBubble message={breakError} attached={false} />}
         </div>
       </Dialog>
 
