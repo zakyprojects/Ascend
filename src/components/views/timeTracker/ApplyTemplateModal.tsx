@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, Form, Input, useFormController } from '@/components/ui/primitives';
 import { toUserMessage } from '@/lib/userMessage';
 import { TimeTrackerTemplate } from '@/types';
@@ -30,6 +30,17 @@ export function ApplyTemplateModal({
   const [mode, setMode] = useState<'merge' | 'replace'>('merge');
   const [isApplying, setIsApplying] = useState<boolean>(false);
   const formIssues = useFormController();
+
+  // The dialog stays mounted for its exit animation, so each open starts from the caller's values.
+  useEffect(() => {
+    if (!open) return;
+    setSelectedDate(initialDate || '');
+    setSelectedTemplateId(preselectedTemplateId || templates[0]?.id || '');
+    setMode('merge');
+    formIssues.clear();
+    // Prefill once per open: re-running on `templates` changes would reset the user's pick on sync.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -388,19 +388,17 @@ export function TemplateEditorModal({
       </Dialog>
 
       {/* Add / Edit Block Inside Template Modal */}
-      {showBlockModal && (
-        <TimeBlockModal
-          open={showBlockModal}
-          onClose={() => {
-            setShowBlockModal(false);
-            setTargetBlockForModal(null);
-          }}
-          onSave={handleSaveBlockFromModal}
-          activities={activities}
-          editingBlock={targetBlockForModal}
-          existingBlocks={blocks.filter((b) => b.id !== targetBlockForModal?.id)}
-        />
-      )}
+      <TimeBlockModal
+        open={showBlockModal}
+        onClose={() => {
+          setShowBlockModal(false);
+          setTargetBlockForModal(null);
+        }}
+        onSave={handleSaveBlockFromModal}
+        activities={activities}
+        editingBlock={targetBlockForModal}
+        existingBlocks={blocks.filter((b) => b.id !== targetBlockForModal?.id)}
+      />
 
       {/* Transfer Auto-Apply Day Modal */}
       {conflictState && (

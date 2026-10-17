@@ -236,51 +236,43 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
       )}
 
       {/* 3. Global Modals */}
-      {blockModalOpen && (
-        <TimeBlockModal
-          open={blockModalOpen}
-          onClose={() => setBlockModalOpen(false)}
-          onSave={handleSaveBlock}
-          activities={activities}
-          existingBlocks={currentDailyBlocks}
-          editingBlock={editingBlock}
-          defaultStartTime={defaultBlockStartTime}
-        />
-      )}
+      <TimeBlockModal
+        open={blockModalOpen}
+        onClose={() => setBlockModalOpen(false)}
+        onSave={handleSaveBlock}
+        activities={activities}
+        existingBlocks={currentDailyBlocks}
+        editingBlock={editingBlock}
+        defaultStartTime={defaultBlockStartTime}
+      />
 
-      {templateModalOpen && (
-        <TemplateEditorModal
-          open={templateModalOpen}
-          onClose={() => setTemplateModalOpen(false)}
-          onSave={handleSaveTemplate}
-          activities={activities}
-          templates={templates}
-          editingTemplate={editingTemplate}
-        />
-      )}
+      <TemplateEditorModal
+        open={templateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+        onSave={handleSaveTemplate}
+        activities={activities}
+        templates={templates}
+        editingTemplate={editingTemplate}
+      />
 
-      {applyTemplateModalOpen && (
-        <ApplyTemplateModal
-          open={applyTemplateModalOpen}
-          onClose={() => {
-            setApplyTemplateModalOpen(false);
-            setPreselectedTemplateId(undefined);
-          }}
-          templates={templates}
-          initialDate={selectedDateKey}
-          preselectedTemplateId={preselectedTemplateId}
-          onApply={handleApplyTemplate}
-        />
-      )}
+      <ApplyTemplateModal
+        open={applyTemplateModalOpen}
+        onClose={() => {
+          setApplyTemplateModalOpen(false);
+          setPreselectedTemplateId(undefined);
+        }}
+        templates={templates}
+        initialDate={selectedDateKey}
+        preselectedTemplateId={preselectedTemplateId}
+        onApply={handleApplyTemplate}
+      />
 
-      {activityModalOpen && (
-        <ActivityModal
-          open={activityModalOpen}
-          onClose={() => setActivityModalOpen(false)}
-          onSave={handleSaveActivity}
-          editingActivity={editingActivity}
-        />
-      )}
+      <ActivityModal
+        open={activityModalOpen}
+        onClose={() => setActivityModalOpen(false)}
+        onSave={handleSaveActivity}
+        editingActivity={editingActivity}
+      />
     </div>
   );
 }
