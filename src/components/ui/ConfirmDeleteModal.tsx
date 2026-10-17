@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Dialog } from './primitives';
+import { Dialog, FieldErrorBubble } from './primitives';
 import { Trash2 } from 'lucide-react';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
-import { useToast } from './Toast';
 import { toUserMessage } from '@/lib/userMessage';
 
 interface ConfirmDeleteModalProps {
@@ -28,15 +27,22 @@ export function ConfirmDeleteModal({
 }: ConfirmDeleteModalProps) {
   const [internalDeleting, setInternalDeleting] = useState(false);
   const isDeleting = externalIsDeleting || internalDeleting;
-  const { showErrorToast } = useToast();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Each time it opens it starts without the last attempt's message.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setDeleteError(null);
+  }
 
   const handleConfirmClick = async () => {
     setInternalDeleting(true);
+    setDeleteError(null);
     try {
       await onConfirm();
     } catch (err: any) {
       console.error('Delete failed:', err);
-      showErrorToast('Couldn’t delete', toUserMessage(err, 'Try again.'));
+      setDeleteError(toUserMessage(err, 'Couldn’t delete. Try again.'));
     } finally {
       setInternalDeleting(false);
     }
@@ -68,7 +74,7 @@ export function ConfirmDeleteModal({
         </>
       }
     >
-      {null}
+      {deleteError ? <FieldErrorBubble message={deleteError} attached={false} /> : null}
     </Dialog>
   );
 }
