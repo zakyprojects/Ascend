@@ -26,7 +26,7 @@ export type {
 export { Dialog } from './Dialog';
 export type { DialogProps } from './Dialog';
 
-export { Input, Select, Textarea, NumberField, Form, FieldRow } from './Field';
+export { Input, Select, Textarea, NumberField, Form, FormAlert, FieldGroup, FieldMessage, FieldRow, FieldErrorBubble, useFormController, useFieldIssue } from './Field';
 export type {
   BaseFieldProps,
   InputProps,
@@ -34,6 +34,8 @@ export type {
   TextareaProps,
   NumberFieldProps,
   FormProps,
+  FormIssue,
+  FormController,
 } from './Field';
 
 export { Badge } from './Badge';

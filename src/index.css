@@ -1062,6 +1062,21 @@
     @apply border-error focus:border-error focus:ring-error/20;
   }
 
+  /* The field error bubble (FieldErrorBubble): its pointer touches the field above it. */
+  .field-error-attached::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 14px;
+    width: 10px;
+    height: 10px;
+    transform: rotate(45deg);
+    background: inherit;
+    border-left: 1px solid;
+    border-top: 1px solid;
+    border-color: inherit;
+  }
+
   /* Solid destructive confirm (delete, reset, log out); .btn-danger is the soft variant. */
   .btn-danger-solid {
     @apply btn bg-rose-600 text-white hover:bg-rose-700;

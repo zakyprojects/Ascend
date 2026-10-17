@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
+import { AlertCircle, ChevronDown } from 'lucide-react';
 import { cx } from './shared';
 
 export interface BaseFieldProps {
@@ -10,8 +10,44 @@ export interface BaseFieldProps {
   optional?: boolean;
 }
 
-/** Field id -> message, filled by <Form> when a submit fails validation. */
-export const FormErrorsContext = React.createContext<Record<string, string>>({});
+/**
+ * The one problem a form is showing: on a field (`field` = that control's or FieldGroup's id)
+ * or about the whole form (no `field`). Ascend shows one problem at a time, where it is.
+ */
+export interface FormIssue {
+  message: string;
+  field?: string;
+}
+
+export const FormIssueContext = React.createContext<FormIssue | null>(null);
+
+/**
+ * The app's single error look: a bubble attached under the field it is about, with the brand's
+ * alert mark. `attached` draws the pointer to the field; a form-wide message has none.
+ */
+export function FieldErrorBubble({ id, message, attached = true }: { id?: string; message: string; attached?: boolean }) {
+  return (
+    <div
+      id={id}
+      role="alert"
+      className={cx(
+        'field-error relative mt-2 flex w-fit max-w-full items-start gap-2.5 rounded-xl border border-rose-500/40 bg-bg-700 py-2 pl-2 pr-3 text-sm text-content-primary shadow-lg motion-safe:animate-enter-up',
+        attached && 'field-error-attached'
+      )}
+    >
+      <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-rose-600 text-white">
+        <AlertCircle size={14} strokeWidth={2.5} aria-hidden="true" />
+      </span>
+      <span className="leading-5">{message}</span>
+    </div>
+  );
+}
+
+/** The issue a field shows: its own `error` prop wins, else the form's issue when it names this id. */
+export function useFieldIssue(id: string, error?: string): string | undefined {
+  const issue = React.useContext(FormIssueContext);
+  return error || (issue?.field === id ? issue.message : undefined);
+}
 
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement>,
@@ -39,12 +75,10 @@ function FieldShell({ id, label, hint, error, optional, children }: FieldShellPr
   const hasHint = Boolean(hint);
   const hasError = Boolean(error);
 
-  if (!hasLabel && !hasHint && !hasError) {
-    return children;
-  }
-
+  // Always the same wrapper, so the control is never remounted (and never loses focus) when a
+  // message appears.
   return (
-    <div className="w-full">
+    <div className="w-full" data-field={id}>
       {hasLabel && (
         <label htmlFor={id} className="label block mb-1.5">
           {label}
@@ -52,12 +86,8 @@ function FieldShell({ id, label, hint, error, optional, children }: FieldShellPr
         </label>
       )}
       {children}
-      {hasError && (
-        <p id={`${id}-error`} className="mt-1.5 text-xs text-error-text">
-          {error}
-        </p>
-      )}
-      {hasHint && (
+      {hasError && <FieldErrorBubble id={`${id}-error`} message={error!} />}
+      {hasHint && !hasError && (
         <p id={`${id}-hint`} className="mt-1.5 text-xs text-content-muted">
           {hint}
         </p>
@@ -87,8 +117,7 @@ function useFieldLinking(
     }
   }, [hasName, id]);
 
-  const formError = React.useContext(FormErrorsContext)[id];
-  const shownError = error || formError;
+  const shownError = useFieldIssue(id, error);
   const errorId = shownError ? `${id}-error` : undefined;
   const hintId = hint ? `${id}-hint` : undefined;
 
@@ -300,9 +329,39 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
 
 NumberField.displayName = 'NumberField';
 
+export interface FormController {
+  /** Show a problem found after submit (server answer, a rule the fields can't express). */
+  showError: (message: string, field?: string) => void;
+  clear: () => void;
+}
+
+interface BoundController extends FormController {
+  bind: (setter: ((issue: FormIssue | null) => void) | null) => void;
+}
+
+/** A handle for showing a form's problems from its submit handler. Pass it to `<Form controller>`. */
+export function useFormController(): FormController {
+  return React.useMemo<BoundController>(() => {
+    let setter: ((issue: FormIssue | null) => void) | null = null;
+    return {
+      bind: (next) => {
+        setter = next;
+      },
+      showError: (message, field) => setter?.({ message, field }),
+      clear: () => setter?.(null),
+    };
+  }, []);
+}
+
 export interface FormProps extends Omit<React.FormHTMLAttributes<HTMLFormElement>, 'onSubmit'> {
-  /** Runs only when every field passes its rules (required, min/max, length, type). */
+  /** Runs only when every field passes its rules (required, min/max, length, type, `validate`). */
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+  /** Rules the fields can't express (two fields that must match, a choice in a FieldGroup).
+   *  Return the first problem, or null. Runs after the fields' own rules pass. */
+  validate?: () => FormIssue | null;
+  controller?: FormController;
+  /** Where a form-wide message goes: 'end' of the form (default) or wherever `<FormAlert />` sits. */
+  alert?: 'end' | 'manual';
 }
 
 type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
@@ -317,73 +376,212 @@ function isBlankText(el: Control): boolean {
 
 function messageFor(el: Control): string {
   const v = el.validity;
-  if (v.valueMissing || isBlankText(el)) return el instanceof HTMLSelectElement ? 'Choose one.' : 'Required.';
+  const isNumber = el instanceof HTMLInputElement && el.type === 'number';
   const isDateLike = el instanceof HTMLInputElement && ['date', 'time', 'datetime-local', 'month', 'week'].includes(el.type);
-  if (v.rangeUnderflow) return isDateLike ? 'Pick a later date.' : `Must be ${(el as HTMLInputElement).min} or more.`;
-  if (v.rangeOverflow) return isDateLike ? 'Pick an earlier date.' : `Must be ${(el as HTMLInputElement).max} or less.`;
-  if (v.tooLong) return `Keep it under ${(el as HTMLInputElement).maxLength} characters.`;
+  if (v.valueMissing || isBlankText(el)) {
+    if (el instanceof HTMLSelectElement) return 'Choose an option.';
+    if (isNumber) return 'Enter a number.';
+    if (isDateLike) return el.type === 'time' ? 'Pick a time.' : 'Pick a date.';
+    return 'Fill in this field.';
+  }
+  if (v.badInput) return isNumber ? 'Enter a number.' : 'Check this field.';
+  if (v.typeMismatch) return (el as HTMLInputElement).type === 'email' ? 'Enter a valid email address.' : 'Check the format.';
+  if (v.rangeUnderflow) return isDateLike ? 'Pick a later date.' : `Enter ${(el as HTMLInputElement).min} or more.`;
+  if (v.rangeOverflow) return isDateLike ? 'Pick an earlier date.' : `Enter ${(el as HTMLInputElement).max} or less.`;
+  if (v.stepMismatch) return 'Enter a whole number.';
+  if (v.tooLong) return `Keep it to ${(el as HTMLInputElement).maxLength} characters.`;
   if (v.tooShort) return `Use at least ${(el as HTMLInputElement).minLength} characters.`;
-  if (v.stepMismatch) return 'Use a whole number.';
   if (v.patternMismatch) return el.title || 'Check the format.';
-  if (v.badInput) return 'Enter a number.';
-  return el.validationMessage || 'Check this field.';
+  return 'Check this field.';
+}
+
+/** Moves to the field a problem is about: focus without the jump, then scroll it to the middle. */
+function revealField(form: HTMLFormElement | null, fieldId: string | undefined) {
+  if (!form) return;
+  const target = fieldId
+    ? form.ownerDocument.getElementById(fieldId)
+    : form.querySelector<HTMLElement>('[data-form-alert]');
+  if (!target) return;
+  const focusable = target.matches('input, select, textarea, button')
+    ? target
+    : target.querySelector<HTMLElement>('input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])') ?? target;
+  if (fieldId) focusable.focus({ preventScroll: true });
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Scroll the field's whole block (label to message) into view, not just the control.
+  const block = (target.closest('[data-field]') as HTMLElement | null) ?? target;
+  block.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
 }
 
 /**
- * A form that shows its rule errors under each field (Ascend style) instead of the browser's
- * bubble. Fields are linked by id: the Field primitives pick their message up from context.
- * A field's message clears as soon as it is edited.
+ * Every Ascend form. On submit it checks the fields' own rules, then `validate`; the first problem
+ * is shown as one bubble under that field, the field takes focus and is scrolled into view. A
+ * problem from the submit handler (`controller.showError`) is shown the same way, on its field or
+ * as a form-wide message. Editing the field (or, for a form-wide message, anything) clears it.
+ * Never pair a form with an error toast.
  */
 export const Form = React.forwardRef<HTMLFormElement, FormProps>(
-  ({ onSubmit, children, onInput, ...props }, ref) => {
-    const [errors, setErrors] = React.useState<Record<string, string>>({});
+  ({ onSubmit, validate, controller, alert = 'end', children, onInput, onClick, ...props }, ref) => {
+    const [issue, setIssue] = React.useState<FormIssue | null>(null);
+    // Bumped on every new problem so the same message shown twice still moves to its field.
+    const [revealTick, setRevealTick] = React.useState(0);
+    const formRef = React.useRef<HTMLFormElement | null>(null);
+
+    const show = React.useCallback((next: FormIssue | null) => {
+      setIssue(next);
+      if (next) setRevealTick((t) => t + 1);
+    }, []);
+
+    React.useEffect(() => {
+      const bound = controller as BoundController | undefined;
+      bound?.bind(show);
+      return () => bound?.bind(null);
+    }, [controller, show]);
+
+    // Mark the field with the problem (also raw `.input` controls, which style aria-invalid).
+    React.useEffect(() => {
+      if (!issue?.field) return;
+      const el = formRef.current?.ownerDocument.getElementById(issue.field);
+      if (!el || el.hasAttribute('aria-invalid')) return;
+      el.setAttribute('aria-invalid', 'true');
+      return () => el.removeAttribute('aria-invalid');
+    }, [issue]);
+
+    React.useEffect(() => {
+      if (revealTick && issue) revealField(formRef.current, issue.field);
+      // Only a newly shown problem moves focus; re-renders with the same problem don't.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [revealTick]);
+
+    const clearFor = (target: EventTarget | null) => {
+      if (!issue) return;
+      if (!issue.field) {
+        show(null);
+        return;
+      }
+      const el = target as HTMLElement | null;
+      const owner = el?.closest?.('[data-field]')?.getAttribute('data-field') ?? el?.id;
+      if (owner === issue.field || el?.id === issue.field) show(null);
+    };
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       const form = event.currentTarget;
-      const next: Record<string, string> = {};
-      let first: HTMLElement | null = null;
       for (const el of Array.from(form.elements)) {
         if (
           (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) &&
+          !el.disabled &&
           (!el.validity.valid || isBlankText(el))
         ) {
-          if (el.id) next[el.id] = messageFor(el);
-          first ??= el;
+          show({ message: messageFor(el), field: el.id || undefined });
+          return;
         }
       }
-      if (first) {
-        setErrors(next);
-        first.focus();
+      const rule = validate?.();
+      if (rule) {
+        show(rule);
         return;
       }
-      setErrors({});
+      show(null);
       void onSubmit(event);
     };
 
     return (
-      <FormErrorsContext.Provider value={errors}>
+      <FormIssueContext.Provider value={issue}>
         <form
-          ref={ref}
+          ref={(node) => {
+            formRef.current = node;
+            if (typeof ref === 'function') ref(node);
+            else if (ref) ref.current = node;
+          }}
           noValidate
           onSubmit={handleSubmit}
           onInput={(e) => {
-            const id = (e.target as HTMLElement).id;
-            if (id && errors[id]) {
-              setErrors(({ [id]: _cleared, ...rest }) => rest);
-            }
+            clearFor(e.target);
             onInput?.(e);
+          }}
+          onClick={(e) => {
+            // Choices made by tapping (FieldGroup buttons) clear their message too.
+            if ((e.target as HTMLElement).closest('button[type="button"]')) clearFor(e.target);
+            onClick?.(e);
           }}
           {...props}
         >
           {children}
+          {alert === 'end' && <FormAlert />}
         </form>
-      </FormErrorsContext.Provider>
+      </FormIssueContext.Provider>
     );
   }
 );
 
 Form.displayName = 'Form';
+
+/** The form-wide message (not about one field), in the same bubble. Placed by `<Form alert="manual">`. */
+export function FormAlert() {
+  const issue = React.useContext(FormIssueContext);
+  if (!issue || issue.field) return null;
+  return (
+    <div data-form-alert>
+      <FieldErrorBubble message={issue.message} attached={false} />
+    </div>
+  );
+}
+
+/** The message slot for a raw control (not an Input/Select/Textarea) inside a Form: place it
+ *  right after the control and name the control's id. */
+export function FieldMessage({ htmlFor }: { htmlFor: string }) {
+  const message = useFieldIssue(htmlFor);
+  return message ? <FieldErrorBubble id={`${htmlFor}-error`} message={message} /> : null;
+}
+
+/**
+ * A labelled set of choices that isn't one control (avatar grid, segmented options, colour
+ * swatches). Its id is what `validate` / `showError` name; the message shows under the set.
+ */
+export function FieldGroup({
+  id,
+  label,
+  optional,
+  hint,
+  error,
+  className,
+  children,
+}: {
+  id: string;
+  label: React.ReactNode;
+  optional?: boolean;
+  hint?: string;
+  error?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const message = useFieldIssue(id, error);
+  return (
+    <div data-field={id} className={className}>
+      <p id={`${id}-label`} className="label block mb-1.5">
+        {label}
+        {optional && <span className="ml-1 font-normal text-content-muted">(optional)</span>}
+      </p>
+      <div
+        id={id}
+        role="group"
+        aria-labelledby={`${id}-label`}
+        aria-describedby={message ? `${id}-error` : hint ? `${id}-hint` : undefined}
+        aria-invalid={message ? true : undefined}
+        tabIndex={-1}
+        className={cx('rounded-xl outline-none', message && 'ring-2 ring-rose-500/40 ring-offset-2 ring-offset-bg-800')}
+      >
+        {children}
+      </div>
+      {message && <FieldErrorBubble id={`${id}-error`} message={message} />}
+      {hint && !message && (
+        <p id={`${id}-hint`} className="mt-1.5 text-xs text-content-muted">
+          {hint}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /** Two fields side by side from sm up; stacked on phones so selects and numbers keep their room. */
 export function FieldRow({ children, className }: { children: React.ReactNode; className?: string }) {
