@@ -35,7 +35,7 @@ import {
 import { AppStore } from '@/lib/store';
 import { DEFAULT_TIME_TRACKER_ACTIVITIES } from '@/types';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { cx, Dialog, EmptyState, ProgressBar, SlidingPill } from '@/components/ui/primitives';
+import { cx, Dialog, EmptyState, Form, Input, NumberField, ProgressBar, Select, SlidingPill, Textarea } from '@/components/ui/primitives';
 import {
   todayKey,
   formatDateLong,
@@ -1269,32 +1269,23 @@ function FocusTimerSubmodule({
                 <span className="text-2xs text-content-disabled">Minimum 1 min, no maximum</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label htmlFor="pfc-custom-focus-mins" className="block text-micro font-medium text-content-muted mb-1">Focus (min)</label>
-                  <input
-                    id="pfc-custom-focus-mins"
-                    type="number"
-                    min="1"
-                    step="5"
-                    value={customFocusMins}
-                    onChange={(e) => handleCustomFocusChange(parseInt(e.target.value) || 0)}
-                    className="input text-xs tabular-nums text-content-primary"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="pfc-custom-break-mins" className="block text-micro font-medium text-content-muted mb-1">Break (min)</label>
-                  <input
-                    id="pfc-custom-break-mins"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={customBreakMins}
-                    onChange={(e) => handleCustomBreakChange(parseInt(e.target.value) || 1)}
-                    className="input text-xs tabular-nums text-content-primary"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-3">
+                <NumberField
+                  id="pfc-custom-focus-mins"
+                  label="Focus (min)"
+                  min={1}
+                  value={customFocusMins}
+                  onValueChange={(v) => handleCustomFocusChange(Math.floor(v))}
+                  className="tabular-nums"
+                />
+                <NumberField
+                  id="pfc-custom-break-mins"
+                  label="Break (min)"
+                  min={1}
+                  value={customBreakMins}
+                  onValueChange={(v) => handleCustomBreakChange(Math.max(1, Math.floor(v)))}
+                  className="tabular-nums"
+                />
               </div>
 
               {customError && (
@@ -1323,33 +1314,29 @@ function FocusTimerSubmodule({
 
           {/* Task Tagging Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto text-left">
-            <div>
-              <label htmlFor="pfc-task-name" className="block text-micro font-medium text-content-muted mb-1">Task</label>
-              <input
-                id="pfc-task-name"
-                type="text"
-                disabled={!!activeSession}
-                value={taskName}
-                onChange={(e) => setTaskName(e.target.value)}
-                placeholder="What are you working on?"
-                className="input text-xs"
-              />
-            </div>
-            <div>
-              <label htmlFor="pfc-tag-skill" className="block text-micro font-medium text-content-muted mb-1">Skill (optional)</label>
-              <select
-                id="pfc-tag-skill"
-                disabled={!!activeSession}
-                value={selectedSkillId}
-                onChange={(e) => setSelectedSkillId(e.target.value)}
-                className="input text-xs"
-              >
-                <option value="">No skill</option>
-                {skills.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
+            <Input
+              id="pfc-task-name"
+              label="Task"
+              disabled={!!activeSession}
+              value={taskName}
+              onChange={(e) => setTaskName(e.target.value)}
+              placeholder="What are you working on?"
+              maxLength={120}
+              autoComplete="off"
+            />
+            <Select
+              id="pfc-tag-skill"
+              label="Skill"
+              optional
+              disabled={!!activeSession}
+              value={selectedSkillId}
+              onChange={(e) => setSelectedSkillId(e.target.value)}
+            >
+              <option value="">No skill</option>
+              {skills.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </Select>
           </div>
 
           {/* Controls */}
@@ -2194,8 +2181,17 @@ function FocusTimerSubmodule({
       )}
 
       {/* "About Deep Work" Info Modal */}
-      <Dialog open={aboutModalOpen} onClose={() => setAboutModalOpen(false)} title="About deep focus">
-        <div className="space-y-5 text-content-tertiary text-xs leading-relaxed max-h-[75vh] overflow-y-auto pr-1">
+      <Dialog
+        open={aboutModalOpen}
+        onClose={() => setAboutModalOpen(false)}
+        title="About deep focus"
+        footer={
+          <button type="button" onClick={() => setAboutModalOpen(false)} className="btn-primary">
+            Got it
+          </button>
+        }
+      >
+        <div className="space-y-5 text-content-tertiary text-xs leading-relaxed">
           {/* Section 1 */}
           <div className="p-3.5 bg-cyan-500/10 rounded-xl border border-cyan-500/20 space-y-1.5">
             <h3 className="text-cyan-hierarchy section-title flex items-center gap-2">
@@ -2241,99 +2237,17 @@ function FocusTimerSubmodule({
               </div>
             </div>
           </div>
-
-          <div className="pt-2 flex justify-end">
-            <button onClick={() => setAboutModalOpen(false)} className="btn-primary text-xs px-6 py-2">
-              Got It
-            </button>
-          </div>
         </div>
       </Dialog>
 
       {/* Take Break Modal in Live Schedule Sync */}
-      <Dialog open={showTakeBreakModal} onClose={() => setShowTakeBreakModal(false)} title="Take a Break">
-        <div className="space-y-5">
-          <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-success-text">
-            <Coffee size={18} className="shrink-0 text-success-text" />
-            <div>
-              <p className="item-name !text-content-secondary">Break during {activeBlock?.customTitle || activeBlockActivity?.name}</p>
-              <p className="text-content-muted mt-0.5">
-                Block ends at {activeBlock ? formatTime12h(activeBlock.endTime) : ''}. Up to {maxAllowedBreakMinutes} min available.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block label">
-              Break length
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[5, 10, 15].map((mins) => {
-                const isAllowed = maxAllowedBreakMinutes >= mins;
-                const isSelected = selectedBreakMinutes === mins;
-                return (
-                  <button
-                    key={mins}
-                    type="button"
-                    disabled={!isAllowed}
-                    onClick={() => setSelectedBreakMinutes(mins)}
-                    className={`py-3 px-2 rounded-xl text-xs font-medium transition-all flex flex-col items-center justify-center gap-1 border ${
-                      !isAllowed
-                        ? 'opacity-40 cursor-not-allowed border-overlay-subtle text-content-disabled'
-                        : isSelected
-                        ? 'bg-emerald-500/20 text-success-text border-emerald-500/50'
-                        : 'text-content-tertiary border-overlay-subtle hover:bg-overlay-subtle hover:text-content-primary cursor-pointer'
-                    }`}
-                  >
-                    <span className="figure text-base">{mins}m</span>
-                    <span className="text-2xs opacity-80 font-normal">
-                      {mins === 5 ? 'Micro' : mins === 10 ? 'Standard' : 'Extended'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Custom Duration Input / Stepper */}
-            <div className="pt-2">
-              <div className="flex items-center justify-between text-xs text-content-muted mb-1.5">
-                <span>Custom duration (1–{maxAllowedBreakMinutes}m):</span>
-                <span className="figure text-success-text">{selectedBreakMinutes} minutes</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min={1}
-                  max={maxAllowedBreakMinutes}
-                  step={1}
-                  value={selectedBreakMinutes}
-                  onChange={(e) => setSelectedBreakMinutes(Number(e.target.value))}
-                  className="flex-1 accent-emerald-400 cursor-pointer h-2 bg-bg-700 rounded-lg"
-                />
-                <input
-                  type="number"
-                  min={1}
-                  max={maxAllowedBreakMinutes}
-                  value={selectedBreakMinutes}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    if (val >= 1 && val <= maxAllowedBreakMinutes) {
-                      setSelectedBreakMinutes(val);
-                    }
-                  }}
-                  className="w-16 px-2 py-1.5 text-center tabular-nums text-xs rounded-lg bg-bg-700 border border-overlay-default text-content-secondary focus:outline-none focus:border-emerald-500/50"
-                />
-                <span className="text-xs text-content-muted">min</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setShowTakeBreakModal(false)}
-              className="btn-secondary flex-1 text-xs"
-            >
+      <Dialog
+        open={showTakeBreakModal}
+        onClose={() => setShowTakeBreakModal(false)}
+        title="Take a break"
+        footer={
+          <>
+            <button type="button" onClick={() => setShowTakeBreakModal(false)} className="btn-secondary">
               Cancel
             </button>
             <button
@@ -2348,34 +2262,108 @@ function FocusTimerSubmodule({
                   showErrorToast("Couldn't start break", toUserMessage(err, 'Try again.'));
                 }
               }}
-              className="btn-primary flex-1 text-xs flex items-center justify-center gap-1.5"
+              className="btn-primary"
             >
-              <Coffee size={14} />
-              <span>Start {selectedBreakMinutes}m Break</span>
+              <Coffee size={16} />
+              <span>Start {selectedBreakMinutes} min break</span>
             </button>
+          </>
+        }
+      >
+        <div className="space-y-5">
+          <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-success-text">
+            <Coffee size={18} className="shrink-0 text-success-text" />
+            <div>
+              <p className="item-name !text-content-secondary">Break during {activeBlock?.customTitle || activeBlockActivity?.name}</p>
+              <p className="text-content-muted mt-0.5">
+                Block ends at {activeBlock ? formatTime12h(activeBlock.endTime) : ''}. Up to {maxAllowedBreakMinutes} min available.
+              </p>
+            </div>
           </div>
+
+          <div className="space-y-2">
+            <p className="block label">
+              Break length
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {[5, 10, 15].map((mins) => {
+                const isAllowed = maxAllowedBreakMinutes >= mins;
+                const isSelected = selectedBreakMinutes === mins;
+                return (
+                  <button
+                    key={mins}
+                    type="button"
+                    disabled={!isAllowed}
+                    onClick={() => setSelectedBreakMinutes(mins)}
+                    aria-pressed={isSelected}
+                    className={`py-3 px-2 rounded-xl text-xs font-medium transition-all flex flex-col items-center justify-center gap-1 border ${
+                      !isAllowed
+                        ? 'opacity-40 cursor-not-allowed border-overlay-subtle text-content-disabled'
+                        : isSelected
+                        ? 'bg-primary-500/15 text-brand-text border-primary-500/50'
+                        : 'text-content-tertiary border-overlay-subtle hover:bg-overlay-subtle hover:text-content-primary cursor-pointer'
+                    }`}
+                  >
+                    <span className="figure text-base">{mins}m</span>
+                    <span className="text-2xs opacity-80 font-normal">
+                      {mins === 5 ? 'Micro' : mins === 10 ? 'Standard' : 'Extended'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom Duration Input / Stepper */}
+            <div className="pt-2">
+              <label htmlFor="pfc-break-range" className="block text-xs text-content-muted mb-1.5">
+                Custom length (1–{maxAllowedBreakMinutes} min)
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  id="pfc-break-range"
+                  type="range"
+                  min={1}
+                  max={maxAllowedBreakMinutes}
+                  step={1}
+                  value={selectedBreakMinutes}
+                  onChange={(e) => setSelectedBreakMinutes(Number(e.target.value))}
+                  className="flex-1 h-11 sm:h-6 accent-primary-500 cursor-pointer"
+                />
+                <div className="w-20 shrink-0">
+                  <NumberField
+                    aria-label="Break length in minutes"
+                    min={1}
+                    max={maxAllowedBreakMinutes}
+                    value={selectedBreakMinutes}
+                    onValueChange={(val) => setSelectedBreakMinutes(Math.min(maxAllowedBreakMinutes, Math.max(1, Math.round(val))))}
+                    className="text-center tabular-nums"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </Dialog>
 
       {/* Confirmation Dialog for Discarding Active Session */}
-      <Dialog open={confirmResetOpen} onClose={() => setConfirmResetOpen(false)} title="Discard Focus Session?">
-        <div className="space-y-4 text-xs text-content-tertiary">
-          <p>
-            Discarding stops the timer. No points or logs will be saved.
-          </p>
-          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-warning-text flex items-center gap-2">
-            <AlertTriangle size={16} className="shrink-0 text-warning-text" />
-            <span>Your current progress will be lost.</span>
-          </div>
-          <div className="flex gap-2 pt-2">
-            <button onClick={() => setConfirmResetOpen(false)} className="btn-secondary flex-1">
-              Cancel
+      <Dialog
+        open={confirmResetOpen}
+        onClose={() => setConfirmResetOpen(false)}
+        title="Discard focus session?"
+        description="This stops the timer. No points or logs are saved, and the progress is lost."
+        footer={
+          <>
+            <button type="button" onClick={() => setConfirmResetOpen(false)} className="btn-secondary">
+              Keep going
             </button>
-            <button onClick={handleConfirmDiscardSession} className="btn-primary bg-rose-500 hover:bg-rose-600 hover:shadow-sm text-white flex-1">
-              Discard Session
+            <button type="button" onClick={handleConfirmDiscardSession} className="btn-danger-solid">
+              Discard session
             </button>
-          </div>
-        </div>
+          </>
+        }
+      >
+        {null}
       </Dialog>
 
       {/* Post-Session Reflection Modal */}
@@ -2384,37 +2372,37 @@ function FocusTimerSubmodule({
         onClose={() => setReflectionModalOpen(false)}
         dirty={sessionReflectionForm.dirty}
         title="Focus session complete"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => sessionReflectionForm.confirmDiscard(() => setReflectionModalOpen(false))}
+              className="btn-secondary"
+            >
+              Skip
+            </button>
+            <button type="button" onClick={handleSaveReflection} className="btn-primary">
+              <Check size={16} />
+              <span>Save reflection</span>
+            </button>
+          </>
+        }
       >
         <div className="space-y-4">
           <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-xs text-cyan-hierarchy">
             You logged <strong>{completedSessionData?.durationMinutes} minutes</strong> of focus on <strong>"{completedSessionData?.taskName}"</strong>.
           </div>
 
-          <div>
-            <label htmlFor="pfc-session-reflection" className="block label mb-1">
-              Reflection (optional)
-            </label>
-            <textarea
-              id="pfc-session-reflection"
-              value={reflectionText}
-              onChange={(e) => setReflectionText(e.target.value)}
-              placeholder="What did you get done? What went well?"
-              className="input min-h-[90px] text-xs"
-            />
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              onClick={() => sessionReflectionForm.confirmDiscard(() => setReflectionModalOpen(false))}
-              className="btn-secondary flex-1 text-xs"
-            >
-              Skip
-            </button>
-            <button onClick={handleSaveReflection} className="btn-primary flex-1 text-xs flex items-center justify-center gap-1.5">
-              <Check size={14} />
-              <span>Save Reflection</span>
-            </button>
-          </div>
+          <Textarea
+            id="pfc-session-reflection"
+            label="Reflection"
+            optional
+            value={reflectionText}
+            onChange={(e) => setReflectionText(e.target.value)}
+            placeholder="What did you get done? What went well?"
+            className="min-h-[90px]"
+            maxLength={2000}
+          />
         </div>
       </Dialog>
 
@@ -2437,7 +2425,7 @@ function FocusTimerSubmodule({
           }
         }}
         isDeleting={deleteModalLog ? isKeyLoading(`delete_focus_log_${deleteModalLog.id}`) : false}
-        title="Delete Focus Session?"
+        title="Delete focus session?"
         itemName={deleteModalLog?.taskName}
         description={
           deleteModalLog?.date === todayKey()
@@ -2473,17 +2461,23 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !rationale.trim()) return;
-    store.addDecision(title, rationale, expectedOutcome, revisitDate);
+    store.addDecision(title.trim(), rationale.trim(), expectedOutcome.trim(), revisitDate);
     setModalOpen(false);
+  };
+
+  // Every open starts clean: a dismissed draft is not shown again.
+  const openDecisionModal = () => {
     setTitle('');
     setRationale('');
     setExpectedOutcome('');
+    setRevisitDate(todayKey());
+    setModalOpen(true);
   };
 
   const handleReflectionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reflectModalDecision || !reflectionText.trim()) return;
-    store.reflectDecision(reflectModalDecision.id, reflectionText);
+    store.reflectDecision(reflectModalDecision.id, reflectionText.trim());
     setReflectModalDecision(null);
     setReflectionText('');
   };
@@ -2495,14 +2489,14 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           <h2 className="section-title">Decision Journal</h2>
           <p className="text-xs text-content-disabled">Log big decisions and revisit them later to check your thinking.</p>
         </div>
-        <button onClick={() => setModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5">
+        <button onClick={openDecisionModal} className="btn-primary text-xs flex items-center gap-1.5">
           <Plus size={16} />
           <span>Log Decision</span>
         </button>
       </div>
 
       {decisionLogs.length === 0 ? (
-        <EmptyState icon={Scale} title="No decisions logged yet" description="Log a choice, why you made it, and a date to check how it went." action={<button onClick={() => setModalOpen(true)} className="btn-primary">Log Your First Decision</button>} />
+        <EmptyState icon={Scale} title="No decisions logged yet" description="Log a choice, why you made it, and a date to check how it went." action={<button onClick={openDecisionModal} className="btn-primary">Log Your First Decision</button>} />
       ) : (
         <div className="space-y-3">
           {decisionLogs.map((d) => (
@@ -2546,7 +2540,10 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
                 </div>
               ) : (
                 <button
-                  onClick={() => setReflectModalDecision(d)}
+                  onClick={() => {
+                    setReflectionText('');
+                    setReflectModalDecision(d);
+                  }}
                   className="btn-secondary text-xs w-full py-1.5 flex items-center justify-center gap-1.5"
                 >
                   <Edit3 size={14} className="text-purple-hierarchy" />
@@ -2559,70 +2556,65 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
       )}
 
       {/* Log Decision Modal */}
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} dirty={decisionForm.dirty} title="Log Decision">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="pfc-decision-title" className="block label mb-1">Decision</label>
-            <input
-              id="pfc-decision-title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Switch to a new project framework"
-              className="input"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="pfc-decision-rationale" className="block label mb-1">Why are you deciding this?</label>
-            <textarea
-              id="pfc-decision-rationale"
-              value={rationale}
-              onChange={(e) => setRationale(e.target.value)}
-              placeholder="What facts or assumptions led you here?"
-              className="input min-h-[80px]"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="pfc-decision-outcome" className="block label mb-1">Expected outcome</label>
-            <input
-              id="pfc-decision-outcome"
-              type="text"
-              value={expectedOutcome}
-              onChange={(e) => setExpectedOutcome(e.target.value)}
-              placeholder="What do you expect will happen?"
-              className="input"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="pfc-decision-revisit-date" className="block label mb-1">Revisit on</label>
-            <input
-              id="pfc-decision-revisit-date"
-              type="date"
-              value={revisitDate}
-              onChange={(e) => setRevisitDate(e.target.value)}
-              className="input"
-              required
-            />
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => decisionForm.confirmDiscard(() => setModalOpen(false))}
-              className="btn-secondary flex-1"
-            >
+      <Dialog
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        dirty={decisionForm.dirty}
+        title="Log decision"
+        footer={
+          <>
+            <button type="button" onClick={() => decisionForm.confirmDiscard(() => setModalOpen(false))} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-primary flex-1">
-              Save Decision
+            <button type="submit" form="pfc-decision-form" className="btn-primary">
+              Save decision
             </button>
-          </div>
-        </form>
+          </>
+        }
+      >
+        <Form id="pfc-decision-form" onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            id="pfc-decision-title"
+            label="Decision"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Switch to a new project framework"
+            maxLength={150}
+            autoComplete="off"
+            required
+          />
+
+          <Textarea
+            id="pfc-decision-rationale"
+            label="Why are you deciding this?"
+            value={rationale}
+            onChange={(e) => setRationale(e.target.value)}
+            placeholder="What facts or assumptions led you here?"
+            maxLength={2000}
+            required
+          />
+
+          <Input
+            id="pfc-decision-outcome"
+            label="Expected outcome"
+            optional
+            value={expectedOutcome}
+            onChange={(e) => setExpectedOutcome(e.target.value)}
+            placeholder="What do you expect will happen?"
+            maxLength={300}
+            autoComplete="off"
+          />
+
+          <Input
+            id="pfc-decision-revisit-date"
+            label="Revisit on"
+            type="date"
+            min={todayKey()}
+            value={revisitDate}
+            onChange={(e) => setRevisitDate(e.target.value)}
+            required
+          />
+        </Form>
       </Dialog>
 
       {/* Reflect Modal */}
@@ -2630,33 +2622,34 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
         open={!!reflectModalDecision}
         onClose={() => setReflectModalDecision(null)}
         dirty={decisionReflectionForm.dirty}
-        title={`Reflect: ${reflectModalDecision?.title}`}>
-        <form onSubmit={handleReflectionSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="pfc-decision-reflection-notes" className="block label mb-1">What actually happened? What did you learn?</label>
-            <textarea
-              id="pfc-decision-reflection-notes"
-              value={reflectionText}
-              onChange={(e) => setReflectionText(e.target.value)}
-              placeholder="How did it compare to what you expected?"
-              className="input min-h-[100px]"
-              required
-            />
-          </div>
-
-          <div className="flex gap-2 pt-2">
+        title={`Reflect: ${reflectModalDecision?.title}`}
+        footer={
+          <>
             <button
               type="button"
               onClick={() => decisionReflectionForm.confirmDiscard(() => setReflectModalDecision(null))}
-              className="btn-secondary flex-1"
+              className="btn-secondary"
             >
               Cancel
             </button>
-            <button type="submit" className="btn-primary flex-1">
-              Save Reflection
+            <button type="submit" form="pfc-decision-reflect-form" className="btn-primary">
+              Save reflection
             </button>
-          </div>
-        </form>
+          </>
+        }
+      >
+        <Form id="pfc-decision-reflect-form" onSubmit={handleReflectionSubmit}>
+          <Textarea
+            id="pfc-decision-reflection-notes"
+            label="What actually happened? What did you learn?"
+            value={reflectionText}
+            onChange={(e) => setReflectionText(e.target.value)}
+            placeholder="How did it compare to what you expected?"
+            className="min-h-[100px]"
+            maxLength={2000}
+            required
+          />
+        </Form>
       </Dialog>
 
       {/* Confirm Delete Modal */}
@@ -2678,7 +2671,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           }
         }}
         isDeleting={deleteModalDecision ? isKeyLoading(`delete_decision_${deleteModalDecision.id}`) : false}
-        title="Delete Decision?"
+        title="Delete decision?"
         itemName={deleteModalDecision?.title}
         description={`Delete the decision "${deleteModalDecision?.title}"?`}
       />
@@ -2707,11 +2700,19 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalEmotion = emotion === 'Other' ? customEmotion : emotion;
-    if (!finalEmotion.trim()) return;
-    store.logEmotion(finalEmotion, Number(intensity), context);
+    const finalEmotion = (emotion === 'Other' ? customEmotion : emotion).trim();
+    if (!finalEmotion) return;
+    store.logEmotion(finalEmotion, intensity, context.trim());
     setModalOpen(false);
+  };
+
+  // Every open starts clean: a dismissed draft is not shown again.
+  const openEmotionModal = () => {
+    setEmotion('Anxiety');
+    setCustomEmotion('');
+    setIntensity(5);
     setContext('');
+    setModalOpen(true);
   };
 
   // Compute emotion frequency breakdown
@@ -2729,7 +2730,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
           <h2 className="section-title">Emotion labeling</h2>
           <p className="text-xs text-content-disabled">Naming a feeling helps it settle ("name it to tame it").</p>
         </div>
-        <button onClick={() => setModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5">
+        <button onClick={openEmotionModal} className="btn-primary text-xs flex items-center gap-1.5">
           <Plus size={16} />
           <span>Label Emotion</span>
         </button>
@@ -2752,7 +2753,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
 
       {/* Emotion Logs List */}
       {emotionLogs.length === 0 ? (
-        <EmptyState icon={HeartHandshake} title="No emotions labeled yet" description="When a strong feeling hits, name it here. It helps you calm down." action={<button onClick={() => setModalOpen(true)} className="btn-primary">Label Your First Emotion</button>} />
+        <EmptyState icon={HeartHandshake} title="No emotions labeled yet" description="When a strong feeling hits, name it here. It helps you calm down." action={<button onClick={openEmotionModal} className="btn-primary">Label Your First Emotion</button>} />
       ) : (
         <div className="card divide-y divide-overlay-subtle overflow-hidden">
           {emotionLogs.slice(0, 15).map((l) => (
@@ -2781,71 +2782,68 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
       )}
 
       {/* Modal */}
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} dirty={emotionForm.dirty} title="Label Emotion">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="pfc-emotion-select" className="block label mb-1">Emotion</label>
-            <select id="pfc-emotion-select" value={emotion} onChange={(e) => setEmotion(e.target.value)} className="input mb-2">
-              {COMMON_EMOTIONS.map((e) => (
-                <option key={e} value={e}>{e}</option>
-              ))}
-              <option value="Other">Other…</option>
-            </select>
-            {emotion === 'Other' && (
-              <input
-                id="pfc-emotion-custom"
-                aria-label="Custom emotion name"
-                type="text"
-                value={customEmotion}
-                onChange={(e) => setCustomEmotion(e.target.value)}
-                placeholder="Emotion name"
-                className="input"
-                required
-              />
-            )}
-          </div>
+      <Dialog
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        dirty={emotionForm.dirty}
+        title="Label emotion"
+        footer={
+          <>
+            <button type="button" onClick={() => emotionForm.confirmDiscard(() => setModalOpen(false))} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="pfc-emotion-form" className="btn-primary">
+              Save
+            </button>
+          </>
+        }
+      >
+        <Form id="pfc-emotion-form" onSubmit={handleSubmit} className="space-y-4">
+          <Select id="pfc-emotion-select" label="Emotion" value={emotion} onChange={(e) => setEmotion(e.target.value)}>
+            {COMMON_EMOTIONS.map((e) => (
+              <option key={e} value={e}>{e}</option>
+            ))}
+            <option value="Other">Other…</option>
+          </Select>
+          {emotion === 'Other' && (
+            <Input
+              id="pfc-emotion-custom"
+              label="Emotion name"
+              value={customEmotion}
+              onChange={(e) => setCustomEmotion(e.target.value)}
+              placeholder="e.g. Jealousy"
+              maxLength={40}
+              autoComplete="off"
+              required
+            />
+          )}
 
           <div>
-            <div className="flex justify-between text-xs text-content-muted mb-1">
-              <span>Intensity</span>
-              <span className="figure text-rose-theme">{intensity} / 10</span>
+            <div className="flex justify-between mb-1.5">
+              <label htmlFor="pfc-emotion-intensity" className="label">Intensity</label>
+              <span className="figure text-xs text-rose-theme">{intensity} / 10</span>
             </div>
             <input
               id="pfc-emotion-intensity"
-              aria-label="Emotion intensity"
               type="range"
               min="1"
               max="10"
               value={intensity}
               onChange={(e) => setIntensity(Number(e.target.value))}
-              className="w-full accent-rose-500"
+              className="w-full h-11 sm:h-6 accent-rose-500"
             />
           </div>
 
-          <div>
-            <label htmlFor="pfc-emotion-context" className="block label mb-1">What triggered it?</label>
-            <textarea
-              id="pfc-emotion-context"
-              value={context}
-              onChange={(e) => setContext(e.target.value)}
-              placeholder="e.g. Work deadline, argument with a friend"
-              className="input min-h-[70px]"
-            />
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => emotionForm.confirmDiscard(() => setModalOpen(false))}
-              className="btn-secondary flex-1"
-            >
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary flex-1">
-              Save
-            </button>
-          </div>
-        </form>
+          <Textarea
+            id="pfc-emotion-context"
+            label="What triggered it?"
+            optional
+            value={context}
+            onChange={(e) => setContext(e.target.value)}
+            placeholder="e.g. Work deadline, argument with a friend"
+            maxLength={1000}
+          />
+        </Form>
       </Dialog>
 
       {/* Confirm Delete Modal */}
@@ -2867,7 +2865,7 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
           }
         }}
         isDeleting={deleteModalEmotion ? isKeyLoading(`delete_emotion_${deleteModalEmotion.id}`) : false}
-        title="Delete Emotion Log?"
+        title="Delete emotion log?"
         itemName={deleteModalEmotion?.emotion}
         description={`Delete the emotion log for "${deleteModalEmotion?.emotion}"?`}
       />
