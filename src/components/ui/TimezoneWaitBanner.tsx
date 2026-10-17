@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Clock } from 'lucide-react';
 import { trustedNow, trustedNowMs } from '@/lib/clock';
 import { todayKey } from '@/lib/dates';

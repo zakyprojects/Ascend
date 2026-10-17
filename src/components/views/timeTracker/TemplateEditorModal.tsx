@@ -8,11 +8,9 @@ import {
 import {
   DAYS_OF_WEEK,
   timeStringToMinutes,
-  minutesToTimeString,
   formatTime12h,
   formatDurationHuman,
   calculateBlockDurationMinutes,
-  checkTimeCollision,
   normalizeOrSplitMidnightBlock,
   getActivityDisplayColor,
   categoryTintStyle,
@@ -21,8 +19,7 @@ import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
 import { TimeBlockModal } from './TimeBlockModal';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { Plus, Trash2, Edit2, Clock, Calendar, Layers, Check } from 'lucide-react';
-import { uid } from '@/lib/dates';
+import { Plus, Trash2, Edit2, Check } from 'lucide-react';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { toUserMessage } from '@/lib/userMessage';

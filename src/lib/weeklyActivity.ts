@@ -1,5 +1,5 @@
 import { Habit, PointsEntry } from '@/types';
-import { addDays, parseDate, startOfWeek, todayKey } from './dates';
+import { addDays, parseDate, todayKey } from './dates';
 
 /** The ledger keeps only the newest entries (pointsLedger.ts caps it at 500). */
 const POINTS_HISTORY_CAP = 500;

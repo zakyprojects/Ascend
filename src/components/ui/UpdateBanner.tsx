@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { APP_BUILD_ID } from '@/lib/version';
 import { trustedNowMs } from '@/lib/clock';

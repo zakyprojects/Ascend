@@ -18,7 +18,7 @@ import { Card, EmptyState, Button, PageColumns } from '@/components/ui/primitive
 import { TAP_TARGET, FOCUS_RING } from '@/components/ui/primitives/shared';
 import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
-import { calculateStreak, formatDateLong, parseDate } from '@/lib/dates';
+import { formatDateLong, parseDate } from '@/lib/dates';
 import { ProgressRing } from '@/components/ui/charts';
 import { LEAGUE_CONFIG, getSeasonLabel } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';

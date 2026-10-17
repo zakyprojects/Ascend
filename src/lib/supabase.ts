@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { UserProfile, ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, UserPlanFollow, AppNotification, PlanReflectionNote } from '@/types';
-import { getHighestUserStreak } from './habitPenalties';
+import { ImprovementPlan, PartnerInvite, Partnership, AppState, SharedChallenge, UserPlanFollow, AppNotification, PlanReflectionNote } from '@/types';
 import { calculateUnifiedStreak } from './streakLogic';
 import { mergeAppState } from './stateMerger';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { WifiOff, Wifi } from 'lucide-react';
 import { trustedNowMs } from '@/lib/clock';
 

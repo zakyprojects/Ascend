@@ -3,15 +3,9 @@ import {
   Plus,
   CheckCircle2,
   Trash2,
-  BookMarked,
   Search,
-  Filter,
   PlayCircle,
   Calendar,
-  Clock,
-  ChevronRight,
-  Bookmark,
-  BookCopy,
   Zap,
   Check,
   BookOpen,
@@ -23,7 +17,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, ProgressBar, Select, Tabs, Textarea } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
-import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
+import { UserBook, UserBookStatus, BookCategory } from '@/types';
 import { earliestTargetDate, todayKey, formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
 import { READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, readingBonusId } from '@/lib/readingAwards';
@@ -56,7 +50,6 @@ export function ReadingHub({ store }: { store: AppStore }) {
   const [finishModalBook, setFinishModalBook] = useState<UserBook | null>(null);
   const [deleteModalBook, setDeleteModalBook] = useState<UserBook | null>(null);
   const [startReadingModalBook, setStartReadingModalBook] = useState<UserBook | null>(null);
-  const [selectedCuratedDetails, setSelectedCuratedDetails] = useState<CuratedBook | null>(null);
 
   // Form states for Custom Book
   const [customTitle, setCustomTitle] = useState('');
@@ -271,9 +264,6 @@ export function ReadingHub({ store }: { store: AppStore }) {
   }, [categoryFilter, searchQuery, sortBy]);
 
   // Overall Stats
-  const totalPagesRead = useMemo(() => {
-    return readingLogs.reduce((sum, l) => sum + (l.pagesRead || 0), 0);
-  }, [readingLogs]);
 
   const totalCompletedPoints = useMemo(() => {
     return completedBooks.reduce((sum, b) => sum + (b.pointsAwarded || 0), 0);

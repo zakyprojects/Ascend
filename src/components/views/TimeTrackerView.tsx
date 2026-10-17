@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { AppStore } from '@/lib/store';
 import {
   TimeTrackerActivity,
@@ -16,7 +16,7 @@ import { ApplyTemplateModal } from './timeTracker/ApplyTemplateModal';
 import { ActivityModal } from './timeTracker/ActivityModal';
 import { useToast } from '@/components/ui/Toast';
 import { Tabs } from '@/components/ui/primitives';
-import { Clock, Layers, Tag, Calendar } from 'lucide-react';
+import { Clock, Layers, Tag } from 'lucide-react';
 import { View } from '@/components/AppShell';
 
 interface TimeTrackerViewProps {

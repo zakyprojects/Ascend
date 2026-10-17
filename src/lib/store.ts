@@ -11,7 +11,6 @@ import {
   WorkoutLog,
   Book,
   ReadingLog,
-  ReadingProgressLog,
   Skill,
   SkillSessionLog,
   SkillLevel,
@@ -35,7 +34,6 @@ import {
   UserBookStatus,
   CuratedBook,
   BookCategory,
-  VisionReflectionNote,
   PlanReflectionNote,
   PlanType,
   SharedChallengeCategory,
@@ -47,7 +45,6 @@ import {
   GoalStatus,
   ProjectStatus,
   TaskPriority,
-  TimeTrackerState,
   TimeTrackerActivity,
   TimeTrackerTemplate,
   TimeTrackerBlock,
@@ -65,10 +62,9 @@ import {
   normalizeOrSplitMidnightBlock,
   timeStringToMinutes,
   minutesToTimeString,
-  calculateBlockDurationMinutes,
 } from './timeTracker';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekDates, previousPeriodKey, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
 import { computeLinkedGoalProgress } from './linkedGoalMetrics';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
@@ -98,8 +94,6 @@ import {
   leagueNow,
   getSeasonNumber,
   getSeasonStart,
-  getSeasonEnd,
-  getSeasonPeriodId,
   syncSeasonConfig,
 } from './leagueTime';
 import {
@@ -121,8 +115,6 @@ import {
 import { hydrateUserSession } from './authSession';
 import { createLeagueStandingsRefresher, leaguePeriodKey } from './leagueStandingsRefresh';
 import {
-  getMissPenaltyMultiplier,
-  getHighestUserStreak,
   getAppStateSeasonPoints,
 } from './habitPenalties';
 import { toSeasonHistory } from './seasonArchive';
@@ -134,11 +126,7 @@ import {
   recomputeTodayPresetPoints,
   WEEKLY_REFLECTION_POINTS,
   READING_POINTS,
-  BAD_HABIT_POINTS,
-  TIME_TRACKER_POINTS,
   WEEKLY_GOALS_POINTS,
-  calculateReadingPoints,
-  calculateTimeTrackerDailyPoints,
   calculateWeeklyGoalsPoints,
   calculateWeeklyGoalsPointsBefore,
   POINTS_V2_START_DATE_KEY,
@@ -167,13 +155,10 @@ import {
   isSupabaseConfigured,
   syncBroadcaster,
   syncPlanToSupabase,
-  deletePlanFromSupabase,
   syncFollowedPlanToSupabase,
   deleteFollowedPlanFromSupabase,
   addReflectionNoteToSupabase,
-  deleteReflectionNoteFromSupabase,
   sendPartnerInviteSupabase,
-  fetchUserDataFromSupabase,
   fetchUserDataWithStatusFromSupabase,
   getUserDataWatermark,
   setUserDataWatermark,
@@ -184,8 +169,6 @@ import {
   fetchProfileByUsernameFromSupabase,
   fetchPublicPlansFromSupabase,
   fetchPartnerInvitesSupabase,
-  savePartnershipSupabase,
-  fetchPartnershipSupabase,
   fetchPartnershipsSupabase,
   deletePartnershipSupabase,
   deletePartnerInviteSupabase,
@@ -571,7 +554,6 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
 
   const pointsHistory = sortedHistory;
 
-  const currentHistorySum = pointsHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
 
   const computedSeasonPoints = calculateSeasonalTotal(pointsHistory, activeSeasonStart);
 
@@ -3585,7 +3567,6 @@ export function useAppState() {
 
             let updatedChallenges = prev.sharedChallenges;
             if (habit && prev.sharedChallenges.length > 0) {
-              const today = todayKey();
 
               updatedChallenges = prev.sharedChallenges.map((target) => {
                 const challengePartnership =
@@ -4015,7 +3996,6 @@ export function useAppState() {
       const targetUserBook = prev.libraryBooks.find((lb) => lb.id === bookId || lb.linkedBookId === bookId);
       if (!targetUserBook) return prev;
 
-      const title = targetUserBook.title || 'Book';
       const existingPage = targetUserBook.currentAmount ?? targetUserBook.currentPage ?? 0;
       const maxPages = targetUserBook.totalAmount ?? targetUserBook.totalPages ?? 250;
       const clampedPage = Math.min(maxPages, Math.max(0, newCurrentPage));
@@ -7052,7 +7032,6 @@ export function useAppState() {
 
       const targetUserId = profileData.id;
       const targetUsername = profileData.username;
-      const targetAvatar = profileData.avatar || '🧑';
 
       if (targetUserId === state.currentUser?.id) {
         throw new Error("You can't send an accountability invite to yourself.");

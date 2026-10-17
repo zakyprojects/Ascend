@@ -249,7 +249,6 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
 
   // Current User Stats
   const mySeasonPoints = store.getLeagueData('ninetyDay').userPoints;
-  const myTotalPoints = mySeasonPoints;
   const myTier = getCurrentTier(mySeasonPoints);
   const myHabitsCompletedToday = (store.state.habits || []).filter((h) => {
     const today = todayKey();
@@ -273,7 +272,6 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
   const partnerPoints = (partnerSeason === currentSeason)
     ? (partnerStatsData?.seasonPoints ?? (partnerStatsData as any)?.season_points ?? partnerStatsData?.totalPoints ?? (activePartnerUsername ? getProfileSeasonPointsByUsername(activePartnerUsername, 'ninetyDay', leagueNow()) : 0))
     : 0;
-  const partnerTotalPoints = partnerPoints;
   const partnerSeasonPoints = partnerPoints;
   const partnerTier = getCurrentTier(partnerSeasonPoints);
   const partnerHabitsCompleted = partnerStatsData?.stats?.habitsCompletedCount ?? 0;

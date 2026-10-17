@@ -11,11 +11,8 @@ import {
   CheckCircle2,
   Circle,
   Trash2,
-  Award,
   CalendarClock,
   LayoutTemplate,
-  User,
-  Layers,
   Edit3,
   RefreshCw,
   CheckSquare,
@@ -23,7 +20,6 @@ import {
   Flame,
   MessageSquare,
   Calendar,
-  TrendingUp,
   Send,
   ChevronDown,
   ChevronUp,
@@ -34,12 +30,11 @@ import {
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Dialog, EmptyState, FieldMessage, Form, Input, NumberField, ProgressBar, Skeleton, SlidingPill } from '@/components/ui/primitives';
-import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
-import { getCurrentTier } from '@/lib/tiers';
+import { ImprovementPlan, PlanType, UserPlanFollow, PLAN_CATEGORIES } from '@/types';
 import { earliestTargetDate, todayKey } from '@/lib/dates';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { fetchPublicPlansFromSupabase, mapRowToImprovementPlan, supabase, syncBroadcaster } from '@/lib/supabase';
-import { getProfilePointsByUsername, getProfileSeasonPointsByUsername } from '@/lib/auth';
+import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { leagueNow } from '@/lib/leagueTime';
 import { isTodayLocal, calculateActivePlanStreak, formatDateShort, parseDate } from '@/lib/dates';
 import { STARTER_TEMPLATES } from '@/data/planTemplates';
@@ -1448,7 +1443,6 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           ) : (
             <div className="grid-cards-lg gap-4">
               {remotePublicPlans.map((plan) => {
-                const creatorLifetimePts = plan.creatorPoints || getProfilePointsByUsername(plan.creatorUsername) || 0;
                 const creatorSeasonPts = getProfileSeasonPointsByUsername(plan.creatorUsername, 'ninetyDay', leagueNow()) || 0;
                 const isOwnPlan = (plan.creatorUsername || '').toLowerCase() === (currentUsername || '').toLowerCase();
                 const isAlreadyCopied = followedPlans.some((f) => f.originalPlanId === plan.id);

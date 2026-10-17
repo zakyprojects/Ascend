@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   TimeTrackerActivity,
   TimeTrackerBlock,
@@ -12,7 +12,6 @@ import {
   computeLiveSchedule,
   getDayOfWeekName,
   timeStringToMinutes,
-  minutesToTimeString,
   getAscendViewForModule,
   getActivityDisplayColor,
   categoryTintStyle,
@@ -41,10 +40,6 @@ import {
   Play,
   Trash2,
   Edit2,
-  Flame,
-  AlertCircle,
-  Activity,
-  BookOpen,
   X,
   SkipForward,
   Coffee,
@@ -206,7 +201,6 @@ export function ScheduleTab({
   // Module Quick-Launch Handoff
   const handleLaunchModuleHandoff = (block: TimeTrackerBlock, targetModule?: string) => {
     const act = activityMap.get(block.activityId);
-    const mod = targetModule || act?.ascendModule;
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
     const startMinutes = timeStringToMinutes(block.startTime);
     const endMinutes = timeStringToMinutes(block.endTime);
@@ -218,7 +212,6 @@ export function ScheduleTab({
     // Absolute safeguard to prevent timer crashing on 0 or negative values
     targetDuration = Math.max(1, targetDuration);
 
-    const title = block.customTitle || act?.name || 'Focus Block';
 
     const targetView = getAscendViewForModule(targetModule || act?.ascendModule, act?.name);
 

@@ -1,5 +1,5 @@
 import { SharedChallenge } from '@/types';
-import { todayKey, previousPeriodKey, parseDate, calculateElapsedDays, getNow } from './dates';
+import { todayKey, previousPeriodKey, calculateElapsedDays, getNow } from './dates';
 
 const safeNum = (val: any): number => {
   const n = Number(val);

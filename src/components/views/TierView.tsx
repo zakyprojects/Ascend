@@ -1,4 +1,4 @@
-import { getCurrentTier, getProgressToNextTier, getNextTier, TIERS, Tier } from '@/lib/tiers';
+import { getCurrentTier, getProgressToNextTier, getNextTier, TIERS } from '@/lib/tiers';
 import { AppStore } from '@/lib/store';
 import { PageColumns, ProgressBar } from '@/components/ui/primitives';
 import { CountUp, Reveal } from '@/components/ui/Motion';
@@ -13,7 +13,6 @@ export function TierView({ store }: { store: AppStore }) {
   const currentTier = getCurrentTier(seasonPoints);
   const nextTier = getNextTier(seasonPoints);
   const progress = getProgressToNextTier(seasonPoints);
-  const currentIdx = TIERS.findIndex((t) => t.name === currentTier.name);
 
   return (
     <div className="space-y-6">

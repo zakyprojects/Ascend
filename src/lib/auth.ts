@@ -1,4 +1,4 @@
-import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, SeasonHistoryEntry, NotificationPreferenceKey } from '@/types';
+import { AppState, LeagueCompetitor, LeagueType, ImprovementPlan, SeasonHistoryEntry, NotificationPreferenceKey } from '@/types';
 import { newPasswordProblem } from './passwordRules';
 import { sanitizePointsHistory } from './leagues';
 import { leagueNow, getSeasonNumber, getWeekPeriodId, getMonthPeriodId } from './leagueTime';
@@ -9,13 +9,7 @@ import {
   supabase,
   isSupabaseConfigured,
   clearUserDataWatermark,
-  fetchProfileByUsernameFromSupabase,
-  fetchAllProfilesFromSupabase,
   fetchMyPrivateProfile,
-  fetchPublicPlansFromSupabase,
-  fetchPartnerInvitesSupabase,
-  savePartnershipSupabase,
-  deletePartnershipSupabase,
 } from './supabase';
 import { trustedNow, trustedNowMs } from './clock';
 

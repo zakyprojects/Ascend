@@ -181,7 +181,6 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   const isDarkTheme = store.state.themePreference !== 'light';
   const currentUser = store.state.currentUser;
   const username = store.state.username;
-  const totalPoints = store.state.totalPoints;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `minute` follows the season clock
   const seasonPoints = useMemo(() => getLeagueData('ninetyDay').userPoints, [getLeagueData, minute]);
   const userAvatar = currentUser?.avatar || '🧑';

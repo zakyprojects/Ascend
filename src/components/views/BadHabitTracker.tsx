@@ -29,7 +29,7 @@ import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { trustedNow } from '@/lib/clock';
 
 export function BadHabitTracker({ store }: { store: AppStore }) {
-  const { showErrorToast, showSuccessToast } = useToast();
+  const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [habitName, setHabitName] = useState('');

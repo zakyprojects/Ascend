@@ -1,5 +1,5 @@
 import { AppState, Habit } from '@/types';
-import { todayKey, periodKey, previousPeriodKey, parseDate, addDays, addWeeks, getNow } from './dates';
+import { todayKey, periodKey, previousPeriodKey, addDays, addWeeks, getNow } from './dates';
 import { getEffectiveSeasonPoints } from './leagues';
 import { trustedNow } from './clock';
 
@@ -33,54 +33,6 @@ export interface StreakSourceInfo {
   source: string;
   priority?: number;
   bestDays?: number;
-}
-
-function getBestStreakFromSortedDates(sortedDates: string[]): number {
-  if (sortedDates.length === 0) return 0;
-  let best = 0;
-  let running = 0;
-  for (let i = 0; i < sortedDates.length; i++) {
-    if (i === 0) {
-      running = 1;
-    } else {
-      const prev = parseDate(sortedDates[i - 1]);
-      const curr = parseDate(sortedDates[i]);
-      const diff = prev && curr ? Math.round((curr.getTime() - prev.getTime()) / (1000 * 3600 * 24)) : 0;
-      if (diff === 1) {
-        running++;
-      } else {
-        running = 1;
-      }
-    }
-    if (running >= best) {
-      best = running;
-    }
-  }
-  return best;
-}
-
-function getCurrentStreakFromSortedDates(sortedDates: string[], now: Date): number {
-  if (sortedDates.length === 0) return 0;
-  const todayStr = todayKey(now);
-  const yesterdayDate = new Date(now);
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterdayStr = todayKey(yesterdayDate);
-
-  const last = sortedDates[sortedDates.length - 1];
-  if (last !== todayStr && last !== yesterdayStr) return 0;
-
-  let streak = 1;
-  for (let i = sortedDates.length - 2; i >= 0; i--) {
-    const prev = parseDate(sortedDates[i]);
-    const curr = parseDate(sortedDates[i + 1]);
-    const diff = prev && curr ? Math.round((curr.getTime() - prev.getTime()) / (1000 * 3600 * 24)) : 0;
-    if (diff === 1) {
-      streak++;
-    } else {
-      break;
-    }
-  }
-  return streak;
 }
 
 export function getMissPenaltyMultiplier(consecutiveMisses: number, seasonPoints: number = 0): number {

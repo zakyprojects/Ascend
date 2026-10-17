@@ -30,32 +30,6 @@ function parseLocalDate(dateStr: string): Date {
 }
 
 /**
- * Calculates the best (longest) consecutive day streak from a sorted list of unique YYYY-MM-DD dates.
- */
-function calculateBestStreakFromSortedDates(sortedDates: string[]): number {
-  if (sortedDates.length === 0) return 0;
-  let maxStreak = 1;
-  let runningStreak = 1;
-
-  for (let i = 1; i < sortedDates.length; i++) {
-    const prev = parseLocalDate(sortedDates[i - 1]);
-    const curr = parseLocalDate(sortedDates[i]);
-    const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 3600 * 24));
-
-    if (diffDays === 1) {
-      runningStreak++;
-      if (runningStreak > maxStreak) {
-        maxStreak = runningStreak;
-      }
-    } else if (diffDays > 1) {
-      runningStreak = 1;
-    }
-  }
-
-  return maxStreak;
-}
-
-/**
  * Calculates current active streak from sorted YYYY-MM-DD dates relative to a reference Date key.
  * A streak is active if the most recent date is either today or yesterday in the reference timezone.
  */

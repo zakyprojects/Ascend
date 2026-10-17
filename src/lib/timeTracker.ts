@@ -1,7 +1,6 @@
 import {
   TimeTrackerActivity,
   TimeTrackerBlock,
-  TimeTrackerTemplate,
   TimeTrackerState,
   DEFAULT_TIME_TRACKER_ACTIVITIES,
 } from '@/types';

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Mood, JournalEntry } from '@/types';
-import { formatDateLong, todayKey, parseDate, calculateStreak } from '@/lib/dates';
+import { formatDateLong, todayKey, calculateStreak } from '@/lib/dates';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/useAsyncAction';

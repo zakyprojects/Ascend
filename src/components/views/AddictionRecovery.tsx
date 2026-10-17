@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { HeartPulse, Flame, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { HeartPulse, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Award, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -27,7 +27,7 @@ const DISTRACTION_ACTIVITIES = [
 ];
 
 export function AddictionRecovery({ store }: { store: AppStore }) {
-  const { showErrorToast, showSuccessToast } = useToast();
+  const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [cravingModalOpen, setCravingModalOpen] = useState(false);

@@ -11,7 +11,6 @@ import {
   setUserDataWatermark,
   setUserHydrationComplete,
   fetchPartnerInvitesSupabase,
-  fetchPartnershipSupabase,
   fetchPartnershipsSupabase,
   fetchSharedChallengesSupabase,
   fetchNotificationsSupabase,

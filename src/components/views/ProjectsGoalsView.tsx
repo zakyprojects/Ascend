@@ -7,26 +7,17 @@ import {
   CheckSquare,
   Plus,
   ArrowRight,
-  ArrowLeft,
   Calendar,
-  Layers,
   ChevronDown,
   ChevronUp,
-  Clock,
-  AlertTriangle,
   Check,
-  Circle,
   Timer,
   Edit3,
   Trash2,
   Filter,
   Search,
-  ChevronRight,
   Tag,
-  ListTodo,
-  TrendingUp,
   X,
-  Briefcase,
   Lock,
   Unlock,
   ArrowDownUp,
@@ -46,7 +37,7 @@ import {
   ProjectStatus,
   TaskPriority,
 } from '@/types';
-import { earliestTargetDate, todayKey, weekKey, formatDateLong, formatDateShort } from '@/lib/dates';
+import { earliestTargetDate, todayKey, formatDateShort } from '@/lib/dates';
 import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
@@ -537,7 +528,6 @@ export function ProjectsGoalsView({
   const tasks = useMemo(() => store.state.tasks || [], [store.state.tasks]);
 
   const currentToday = todayKey();
-  const currentWeek = weekKey();
 
   // Date input bounds (e.g. today minus 2 years to today plus 20 years)
   const currentYear = trustedNow().getFullYear();
@@ -1249,29 +1239,6 @@ export function ProjectsGoalsView({
     }).catch((err) => reportSaveFailure('task', err));
   };
 
-  const handleToggleTask = (task: Task) => {
-    if (task.projectId) {
-      const lock = getProjectLockStatus(task.projectId);
-      if (lock.isLocked) {
-        showErrorToast('Project locked', `Cannot mark tasks complete while project is locked. Complete "${lock.blockingProject?.title}" first.`);
-        return;
-      }
-    }
-    store.toggleTaskCompleted(task.id);
-  };
-
-  const handleToggleSubtask = (taskId: string, subtaskId: string) => {
-    const task = tasks.find((t) => t.id === taskId);
-    if (task?.projectId) {
-      const lock = getProjectLockStatus(task.projectId);
-      if (lock.isLocked) {
-        showErrorToast('Project locked', `Cannot mark subtasks complete while project is locked. Complete "${lock.blockingProject?.title}" first.`);
-        return;
-      }
-    }
-    store.toggleSubtask(taskId, subtaskId);
-  };
-
   const handleDeleteTaskConfirm = async () => {
     if (!deleteTaskTarget) return;
     await executeWithKey(`delete_task_${deleteTaskTarget.id}`, async () => {
@@ -1329,19 +1296,6 @@ export function ProjectsGoalsView({
         return <span className="badge badge-purple text-2xs">Achieved</span>;
       case 'abandoned':
         return <span className="badge bg-overlay-subtle text-content-muted border border-overlay-default text-2xs">Abandoned</span>;
-    }
-  };
-
-  const projectStatusBadge = (status: ProjectStatus) => {
-    switch (status) {
-      case 'not_started':
-        return <span className="badge bg-overlay-subtle text-content-tertiary border border-overlay-default text-2xs">Not Started</span>;
-      case 'in_progress':
-        return <span className="badge badge-cyan text-2xs">In Progress</span>;
-      case 'on_hold':
-        return <span className="badge bg-amber-500/15 text-warning-text border border-amber-500/30 text-2xs">On Hold</span>;
-      case 'completed':
-        return <span className="badge bg-emerald-500/15 text-success-text border border-emerald-500/30 text-2xs">Completed</span>;
     }
   };
 

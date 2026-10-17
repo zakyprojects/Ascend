@@ -1,7 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   TimeTrackerActivity,
-  TimeTrackerBlock,
   TimeTrackerTemplate,
 } from '@/types';
 import { AppStore } from '@/lib/store';
@@ -14,8 +13,7 @@ import {
   getActivityDisplayColor,
   categoryTintStyle,
 } from '@/lib/timeTracker';
-import { todayKey, formatDateKeyHuman } from '@/lib/dates';
-import { ActivityIcon } from './ActivityIcon';
+import { formatDateKeyHuman } from '@/lib/dates';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { Dialog, EmptyState } from '@/components/ui/primitives';
@@ -25,10 +23,6 @@ import {
   Edit2,
   Trash2,
   Calendar,
-  Clock,
-  ArrowRight,
-  Check,
-  Zap,
   Compass,
   Brain,
   Heart,

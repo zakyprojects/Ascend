@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { TimeTrackerActivity } from '@/types';
 import { AppStore } from '@/lib/store';
 import { getActivityDisplayColor } from '@/lib/timeTracker';
@@ -10,10 +10,8 @@ import {
   Plus,
   Edit2,
   Trash2,
-  Lock,
   Link as LinkIcon,
   ShieldCheck,
-  CheckCircle2,
 } from 'lucide-react';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 

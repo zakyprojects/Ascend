@@ -6,7 +6,6 @@ import { calculateStreak, calculateBestStreak, getNow, weekKey, previousPeriodKe
 import { PRESET_CATEGORIES, PresetHabit } from '@/lib/presets';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { getMissPenaltyMultiplier, getHabitConsecutiveMisses } from '@/lib/habitPenalties';
-import { useAsyncAction } from '@/lib/useAsyncAction';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';

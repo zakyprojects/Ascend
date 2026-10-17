@@ -11,9 +11,7 @@ import {
   Zap,
   Brain,
   Clock,
-  Users,
   Trophy,
-  Settings,
 } from 'lucide-react';
 import {
   Badge,
