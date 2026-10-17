@@ -93,11 +93,16 @@ export function ClimbPanel({
       className={`relative isolate overflow-hidden flex flex-col text-primary-50 px-6 py-6 sm:px-8 lg:pl-12 lg:pr-12 lg:py-10 ${SLOPE[side]} ${className}`}
       style={style}
     >
-      <div
-        aria-hidden="true"
-        className={`absolute inset-0 -z-10 pointer-events-none ${side === 'right' ? '-scale-x-100' : ''}`}
-        style={CONTOURS}
-      />
+      {/* The contours mirror with the side. Two layers crossfade on the side swap's curve, so the
+          lines never jump to their mirror image mid-glide. */}
+      {(['left', 'right'] as const).map((layerSide) => (
+        <div
+          key={layerSide}
+          aria-hidden="true"
+          className={`absolute inset-0 -z-10 pointer-events-none transition-opacity duration-[550ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none ${layerSide === 'right' ? '-scale-x-100' : ''} ${layerSide === side ? 'opacity-100' : 'opacity-0'}`}
+          style={CONTOURS}
+        />
+      ))}
 
       <div className="flex items-center gap-2.5 lg:gap-3">
         <img src="/logo-torch.svg" alt="" width={40} height={40} className="w-9 h-9 lg:w-10 lg:h-10 shrink-0" />
