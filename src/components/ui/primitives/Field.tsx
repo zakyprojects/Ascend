@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertCircle, ChevronDown } from 'lucide-react';
 import { cx } from './shared';
+import { toUserMessage } from '@/lib/userMessage';
 
 export interface BaseFieldProps {
   label?: string;
@@ -427,6 +428,7 @@ function revealField(form: HTMLFormElement | null, fieldId: string | undefined) 
  * is shown as one bubble under that field, the field takes focus and is scrolled into view. A
  * problem from the submit handler (`controller.showError`) is shown the same way, on its field or
  * as a form-wide message. Editing the field (or, for a form-wide message, anything) clears it.
+ * A submit handler that throws without its own catch gets a form-wide bubble (safety net).
  * Never pair a form with an error toast.
  */
 export const Form = React.forwardRef<HTMLFormElement, FormProps>(
@@ -497,7 +499,18 @@ export const Form = React.forwardRef<HTMLFormElement, FormProps>(
         return;
       }
       show(null);
-      void onSubmit(event);
+      // Safety net: a submit handler that throws (or rejects) without its own catch still shows a
+      // form-wide bubble instead of failing silently. Handlers that catch keep their own message.
+      const fail = (err: unknown) => {
+        console.error('Form submit failed:', err);
+        show({ message: toUserMessage(err, "Couldn't save. Try again.") });
+      };
+      try {
+        const result = onSubmit(event);
+        if (result && typeof (result as Promise<void>).then === 'function') (result as Promise<void>).catch(fail);
+      } catch (err) {
+        fail(err);
+      }
     };
 
     return (
