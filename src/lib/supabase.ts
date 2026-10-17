@@ -373,8 +373,6 @@ export async function saveUserDataToSupabase(
         username: finalState.currentUser.username,
         email: finalState.currentUser.email,
         avatar: finalState.currentUser.avatar || '🧑',
-        is_profile_public: finalState.currentUser.isProfilePublic ?? true,
-        accept_partner_invites: finalState.currentUser.acceptPartnerInvites ?? true,
         season_id: finalState.seasonId || 1,
         stats: userStats,
         // Habit names are not published: other members no longer see which habits someone keeps.
@@ -395,9 +393,6 @@ export async function saveUserDataToSupabase(
       let profErr = await writeOwnProfile(userId, profilePayload);
 
       if (profErr) {
-        if (profErr.message?.includes('accept_partner_invites')) {
-          delete profilePayload.accept_partner_invites;
-        }
         if (profErr.message?.includes('last_username_change_at')) {
           delete profilePayload.last_username_change_at;
         }

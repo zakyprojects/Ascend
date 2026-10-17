@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { cx, Dialog, EmptyState as EmptyStateBase, ProgressBar, SlidingPill } from '@/components/ui/primitives';
+import { cx, Dialog, EmptyState as EmptyStateBase, ProgressBar, SlidingPill, Switch } from '@/components/ui/primitives';
 import {
   Target,
   FolderKanban,
@@ -2610,15 +2610,11 @@ export function ProjectsGoalsView({
                 Linked projects must be finished in order, one at a time.
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer shrink-0">
-              <input
-                type="checkbox"
-                checked={goalFormSequentialMode}
-                onChange={(e) => setGoalFormSequentialMode(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-bg-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-overlay-medium after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
-            </label>
+            <Switch
+              checked={goalFormSequentialMode}
+              onChange={() => setGoalFormSequentialMode(!goalFormSequentialMode)}
+              label="Sequential Mode"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

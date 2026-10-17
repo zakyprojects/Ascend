@@ -55,6 +55,9 @@ import {
   DEFAULT_TIME_TRACKER_STATE,
   NotificationPreferenceKey,
 } from '@/types';
+
+/** The on/off UserProfile settings the Settings switches write to the profile row. */
+type ProfileSwitchKey = NotificationPreferenceKey | 'isProfilePublic' | 'acceptPartnerInvites';
 import {
   ensureDefaultActivities,
   autoHydrateDailyLog,
@@ -3795,73 +3798,50 @@ export function useAppState() {
     );
   }, [setState]);
 
-  const toggleProfilePrivacy = useCallback(async () => {
-    const current = state.currentUser;
-    if (!current?.id) return;
+  // Flips one on/off profile setting: the switch moves at once, and if the profile write fails
+  // it moves back and says so, so a switch never shows a setting the server does not hold.
+  const flipProfileSwitch = useCallback(
+    async (key: ProfileSwitchKey, write: (userId: string, value: boolean) => Promise<void>) => {
+      const current = get().currentUser;
+      if (!current?.id) return;
+      const nextSetting = !(current[key] ?? true);
+      const apply = (value: boolean) =>
+        setState(
+          (prev) => ({
+            ...prev,
+            currentUser: prev.currentUser ? { ...prev.currentUser, [key]: value } : null,
+          }),
+          { immediate: true }
+        );
 
-    const newPrivacy = !(current.isProfilePublic ?? true);
-
-    const updated = await updateProfilePrivacy(current.id, newPrivacy);
-
-    setState((prev) => ({
-      ...prev,
-      currentUser: prev.currentUser
-        ? { ...prev.currentUser, isProfilePublic: updated?.isProfilePublic ?? newPrivacy }
-        : null,
-    }));
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.currentUser]);
-
-  const toggleAcceptPartnerInvites = useCallback(async () => {
-    const current = state.currentUser;
-    if (!current) return;
-
-    const currentSetting = current.acceptPartnerInvites ?? true;
-    const nextSetting = !currentSetting;
-
-    setState(
-      (prev) => ({
-        ...prev,
-        currentUser: prev.currentUser
-          ? { ...prev.currentUser, acceptPartnerInvites: nextSetting }
-          : null,
-      }),
-      { immediate: true }
-    );
-
-    if (current.id) {
-      await updateProfileAcceptPartnerInvites(current.id, nextSetting);
-    }
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.currentUser]);
-
-  // Flips one notification preference: the switch moves at once, and if the profile write
-  // fails it moves back and says so, so the switch never shows a setting the server does not hold.
-  const toggleNotificationPreference = useCallback(async (key: NotificationPreferenceKey) => {
-    const current = get().currentUser;
-    if (!current?.id) return;
-    const nextSetting = !(current[key] ?? true);
-    const apply = (value: boolean) =>
-      setState(
-        (prev) => ({
-          ...prev,
-          currentUser: prev.currentUser ? { ...prev.currentUser, [key]: value } : null,
-        }),
-        { immediate: true }
-      );
-
-    apply(nextSetting);
-    try {
-      await updateProfileNotificationPreferences(current.id, { [key]: nextSetting });
-    } catch (err) {
-      apply(!nextSetting);
-      dispatchToastError("Couldn't change this notification", toUserMessage(err, 'Check your connection and try again.'));
-    }
+      apply(nextSetting);
+      try {
+        await write(current.id, nextSetting);
+      } catch (err) {
+        apply(!nextSetting);
+        dispatchToastError("Couldn't change this setting", toUserMessage(err, 'Check your connection and try again.'));
+      }
+    },
     // False positive: setState/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    []
+  );
+
+  const toggleProfilePrivacy = useCallback(
+    () => flipProfileSwitch('isProfilePublic', updateProfilePrivacy),
+    [flipProfileSwitch]
+  );
+
+  const toggleAcceptPartnerInvites = useCallback(
+    () => flipProfileSwitch('acceptPartnerInvites', updateProfileAcceptPartnerInvites),
+    [flipProfileSwitch]
+  );
+
+  const toggleNotificationPreference = useCallback(
+    (key: NotificationPreferenceKey) =>
+      flipProfileSwitch(key, (userId, value) => updateProfileNotificationPreferences(userId, { [key]: value })),
+    [flipProfileSwitch]
+  );
 
   // --- MODULE 1: EXERCISE TRACKER ACTIONS ---
   const logWorkout = useCallback((type: string, durationMinutes: number, amount?: number, unit?: string) => {

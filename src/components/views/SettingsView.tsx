@@ -727,16 +727,13 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                         : 'Get your notifications even when Ascend is closed.'}
                     </span>
                   </div>
-                  {isPushSaving ? (
-                    <AscendLoadingIndicator size="sm" />
-                  ) : (
-                    <Switch
-                      checked={pushStatus === 'on'}
-                      disabled={pushStatus === 'unsupported' || pushStatus === 'denied'}
-                      onChange={handlePushToggle}
-                      label="Push notifications on this device"
-                    />
-                  )}
+                  <Switch
+                    checked={pushStatus === 'on'}
+                    disabled={pushStatus === 'unsupported' || pushStatus === 'denied'}
+                    loading={isPushSaving}
+                    onChange={handlePushToggle}
+                    label="Push notifications on this device"
+                  />
                 </div>
 
                 {NOTIFICATION_PREFERENCES.map((pref) => (
@@ -747,7 +744,8 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                     </div>
                     <Switch
                       checked={currentUser?.[pref.key] ?? true}
-                      onChange={() => store.toggleNotificationPreference(pref.key)}
+                      loading={isKeyLoading(`switch:${pref.key}`)}
+                      onChange={() => executeWithKey(`switch:${pref.key}`, () => store.toggleNotificationPreference(pref.key))}
                       label={pref.title}
                     />
                   </div>
@@ -829,7 +827,8 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
 
                 <Switch
                   checked={currentUser?.isProfilePublic ?? true}
-                  onChange={store.toggleProfilePrivacy}
+                  loading={isKeyLoading('switch:privacy')}
+                  onChange={() => executeWithKey('switch:privacy', store.toggleProfilePrivacy)}
                   label="Public leaderboard profile and stats"
                   className="mt-1"
                 />
@@ -861,7 +860,8 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
 
                 <Switch
                   checked={acceptsInvites}
-                  onChange={store.toggleAcceptPartnerInvites}
+                  loading={isKeyLoading('switch:invites')}
+                  onChange={() => executeWithKey('switch:invites', store.toggleAcceptPartnerInvites)}
                   label="Accept partnership invites"
                   className="mt-1"
                 />

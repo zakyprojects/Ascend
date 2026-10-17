@@ -2,7 +2,7 @@ import { AppState, UserProfile, LeagueCompetitor, LeagueType, ImprovementPlan, S
 import { newPasswordProblem } from './passwordRules';
 import { sanitizePointsHistory } from './leagues';
 import { leagueNow, getSeasonNumber, getWeekPeriodId, getMonthPeriodId } from './leagueTime';
-import { generateNumericUID, todayKey, parseDate } from './dates';
+import { todayKey, parseDate } from './dates';
 import { getHighestUserStreak } from './habitPenalties';
 import { clearSyncStorage } from './sync/outbox';
 import {
@@ -507,60 +507,18 @@ export function clearLocalUserData(userId: string): void {
   }
 }
 
-/**
- * Update profile privacy setting in Supabase.
- */
-export async function updateProfilePrivacy(
-  userId: string,
-  isProfilePublic: boolean
-): Promise<UserProfile | null> {
-  if (!isSupabaseConfigured) return null;
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ is_profile_public: isProfilePublic })
-      .eq('id', userId)
-      .select('id, uid, username, avatar, created_at, is_profile_public, accept_partner_invites')
-      .maybeSingle();
-
-    if (error || !data) return null;
-
-    return {
-      id: data.id,
-      uid: data.uid || generateNumericUID(),
-      email: '',
-      username: data.username,
-      avatar: data.avatar || '🧑',
-      createdAt: data.created_at,
-      isProfilePublic: data.is_profile_public ?? true,
-      acceptPartnerInvites: data.accept_partner_invites ?? true,
-    };
-  } catch (e) {
-    console.error('Error updating profile privacy:', e);
-    return null;
-  }
+/** Writes whether the profile is public. Throws when the write fails, so the caller can put the switch back. */
+export async function updateProfilePrivacy(userId: string, isProfilePublic: boolean): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.from('profiles').update({ is_profile_public: isProfilePublic }).eq('id', userId);
+  if (error) throw error;
 }
 
-/**
- * Update accept_partner_invites setting in Supabase profiles.
- */
-export async function updateProfileAcceptPartnerInvites(
-  userId: string,
-  accept: boolean
-): Promise<void> {
+/** Writes whether new partner invites are accepted. Throws when the write fails, so the caller can put the switch back. */
+export async function updateProfileAcceptPartnerInvites(userId: string, accept: boolean): Promise<void> {
   if (!isSupabaseConfigured) return;
-  try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ accept_partner_invites: accept })
-      .eq('id', userId);
-
-    if (error) {
-      console.warn('Error updating accept_partner_invites in Supabase:', error.message);
-    }
-  } catch (e) {
-    console.warn('updateProfileAcceptPartnerInvites error:', e);
-  }
+  const { error } = await supabase.from('profiles').update({ accept_partner_invites: accept }).eq('id', userId);
+  if (error) throw error;
 }
 
 /**
