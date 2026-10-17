@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog } from '@/components/ui/primitives';
+import { Dialog, Form, Input, Select } from '@/components/ui/primitives';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TimeTrackerActivity } from '@/types';
 import { ActivityIcon } from './ActivityIcon';
 import {
@@ -10,7 +11,7 @@ import {
 } from '@/lib/timeTracker';
 import { getLocalThemePreference } from '@/lib/store';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { Shapes, AlertTriangle, Link as LinkIcon, Check } from 'lucide-react';
+import { Shapes, AlertTriangle, Check } from 'lucide-react';
 import { toUserMessage } from '@/lib/userMessage';
 
 interface ActivityModalProps {
@@ -49,6 +50,7 @@ export function ActivityModal({
   const [error, setError] = useState<string | null>(null);
   const theme = getLocalThemePreference() || 'dark';
   const resolvedPreviewColor = color ? getActivityThemeColor(color, theme) : '';
+  const form = useUnsavedChanges(open ? (editingActivity?.id ?? 'new') : null, [name, color, icon, ascendModule]);
 
   useEffect(() => {
     if (!open) return;
@@ -74,11 +76,11 @@ export function ActivityModal({
       return;
     }
     if (!color) {
-      setError('Please select a color accent for this category.');
+      setError('Pick a colour for this category.');
       return;
     }
     if (!icon) {
-      setError('Please select an icon for this category.');
+      setError('Pick an icon for this category.');
       return;
     }
 
@@ -103,22 +105,34 @@ export function ActivityModal({
     <Dialog
       open={open}
       onClose={onClose}
-      title={editingActivity ? 'Edit Activity Category' : 'New Activity Category'}
+      dirty={form.dirty}
+      title={editingActivity ? 'Edit activity' : 'New activity'}
       maxWidth="max-w-md"
       preventClose={isSaving}
+      footer={
+        <>
+          <button type="button" onClick={() => form.confirmDiscard(onClose)} disabled={isSaving} className="btn-secondary">
+            Cancel
+          </button>
+          <button type="submit" form="tt-activity-form" disabled={isSaving} className="btn-primary">
+            {isSaving ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
+            <span>{isSaving ? 'Saving…' : editingActivity ? 'Save activity' : 'Create activity'}</span>
+          </button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <Form id="tt-activity-form" onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
+          <div role="alert" className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2 text-rose-theme text-xs">
             <AlertTriangle size={15} className="shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Live Preview Header */}
-        <div className="flex items-center gap-3 p-3 rounded-2xl bg-overlay-subtle border border-overlay-default">
+        {/* Live preview */}
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-overlay-default">
           <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors shadow-inner"
+            className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors"
             style={{
               backgroundColor: resolvedPreviewColor ? `${resolvedPreviewColor}25` : 'var(--bg-overlay-subtle)',
               color: resolvedPreviewColor || 'var(--color-content-muted)',
@@ -131,37 +145,29 @@ export function ActivityModal({
               <Shapes size={22} className="text-content-disabled" />
             )}
           </div>
-          <div>
-            <p className="item-name text-sm">
-              {name.trim() || 'Category Name Preview'}
+          <div className="min-w-0">
+            <p className="item-name text-sm truncate">
+              {name.trim() || 'Activity name'}
             </p>
             <p className="text-xs text-content-muted">
-              {ascendModule ? `Linked to ${ascendModule}` : 'Standard tracking category'}
+              {ascendModule ? `Linked to ${ascendModule}` : 'Standard activity'}
             </p>
           </div>
         </div>
 
-        {/* Category Name */}
-        <div>
-          <label htmlFor="tt-act-name" className="block label mb-1.5">
-            Category Name <span className="text-rose-theme">*</span>
-          </label>
-          <input
-            id="tt-act-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Client Consulting, Meditation, Piano"
-            className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3.5 py-2.5 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
-            required
-          />
-        </div>
+        <Input
+          id="tt-act-name"
+          label="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Client Consulting, Meditation, Piano"
+          maxLength={60}
+          autoComplete="off"
+          required
+        />
 
-        {/* Color Picker */}
-        <div>
-          <label className="block label mb-2">
-            Color Accent <span className="text-rose-theme">*</span>
-          </label>
+        <div role="group" aria-labelledby="tt-act-colour-label">
+          <p id="tt-act-colour-label" className="block label mb-2">Colour</p>
           <div className="flex flex-wrap gap-2">
             {AVAILABLE_ACTIVITY_COLORS.map((col) => {
               const isSelected = color === col.value;
@@ -171,24 +177,22 @@ export function ActivityModal({
                   type="button"
                   key={col.value}
                   onClick={() => setColor(col.value)}
-                  className={`w-7 h-7 rounded-full border-2 transition-transform cursor-pointer ${
+                  aria-pressed={isSelected}
+                  className={`w-9 h-9 sm:w-7 sm:h-7 rounded-full border-2 transition-transform cursor-pointer ${
                     isSelected ? 'scale-110 border-content-primary shadow-sm' : 'border-transparent hover:scale-105 opacity-80 hover:opacity-100'
                   }`}
                   style={{ backgroundColor: displaySwatchColor }}
                   title={col.name}
-                  aria-label={`Select colour ${col.name}`}
+                  aria-label={`Colour ${col.name}`}
                 />
               );
             })}
           </div>
         </div>
 
-        {/* Icon Picker */}
-        <div>
-          <label className="block label mb-2">
-            Category Icon <span className="text-rose-theme">*</span>
-          </label>
-          <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-36 overflow-y-auto p-1 bg-bg-900/50 rounded-xl border border-overlay-subtle">
+        <div role="group" aria-labelledby="tt-act-icon-label">
+          <p id="tt-act-icon-label" className="block label mb-2">Icon</p>
+          <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-40 overflow-y-auto p-1 rounded-xl border border-overlay-subtle">
             {AVAILABLE_ACTIVITY_ICONS.map((ic) => {
               const isSelected = icon === ic;
               return (
@@ -196,11 +200,12 @@ export function ActivityModal({
                   type="button"
                   key={ic}
                   onClick={() => setIcon(ic)}
-                  aria-label={`Select icon ${ic}`}
-                  className={`p-2 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                  aria-label={`Icon ${ic}`}
+                  aria-pressed={isSelected}
+                  className={`min-h-11 sm:min-h-9 p-2 rounded-lg flex items-center justify-center transition-all cursor-pointer border ${
                     isSelected
-                      ? 'bg-emerald-600/30 text-success-text border border-emerald-500'
-                      : 'text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
+                      ? 'bg-primary-500/15 text-brand-text border-primary-500/40'
+                      : 'border-transparent text-content-muted hover:text-content-secondary hover:bg-overlay-subtle'
                   }`}
                 >
                   <ActivityIcon iconName={ic} size={18} />
@@ -210,58 +215,21 @@ export function ActivityModal({
           </div>
         </div>
 
-        {/* Ascend Module Linkage */}
-        <div>
-          <label htmlFor="tt-act-module" className="block label mb-1.5 flex items-center gap-1.5">
-            <LinkIcon size={13} className="text-success-text" />
-            Link to an Ascend module (optional)
-          </label>
-          <select
-            id="tt-act-module"
-            value={ascendModule}
-            onChange={(e) => setAscendModule(e.target.value)}
-            className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2.5 text-sm text-content-primary focus:outline-none focus:border-emerald-500"
-          >
-            {MODULE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-bg-800 text-content-primary">
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <p className="text-micro text-content-disabled mt-1">
-            A linked activity earns bonus discipline points when you complete its blocks, and can open that section in one click.
-          </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-overlay-subtle">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSaving}
-            className="px-4 py-2 text-xs font-medium text-content-muted hover:text-content-secondary transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
-          >
-            {isSaving ? (
-              <>
-                <AscendLoadingIndicator size="sm" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Check size={14} />
-                <span>{editingActivity ? 'Save Category' : 'Create Category'}</span>
-              </>
-            )}
-          </button>
-        </div>
-      </form>
+        <Select
+          id="tt-act-module"
+          label="Link to an Ascend module"
+          optional
+          hint="A linked activity can open that section in one click."
+          value={ascendModule}
+          onChange={(e) => setAscendModule(e.target.value)}
+        >
+          {MODULE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </Select>
+      </Form>
     </Dialog>
   );
 }
