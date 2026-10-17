@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { cx, Dialog, EmptyState as EmptyStateBase, FieldRow, Form, Input, ProgressBar, Select, SlidingPill, Switch, Textarea } from '@/components/ui/primitives';
+import { cx, Dialog, EmptyState as EmptyStateBase, FieldRow, Form, Input, ProgressBar, Select, SlidingPill, Switch, Textarea, useFormController } from '@/components/ui/primitives';
 import { toUserMessage } from '@/lib/userMessage';
 import {
   Target,
@@ -936,8 +936,12 @@ export function ProjectsGoalsView({
   };
 
   // A failed save keeps the dialog open with what was typed and says why.
-  const reportSaveFailure = (what: string, err: unknown) => {
-    showErrorToast(`Couldn't save ${what}`, toUserMessage(err, 'Try again.'));
+  const goalIssues = useFormController();
+  const projectIssues = useFormController();
+  const taskIssues = useFormController();
+  const issuesFor = { goal: goalIssues, project: projectIssues, task: taskIssues };
+  const reportSaveFailure = (what: 'goal' | 'project' | 'task', err: unknown) => {
+    issuesFor[what].showError(toUserMessage(err, `Couldn't save this ${what}. Try again.`));
   };
 
   const handleSaveGoal = async () => {
@@ -2575,7 +2579,7 @@ export function ProjectsGoalsView({
           </>
         }
       >
-        <Form id="pg-goal-form" onSubmit={handleSaveGoal} className="space-y-4">
+        <Form id="pg-goal-form" onSubmit={handleSaveGoal} controller={goalIssues} className="space-y-4">
           <Input
             id="pg-goal-title"
             label="Goal"
@@ -2697,7 +2701,7 @@ export function ProjectsGoalsView({
           </>
         }
       >
-        <Form id="pg-project-form" onSubmit={handleSaveProject} className="space-y-4">
+        <Form id="pg-project-form" onSubmit={handleSaveProject} controller={projectIssues} className="space-y-4">
           <Input
             id="pg-project-title"
             label="Project"
@@ -2799,7 +2803,7 @@ export function ProjectsGoalsView({
           </>
         }
       >
-        <Form id="pg-task-form" onSubmit={handleSaveTaskModal} className="space-y-4">
+        <Form id="pg-task-form" onSubmit={handleSaveTaskModal} controller={taskIssues} className="space-y-4">
           <Input
             id="pg-task-title"
             label="Task"
