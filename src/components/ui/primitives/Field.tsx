@@ -324,6 +324,7 @@ function messageFor(el: Control): string {
   if (v.tooLong) return `Keep it under ${(el as HTMLInputElement).maxLength} characters.`;
   if (v.tooShort) return `Use at least ${(el as HTMLInputElement).minLength} characters.`;
   if (v.stepMismatch) return 'Use a whole number.';
+  if (v.patternMismatch) return el.title || 'Check the format.';
   if (v.badInput) return 'Enter a number.';
   return el.validationMessage || 'Check this field.';
 }
