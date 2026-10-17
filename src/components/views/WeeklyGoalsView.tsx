@@ -19,7 +19,7 @@ import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoin
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { weeklyGoalsCapNote } from '@/lib/capCopy';
-import { Dialog, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
+import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, ProgressBar, Select, Textarea } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { useCompletionPop } from '@/lib/useCompletionPop';
@@ -536,33 +536,8 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
   const handleSaveGoal = () => {
     if (!title.trim()) return;
-
-    if (linkedModule !== 'none') {
-      if (linkedModule === 'exercise' && !linkedItemId) {
-        showErrorToast('Choose a workout', 'Please select a specific workout to link this goal.');
-        return;
-      }
-
-      if (linkedModule === 'skill' && !linkedItemId) {
-        showErrorToast('Choose a skill', 'Please select a specific skill to link this goal.');
-        return;
-      }
-
-      if (linkedModule === 'habit' && !linkedItemId) {
-        showErrorToast('Choose a habit', 'Please select a specific habit to link this goal.');
-        return;
-      }
-
-      if (linkedModule === 'reading' && !linkedItemId) {
-        showErrorToast('Choose a book', 'Please select a specific book to link this goal.');
-        return;
-      }
-
-      if (!linkedMetricKey) {
-        showErrorToast('Choose a metric', 'Please select a metric to track for this linked goal.');
-        return;
-      }
-    }
+    // The form's required selects explain a missing workout/habit/book/skill or metric inline.
+    if (linkedModule !== 'none' && (!linkedItemId || !linkedMetricKey)) return;
 
     const payload = {
       title: title.trim(),
@@ -1047,231 +1022,179 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         dirty={goalForm.dirty}
-        title={editingGoal ? 'Edit Weekly Goal' : 'Add Weekly Goal'}
+        title={editingGoal ? 'Edit weekly goal' : 'Add weekly goal'}
+        footer={
+          <>
+            <button type="button" onClick={() => goalForm.confirmDiscard(() => setModalOpen(false))} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="weekly-goal-form" className="btn-primary">
+              {editingGoal ? 'Save goal' : 'Create goal'}
+            </button>
+          </>
+        }
       >
-        <div className="space-y-4 pt-2">
-          <div>
-            <label htmlFor="goal-title" className="block label mb-1">
-              Goal Title <span className="text-rose-theme">*</span>
-            </label>
-            <input
-              id="goal-title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Complete 3 Workouts, Read 50 pages, Run 10km"
-              className="input w-full"
-              autoFocus
-            />
-          </div>
+        <Form id="weekly-goal-form" onSubmit={handleSaveGoal} className="space-y-4">
+          <Input
+            id="goal-title"
+            label="Goal"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Complete 3 Workouts, Read 50 pages, Run 10km"
+            maxLength={120}
+            autoComplete="off"
+            required
+          />
 
-          <div>
-            <label htmlFor="goal-description" className="block label mb-1">
-              Description
-            </label>
-            <textarea
-              id="goal-description"
-              value={targetDescription}
-              onChange={(e) => setTargetDescription(e.target.value)}
-              placeholder="Why it matters and when you'll do it"
-              className="input min-h-[70px] text-xs"
-            />
-          </div>
+          <Textarea
+            id="goal-description"
+            label="Description"
+            optional
+            value={targetDescription}
+            onChange={(e) => setTargetDescription(e.target.value)}
+            placeholder="Why it matters and when you'll do it"
+            maxLength={500}
+          />
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="goal-priority" className="block label mb-1">
-                Priority Level
-              </label>
-              <select
-                id="goal-priority"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as WeeklyGoalPriority)}
-                className="input w-full bg-bg-800"
-              >
-                <option value="high">High Priority</option>
-                <option value="medium">Medium Priority</option>
-                <option value="low">Low Priority</option>
-              </select>
-            </div>
+          <FieldRow>
+            <Select
+              id="goal-priority"
+              label="Priority"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as WeeklyGoalPriority)}
+            >
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </Select>
 
-            <div>
-              <label htmlFor="goal-linked-module" className="block label mb-1">
-                Link Tracker Module
-              </label>
-              <select
-                id="goal-linked-module"
-                value={linkedModule}
-                onChange={(e) => {
-                  const mod = e.target.value as WeeklyGoalLinkedModule;
-                  setLinkedModule(mod);
-                  setLinkedItemId('');
-                  setLinkedMetricKey('');
-                }}
-                className="input w-full bg-bg-800"
-              >
-                <option value="none">None (Manual)</option>
-                <option value="habit">Habit Tracker</option>
-                <option value="exercise">Exercise Tracker</option>
-                <option value="reading">Reading Logs</option>
-                <option value="skill">Skill Tracker</option>
-              </select>
-            </div>
-          </div>
+            <Select
+              id="goal-linked-module"
+              label="Track with"
+              value={linkedModule}
+              onChange={(e) => {
+                const mod = e.target.value as WeeklyGoalLinkedModule;
+                setLinkedModule(mod);
+                setLinkedItemId('');
+                setLinkedMetricKey('');
+              }}
+            >
+              <option value="none">Manual (I update it)</option>
+              <option value="habit">Habit Tracker</option>
+              <option value="exercise">Exercise</option>
+              <option value="reading">Reading</option>
+              <option value="skill">Skills</option>
+            </Select>
+          </FieldRow>
 
-          {/* ITEM SELECTOR DEPENDING ON LINKED MODULE */}
           {linkedModule === 'exercise' && (
-            <div>
-              <label htmlFor="goal-workout-item" className="block label mb-1">
-                Select Workout <span className="text-rose-theme">*</span>
-              </label>
-              <select
-                id="goal-workout-item"
-                value={linkedItemId}
-                onChange={(e) => setLinkedItemId(e.target.value)}
-                className="input w-full bg-bg-800"
-              >
-                <option value="" disabled>Select a specific workout...</option>
-                {availableWorkoutTypes.map((workoutName) => (
-                  <option key={workoutName} value={workoutName}>
-                    {workoutName}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              id="goal-workout-item"
+              label="Workout"
+              value={linkedItemId}
+              onChange={(e) => setLinkedItemId(e.target.value)}
+              required
+            >
+              <option value="" disabled>Choose a workout…</option>
+              {availableWorkoutTypes.map((workoutName) => (
+              <option key={workoutName} value={workoutName}>
+                {workoutName}
+              </option>
+            ))}
+            </Select>
           )}
 
           {linkedModule === 'habit' && (
-            <div>
-              <label htmlFor="goal-habit-item" className="block label mb-1">
-                Select Habit <span className="text-rose-theme">*</span>
-              </label>
-              <select
-                id="goal-habit-item"
-                value={linkedItemId}
-                onChange={(e) => setLinkedItemId(e.target.value)}
-                className="input w-full bg-bg-800"
-              >
-                <option value="" disabled>Select a specific habit...</option>
-                {store.state.habits.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              id="goal-habit-item"
+              label="Habit"
+              value={linkedItemId}
+              onChange={(e) => setLinkedItemId(e.target.value)}
+              required
+            >
+              <option value="" disabled>Choose a habit…</option>
+              {store.state.habits.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.name}
+              </option>
+            ))}
+            </Select>
           )}
 
           {linkedModule === 'reading' && (
-            <div>
-              <label htmlFor="goal-book-item" className="block label mb-1">
-                Select Book <span className="text-rose-theme">*</span>
-              </label>
-              <select
-                id="goal-book-item"
-                value={linkedItemId}
-                onChange={(e) => setLinkedItemId(e.target.value)}
-                className="input w-full bg-bg-800"
-              >
-                <option value="" disabled>Select a specific book...</option>
-                {store.state.libraryBooks.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.title} {b.status === 'completed' ? '(Completed)' : b.status === 'reading' ? '(Reading)' : '(To Read)'}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              id="goal-book-item"
+              label="Book"
+              value={linkedItemId}
+              onChange={(e) => setLinkedItemId(e.target.value)}
+              required
+            >
+              <option value="" disabled>Choose a book…</option>
+              {store.state.libraryBooks.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.title} {b.status === 'completed' ? '(Completed)' : b.status === 'reading' ? '(Reading)' : '(To Read)'}
+              </option>
+            ))}
+            </Select>
           )}
 
           {linkedModule === 'skill' && (
-            <div>
-              <label htmlFor="goal-skill-item" className="block label mb-1">
-                Select Skill <span className="text-rose-theme">*</span>
-              </label>
-              <select
-                id="goal-skill-item"
-                value={linkedItemId}
-                onChange={(e) => setLinkedItemId(e.target.value)}
-                className="input w-full bg-bg-800"
-              >
-                <option value="" disabled>Select a specific skill...</option>
-                {store.state.skills.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              id="goal-skill-item"
+              label="Skill"
+              value={linkedItemId}
+              onChange={(e) => setLinkedItemId(e.target.value)}
+              required
+            >
+              <option value="" disabled>Choose a skill…</option>
+              {store.state.skills.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+            </Select>
           )}
 
-          {/* TARGET VALUE & METRIC / UNIT INPUTS */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="goal-target-amount" className="block label mb-1">
-                Target Goal Amount
-              </label>
-              <input
-                id="goal-target-amount"
-                type="number"
-                min="1"
-                value={targetValue}
-                onChange={(e) => setTargetValue(parseInt(e.target.value, 10) || 1)}
-                className="input w-full"
-              />
-            </div>
+          <FieldRow>
+            <NumberField
+              id="goal-target-amount"
+              label="Target"
+              min={1}
+              max={100000}
+              value={targetValue}
+              onValueChange={setTargetValue}
+              required
+            />
 
             {linkedModule !== 'none' ? (
-              <div>
-                <label htmlFor="goal-metric-key" className="block label mb-1">
-                  Select Metric <span className="text-rose-theme">*</span>
-                </label>
-                <select
-                  id="goal-metric-key"
-                  value={linkedMetricKey}
-                  onChange={(e) => setLinkedMetricKey(e.target.value)}
-                  className="input w-full bg-bg-800"
-                >
-                  <option value="" disabled>Select metric...</option>
-                  {(LINKED_GOAL_METRICS[linkedModule as LinkedModule] || []).map((m) => (
-                    <option key={m.key} value={m.key}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                id="goal-metric-key"
+                label="Metric"
+                value={linkedMetricKey}
+                onChange={(e) => setLinkedMetricKey(e.target.value)}
+                required
+              >
+                <option value="" disabled>Choose a metric…</option>
+                {(LINKED_GOAL_METRICS[linkedModule as LinkedModule] || []).map((m) => (
+                  <option key={m.key} value={m.key}>
+                    {m.label}
+                  </option>
+                ))}
+              </Select>
             ) : (
-              <div>
-                <label htmlFor="goal-unit-label" className="block label mb-1">
-                  Unit Label
-                </label>
-                <input
-                  id="goal-unit-label"
-                  type="text"
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  placeholder="e.g. sessions, mins, pages, posts"
-                  className="input w-full"
-                />
-              </div>
+              <Input
+                id="goal-unit-label"
+                label="Unit"
+                optional
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="e.g. sessions, mins, pages"
+                maxLength={20}
+                autoComplete="off"
+              />
             )}
-          </div>
-
-          <div className="flex gap-2 pt-3 border-t border-overlay-default">
-            <button
-              onClick={() => goalForm.confirmDiscard(() => setModalOpen(false))}
-              className="btn-secondary text-xs flex-1"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveGoal}
-              disabled={!title.trim() || (linkedModule !== 'none' && !linkedMetricKey)}
-              className="btn-primary text-xs flex-1 disabled:opacity-50"
-            >
-              {editingGoal ? 'Update Goal' : 'Create Goal'}
-            </button>
-          </div>
-        </div>
+          </FieldRow>
+        </Form>
       </Dialog>
 
       {/* CONFIRM DELETE GOAL MODAL */}
@@ -1280,9 +1203,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         onClose={() => setDeleteGoalModal(null)}
         onConfirm={handleDeleteGoalConfirm}
         isDeleting={deleteGoalModal ? isKeyLoading(`delete_weekly_goal_${deleteGoalModal.id}`) : false}
-        title="Delete Weekly Goal?"
+        title="Delete weekly goal?"
         itemName={deleteGoalModal?.title}
-        description={`Are you sure you want to delete "${deleteGoalModal?.title}"?`}
+        description={`Delete "${deleteGoalModal?.title}"?`}
       />
 
       {/* CONFIRM DISMISS PAST GOAL MODAL */}
@@ -1301,9 +1224,9 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             }
           }
         }}
-        title="Dismiss Carry-Over Goal?"
+        title="Dismiss carry-over goal?"
         itemName={dismissPastGoalModal?.goal.title}
-        description={`Are you sure you want to dismiss "${dismissPastGoalModal?.goal.title}"? It will remain recorded in ${dismissPastGoalModal?.pastWeek} but won't be suggested for carry-over again.`}
+        description={`Dismiss "${dismissPastGoalModal?.goal.title}"? It stays recorded in ${dismissPastGoalModal?.pastWeek} but won't be suggested for carry-over again.`}
         confirmText="Dismiss"
       />
 
@@ -1311,7 +1234,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       <Dialog
         open={Boolean(carryOverPromptModal)}
         onClose={() => setCarryOverPromptModal(null)}
-        title="Carry Over Goal"
+        title="Carry over goal"
       >
         <div className="space-y-4">
           <p className="text-xs text-content-tertiary leading-relaxed">
@@ -1362,14 +1285,14 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         onClose={() => setDeleteReflectionModal(null)}
         onConfirm={handleDeleteReflectionConfirm}
         isDeleting={deleteReflectionModal ? isKeyLoading(`delete_weekly_reflection_${deleteReflectionModal.id}`) : false}
-        title="Delete Reflection?"
+        title="Delete reflection?"
         itemName={deleteReflectionModal ? (deleteReflectionModal.content.length > 30 ? deleteReflectionModal.content.substring(0, 30) + '...' : deleteReflectionModal.content) : ''}
         description={
           deleteReflectionModal && isWeeklyReflectionAwarded(selectedWeekKey, deleteReflectionModal.id, store.state)
-            ? `Are you sure you want to delete this reflection? Since it earned points, ${WEEKLY_REFLECTION_POINTS.awarded} pts will be deducted. (Your weekly goals will remain untouched).`
+            ? `Delete this reflection? It earned points, so ${WEEKLY_REFLECTION_POINTS.awarded} pts will be deducted. Your weekly goals stay as they are.`
             : 'Delete this reflection? Your weekly goals stay as they are.'
         }
-        confirmText="Delete Reflection"
+        confirmText="Delete reflection"
       />
     </div>
   );
