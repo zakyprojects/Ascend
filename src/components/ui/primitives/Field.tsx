@@ -318,8 +318,9 @@ function isBlankText(el: Control): boolean {
 function messageFor(el: Control): string {
   const v = el.validity;
   if (v.valueMissing || isBlankText(el)) return el instanceof HTMLSelectElement ? 'Choose one.' : 'Required.';
-  if (v.rangeUnderflow) return `Must be ${(el as HTMLInputElement).min} or more.`;
-  if (v.rangeOverflow) return `Must be ${(el as HTMLInputElement).max} or less.`;
+  const isDateLike = el instanceof HTMLInputElement && ['date', 'time', 'datetime-local', 'month', 'week'].includes(el.type);
+  if (v.rangeUnderflow) return isDateLike ? 'Pick a later date.' : `Must be ${(el as HTMLInputElement).min} or more.`;
+  if (v.rangeOverflow) return isDateLike ? 'Pick an earlier date.' : `Must be ${(el as HTMLInputElement).max} or less.`;
   if (v.tooLong) return `Keep it under ${(el as HTMLInputElement).maxLength} characters.`;
   if (v.tooShort) return `Use at least ${(el as HTMLInputElement).minLength} characters.`;
   if (v.stepMismatch) return 'Use a whole number.';
