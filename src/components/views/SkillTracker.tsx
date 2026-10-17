@@ -9,7 +9,7 @@ import { todayKey, formatDateLong, formatDateShort, getNow, getWeekDates, isYest
 import { SKILLS_POINTS, calculateSkillPoints } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
-import { Dialog, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
+import { Dialog, EmptyState, Form, Input, NumberField, PageColumns, ProgressBar, Textarea } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
@@ -32,8 +32,15 @@ export function SkillTracker({ store }: { store: AppStore }) {
   const [category, setCategory] = useState('');
   const [duration, setDuration] = useState(30);
   const [note, setNote] = useState('');
-  const [noteTouched, setNoteTouched] = useState(false);
   const logForm = useUnsavedChanges(logModalSkill?.id ?? null, [duration, note]);
+  const addForm = useUnsavedChanges(addModalOpen, [skillName, category]);
+
+  // Every open starts clean: a dismissed draft is not shown again.
+  const openAddModal = () => {
+    setSkillName('');
+    setCategory('');
+    setAddModalOpen(true);
+  };
 
   const skills = store.state.skills;
   const skillLogs = store.state.skillLogs;
@@ -228,15 +235,11 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
   const handleLogPracticeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!logModalSkill || duration <= 0 || !note.trim()) {
-      setNoteTouched(true);
-      return;
-    }
+    if (!logModalSkill || duration <= 0 || !note.trim()) return;
     store.logSkillPractice(logModalSkill.id, Number(duration), note.trim());
     setLogModalSkill(null);
     setDuration(30);
     setNote('');
-    setNoteTouched(false);
   };
 
   return (
@@ -247,7 +250,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           <h1 className="page-title">Skills</h1>
           <p className="page-subtitle">Deliberate practice, learning notes and levels.</p>
         </div>
-        <button onClick={() => setAddModalOpen(true)} className="btn-primary flex items-center gap-2 sm:shrink-0">
+        <button onClick={openAddModal} className="btn-primary flex items-center gap-2 sm:shrink-0">
           <Plus size={18} />
           <span>Add Skill</span>
         </button>
@@ -319,7 +322,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
               title="No skills added yet"
               description="Add a skill (e.g. coding, Spanish, guitar, design) to log practice and earn points."
               action={
-                <button onClick={() => setAddModalOpen(true)} className="btn-primary mx-auto">
+                <button onClick={openAddModal} className="btn-primary mx-auto">
                   Add Your First Skill
                 </button>
               }
@@ -463,26 +466,39 @@ export function SkillTracker({ store }: { store: AppStore }) {
       </PageColumns>
 
       {/* Add Skill Modal */}
-      <Dialog open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Skill">
-        <form onSubmit={handleAddSkillSubmit} className="space-y-4">
-          <div>
-            <label className="block label mb-1" htmlFor="skill-name-input">Skill name</label>
-            <input
-              id="skill-name-input"
-              type="text"
-              value={skillName}
-              onChange={(e) => setSkillName(e.target.value)}
-              placeholder="e.g. Web Development, Guitar, Spanish"
-              className="input"
-              required
-            />
-          </div>
+      <Dialog
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        dirty={addForm.dirty}
+        title="Add skill"
+        footer={
+          <>
+            <button type="button" onClick={() => addForm.confirmDiscard(() => setAddModalOpen(false))} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="skill-add-form" className="btn-primary">
+              Add skill
+            </button>
+          </>
+        }
+      >
+        <Form id="skill-add-form" onSubmit={handleAddSkillSubmit} className="space-y-4">
+          <Input
+            id="skill-name-input"
+            label="Skill name"
+            value={skillName}
+            onChange={(e) => setSkillName(e.target.value)}
+            placeholder="e.g. Web Development, Guitar, Spanish"
+            maxLength={80}
+            autoComplete="off"
+            required
+          />
 
           <div className="relative">
-            <label className="block label mb-1" htmlFor="skill-category-input">Category (optional)</label>
-            <input
+            <Input
               id="skill-category-input"
-              type="text"
+              label="Category"
+              optional
               value={category}
               onChange={(e) => {
                 setCategory(e.target.value);
@@ -494,7 +510,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
                 setTimeout(() => setCategorySuggestionsOpen(false), 200);
               }}
               placeholder="e.g. Technology, Music, Language"
-              className="input"
+              maxLength={40}
+              autoComplete="off"
+              enterKeyHint="done"
             />
             {categorySuggestionsOpen && categorySuggestions.length > 0 && (
               <div className="absolute z-50 left-0 right-0 mt-1 bg-bg-750 border border-overlay-medium rounded-xl shadow-lg max-h-36 overflow-y-auto p-1 space-y-0.5">
@@ -519,88 +537,52 @@ export function SkillTracker({ store }: { store: AppStore }) {
               </div>
             )}
           </div>
-
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setAddModalOpen(false)} className="btn-secondary flex-1">
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary flex-1">
-              Add Skill
-            </button>
-          </div>
-        </form>
+        </Form>
       </Dialog>
 
       {/* Log Practice Session Modal */}
       <Dialog
         open={!!logModalSkill}
-        onClose={() => {
-          setLogModalSkill(null);
-          setNoteTouched(false);
-        }}
+        onClose={() => setLogModalSkill(null)}
         dirty={logForm.dirty}
-        title={`Log Practice: ${logModalSkill?.name}`}
-      >
-        <form onSubmit={handleLogPracticeSubmit} className="space-y-4">
-          <div>
-            <label className="block label mb-1" htmlFor="skill-duration-input">Practice time (minutes)</label>
-            <input
-              id="skill-duration-input"
-              type="number"
-              min="1"
-              max="300"
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              className="input"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block label mb-1" htmlFor="skill-note-input">What did you practice?</label>
-            <textarea
-              id="skill-note-input"
-              autoFocus
-              value={note}
-              onChange={(e) => {
-                setNote(e.target.value);
-                if (noteTouched && e.target.value.trim()) setNoteTouched(false);
-              }}
-              placeholder="e.g. React hooks and custom components"
-              className={`input min-h-[80px] ${noteTouched && !note.trim() ? 'border-rose-500 focus:border-rose-500' : ''}`}
-            />
-            {noteTouched && !note.trim() && (
-              <p className="text-xs text-error-text mt-1">Please enter a note describing what you practiced.</p>
-            )}
-          </div>
-
-          <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between border border-overlay-default">
-            <span>Points to earn:</span>
-            <span className="figure text-purple-hierarchy">+{skillPreviewPoints} pts</span>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() =>
-                logForm.confirmDiscard(() => {
-                  setLogModalSkill(null);
-                  setNoteTouched(false);
-                })
-              }
-              className="btn-secondary flex-1"
-            >
+        title={`Log practice: ${logModalSkill?.name}`}
+        footer={
+          <>
+            <button type="button" onClick={() => logForm.confirmDiscard(() => setLogModalSkill(null))} className="btn-secondary">
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={!note.trim()}
-              className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Save Session
+            <button type="submit" form="skill-log-form" className="btn-primary">
+              Save session
             </button>
+          </>
+        }
+      >
+        <Form id="skill-log-form" onSubmit={handleLogPracticeSubmit} className="space-y-4">
+          <NumberField
+            id="skill-duration-input"
+            label="Practice time (minutes)"
+            min={1}
+            max={300}
+            value={duration}
+            onValueChange={setDuration}
+            required
+          />
+
+          <Textarea
+            id="skill-note-input"
+            label="What did you practice?"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. React hooks and custom components"
+            maxLength={1000}
+            required
+          />
+
+          <div className="rounded-xl p-3 text-xs text-content-muted flex items-center justify-between border border-overlay-default">
+            <span>Points to earn</span>
+            <span className="figure text-purple-hierarchy">+{skillPreviewPoints} pts</span>
           </div>
-        </form>
+        </Form>
       </Dialog>
 
       {/* Confirm Delete Skill Modal */}
