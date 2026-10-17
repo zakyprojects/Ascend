@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Dialog, EmptyState, FieldMessage, Form, Input, NumberField, ProgressBar, Skeleton, SlidingPill } from '@/components/ui/primitives';
+import { Dialog, EmptyState, FieldMessage, Form, Input, NumberField, ProgressBar, Skeleton, SlidingPill, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { ImprovementPlan, PlanType, UserPlanFollow, PLAN_CATEGORIES } from '@/types';
 import { earliestTargetDate, isNewPastDate, todayKey } from '@/lib/dates';
 import { TierBadge } from '@/components/ui/TierBadge';
@@ -1326,10 +1326,11 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           <div className="space-y-3">
             {/* Search Input & Sort Dropdown */}
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-              <div className="relative flex-1">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" />
-                <input
-                  type="text"
+              <ToolbarInput
+                  type="search"
+                  icon={Search}
+                  aria-label="Search public plans"
+                  wrapperClassName="flex-1"
                   value={discoverSearch}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -1337,27 +1338,25 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     loadPlans(val, discoverCategory, discoverPlanType, discoverSortBy);
                   }}
                   placeholder="Search public plans..."
-                  className="input text-xs pl-9 py-2 w-full"
                 />
-              </div>
 
               <div className="flex items-center gap-2 shrink-0">
                 <label className="label flex items-center gap-1">
                   <Filter size={13} className="text-blue-theme" /> Sort:
                 </label>
-                <select
+                <ToolbarSelect
+                  aria-label="Sort public plans"
                   value={discoverSortBy}
                   onChange={(e) => {
                     const sort = e.target.value as 'recent' | 'followed' | 'creator_rank';
                     setDiscoverSortBy(sort);
                     loadPlans(discoverSearch, discoverCategory, discoverPlanType, sort);
                   }}
-                  className="input text-xs py-1.5 px-3 bg-bg-700 border-overlay-default text-content-secondary"
                 >
                   <option value="recent">Most Recent</option>
                   <option value="followed">Most Followed (Copy Count)</option>
                   <option value="creator_rank">Creator Rank (Tier Points)</option>
-                </select>
+                </ToolbarSelect>
               </div>
             </div>
 

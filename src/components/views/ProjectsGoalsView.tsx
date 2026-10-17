@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { cx, Dialog, EmptyState as EmptyStateBase, FieldRow, Form, Input, ProgressBar, Select, SlidingPill, Switch, Textarea, useFormController } from '@/components/ui/primitives';
+import { cx, Dialog, EmptyState as EmptyStateBase, FieldRow, Form, Input, ProgressBar, Select, SlidingPill, Switch, Textarea, ToolbarInput, ToolbarSelect, useFormController } from '@/components/ui/primitives';
 import { toUserMessage } from '@/lib/userMessage';
 import {
   Target,
@@ -54,20 +54,6 @@ const GOAL_FILTER_PILL: Record<string, string> = {
   achieved: 'bg-[var(--badge-purple-bg)] border-[var(--badge-purple-border)]',
   abandoned: 'bg-overlay-default border-overlay-default',
 };
-/** Compact filter dropdown for the toolbars: one look, a drawn chevron, and an accessible name. */
-function FilterSelect({ className, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { 'aria-label': string }) {
-  return (
-    <div className={cx('relative w-full sm:w-auto shrink-0', className)}>
-      <select
-        {...props}
-        className="w-full appearance-none bg-bg-900 border border-overlay-default rounded-xl pl-3 pr-8 py-1.5 text-2xs sm:text-xs text-content-secondary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30"
-      >
-        {children}
-      </select>
-      <ChevronDown size={14} aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted" />
-    </div>
-  );
-}
 
 const PROJECT_FILTER_PILL: Record<string, string> = {
   all: 'bg-overlay-default border-overlay-strong',
@@ -1537,16 +1523,15 @@ export function ProjectsGoalsView({
           <div className="flex flex-col gap-3">
             {/* Top Row: Search */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <div className="flex-1 relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" size={14} />
-                <input
-                  type="text"
-                  placeholder="Search goals..."
-                  value={goalSearch}
-                  onChange={(e) => setGoalSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-secondary focus:outline-none focus:border-primary-500/50"
-                />
-              </div>
+              <ToolbarInput
+                type="search"
+                icon={Search}
+                aria-label="Search goals"
+                placeholder="Search goals..."
+                value={goalSearch}
+                onChange={(e) => setGoalSearch(e.target.value)}
+                wrapperClassName="flex-1"
+              />
             </div>
 
             {/* Bottom Row: Status Filter Tabs */}
@@ -1816,21 +1801,20 @@ export function ProjectsGoalsView({
           <div className="flex flex-col gap-3">
             {/* Top Row: Search & Goal Dropdown Filter */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <div className="flex-1 relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" size={14} />
-                <input
-                  type="text"
-                  placeholder="Search projects..."
-                  value={projectSearch}
-                  onChange={(e) => setProjectSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-secondary focus:outline-none focus:border-primary-500/50"
-                />
-              </div>
+              <ToolbarInput
+                type="search"
+                icon={Search}
+                aria-label="Search projects"
+                placeholder="Search projects..."
+                value={projectSearch}
+                onChange={(e) => setProjectSearch(e.target.value)}
+                wrapperClassName="flex-1"
+              />
 
               {!filterGoalId && (
                 <div className="grid grid-cols-1 sm:flex items-center gap-2 w-full sm:w-auto shrink-0">
                   <Filter size={14} className="text-content-muted shrink-0 hidden sm:inline-block" />
-                  <FilterSelect
+                  <ToolbarSelect
                     aria-label="Filter projects by goal"
                     value={projectGoalFilter}
                     onChange={(e) => setProjectGoalFilter(e.target.value)}
@@ -1842,7 +1826,7 @@ export function ProjectsGoalsView({
                         Goal: {g.title}
                       </option>
                     ))}
-                  </FilterSelect>
+                  </ToolbarSelect>
                 </div>
               )}
             </div>
@@ -2248,36 +2232,37 @@ export function ProjectsGoalsView({
             onSubmit={handleQuickAddTask}
             className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
           >
-            <div className="flex-1 relative">
-              <CheckSquare className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" size={16} />
-              <input
-                ref={quickTaskInputRef}
-                id="input-quick-add-task"
-                type="text"
-                placeholder="e.g., Read 10 pages, Do 50 pushups, Drink 3L water..."
-                value={quickTaskTitle}
-                onChange={(e) => setQuickTaskTitle(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs sm:text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-emerald-500/50"
-              />
-            </div>
+            <ToolbarInput
+              ref={quickTaskInputRef}
+              id="input-quick-add-task"
+              type="text"
+              icon={CheckSquare}
+              aria-label="New task"
+              placeholder="e.g., Read 10 pages, Do 50 pushups, Drink 3L water..."
+              value={quickTaskTitle}
+              onChange={(e) => setQuickTaskTitle(e.target.value)}
+              wrapperClassName="flex-1"
+            />
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
-                <select
+                <ToolbarSelect
+                  aria-label="New task priority"
                   value={quickTaskPriority}
                   onChange={(e) => setQuickTaskPriority(e.target.value as TaskPriority)}
-                  className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-2.5 py-2 text-2xs sm:text-xs text-content-tertiary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 min-w-[110px]"
+                  className="min-w-[110px]"
                 >
                   <option value="high">High Priority</option>
                   <option value="medium">Medium Priority</option>
                   <option value="low">Low Priority</option>
-                </select>
+                </ToolbarSelect>
 
                 {!filterProjectId && (
-                  <select
+                  <ToolbarSelect
+                    aria-label="New task project"
                     value={quickTaskProjectId}
                     onChange={(e) => setQuickTaskProjectId(e.target.value)}
-                    className="w-full sm:w-auto bg-bg-900 border border-overlay-default rounded-xl px-2.5 py-2 text-2xs sm:text-xs text-content-tertiary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30 min-w-[110px] truncate"
+                    className="min-w-[110px] truncate"
                   >
                     <option value="">No Project</option>
                     {projects.map((p) => (
@@ -2285,7 +2270,7 @@ export function ProjectsGoalsView({
                         {p.title}
                       </option>
                     ))}
-                  </select>
+                  </ToolbarSelect>
                 )}
               </div>
 
@@ -2306,16 +2291,15 @@ export function ProjectsGoalsView({
             {/* Top Row: Search & Dropdown Selects */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
               <div className="flex w-full flex-1 items-center gap-2">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" size={14} />
-                  <input
-                    type="text"
-                    placeholder="Search tasks..."
-                    value={taskSearch}
-                    onChange={(e) => setTaskSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-secondary focus:outline-none focus:border-emerald-500/50"
-                  />
-                </div>
+                <ToolbarInput
+                  type="search"
+                  icon={Search}
+                  aria-label="Search tasks"
+                  placeholder="Search tasks..."
+                  value={taskSearch}
+                  onChange={(e) => setTaskSearch(e.target.value)}
+                  wrapperClassName="flex-1"
+                />
                 <button
                   type="button"
                   aria-expanded={taskFiltersOpen}
@@ -2339,7 +2323,7 @@ export function ProjectsGoalsView({
                 className={cx('grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto', !taskFiltersOpen && 'max-sm:hidden')}
               >
                 {/* Priority Dropdown Filter */}
-                <FilterSelect
+                <ToolbarSelect
                   aria-label="Filter tasks by priority"
                   value={taskPriorityFilter}
                   onChange={(e) => setTaskPriorityFilter(e.target.value as 'all' | TaskPriority)}
@@ -2348,10 +2332,10 @@ export function ProjectsGoalsView({
                   <option value="high">High Priority</option>
                   <option value="medium">Medium Priority</option>
                   <option value="low">Low Priority</option>
-                </FilterSelect>
+                </ToolbarSelect>
 
                 {!filterProjectId && (
-                  <FilterSelect
+                  <ToolbarSelect
                     aria-label="Filter tasks by project"
                     value={taskProjectFilter}
                     onChange={(e) => setTaskProjectFilter(e.target.value)}
@@ -2363,7 +2347,7 @@ export function ProjectsGoalsView({
                         Project: {p.title}
                       </option>
                     ))}
-                  </FilterSelect>
+                  </ToolbarSelect>
                 )}
               </div>
             </div>

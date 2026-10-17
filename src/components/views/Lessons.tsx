@@ -3,7 +3,7 @@ import { BookOpen, Check, Clock, Search } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import { Lesson } from '@/types';
-import { Dialog, EmptyState } from '@/components/ui/primitives';
+import { Dialog, EmptyState, ToolbarInput } from '@/components/ui/primitives';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { getSeasonNumber, leagueNow } from '@/lib/leagueTime';
@@ -44,18 +44,15 @@ export function Lessons({ store }: { store: AppStore }) {
       </Reveal>
 
       {/* Search */}
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" />
-        <input
-          id="lessons-search"
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search lessons..."
-          aria-label="Search lessons"
-          className="input pl-10"
-        />
-      </div>
+      <ToolbarInput
+        id="lessons-search"
+        type="search"
+        icon={Search}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search lessons..."
+        aria-label="Search lessons"
+      />
 
       {/* Category filter */}
       <div className="flex flex-wrap gap-2">

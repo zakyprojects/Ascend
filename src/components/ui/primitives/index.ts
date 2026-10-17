@@ -72,3 +72,6 @@ export type { PageColumnsProps } from './PageColumns';
 
 export { Disclosure } from './Disclosure';
 export type { DisclosureProps } from './Disclosure';
+
+export { ToolbarInput, ToolbarSelect } from './Toolbar';
+export type { ToolbarInputProps, ToolbarSelectProps } from './Toolbar';

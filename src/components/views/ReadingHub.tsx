@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, ProgressBar, Select, Tabs, Textarea } from '@/components/ui/primitives';
+import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, ProgressBar, Select, Tabs, Textarea, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { UserBook, UserBookStatus, BookCategory } from '@/types';
@@ -452,23 +452,21 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
             {/* Search & Category Filter */}
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full">
-              <div className="relative w-full sm:flex-1">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-disabled" />
-                <input
-                  aria-label="Search books"
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search title or author"
-                  className="input pl-8 py-1.5 text-xs w-full"
-                />
-              </div>
+              <ToolbarInput
+                type="search"
+                icon={Search}
+                aria-label="Search books"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search title or author"
+                wrapperClassName="sm:flex-1"
+              />
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <select
+                <ToolbarSelect
                   aria-label="Filter books by category"
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value as BookCategory | 'all')}
-                  className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-44"
+                  wrapperClassName="flex-1 sm:flex-none sm:w-44"
                 >
                   <option value="all">All categories</option>
                   {BOOK_CATEGORIES.map((cat) => (
@@ -476,17 +474,17 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       {cat.name}
                     </option>
                   ))}
-                </select>
-                <select
+                </ToolbarSelect>
+                <ToolbarSelect
                   aria-label="Sort books"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'trending' | 'bestsellers' | 'az')}
-                  className="input py-1.5 text-xs bg-bg-800 flex-1 sm:flex-none sm:w-36"
+                  wrapperClassName="flex-1 sm:flex-none sm:w-36"
                 >
                   <option value="trending">Trending</option>
                   <option value="bestsellers">Bestsellers</option>
                   <option value="az">Alphabetical (A-Z)</option>
-                </select>
+                </ToolbarSelect>
               </div>
             </div>
           </div>
