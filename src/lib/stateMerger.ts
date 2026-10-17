@@ -1306,6 +1306,35 @@ export interface MergeGuardResult {
   mergedCount: number;
 }
 
+/** Ids of every item in a top-level array of the state, and of the recovery tracker. */
+function topLevelItemIds(state: AppState): Set<string> {
+  const ids = new Set<string>();
+  for (const value of Object.values(state)) {
+    if (!Array.isArray(value)) continue;
+    for (const item of value) {
+      const id = (item as { id?: unknown } | null)?.id;
+      if (typeof id === 'string') ids.add(id);
+    }
+  }
+  if (state.addictionTracker?.id) ids.add(state.addictionTracker.id);
+  return ids;
+}
+
+/**
+ * The kept state of a suspicious drop, with the tombstones of the items it brings back lifted.
+ * Keeping those tombstones made every later merge drop the same items again, so "keep my
+ * data" asked again on each save and load and the kept items never reached the server.
+ */
+function withoutTombstonesFor(retained: AppState, merged: AppState): AppState {
+  const mergedIds = topLevelItemIds(merged);
+  const kept = new Set([...topLevelItemIds(retained)].filter((id) => !mergedIds.has(id)));
+  if (kept.size === 0) return retained;
+  return {
+    ...retained,
+    deletedEntityIds: (retained.deletedEntityIds || []).filter((id) => !kept.has(id)),
+  };
+}
+
 export function mergeAppStateWithGuardResult(
   baseState: AppState,
   incomingState: AppState,
@@ -1340,7 +1369,10 @@ export function mergeAppStateWithGuardResult(
 
   // Pass 2: only if suspicious drop detected, compute retainedState bypassing tombstones
   const retainedState = hasSuspiciousDrop
-    ? mergeAppStateInternal(baseState, incomingState, 'hydration', { tombstoneSetOverride: new Set<string>() })
+    ? withoutTombstonesFor(
+        mergeAppStateInternal(baseState, incomingState, 'hydration', { tombstoneSetOverride: new Set<string>() }),
+        mergedState
+      )
     : mergedState;
 
   return {

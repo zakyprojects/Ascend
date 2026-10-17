@@ -1870,7 +1870,9 @@ export function useAppState() {
       setDestructiveWipeModal(null);
       return;
     }
-    const stateToSave = destructiveWipeModal.stateToRetry;
+    // Drop the items its own tombstones remove, as the save itself does: keeping them in the
+    // cache and on screen brought the same prompt back on the next load.
+    const stateToSave = mergeAppState(destructiveWipeModal.stateToRetry, destructiveWipeModal.stateToRetry, 'writeSync');
     setIsSavingDestructiveWipe(true);
     try {
       await enqueuePersist(stateToSave, { allowDestructiveWipe: true });

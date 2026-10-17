@@ -142,6 +142,14 @@ function runFixtures() {
     const result = mergeAppStateWithGuardResult(full, wipe, watermark);
     assert(result.hasSuspiciousDrop, 'mass tombstone wipe is flagged');
     assert(result.retainedState.journalEntries.length === 10, 'retainedState keeps the items');
+    assert(
+      (result.retainedState.deletedEntityIds || []).length === 0,
+      'retainedState lifts the tombstones of the items it keeps'
+    );
+    assert(
+      mergeAppState(result.retainedState, result.retainedState, 'writeSync').journalEntries.length === 10,
+      'a kept state is not wiped again by its next save'
+    );
     const calm = mergeAppStateWithGuardResult(full, full, watermark);
     assert(!calm.hasSuspiciousDrop, 'no false positive on an unchanged state');
   }
