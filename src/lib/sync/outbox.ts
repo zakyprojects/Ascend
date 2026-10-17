@@ -47,6 +47,8 @@ const outboxKey = (userId: string) => `ascend_outbox_${userId}`;
 const baselineKey = (userId: string) => `ascend_sync_baseline_${userId}`;
 const opKey = (table: string, id: string) => `${table}:${id}`;
 export const cursorKey = (userId: string, table: string) => `ascend_sync_cursor_${userId}_${table}`;
+/** When this device last read every synced table in full (see pull.ts, PURGE_AFTER_DAYS). */
+export const lastFullPullKey = (userId: string) => `ascend_sync_last_full_pull_${userId}`;
 const DELETE_CHUNK = 100;
 
 function readJson<T>(key: string): T | null {
@@ -205,6 +207,7 @@ export function clearSyncStorage(userId: string): void {
     localStorage.removeItem(outboxKey(userId));
     localStorage.removeItem(baselineKey(userId));
     for (const { table } of SYNCED_COLLECTIONS) localStorage.removeItem(cursorKey(userId, table));
+    localStorage.removeItem(lastFullPullKey(userId));
   } catch {
     /* ignore */
   }

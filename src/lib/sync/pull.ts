@@ -1,6 +1,7 @@
 import type { AppState } from '../../types';
+import { trustedNowMs } from '../clock';
 import { supabase } from '../supabase';
-import { DELETED, acceptServerRows, cursorKey, hashRow, knownHashes, pendingOpIds } from './outbox';
+import { DELETED, acceptServerRows, cursorKey, hashRow, knownHashes, lastFullPullKey, pendingOpIds } from './outbox';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf, withItems, type SyncedCollection } from './syncedCollections';
 
 /**
@@ -28,6 +29,22 @@ export interface RemoteChange {
 const CURSOR_OVERLAP_MS = 60_000;
 
 /**
+ * The server removes soft-deleted rows this many days after their delete
+ * (ascend_purge_soft_deleted_rows; keep the two values equal). A device whose last full pull
+ * is older than that may have missed a delete whose row is now gone.
+ */
+const PURGE_AFTER_DAYS = 30;
+
+/** True when this device has not read every table for close to the purge window. */
+function missedPurgedDeletes(userId: string): boolean {
+  const last = Date.parse(localStorage.getItem(lastFullPullKey(userId)) || '');
+  // No record yet: the device predates the purge, which only removes deletes older than
+  // 30 days, so it has synced since every delete it could have missed.
+  if (!last) return false;
+  return trustedNowMs() - last > (PURGE_AFTER_DAYS - 1) * 24 * 60 * 60 * 1000;
+}
+
+/**
  * Server rows -> state changes. Rows the device already holds produce nothing.
  * full: rows the baseline already knows still come back as missingOnly, because the
  * state can boot without them now that the blob no longer carries synced collections (S4).
@@ -36,7 +53,8 @@ export function prepareRemoteRows(
   userId: string,
   collection: SyncedCollection,
   rows: Array<Record<string, unknown>>,
-  full = false
+  full = false,
+  stale = false
 ): RemoteChange[] {
   const pending = pendingOpIds(userId, collection.table);
   const key = syncKeyOf(collection);
@@ -63,6 +81,18 @@ export function prepareRemoteRows(
     }
     hashes[id] = hash;
     changes.push({ key, id, item, baseHash: known[id] });
+  }
+
+  // stale (full pull only): a row this device once synced that the server no longer has was
+  // purged after a delete this device never saw, so its local copy goes too. Only ids the
+  // baseline holds as synced count, so an item that never reached the server is kept.
+  if (full && stale) {
+    const present = new Set(rows.map((row) => String(row.id)));
+    for (const [id, hash] of Object.entries(known)) {
+      if (hash === DELETED || present.has(id) || pending.has(id) || collection.serverOwnedId?.(id)) continue;
+      hashes[id] = null;
+      changes.push({ key, id, item: null });
+    }
   }
 
   if (Object.keys(hashes).length > 0) acceptServerRows(userId, key, hashes);
@@ -165,14 +195,19 @@ export async function pullSyncedRows(userId: string, full: boolean): Promise<Rem
   const { data } = await supabase.auth.getSession();
   if (data.session?.user.id !== userId) return [];
 
+  const stale = full && missedPurgedDeletes(userId);
+  let everyTableRead = true;
   const perTable = await Promise.all(
     SYNCED_COLLECTIONS.map(async (collection) => {
       const cursor = localStorage.getItem(cursorKey(userId, collection.table));
       const since = cursor && !full ? new Date(Date.parse(cursor) - CURSOR_OVERLAP_MS).toISOString() : null;
       const rows = await fetchRows(collection.table, userId, since);
-      if (!rows) return [];
+      if (!rows) {
+        everyTableRead = false;
+        return [];
+      }
 
-      const changes = prepareRemoteRows(userId, collection, rows, full);
+      const changes = prepareRemoteRows(userId, collection, rows, full, stale);
       const latest = rows.reduce<number>(
         (max, row) => Math.max(max, Date.parse(String(row.server_updated_at)) || 0),
         cursor ? Date.parse(cursor) : 0
@@ -181,6 +216,7 @@ export async function pullSyncedRows(userId: string, full: boolean): Promise<Rem
       return changes;
     })
   );
+  if (full && everyTableRead) localStorage.setItem(lastFullPullKey(userId), new Date(trustedNowMs()).toISOString());
   const changes = perTable.flat();
   return changes;
 }
