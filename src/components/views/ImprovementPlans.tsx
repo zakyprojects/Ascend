@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Dialog, EmptyState, ProgressBar, Skeleton, SlidingPill } from '@/components/ui/primitives';
+import { Dialog, EmptyState, Form, NumberField, ProgressBar, Skeleton, SlidingPill } from '@/components/ui/primitives';
 import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
 import { getCurrentTier } from '@/lib/tiers';
 import { todayKey } from '@/lib/dates';
@@ -1590,10 +1590,25 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       )}
 
       {/* NEW TARGET (completed target goal) */}
-      <Dialog open={newTargetFor !== null} onClose={closeNewTarget} title="Set a new target" maxWidth="max-w-sm">
-        <form onSubmit={handleNewTargetSubmit} className="space-y-4">
+      <Dialog
+        open={newTargetFor !== null}
+        onClose={closeNewTarget}
+        title="Set a new target"
+        maxWidth="max-w-sm"
+        footer={
+          <>
+            <button type="button" onClick={closeNewTarget} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="plan-new-target-form" className="btn-primary">
+              Set target
+            </button>
+          </>
+        }
+      >
+        <Form id="plan-new-target-form" onSubmit={handleNewTargetSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor="plan-new-target" className="text-xs font-medium text-content-secondary">
+            <label htmlFor="plan-new-target" className="label block">
               New target value
             </label>
             <input
@@ -1602,27 +1617,16 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               min="1"
               step="any"
               inputMode="decimal"
-              autoFocus
+              enterKeyHint="done"
               value={newTargetValue}
               onChange={(e) => setNewTargetValue(e.target.value)}
               className="input w-full"
               placeholder="e.g. 20"
+              required
             />
             <p className="text-xs text-content-muted">Goal done. Progress starts again from 0.</p>
           </div>
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={closeNewTarget}
-              className="flex-1 py-2.5 hover:bg-overlay-subtle text-content-tertiary font-semibold text-xs rounded-xl border border-overlay-default transition-all"
-            >
-              Cancel
-            </button>
-            <button type="submit" disabled={!isNewTargetValid} className="btn-primary flex-1 justify-center text-xs disabled:opacity-50 disabled:cursor-not-allowed">
-              Set target
-            </button>
-          </div>
-        </form>
+        </Form>
       </Dialog>
 
       {/* CREATE PLAN MODAL */}
@@ -1630,14 +1634,25 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         dirty={createForm.dirty}
-        title="Create Improvement Plan"
+        title="Create improvement plan"
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <button type="button" onClick={() => createForm.confirmDiscard(() => setCreateModalOpen(false))} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="pip-create-form" className="btn-primary">
+              Create plan
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleCreateSubmit} className="space-y-4">
+        <Form id="pip-create-form" onSubmit={handleCreateSubmit} className="space-y-4">
           {/* STARTER TEMPLATE ACCELERATOR */}
-          <div className="card p-3 space-y-2">
+          <div className="p-3 space-y-2 rounded-xl border border-overlay-default">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-content-tertiary flex items-center gap-1.5">
-                <LayoutTemplate size={13} className="text-blue-theme" /> Start from Template (Optional)
+                <LayoutTemplate size={13} className="text-blue-theme" /> Start from a template (optional)
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -1651,7 +1666,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   <div className="item-name text-content-secondary group-hover:text-blue-theme flex items-center justify-between">
                     <span>{tpl.title}</span>
                   </div>
-                  <div className="text-2xs text-content-disabled line-clamp-2 mt-0.5">{tpl.description}</div>
+                  <div className="text-xs text-content-muted line-clamp-2 mt-0.5">{tpl.description}</div>
                 </button>
               ))}
             </div>
@@ -1659,7 +1674,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
           {/* STEP 1: PLAN TYPE SELECTOR */}
           <div>
-            <label className="block label mb-2">Select Plan Type</label>
+            <p className="block label mb-2">Plan type</p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -1673,7 +1688,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <div className="flex items-center gap-1.5 font-medium text-xs text-blue-theme">
                   <CheckSquare size={14} /> Milestone Plan
                 </div>
-                <div className="text-micro text-content-disabled leading-tight">Ordered list of milestones & step completion</div>
+                <div className="text-xs text-content-muted leading-tight">Ordered list of milestones & step completion</div>
               </button>
 
               <button
@@ -1688,7 +1703,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <div className="flex items-center gap-1.5 font-medium text-xs text-warning-text">
                   <Target size={14} /> Target Goal
                 </div>
-                <div className="text-micro text-content-disabled leading-tight">Single measurable target value reached by date</div>
+                <div className="text-xs text-content-muted leading-tight">Single measurable target value reached by date</div>
               </button>
 
               <button
@@ -1703,7 +1718,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <div className="flex items-center gap-1.5 font-medium text-xs text-rose-theme">
                   <Flame size={14} /> Habit Journey
                 </div>
-                <div className="text-micro text-content-disabled leading-tight">Daily/weekly habit commitment with streak counter</div>
+                <div className="text-xs text-content-muted leading-tight">Daily/weekly habit commitment with streak counter</div>
               </button>
 
               <button
@@ -1718,14 +1733,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <div className="flex items-center gap-1.5 font-medium text-xs text-purple-hierarchy">
                   <Compass size={14} /> Vision & Reflection
                 </div>
-                <div className="text-micro text-content-disabled leading-tight">Long-term vision with dated check-in notes</div>
+                <div className="text-xs text-content-muted leading-tight">Long-term vision with dated check-in notes</div>
               </button>
             </div>
           </div>
 
           {/* SHARED FIELDS */}
           <div>
-            <label htmlFor="pip-create-title" className="block label mb-1">Plan Title</label>
+            <label htmlFor="pip-create-title" className="block label mb-1">Plan title</label>
             <input
               id="pip-create-title"
               type="text"
@@ -1740,13 +1755,13 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   ? 'e.g. Financial Freedom Vision 2030'
                   : 'e.g. 30-Day Morning Mastery Blueprint'
               }
-              className="input text-xs"
+              className="input"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="pip-create-description" className="block label mb-1">Goal & Description</label>
+            <label htmlFor="pip-create-description" className="block label mb-1">Goal and description</label>
             <textarea
               id="pip-create-description"
               value={description}
@@ -1757,10 +1772,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label htmlFor="pip-create-category" className="block label mb-1">Category</label>
-              <select id="pip-create-category" value={category} onChange={(e) => setCategory(e.target.value)} className="input text-xs">
+              <select id="pip-create-category" value={category} onChange={(e) => setCategory(e.target.value)} className="input">
                 {PLAN_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
@@ -1774,7 +1789,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 id="pip-create-visibility"
                 value={isPublic ? 'public' : 'private'}
                 onChange={(e) => setIsPublic(e.target.value === 'public')}
-                className="input text-xs"
+                className="input"
               >
                 <option value="public">Public (Shareable in Discover)</option>
                 <option value="private">Private (Only for me)</option>
@@ -1785,12 +1800,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {/* Phase C Review Cadence Selector - Hidden for Vision & Reflection plans */}
           {planType !== 'vision' && (
             <div>
-              <label htmlFor="pip-create-review-cadence" className="block label mb-1">Review Cadence (Check-in Loop)</label>
+              <label htmlFor="pip-create-review-cadence" className="block label mb-1">Review cadence</label>
               <select
                 id="pip-create-review-cadence"
                 value={reviewCadence || ''}
                 onChange={(e) => setReviewCadence(e.target.value ? (e.target.value as 'weekly' | 'monthly') : null)}
-                className="input text-xs"
+                className="input"
               >
                 <option value="">None (No scheduled check-in review)</option>
                 <option value="weekly">Weekly Check-in Loop</option>
@@ -1803,7 +1818,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {planType === 'milestone' && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block label">Steps & Milestones</label>
+                <p className="block label">Steps and milestones</p>
                 <button type="button" onClick={handleAddStepField} className="text-xs text-blue-theme hover:text-content-primary hover:underline">
                   + Add Step
                 </button>
@@ -1836,53 +1851,52 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {planType === 'target_goal' && (
-            <div className="card space-y-3 p-3">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3 p-3 rounded-xl border border-overlay-default">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="pip-create-target-value" className="block label mb-1">Target Value (Number)</label>
-                  <input
+                  <NumberField
                     id="pip-create-target-value"
-                    type="number"
-                    min="1"
+                    label="Target value"
+                    decimal
+                    min={1}
                     value={targetValue}
-                    onChange={(e) => setTargetValue(Number(e.target.value))}
-                    className="input text-xs"
+                    onValueChange={setTargetValue}
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="pip-create-target-unit" className="block label mb-1">Unit Label</label>
+                  <label htmlFor="pip-create-target-unit" className="block label mb-1">Unit</label>
                   <input
                     id="pip-create-target-unit"
                     type="text"
                     value={targetUnit}
                     onChange={(e) => setTargetUnit(e.target.value)}
                     placeholder="e.g. books, km, sessions"
-                    className="input text-xs"
+                    className="input"
                     required
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="pip-create-initial-progress" className="block label mb-1">Initial Progress</label>
-                  <input
+                  <NumberField
                     id="pip-create-initial-progress"
-                    type="number"
-                    min="0"
+                    label="Starting progress"
+                    decimal
+                    min={0}
+                    max={targetValue}
                     value={currentProgress}
-                    onChange={(e) => setCurrentProgress(Number(e.target.value))}
-                    className="input text-xs"
+                    onValueChange={setCurrentProgress}
                   />
                 </div>
                 <div>
-                  <label htmlFor="pip-create-target-date" className="block label mb-1">Target Date</label>
+                  <label htmlFor="pip-create-target-date" className="block label mb-1">Target date</label>
                   <input
                     id="pip-create-target-date"
                     type="date"
                     value={targetDate}
                     onChange={(e) => setTargetDate(e.target.value)}
-                    className="input text-xs"
+                    className="input"
                   />
                 </div>
               </div>
@@ -1890,7 +1904,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {planType === 'habit_journey' && (
-            <div className="card space-y-3 p-3">
+            <div className="space-y-3 p-3 rounded-xl border border-overlay-default">
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label htmlFor="pip-create-cadence" className="block label mb-1">Cadence</label>
@@ -1898,32 +1912,30 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                     id="pip-create-cadence"
                     value={cadence}
                     onChange={(e) => setCadence(e.target.value as 'daily' | 'weekly')}
-                    className="input text-xs"
+                    className="input"
                   >
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="pip-create-duration" className="block label mb-1">Duration ({cadence === 'weekly' ? 'Weeks' : 'Days'})</label>
-                  <input
+                  <NumberField
                     id="pip-create-duration"
-                    type="number"
-                    min="1"
+                    label="Duration ({cadence === 'weekly' ? 'Weeks' : 'Days'})"
+                    min={1}
                     value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                    className="input text-xs"
+                    onValueChange={setDuration}
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="pip-create-start-date" className="block label mb-1">Start Date</label>
+                  <label htmlFor="pip-create-start-date" className="block label mb-1">Start date</label>
                   <input
                     id="pip-create-start-date"
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="input text-xs"
+                    className="input"
                   />
                 </div>
               </div>
@@ -1931,19 +1943,19 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {planType === 'vision' && (
-            <div className="card space-y-3 p-3">
+            <div className="space-y-3 p-3 rounded-xl border border-overlay-default">
               <div>
-                <label htmlFor="pip-create-target-review-date" className="block label mb-1">Target Review Date (Optional)</label>
+                <label htmlFor="pip-create-target-review-date" className="block label mb-1">Target review date (optional)</label>
                 <input
                   id="pip-create-target-review-date"
                   type="date"
                   value={targetReviewDate}
                   onChange={(e) => setTargetReviewDate(e.target.value)}
-                  className="input text-xs"
+                  className="input"
                 />
               </div>
               <div>
-                <label htmlFor="pip-create-initial-reflection-note" className="block label mb-1">Initial Reflection Check-in Note (Optional)</label>
+                <label htmlFor="pip-create-initial-reflection-note" className="block label mb-1">First reflection note (optional)</label>
                 <textarea
                   id="pip-create-initial-reflection-note"
                   value={initialReflectionNote}
@@ -1955,19 +1967,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             </div>
           )}
 
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => createForm.confirmDiscard(() => setCreateModalOpen(false))}
-              className="btn-secondary flex-1"
-            >
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary flex-1">
-              Create Plan
-            </button>
-          </div>
-        </form>
+        </Form>
       </Dialog>
 
       {/* EDIT STRUCTURAL FIELDS MODAL */}
@@ -1975,23 +1975,34 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         open={editModalOpen}
         onClose={() => setEditModalOpen(false)}
         dirty={editForm.dirty}
-        title="Edit Plan Structure"
+        title="Edit plan"
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <button type="button" onClick={() => editForm.confirmDiscard(() => setEditModalOpen(false))} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="pip-edit-form" className="btn-primary">
+              Save changes
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleEditSubmit} className="space-y-4">
+        <Form id="pip-edit-form" onSubmit={handleEditSubmit} className="space-y-4">
           <div>
-            <label htmlFor="pip-edit-title" className="block label mb-1">Plan Title</label>
+            <label htmlFor="pip-edit-title" className="block label mb-1">Plan title</label>
             <input
               id="pip-edit-title"
               type="text"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              className="input text-xs"
+              className="input"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="pip-edit-description" className="block label mb-1">Goal & Description</label>
+            <label htmlFor="pip-edit-description" className="block label mb-1">Goal and description</label>
             <textarea
               id="pip-edit-description"
               value={editDescription}
@@ -2001,10 +2012,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label htmlFor="pip-edit-category" className="block label mb-1">Category</label>
-              <select id="pip-edit-category" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="input text-xs">
+              <select id="pip-edit-category" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className="input">
                 {PLAN_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
@@ -2018,7 +2029,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 id="pip-edit-visibility"
                 value={editIsPublic ? 'public' : 'private'}
                 onChange={(e) => setEditIsPublic(e.target.value === 'public')}
-                className="input text-xs"
+                className="input"
               >
                 <option value="public">Public (Shareable in Discover)</option>
                 <option value="private">Private (Only for me)</option>
@@ -2029,12 +2040,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {/* Phase C Review Cadence Selector - Hidden for Vision & Reflection plans */}
           {editingPlanType !== 'vision' && (
             <div>
-              <label htmlFor="pip-edit-review-cadence" className="block label mb-1">Review Cadence (Check-in Loop)</label>
+              <label htmlFor="pip-edit-review-cadence" className="block label mb-1">Review cadence</label>
               <select
                 id="pip-edit-review-cadence"
                 value={editReviewCadence || ''}
                 onChange={(e) => setEditReviewCadence(e.target.value ? (e.target.value as 'weekly' | 'monthly') : null)}
-                className="input text-xs"
+                className="input"
               >
                 <option value="">None (No scheduled check-in review)</option>
                 <option value="weekly">Weekly Check-in Loop</option>
@@ -2047,7 +2058,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           {editingPlanType === 'milestone' && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block label">Steps & Milestones</label>
+                <p className="block label">Steps and milestones</p>
                 <button
                   type="button"
                   onClick={() => setEditSteps([...editSteps, `Step ${editSteps.length + 1}`])}
@@ -2088,41 +2099,40 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           )}
 
           {editingPlanType === 'target_goal' && (
-            <div className="card space-y-3 p-3">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3 p-3 rounded-xl border border-overlay-default">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="pip-edit-target-value" className="block label mb-1">Target Value</label>
-                  <input
+                  <NumberField
                     id="pip-edit-target-value"
-                    type="number"
-                    min="1"
+                    label="Target value"
+                    decimal
+                    min={1}
                     value={editTargetValue}
-                    onChange={(e) => setEditTargetValue(Number(e.target.value))}
-                    className="input text-xs"
+                    onValueChange={setEditTargetValue}
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="pip-edit-target-unit" className="block label mb-1">Unit Label</label>
+                  <label htmlFor="pip-edit-target-unit" className="block label mb-1">Unit</label>
                   <input
                     id="pip-edit-target-unit"
                     type="text"
                     value={editTargetUnit}
                     onChange={(e) => setEditTargetUnit(e.target.value)}
                     placeholder="e.g. books, km, sessions"
-                    className="input text-xs"
+                    className="input"
                     required
                   />
                 </div>
               </div>
               <div>
-                <label htmlFor="pip-edit-target-date" className="block label mb-1">Target Date</label>
+                <label htmlFor="pip-edit-target-date" className="block label mb-1">Target date</label>
                 <input
                   id="pip-edit-target-date"
                   type="date"
                   value={editTargetDate}
                   onChange={(e) => setEditTargetDate(e.target.value)}
-                  className="input text-xs"
+                  className="input"
                 />
               </div>
             </div>
@@ -2136,53 +2146,39 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   id="pip-edit-cadence"
                   value={editCadence}
                   onChange={(e) => setEditCadence(e.target.value as 'daily' | 'weekly')}
-                  className="input text-xs"
+                  className="input"
                 >
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                 </select>
               </div>
               <div>
-                <label htmlFor="pip-edit-duration" className="block label mb-1">Duration (Days/Weeks)</label>
-                <input
-                  id="pip-edit-duration"
-                  type="number"
-                  min="1"
-                  value={editDuration}
-                  onChange={(e) => setEditDuration(Number(e.target.value))}
-                  className="input text-xs"
-                  required
-                />
+                <NumberField
+                    id="pip-edit-duration"
+                    label="Duration"
+                    min={1}
+                    value={editDuration}
+                    onValueChange={setEditDuration}
+                    required
+                  />
               </div>
             </div>
           )}
 
           {editingPlanType === 'vision' && (
-            <div className="bg-bg-800/50 p-3 rounded-lg border border-overlay-subtle">
-              <label htmlFor="pip-edit-target-review-date" className="block label mb-1">Target Review Date</label>
+            <div className="p-3 rounded-xl border border-overlay-default">
+              <label htmlFor="pip-edit-target-review-date" className="block label mb-1">Target review date</label>
               <input
                 id="pip-edit-target-review-date"
                 type="date"
                 value={editTargetReviewDate}
                 onChange={(e) => setEditTargetReviewDate(e.target.value)}
-                className="input text-xs"
+                className="input"
               />
             </div>
           )}
 
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => editForm.confirmDiscard(() => setEditModalOpen(false))}
-              className="btn-secondary flex-1"
-            >
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary flex-1">
-              Save Changes
-            </button>
-          </div>
-        </form>
+        </Form>
       </Dialog>
 
       {/* Delete Plan Confirm Modal */}
