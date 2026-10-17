@@ -11,6 +11,7 @@ export interface DialogProps {
   title: string;
   /** One short line under the title saying what the dialog is for. */
   description?: React.ReactNode;
+  /** The body; may be left empty (null) for a confirm whose description says it all. */
   children: React.ReactNode;
   /** The action row (Cancel / Save). Pinned under the scrolling body so it stays reachable on
    *  phones and above the keyboard; laid out by `.dialog-actions`. A submit button here points
@@ -269,7 +270,9 @@ export const Dialog: React.FC<DialogProps> = ({
             )}
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">{content.children}</div>
+        {content.children != null && content.children !== false && (
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">{content.children}</div>
+        )}
         {content.footer && (
           <div className="dialog-actions shrink-0 border-t border-bg-700 px-4 py-3">{content.footer}</div>
         )}

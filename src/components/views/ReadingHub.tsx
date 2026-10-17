@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Dialog, EmptyState, PageColumns, ProgressBar, Tabs } from '@/components/ui/primitives';
+import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, ProgressBar, Select, Tabs, Textarea } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
@@ -87,6 +87,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
     customTargetFinishDate,
   ]);
   const finishForm = useUnsavedChanges(finishModalBook?.id ?? null, reflectionInput);
+  const startForm = useUnsavedChanges(startReadingModalBook?.id ?? null, [startTotalAmount, startUnit, startTargetDate]);
+  const progressForm = useUnsavedChanges(progressModalBook?.id ?? null, progressInput);
 
   const libraryBooks = store.state.libraryBooks;
   const readingLogs = store.state.readingLogs;
@@ -294,7 +296,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         Number(customTotalAmount),
         customUnit,
         customStatus,
-        customTargetFinishDate.trim() || undefined
+        (customStatus !== 'completed' && customTargetFinishDate.trim()) || undefined
       );
       setAddCustomModalOpen(false);
       setCustomTitle('');
@@ -325,6 +327,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
     });
     setStartReadingModalBook(null);
   };
+
+  const progressTotal = progressModalBook?.totalAmount ?? progressModalBook?.totalPages ?? 250;
 
   const handleProgressSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -899,226 +903,173 @@ export function ReadingHub({ store }: { store: AppStore }) {
         preventClose={isAdding}
         onClose={() => setAddCustomModalOpen(false)}
         dirty={addBookForm.dirty}
-        title="Add Book"
-      >
-        <form onSubmit={handleAddCustomSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="rh-add-title" className="block label mb-1">
-              Book Title <span className="text-rose-theme">*</span>
-            </label>
-            <input
-              id="rh-add-title"
-              type="text"
-              required
-              value={customTitle}
-              onChange={(e) => setCustomTitle(e.target.value)}
-              placeholder="e.g. Atomic Habits, Deep Work"
-              className="input w-full"
-              autoFocus
-            />
-          </div>
-
-          <div>
-            <label htmlFor="rh-add-author" className="block label mb-1">
-              Author
-            </label>
-            <input
-              id="rh-add-author"
-              type="text"
-              value={customAuthor}
-              onChange={(e) => setCustomAuthor(e.target.value)}
-              placeholder="e.g. James Clear"
-              className="input w-full"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="rh-add-category" className="block label mb-1">
-                Category
-              </label>
-              <select
-                id="rh-add-category"
-                value={customCategory}
-                onChange={(e) => setCustomCategory(e.target.value as BookCategory)}
-                className="input w-full bg-bg-800"
-              >
-                <option value="">Select category</option>
-                {BOOK_CATEGORIES.map((cat) => (
-                  <option key={cat.name} value={cat.name}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="rh-add-status" className="block label mb-1">
-                Status
-              </label>
-              <select
-                id="rh-add-status"
-                value={customStatus}
-                onChange={(e) => setCustomStatus(e.target.value as UserBookStatus)}
-                className="input w-full bg-bg-800"
-              >
-                <option value="reading">Currently reading</option>
-                <option value="to-read">Add to Library</option>
-                <option value="completed">Already finished</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="rh-add-total" className="block label mb-1">
-                Length
-              </label>
-              <input
-                id="rh-add-total"
-                type="number"
-                min="1"
-                required
-                value={customTotalAmount}
-                onChange={(e) => setCustomTotalAmount(Number(e.target.value))}
-                className="input w-full"
-              />
-            </div>
-            <div>
-              <label htmlFor="rh-add-unit" className="block label mb-1">
-                Unit
-              </label>
-              <select
-                id="rh-add-unit"
-                value={customUnit}
-                onChange={(e) => setCustomUnit(e.target.value as 'pages' | 'chapters')}
-                className="input w-full bg-bg-800"
-              >
-                <option value="pages">Pages</option>
-                <option value="chapters">Chapters</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="rh-add-date" className="block label mb-1">
-              Target finish date (optional)
-            </label>
-            <input
-              id="rh-add-date"
-              type="date"
-              value={customTargetFinishDate}
-              onChange={(e) => setCustomTargetFinishDate(e.target.value)}
-              className="input w-full"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="rh-add-notes" className="block label mb-1">
-              Notes (optional)
-            </label>
-            <textarea
-              id="rh-add-notes"
-              value={customDescription}
-              onChange={(e) => setCustomDescription(e.target.value)}
-              placeholder="Why are you reading it? What is it about?"
-              className="input min-h-[70px] text-xs"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2.5 pt-2">
+        title="Add book"
+        footer={
+          <>
             <button
               type="button"
+              disabled={isAdding}
               onClick={() => addBookForm.confirmDiscard(() => setAddCustomModalOpen(false))}
-              className="btn-secondary text-xs"
+              className="btn-secondary"
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isAdding}
-              className="btn-primary text-xs flex items-center gap-1.5"
-            >
-              {isAdding ? <AscendLoadingIndicator size="sm" /> : <Plus size={14} />}
-              <span>Add to Library</span>
+            <button type="submit" form="rh-add-form" disabled={isAdding} className="btn-primary">
+              {isAdding ? <AscendLoadingIndicator size="sm" /> : <Plus size={16} />}
+              <span>Add to library</span>
             </button>
-          </div>
-        </form>
+          </>
+        }
+      >
+        <Form id="rh-add-form" onSubmit={handleAddCustomSubmit} className="space-y-4">
+          <Input
+            id="rh-add-title"
+            label="Book title"
+            required
+            value={customTitle}
+            onChange={(e) => setCustomTitle(e.target.value)}
+            placeholder="e.g. Atomic Habits, Deep Work"
+            maxLength={150}
+            autoComplete="off"
+          />
+
+          <Input
+            id="rh-add-author"
+            label="Author"
+            optional
+            value={customAuthor}
+            onChange={(e) => setCustomAuthor(e.target.value)}
+            placeholder="e.g. James Clear"
+            maxLength={100}
+            autoComplete="off"
+          />
+
+          <FieldRow>
+            <Select
+              id="rh-add-category"
+              label="Category"
+              optional
+              value={customCategory}
+              onChange={(e) => setCustomCategory(e.target.value as BookCategory)}
+            >
+              <option value="">No category</option>
+              {BOOK_CATEGORIES.map((cat) => (
+                <option key={cat.name} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
+            </Select>
+
+            <Select
+              id="rh-add-status"
+              label="Status"
+              value={customStatus}
+              onChange={(e) => setCustomStatus(e.target.value as UserBookStatus)}
+            >
+              <option value="reading">Currently reading</option>
+              <option value="to-read">Want to read</option>
+              <option value="completed">Already finished</option>
+            </Select>
+          </FieldRow>
+
+          <FieldRow>
+            <NumberField
+              id="rh-add-total"
+              label="Length"
+              min={1}
+              max={100000}
+              required
+              value={customTotalAmount}
+              onValueChange={setCustomTotalAmount}
+            />
+            <Select
+              id="rh-add-unit"
+              label="Unit"
+              value={customUnit}
+              onChange={(e) => setCustomUnit(e.target.value as 'pages' | 'chapters')}
+            >
+              <option value="pages">Pages</option>
+              <option value="chapters">Chapters</option>
+            </Select>
+          </FieldRow>
+
+          {customStatus !== 'completed' && (
+            <Input
+              id="rh-add-date"
+              label="Target finish date"
+              optional
+              type="date"
+              value={customTargetFinishDate}
+              onChange={(e) => setCustomTargetFinishDate(e.target.value)}
+            />
+          )}
+
+          <Textarea
+            id="rh-add-notes"
+            label="Notes"
+            optional
+            value={customDescription}
+            onChange={(e) => setCustomDescription(e.target.value)}
+            placeholder="Why are you reading it? What is it about?"
+            maxLength={1000}
+          />
+        </Form>
       </Dialog>
 
       {/* MODAL: START READING CONFIRMATION */}
       <Dialog
         open={Boolean(startReadingModalBook)}
         onClose={() => setStartReadingModalBook(null)}
-        title={startReadingModalBook ? `Start Reading: ${startReadingModalBook.title}` : 'Start Reading'}
-      >
-        <form onSubmit={handleStartReadingSubmit} className="space-y-4">
-          <p className="text-xs text-content-muted">
-            Confirm the length and, if you like, set a target finish date.
-          </p>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="rh-start-total" className="block label mb-1">
-                Total Length <span className="text-rose-theme">*</span>
-              </label>
-              <input
-                id="rh-start-total"
-                type="number"
-                min="1"
-                required
-                value={startTotalAmount}
-                onChange={(e) => setStartTotalAmount(Number(e.target.value))}
-                className="input w-full"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label htmlFor="rh-start-unit" className="block label mb-1">
-                Unit
-              </label>
-              <select
-                id="rh-start-unit"
-                value={startUnit}
-                onChange={(e) => setStartUnit(e.target.value as 'pages' | 'chapters')}
-                className="input w-full bg-bg-800"
-              >
-                <option value="pages">Pages</option>
-                <option value="chapters">Chapters</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="rh-start-date" className="block label mb-1">
-              Target finish date (optional)
-            </label>
-            <input
-              id="rh-start-date"
-              type="date"
-              value={startTargetDate}
-              onChange={(e) => setStartTargetDate(e.target.value)}
-              className="input w-full"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2.5 pt-2">
+        dirty={startForm.dirty}
+        title={startReadingModalBook ? `Start reading: ${startReadingModalBook.title}` : 'Start reading'}
+        description="Confirm the length and, if you like, set a target finish date."
+        footer={
+          <>
             <button
               type="button"
-              onClick={() => setStartReadingModalBook(null)}
-              className="btn-secondary text-xs"
+              onClick={() => startForm.confirmDiscard(() => setStartReadingModalBook(null))}
+              className="btn-secondary"
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
-            >
-              <PlayCircle size={14} />
-              <span>Start Reading</span>
+            <button type="submit" form="rh-start-form" className="btn-primary">
+              <PlayCircle size={16} />
+              <span>Start reading</span>
             </button>
-          </div>
-        </form>
+          </>
+        }
+      >
+        <Form id="rh-start-form" onSubmit={handleStartReadingSubmit} className="space-y-4">
+          <FieldRow>
+            <NumberField
+              id="rh-start-total"
+              label="Total length"
+              min={1}
+              max={100000}
+              required
+              value={startTotalAmount}
+              onValueChange={setStartTotalAmount}
+            />
+            <Select
+              id="rh-start-unit"
+              label="Unit"
+              value={startUnit}
+              onChange={(e) => setStartUnit(e.target.value as 'pages' | 'chapters')}
+            >
+              <option value="pages">Pages</option>
+              <option value="chapters">Chapters</option>
+            </Select>
+          </FieldRow>
+
+          <Input
+            id="rh-start-date"
+            label="Target finish date"
+            optional
+            type="date"
+            value={startTargetDate}
+            onChange={(e) => setStartTargetDate(e.target.value)}
+          />
+        </Form>
       </Dialog>
 
       {/* MODAL: LOG PROGRESS (ABSOLUTE CURRENT PAGE MODEL) */}
@@ -1126,68 +1077,54 @@ export function ReadingHub({ store }: { store: AppStore }) {
         open={Boolean(progressModalBook)}
         preventClose={isUpdatingProgress}
         onClose={() => setProgressModalBook(null)}
-        title={progressModalBook ? `Log Progress: ${progressModalBook.title}` : 'Log Progress'}
+        dirty={progressForm.dirty}
+        title={progressModalBook ? `Log progress: ${progressModalBook.title}` : 'Log progress'}
+        description={`Book length: ${progressTotal} ${progressModalBook?.unit || 'pages'}`}
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isUpdatingProgress}
+              onClick={() => progressForm.confirmDiscard(() => setProgressModalBook(null))}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" form="rh-progress-form" disabled={isUpdatingProgress} className="btn-primary">
+              {isUpdatingProgress ? <AscendLoadingIndicator size="sm" /> : null}
+              <span>Save progress</span>
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleProgressSubmit} className="space-y-4">
-          <p className="text-xs text-content-muted">
-            Total Book Size: {progressModalBook?.totalAmount ?? progressModalBook?.totalPages ?? 250}{' '}
-            {progressModalBook?.unit || 'pages'}
-          </p>
+        <Form id="rh-progress-form" onSubmit={handleProgressSubmit} className="space-y-4">
+          <NumberField
+            id="rh-progress-current"
+            label={`What ${progressModalBook?.unit === 'chapters' ? 'chapter' : 'page'} are you on now?`}
+            required
+            min={0}
+            max={progressTotal}
+            value={progressInput}
+            onValueChange={setProgressInput}
+            enterKeyHint="done"
+          />
 
-          <div>
-            <label htmlFor="rh-progress-current" className="block label mb-1">
-              What {progressModalBook?.unit === 'chapters' ? 'chapter' : 'page'} are you on currently?
-            </label>
-            <input
-              id="rh-progress-current"
-              type="number"
-              required
-              min="0"
-              max={progressModalBook?.totalAmount ?? progressModalBook?.totalPages ?? 250}
-              value={progressInput}
-              onChange={(e) => setProgressInput(Number(e.target.value))}
-              className="input w-full text-lg font-bold"
-              placeholder="e.g. 120"
-              autoFocus
-            />
-          </div>
-
-          <div>
-            <label className="block text-micro font-medium text-content-muted mb-1.5">
-              Quick add
-            </label>
+          <div role="group" aria-labelledby="rh-progress-quick-label">
+            <p id="rh-progress-quick-label" className="label block mb-1.5">Quick add</p>
             <div className="grid grid-cols-4 gap-2">
               {[1, 5, 10, 20].map((amount) => (
                 <button
                   key={amount}
                   type="button"
-                  onClick={() => setProgressInput((prev) => prev + amount)}
-                  className="btn-secondary text-xs py-1.5 px-2 font-medium text-content-secondary hover:text-content-primary border-overlay-default"
+                  onClick={() => setProgressInput((prev) => Math.min(progressTotal, prev + amount))}
+                  className="btn-secondary min-h-11 sm:min-h-9 text-xs py-1.5 px-2"
                 >
                   +{amount}
                 </button>
               ))}
             </div>
           </div>
-
-          <div className="flex items-center justify-end gap-2.5 pt-2">
-            <button
-              type="button"
-              onClick={() => setProgressModalBook(null)}
-              className="btn-secondary text-xs"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isUpdatingProgress}
-              className="btn-primary text-xs flex items-center gap-1.5"
-            >
-              {isUpdatingProgress ? <AscendLoadingIndicator size="sm" /> : <Plus size={14} />}
-              <span>Save Progress</span>
-            </button>
-          </div>
-        </form>
+        </Form>
       </Dialog>
 
       {/* MODAL: FINISH BOOK & REFLECTION (COMPULSORY REFLECTION) */}
@@ -1196,9 +1133,31 @@ export function ReadingHub({ store }: { store: AppStore }) {
         preventClose={isFinishing}
         onClose={() => setFinishModalBook(null)}
         dirty={finishForm.dirty}
-        title={finishModalBook ? `Finish: ${finishModalBook.title}` : 'Finish Book'}
+        title={finishModalBook ? `Finish: ${finishModalBook.title}` : 'Finish book'}
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isFinishing}
+              onClick={() => finishForm.confirmDiscard(() => setFinishModalBook(null))}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" form="rh-finish-form" disabled={isFinishing} className="btn-primary">
+              {isFinishing ? <AscendLoadingIndicator size="sm" /> : <CheckCircle2 size={16} />}
+              <span>
+                {finishEligibility?.isEligible
+                  ? `Finish (+${READING_POINTS.completionBonus})`
+                  : finishEligibility?.alreadyAwarded
+                    ? 'Mark finished'
+                    : 'Finish without bonus'}
+              </span>
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleFinishSubmit} className="space-y-4">
+        <Form id="rh-finish-form" onSubmit={handleFinishSubmit} className="space-y-4">
           {finishEligibility?.isEligible ? (
             <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-3 text-warning-text">
               <CheckCircle2 size={18} className="shrink-0 text-warning-text" />
@@ -1266,63 +1225,28 @@ export function ReadingHub({ store }: { store: AppStore }) {
             )
           )}
 
-          <div>
-            <label htmlFor="rh-finish-insights" className="block label mb-1">
-              Key takeaways <span className="text-rose-theme">*</span>
-            </label>
-            <textarea
-              id="rh-finish-insights"
-              required
-              value={reflectionInput}
-              onChange={(e) => setReflectionInput(e.target.value)}
-              placeholder="What did you learn, and how will you use it?"
-              className="input min-h-[100px] text-xs leading-relaxed"
-              autoFocus
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2.5 pt-2">
-            <button
-              type="button"
-              onClick={() => finishForm.confirmDiscard(() => setFinishModalBook(null))}
-              className="btn-secondary text-xs"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isFinishing || !reflectionInput.trim()}
-              className="btn-primary text-xs flex items-center gap-1.5"
-            >
-              {isFinishing ? <AscendLoadingIndicator size="sm" /> : <CheckCircle2 size={14} />}
-              <span>
-                {finishEligibility?.isEligible
-                  ? `Finish (+${READING_POINTS.completionBonus})`
-                  : finishEligibility?.alreadyAwarded
-                    ? 'Mark Finished'
-                    : 'Finish without bonus'}
-              </span>
-            </button>
-          </div>
-        </form>
+          <Textarea
+            id="rh-finish-insights"
+            label="Key takeaways"
+            required
+            value={reflectionInput}
+            onChange={(e) => setReflectionInput(e.target.value)}
+            placeholder="What did you learn, and how will you use it?"
+            className="min-h-[100px] leading-relaxed"
+            maxLength={2000}
+          />
+        </Form>
       </Dialog>
 
       {/* MODAL: UNLINK READING HABIT */}
       <Dialog
         open={unlinkConfirmOpen}
         onClose={() => setUnlinkConfirmOpen(false)}
-        title="Unlink Reading Habit?"
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-content-muted leading-relaxed">
-            Unlink and remove the automatic Reading habit from your Habit Tracker?
-          </p>
-          <div className="flex items-center justify-end gap-2.5 pt-2">
-            <button
-              type="button"
-              onClick={() => setUnlinkConfirmOpen(false)}
-              className="btn-secondary text-xs"
-            >
+        title="Unlink reading habit?"
+        description="This removes the automatic Reading habit from your Habit Tracker."
+        footer={
+          <>
+            <button type="button" onClick={() => setUnlinkConfirmOpen(false)} className="btn-secondary">
               Cancel
             </button>
             <button
@@ -1331,12 +1255,14 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 store.toggleReadingHabit();
                 setUnlinkConfirmOpen(false);
               }}
-              className="btn-primary text-xs bg-rose-500 hover:bg-rose-600 border-none"
+              className="btn-danger-solid"
             >
-              Unlink and Delete Habit
+              Unlink and delete habit
             </button>
-          </div>
-        </div>
+          </>
+        }
+      >
+        {null}
       </Dialog>
 
       {/* CONFIRM DELETE MODAL */}
