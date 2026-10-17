@@ -6,7 +6,6 @@ import {
   AlertTriangle,
   ArrowRight,
   Plus,
-  Minus,
   Check,
   Circle,
   Zap,
@@ -37,6 +36,7 @@ import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
+import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 import { trustedNow } from '@/lib/clock';
@@ -69,6 +69,7 @@ function GoalItemRow({
   // Linked goals complete from other modules' activity, so only the manual
   // checkbox and the + stepper arm the completion pop.
   const { arm: armCompletionPop, popClass } = useCompletionPop(isDone);
+  const [progressOpen, setProgressOpen] = useState(false);
 
   return (
     <div
@@ -206,53 +207,37 @@ function GoalItemRow({
             <div className="flex items-center justify-between text-micro text-content-muted">
               <span>Progress</span>
               <div className="flex items-center gap-2">
-                {(!item.linkedModule || item.linkedModule === 'none') && prog.target > 1 && (
-                  <div className="flex items-center gap-1 bg-bg-800 px-1.5 py-0.5 rounded-lg border border-overlay-default text-xs">
-                    <button
-                      onClick={() => {
-                        const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
-                        const newVal = Math.max(0, currentVal - 1);
-                        try {
-                          store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
-                        } catch (err: any) {
-                          showErrorToast("Couldn't update goal", toUserMessage(err, 'Try again.'));
-                        }
-                      }}
-                      disabled={isPastWeek || isFutureWeek || prog.current <= 0}
-                      className={`p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors ${TAP_TARGET}`}
-                      title="Decrement progress"
-                      aria-label={`Decrease progress for "${item.title}"`}
-                    >
-                      <Minus size={12} />
-                    </button>
-                    <span className="figure text-content-secondary min-w-[16px] text-center">{prog.current}</span>
-                    <button
-                      onClick={() => {
-                        const currentVal = item.manualProgress !== undefined ? item.manualProgress : (item.completed ? prog.target : 0);
-                        const newVal = Math.min(prog.target, currentVal + 1);
-                        armCompletionPop();
-                        try {
-                          store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: newVal });
-                        } catch (err: any) {
-                          showErrorToast("Couldn't update goal", toUserMessage(err, 'Try again.'));
-                        }
-                      }}
-                      disabled={isPastWeek || isFutureWeek || prog.current >= prog.target}
-                      className={`p-0.5 text-content-muted hover:text-content-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted transition-colors ${TAP_TARGET}`}
-                      title="Increment progress"
-                      aria-label={`Increase progress for "${item.title}"`}
-                    >
-                      <Plus size={12} />
-                    </button>
-                  </div>
-                )}
                 <span className="figure text-content-secondary">
                   {prog.current} / {prog.target} {prog.unit} ({prog.percent}%)
                 </span>
               </div>
             </div>
 
-            <ProgressBar value={prog.percent} label="Weekly goal progress" tone={prog.percent >= 100 ? 'success' : 'brand'} />
+            <div className="flex flex-wrap items-center gap-2.5">
+              <ProgressBar
+                value={prog.percent}
+                label="Weekly goal progress"
+                tone={prog.percent >= 100 ? 'success' : 'brand'}
+                className="flex-1 min-w-[8rem]"
+              />
+              {(!item.linkedModule || item.linkedModule === 'none') && prog.target > 1 && (
+                <UpdateProgressButton label="Update" disabled={isPastWeek || isFutureWeek} onClick={() => setProgressOpen(true)} />
+              )}
+            </div>
+            <ProgressUpdateDialog
+              open={progressOpen}
+              onClose={() => setProgressOpen(false)}
+              title={`Update progress: ${item.title}`}
+              current={prog.current}
+              target={prog.target}
+              format={(n) => `${n} ${prog.unit}`.trim()}
+              addLabel="Amount to add"
+              setLabel="New total"
+              onSave={(next) => {
+                if (next >= prog.target) armCompletionPop();
+                store.updateWeeklyGoalItem(selectedWeekKey, item.id, { manualProgress: next });
+              }}
+            />
           </>
         )}
       </div>
