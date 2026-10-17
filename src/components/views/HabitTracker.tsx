@@ -327,7 +327,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
             showSuccessToast('Habit deleted', 'Habit removed successfully.', `habit_${confirmDelete.id}`);
           }
         }}
-        title="Delete Habit?"
+        title="Delete habit?"
         itemName={confirmDelete?.name}
         description={`Delete this habit? This permanently removes its history and streak.${
           linkedGoalsCount > 0

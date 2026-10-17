@@ -1167,7 +1167,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         onClick={() => setChallengeToDelete(challenge)}
                         aria-label={`Delete joint pact "${challenge.title}"`}
                         className={`absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer ${TAP_AREA}`}
-                        title="Delete Joint Pact"
+                        title="Delete joint pact"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -1390,7 +1390,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                             onClick={() => setChallengeToDelete(challenge)}
                             aria-label={`Delete pact history "${challenge.title}"`}
                             className={`absolute top-4 right-4 p-1.5 text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer ${TAP_AREA}`}
-                            title="Delete Pact History"
+                            title="Delete pact history"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -1783,7 +1783,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         title={`End Pairing with ${activePartnerUsername || 'Partner'}?`}
         itemName={activePartnerUsername || undefined}
         description={`End your partnership with ${activePartnerUsername}? All joint pacts with them will be removed.`}
-        confirmText="End Partnership"
+        confirmText="End partnership"
       />
 
       {/* DELETE SHARED CHALLENGE CONFIRMATION MODAL */}
@@ -1806,10 +1806,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           }
         }}
         isDeleting={challengeToDelete ? isKeyLoading(`delete_pact_${challengeToDelete.id}`) : false}
-        title="Delete Joint Pact?"
+        title="Delete joint pact?"
         itemName={challengeToDelete?.title}
         description={`Delete "${challengeToDelete?.title}"? This removes the pact for both of you, for good.`}
-        confirmText="Delete Pact"
+        confirmText="Delete pact"
       />
 
       {/* CANCEL SENT INVITE CONFIRMATION MODAL */}
@@ -1832,10 +1832,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           }
         }}
         isDeleting={inviteToCancel ? isKeyLoading(`cancel_invite_${inviteToCancel.id}`) : false}
-        title="Cancel Partner Invite?"
+        title="Cancel partner invite?"
         itemName={`Invite to ${inviteToCancel?.toUsername}`}
         description={`Cancel your invite to ${inviteToCancel?.toUsername}?`}
-        confirmText="Cancel Invite"
+        confirmText="Cancel invite"
       />
     </div>
   );

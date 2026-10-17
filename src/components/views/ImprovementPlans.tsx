@@ -826,7 +826,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               setEditingNoteText({ ...editingNoteText, [noteKey]: n.note });
                             }}
                             className={`text-content-muted hover:text-purple-hierarchy transition-colors ${TAP_TARGET_Y}`}
-                            title="Edit Note"
+                            title="Edit note"
                             aria-label="Edit reflection note"
                           >
                             <Edit3 size={12} />
@@ -834,7 +834,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                           <button
                             onClick={() => setNoteToDelete({ planId, noteKey, mode })}
                             className={`text-content-muted hover:text-rose-theme transition-colors ${TAP_TARGET_Y}`}
-                            title="Delete Note"
+                            title="Delete note"
                             aria-label="Delete reflection note"
                           >
                             <Trash2 size={12} />
@@ -1244,7 +1244,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             <button
                               onClick={() => handleOpenEdit(plan)}
                               className={`p-1.5 rounded text-content-muted hover:text-blue-theme hover:bg-overlay-subtle transition-colors ${TAP_TARGET_Y}`}
-                              title="Edit Structure"
+                              title="Edit structure"
                               aria-label={`Edit structure of "${plan.title}"`}
                             >
                               <Edit3 size={14} />
@@ -1254,7 +1254,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             <button
                               onClick={() => setPlanToDelete(plan)}
                               className={`p-1.5 rounded text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET_Y}`}
-                              title="Delete Plan"
+                              title="Delete plan"
                               aria-label={`Delete plan "${plan.title}"`}
                             >
                               <Trash2 size={14} />
@@ -1507,7 +1507,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               <button
                                 onClick={() => handleOpenEdit(plan)}
                                 className={`p-1.5 rounded text-content-muted hover:text-blue-theme hover:bg-overlay-subtle transition-colors ${TAP_TARGET_Y}`}
-                                title="Edit Structure"
+                                title="Edit structure"
                                 aria-label={`Edit structure of "${plan.title}"`}
                               >
                                 <Edit3 size={14} />
@@ -1515,7 +1515,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                               <button
                                 onClick={() => setPlanToDelete(plan)}
                                 className={`p-1.5 rounded text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET_Y}`}
-                                title="Delete Plan"
+                                title="Delete plan"
                                 aria-label={`Delete plan "${plan.title}"`}
                               >
                                 <Trash2 size={14} />
@@ -2200,7 +2200,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           }
         }}
         isDeleting={planToDelete ? isKeyLoading(`delete_plan_${planToDelete.id}`) : false}
-        title="Delete Improvement Plan?"
+        title="Delete improvement plan?"
         itemName={planToDelete?.title}
         description={`Are you sure you want to delete "${planToDelete?.title}"? This will permanently remove the plan and all attached reflection notes or logs.`}
       />
@@ -2224,10 +2224,10 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           }
         }}
         isDeleting={followToDelete ? isKeyLoading(`delete_follow_${followToDelete.id}`) : false}
-        title="Remove Saved Plan?"
+        title="Remove saved plan?"
         itemName={followToDelete?.title}
         description={`Are you sure you want to remove "${followToDelete?.title}" from your saved plans?`}
-        confirmText="Remove Plan"
+        confirmText="Remove plan"
       />
 
       {/* Delete Reflection Note Confirm Modal */}
@@ -2245,7 +2245,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
             setNoteToDelete(null);
           }
         }}
-        title="Delete Reflection Note?"
+        title="Delete reflection note?"
         description="Are you sure you want to delete this reflection note?"
       />
     </div>

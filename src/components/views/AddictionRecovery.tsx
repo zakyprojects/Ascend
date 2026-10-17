@@ -551,7 +551,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           }
         }}
         isDeleting={deleteCravingModalLog ? isKeyLoading(`delete_craving_log_${deleteCravingModalLog.id}`) : false}
-        title="Delete Craving Log?"
+        title="Delete craving log?"
         description="Delete this craving log entry?"
       />
     </div>

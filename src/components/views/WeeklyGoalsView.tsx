@@ -169,7 +169,7 @@ function GoalItemRow({
             onClick={() => openEditModal(item)}
             disabled={isPastWeek}
             className={`p-1.5 text-content-muted hover:text-content-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
-            title="Edit Goal"
+            title="Edit goal"
             aria-label={`Edit goal "${item.title}"`}
           >
             <Edit3 size={15} />
@@ -178,7 +178,7 @@ function GoalItemRow({
             onClick={() => setDeleteGoalModal(item)}
             disabled={isPastWeek}
             className={`p-1.5 text-content-muted hover:text-rose-theme transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-content-muted ${TAP_TARGET_Y}`}
-            title="Delete Goal"
+            title="Delete goal"
             aria-label={`Delete goal "${item.title}"`}
           >
             <Trash2 size={15} />
@@ -632,7 +632,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             <button
               onClick={() => setSelectedWeekKey(offsetWeekKey(selectedWeekKey, -1))}
               className={`p-1.5 rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-800 transition-colors ${TAP_TARGET}`}
-              title="Previous Week"
+              title="Previous week"
               aria-label="Previous week"
             >
               <ChevronLeft size={16} />
@@ -648,7 +648,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
             <button
               onClick={() => setSelectedWeekKey(offsetWeekKey(selectedWeekKey, 1))}
               className={`p-1.5 rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-800 transition-colors ${TAP_TARGET}`}
-              title="Next Week"
+              title="Next week"
               aria-label="Next week"
             >
               <ChevronRight size={16} />

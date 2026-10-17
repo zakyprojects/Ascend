@@ -284,7 +284,7 @@ function TaskItemRow({
           <button
             onClick={() => openEditTaskModal(task)}
             className={`p-1.5 text-content-muted hover:text-content-secondary transition-colors ${TAP_TARGET_Y}`}
-            title="Edit Task"
+            title="Edit task"
             aria-label={`Edit task "${task.title}"`}
           >
             <Edit3 size={14} />
@@ -1717,7 +1717,7 @@ export function ProjectsGoalsView({
                           <button
                             onClick={() => openEditGoalModal(goal)}
                             className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors ${TAP_TARGET_Y}`}
-                            title="Edit Goal"
+                            title="Edit goal"
                             aria-label={`Edit goal "${goal.title}"`}
                           >
                             <Edit3 size={14} />
@@ -1849,7 +1849,7 @@ export function ProjectsGoalsView({
                 <button
                   onClick={() => setFilterGoalId(null)}
                   className={`p-1 text-content-muted hover:text-content-secondary ${TAP_TARGET}`}
-                  title="Clear Filter"
+                  title="Clear filter"
                 >
                   <X size={14} />
                 </button>
@@ -2146,7 +2146,7 @@ export function ProjectsGoalsView({
                           <button
                             onClick={() => openEditProjectModal(project)}
                             className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors ${TAP_TARGET_Y}`}
-                            title="Edit Project"
+                            title="Edit project"
                             aria-label={`Edit project "${project.title}"`}
                           >
                             <Edit3 size={14} />
@@ -2286,7 +2286,7 @@ export function ProjectsGoalsView({
                     <button
                       onClick={() => setFilterProjectId(null)}
                       className={`p-1 text-content-muted hover:text-content-secondary ${TAP_TARGET}`}
-                      title="Clear Filter"
+                      title="Clear filter"
                     >
                       <X size={14} />
                     </button>

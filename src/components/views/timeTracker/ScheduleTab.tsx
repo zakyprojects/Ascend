@@ -262,7 +262,7 @@ export function ScheduleTab({
           <button
             onClick={handlePrevDay}
             className={`p-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-subtle transition-colors cursor-pointer shrink-0 ${TAP_TARGET}`}
-            title="Previous Day"
+            title="Previous day"
             aria-label="Previous day"
           >
             <ChevronLeft size={18} />
@@ -281,7 +281,7 @@ export function ScheduleTab({
           <button
             onClick={handleNextDay}
             className={`p-2 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-tertiary hover:text-content-primary border border-overlay-subtle transition-colors cursor-pointer shrink-0 ${TAP_TARGET}`}
-            title="Next Day"
+            title="Next day"
             aria-label="Next day"
           >
             <ChevronRight size={18} />
@@ -315,7 +315,7 @@ export function ScheduleTab({
               onClick={onOpenApplyTemplateModal}
               disabled={isPastDate}
               className="flex-1 min-w-[120px] sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-content-secondary bg-overlay-subtle hover:bg-overlay-default border border-overlay-default rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Apply Blueprint Template"
+              title="Apply blueprint template"
             >
               <Layers size={14} className="text-success-text shrink-0" />
               <span className="whitespace-nowrap">Apply Template</span>
@@ -946,7 +946,7 @@ export function ScheduleTab({
                         onClick={() => onOpenEditBlockModal(block)}
                         disabled={isPastDate}
                         className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${TAP_TARGET_Y}`}
-                        title="Edit Block"
+                        title="Edit block"
                         aria-label="Edit block"
                       >
                         <Edit2 size={15} />
@@ -955,7 +955,7 @@ export function ScheduleTab({
                         onClick={() => setDeleteTargetBlock(block)}
                         disabled={isPastDate}
                         className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${TAP_TARGET_Y}`}
-                        title="Delete Block"
+                        title="Delete block"
                         aria-label="Delete block"
                       >
                         <Trash2 size={15} />
@@ -975,7 +975,7 @@ export function ScheduleTab({
           open={Boolean(deleteTargetBlock)}
           onClose={() => setDeleteTargetBlock(null)}
           onConfirm={handleConfirmDeleteBlock}
-          title="Delete Scheduled Time Block?"
+          title="Delete scheduled time block?"
           description={`Are you sure you want to remove the block scheduled for ${formatTime12h(
             deleteTargetBlock.startTime
           )} - ${formatTime12h(deleteTargetBlock.endTime)}?`}

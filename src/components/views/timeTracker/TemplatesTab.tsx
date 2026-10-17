@@ -319,7 +319,7 @@ export function TemplatesTab({
                       <button
                         onClick={() => onOpenEditTemplateModal(tpl)}
                         className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
-                        title="Edit Template"
+                        title="Edit template"
                         aria-label="Edit template"
                       >
                         <Edit2 size={15} />
@@ -327,7 +327,7 @@ export function TemplatesTab({
                       <button
                         onClick={() => setDeleteTargetTemplate(tpl)}
                         className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
-                        title="Delete Template"
+                        title="Delete template"
                         aria-label="Delete template"
                       >
                         <Trash2 size={15} />

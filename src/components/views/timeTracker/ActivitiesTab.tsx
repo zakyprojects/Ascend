@@ -98,7 +98,7 @@ export function ActivitiesTab({
                     {act.isSystemDefault && (
                       <span
                         className="px-1.5 py-0.2 rounded text-3xs font-medium bg-overlay-subtle text-content-muted border border-overlay-default flex items-center gap-0.5"
-                        title="System Default"
+                        title="System default"
                       >
                         <ShieldCheck size={10} />
                         Core
@@ -122,7 +122,7 @@ export function ActivitiesTab({
                 <button
                   onClick={() => onOpenEditActivityModal(act)}
                   className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
-                  title="Edit Category"
+                  title="Edit category"
                   aria-label="Edit category"
                 >
                   <Edit2 size={14} />
@@ -132,7 +132,7 @@ export function ActivitiesTab({
                   <button
                     onClick={() => setDeleteTargetActivity(act)}
                     className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
-                    title="Delete Category"
+                    title="Delete category"
                     aria-label="Delete category"
                   >
                     <Trash2 size={14} />
@@ -150,7 +150,7 @@ export function ActivitiesTab({
           open={Boolean(deleteTargetActivity)}
           onClose={() => setDeleteTargetActivity(null)}
           onConfirm={handleConfirmDeleteActivity}
-          title="Delete Activity Category?"
+          title="Delete activity category?"
           description={`Are you sure you want to remove the category "${deleteTargetActivity.name}"? Existing blocks will retain their color and information.`}
         />
       )}

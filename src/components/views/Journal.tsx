@@ -1159,7 +1159,7 @@ export function Journal({ store }: { store: AppStore }) {
             });
           }
         }}
-        title="Delete Journal Entry?"
+        title="Delete journal entry?"
         itemName={`Journal Entry (${deleteModalEntry?.date})`}
         description={
           deleteModalEntry?.pointsAwarded && deleteModalEntry.date === todayKey()

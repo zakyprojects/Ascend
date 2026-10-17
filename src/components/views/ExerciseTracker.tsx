@@ -424,7 +424,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
             });
           }
         }}
-        title="Delete Workout Log?"
+        title="Delete workout log?"
         itemName={deleteModalWorkout ? `${deleteModalWorkout.type} (${deleteModalWorkout.amount && deleteModalWorkout.unit && deleteModalWorkout.unit !== 'mins' ? `${deleteModalWorkout.amount} ${deleteModalWorkout.unit}` : `${deleteModalWorkout.durationMinutes} mins`})` : ''}
         description={`Delete this ${deleteModalWorkout?.type} workout? Any points awarded (+${deleteModalWorkout?.pointsAwarded || 0} pts) will be reversed.`}
       />

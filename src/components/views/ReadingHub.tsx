@@ -1283,7 +1283,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             ? ` Removing this book will also delete ${linkedBookGoalsCount} linked Weekly Goal${linkedBookGoalsCount > 1 ? 's' : ''} from this week and upcoming weeks (past weeks are kept).`
             : ''
         }`}
-        confirmText="Remove Book"
+        confirmText="Remove book"
       />
     </div>
   );

@@ -600,7 +600,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           }
         }}
         isDeleting={deleteModalSkill ? isKeyLoading(`delete_skill_${deleteModalSkill.id}`) : false}
-        title="Delete Skill?"
+        title="Delete skill?"
         itemName={deleteModalSkill?.name}
         description={`Delete "${deleteModalSkill?.name}"? This removes the skill and its practice history.${
           linkedSkillGoalsCount > 0
@@ -628,7 +628,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
           }
         }}
         isDeleting={deleteModalLog ? isKeyLoading(`delete_skill_log_${deleteModalLog.id}`) : false}
-        title="Delete Practice Log?"
+        title="Delete practice log?"
         itemName={skills.find((s) => s.id === deleteModalLog?.skillId)?.name}
         description={`Delete this ${deleteModalLog?.durationMinutes}-minute practice log? Any points awarded (+${deleteModalLog?.pointsAwarded || 0} pts) will be reversed.`}
       />
