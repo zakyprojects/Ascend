@@ -60,7 +60,8 @@ interface AppShellProps {
   pendingView?: View | null;
   onViewChange: (view: View) => void;
   store: AppStore;
-  onOpenAuth: () => void;
+  /** Absent in local-only mode (no Supabase): there is no sign-in to open. */
+  onOpenAuth?: () => void;
   children: ReactNode;
 }
 
@@ -277,7 +278,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
               <Plus size={20} aria-hidden="true" />
             </Button>
             {currentUser && <NotificationCenter store={store} compact />}
-            {!currentUser && (
+            {!currentUser && onOpenAuth && (
               <button
                 onClick={onOpenAuth}
                 className="btn-primary text-xs py-1 px-2.5 flex items-center gap-1"
@@ -354,7 +355,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
       <GuestLogoutWarningModal
         open={guestLogoutWarningOpen}
         onClose={() => setGuestLogoutWarningOpen(false)}
-        onSaveProgressFirst={onOpenAuth}
+        onSaveProgressFirst={() => onOpenAuth?.()}
         onLogoutAnyway={handleGuestLogoutAnyway}
         isLoggingOut={isLoggingOut}
       />
@@ -379,7 +380,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
               {currentUser.isAnonymous ? 'Guest account' : 'Account active'}
             </p>
           )}
-          {currentUser?.isAnonymous && (
+          {currentUser?.isAnonymous && onOpenAuth && (
             <Button
               variant="primary"
               fullWidth
@@ -391,7 +392,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
               Create Account to Save Progress
             </Button>
           )}
-          {!currentUser && (
+          {!currentUser && onOpenAuth && (
             <Button
               variant="primary"
               fullWidth

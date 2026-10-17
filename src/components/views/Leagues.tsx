@@ -73,7 +73,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
       </div>
 
       {/* Guest Mode Banner */}
-      {(!currentUser || currentUser.isAnonymous) && (
+      {(!currentUser || currentUser.isAnonymous) && onOpenAuth && (
         <GuestSaveBanner
           title={`You're competing as a guest (${currentUser?.username || store.state.username})`}
           description="Create an account to keep your rank and choose your own username."

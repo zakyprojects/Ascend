@@ -16,7 +16,8 @@ interface AccountMenuProps {
   /** The page on show, so a Help entry can mark itself current. */
   currentView: View;
   onOpenView: (view: View) => void;
-  onOpenAuth: () => void;
+  /** Absent in local-only mode (no Supabase): no sign-in entry. */
+  onOpenAuth?: () => void;
   onLogout: () => void;
   /** below: opens under the avatar, extending to its right over the page (top row). side: opens to its right, bottom-aligned (rail foot). */
   placement?: 'below' | 'side';
@@ -138,7 +139,7 @@ export function AccountMenu({
               </span>
             </div>
 
-            {(!user || user.isGuest) && (
+            {(!user || user.isGuest) && onOpenAuth && (
               <MenuItem
                 icon={<LogIn size={16} />}
                 tone="brand"
