@@ -192,25 +192,15 @@ export function ScheduleTab({
   const handleConfirmDeleteBlock = async () => {
     if (!deleteTargetBlock) return;
     const blockId = deleteTargetBlock.id;
-    try {
-      store.deleteDailyTimeBlock(selectedDateKey, blockId);
-      showSuccessToast('Time block deleted', 'Time block removed.', `time_block_${blockId}`);
-    } catch (err: any) {
-      showErrorToast("Couldn't delete block", toUserMessage(err, 'Try again.'));
-    } finally {
-      setDeleteTargetBlock(null);
-    }
+    store.deleteDailyTimeBlock(selectedDateKey, blockId);
+    showSuccessToast('Time block deleted', 'Time block removed.', `time_block_${blockId}`);
+    setDeleteTargetBlock(null);
   };
 
   const handleConfirmClearDay = async () => {
-    try {
-      store.clearDailyTimeBlocks(selectedDateKey);
-      showSuccessToast('Day cleared', 'Day schedule cleared.', `clear_day_${selectedDateKey}_${trustedNowMs()}`);
-    } catch (err: any) {
-      showErrorToast("Couldn't clear day", toUserMessage(err, 'Try again.'));
-    } finally {
-      setShowClearDayModal(false);
-    }
+    store.clearDailyTimeBlocks(selectedDateKey);
+    showSuccessToast('Day cleared', 'Day schedule cleared.', `clear_day_${selectedDateKey}_${trustedNowMs()}`);
+    setShowClearDayModal(false);
   };
 
   // Module Quick-Launch Handoff

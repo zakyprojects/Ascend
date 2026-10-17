@@ -15,10 +15,9 @@ import { BarChart } from '@/components/ui/charts';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { toUserMessage } from '@/lib/userMessage';
 
 export function SkillTracker({ store }: { store: AppStore }) {
-  const { showErrorToast, showSuccessToast } = useToast();
+  const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [logModalSkill, setLogModalSkill] = useState<Skill | null>(null);
@@ -617,13 +616,9 @@ export function SkillTracker({ store }: { store: AppStore }) {
           if (deleteModalLog) {
             const logId = deleteModalLog.id;
             await executeWithKey(`delete_skill_log_${logId}`, async () => {
-              try {
-                await store.deleteSkillLog(logId);
-                setDeleteModalLog(null);
-                showSuccessToast('Log deleted', 'Practice session log removed.', `skill_log_${logId}`);
-              } catch (err: any) {
-                showErrorToast("Couldn't delete log", toUserMessage(err, 'Try again.'));
-              }
+              await store.deleteSkillLog(logId);
+              setDeleteModalLog(null);
+              showSuccessToast('Log deleted', 'Practice session log removed.', `skill_log_${logId}`);
             });
           }
         }}

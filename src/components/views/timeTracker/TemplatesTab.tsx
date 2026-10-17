@@ -98,14 +98,9 @@ export function TemplatesTab({
   const handleConfirmDeleteTemplate = async () => {
     if (!deleteTargetTemplate) return;
     const templateId = deleteTargetTemplate.id;
-    try {
-      store.deleteTimeTrackerTemplate(templateId);
-      showSuccessToast('Template deleted', 'Template removed.', `template_${templateId}`);
-    } catch (err: any) {
-      showErrorToast("Couldn't delete template", toUserMessage(err, 'Try again.'));
-    } finally {
-      setDeleteTargetTemplate(null);
-    }
+    store.deleteTimeTrackerTemplate(templateId);
+    showSuccessToast('Template deleted', 'Template removed.', `template_${templateId}`);
+    setDeleteTargetTemplate(null);
   };
 
   const handleToggleDay = (template: TimeTrackerTemplate, day: string) => {

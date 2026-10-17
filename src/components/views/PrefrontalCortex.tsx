@@ -2412,13 +2412,9 @@ function FocusTimerSubmodule({
           if (deleteModalLog) {
             const logId = deleteModalLog.id;
             await executeWithKey(`delete_focus_log_${logId}`, async () => {
-              try {
-                await store.deleteFocusLog(logId);
-                setDeleteModalLog(null);
-                showSuccessToast('Session deleted', 'Focus session removed.', `focus_log_${logId}`);
-              } catch (err: any) {
-                showErrorToast("Couldn't delete session", toUserMessage(err, 'Try again.'));
-              }
+              await store.deleteFocusLog(logId);
+              setDeleteModalLog(null);
+              showSuccessToast('Session deleted', 'Focus session removed.', `focus_log_${logId}`);
             });
           }
         }}
@@ -2439,7 +2435,7 @@ function FocusTimerSubmodule({
 // 2. DECISION JOURNAL SUBMODULE
 // ----------------------------------------------------------------------
 function DecisionJournalSubmodule({ store }: { store: AppStore }) {
-  const { showErrorToast, showSuccessToast } = useToast();
+  const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [modalOpen, setModalOpen] = useState(false);
   const [reflectModalDecision, setReflectModalDecision] = useState<any | null>(null);
@@ -2658,13 +2654,9 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
           if (deleteModalDecision) {
             const decisionId = deleteModalDecision.id;
             await executeWithKey(`delete_decision_${decisionId}`, async () => {
-              try {
-                await store.deleteDecisionLog(decisionId);
-                setDeleteModalDecision(null);
-                showSuccessToast('Decision deleted', 'Decision entry removed.', `decision_${decisionId}`);
-              } catch (err: any) {
-                showErrorToast("Couldn't delete decision", toUserMessage(err, 'Try again.'));
-              }
+              await store.deleteDecisionLog(decisionId);
+              setDeleteModalDecision(null);
+              showSuccessToast('Decision deleted', 'Decision entry removed.', `decision_${decisionId}`);
             });
           }
         }}
@@ -2681,7 +2673,7 @@ function DecisionJournalSubmodule({ store }: { store: AppStore }) {
 // 3. EMOTION LABELING TOOL SUBMODULE
 // ----------------------------------------------------------------------
 function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
-  const { showErrorToast, showSuccessToast } = useToast();
+  const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModalEmotion, setDeleteModalEmotion] = useState<any | null>(null);
@@ -2852,13 +2844,9 @@ function EmotionLabelerSubmodule({ store }: { store: AppStore }) {
           if (deleteModalEmotion) {
             const emotionId = deleteModalEmotion.id;
             await executeWithKey(`delete_emotion_${emotionId}`, async () => {
-              try {
-                await store.deleteEmotionLog(emotionId);
-                setDeleteModalEmotion(null);
-                showSuccessToast('Emotion log deleted', 'Emotion log entry removed.', `emotion_${emotionId}`);
-              } catch (err: any) {
-                showErrorToast("Couldn't delete emotion log", toUserMessage(err, 'Try again.'));
-              }
+              await store.deleteEmotionLog(emotionId);
+              setDeleteModalEmotion(null);
+              showSuccessToast('Emotion log deleted', 'Emotion log entry removed.', `emotion_${emotionId}`);
             });
           }
         }}

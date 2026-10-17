@@ -211,7 +211,7 @@ export function Journal({ store }: { store: AppStore }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingToday?.id, existingToday?.createdAt, existingToday?.content, existingToday?.mood]);
 
-  const { showErrorToast, showSuccessToast } = useToast();
+  const { showSuccessToast } = useToast();
   const { isLoading: isSaving, executeFn: executeSave } = useAsyncAction();
   const { isLoading: isDeleting, executeFn: executeDelete } = useAsyncAction();
 

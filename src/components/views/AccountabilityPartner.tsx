@@ -1742,13 +1742,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
         onConfirm={async () => {
           if (activePartnership) {
             await executeWithKey(`end_partnership_${activePartnership.id}`, async () => {
-              try {
-                await store.endPartnership(activePartnership.id);
-                showSuccessToast('Pairing ended', `You're no longer partners with ${activePartnerUsername}.`);
-                setEndConfirmOpen(false);
-              } catch (err: any) {
-                showErrorToast("Couldn't end pairing", toUserMessage(err, 'Try again.'));
-              }
+              await store.endPartnership(activePartnership.id);
+              showSuccessToast('Pairing ended', `You're no longer partners with ${activePartnerUsername}.`);
+              setEndConfirmOpen(false);
             });
           }
         }}
@@ -1768,13 +1764,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             const challengeId = challengeToDelete.id;
             const challengeTitle = challengeToDelete.title;
             await executeWithKey(`delete_pact_${challengeId}`, async () => {
-              try {
-                await store.deleteSharedChallenge(challengeId);
-                setChallengeToDelete(null);
-                showSuccessToast('Pact removed', `Deleted "${challengeTitle}".`, `challenge_${challengeId}`);
-              } catch (err: any) {
-                showErrorToast("Couldn't delete pact", toUserMessage(err, 'Try again.'));
-              }
+              await store.deleteSharedChallenge(challengeId);
+              setChallengeToDelete(null);
+              showSuccessToast('Pact removed', `Deleted "${challengeTitle}".`, `challenge_${challengeId}`);
             });
           }
         }}
@@ -1794,13 +1786,9 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
             const inviteId = inviteToCancel.id;
             const toUser = inviteToCancel.toUsername;
             await executeWithKey(`cancel_invite_${inviteId}`, async () => {
-              try {
-                await store.cancelPartnerInvite(inviteId);
-                setInviteToCancel(null);
-                showSuccessToast('Invite cancelled', `Cancelled invite to ${toUser}.`, `invite_${inviteId}`);
-              } catch (err: any) {
-                showErrorToast("Couldn't cancel invite", toUserMessage(err, 'Try again.'));
-              }
+              await store.cancelPartnerInvite(inviteId);
+              setInviteToCancel(null);
+              showSuccessToast('Invite cancelled', `Cancelled invite to ${toUser}.`, `invite_${inviteId}`);
             });
           }
         }}

@@ -2226,13 +2226,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           if (planToDelete) {
             const planId = planToDelete.id;
             await executeWithKey(`delete_plan_${planId}`, async () => {
-              try {
-                await store.deletePlan(planId);
-                setPlanToDelete(null);
-                showSuccessToast('Plan deleted', 'Improvement plan removed successfully.', `plan_${planId}`);
-              } catch (err: any) {
-                showErrorToast("Couldn't delete plan", toUserMessage(err, 'Try again in a moment.'));
-              }
+              await store.deletePlan(planId);
+              setPlanToDelete(null);
+              showSuccessToast('Plan deleted', 'Improvement plan removed successfully.', `plan_${planId}`);
             });
           }
         }}
@@ -2250,13 +2246,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           if (followToDelete) {
             const followId = followToDelete.id;
             await executeWithKey(`delete_follow_${followId}`, async () => {
-              try {
-                await store.deleteFollowedPlan(followId);
-                setFollowToDelete(null);
-                showSuccessToast('Plan removed', 'Saved plan removed from your account.', `follow_${followId}`);
-              } catch (err: any) {
-                showErrorToast("Couldn't remove plan", toUserMessage(err, 'Try again.'));
-              }
+              await store.deleteFollowedPlan(followId);
+              setFollowToDelete(null);
+              showSuccessToast('Plan removed', 'Saved plan removed from your account.', `follow_${followId}`);
             });
           }
         }}
