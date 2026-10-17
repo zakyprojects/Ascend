@@ -6,7 +6,6 @@ import {
   FolderKanban,
   CheckSquare,
   Plus,
-  Minus,
   ArrowRight,
   ArrowLeft,
   Calendar,
@@ -52,6 +51,7 @@ import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { CountUp } from '@/components/ui/Motion';
+import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { useScrollFade } from '@/lib/useScrollFade';
 import { trustedNow, trustedNowMs } from '@/lib/clock';
@@ -477,6 +477,8 @@ export function ProjectsGoalsView({
 
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  // The goal or project (without tasks/projects) whose % is being set by hand.
+  const [progressUpdate, setProgressUpdate] = useState<{ kind: 'goal' | 'project'; id: string; title: string; current: number } | null>(null);
   const [taskFormTitle, setTaskFormTitle] = useState('');
   const [taskFormDescription, setTaskFormDescription] = useState('');
   const [taskFormProjectId, setTaskFormProjectId] = useState<string>('');
@@ -981,7 +983,7 @@ export function ProjectsGoalsView({
   };
 
   const handleUpdateGoalManualProgress = (goal: Goal, val: number) => {
-    const clamped = Math.max(0, Math.min(100, Math.round(val / 5) * 5));
+    const clamped = Math.max(0, Math.min(100, Math.round(val)));
     let newStatus = goal.status;
 
     // Abandoned goals are never auto-overridden
@@ -1097,7 +1099,7 @@ export function ProjectsGoalsView({
       return;
     }
 
-    const clamped = Math.max(0, Math.min(100, Math.round(val / 5) * 5));
+    const clamped = Math.max(0, Math.min(100, Math.round(val)));
     let newStatus = project.status;
     let newCompletedAt = project.completedAt;
 
@@ -1786,40 +1788,20 @@ export function ProjectsGoalsView({
                         </div>
                       </div>
 
-                      {/* Progress Bar with Steppers (if manual) */}
-                      <div className="flex items-center gap-2.5">
-                        {prog.isManual && (
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateGoalManualProgress(goal, prog.percent - 5)}
-                            disabled={prog.percent <= 0}
-                            className={`w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default ${TAP_TARGET}`}
-                            title="Decrease 5%"
-                            aria-label={`Decrease progress for "${goal.title}"`}
-                          >
-                            <Minus size={12} />
-                          </button>
-                        )}
-
+                      {/* Progress bar; a goal without projects is updated by hand */}
+                      <div className="flex flex-wrap items-center gap-2.5">
                         <ProgressBar
                           value={prog.percent}
                           label="Goal progress"
                           tone={prog.percent >= 100 ? 'success' : 'purple'}
                           size="lg"
-                          className="flex-1"
+                          className="flex-1 min-w-[8rem]"
                         />
-
                         {prog.isManual && (
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateGoalManualProgress(goal, prog.percent + 5)}
-                            disabled={prog.percent >= 100}
-                            className={`w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default ${TAP_TARGET}`}
-                            title="Increase 5%"
-                            aria-label={`Increase progress for "${goal.title}"`}
-                          >
-                            <Plus size={12} />
-                          </button>
+                          <UpdateProgressButton
+                            label="Update"
+                            onClick={() => setProgressUpdate({ kind: 'goal', id: goal.id, title: goal.title, current: prog.percent })}
+                          />
                         )}
                       </div>
                     </div>
@@ -2222,38 +2204,21 @@ export function ProjectsGoalsView({
                         </div>
                       </div>
 
-                      {/* Progress Bar with Steppers (if manual) */}
-                      <div className="flex items-center gap-2.5">
-                        {prog.isManual && (
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateProjectManualProgress(project, prog.percent - 5)}
-                            disabled={prog.percent <= 0 || lockStatus.isLocked}
-                            className={`w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default ${TAP_TARGET}`}
-                            title="Decrease 5%"
-                          >
-                            <Minus size={12} />
-                          </button>
-                        )}
-
+                      {/* Progress bar; a project without tasks is updated by hand */}
+                      <div className="flex flex-wrap items-center gap-2.5">
                         <ProgressBar
                           value={prog.percent}
                           label="Project progress"
                           tone={prog.percent >= 100 ? 'success' : 'cyan'}
                           size="lg"
-                          className="flex-1"
+                          className="flex-1 min-w-[8rem]"
                         />
-
                         {prog.isManual && (
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateProjectManualProgress(project, prog.percent + 5)}
-                            disabled={prog.percent >= 100 || lockStatus.isLocked}
-                            className={`w-6 h-6 rounded-lg bg-overlay-subtle hover:bg-overlay-default text-content-tertiary disabled:opacity-30 disabled:hover:bg-overlay-subtle flex items-center justify-center text-xs transition-colors shrink-0 border border-overlay-default ${TAP_TARGET}`}
-                            title="Increase 5%"
-                          >
-                            <Plus size={12} />
-                          </button>
+                          <UpdateProgressButton
+                            label="Update"
+                            disabled={lockStatus.isLocked}
+                            onClick={() => setProgressUpdate({ kind: 'project', id: project.id, title: project.title, current: prog.percent })}
+                          />
                         )}
                       </div>
                     </div>
@@ -2562,6 +2527,29 @@ export function ProjectsGoalsView({
       {/* -------------------------------------------------------------------- */}
       {/* GOAL MODAL (CREATE / EDIT) */}
       {/* -------------------------------------------------------------------- */}
+      <ProgressUpdateDialog
+        open={Boolean(progressUpdate)}
+        onClose={() => setProgressUpdate(null)}
+        title={progressUpdate ? `Update progress: ${progressUpdate.title}` : 'Update progress'}
+        current={progressUpdate?.current ?? 0}
+        target={100}
+        format={(n) => `${n}%`}
+        addLabel="Percent to add"
+        setLabel="New percent"
+        step={5}
+        tone={progressUpdate?.kind === 'project' ? 'cyan' : 'purple'}
+        onSave={(next) => {
+          if (!progressUpdate) return;
+          if (progressUpdate.kind === 'goal') {
+            const goal = goals.find((g) => g.id === progressUpdate.id);
+            if (goal) handleUpdateGoalManualProgress(goal, next);
+          } else {
+            const project = projects.find((p) => p.id === progressUpdate.id);
+            if (project) handleUpdateProjectManualProgress(project, next);
+          }
+        }}
+      />
+
       <Dialog
         open={goalModalOpen}
         preventClose={isKeyLoading('save_goal')}
