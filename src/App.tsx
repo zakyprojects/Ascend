@@ -104,6 +104,9 @@ function App() {
   // The sign-in page's code (preloaded behind the splash by main.tsx).
   const [AuthPageView, setAuthPageView] = useState<ComponentType<AuthPageProps> | null>(() => loadedAuthPage());
   const needsAuthPage = authScreen !== null;
+  // Set when that code could not load and no reload was started (offline, or already reloaded once):
+  // the loader then says so and offers Retry instead of waiting forever.
+  const [authPageFailed, setAuthPageFailed] = useState(false);
   useEffect(() => {
     if (!needsAuthPage || AuthPageView) return;
     let cancelled = false;
@@ -111,7 +114,9 @@ function App() {
       (component) => {
         if (!cancelled) setAuthPageView(() => component);
       },
-      () => reloadOnceForStaleChunk()
+      () => {
+        if (!reloadOnceForStaleChunk() && !cancelled) setAuthPageFailed(true);
+      }
     );
     return () => {
       cancelled = true;
@@ -145,7 +150,10 @@ function App() {
   // offer a fresh try (a reload starts a new attempt) or, for a real account, signing in afresh.
   // A guest is never offered that: dropping its sign-in would lose the guest account.
   const bootOffline = store.storedSessionWait === 'failed';
-  const offlineActions = bootOffline && (
+  const authPageOffline = !bootOffline && authPageFailed && needsAuthPage && !AuthPageView;
+  const offlineActions = authPageOffline ? (
+    <Button onClick={() => window.location.reload()}>Retry</Button>
+  ) : bootOffline && (
     <>
       <Button onClick={() => window.location.reload()}>Retry</Button>
       {!storedAuthSession()?.isAnonymous && (
@@ -159,9 +167,17 @@ function App() {
   // Rendered beside the app (not instead of it), so it is not remounted when it starts exiting.
   const loaderOverlay = (showLoader || loaderExiting) && (
     <AscendLoadingOverlay
-      message={bootOffline ? "Can't reach Ascend" : loaderKind === 'boot' ? 'Starting up...' : 'Loading your workspace...'}
+      message={
+        bootOffline || authPageOffline ? "Can't reach Ascend" : loaderKind === 'boot' ? 'Starting up...' : 'Loading your workspace...'
+      }
       submessage={
-        bootOffline ? "Check your connection. You're still signed in." : loaderKind === 'boot' ? 'Checking your account' : 'Loading your data'
+        bootOffline
+          ? "Check your connection. You're still signed in."
+          : authPageOffline
+            ? 'Check your connection and try again.'
+            : loaderKind === 'boot'
+              ? 'Checking your account'
+              : 'Loading your data'
       }
       entrance={loaderKind === 'boot' ? 'boot' : 'fade'}
       exiting={!showLoader}
@@ -169,16 +185,18 @@ function App() {
     />
   );
 
-  // Once the app is on screen, fetch the other pages' code in idle moments.
-  const appVisible = !store.isAuthChecking;
+  // Once the app is on screen, fetch the other pages' code in idle moments. Not behind a sign-in
+  // page: a signed-out visitor may never get in, so the download would be wasted.
+  const appVisible = !store.isAuthChecking && authScreen === null && !auth;
   useEffect(() => {
     if (appVisible) prefetchAllViewsWhenIdle();
   }, [appVisible]);
 
   // In-app sign-in buttons: a guest saves progress on /signup, anyone else signs in on /login;
-  // both come back to this page afterwards.
-  const openAuth = () =>
-    goToPath(authPathWithNext(currentUser ? 'signup' : 'login', pathForView(view) + search));
+  // both come back to this page afterwards. Local-only mode has no sign-in, so no buttons.
+  const openAuth = authGate
+    ? () => goToPath(authPathWithNext(currentUser ? 'signup' : 'login', pathForView(view) + search))
+    : undefined;
 
   // The app itself: not while a sign-in page is up, nor for the one frame a redirect away from
   // a sign-in page takes (signed in, or local-only mode).
