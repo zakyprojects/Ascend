@@ -10,7 +10,8 @@ import { useAsyncAction } from '@/lib/useAsyncAction';
 import { useToast } from '@/components/ui/Toast';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
-import { Dialog, Disclosure, EmptyState, PageColumns } from '@/components/ui/primitives';
+import { Dialog, Disclosure, EmptyState, Form, Input, PageColumns } from '@/components/ui/primitives';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { BarChart } from '@/components/ui/charts';
@@ -47,6 +48,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
     });
     return count;
   }, [confirmDelete, store.state.weeklyGoals]);
+
+  const customForm = useUnsavedChanges(showAdd && addMode === 'custom', [name, frequency]);
 
   const handleAddCustom = () => {
     if (!name.trim()) return;
@@ -165,7 +168,25 @@ export function HabitTracker({ store }: { store: AppStore }) {
       </PageColumns>
 
       {/* Add habit modal */}
-      <Dialog open={showAdd} onClose={resetModal} title="Add Habit" maxWidth="max-w-lg">
+      <Dialog
+        open={showAdd}
+        onClose={resetModal}
+        dirty={customForm.dirty}
+        title="Add habit"
+        maxWidth="max-w-lg"
+        footer={
+          addMode === 'custom' ? (
+            <>
+              <button type="button" onClick={() => customForm.confirmDiscard(resetModal)} className="btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" form="habit-custom-form" className="btn-primary">
+                Create habit
+              </button>
+            </>
+          ) : undefined
+        }
+      >
         {addMode === 'choice' && (
           <div className="space-y-3">
             <button
@@ -239,27 +260,27 @@ export function HabitTracker({ store }: { store: AppStore }) {
         )}
 
         {addMode === 'custom' && (
-          <div className="space-y-4">
-            <button onClick={() => setAddMode('choice')} className="btn-ghost text-xs mb-1">
+          <Form id="habit-custom-form" onSubmit={handleAddCustom} className="space-y-4">
+            <button type="button" onClick={() => customForm.confirmDiscard(() => setAddMode('choice'))} className="btn-ghost text-xs mb-1">
               ← Back
             </button>
-            <div>
-              <label className="label block mb-1.5" htmlFor="habit-name-input">Habit name</label>
-              <input
-                id="habit-name-input"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddCustom()}
-                placeholder="e.g. Call my mom"
-                className="input"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="label block mb-1.5">Frequency</label>
+            <Input
+              id="habit-name-input"
+              label="Habit name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Call my mom"
+              maxLength={80}
+              autoComplete="off"
+              enterKeyHint="done"
+              required
+            />
+            <div role="group" aria-labelledby="habit-frequency-label">
+              <p id="habit-frequency-label" className="label block mb-1.5">Frequency</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
+                  type="button"
+                  aria-pressed={frequency === 'daily'}
                   onClick={() => setFrequency('daily')}
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     frequency === 'daily'
@@ -270,6 +291,8 @@ export function HabitTracker({ store }: { store: AppStore }) {
                   <Calendar size={16} /> Daily
                 </button>
                 <button
+                  type="button"
+                  aria-pressed={frequency === 'weekly'}
                   onClick={() => setFrequency('weekly')}
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     frequency === 'weekly'
@@ -289,10 +312,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
                 Only preset habits from the library do, which keeps points fair.
               </p>
             </div>
-            <button onClick={handleAddCustom} className="btn-secondary w-full">
-              Create Custom Habit
-            </button>
-          </div>
+          </Form>
         )}
       </Dialog>
 
