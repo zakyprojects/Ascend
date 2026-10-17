@@ -2608,11 +2608,14 @@ export function useAppState() {
             if (mounted && myGeneration === authGenerationRef.current) setIsSessionLoading(false);
             if (mounted) setIsAuthChecking(false);
           }
-        } else if (!session?.user && holdForStoredSession()) {
+        } else if (!session?.user) {
           // No session yet, but a saved sign-in: keep the boot loader (see storedSessionWait).
-        } else {
-          if (mounted) setIsAuthChecking(false);
+          if (!holdForStoredSession() && mounted) setIsAuthChecking(false);
         }
+        // Any other event carries the session of the account that INITIAL_SESSION / SIGNED_IN is
+        // loading or has loaded (e.g. TOKEN_REFRESHED, which supabase fires at boot when it
+        // refreshed an expired token). It must not end the boot check: that showed the sign-in
+        // page while the account was still loading.
       }, 0);
     });
 
