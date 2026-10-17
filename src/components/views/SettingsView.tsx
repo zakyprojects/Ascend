@@ -41,6 +41,8 @@ import { useAsyncAction, useAsyncActionKey } from '@/lib/useAsyncAction';
 import { toUserMessage } from '@/lib/userMessage';
 import { AscendLoadingIndicator, AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
 import { trustedNowMs } from '@/lib/clock';
+import { useToast } from '@/components/ui/Toast';
+import { disablePush, enablePush, getPushStatus, type PushStatus } from '@/lib/push';
 
 type SettingsSection =
   | 'profile'
@@ -113,6 +115,30 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
     }
   });
   const [notifBrowserPerm, setNotifBrowserPerm] = useState<NotificationPermission>('default');
+  const [pushStatus, setPushStatus] = useState<PushStatus>('off');
+  const { isLoading: isPushSaving, executeFn: executePushToggle } = useAsyncAction();
+  const { showErrorToast } = useToast();
+
+  useEffect(() => {
+    getPushStatus().then(setPushStatus).catch(() => setPushStatus('off'));
+  }, []);
+
+  const handlePushToggle = () =>
+    executePushToggle(async () => {
+      try {
+        if (pushStatus === 'on') {
+          await disablePush();
+          setPushStatus('off');
+        } else {
+          const next = await enablePush();
+          setPushStatus(next);
+          if (typeof window !== 'undefined' && 'Notification' in window) setNotifBrowserPerm(Notification.permission);
+        }
+      } catch (err) {
+        showErrorToast("Couldn't change push notifications", toUserMessage(err, 'Please try again.'));
+        setPushStatus(await getPushStatus().catch((): PushStatus => 'off'));
+      }
+    });
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -681,6 +707,28 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
 
               <div className="space-y-4">
               <div className="divide-y divide-overlay-subtle">
+                <label className={`flex items-center justify-between gap-4 py-3 ${pushStatus === 'unsupported' ? '' : 'cursor-pointer'}`}>
+                  <div>
+                    <span className="item-name text-xs text-content-secondary block">Push notifications on this device</span>
+                    <span className="text-micro text-content-muted">
+                      {pushStatus === 'unsupported'
+                        ? "This browser can't get push notifications. On iPhone, add Ascend to your Home Screen first."
+                        : 'Get your notifications even when Ascend is closed.'}
+                    </span>
+                  </div>
+                  {isPushSaving ? (
+                    <AscendLoadingIndicator size="sm" />
+                  ) : (
+                    <input
+                      type="checkbox"
+                      checked={pushStatus === 'on'}
+                      disabled={pushStatus === 'unsupported' || pushStatus === 'denied'}
+                      onChange={handlePushToggle}
+                      className="rounded border-overlay-strong bg-bg-800 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                  )}
+                </label>
+
                 <label className="flex items-center justify-between gap-4 py-3 cursor-pointer">
                   <div>
                     <span className="item-name text-xs text-content-secondary block">Daily habit reminders</span>

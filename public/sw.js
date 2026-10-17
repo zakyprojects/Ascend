@@ -79,6 +79,26 @@ async function trimAssetCache(cache) {
   await Promise.all(keys.slice(0, Math.max(0, keys.length - ASSET_CACHE_LIMIT)).map((key) => cache.delete(key)));
 }
 
+// Web Push from the send-push Edge Function: { id, title, body, url }. Always shown (Chrome
+// requires a visible notification for every push); the tag keeps one notice from showing twice.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Ascend', {
+      body: data.body || '',
+      tag: data.id || undefined,
+      icon: '/android-chrome-192x192.png',
+      badge: '/favicon-32x32.png',
+      data: { url: data.url || '/' },
+    })
+  );
+});
+
 // Notification click event - focus or open client window when tapped
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
@@ -90,7 +110,7 @@ self.addEventListener('notificationclick', (event) => {
         }
       }
       if (self.clients.openWindow) {
-        return self.clients.openWindow('/');
+        return self.clients.openWindow((event.notification.data && event.notification.data.url) || '/');
       }
     })
   );

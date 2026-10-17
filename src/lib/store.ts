@@ -203,6 +203,7 @@ import { applyRemoteChanges, prepareRemoteRows, pullSyncedRows } from './sync/pu
 import { SYNCED_COLLECTIONS } from './sync/syncedCollections';
 import { mergeAppState, deduplicatePresetHabits, mergeAppStateWithGuardResult, isLegitimateTombstoneId } from './stateMerger';
 import { toUserMessage } from './userMessage';
+import { disablePush } from './push';
 
 // Cross-tab real-time state synchronization channel
 export const STATE_SYNC_CHANNEL_NAME = 'ascend-state-sync';
@@ -3237,6 +3238,11 @@ export function useAppState() {
       ) {
         clearLocalUserData(userId);
       }
+
+      // 3c. Stop pushes for this account on this device (the next person here must not get them).
+      await Promise.race([disablePush(), timeoutPromise]).catch((err) =>
+        console.warn('Failed to remove push subscription before logout:', err)
+      );
 
       // 4. Attempt remote sign-out
       let networkError: unknown = null;
