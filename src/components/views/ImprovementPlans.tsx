@@ -31,7 +31,7 @@ import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Dialog, EmptyState, FieldMessage, Form, Input, NumberField, ProgressBar, Skeleton, SlidingPill } from '@/components/ui/primitives';
 import { ImprovementPlan, PlanType, UserPlanFollow, PLAN_CATEGORIES } from '@/types';
-import { earliestTargetDate, todayKey } from '@/lib/dates';
+import { earliestTargetDate, isNewPastDate, todayKey } from '@/lib/dates';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { fetchPublicPlansFromSupabase, mapRowToImprovementPlan, supabase, syncBroadcaster } from '@/lib/supabase';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
@@ -2011,7 +2011,18 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
           </>
         }
       >
-        <Form id="pip-edit-form" onSubmit={handleEditSubmit} className="space-y-4">
+        <Form
+          id="pip-edit-form"
+          onSubmit={handleEditSubmit}
+          validate={() =>
+            editingPlanType === 'target' && isNewPastDate(editTargetDate, editingPlan?.targetDate)
+              ? { message: 'Pick a later date.', field: 'pip-edit-target-date' }
+              : editingPlanType === 'vision' && isNewPastDate(editTargetReviewDate, editingPlan?.targetReviewDate)
+              ? { message: 'Pick a later date.', field: 'pip-edit-target-review-date' }
+              : null
+          }
+          className="space-y-4"
+        >
           <div>
             <label htmlFor="pip-edit-title" className="block label mb-1">Plan title</label>
             <input

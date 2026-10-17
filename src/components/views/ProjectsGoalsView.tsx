@@ -37,7 +37,7 @@ import {
   ProjectStatus,
   TaskPriority,
 } from '@/types';
-import { earliestTargetDate, todayKey, formatDateShort } from '@/lib/dates';
+import { earliestTargetDate, isNewPastDate, todayKey, formatDateShort } from '@/lib/dates';
 import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
@@ -537,7 +537,7 @@ export function ProjectsGoalsView({
   // A due/target date can't be set in the past. An old past date already on an item can stay
   // when editing it (it is just overdue), so only a new or changed date is checked.
   const pastDueIssue = (value: string, saved: string | undefined, field: string) =>
-    value && value < currentToday && value !== (saved ?? '') ? { message: 'Pick a later date.', field } : null;
+    isNewPastDate(value, saved) ? { message: 'Pick a later date.', field } : null;
 
   const sanitizeDateBounds = (dateStr?: string): string | undefined => {
     if (!dateStr || !dateStr.trim()) return undefined;

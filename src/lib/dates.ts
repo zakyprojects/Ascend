@@ -408,3 +408,12 @@ export function earliestTargetDate(saved?: string | null): string {
   const today = todayKey();
   return saved && saved < today ? saved : today;
 }
+
+/**
+ * True when a target date is a new past date: before today and not the item's own saved date.
+ * The exact check behind `earliestTargetDate`, whose `min` alone would let an edit move an old
+ * past date to another past date.
+ */
+export function isNewPastDate(value: string | null | undefined, saved?: string | null): boolean {
+  return Boolean(value) && value! < todayKey() && value !== (saved ?? '');
+}

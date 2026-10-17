@@ -18,7 +18,7 @@ import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, Pr
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { UserBook, UserBookStatus, BookCategory } from '@/types';
-import { earliestTargetDate, todayKey, formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
+import { earliestTargetDate, isNewPastDate, todayKey, formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
 import { READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, readingBonusId } from '@/lib/readingAwards';
 import { CapMeter } from '@/components/ui/CapMeter';
@@ -1010,7 +1010,16 @@ export function ReadingHub({ store }: { store: AppStore }) {
           </>
         }
       >
-        <Form id="rh-start-form" onSubmit={handleStartReadingSubmit} className="space-y-4">
+        <Form
+          id="rh-start-form"
+          onSubmit={handleStartReadingSubmit}
+          validate={() =>
+            isNewPastDate(startTargetDate, startReadingModalBook?.targetFinishDate)
+              ? { message: 'Pick a later date.', field: 'rh-start-date' }
+              : null
+          }
+          className="space-y-4"
+        >
           <FieldRow>
             <NumberField
               id="rh-start-total"
