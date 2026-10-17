@@ -19,7 +19,7 @@ import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoin
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { weeklyGoalsCapNote } from '@/lib/capCopy';
-import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, ProgressBar, Select, Textarea } from '@/components/ui/primitives';
+import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, ProgressBar, Select, Textarea, useFormController } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { useCompletionPop } from '@/lib/useCompletionPop';
@@ -456,25 +456,29 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
     }
   };
 
+  const newReflectionIssues = useFormController();
+  const editReflectionIssues = useFormController();
+  const goalIssues = useFormController();
+
   const handleCreateReflection = () => {
     if (!newReflectionContent.trim()) return;
     try {
-      store.addWeeklyReflection(selectedWeekKey, newReflectionContent);
+      store.addWeeklyReflection(selectedWeekKey, newReflectionContent.trim());
       setNewReflectionContent('');
       setShowAddReflection(false);
     } catch (err: any) {
-      showErrorToast("Couldn't add reflection", toUserMessage(err, 'Try again.'));
+      newReflectionIssues.showError(toUserMessage(err, "Couldn't add the reflection. Try again."));
     }
   };
 
   const handleUpdateReflection = () => {
     if (!editingReflection || !editReflectionContent.trim()) return;
     try {
-      store.updateWeeklyReflection(selectedWeekKey, editingReflection.id, editReflectionContent);
+      store.updateWeeklyReflection(selectedWeekKey, editingReflection.id, editReflectionContent.trim());
       setEditingReflection(null);
       setEditReflectionContent('');
     } catch (err: any) {
-      showErrorToast("Couldn't update reflection", toUserMessage(err, 'Try again.'));
+      editReflectionIssues.showError(toUserMessage(err, "Couldn't save the reflection. Try again."));
     }
   };
 
@@ -558,7 +562,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       }
       setModalOpen(false);
     } catch (err: any) {
-      showErrorToast(editingGoal ? "Couldn't update goal" : "Couldn't add goal", toUserMessage(err, 'Try again.'));
+      goalIssues.showError(toUserMessage(err, editingGoal ? "Couldn't save the goal. Try again." : "Couldn't add the goal. Try again."));
     }
   };
 
@@ -877,35 +881,36 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
               {/* ADD REFLECTION FORM */}
               {showAddReflection && (
-                <div className="p-3.5 bg-bg-800/80 border border-overlay-default rounded-xl space-y-3">
-                  <label htmlFor="new-reflection-content" className="block label">
-                    New Reflection Entry
-                  </label>
-                  <textarea
+                <Form
+                  onSubmit={handleCreateReflection}
+                  controller={newReflectionIssues}
+                  className="p-3.5 border border-overlay-default rounded-xl space-y-3"
+                >
+                  <Textarea
                     id="new-reflection-content"
+                    label="New reflection"
                     value={newReflectionContent}
                     onChange={(e) => setNewReflectionContent(e.target.value)}
                     placeholder="What went well? What got in the way? What will you change next week?"
-                    className="input min-h-[90px] text-xs leading-relaxed"
+                    className="min-h-[90px] leading-relaxed"
+                    maxLength={2000}
                     autoFocus
+                    required
                   />
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="dialog-actions">
                     <button
+                      type="button"
                       onClick={() => newReflectionForm.confirmDiscard(() => setShowAddReflection(false))}
-                      className="btn-secondary text-xs py-1.5 px-3"
+                      className="btn-secondary"
                     >
                       Cancel
                     </button>
-                    <button
-                      onClick={handleCreateReflection}
-                      disabled={!reflectionWindowOpen}
-                      className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Check size={14} />
-                      <span>Save Reflection</span>
+                    <button type="submit" disabled={!reflectionWindowOpen} className="btn-primary">
+                      <Check size={16} />
+                      <span>Save reflection</span>
                     </button>
                   </div>
-                </div>
+                </Form>
               )}
 
               {/* LIST OF REFLECTIONS */}
@@ -930,33 +935,35 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
                         if (isEditingThis) {
                           return (
-                            <div key={ref.id} className="py-3.5 first:pt-0 space-y-3">
-                              <label htmlFor="edit-reflection-content" className="block label">
-                                Edit Reflection
-                              </label>
-                              <textarea
+                            <Form
+                              key={ref.id}
+                              onSubmit={handleUpdateReflection}
+                              controller={editReflectionIssues}
+                              className="py-3.5 first:pt-0 space-y-3"
+                            >
+                              <Textarea
                                 id="edit-reflection-content"
+                                label="Edit reflection"
                                 value={editReflectionContent}
                                 onChange={(e) => setEditReflectionContent(e.target.value)}
-                                className="input min-h-[90px] text-xs leading-relaxed"
+                                className="min-h-[90px] leading-relaxed"
+                                maxLength={2000}
                                 autoFocus
+                                required
                               />
-                              <div className="flex items-center justify-end gap-2">
+                              <div className="dialog-actions">
                                 <button
+                                  type="button"
                                   onClick={() => editReflectionForm.confirmDiscard(() => setEditingReflection(null))}
-                                  className="btn-secondary text-xs py-1.5 px-3"
+                                  className="btn-secondary"
                                 >
                                   Cancel
                                 </button>
-                                <button
-                                  onClick={handleUpdateReflection}
-                                  disabled={!reflectionWindowOpen}
-                                  className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  Save Changes
+                                <button type="submit" disabled={!reflectionWindowOpen} className="btn-primary">
+                                  Save changes
                                 </button>
                               </div>
-                            </div>
+                            </Form>
                           );
                         }
 
@@ -1034,7 +1041,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
           </>
         }
       >
-        <Form id="weekly-goal-form" onSubmit={handleSaveGoal} className="space-y-4">
+        <Form id="weekly-goal-form" onSubmit={handleSaveGoal} controller={goalIssues} className="space-y-4">
           <Input
             id="goal-title"
             label="Goal"
