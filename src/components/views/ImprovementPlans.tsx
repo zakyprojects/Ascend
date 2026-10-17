@@ -36,7 +36,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Dialog, EmptyState, FieldMessage, Form, Input, NumberField, ProgressBar, Skeleton, SlidingPill } from '@/components/ui/primitives';
 import { ImprovementPlan, PlanType, UserPlanFollow, PlanReflectionNote, PLAN_CATEGORIES } from '@/types';
 import { getCurrentTier } from '@/lib/tiers';
-import { todayKey } from '@/lib/dates';
+import { earliestTargetDate, todayKey } from '@/lib/dates';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { fetchPublicPlansFromSupabase, mapRowToImprovementPlan, supabase, syncBroadcaster } from '@/lib/supabase';
 import { getProfilePointsByUsername, getProfileSeasonPointsByUsername } from '@/lib/auth';
@@ -640,6 +640,9 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   };
 
   // Edit Structural Fields Modal handlers (Does NOT touch progress/streaks/reflections)
+  // The saved plan being edited, for its old dates (a past one may stay as it is).
+  const editingPlan = store.state.improvementPlans.find((p) => p.id === editingPlanId);
+
   const handleOpenEdit = (plan: ImprovementPlan) => {
     const isVision = plan.planType === 'vision';
     setEditingPlanId(plan.id);
@@ -1915,10 +1918,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                   <input
                     id="pip-create-target-date"
                     type="date"
+                    min={earliestTargetDate()}
                     value={targetDate}
                     onChange={(e) => setTargetDate(e.target.value)}
                     className="input"
                   />
+                  <FieldMessage htmlFor="pip-create-target-date" />
                 </div>
               </div>
             </div>
@@ -1970,10 +1975,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <input
                   id="pip-create-target-review-date"
                   type="date"
+                  min={earliestTargetDate()}
                   value={targetReviewDate}
                   onChange={(e) => setTargetReviewDate(e.target.value)}
                   className="input"
                 />
+                <FieldMessage htmlFor="pip-create-target-review-date" />
               </div>
               <div>
                 <label htmlFor="pip-create-initial-reflection-note" className="block label mb-1">First reflection note (optional)</label>
@@ -2156,10 +2163,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <input
                   id="pip-edit-target-date"
                   type="date"
+                  min={earliestTargetDate(editingPlan?.targetDate)}
                   value={editTargetDate}
                   onChange={(e) => setEditTargetDate(e.target.value)}
                   className="input"
                 />
+                <FieldMessage htmlFor="pip-edit-target-date" />
               </div>
             </div>
           )}
@@ -2197,10 +2206,12 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               <input
                 id="pip-edit-target-review-date"
                 type="date"
+                min={earliestTargetDate(editingPlan?.targetReviewDate)}
                 value={editTargetReviewDate}
                 onChange={(e) => setEditTargetReviewDate(e.target.value)}
                 className="input"
               />
+              <FieldMessage htmlFor="pip-edit-target-review-date" />
             </div>
           )}
 

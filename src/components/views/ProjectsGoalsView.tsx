@@ -46,7 +46,7 @@ import {
   ProjectStatus,
   TaskPriority,
 } from '@/types';
-import { todayKey, weekKey, formatDateLong, formatDateShort } from '@/lib/dates';
+import { earliestTargetDate, todayKey, weekKey, formatDateLong, formatDateShort } from '@/lib/dates';
 import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
@@ -536,7 +536,6 @@ export function ProjectsGoalsView({
 
   // A due/target date can't be set in the past. An old past date already on an item can stay
   // when editing it (it is just overdue), so only a new or changed date is checked.
-  const earliestDue = (saved?: string) => (saved && saved < currentToday ? saved : currentToday);
   const pastDueIssue = (value: string, saved: string | undefined, field: string) =>
     value && value < currentToday && value !== (saved ?? '') ? { message: 'Pick a later date.', field } : null;
 
@@ -2655,7 +2654,7 @@ export function ProjectsGoalsView({
               label="Target date"
               optional
               type="date"
-              min={earliestDue(editingGoal?.targetDate)}
+              min={earliestTargetDate(editingGoal?.targetDate)}
               max={maxAllowedDate}
               value={goalFormTargetDate}
               onChange={(e) => setGoalFormTargetDate(e.target.value)}
@@ -2760,7 +2759,7 @@ export function ProjectsGoalsView({
               label="Due date"
               optional
               type="date"
-              min={projectFormStartDate > earliestDue(editingProject?.dueDate) ? projectFormStartDate : earliestDue(editingProject?.dueDate)}
+              min={projectFormStartDate > earliestTargetDate(editingProject?.dueDate) ? projectFormStartDate : earliestTargetDate(editingProject?.dueDate)}
               max={maxAllowedDate}
               value={projectFormDueDate}
               onChange={(e) => setProjectFormDueDate(e.target.value)}
@@ -2868,7 +2867,7 @@ export function ProjectsGoalsView({
             label="Due date"
             optional
             type="date"
-            min={earliestDue(editingTask?.dueDate)}
+            min={earliestTargetDate(editingTask?.dueDate)}
             max={maxAllowedDate}
             value={taskFormDueDate}
             onChange={(e) => setTaskFormDueDate(e.target.value)}

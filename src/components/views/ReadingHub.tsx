@@ -24,7 +24,7 @@ import { Dialog, EmptyState, FieldRow, Form, Input, NumberField, PageColumns, Pr
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES, getCategoryMeta } from '@/lib/books';
 import { CuratedBook, UserBook, UserBookStatus, BookCategory } from '@/types';
-import { todayKey, formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
+import { earliestTargetDate, todayKey, formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
 import { READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, readingBonusId } from '@/lib/readingAwards';
 import { CapMeter } from '@/components/ui/CapMeter';
@@ -979,6 +979,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
               label="Target finish date"
               optional
               type="date"
+              min={earliestTargetDate()}
               value={customTargetFinishDate}
               onChange={(e) => setCustomTargetFinishDate(e.target.value)}
             />
@@ -1046,6 +1047,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
             label="Target finish date"
             optional
             type="date"
+            min={earliestTargetDate(startReadingModalBook?.targetFinishDate)}
             value={startTargetDate}
             onChange={(e) => setStartTargetDate(e.target.value)}
           />

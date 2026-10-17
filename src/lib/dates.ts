@@ -399,3 +399,12 @@ export function formatWeekdayShort(dateKey: string): string {
 export function formatWeekdayDate(dateKey: string): string {
   return parseDate(dateKey)?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) ?? dateKey;
 }
+
+/**
+ * The earliest pick for a target/due date: today, so a new or changed date can't be in the past.
+ * An item that already holds a past date keeps it as the floor, so editing it still saves.
+ */
+export function earliestTargetDate(saved?: string | null): string {
+  const today = todayKey();
+  return saved && saved < today ? saved : today;
+}
