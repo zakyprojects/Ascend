@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Smile,
   Meh,
@@ -133,7 +133,6 @@ export function Journal({ store }: { store: AppStore }) {
 
   const [promptOffset, setPromptOffset] = useState<number>(0);
   const [chartRange, setChartRange] = useState<ChartRange>('7d');
-  const chartContainerRef = useRef<HTMLDivElement | null>(null);
   // The trend line draws in once the mood card scrolls into view (instant without intro motion).
   const moodCardRef = useRef<HTMLDivElement>(null);
   const moodChartSeen = useSeen(moodCardRef, useIntroMotion());
@@ -142,19 +141,18 @@ export function Journal({ store }: { store: AppStore }) {
     height: 144,
   });
 
-  // Track real container pixel dimensions using ResizeObserver
-  useEffect(() => {
-    const el = chartContainerRef.current;
+  // Track real container pixel dimensions. A callback ref, because the chart container renders
+  // only once there is mood data, often after this component mounted.
+  const chartObserverRef = useRef<ResizeObserver | null>(null);
+  const chartContainerRef = useCallback((el: HTMLDivElement | null) => {
+    chartObserverRef.current?.disconnect();
+    chartObserverRef.current = null;
     if (!el) return;
 
-    const updateDimensions = () => {
-      const rect = el.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        setContainerDimensions({ width: rect.width, height: rect.height });
-      }
-    };
-
-    updateDimensions();
+    const rect = el.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      setContainerDimensions({ width: rect.width, height: rect.height });
+    }
 
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -166,9 +164,8 @@ export function Journal({ store }: { store: AppStore }) {
         }
       }
     });
-
     ro.observe(el);
-    return () => ro.disconnect();
+    chartObserverRef.current = ro;
   }, []);
 
   const [hoveredChartPoint, setHoveredChartPoint] = useState<{
