@@ -262,7 +262,7 @@ export interface NumberFieldProps
  * A number input that can be cleared while typing. A plain controlled `type="number"` writes
  * `Number('') = 0` back the moment the field is emptied, so "30" can't be replaced by "45" on a
  * phone. Here the text is kept as typed and only a valid number is reported; an empty field is
- * caught by `required`/`min` on submit, and on blur it shows the last valid value again.
+ * caught by `required`/`min` on submit, and on blur the field shows the value actually kept.
  */
 export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
   ({ value, onValueChange, decimal = false, onBlur, step, ...props }, ref) => {
@@ -288,7 +288,8 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
           if (text.trim() !== '' && Number.isFinite(next)) onValueChange(next);
         }}
         onBlur={(e) => {
-          if (draft.trim() === '' || !Number.isFinite(Number(draft))) setDraft(String(value));
+          // Empty, or adjusted by the parent (clamped): show the value that is actually kept.
+          if (draft.trim() === '' || Number(draft) !== value) setDraft(String(value));
           onBlur?.(e);
         }}
         {...props}
