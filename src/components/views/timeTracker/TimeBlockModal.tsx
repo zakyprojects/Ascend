@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog } from '@/components/ui/primitives';
+import { Dialog, Form, Input, Textarea } from '@/components/ui/primitives';
 import {
   TimeTrackerActivity,
   TimeTrackerBlock,
@@ -16,8 +16,7 @@ import {
 import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { Clock, AlertTriangle, Check, Tag, FileText } from 'lucide-react';
-import { useToast } from '@/components/ui/Toast';
+import { Clock, AlertTriangle, Check } from 'lucide-react';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 
@@ -49,7 +48,6 @@ export function TimeBlockModal({
   defaultStartTime = '09:00',
   defaultDurationMinutes = 60,
 }: TimeBlockModalProps) {
-  const { showErrorToast } = useToast();
   const [activityId, setActivityId] = useState<string>('');
   const [secondaryActivityIds, setSecondaryActivityIds] = useState<string[]>([]);
   const [startTime, setStartTime] = useState<string>('09:00');
@@ -109,7 +107,10 @@ export function TimeBlockModal({
       setNotes('');
     }
     setValidationError(null);
-  }, [open, editingBlock, activities, existingBlocks, defaultStartTime, defaultDurationMinutes]);
+    // Prefill once per open (and per edited block). Re-running on `existingBlocks`/`activities`
+    // changes would wipe what the user is typing whenever a sync or realtime update lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editingBlock?.id]);
 
   const handleActivityClick = (actId: string) => {
     if (actId === activityId) {
@@ -143,12 +144,11 @@ export function TimeBlockModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activityId) {
-      setValidationError('Please select a primary activity category.');
-      showErrorToast('Choose an activity', 'Please select a primary activity category.');
+      setValidationError('Choose an activity for this block.');
       return;
     }
     if (isZeroDuration) {
-      setValidationError('Start time and end time cannot be identical.');
+      setValidationError('Start and end time can’t be the same.');
       return;
     }
 
@@ -170,7 +170,7 @@ export function TimeBlockModal({
       const col1 = checkTimeCollision(part1, existingBlocks, editingBlock?.id);
       const col2 = checkTimeCollision(part2, existingBlocks, editingBlock?.id);
       if (col1.hasCollision || col2.hasCollision) {
-        setValidationError('One or both parts of this split block collide with an existing scheduled block.');
+        setValidationError('Part of this block overlaps another scheduled block.');
         return;
       }
     }
@@ -199,28 +199,33 @@ export function TimeBlockModal({
       open={open}
       onClose={onClose}
       dirty={form.dirty}
-      title={editingBlock ? 'Edit Time Block' : 'Schedule Time Block'}
+      title={editingBlock ? 'Edit time block' : 'Schedule time block'}
       maxWidth="max-w-lg"
       preventClose={isSaving}
+      footer={
+        <>
+          <button type="button" onClick={() => form.confirmDiscard(onClose)} disabled={isSaving} className="btn-secondary">
+            Cancel
+          </button>
+          <button type="submit" form="tt-block-form" disabled={isSaving} className="btn-primary">
+            {isSaving ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
+            <span>{isSaving ? 'Saving…' : editingBlock ? 'Save block' : 'Schedule block'}</span>
+          </button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Validation Error Banner */}
+      <Form id="tt-block-form" onSubmit={handleSubmit} className="space-y-4">
         {validationError && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2.5 text-rose-theme text-xs animate-shake">
+          <div role="alert" className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-2.5 text-rose-theme text-xs">
             <AlertTriangle size={16} className="shrink-0 mt-0.5 text-rose-theme" />
             <span className="leading-relaxed">{validationError}</span>
           </div>
         )}
 
-        {/* Activity Category Selection */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="label">
-              Activity Categories
-            </label>
-            <span className="text-micro text-content-muted">
-              Primary + Optional Secondary
-            </span>
+        <div role="group" aria-labelledby="tt-block-activity-label">
+          <div className="flex items-baseline justify-between gap-2 mb-2">
+            <p id="tt-block-activity-label" className="label">Activity</p>
+            <span className="text-xs text-content-muted">First pick is primary, more are secondary</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
             {activities.map((act) => {
@@ -233,11 +238,12 @@ export function TimeBlockModal({
                   type="button"
                   key={act.id}
                   onClick={() => handleActivityClick(act.id)}
-                  className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all relative ${
+                  aria-pressed={isPrimary || isSecondary}
+                  className={`flex items-center gap-2 p-2.5 min-h-11 rounded-xl border text-left transition-all relative ${
                     isPrimary
-                      ? 'bg-emerald-500/15 border-emerald-500/60 text-content-primary'
+                      ? 'bg-primary-500/10 border-primary-500/50 text-content-primary'
                       : isSecondary
-                      ? 'bg-overlay-default border-emerald-500/40 text-content-primary'
+                      ? 'bg-overlay-subtle border-primary-500/30 text-content-primary'
                       : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle hover:border-overlay-default hover:text-content-secondary'
                   }`}
                 >
@@ -249,21 +255,11 @@ export function TimeBlockModal({
                   </div>
                   <div className="truncate min-w-0 flex-1">
                     <p className="item-name text-xs !text-current truncate">{act.name}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      {isPrimary ? (
-                        <span className="text-2xs font-medium text-success-text">
-                          Primary
-                        </span>
-                      ) : isSecondary ? (
-                        <span className="text-2xs font-medium text-success-text/80">
-                          Secondary
-                        </span>
-                      ) : act.ascendModule ? (
-                        <span className="text-2xs text-success-text block truncate">
-                          {act.ascendModule}
-                        </span>
-                      ) : null}
-                    </div>
+                    {(isPrimary || isSecondary || act.ascendModule) && (
+                      <p className={`text-2xs truncate mt-0.5 ${isPrimary || isSecondary ? 'text-brand-text font-medium' : 'text-content-muted'}`}>
+                        {isPrimary ? 'Primary' : isSecondary ? 'Secondary' : act.ascendModule}
+                      </p>
+                    )}
                   </div>
                 </button>
               );
@@ -271,143 +267,75 @@ export function TimeBlockModal({
           </div>
         </div>
 
-        {/* Start and End Times */}
-        <div className="grid grid-cols-2 gap-3 pt-1">
-          <div className="flex flex-col h-full space-y-1.5">
-            <div className="flex items-center justify-between gap-1">
-              <label htmlFor="tt-block-start" className="label truncate">Start Time (24h)</label>
-              <span className="figure text-micro text-content-muted bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
-                {formatTime12h(startTime)}
-              </span>
-            </div>
-            <div className="relative mt-auto">
-              <input
-                id="tt-block-start"
-                type="time"
-                step="60"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col h-full space-y-1.5">
-            <div className="flex items-center justify-between gap-1">
-              <label htmlFor="tt-block-end" className="label truncate">End Time (24h)</label>
-              <span className="figure text-micro text-content-muted bg-overlay-subtle px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
-                {formatTime12h(endTime)}
-              </span>
-            </div>
-            <div className="relative mt-auto">
-              <input
-                id="tt-block-end"
-                type="time"
-                step="60"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                required
-              />
-            </div>
-          </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            id="tt-block-start"
+            label="Start"
+            type="time"
+            step={60}
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            hint={formatTime12h(startTime)}
+            required
+          />
+          <Input
+            id="tt-block-end"
+            label="End"
+            type="time"
+            step={60}
+            value={endTime}
+            onChange={(e) => setEndTime(e.target.value)}
+            hint={formatTime12h(endTime)}
+            required
+          />
         </div>
 
-        {/* Read-Only Computed Duration Indicator */}
-        <div className="flex items-center justify-between py-2.5 border-y border-overlay-subtle">
-          <div className="flex items-center gap-2 text-xs text-content-muted">
-            <Clock size={13} className="text-success-text" />
-            <span>Calculated Duration:</span>
-          </div>
-          <span className="figure text-xs text-success-text bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg">
-            {formatDurationHuman(calculatedDuration)} ({calculatedDuration} mins)
+        <div className="flex items-center justify-between gap-3 py-2.5 border-y border-overlay-subtle text-xs">
+          <span className="flex items-center gap-2 text-content-muted">
+            <Clock size={14} />
+            Duration
+          </span>
+          <span className="figure text-content-primary">
+            {formatDurationHuman(calculatedDuration)} ({calculatedDuration} min)
           </span>
         </div>
 
-        {/* Midnight Crossing Warning & Explanation */}
         {isMidnightCrossing && (
-          <div className="p-3 bg-warning/10 border border-warning/25 rounded-xl flex items-start gap-2.5 text-xs text-warning-text-muted">
+          <div className="p-3 bg-warning/10 border border-warning/25 rounded-xl flex items-start gap-2.5 text-xs">
             <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="font-medium text-warning-text">Midnight Boundary Split</p>
-              <p className="text-content-tertiary text-micro leading-relaxed">
-                This block crosses midnight ({formatTime12h(startTime)} to {formatTime12h(endTime)}). It will automatically be split into 2 safe daily blocks:
+              <p className="font-medium text-warning-text">Crosses midnight</p>
+              <p className="text-content-tertiary leading-relaxed">
+                It will be saved as two blocks: <span className="figure">{startTime}–23:59</span> today and{' '}
+                <span className="figure">00:00–{endTime}</span> tomorrow.
               </p>
-              <div className="figure flex items-center gap-2 pt-1 text-2xs text-warning-text">
-                <span className="bg-warning/20 px-2 py-0.5 rounded border border-warning/30">
-                  Part 1 (Today): {startTime} - 23:59
-                </span>
-                <span>+</span>
-                <span className="bg-warning/20 px-2 py-0.5 rounded border border-warning/30">
-                  Part 2 (Tomorrow): 00:00 - {endTime}
-                </span>
-              </div>
             </div>
           </div>
         )}
 
-        {/* Custom Title (Optional) */}
-        <div>
-          <label htmlFor="tt-block-title" className="block label mb-1.5 flex items-center gap-1.5">
-            <Tag size={13} className="text-content-muted" />
-            Custom Label / Task (Optional)
-          </label>
-          <input
-            id="tt-block-title"
-            type="text"
-            value={customTitle}
-            onChange={(e) => setCustomTitle(e.target.value)}
-            placeholder={`e.g. ${selectedActivity?.name || 'Deep Work Session'}`}
-            className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500"
-          />
-        </div>
+        <Input
+          id="tt-block-title"
+          label="Label"
+          optional
+          value={customTitle}
+          onChange={(e) => setCustomTitle(e.target.value)}
+          placeholder={`e.g. ${selectedActivity?.name || 'Deep Work Session'}`}
+          maxLength={80}
+          autoComplete="off"
+        />
 
-        {/* Notes (Optional) */}
-        <div>
-          <label htmlFor="tt-block-notes" className="block label mb-1.5 flex items-center gap-1.5">
-            <FileText size={13} className="text-content-muted" />
-            Notes & Intentions (Optional)
-          </label>
-          <textarea
-            id="tt-block-notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Notes, location..."
-            rows={2}
-            className="w-full bg-bg-800/80 border border-overlay-default rounded-xl px-3 py-2 text-sm text-content-primary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500 resize-none"
-          />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-overlay-subtle">
-          <button
-            type="button"
-            onClick={() => form.confirmDiscard(onClose)}
-            disabled={isSaving}
-            className="px-4 py-2 text-xs font-medium text-content-muted hover:text-content-secondary transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSaving || isZeroDuration}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
-          >
-            {isSaving ? (
-              <>
-                <AscendLoadingIndicator size="sm" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Check size={14} />
-                <span>{editingBlock ? 'Update Block' : 'Schedule Block'}</span>
-              </>
-            )}
-          </button>
-        </div>
-      </form>
+        <Textarea
+          id="tt-block-notes"
+          label="Notes"
+          optional
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Notes, location..."
+          rows={2}
+          className="min-h-0 resize-none"
+          maxLength={500}
+        />
+      </Form>
     </Dialog>
   );
 }
