@@ -10,7 +10,8 @@ import { formatDateLong } from '@/lib/dates';
 import { wouldExceedRecoverySeasonCap, RECOVERY_POINTS } from '@/lib/pointsConfig';
 import { CapMeter } from '@/components/ui/CapMeter';
 import { recoverySeasonCapNote } from '@/lib/capCopy';
-import { Dialog, EmptyState, PageColumns } from '@/components/ui/primitives';
+import { Dialog, EmptyState, Form, Input, PageColumns } from '@/components/ui/primitives';
+import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { ProgressRing } from '@/components/ui/charts';
 import { trustedNow } from '@/lib/clock';
@@ -92,15 +93,28 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
   const nextMilestone = milestones.find((m) => elapsedHours < m.requiredHours);
   const hoursToNext = nextMilestone ? nextMilestone.requiredHours - elapsedHours : 0;
 
+  const cravingForm = useUnsavedChanges(cravingModalOpen, [intensity, triggerText, copingText]);
+  const setupForm = useUnsavedChanges(setupTrackerModalOpen, trackerTitle);
+
+  // Every open starts clean: a dismissed draft is not shown again.
+  const openCravingModal = () => {
+    setIntensity(5);
+    setTriggerText('');
+    setCopingText('');
+    setCravingModalOpen(true);
+  };
+
   const handleStartTracker = (e: React.FormEvent) => {
     e.preventDefault();
-    store.setAddictionTracker(trackerTitle, trustedNow().toISOString());
+    if (!trackerTitle.trim()) return;
+    store.setAddictionTracker(trackerTitle.trim(), trustedNow().toISOString());
     setSetupTrackerModalOpen(false);
   };
 
   const handleLogCravingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    store.logCraving(Number(intensity), triggerText, copingText);
+    if (!triggerText.trim() || !copingText.trim()) return;
+    store.logCraving(intensity, triggerText, copingText);
     setCravingModalOpen(false);
     setIntensity(5);
     setTriggerText('');
@@ -286,7 +300,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                   <h2 className="section-title">Craving log and triggers</h2>
                   <p className="text-xs text-content-disabled">Log intensity (1-10), triggers and what helped.</p>
                 </div>
-                <button onClick={() => setCravingModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5 shrink-0">
+                <button onClick={openCravingModal} className="btn-primary text-xs flex items-center gap-1.5 shrink-0">
                   <Activity size={14} />
                   <span>Log Craving</span>
                 </button>
@@ -333,7 +347,14 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
       />
 
       {/* Emergency Support Modal (Breathing + Distraction) */}
-      <Dialog open={emergencyModalOpen} onClose={() => setEmergencyModalOpen(false)} title="Emergency support" maxWidth="max-w-lg">
+      <Dialog open={emergencyModalOpen} onClose={() => setEmergencyModalOpen(false)} title="Emergency support"
+        maxWidth="max-w-lg"
+        footer={
+          <button type="button" onClick={() => setEmergencyModalOpen(false)} className="btn-secondary">
+            Close
+          </button>
+        }
+      >
         <div className="space-y-6">
           {/* Guided Breathing Box */}
           <div className="card p-5 text-center border border-purple-500/30 space-y-4">
@@ -349,9 +370,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               <h4 className="item-name text-sm">Quick distraction</h4>
               <button
                 onClick={() => setDistractionIdx((prev) => (prev + 1) % DISTRACTION_ACTIVITIES.length)}
-                className="btn-ghost text-micro text-brand-text flex items-center gap-1"
+                type="button"
+                className="btn-ghost text-xs px-2.5 py-1.5 text-brand-text"
               >
-                <RefreshCw size={12} /> Next Suggestion
+                <RefreshCw size={14} /> Next idea
               </button>
             </div>
             <div className="p-3 bg-primary-500/10 rounded-xl border border-primary-500/20 text-base font-medium leading-snug text-brand-text text-center">
@@ -359,21 +381,31 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
             </div>
           </div>
 
-          <div className="text-center pt-2">
-            <button onClick={() => setEmergencyModalOpen(false)} className="btn-secondary w-full">
-              Close Emergency Support
-            </button>
-          </div>
         </div>
       </Dialog>
 
       {/* Log Craving Modal */}
-      <Dialog open={cravingModalOpen} onClose={() => setCravingModalOpen(false)} title="Log a craving">
-        <form onSubmit={handleLogCravingSubmit} className="space-y-4">
+      <Dialog
+        open={cravingModalOpen}
+        onClose={() => setCravingModalOpen(false)}
+        dirty={cravingForm.dirty}
+        title="Log a craving"
+        footer={
+          <>
+            <button type="button" onClick={() => cravingForm.confirmDiscard(() => setCravingModalOpen(false))} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="craving-form" className="btn-primary">
+              Save craving
+            </button>
+          </>
+        }
+      >
+        <Form id="craving-form" onSubmit={handleLogCravingSubmit} className="space-y-4">
           <div>
-            <div className="flex justify-between text-xs text-content-muted mb-1">
-              <span>Intensity</span>
-              <span className="figure text-warning-text">{intensity} / 10</span>
+            <div className="flex justify-between mb-1.5">
+              <label htmlFor="craving-intensity" className="label">Intensity</label>
+              <span className="figure text-xs text-warning-text">{intensity} / 10</span>
             </div>
             <input
               type="range"
@@ -381,98 +413,93 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               max="10"
               value={intensity}
               onChange={(e) => setIntensity(Number(e.target.value))}
-              className="w-full accent-rose-500"
+              className="w-full h-11 sm:h-6 accent-rose-500"
               id="craving-intensity"
-              aria-label="Craving Intensity"
             />
           </div>
 
-          <div>
-            <label htmlFor="craving-trigger" className="block label mb-1">What triggered this craving?</label>
-            <input
-              type="text"
-              id="craving-trigger"
-              value={triggerText}
-              onChange={(e) => setTriggerText(e.target.value)}
-              placeholder="e.g. Stress after work, seeing an ad, feeling lonely"
-              className="input"
-              required
-            />
-          </div>
+          <Input
+            id="craving-trigger"
+            label="What triggered it?"
+            value={triggerText}
+            onChange={(e) => setTriggerText(e.target.value)}
+            placeholder="e.g. Stress after work, seeing an ad, feeling lonely"
+            maxLength={200}
+            autoComplete="off"
+            required
+          />
 
-          <div>
-            <label htmlFor="craving-coping" className="block label mb-1">Coping strategy (used or planned)</label>
-            <input
-              type="text"
-              id="craving-coping"
-              value={copingText}
-              onChange={(e) => setCopingText(e.target.value)}
-              placeholder="e.g. Practiced 4-4-4 breathing, drank water, went for a walk"
-              className="input"
-              required
-            />
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setCravingModalOpen(false)} className="btn-secondary flex-1">
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary flex-1">
-              Save Craving Log
-            </button>
-          </div>
-        </form>
+          <Input
+            id="craving-coping"
+            label="Coping strategy (used or planned)"
+            value={copingText}
+            onChange={(e) => setCopingText(e.target.value)}
+            placeholder="e.g. Box breathing, drank water, went for a walk"
+            maxLength={200}
+            autoComplete="off"
+            enterKeyHint="done"
+            required
+          />
+        </Form>
       </Dialog>
 
       {/* Setup Tracker Modal */}
-      <Dialog open={setupTrackerModalOpen} onClose={() => setSetupTrackerModalOpen(false)} title="Set up sobriety tracker">
-        <form onSubmit={handleStartTracker} className="space-y-4">
-          <div>
-            <label htmlFor="setup-tracker-title" className="block label mb-1">What are you abstaining from?</label>
-            <input
-              type="text"
-              id="setup-tracker-title"
-              value={trackerTitle}
-              onChange={(e) => setTrackerTitle(e.target.value)}
-              placeholder="e.g. Alcohol, Smoking, Junk Food, Gambling"
-              className="input"
-              required
-            />
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setSetupTrackerModalOpen(false)} className="btn-secondary flex-1">
+      <Dialog
+        open={setupTrackerModalOpen}
+        onClose={() => setSetupTrackerModalOpen(false)}
+        dirty={setupForm.dirty}
+        title="Set up sobriety tracker"
+        footer={
+          <>
+            <button type="button" onClick={() => setupForm.confirmDiscard(() => setSetupTrackerModalOpen(false))} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-primary flex-1">
-              Start Timer Now
+            <button type="submit" form="setup-tracker-form" className="btn-primary">
+              Start timer now
             </button>
-          </div>
-        </form>
+          </>
+        }
+      >
+        <Form id="setup-tracker-form" onSubmit={handleStartTracker}>
+          <Input
+            id="setup-tracker-title"
+            label="What are you abstaining from?"
+            value={trackerTitle}
+            onChange={(e) => setTrackerTitle(e.target.value)}
+            placeholder="e.g. Alcohol, Smoking, Junk Food, Gambling"
+            maxLength={60}
+            autoComplete="off"
+            enterKeyHint="done"
+            required
+          />
+        </Form>
       </Dialog>
 
       {/* Reset Confirmation Modal */}
-      <Dialog open={resetConfirmOpen} onClose={() => setResetConfirmOpen(false)} title="Reset Sobriety Streak?">
-        <div className="space-y-4 text-xs text-content-tertiary">
-          <p>
-            This restarts your sobriety clock from 00:00:00. A slip is a setback, not the end.
-          </p>
-
-          <div className="flex gap-2 pt-2">
-            <button onClick={() => setResetConfirmOpen(false)} className="btn-secondary flex-1">
-              Keep Current Streak
+      <Dialog
+        open={resetConfirmOpen}
+        onClose={() => setResetConfirmOpen(false)}
+        title="Reset sobriety streak?"
+        description="This restarts your clock from 00:00:00. A slip is a setback, not the end."
+        footer={
+          <>
+            <button type="button" onClick={() => setResetConfirmOpen(false)} className="btn-secondary">
+              Keep streak
             </button>
             <button
+              type="button"
               onClick={() => {
                 store.resetAddictionStreak();
                 setResetConfirmOpen(false);
               }}
-              className="btn-danger flex-1"
+              className="btn-danger-solid"
             >
-              Reset Timer
+              Reset timer
             </button>
-          </div>
-        </div>
+          </>
+        }
+      >
+        {null}
       </Dialog>
 
       {/* Milestone Unlocked Modal */}
@@ -485,7 +512,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           <p className="text-xs text-content-muted max-w-sm mx-auto">
             Well done. Keep going one day at a time.
           </p>
-          <button onClick={() => setCelebrationMilestone(null)} className="btn-primary mx-auto">
+          <button type="button" onClick={() => setCelebrationMilestone(null)} className="btn-primary min-h-11 sm:min-h-10 mx-auto px-8">
             Done
           </button>
         </div>
@@ -503,10 +530,10 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           });
         }}
         isDeleting={isKeyLoading('delete_addiction_tracker')}
-        title="Delete Sobriety Tracker?"
+        title="Delete sobriety tracker?"
         itemName={tracker?.title}
         description={`Delete your "${tracker?.title}" sobriety counter? This clears the current streak and all logged cravings. Any milestone points earned will be deducted.`}
-        confirmText="Delete Tracker"
+        confirmText="Delete tracker"
       />
 
       {/* Delete Craving Log Modal */}
