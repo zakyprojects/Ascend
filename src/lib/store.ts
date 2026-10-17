@@ -4812,18 +4812,25 @@ export function useAppState() {
   }, []);
 
   const resetAddictionStreak = useCallback(() => {
-    setState((prev) => {
-      if (!prev.addictionTracker) return prev;
-      // A relapse starts a new streak; the server takes back this season's points of the old one.
-      const next = {
-        ...prev,
-        addictionTracker: { ...prev.addictionTracker, startDate: trustedNow().toISOString(), milestonesUnlocked: [] },
-      };
-      return { ...next, ...applyRecoveryAwardsInternal(next) };
-    });
+    void setState(
+      (prev) => {
+        if (!prev.addictionTracker) return prev;
+        // A relapse starts a new streak; the server takes back this season's points of the old one.
+        const next = {
+          ...prev,
+          addictionTracker: { ...prev.addictionTracker, startDate: trustedNow().toISOString(), milestonesUnlocked: [] },
+        };
+        return { ...next, ...applyRecoveryAwardsInternal(next) };
+      },
+      {
+        immediate: true,
+        actionLabel: 'Sobriety streak reset',
+        entityId: get().addictionTracker?.id || 'sobriety_tracker',
+      }
+    );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [get]);
 
   const checkAddictionMilestones = useCallback(() => {
     setState((prev) => {
