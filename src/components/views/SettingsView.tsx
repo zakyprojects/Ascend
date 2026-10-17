@@ -168,7 +168,6 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
 
   // Account action modals
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteSaving, setDeleteSaving] = useState(false);
   const [showGuestLogoutWarning, setShowGuestLogoutWarning] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -262,6 +261,8 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
     setSelectedAvatar(emoji);
     setAvatarMsg(null);
     setAvatarError(null);
+    // One change at a time: a second tap during the save would race it and revert to the wrong avatar.
+    setAvatarSaving(true);
 
     await executeWithKey(`avatar-${emoji}`, async () => {
       try {
@@ -274,6 +275,8 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
         // Not saved: show the avatar that is really on the account, and say why.
         setSelectedAvatar(previous);
         setAvatarError(toUserMessage(err, "Couldn't change your avatar. Try again."));
+      } finally {
+        setAvatarSaving(false);
       }
     });
   };
