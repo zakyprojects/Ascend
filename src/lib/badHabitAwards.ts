@@ -14,7 +14,6 @@ export const BAD_HABIT_AWARDS_SERVER_SINCE = '2026-10-15';
 
 export const badHabitResistId = (badHabitId: string, day: string) => `bad_habit_resist_${badHabitId}_${day}`;
 export const badHabitOccurredId = (badHabitId: string, day: string) => `bad_habit_occurred_${badHabitId}_${day}`;
-export const badHabitDeleteId = (badHabitId: string) => `bad_habit_delete_${badHabitId}`;
 
 /** Bad-habit logs only the server writes (no-report days). */
 export const isServerOwnedBadHabitLogId = (id: string): boolean => id.startsWith('no_report_');
@@ -131,18 +130,4 @@ export function computeBadHabitAwards(
     });
   }
   return { entries, logPoints };
-}
-
-/** The deleteBadHabit refund of app-written resist points (before the server owned them). */
-export function legacyResistRefund(logs: BadHabitLog[], badHabitId: string): number {
-  return logs
-    .filter(
-      (l) =>
-        l &&
-        l.badHabitId === badHabitId &&
-        l.status === 'resisted' &&
-        l.date < BAD_HABIT_AWARDS_SERVER_SINCE &&
-        (l.pointsAwardedOrDeducted || 0) > 0
-    )
-    .reduce((sum, l) => sum + (l.pointsAwardedOrDeducted || 0), 0);
 }

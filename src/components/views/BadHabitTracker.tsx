@@ -1,638 +1,387 @@
 import { useState } from 'react';
-import {
-  Flame,
-  Plus,
-  Trash2,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  RotateCcw,
-  CheckCheck,
-  Lock,
-  ShieldAlert,
-} from 'lucide-react';
+import { AlertTriangle, Check, Flame, Plus, ShieldAlert, Trash2, Undo2, X } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { useToast } from '@/components/ui/Toast';
-import { useAsyncActionKey } from '@/lib/useAsyncAction';
-import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { BadHabit } from '@/types';
-import { todayKey, formatDateLong, getNow } from '@/lib/dates';
+import { BadHabit, BadHabitLog } from '@/types';
+import { todayKey, getNow } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { PageHero } from '@/components/ui/PageHero';
-import { Dialog, Disclosure, EmptyState, Form, Input, NumberField, PageColumns, ProgressBar, SlidingPill } from '@/components/ui/primitives';
+import { Dialog, Disclosure, EmptyState, Form, Input, PageColumns } from '@/components/ui/primitives';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { getBadHabitSlot } from '@/lib/badHabitEligibility';
-import { CountUp, Reveal } from '@/components/ui/Motion';
+import { getActiveBadHabitsOrdered, getPointEligibleHabitIds } from '@/lib/badHabitEligibility';
+import { getMissPenaltyMultiplier } from '@/lib/habitPenalties';
 import { getCapStatus } from '@/lib/capStatus';
-import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { CountUp, Reveal } from '@/components/ui/Motion';
+import { SwipeRow } from '@/components/ui/SwipeRow';
+import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
+import { useCompletionPop } from '@/lib/useCompletionPop';
 import { trustedNow } from '@/lib/clock';
+
+/** Days resisted in a row, ending today (or yesterday while today is not logged yet). */
+function resistStreaks(logs: BadHabitLog[], today: string): { current: number; best: number } {
+  const byDate = new Map(logs.map((l) => [l.date, l.status]));
+  let current = 0;
+  const cursor = trustedNow();
+  if (!byDate.has(today)) cursor.setDate(cursor.getDate() - 1);
+  while (byDate.get(todayKey(cursor)) === 'resisted') {
+    current++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  let best = 0;
+  let run = 0;
+  let prev: string | null = null;
+  for (const date of [...byDate.keys()].sort()) {
+    if (byDate.get(date) !== 'resisted') {
+      run = 0;
+    } else {
+      const next = prev ? new Date(`${prev}T12:00:00`) : null;
+      next?.setDate(next.getDate() + 1);
+      run = next && todayKey(next) === date ? run + 1 : 1;
+    }
+    best = Math.max(best, run);
+    prev = date;
+  }
+  return { current, best: Math.max(best, current) };
+}
+
+/** Slips and unlogged days in a row before today; the next slip is penalised at this count + 1. */
+function slipsInARow(logs: BadHabitLog[], today: string): number {
+  let count = 0;
+  for (const log of logs.filter((l) => l.date < today).sort((a, b) => b.date.localeCompare(a.date))) {
+    if (log.status !== 'occurred' && log.status !== 'no_report') break;
+    count++;
+  }
+  return count;
+}
 
 export function BadHabitTracker({ store }: { store: AppStore }) {
   const { showSuccessToast } = useToast();
-  const { isKeyLoading, executeWithKey } = useAsyncActionKey();
-  const [addModalOpen, setAddModalOpen] = useState(false);
-  const [habitName, setHabitName] = useState('');
-  const [durationMode, setDurationMode] = useState<'30' | '60' | '90' | 'custom'>('30');
-  const [customDays, setCustomDays] = useState(30);
-  const addForm = useUnsavedChanges(addModalOpen, { habitName, durationMode, customDays });
+  const [showAdd, setShowAdd] = useState(false);
+  const [name, setName] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<BadHabit | null>(null);
+  const addForm = useUnsavedChanges(showAdd, [name]);
 
-  // Delete Confirmation Modal State
-  const [deleteModalHabit, setDeleteModalHabit] = useState<BadHabit | null>(null);
-
-  const badHabits = store.state.badHabits || [];
-  const badHabitLogs = store.state.badHabitLogs || [];
   const today = todayKey();
+  const habits = getActiveBadHabitsOrdered(store.state.badHabits || []);
+  const logs = store.state.badHabitLogs || [];
+  const eligible = getPointEligibleHabitIds(store.state.badHabits || []);
+  const todayLogOf = (id: string) => logs.find((l) => l.badHabitId === id && l.date === today && l.status !== 'no_report');
+  const toLog = habits.filter((h) => !todayLogOf(h.id));
+  const logged = habits.filter((h) => todayLogOf(h.id));
+  const resistedToday = logged.filter((h) => todayLogOf(h.id)?.status === 'resisted').length;
+  const resistCapped = getCapStatus(store.state, 'badHabitsResisted', getNow()).isCapped;
+  const seasonPoints = store.getLeagueData('ninetyDay').userPoints;
 
-  // Active vs Completed habits
-  const activeHabits = badHabits
-    .filter((h) => !h.isCompleted)
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-  const completedHabits = badHabits
-    .filter((h) => h.isCompleted)
-    .sort((a, b) => new Date(b.completedAt || b.createdAt).getTime() - new Date(a.completedAt || a.createdAt).getTime());
-
-  const resistCapStatus = getCapStatus(store.state, 'badHabitsResisted', getNow());
-  const isResistCapped = resistCapStatus.isCapped;
-
-  // Generate last 14 days dates array
-  const last14Days: string[] = [];
-  for (let i = 13; i >= 0; i--) {
-    const d = trustedNow();
-    d.setDate(d.getDate() - i);
-    last14Days.push(todayKey(d));
-  }
-
-  // Calculate overall stats
-  const totalResisted = badHabitLogs.filter((l) => l.status === 'resisted').length;
-  const totalOccurred = badHabitLogs.filter((l) => l.status === 'occurred').length;
-  const totalLogs = totalResisted + totalOccurred;
-  const resistRate = totalLogs > 0 ? Math.round((totalResisted / totalLogs) * 100) : 100;
-
-  // Calculate current "Days Resisted" overall streak
-  let overallStreak = 0;
-  let cursor = trustedNow();
-  const todayStr = todayKey(cursor);
-  while (true) {
-    const k = todayKey(cursor);
-    const logsOnDate = badHabitLogs.filter((l) => l.date === k);
-    if (logsOnDate.length > 0) {
-      if (logsOnDate.every((l) => l.status === 'resisted')) {
-        overallStreak++;
-        cursor.setDate(cursor.getDate() - 1);
-      } else {
-        break;
-      }
-    } else if (k === todayStr) {
-      // Today not logged yet, check yesterday to see if active streak continues
-      cursor.setDate(cursor.getDate() - 1);
-    } else {
-      break;
-    }
-  }
-
-  // Every open starts clean: a dismissed draft is not shown again.
-  const openAddModal = () => {
-    setHabitName('');
-    setDurationMode('30');
-    setCustomDays(30);
-    setAddModalOpen(true);
+  const openAdd = () => {
+    setName('');
+    setShowAdd(true);
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!habitName.trim()) return;
-
-    let targetDays = 30;
-    if (durationMode === '30') targetDays = 30;
-    else if (durationMode === '60') targetDays = 60;
-    else if (durationMode === '90') targetDays = 90;
-    else if (durationMode === 'custom') {
-      if (!Number.isInteger(customDays) || customDays < 30) return; // the field's min/step say why
-      targetDays = customDays;
-    }
-
-    store.addBadHabit(habitName, targetDays);
-    setAddModalOpen(false);
-    setHabitName('');
-    setDurationMode('30');
-    setCustomDays(30);
+  const handleAdd = () => {
+    if (!name.trim()) return;
+    store.addBadHabit(name.trim());
+    setShowAdd(false);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deleteModalHabit) return;
-    const habitId = deleteModalHabit.id;
-    await executeWithKey(`delete_bad_habit_${habitId}`, async () => {
-      await store.deleteBadHabit(habitId);
-      setDeleteModalHabit(null);
-      showSuccessToast('Habit deleted', 'Bad habit record removed.', `bad_habit_${habitId}`);
-    });
-  };
+  const renderRow = (habit: BadHabit) => (
+    <BadHabitRow
+      key={habit.id}
+      habit={habit}
+      logs={logs.filter((l) => l.badHabitId === habit.id)}
+      todayLog={todayLogOf(habit.id)}
+      today={today}
+      earnsPoints={eligible.has(habit.id)}
+      resistCapped={resistCapped}
+      seasonPoints={seasonPoints}
+      store={store}
+      onDelete={() => setConfirmDelete(habit)}
+    />
+  );
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Bad Habits</h1>
-          <p className="page-subtitle">Resist each day and let the streak do the work.</p>
+          <p className="page-subtitle">Resist each day, one day at a time.</p>
         </div>
-        <button onClick={openAddModal} className="btn-primary flex items-center gap-2 sm:shrink-0">
+        <button onClick={openAdd} className="btn-primary sm:shrink-0">
           <Plus size={18} />
-          <span>Add Bad Habit</span>
+          <span>New Bad Habit</span>
         </button>
       </div>
 
       <Reveal index={0}>
         <PageHero
-          ariaLabel="Your resist record"
-          lead={{
-            label: 'Resisted streak',
-            value: <CountUp value={overallStreak} />,
-            hint: 'consecutive days',
-            valueClassName: overallStreak > 0 ? 'text-success-text' : undefined,
+          ariaLabel="Today's bad habits"
+          ring={{
+            value: resistedToday,
+            max: habits.length,
+            label: `Resisted today: ${resistedToday} of ${habits.length}`,
+            center: (
+              <>
+                {resistedToday}
+                <span className="text-sm font-medium text-content-muted">/{habits.length}</span>
+              </>
+            ),
+            caption: 'resisted today',
           }}
-          stats={[
-            { label: 'Success rate', value: <><CountUp value={resistRate} />%</>, hint: `${totalResisted} resisted, ${totalOccurred} occurred`, valueClassName: 'text-blue-theme' },
-            { label: 'Active habits', value: <CountUp value={activeHabits.length} />, valueClassName: 'text-purple-hierarchy' },
-          ]}
+          lead={{
+            label: 'To log today',
+            value: <CountUp value={toLog.length} />,
+            valueClassName: 'text-secondary-400',
+            hint: toLog.length === 0 && habits.length > 0 ? 'All logged for today.' : undefined,
+          }}
+          stats={[{ label: 'Bad habits', value: <CountUp value={habits.length} /> }]}
           side={<CapMeterConnected state={store.state} capId="badHabitsResisted" bare />}
         />
       </Reveal>
 
       <PageColumns stickyAside
         aside={
-          <>
-            <Disclosure title="Penalties and point cap" icon={AlertTriangle} tone="warning">
-              <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
-                <li>
-                  <span className="text-content-secondary">Daily resists and cap:</span> Only the first <span className="text-success-text font-medium"><span className="figure">{BAD_HABIT_POINTS.eligibleSlots}</span> active habits</span> (oldest first) are point-eligible. Each eligible resist earns <span className="figure text-success-text">+{BAD_HABIT_POINTS.resistBase} pts</span> (max <span className="figure">+{BAD_HABIT_POINTS.dailyCap}</span> pts/day). Other habits are tracking-only (streak only, 0 pts for resist, occurred, and missed days).
-                </li>
-                <li>
-                  <span className="text-content-secondary">Occurred and missed-day penalties:</span> Logging Occurred or missing a day applies rank-tiered escalating penalties to <span className="text-rose-theme font-medium">point-eligible habits only</span>. Deleting an eligible habit refunds its resist points and today's Occurred penalty (earlier penalties stay); completing keeps everything. Promoting the next eligible habit recalculates today's resists. Undo is available for today's action.
-                </li>
-                <li>
-                  <span className="text-content-secondary">Completion unlock:</span> Unlocks when resisted streak reaches <span className="figure text-brand-text">75%</span> of commitment duration. Completing keeps the points you earned.
-                </li>
-              </ul>
-            </Disclosure>
-          </>
+          <Disclosure title="How points work" icon={AlertTriangle} tone="warning">
+            <ul className="list-disc pl-4 space-y-0.5 text-content-muted">
+              <li>
+                Your <span className="figure">{BAD_HABIT_POINTS.eligibleSlots}</span> oldest bad habits earn points. The rest are tracking only.
+              </li>
+              <li>
+                Resisted: <span className="figure text-success-text">+{BAD_HABIT_POINTS.resistBase} pts</span>, up to <span className="figure">+{BAD_HABIT_POINTS.dailyCap}</span> pts a day.
+              </li>
+              <li>
+                Slipped, or a day not logged: a penalty that grows with each one in a row (up to 1.5x, or 2.5x from Performer tier). Resisting resets it.
+              </li>
+              <li>Deleting a bad habit removes only today's points from it. Earlier points and penalties stay.</li>
+            </ul>
+          </Disclosure>
         }
       >
-        {/* Active Bad Habits List */}
-        <div>
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <h2 className="section-title">Active bad habits</h2>
-            <span className="text-xs text-content-muted">{formatDateLong(today)}</span>
-          </div>
-
-          {activeHabits.length === 0 ? (
-            <EmptyState
-              icon={ShieldAlert}
-              title="No bad habits tracked yet"
-              description="Add a habit you want to cut back on (e.g. doomscrolling, junk food, late-night gaming) and log each day you resist it."
-              action={
-                <button onClick={openAddModal} className="btn-primary mx-auto">
-                  Add Bad Habit
-                </button>
-              }
-            />
-          ) : (
-            <div className="space-y-4">
-              {activeHabits.map((bh) => {
-                const todayLog = badHabitLogs
-                  .filter((l) => l.badHabitId === bh.id && l.date === today)
-                  .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
-                const status = todayLog?.status;
-
-                // Calculate habit-specific resisted streak
-                let habitStreak = 0;
-                let c = trustedNow();
-                while (true) {
-                  const k = todayKey(c);
-                  const l = badHabitLogs.find((log) => log.badHabitId === bh.id && log.date === k);
-                  if (l && l.status === 'resisted') {
-                    habitStreak++;
-                    c.setDate(c.getDate() - 1);
-                  } else if (k === today && !l) {
-                    // Today not logged yet, skip to yesterday
-                    c.setDate(c.getDate() - 1);
-                  } else {
-                    break;
-                  }
-                }
-
-                // Commitment progress
-                const commitmentDays = bh.commitmentDays || 30;
-                const unlockThreshold = Math.ceil(0.75 * commitmentDays);
-                const isCompleteUnlocked = habitStreak >= unlockThreshold;
-                const progressPercent = Math.min(100, Math.round((habitStreak / commitmentDays) * 100));
-                const slotInfo = getBadHabitSlot(badHabits, bh.id);
-
-                return (
-                  <div key={bh.id} className="card enter-item p-4 space-y-4">
-                    {/* Top Bar */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-overlay-subtle pb-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="item-name text-base">{bh.name}</h3>
-                          {slotInfo ? (
-                            <span className="badge badge-emerald text-2xs">
-                              Earns points (slot {slotInfo.slot}/{slotInfo.total})
-                            </span>
-                          ) : (
-                            <span className="text-xs text-content-muted">
-                              Tracking only
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-content-disabled mt-0.5">
-                          Commitment: <span className="figure text-content-tertiary">{commitmentDays} days</span> • Created: {new Date(bh.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {/* Complete Habit Button */}
-                        <button
-                          onClick={() => store.completeBadHabit(bh.id)}
-                          disabled={!isCompleteUnlocked}
-                          className={`btn text-xs py-1.5 px-3 flex items-center gap-1.5 transition-all ${
-                            isCompleteUnlocked
-                              ? 'bg-emerald-500/15 text-success-text border border-emerald-500/40 hover:bg-emerald-500/25'
-                              : 'text-content-disabled border border-overlay-subtle cursor-not-allowed opacity-60'
-                          }`}
-                          title={
-                            isCompleteUnlocked
-                              ? 'Streak is at 75% or more. Click to complete the habit.'
-                              : `Needs a ${unlockThreshold}d streak (75% of the ${commitmentDays}d commitment) to complete.`
-                          }
-                        >
-                          {isCompleteUnlocked ? <CheckCheck size={14} /> : <Lock size={14} />}
-                          <span>Complete Habit</span>
-                        </button>
-
-                        {/* Delete Button */}
-                        <button
-                          onClick={() => setDeleteModalHabit(bh)}
-                          aria-label="Delete bad habit"
-                          className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-all ${TAP_TARGET}`}
-                          title="Delete bad habit (resist points and today's Occurred penalty are reversed; earlier penalties stay)"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Streak & Commitment Progress Bar */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-content-muted flex items-center gap-1">
-                          <Flame size={14} className={habitStreak > 0 ? 'text-brand-text' : 'text-content-subtle'} />
-                          <span className={`figure ${habitStreak > 0 ? 'text-brand-text' : 'text-content-secondary'}`}>{habitStreak}d</span> resisted streak
-                        </span>
-                        <span className="text-content-disabled">
-                          {isCompleteUnlocked ? (
-                            <span className="text-success-text font-medium">Complete unlocked at 75% ({habitStreak}/{commitmentDays}d)</span>
-                          ) : (
-                            <span>Complete unlocks at <strong className="figure text-warning-text">{unlockThreshold}d</strong> ({habitStreak}/{commitmentDays}d)</span>
-                          )}
-                        </span>
-                      </div>
-
-                      <ProgressBar
-                        value={progressPercent}
-                        label="Commitment progress"
-                        tone={isCompleteUnlocked ? 'success' : 'brand'}
-                        size="lg"
-                        marker={{ at: 75, label: `75% unlock line (${unlockThreshold} days)` }}
-                      />
-                    </div>
-
-                    {/* Daily Action & Undo Buttons */}
-                    <div className="space-y-2 pt-1">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => store.logBadHabitDay(bh.id, today, 'resisted')}
-                          disabled={!!todayLog}
-                          className={`flex-1 py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 font-medium text-xs transition-all ${
-                            status === 'resisted'
-                              ? 'bg-emerald-500/15 border-emerald-500/50 text-success-text font-semibold'
-                              : todayLog
-                              ? 'bg-bg-800 border-overlay-subtle text-content-subtle cursor-not-allowed opacity-60'
-                              : 'border-overlay-default text-content-tertiary hover:bg-emerald-500/10 hover:border-emerald-500/40'
-                          }`}
-                        >
-                          <CheckCircle2 size={16} className={status === 'resisted' ? 'text-success-text' : 'text-content-muted'} />
-                          <span>
-                            Resisted today {status === 'resisted' ? `(${todayLog?.pointsAwardedOrDeducted && todayLog.pointsAwardedOrDeducted > 0 ? `+${todayLog.pointsAwardedOrDeducted} pts` : '0 pts'})` : !slotInfo ? '(0 pts, tracking only)' : isResistCapped ? '(0 pts, cap reached)' : `(+${BAD_HABIT_POINTS.resistBase} pts)`}
-                          </span>
-                        </button>
-
-                        <button
-                          onClick={() => store.logBadHabitDay(bh.id, today, 'occurred')}
-                          disabled={!!todayLog}
-                          className={`flex-1 py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 font-medium text-xs transition-all ${
-                            status === 'occurred'
-                              ? 'bg-rose-500/15 border-rose-500/50 text-rose-theme font-semibold'
-                              : todayLog
-                              ? 'bg-bg-800 border-overlay-subtle text-content-subtle cursor-not-allowed opacity-60'
-                              : 'border-overlay-default text-content-tertiary hover:bg-rose-500/10 hover:border-rose-500/40'
-                          }`}
-                        >
-                          <XCircle size={16} className={status === 'occurred' ? 'text-rose-theme' : 'text-content-muted'} />
-                          <span>{slotInfo ? 'Occurred today (deducts pts)' : 'Occurred today (tracking only)'}</span>
-                        </button>
-                      </div>
-
-                      {/* Today's Log Status & Undo Bar */}
-                      {todayLog && (
-                        <div className="flex items-center justify-between gap-2 px-1 text-xs">
-                          <span className="text-content-muted flex items-center gap-1.5">
-                            <Lock size={12} className="text-content-disabled" />
-                            Today's action locked ({todayLog.status === 'resisted' ? 'Resisted' : todayLog.status === 'occurred' ? 'Occurred' : 'No-report penalty'})
-                            {todayLog.pointsAwardedOrDeducted !== 0 && (
-                              <span className={todayLog.pointsAwardedOrDeducted > 0 ? 'figure text-success-text' : 'figure text-rose-theme'}>
-                                ({todayLog.pointsAwardedOrDeducted > 0 ? `+${todayLog.pointsAwardedOrDeducted}` : todayLog.pointsAwardedOrDeducted} pts)
-                              </span>
-                            )}
-                          </span>
-
-                          {todayLog.status !== 'no_report' ? (
-                            <button
-                              onClick={() => store.undoTodayBadHabitLog(bh.id)}
-                              className="text-warning-text hover:opacity-80 flex items-center gap-1 text-micro font-semibold transition-colors"
-                            >
-                              <RotateCcw size={12} />
-                              <span>Undo today</span>
-                            </button>
-                          ) : (
-                            <span className="text-2xs text-content-disabled italic">No-report penalties cannot be undone</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 14-day Trend Matrix */}
-                    <div className="pt-2 border-t border-overlay-subtle">
-                      <div className="text-2xs text-content-disabled mb-1 flex items-center justify-between">
-                        <span>Last 14 days</span>
-                        <span className="text-content-subtle">✓ Resisted • ✕ Occurred • ! Missed</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                        {last14Days.map((d) => {
-                          const log = badHabitLogs.find((l) => l.badHabitId === bh.id && l.date === d);
-                          const isResisted = log?.status === 'resisted';
-                          const isOccurred = log?.status === 'occurred';
-                          const isNoReport = log?.status === 'no_report';
-
-                          return (
-                            <div
-                              key={d}
-                              className={`w-6 h-6 rounded-lg flex items-center justify-center text-2xs font-bold shrink-0 transition-all ${
-                                isResisted
-                                  ? 'bg-emerald-500/20 text-success-text'
-                                  : isOccurred
-                                  ? 'bg-rose-500/20 text-rose-theme'
-                                  : isNoReport
-                                  ? 'bg-amber-500/20 text-warning-text'
-                                  : 'bg-overlay-subtle text-content-subtle'
-                              }`}
-                              title={`${d}: ${
-                                isResisted
-                                  ? `Resisted (${log?.pointsAwardedOrDeducted ?? 0} pts)`
-                                  : isOccurred
-                                  ? `Occurred (${log?.pointsAwardedOrDeducted ?? 0} pts)`
-                                  : isNoReport
-                                  ? (log?.pointsAwardedOrDeducted ?? 0) === 0
-                                    ? 'Missed, no report (0 pts, tracking only)'
-                                    : `Missed, no report (${log?.pointsAwardedOrDeducted ?? 0} pts penalty)`
-                                  : 'Not logged'
-                              }`}
-                            >
-                              {isResisted ? '✓' : isOccurred ? '✕' : isNoReport ? '!' : '-'}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Completed Bad Habits Section */}
-        {completedHabits.length > 0 && (
-          <div className="pt-4 space-y-3 border-t border-overlay-default">
-            <h2 className="section-title text-success-text flex items-center gap-2">
-              <CheckCheck size={20} />
-              Completed bad habits ({completedHabits.length})
-            </h2>
-
-            <div className="space-y-3">
-              {completedHabits.map((bh) => {
-                const bhLogs = badHabitLogs.filter((l) => l.badHabitId === bh.id);
-                const totalResistedCount = bhLogs.filter((l) => l.status === 'resisted').length;
-
-                return (
-                  <div key={bh.id} className="card p-4 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="item-name text-content-secondary text-base">{bh.name}</h3>
-                        <span className="badge badge-emerald text-2xs">
-                          Completed
-                        </span>
-                      </div>
-                      <p className="text-xs text-content-muted mt-1">
-                        Commitment: {bh.commitmentDays} days • Total days resisted: <strong className="figure text-success-text">{totalResistedCount} days</strong>
-                      </p>
-                      {bh.completedAt && (
-                        <p className="text-micro text-content-disabled mt-0.5">
-                          Completed on {new Date(bh.completedAt).toLocaleDateString()} (points kept)
-                        </p>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => setDeleteModalHabit(bh)}
-                      className="btn-secondary text-xs py-1.5 px-3 text-rose-theme hover:bg-rose-500/10"
-                      title="Delete permanently (points are not changed)"
-                    >
-                      Delete Record
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+        {habits.length === 0 ? (
+          <EmptyState
+            icon={ShieldAlert}
+            title="No bad habits yet"
+            description="Add something you want to cut back on, like doomscrolling or junk food, and log each day you resist it."
+            action={
+              <button onClick={openAdd} className="btn-primary mx-auto">
+                <Plus size={18} /> Add Your First Bad Habit
+              </button>
+            }
+          />
+        ) : (
+          <div className="space-y-3">
+            {toLog.length > 0 && (
+              <div>
+                <h2 className="section-title mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-secondary-500" />
+                  To log
+                </h2>
+                <div className="space-y-2.5">{toLog.map(renderRow)}</div>
+              </div>
+            )}
+            {logged.length > 0 && (
+              <div>
+                <h2 className="section-title mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary-500" />
+                  Logged today
+                </h2>
+                <div className="space-y-2.5">{logged.map(renderRow)}</div>
+              </div>
+            )}
           </div>
         )}
       </PageColumns>
 
-      {/* Add Bad Habit Modal */}
       <Dialog
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
+        open={showAdd}
+        onClose={() => setShowAdd(false)}
         dirty={addForm.dirty}
         title="Add bad habit"
         footer={
           <>
-            <button type="button" onClick={() => addForm.confirmDiscard(() => setAddModalOpen(false))} className="btn-secondary">
+            <button type="button" onClick={() => addForm.confirmDiscard(() => setShowAdd(false))} className="btn-secondary">
               Cancel
             </button>
             <button type="submit" form="bad-habit-add-form" className="btn-primary">
-              Start tracking
+              Add bad habit
             </button>
           </>
         }
       >
-        <Form id="bad-habit-add-form" onSubmit={handleAddSubmit} className="space-y-4">
+        <Form id="bad-habit-add-form" onSubmit={handleAdd} className="space-y-4">
           <Input
             id="bad-habit-name-input"
-            label="Habit name"
-            value={habitName}
-            onChange={(e) => setHabitName(e.target.value)}
-            placeholder="e.g. Doomscrolling, junk food, late-night gaming"
+            label="Bad habit"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Doomscrolling"
             maxLength={80}
             enterKeyHint="done"
             autoComplete="off"
             required
           />
-
-          <div role="group" aria-labelledby="bad-habit-length-label">
-            <p id="bad-habit-length-label" className="block label mb-1.5">Commitment length</p>
-            <div className="relative isolate grid grid-cols-4 gap-2 mb-2">
-              <SlidingPill active={durationMode} className="rounded-xl bg-primary-500/15 border border-primary-500/40" />
-              <button
-                type="button"
-                data-pill-id="30"
-                onClick={() => setDurationMode('30')}
-                className={`min-h-11 sm:min-h-9 py-2 text-xs rounded-xl border font-semibold transition-colors ${
-                  durationMode === '30' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
-                }`}
-              >
-                30 days
-              </button>
-              <button
-                type="button"
-                data-pill-id="60"
-                onClick={() => setDurationMode('60')}
-                className={`min-h-11 sm:min-h-9 py-2 text-xs rounded-xl border font-semibold transition-colors ${
-                  durationMode === '60' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
-                }`}
-              >
-                60 days
-              </button>
-              <button
-                type="button"
-                data-pill-id="90"
-                onClick={() => setDurationMode('90')}
-                className={`min-h-11 sm:min-h-9 py-2 text-xs rounded-xl border font-semibold transition-colors ${
-                  durationMode === '90' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
-                }`}
-              >
-                90 days
-              </button>
-              <button
-                type="button"
-                data-pill-id="custom"
-                onClick={() => setDurationMode('custom')}
-                className={`min-h-11 sm:min-h-9 py-2 text-xs rounded-xl border font-semibold transition-colors ${
-                  durationMode === 'custom' ? 'border-transparent text-brand-text' : 'bg-bg-700 border-overlay-medium text-content-muted shadow-sm hover:bg-bg-600'
-                }`}
-              >
-                Custom
-              </button>
-            </div>
-
-            {durationMode === 'custom' && (
-              <div className="mt-3">
-                <NumberField
-                  id="bad-habit-custom-days-input"
-                  label="Custom length in days"
-                  hint="At least 30 days."
-                  min={30}
-                  value={customDays}
-                  onValueChange={setCustomDays}
-                  enterKeyHint="done"
-                  required
-                />
-              </div>
-            )}
-          </div>
         </Form>
       </Dialog>
 
-      {/* Delete Confirmation Modal */}
-      <Dialog
-        open={!!deleteModalHabit}
-        onClose={() => setDeleteModalHabit(null)}
-        preventClose={!!deleteModalHabit && isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
+      <ConfirmDeleteModal
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={async () => {
+          if (confirmDelete) {
+            await store.deleteBadHabit(confirmDelete.id);
+            setConfirmDelete(null);
+            showSuccessToast('Bad habit deleted', 'Bad habit removed.', `bad_habit_${confirmDelete.id}`);
+          }
+        }}
         title="Delete bad habit?"
-        footer={
-          deleteModalHabit && (
-            <>
-              <button
-                type="button"
-                disabled={isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
-                onClick={() => setDeleteModalHabit(null)}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)}
-                onClick={handleConfirmDelete}
-                className="btn-danger-solid"
-              >
-                {isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`) ? <AscendLoadingIndicator size="sm" /> : null}
-                <span>
-                  {isKeyLoading(`delete_bad_habit_${deleteModalHabit.id}`)
-                    ? 'Deleting…'
-                    : deleteModalHabit.isCompleted
-                      ? 'Delete record'
-                      : 'Delete habit'}
+        itemName={confirmDelete?.name}
+        description="This permanently removes its history and streak. Only today's points from it are removed; earlier points and penalties stay."
+      />
+    </div>
+  );
+}
+
+function BadHabitRow({
+  habit,
+  logs,
+  todayLog,
+  today,
+  earnsPoints,
+  resistCapped,
+  seasonPoints,
+  store,
+  onDelete,
+}: {
+  habit: BadHabit;
+  logs: BadHabitLog[];
+  todayLog: BadHabitLog | undefined;
+  today: string;
+  earnsPoints: boolean;
+  resistCapped: boolean;
+  seasonPoints: number;
+  store: AppStore;
+  onDelete: () => void;
+}) {
+  const status = todayLog?.status;
+  const { current, best } = resistStreaks(logs, today);
+  const slips = earnsPoints ? slipsInARow(logs, today) : 0;
+  const { arm: armPop, popClass } = useCompletionPop(status === 'resisted');
+  const points = todayLog?.pointsAwardedOrDeducted ?? 0;
+
+  const resist = () => {
+    armPop();
+    store.logBadHabitDay(habit.id, today, 'resisted');
+  };
+  const slip = () => store.logBadHabitDay(habit.id, today, 'occurred');
+  const undo = () => store.undoTodayBadHabitLog(habit.id);
+
+  const pointsLabel = status
+    ? points > 0
+      ? `+${points} pts`
+      : points < 0
+        ? `${points} pts`
+        : earnsPoints && status === 'resisted'
+          ? '0 pts, daily cap reached'
+          : 'No points'
+    : !earnsPoints
+      ? 'Tracking only'
+      : resistCapped
+        ? 'Daily cap reached'
+        : `+${BAD_HABIT_POINTS.resistBase} pts`;
+
+  return (
+    <SwipeRow
+      right={
+        status
+          ? { label: 'Undo', icon: Undo2, tone: 'bg-bg-600 text-content-secondary', onCommit: undo }
+          : { label: 'Resisted', icon: Check, tone: 'bg-primary-500 text-on-brand', onCommit: resist }
+      }
+      left={{ label: 'Delete', icon: Trash2, tone: 'bg-rose-600 text-white', onCommit: onDelete }}
+    >
+      <div className={cx('card enter-item p-4 card-hover', status && 'opacity-75')}>
+        <div className="flex items-center gap-3">
+          {status ? (
+            <div
+              className={cx(
+                'shrink-0 w-11 h-11 rounded-xl flex items-center justify-center',
+                status === 'resisted' ? 'bg-primary-500 text-on-brand' : 'bg-rose-500/15 text-rose-theme border border-rose-500/30'
+              )}
+              aria-hidden
+            >
+              {status === 'resisted' ? <Check size={22} className={popClass} /> : <X size={22} />}
+            </div>
+          ) : (
+            <button
+              onClick={resist}
+              aria-label={`Resisted ${habit.name} today`}
+              title="Resisted today"
+              className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90 bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary border border-overlay-subtle"
+            >
+              <Check size={22} />
+            </button>
+          )}
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className={cx('item-name truncate', status ? 'text-content-disabled' : 'text-content-secondary')}>{habit.name}</h3>
+              {status && (
+                <span className={cx('text-xs shrink-0', status === 'resisted' ? 'text-success-text' : 'text-rose-theme')}>
+                  {status === 'resisted' ? 'Resisted' : 'Slipped'}
                 </span>
-              </button>
-            </>
-          )
-        }
-      >
-        {deleteModalHabit && (
-          <div className="space-y-4">
-            {deleteModalHabit.isCompleted ? (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-content-secondary space-y-2">
-                <p className="font-semibold text-success-text flex items-center gap-1.5">
-                  <CheckCheck size={16} />
-                  Completed habit
-                </p>
-                <p>
-                  Deleting <strong className="text-content-primary">"{deleteModalHabit.name}"</strong> will permanently remove all logs and streak history.
-                </p>
-                <p>
-                  Your points will not change.
-                </p>
-              </div>
-            ) : (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-content-secondary space-y-2">
-                <p className="font-semibold text-rose-theme flex items-center gap-1.5">
-                  <AlertTriangle size={16} />
-                  Earlier penalties stay
-                </p>
-                <p>
-                  Deleting <strong className="text-content-primary">"{deleteModalHabit.name}"</strong> will permanently remove all logs and streak history.
-                </p>
-                <p>
-                  Resist points earned by this habit are reversed and today's Occurred penalty (if any) is refunded. Earlier Occurred and missed-day penalties stay on your score.
-                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 mt-1">
+              {current > 0 && (
+                <div className="flex items-center gap-1 text-xs">
+                  <Flame size={13} className="text-brand-text" />
+                  <span className="figure text-brand-text">{current} day{current !== 1 ? 's' : ''}</span>
+                </div>
+              )}
+              {best > 0 && <span className="figure text-xs text-content-disabled">Best: {best}</span>}
+              <span className={cx('figure text-xs', points < 0 ? 'text-rose-theme' : earnsPoints ? 'text-brand-text' : 'text-content-subtle')}>
+                {pointsLabel}
+              </span>
+            </div>
+            {!status && slips > 0 && (
+              <div className="mt-1.5 flex items-center gap-1 text-micro text-rose-theme bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-500/20 w-fit font-medium">
+                <AlertTriangle size={11} className="shrink-0" />
+                <span>
+                  {slips} bad day{slips > 1 ? 's' : ''} in a row (next = {getMissPenaltyMultiplier(slips + 1, seasonPoints)}x penalty)
+                </span>
               </div>
             )}
-
           </div>
-        )}
-      </Dialog>
-    </div>
+
+          {status ? (
+            <button
+              onClick={undo}
+              aria-label={`Undo today's log for ${habit.name}`}
+              title="Undo today"
+              className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-content-secondary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+            >
+              <Undo2 size={16} />
+            </button>
+          ) : (
+            <button
+              onClick={slip}
+              aria-label={`Slipped on ${habit.name} today`}
+              title={earnsPoints ? 'Slipped today (penalty)' : 'Slipped today'}
+              className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+            >
+              <X size={18} />
+            </button>
+          )}
+
+          <button
+            onClick={onDelete}
+            aria-label={`Delete ${habit.name}`}
+            className={`shrink-0 p-2 rounded-lg text-content-disabled hover:text-error hover:bg-error/10 transition-colors ${TAP_TARGET}`}
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
+    </SwipeRow>
   );
 }

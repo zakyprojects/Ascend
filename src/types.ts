@@ -320,7 +320,8 @@ export interface SkillSessionLog {
 export interface BadHabit {
   id: string;
   name: string;
-  commitmentDays: number;
+  /** Legacy (commitment goal, removed 2026-10-17); old rows may still carry it. */
+  commitmentDays?: number;
   isCompleted?: boolean;
   completedAt?: string;
   createdAt: string;

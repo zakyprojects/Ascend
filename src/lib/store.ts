@@ -139,12 +139,9 @@ import {
   isWeekBeforeSeason,
 } from './weeklyGoalSeasons';
 import {
-  badHabitDeleteId,
-  badHabitOccurredId,
   computeBadHabitAwards,
   isBadHabitDayEntry,
   isRetiredAppBadHabitAward,
-  legacyResistRefund,
 } from './badHabitAwards';
 export { recomputeTodayPresetPoints, calculateWeeklyGoalsPoints, WEEKLY_GOALS_POINTS };
 export type { PresetHabitCapItem };
@@ -815,7 +812,6 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
     skillLogs: filterActiveTombstones(st.skillLogs),
     badHabits: filterActiveTombstones(st.badHabits).map((bh) => ({
       ...bh,
-      commitmentDays: bh.commitmentDays || 30,
       isCompleted: bh.isCompleted ?? false,
     })),
     badHabitLogs: sanitizedBadHabitLogs.filter(
@@ -4635,12 +4631,10 @@ export function useAppState() {
   }, []);
 
   // --- MODULE 4: BAD HABIT REDUCTION TRACKER ACTIONS ---
-  const addBadHabit = useCallback((name: string, commitmentDays: number = 30) => {
-    const finalCommitment = Math.max(30, Math.floor(Number(commitmentDays) || 30));
+  const addBadHabit = useCallback((name: string) => {
     const bh: BadHabit = {
       id: uid(),
       name: name.trim(),
-      commitmentDays: finalCommitment,
       isCompleted: false,
       createdAt: trustedNow().toISOString(),
     };
@@ -4721,36 +4715,18 @@ export function useAppState() {
     void (
       setState(
         (prev) => {
-          const bh = prev.badHabits.find((b) => b.id === badHabitId);
           const habitLogs = prev.badHabitLogs.filter((l) => l.badHabitId === badHabitId);
           const today = todayKey();
           const badHabits = prev.badHabits.filter((b) => b.id !== badHabitId);
           const logs = prev.badHabitLogs.filter((l) => l.badHabitId !== badHabitId);
 
-          // Same as the server's bad_habits_award_points: an active habit gives back its resist
-          // points and today's occurred penalty; past penalties stay.
-          let base = prev;
-          if (bh && !bh.isCompleted) {
-            const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(
-              prev,
-              (entry) =>
-                entry.metadata?.badHabitId === badHabitId &&
-                ((entry.id || '').startsWith('bad_habit_resist_') || entry.id === badHabitOccurredId(badHabitId, today))
-            );
-            base = { ...prev, ...excised };
-            const refund = legacyResistRefund(habitLogs, badHabitId);
-            if (refund > 0 && !(base.pointsHistory || []).some((e) => e.id === badHabitDeleteId(badHabitId))) {
-              base = {
-                ...base,
-                ...addPointsInternal(base, -refund, `Bad habit deleted: ${bh.name}`, 'bad_habit_delete', { badHabitId }, undefined, badHabitDeleteId(badHabitId)),
-              };
-            }
-          }
-          const awards = applyBadHabitAwardsInternal(base, badHabits, logs, today);
+          // Same as the server's bad_habits_award_points: only today's points of the habit go
+          // (the day is recomputed without it); earlier points and penalties stay.
+          const awards = applyBadHabitAwardsInternal(prev, badHabits, logs, today);
 
           const toTombstone = [...(prev.deletedEntityIds || []), badHabitId, ...habitLogs.map((l) => l.id).filter(Boolean)];
           return {
-            ...base,
+            ...prev,
             badHabits,
             badHabitLogs: awards.logs,
             deletedEntityIds: Array.from(new Set(toTombstone)).slice(-500),
@@ -4760,20 +4736,6 @@ export function useAppState() {
         { immediate: true, actionLabel: 'Bad habit deletion', entityId: badHabitId }
       )
     );
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const completeBadHabit = useCallback((badHabitId: string) => {
-    setState((prev) => {
-      const bh = prev.badHabits.find((b) => b.id === badHabitId);
-      if (!bh || bh.isCompleted) return prev;
-
-      const nowIso = trustedNow().toISOString();
-      const badHabits = prev.badHabits.map((b) => (b.id === badHabitId ? { ...b, isCompleted: true, completedAt: nowIso } : b));
-      const awards = applyBadHabitAwardsInternal(prev, badHabits, prev.badHabitLogs, todayKey());
-      return { ...prev, badHabits, badHabitLogs: awards.logs, ...awards.points };
-    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -9133,7 +9095,6 @@ export function useAppState() {
     logBadHabitDay,
     undoTodayBadHabitLog,
     deleteBadHabit,
-    completeBadHabit,
     updateBadHabit,
     setAddictionTracker,
     deleteAddictionTracker,
