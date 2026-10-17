@@ -4626,10 +4626,19 @@ export function useAppState() {
         const remainingSkillLogs = prev.skillLogs.filter((s) => s.id !== logId);
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), logId].slice(-500);
 
-        // Only today's award follows the sessions; an earlier day's points stay (as on the server).
+        // Only today's award follows the sessions; an earlier day's points stay (as on the server),
+        // and so do its practice minutes (clearedMinutes), so the skill's hours and level hold.
         const today = todayKey();
         if (target.date !== today) {
-          return { ...prev, skillLogs: remainingSkillLogs, deletedEntityIds: updatedDeletedEntityIds };
+          const mins = typeof target.durationMinutes === 'number' && Number.isFinite(target.durationMinutes) ? target.durationMinutes : 0;
+          return {
+            ...prev,
+            skills: mins > 0
+              ? prev.skills.map((sk) => (sk.id === target.skillId ? { ...sk, clearedMinutes: (sk.clearedMinutes || 0) + mins } : sk))
+              : prev.skills,
+            skillLogs: remainingSkillLogs,
+            deletedEntityIds: updatedDeletedEntityIds,
+          };
         }
         const awards = applySkillAwardsInternal(prev, remainingSkillLogs, prev.skills, today);
         return {

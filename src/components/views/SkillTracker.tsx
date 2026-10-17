@@ -285,7 +285,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                 </li>
                 <li>Levels: 10 hrs Intermediate, 25 hrs Advanced, 50 hrs Expert.</li>
                 <li>You can only log today's practice.</li>
-                <li>Deleting today's practice takes its points back. Earlier days keep their points.</li>
+                <li>Deleting today's practice takes its points back. Earlier days keep their points and hours.</li>
                 <li>Deleting old logs can break a skill's streak.</li>
               </ul>
             </Disclosure>
@@ -620,8 +620,8 @@ export function SkillTracker({ store }: { store: AppStore }) {
         itemName={deleteModalLog ? `${nameOf(deleteModalLog.skillId)} (${minutesOf(deleteModalLog)} min)` : ''}
         description={
           deletingTodayLog
-            ? "Its points come off today's total. The skill's hours and streak may go down."
-            : "The points you earned that day stay. The skill's hours and streak may go down."
+            ? "Its points and minutes come off today's total. The skill's streak may go down."
+            : "The points and practice hours you earned that day stay. The skill's streak may go down."
         }
       />
 
