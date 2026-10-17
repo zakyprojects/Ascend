@@ -12,7 +12,6 @@ import {
   Copy,
   Check,
   AlertCircle,
-  AlertTriangle,
   Clock,
   Mail,
   LogOut,
@@ -512,7 +511,11 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                     disabled={isCooldownActive || isUsernameSaving}
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
-                    className={`w-full input-has-icon ${usernameBadgeShown ? 'pr-32' : 'pr-3'} py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 transition-all disabled:opacity-60`}
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    enterKeyHint="done"
+                    className={`input input-has-icon ${usernameBadgeShown ? 'pr-32' : ''}`}
                   />
                   {usernameBadgeShown && (
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -542,8 +545,8 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-1">
-                  <p className="text-micro text-content-disabled">
+                <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-content-muted">
                     You can change your username once every 24 hours.
                   </p>
                   <button
@@ -554,7 +557,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                       usernameInput.trim() === currentUser?.username ||
                       (usernameStatus !== null && !usernameStatus.available)
                     }
-                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-on-brand font-semibold text-xs rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5"
+                    className="btn-primary min-h-11 sm:min-h-10 shrink-0"
                   >
                     {isUsernameSaving ? (
                       <>
@@ -562,7 +565,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                         <span>Updating…</span>
                       </>
                     ) : (
-                      'Update Username'
+                      'Update username'
                     )}
                   </button>
                 </div>
@@ -571,9 +574,9 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
               {/* Avatar Picker (32 Emojis) */}
               <div className="space-y-2 pt-2 border-t border-overlay-subtle">
                 <div className="flex items-center justify-between">
-                  <label className="block label">
+                  <p className="block label">
                     Leaderboard avatar
-                  </label>
+                  </p>
                   {avatarMsg && (
                     <span className="text-micro text-success-text font-medium flex items-center gap-1 animate-fade-in">
                       <Check size={12} /> {avatarMsg}
@@ -603,7 +606,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                     );
                   })}
                 </div>
-                <p className="text-micro text-content-disabled">
+                <p className="text-xs text-content-muted">
                   Tap an avatar to use it. It updates everywhere right away.
                 </p>
               </div>
@@ -631,7 +634,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                     type="email"
                     disabled
                     value={currentUser?.email || (isGuest ? 'Guest (no email)' : '')}
-                    className="w-full input-has-icon pr-3 py-2.5 bg-bg-800/60 border border-overlay-subtle rounded-xl text-sm text-content-muted disabled:opacity-80"
+                    className="input input-has-icon text-content-muted"
                   />
                 </div>
               </div>
@@ -642,14 +645,14 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="item-name text-xs text-content-secondary">Password</p>
-                      <p className="text-micro text-content-disabled">Change the password you log in with.</p>
+                      <p className="text-xs text-content-muted">Change the password you log in with.</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowPasswordForm(!showPasswordForm)}
-                      className="px-3 py-1.5 hover:bg-overlay-subtle border border-overlay-default text-content-secondary font-semibold text-xs rounded-xl transition-all"
+                      className="btn-secondary min-h-11 sm:min-h-9 px-3 py-1.5 text-xs"
                     >
-                      {showPasswordForm ? 'Cancel' : 'Change Password'}
+                      {showPasswordForm ? 'Cancel' : 'Change password'}
                     </button>
                   </div>
 
@@ -687,7 +690,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                       <button
                         type="submit"
                         disabled={isPasswordSaving}
-                        className="w-full py-2 bg-primary-600 hover:bg-primary-700 text-on-brand font-semibold text-xs rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                        className="btn-primary w-full min-h-11 sm:min-h-10"
                       >
                         {isPasswordSaving ? (
                           <>
@@ -695,7 +698,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
                             <span>Updating password…</span>
                           </>
                         ) : (
-                          'Save New Password'
+                          'Save new password'
                         )}
                       </button>
                     </form>
@@ -991,49 +994,30 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
       />
 
       {/* Delete Account Confirmation Modal */}
-      <Dialog open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete account" maxWidth="max-w-md" preventClose={isDeletingAccount}>
-        <div className="space-y-4">
-          <div className="p-4 border border-rose-500/30 bg-rose-500/5 rounded-xl flex gap-3">
-            <AlertTriangle size={18} className="text-rose-theme shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <h3 className="text-base font-semibold leading-tight text-rose-theme">This can't be undone</h3>
-              <p className="text-xs text-content-tertiary leading-relaxed">
-                This permanently deletes your profile, habits, journal entries, points, league rank, and partner links.
-              </p>
-            </div>
-          </div>
-
-          {deleteAccountError && (
-            <p role="alert" className="text-xs text-rose-theme">
-              {toUserMessage(deleteAccountError, "Couldn't delete your account. Try again.")}
-            </p>
-          )}
-
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(false)}
-              className="flex-1 py-2.5 hover:bg-overlay-subtle text-content-tertiary font-semibold text-xs rounded-xl border border-overlay-default transition-all"
-            >
+      <Dialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Delete account?"
+        maxWidth="max-w-md"
+        preventClose={isDeletingAccount}
+        description="This permanently deletes your profile, habits, journal entries, points, league rank and partner links. It can't be undone."
+        footer={
+          <>
+            <button type="button" disabled={isDeletingAccount} onClick={() => setShowDeleteConfirm(false)} className="btn-secondary">
               Cancel
             </button>
-            <button
-              type="button"
-              disabled={isDeletingAccount}
-              onClick={handleDeleteAccount}
-              className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isDeletingAccount ? (
-                <>
-                  <AscendLoadingIndicator size="sm" />
-                  <span>Deleting...</span>
-                </>
-              ) : (
-                'Confirm Delete'
-              )}
+            <button type="button" disabled={isDeletingAccount} onClick={handleDeleteAccount} className="btn-danger-solid">
+              {isDeletingAccount ? <AscendLoadingIndicator size="sm" /> : null}
+              <span>{isDeletingAccount ? 'Deleting…' : 'Delete account'}</span>
             </button>
-          </div>
-        </div>
+          </>
+        }
+      >
+        {deleteAccountError ? (
+          <p role="alert" className="text-sm text-rose-theme">
+            {toUserMessage(deleteAccountError, "Couldn't delete your account. Try again.")}
+          </p>
+        ) : null}
       </Dialog>
       {/* Loading Overlays for Major Actions */}
       {isDeletingAccount && (
