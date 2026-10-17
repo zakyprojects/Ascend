@@ -83,6 +83,18 @@ export function NotificationCenter({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
+  // Scroll lock while open: below lg the window is the scroller, so the page behind the backdrop
+  // must not move. overflow on <html> (as ZoneSheet does) keeps the page where it is.
+  useEffect(() => {
+    if (!open) return;
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
+    root.style.overflow = 'hidden';
+    return () => {
+      root.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   const handleMarkAllRead = () => {
     store.markAllNotificationsRead();
   };
@@ -199,7 +211,7 @@ export function NotificationCenter({
             </div>
 
             {/* List */}
-            <div className="overflow-y-auto divide-y divide-overlay-subtle" style={{ maxHeight: isMobileShell() ? '70vh' : 400 }}>
+            <div className="overflow-y-auto overscroll-contain divide-y divide-overlay-subtle" style={{ maxHeight: isMobileShell() ? '70vh' : 400 }}>
               {notifications.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
                   <div className="w-10 h-10 rounded-full bg-overlay-subtle flex items-center justify-center mx-auto text-content-disabled">
