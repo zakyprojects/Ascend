@@ -1,106 +1,42 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import {
-  Smile,
-  Meh,
-  Frown,
-  Zap,
-  Save,
-  Calendar,
-  Info,
-  Trash2,
-  Award,
-  ChevronRight,
-  Edit3,
-  X,
-  CheckCircle2,
-  Sparkles,
-  RotateCcw,
-  BookOpen,
-  TrendingUp,
-  AlertCircle,
-  HelpCircle,
-} from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Smile, Meh, Frown, Zap, Trash2, Edit3, CheckCircle2, Sparkles, RotateCcw, BookOpen, PenLine } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Mood, JournalEntry } from '@/types';
-import { formatDateLong, todayKey, calculateStreak } from '@/lib/dates';
+import { formatDateLong, todayKey, calculateStreak, formatWeekdayShort, formatWeekdayDate } from '@/lib/dates';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
+import { isRetiredAppJournalAward } from '@/lib/journalAwards';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { useToast } from '@/components/ui/Toast';
-import { Dialog, EmptyState, FieldMessage, Form, FormAlert, PageColumns, Tabs, useFormController } from '@/components/ui/primitives';
-import { TAP_TARGET } from '@/components/ui/primitives/shared';
-import { useIntroMotion, useSeen } from '@/lib/motion';
+import { Dialog, Disclosure, EmptyState, Form, FormAlert, PageColumns, Tabs, Textarea, useFormController } from '@/components/ui/primitives';
+import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { lastDayKeys } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
-import { getDailyPrompt, JournalPrompt } from '@/data/journalPrompts';
-import { trustedNow } from '@/lib/clock';
+import { getDailyPrompt } from '@/data/journalPrompts';
 
-// Minimum required non-whitespace characters to save an entry
+// Minimum non-whitespace characters to save an entry
 const MIN_JOURNAL_CONTENT_LENGTH = 10;
 const PROMPT_PREF_STORAGE_KEY = 'ascend_journal_prompt_mode';
+const ENTRIES_PAGE = 10;
 
 export interface MoodMeta {
   value: Mood;
   label: string;
-  score: number; // 1 to 4 numeric scale for trend charting
+  score: number; // 1 to 4, for the average
   icon: typeof Smile;
-  color: string; // Hex for inline styles and SVG
-  bgClass: string;
-  textClass: string;
-  borderClass: string;
-  borderLeftClass: string;
+  color: string; // Hex for inline styles
 }
 
 const MOODS: MoodMeta[] = [
-  {
-    value: 'sad',
-    label: 'Sad',
-    score: 1,
-    icon: Frown,
-    color: '#38bdf8', // Sky blue
-    bgClass: 'bg-sky-500/15',
-    textClass: 'text-sky-theme',
-    borderClass: 'border-sky-500/30',
-    borderLeftClass: 'border-l-sky-400',
-  },
-  {
-    value: 'neutral',
-    label: 'Neutral',
-    score: 2,
-    icon: Meh,
-    color: '#94a3b8', // Slate grey
-    bgClass: 'bg-overlay-subtle',
-    textClass: 'text-content-muted',
-    borderClass: 'border-overlay-default',
-    borderLeftClass: 'border-l-slate-400',
-  },
-  {
-    value: 'happy',
-    label: 'Happy',
-    score: 3,
-    icon: Smile,
-    color: '#10b981', // Emerald green
-    bgClass: 'bg-emerald-500/15',
-    textClass: 'text-success-text',
-    borderClass: 'border-emerald-500/30',
-    borderLeftClass: 'border-l-emerald-400',
-  },
-  {
-    value: 'motivated',
-    label: 'Motivated',
-    score: 4,
-    icon: Zap,
-    color: '#f59e0b', // Amber
-    bgClass: 'bg-amber-500/15',
-    textClass: 'text-warning-text',
-    borderClass: 'border-amber-500/30',
-    borderLeftClass: 'border-l-amber-400',
-  },
+  { value: 'sad', label: 'Sad', score: 1, icon: Frown, color: '#38bdf8' },
+  { value: 'neutral', label: 'Neutral', score: 2, icon: Meh, color: '#94a3b8' },
+  { value: 'happy', label: 'Happy', score: 3, icon: Smile, color: '#10b981' },
+  { value: 'motivated', label: 'Motivated', score: 4, icon: Zap, color: '#f59e0b' },
 ];
 
 const MOOD_MAP: Record<Mood, MoodMeta> = MOODS.reduce((acc, m) => {
@@ -110,18 +46,32 @@ const MOOD_MAP: Record<Mood, MoodMeta> = MOODS.reduce((acc, m) => {
 
 type ChartRange = '7d' | '30d';
 
+function MoodBadge({ mood }: { mood: Mood }) {
+  const meta = MOOD_MAP[mood] || MOOD_MAP.neutral;
+  const Icon = meta.icon;
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-lg border"
+      style={{ backgroundColor: `${meta.color}15`, borderColor: `${meta.color}30`, color: meta.color }}
+    >
+      <Icon size={12} />
+      {meta.label}
+    </span>
+  );
+}
+
 export function Journal({ store }: { store: AppStore }) {
   const existingToday = store.getTodayJournalEntry();
+  const today = todayKey();
 
   const [mood, setMood] = useState<Mood>('happy');
   const [content, setContent] = useState('');
   const [isEditingToday, setIsEditingToday] = useState(false);
-  const [justCelebrated, setJustCelebrated] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [deleteModalEntry, setDeleteModalEntry] = useState<JournalEntry | null>(null);
-  const entryForm = useUnsavedChanges(isEditingToday, [mood, content]);
-
-  // Guided prompt preferences
+  const [chartRange, setChartRange] = useState<ChartRange>('7d');
+  const [entriesShown, setEntriesShown] = useState(ENTRIES_PAGE);
+  const [promptOffset, setPromptOffset] = useState(0);
   const [showGuidedPrompt, setShowGuidedPrompt] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem(PROMPT_PREF_STORAGE_KEY);
@@ -130,54 +80,9 @@ export function Journal({ store }: { store: AppStore }) {
       return true;
     }
   });
+  const entryForm = useUnsavedChanges(isEditingToday, [mood, content]);
+  const entryIssues = useFormController();
 
-  const [promptOffset, setPromptOffset] = useState<number>(0);
-  const [chartRange, setChartRange] = useState<ChartRange>('7d');
-  // The trend line draws in once the mood card scrolls into view (instant without intro motion).
-  const moodCardRef = useRef<HTMLDivElement>(null);
-  const moodChartSeen = useSeen(moodCardRef, useIntroMotion());
-  const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number }>({
-    width: 600,
-    height: 144,
-  });
-
-  // Track real container pixel dimensions. A callback ref, because the chart container renders
-  // only once there is mood data, often after this component mounted.
-  const chartObserverRef = useRef<ResizeObserver | null>(null);
-  const chartContainerRef = useCallback((el: HTMLDivElement | null) => {
-    chartObserverRef.current?.disconnect();
-    chartObserverRef.current = null;
-    if (!el) return;
-
-    const rect = el.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      setContainerDimensions({ width: rect.width, height: rect.height });
-    }
-
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-          setContainerDimensions({
-            width: entry.contentRect.width,
-            height: entry.contentRect.height,
-          });
-        }
-      }
-    });
-    ro.observe(el);
-    chartObserverRef.current = ro;
-  }, []);
-
-  const [hoveredChartPoint, setHoveredChartPoint] = useState<{
-    date: string;
-    label: string;
-    entry?: JournalEntry;
-    moodMeta?: MoodMeta;
-    x: number;
-    y: number;
-  } | null>(null);
-
-  // Update prompt preference
   const toggleGuidedPrompt = (enabled: boolean) => {
     setShowGuidedPrompt(enabled);
     try {
@@ -187,10 +92,8 @@ export function Journal({ store }: { store: AppStore }) {
     }
   };
 
-  // Synchronize state with today's existing entry when present. While the user has unsaved typing
-  // (e.g. a sync from another device lands mid-edit), their text is kept; saving then wins.
-  // A newer copy of the entry already open refreshes the text but keeps the editor open; only a
-  // different entry (e.g. another device created today's entry) closes it.
+  // Keep the editor in step with today's saved entry. Unsaved typing is kept when a sync lands
+  // mid-edit (saving then wins); a different entry for today (another device) closes the editor.
   const entryDirtyRef = useRef(false);
   entryDirtyRef.current = entryForm.dirty;
   const shownEntryIdRef = useRef<string | undefined>(undefined);
@@ -214,28 +117,21 @@ export function Journal({ store }: { store: AppStore }) {
 
   const trimmedContent = content.trim();
   const hasEnoughContent = trimmedContent.length >= MIN_JOURNAL_CONTENT_LENGTH;
-  const charsNeeded = Math.max(0, MIN_JOURNAL_CONTENT_LENGTH - trimmedContent.length);
-
-  const entryIssues = useFormController();
+  const prompt = getDailyPrompt(today, promptOffset);
 
   const handleSave = async () => {
     if (!hasEnoughContent) return; // validate() shows why at the notes field
-
     try {
       await executeSave(async () => {
         const wasAwarded = existingToday?.pointsAwarded ?? false;
         await store.saveJournalEntry(mood, content);
-
-        if (!wasAwarded) {
-          setJustCelebrated(true);
-          showSuccessToast('Journal saved', `+${JOURNAL_POINTS.entryCompleted} points for today's entry.`);
-          setTimeout(() => setJustCelebrated(false), 4500);
-        } else {
-          showSuccessToast('Journal updated', 'Your entry has been updated.');
-        }
+        showSuccessToast(
+          wasAwarded ? 'Journal updated' : 'Journal saved',
+          wasAwarded ? 'Your entry has been updated.' : `+${JOURNAL_POINTS.entryCompleted} points for today's entry.`
+        );
       });
       setIsEditingToday(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       entryIssues.showError(toUserMessage(err, "Couldn't save your entry. Try again."));
     }
   };
@@ -250,831 +146,349 @@ export function Journal({ store }: { store: AppStore }) {
     });
 
   const entries = store.state.journalEntries;
-  const currentDailyPrompt: JournalPrompt = getDailyPrompt(todayKey(), promptOffset);
-  const todayMoodConfig = MOOD_MAP[existingToday?.mood || mood] || MOOD_MAP.happy;
-  const TodayMoodIcon = todayMoodConfig.icon;
+  const sorted = useMemo(
+    () => [...entries].sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || '').localeCompare(a.createdAt || '')),
+    [entries]
+  );
+  const earlier = sorted.filter((e) => e.date !== today);
+  const byDate = useMemo(() => new Map(entries.map((e) => [e.date, e])), [entries]);
 
-  // -------------------------------------------------------------------------
-  // MOOD TREND CHART CALCULATIONS (7D & 30D)
-  // -------------------------------------------------------------------------
-  const chartDaysCount = chartRange === '7d' ? 7 : 30;
-
-  const chartData = useMemo(() => {
-    const days: Array<{
-      dateKey: string;
-      label: string;
-      shortLabel: string;
-      entry?: JournalEntry;
-      score: number | null;
-      moodMeta?: MoodMeta;
-      isToday: boolean;
-    }> = [];
-
-    const todayDate = trustedNow();
-    todayDate.setHours(0, 0, 0, 0);
-
-    for (let i = chartDaysCount - 1; i >= 0; i--) {
-      const d = new Date(todayDate);
-      d.setDate(todayDate.getDate() - i);
-      const k = todayKey(d);
-      const isToday = i === 0;
-
-      const entry = entries.find((e) => e.date === k);
-      const moodMeta = entry ? MOOD_MAP[entry.mood] : undefined;
-      const score = moodMeta ? moodMeta.score : null;
-
-      // Labels
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const shortLabel = chartRange === '7d' ? dayNames[d.getDay()] : `${d.getDate()}`;
-      const label = `${monthNames[d.getMonth()]} ${d.getDate()}`;
-
-      days.push({
-        dateKey: k,
-        label,
-        shortLabel,
-        entry,
-        score,
-        moodMeta,
-        isToday,
-      });
-    }
-
-    return days;
-  }, [chartRange, chartDaysCount, entries]);
-
-  // Statistics for selected range
-  const recordedPointsInRange = chartData.filter((d) => d.score !== null);
-  const totalEntriesCount = entries.length;
-  const hasEnoughDataForTrend = totalEntriesCount >= 2;
-
-  const averageScore = recordedPointsInRange.length > 0
-    ? (recordedPointsInRange.reduce((sum, p) => sum + (p.score || 0), 0) / recordedPointsInRange.length).toFixed(1)
-    : null;
-
-  // Hero numbers (computed live)
+  // Hero numbers (live). Points come from the points ledger, so deleting an older entry never
+  // lowers them: that day's points stay on the server.
   const entryDates = entries.map((e) => e.date);
   const journalStreak = calculateStreak(entryDates, 'daily');
   const last7Keys = lastDayKeys(7);
-  const writtenLast7 = last7Keys.filter((k) => entryDates.includes(k)).length;
-  const journalPoints = entries.filter((e) => e.pointsAwarded).length * JOURNAL_POINTS.entryCompleted;
+  const writtenLast7 = last7Keys.filter((k) => byDate.has(k)).length;
+  const journalPoints = useMemo(
+    () =>
+      store.state.pointsHistory
+        .filter((e) => e.source === 'journal' && !isRetiredAppJournalAward(e))
+        .reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
+    [store.state.pointsHistory]
+  );
 
-  const moodCountsInRange = recordedPointsInRange.reduce((acc, p) => {
-    if (p.entry) {
-      acc[p.entry.mood] = (acc[p.entry.mood] || 0) + 1;
-    }
+  // Mood over the chosen range: one cell per day.
+  const rangeKeys = lastDayKeys(chartRange === '7d' ? 7 : 30);
+  const rangeEntries = rangeKeys.map((k) => byDate.get(k)).filter((e): e is JournalEntry => !!e);
+  const moodCounts = rangeEntries.reduce((acc, e) => {
+    acc[e.mood] = (acc[e.mood] || 0) + 1;
     return acc;
-  }, {} as Record<Mood, number>);
+  }, {} as Partial<Record<Mood, number>>);
+  const averageScore =
+    rangeEntries.length > 0
+      ? (rangeEntries.reduce((sum, e) => sum + (MOOD_MAP[e.mood]?.score || 0), 0) / rangeEntries.length).toFixed(1)
+      : null;
+
+  const renderRow = (entry: JournalEntry) => {
+    const hasNotes = Boolean(entry.content && entry.content.trim().length > 0);
+    return (
+      <div key={entry.id} className="enter-item flex items-center gap-1 transition-colors hover:bg-overlay-subtle">
+        <button
+          type="button"
+          onClick={() => setSelectedEntry(entry)}
+          className="flex-1 min-w-0 p-3.5 pr-1 text-left flex items-center gap-3"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="item-name text-sm text-content-secondary">{formatDateLong(entry.date)}</span>
+              <MoodBadge mood={entry.mood} />
+            </div>
+            <p className="text-xs text-content-muted mt-1 truncate">{hasNotes ? entry.content : 'Mood only, no notes'}</p>
+          </div>
+          {entry.pointsAwarded && (
+            <span className="figure text-xs text-purple-hierarchy whitespace-nowrap shrink-0">+{JOURNAL_POINTS.entryCompleted} pts</span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setDeleteModalEntry(entry)}
+          aria-label="Delete journal entry"
+          title="Delete journal entry"
+          className={`mr-2.5 p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+    );
+  };
+
+  const deletingToday = deleteModalEntry?.date === today;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="page-title">Journal</h1>
-        <p className="page-subtitle">Reflect daily and see how your mood moves.</p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Journal</h1>
+          <p className="page-subtitle">Write a few lines each day and see how your mood moves.</p>
+        </div>
       </div>
 
       <Reveal index={0}>
         <PageHero
           ariaLabel="Your journal"
           ring={{ value: writtenLast7, max: 7, label: `Written on ${writtenLast7} of the last 7 days`, center: writtenLast7, caption: 'of 7 days' }}
-          lead={{ label: 'Journal streak', value: <CountUp value={journalStreak} />, hint: 'days in a row', valueClassName: 'text-warning-text' }}
+          lead={{ label: 'Journal streak', value: <CountUp value={journalStreak} />, hint: journalStreak === 1 ? 'day in a row' : 'days in a row', valueClassName: 'text-warning-text' }}
           stats={[
-            { label: 'Entries', value: <CountUp value={totalEntriesCount} />, valueClassName: 'text-brand-text' },
-            { label: 'Points earned', value: <>+<CountUp value={journalPoints} /></>, valueClassName: 'text-purple-hierarchy' },
+            { label: 'Entries', value: <CountUp value={entries.length} />, valueClassName: 'text-brand-text' },
+            { label: 'Points earned', value: <>+<CountUp value={Math.max(0, journalPoints)} /></>, valueClassName: 'text-purple-hierarchy' },
           ]}
           side={<CapMeterConnected state={store.state} capId="journal" bare />}
         />
       </Reveal>
 
       <PageColumns
-        lead={
+        stickyAside
+        aside={
           <>
-            {/* TODAY'S ENTRY CARD (TWO-STATE FLOW) */}
-            <div className="card p-5 relative overflow-hidden">
-              {/* Subtle background tint when celebrated */}
-
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} className="text-brand-text" />
-                  <h2 className="section-title">Today's entry</h2>
-                </div>
-                <span className="text-xs text-content-muted tabular-nums">
-                  {formatDateLong(todayKey())}
-                </span>
-              </div>
-
-              {/* STATE 2: ENTRY ALREADY SAVED (CONFIRMATION & READ-ONLY VIEW) */}
-              {existingToday && !isEditingToday ? (
-                <div className="space-y-4 animate-fade-in">
-                  {/* Success Celebration Banner */}
-                  <div
-                    className={`p-3.5 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
-                      justCelebrated ? 'bg-emerald-500/15 border-emerald-500/40' : 'bg-emerald-500/10 border-emerald-500/20'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center text-success-text shrink-0">
-                        <CheckCircle2 size={18} className={justCelebrated ? 'animate-celebrate' : ''} />
-                      </div>
-                      <div>
-                        <p className="text-xs text-success-text font-medium">
-                          {justCelebrated ? "Entry saved. Nice work today." : "Today's entry is saved"}
-                        </p>
-                        <p className="text-micro text-success-text">
-                          Your mood and notes are in your history.
-                        </p>
-                      </div>
-                    </div>
-
-                    {existingToday.pointsAwarded && (
-                      <span className="figure text-xs text-success-text bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/40 flex items-center gap-1.5 shrink-0 animate-scale-in">
-                        <Award size={14} className="text-success-text" />
-                        <span>+{JOURNAL_POINTS.entryCompleted} pts earned</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Saved Read-Only Details */}
-                  <div className={`p-4 rounded-xl border border-overlay-subtle border-l-4 ${todayMoodConfig.borderLeftClass} space-y-3.5`}>
-                    <div className="flex items-center justify-between border-b border-overlay-subtle pb-3">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: `${todayMoodConfig.color}20` }}
-                        >
-                          <TodayMoodIcon size={18} style={{ color: todayMoodConfig.color }} />
-                        </div>
-                        <div>
-                          <span className="stat-label block">
-                            Mood
-                          </span>
-                          <span
-                            className="text-sm font-medium flex items-center gap-1.5"
-                            style={{ color: todayMoodConfig.color }}
-                          >
-                            {todayMoodConfig.label}
-                          </span>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => setIsEditingToday(true)}
-                        className="px-3 py-1.5 bg-primary-500/15 hover:bg-primary-500/25 border border-primary-500/30 text-brand-text text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
-                      >
-                        <Edit3 size={14} />
-                        <span>Edit Entry</span>
-                      </button>
-                    </div>
-
-                    <div>
-                      <span className="stat-label block mb-1.5">
-                        Notes
-                      </span>
-                      <div className="text-xs text-content-secondary leading-relaxed whitespace-pre-wrap min-h-[60px]">
-                        {existingToday.content ? (
-                          existingToday.content
-                        ) : (
-                          <span className="italic text-content-disabled flex items-center gap-1.5">
-                            <Info size={14} /> Mood recorded, no notes added
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* STATE 1: WRITING / EDITING MODE */
-                <Form
-                  onSubmit={handleSave}
-                  controller={entryIssues}
-                  alert="manual"
-                  validate={() =>
-                    hasEnoughContent
-                      ? null
-                      : {
-                          message: `Write at least ${MIN_JOURNAL_CONTENT_LENGTH} characters. One sentence is enough.`,
-                          field: 'journal-notes',
-                        }
-                  }
-                  className="space-y-5 animate-fade-in"
-                >
-                  {/* Status notice */}
-                  <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-xl flex items-center justify-between gap-2 text-xs text-brand-text">
-                    <div className="flex items-center gap-2">
-                      <Info size={16} className="shrink-0 text-brand-text" />
-                      <span>
-                        {existingToday
-                          ? "Editing today's entry. Update your notes and save."
-                          : `Write at least a sentence (10+ characters) to earn +${JOURNAL_POINTS.entryCompleted} points.`}
-                      </span>
-                    </div>
-                    <span className="figure text-micro bg-primary-500/20 px-2 py-0.5 rounded-lg text-brand-text border border-primary-500/30 shrink-0">
-                      +{JOURNAL_POINTS.entryCompleted} pts
-                    </span>
-                  </div>
-
-                  {/* Mood selector */}
-                  <div>
-                    <p className="label mb-2">How are you feeling today?</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      {MOODS.map((m) => {
-                        const Icon = m.icon;
-                        const selected = mood === m.value;
-                        return (
-                          <button
-                            key={m.value}
-                            type="button"
-                            onClick={() => setMood(m.value)}
-                            className={`flex flex-col items-center gap-1.5 py-3.5 px-2 rounded-xl transition-all duration-200 ${
-                              selected
-                                ? 'border'
-                                : 'border border-overlay-subtle hover:bg-overlay-subtle'
-                            }`}
-                            style={selected ? { borderColor: m.color, backgroundColor: `${m.color}15` } : {}}
-                          >
-                            <Icon
-                              size={26}
-                              style={{ color: selected ? m.color : 'var(--color-content-muted)' }}
-                              className="transition-colors"
-                            />
-                            <span
-                              className="text-xs font-medium transition-colors"
-                              style={{ color: selected ? m.color : 'var(--color-content-muted)' }}
-                            >
-                              {m.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Guided Prompt Toggle & Header */}
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <label htmlFor="journal-notes" className="label flex items-center gap-1.5 whitespace-nowrap">
-                        <BookOpen size={14} className="text-content-muted" />
-                        <span>Notes</span>
-                      </label>
-
-                      {/* Prompt / Free Write Toggle */}
-                      <Tabs
-                        ariaLabel="Journal writing mode"
-                        variant="segmented"
-                        size="sm"
-                        value={showGuidedPrompt ? 'guided' : 'free'}
-                        onChange={(id) => toggleGuidedPrompt(id === 'guided')}
-                        items={[
-                          { id: 'guided', label: 'Guided prompt', icon: Sparkles },
-                          { id: 'free', label: 'Free write' },
-                        ]}
-                      />
-                    </div>
-
-                    {/* GUIDED PROMPT CARD (Visible when toggle is ON) */}
-                    {showGuidedPrompt && (
-                      <div className="p-3.5 rounded-xl border border-primary-500/20 space-y-2 animate-fade-in">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className={`badge text-2xs px-2 py-0.5 ${currentDailyPrompt.categoryColor}`}>
-                            {currentDailyPrompt.category}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setPromptOffset((prev) => prev + 1)}
-                            className={`text-xs text-content-muted hover:text-brand-text flex items-center gap-1 py-0.5 px-2 rounded-lg hover:bg-overlay-subtle transition-all ${TAP_TARGET}`}
-                            title="Show another prompt"
-                          >
-                            <RotateCcw size={12} />
-                            <span>Shuffle</span>
-                          </button>
-                        </div>
-                        <p className="text-base font-medium text-content-primary leading-snug">
-                          {currentDailyPrompt.prompt}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Textarea Input */}
-                    <div className="relative">
-                      <textarea
-                        id="journal-notes"
-                        dir="auto"
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        placeholder={
-                          showGuidedPrompt
-                            ? "Write your answer or thoughts to the prompt above..."
-                            : "What happened today? What are you grateful for? What could be better?"
-                        }
-                        className="input min-h-[140px] resize-y leading-relaxed text-content-primary placeholder:text-content-disabled font-sans caret-primary-500"
-                      />
-                    </div>
-                    <FieldMessage htmlFor="journal-notes" />
-
-                    {/* Inline Validation Helper */}
-                    <div className="flex items-center justify-between text-xs pt-1 px-1">
-                      <div className="flex items-center gap-1.5">
-                        {trimmedContent.length === 0 ? (
-                          <span className="text-content-muted flex items-center gap-1">
-                            <HelpCircle size={13} className="text-content-muted" />
-                            Write at least {MIN_JOURNAL_CONTENT_LENGTH} characters to save today's reflection.
-                          </span>
-                        ) : !hasEnoughContent ? (
-                          <span className="text-warning-text flex items-center gap-1 font-medium animate-fade-in">
-                            <AlertCircle size={13} className="text-warning-text" />
-                            Write a bit more before saving — {charsNeeded} more {charsNeeded === 1 ? 'character' : 'characters'} needed.
-                          </span>
-                        ) : (
-                          <span className="text-success-text flex items-center gap-1 font-medium animate-fade-in">
-                            <CheckCircle2 size={13} className="text-success-text" />
-                            Ready to save ({trimmedContent.length} characters) • +{JOURNAL_POINTS.entryCompleted} pts
-                          </span>
-                        )}
-                      </div>
-
-                      <span className={`text-micro figure ${hasEnoughContent ? 'text-success-text' : 'text-content-muted'}`}>
-                        {trimmedContent.length}/{MIN_JOURNAL_CONTENT_LENGTH} min
-                      </span>
-                    </div>
-                  </div>
-
-                  <FormAlert />
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-2.5 pt-2">
-                    <button
-                      type="submit"
-                      disabled={isSaving}
-                      className={`btn flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all shadow-sm ${
-                        hasEnoughContent
-                          ? 'btn-primary'
-                          : 'bg-overlay-subtle text-content-disabled cursor-not-allowed'
-                      }`}
-                    >
-                      {isSaving ? (
-                        <AscendLoadingIndicator size="sm" />
-                      ) : (
-                        <Save size={16} className={hasEnoughContent ? 'text-on-brand' : 'text-content-disabled'} />
-                      )}
-                      <span>
-                        {isSaving
-                          ? 'Saving...'
-                          : existingToday
-                          ? 'Update Entry'
-                          : `Save Today's Entry (+${JOURNAL_POINTS.entryCompleted} pts)`}
-                      </span>
-                    </button>
-
-                    {existingToday && (
-                      <button
-                        type="button"
-                        onClick={handleCancelEdit}
-                        className="btn-secondary px-4 py-3 text-xs flex items-center gap-1.5 rounded-xl"
-                      >
-                        <X size={14} />
-                        <span>Cancel</span>
-                      </button>
-                    )}
-                  </div>
-                </Form>
-              )}
-            </div>
-
-            {/* MOOD OVERVIEW — TREND GRAPH & STATS */}
-            <div ref={moodCardRef} className="card p-5 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="section-title flex items-center gap-2">
-                    <TrendingUp size={16} className="text-brand-text" />
-                    Mood trend
-                  </h2>
-                  <p className="text-xs text-content-disabled mt-0.5">
-                    How your mood has changed across entries.
-                  </p>
-                </div>
-
-                {/* 7D vs 30D Time Range Switcher */}
+            <Reveal index={1} className="card p-4 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="section-title">Mood</h2>
                 <Tabs
-                  ariaLabel="Mood chart range"
+                  ariaLabel="Mood range"
                   variant="segmented"
                   size="sm"
                   value={chartRange}
-                  onChange={(id) => setChartRange(id as typeof chartRange)}
+                  onChange={(id) => setChartRange(id as ChartRange)}
                   items={[
-                    { id: '7d', label: 'Last 7 days' },
-                    { id: '30d', label: 'Last 30 days' },
+                    { id: '7d', label: '7 days' },
+                    { id: '30d', label: '30 days' },
                   ]}
                 />
               </div>
 
-              {/* Empty State vs Active Trend Chart */}
-              {!hasEnoughDataForTrend ? (
-                <EmptyState
-                  surface={false}
-                  icon={TrendingUp}
-                  title="Not enough data yet"
-                  description="Journal for a couple of days to see your mood trend."
-                />
-              ) : (
-                <div className="space-y-4 animate-fade-in">
-                  {/* Interactive SVG Trend Chart */}
-                  <div className="relative pt-2 pb-2">
-                    {/* Y-Axis scale indicators & subtle horizontal gridlines */}
-                    <div className="relative h-44 p-4 flex flex-col justify-between overflow-hidden">
-                      {/* 4 horizontal gridlines */}
-                      {[
-                        { level: 4, label: 'Motivated', color: MOOD_MAP.motivated.color, icon: Zap },
-                        { level: 3, label: 'Happy', color: MOOD_MAP.happy.color, icon: Smile },
-                        { level: 2, label: 'Neutral', color: MOOD_MAP.neutral.color, icon: Meh },
-                        { level: 1, label: 'Sad', color: MOOD_MAP.sad.color, icon: Frown },
-                      ].map((row) => (
-                        <div key={row.level} className="flex items-center gap-2 w-full">
-                          <div className="flex items-center gap-1 w-20 shrink-0">
-                            <row.icon size={13} style={{ color: row.color }} />
-                            <span className="text-2xs text-content-muted truncate">
-                              {row.label}
-                            </span>
-                          </div>
-                          <div className="flex-1 border-b border-overlay-subtle border-dashed" />
-                        </div>
-                      ))}
-
-                      {/* SVG Trend Line & Native SVG Node Elements (100% Single-Coordinate System) */}
-                      {(() => {
-                        const totalCount = chartData.length;
-                        const w = Math.max(10, containerDimensions.width);
-                        const h = Math.max(10, containerDimensions.height);
-
-                        const mappedPoints = chartData.map((d, index) => {
-                          const pixelX = totalCount > 1 ? (index / (totalCount - 1)) * w : w / 2;
-                          const pixelY = d.score !== null ? (1 - (d.score - 1) / 3) * h : null;
-
-                          return { ...d, pixelX, pixelY, index };
-                        });
-
-                        const recordedPoints = mappedPoints.filter(
-                          (pt): pt is typeof pt & { pixelY: number } => pt.pixelY !== null && pt.score !== null
-                        );
-
-                        const pathD =
-                          recordedPoints.length >= 2
-                            ? recordedPoints.reduce((acc, pt, idx) => {
-                                return `${acc} ${idx === 0 ? 'M' : 'L'} ${pt.pixelX.toFixed(1)} ${pt.pixelY.toFixed(1)}`;
-                              }, '')
-                            : '';
-                        const firstPoint = recordedPoints[0];
-                        const lastPoint = recordedPoints[recordedPoints.length - 1];
-                        const areaD = pathD
-                          ? `${pathD} L ${lastPoint.pixelX.toFixed(1)} ${h} L ${firstPoint.pixelX.toFixed(1)} ${h} Z`
-                          : '';
-
-                        return (
-                          <div ref={chartContainerRef} className="absolute inset-0 left-24 right-4 top-4 bottom-4">
-                            <svg
-                              className="w-full h-full overflow-visible transition-[clip-path] duration-[900ms] ease-emphasized motion-reduce:transition-none"
-                              style={{ clipPath: moodChartSeen ? 'inset(-24px)' : 'inset(-24px 100% -24px -24px)' }}
-                              viewBox={`0 0 ${w} ${h}`}
-                              width={w}
-                              height={h}
-                            >
-                              {/* 0. Soft area under the trend line */}
-                              {areaD && (
-                                <>
-                                  <defs>
-                                    <linearGradient id="journal-mood-area" x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
-                                      <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-                                    </linearGradient>
-                                  </defs>
-                                  <path d={areaD} fill="url(#journal-mood-area)" className="pointer-events-none" />
-                                </>
-                              )}
-
-                              {/* 1. Trend Line Path */}
-                              {pathD && (
-                                <path
-                                  d={pathD}
-                                  fill="none"
-                                  stroke="#10b981"
-                                  strokeWidth="2.5"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  className="pointer-events-none"
-                                />
-                              )}
-
-                              {/* 2. Unified Native SVG Data Points (cx/cy matching pixelX/pixelY directly) */}
-                              {mappedPoints.map((pt) => {
-                                const hasEntry = pt.pixelY !== null && pt.score !== null && !!pt.moodMeta;
-                                const cx = pt.pixelX;
-                                const cy = pt.pixelY !== null ? pt.pixelY : h - 6;
-                                const radius = chartRange === '7d' ? 8 : 6.5;
-
-                                const showPoint = () => {
-                                  if (hasEntry) {
-                                    setHoveredChartPoint({
-                                      date: pt.dateKey,
-                                      label: pt.label,
-                                      entry: pt.entry,
-                                      moodMeta: pt.moodMeta,
-                                      x: pt.index,
-                                      y: pt.score || 1,
-                                    });
-                                  }
-                                };
-
-                                return (
-                                  <g
-                                    key={pt.dateKey}
-                                    className="cursor-pointer group outline-none"
-                                    tabIndex={hasEntry ? 0 : undefined}
-                                    role={hasEntry ? 'button' : undefined}
-                                    aria-label={hasEntry ? `${formatDateLong(pt.dateKey)}: ${pt.moodMeta?.label}` : undefined}
-                                    onMouseEnter={showPoint}
-                                    onFocus={showPoint}
-                                    onMouseLeave={() => setHoveredChartPoint(null)}
-                                    onBlur={() => setHoveredChartPoint(null)}
-                                    onKeyDown={(e) => {
-                                      if ((e.key === 'Enter' || e.key === ' ') && pt.entry) {
-                                        e.preventDefault();
-                                        setSelectedEntry(pt.entry);
-                                      }
-                                    }}
-                                    onClick={() => {
-                                      if (pt.entry) setSelectedEntry(pt.entry);
-                                    }}
-                                  >
-                                    {/* Transparent larger hit target (20px radius) for effortless hovering & mobile tapping */}
-                                    <circle cx={cx} cy={cy} r="20" fill="transparent" />
-
-                                    {/* Visible Circle Node */}
-                                    {hasEntry ? (
-                                      <>
-                                        {/* Outer 2px dark border */}
-                                        <circle
-                                          cx={cx}
-                                          cy={cy}
-                                          r={radius + 1.5}
-                                          fill="var(--color-bg-800)"
-                                          className="transition-all duration-150 group-hover:scale-125 group-focus-visible:scale-125 origin-center"
-                                          style={{
-                                            transformOrigin: `${cx}px ${cy}px`,
-                                          }}
-                                        />
-                                        {/* Inner Mood Color Fill */}
-                                        <circle
-                                          cx={cx}
-                                          cy={cy}
-                                          r={radius}
-                                          fill={pt.moodMeta?.color || '#10b981'}
-                                          className="transition-all duration-150 group-hover:scale-125 group-focus-visible:scale-125 origin-center"
-                                          style={{
-                                            transformOrigin: `${cx}px ${cy}px`,
-                                          }}
-                                        />
-                                      </>
-                                    ) : (
-                                      <circle
-                                        cx={cx}
-                                        cy={cy}
-                                        r="2.5"
-                                        fill="var(--color-content-disabled)"
-                                        className="group-hover:fill-content-muted transition-colors"
-                                      />
-                                    )}
-                                  </g>
-                                );
-                              })}
-                            </svg>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    {/* X-Axis Day Labels */}
-                    <div className="flex justify-between items-center px-4 pl-24 text-2xs text-content-muted tabular-nums mt-2">
-                      {chartRange === '7d' ? (
-                        chartData.map((d) => (
-                          <span
-                            key={d.dateKey}
-                            className={d.isToday ? 'text-brand-text font-medium' : 'text-content-muted'}
-                          >
-                            {d.shortLabel}
-                          </span>
-                        ))
-                      ) : (
-                        <>
-                          <span>{chartData[0]?.label}</span>
-                          <span>{chartData[Math.floor(chartData.length / 2)]?.label}</span>
-                          <span className="text-brand-text font-medium">Today</span>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Hover Tooltip Card — a fixed slot, so hovering never shifts the layout */}
-                    <div className="mt-2 min-h-[4.25rem]">
-                    {hoveredChartPoint && hoveredChartPoint.moodMeta ? (
-                      <div
-                        className="p-2.5 bg-bg-800 border rounded-xl space-y-1 animate-fade-in"
-                        style={{ borderColor: `${hoveredChartPoint.moodMeta.color}40` }}
+              <div
+                className={cx('grid gap-1.5', chartRange === '7d' ? 'grid-cols-7' : 'grid-cols-10')}
+                role="list"
+                aria-label={`Mood per day, last ${rangeKeys.length} days`}
+              >
+                {rangeKeys.map((k) => {
+                  const entry = byDate.get(k);
+                  const meta = entry ? MOOD_MAP[entry.mood] || MOOD_MAP.neutral : null;
+                  const Icon = meta?.icon;
+                  const name = `${formatWeekdayDate(k)}: ${meta ? meta.label : 'no entry'}`;
+                  return (
+                    <div key={k} role="listitem" className="flex flex-col items-center gap-1" title={name} aria-label={name}>
+                      <button
+                        type="button"
+                        disabled={!entry}
+                        onClick={() => entry && setSelectedEntry(entry)}
+                        className={cx(
+                          'w-full aspect-square rounded-lg flex items-center justify-center border transition-colors',
+                          meta ? 'hover:brightness-110' : 'border-dashed border-overlay-default',
+                          k === today && 'ring-1 ring-primary-500/50'
+                        )}
+                        style={meta ? { backgroundColor: `${meta.color}20`, borderColor: `${meta.color}40`, color: meta.color } : undefined}
+                        aria-label={name}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-content-secondary tabular-nums">
-                            {formatDateLong(hoveredChartPoint.date)}
-                          </span>
-                          <span
-                            className="text-xs font-medium px-2 py-0.5 rounded-lg"
-                            style={{
-                              backgroundColor: `${hoveredChartPoint.moodMeta.color}20`,
-                              color: hoveredChartPoint.moodMeta.color,
-                            }}
-                          >
-                            {hoveredChartPoint.moodMeta.label}
-                          </span>
-                        </div>
-                        <p className="text-xs text-content-muted line-clamp-2">
-                          {hoveredChartPoint.entry?.content || (
-                            <span className="italic text-content-disabled">Mood recorded, no notes added</span>
-                          )}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-2xs text-content-disabled pt-1">Hover, tap or tab to a day to see its entry.</p>
-                    )}
+                        {Icon && <Icon size={chartRange === '7d' ? 16 : 13} />}
+                      </button>
+                      {chartRange === '7d' && <span className="text-2xs text-content-muted">{formatWeekdayShort(k)}</span>}
                     </div>
-                  </div>
+                  );
+                })}
+              </div>
 
-                  {/* Summary Insights in Selected Period */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-overlay-subtle">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 pt-3 border-t border-overlay-subtle">
+                {MOODS.map((m) => {
+                  const Icon = m.icon;
+                  const count = moodCounts[m.value] || 0;
+                  return (
+                    <div key={m.value} className="flex items-center gap-2 text-xs">
+                      <Icon size={14} style={{ color: m.color }} />
+                      <span className="text-content-muted">{m.label}</span>
+                      <span className="figure ml-auto text-content-secondary">
+                        {count} {count === 1 ? 'day' : 'days'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-between gap-2 text-xs text-content-muted pt-3 border-t border-overlay-subtle">
+                <span>
+                  Written <span className="figure text-content-secondary">{rangeEntries.length}</span> of {rangeKeys.length} days
+                </span>
+                {averageScore && (
+                  <span>
+                    Average <span className="figure text-content-secondary">{averageScore}</span> / 4
+                  </span>
+                )}
+              </div>
+            </Reveal>
+
+            <Disclosure title="How points work">
+              <ul className="list-disc pl-4 space-y-0.5">
+                <li>
+                  Today's entry with at least {MIN_JOURNAL_CONTENT_LENGTH} characters ={' '}
+                  <span className="figure text-success-text">+{JOURNAL_POINTS.entryCompleted} pts</span>, once a day.
+                </li>
+                <li>You can write and edit only today's entry.</li>
+                <li>Deleting today's entry takes its points back. Earlier days keep their points.</li>
+                <li>Deleting an entry can break your streak and removes that day from your mood.</li>
+              </ul>
+            </Disclosure>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          <div className="card p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <h2 className="section-title">Today</h2>
+              <span className="text-xs text-content-muted">{formatDateLong(today)}</span>
+            </div>
+
+            {existingToday && !isEditingToday ? (
+              <div className="space-y-4 animate-fade-in">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={18} className="text-success-text" />
+                    <span className="text-sm text-content-secondary">Today's entry is saved</span>
+                    <MoodBadge mood={existingToday.mood} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {existingToday.pointsAwarded && (
+                      <span className="figure text-xs text-purple-hierarchy">+{JOURNAL_POINTS.entryCompleted} pts</span>
+                    )}
+                    <button type="button" onClick={() => setIsEditingToday(true)} className="btn-secondary text-xs px-3 py-1.5">
+                      <Edit3 size={14} />
+                      <span>Edit</span>
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-content-secondary leading-relaxed whitespace-pre-wrap" dir="auto">
+                  {existingToday.content || <span className="text-content-muted">Mood only, no notes</span>}
+                </p>
+              </div>
+            ) : (
+              <Form
+                onSubmit={handleSave}
+                controller={entryIssues}
+                alert="manual"
+                validate={() =>
+                  hasEnoughContent
+                    ? null
+                    : { message: `Write at least ${MIN_JOURNAL_CONTENT_LENGTH} characters. One sentence is enough.`, field: 'journal-notes' }
+                }
+                className="space-y-5 animate-fade-in"
+              >
+                <div>
+                  <p className="label mb-2">How are you feeling?</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {MOODS.map((m) => {
-                      const count = moodCountsInRange[m.value] || 0;
                       const Icon = m.icon;
+                      const selected = mood === m.value;
                       return (
-                        <div
+                        <button
                           key={m.value}
-                          className="py-3 flex items-center gap-2.5"
+                          type="button"
+                          onClick={() => setMood(m.value)}
+                          aria-pressed={selected}
+                          className={cx(
+                            'flex items-center justify-center gap-2 min-h-11 px-2 rounded-xl border text-sm font-medium transition-colors',
+                            !selected && 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
+                          )}
+                          style={selected ? { borderColor: m.color, backgroundColor: `${m.color}15`, color: m.color } : undefined}
                         >
-                          <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                            style={{ backgroundColor: `${m.color}15` }}
-                          >
-                            <Icon size={16} style={{ color: m.color }} />
-                          </div>
-                          <div>
-                            <span className="stat-label block">
-                              {m.label}
-                            </span>
-                            <span className="figure text-sm text-content-primary">
-                              <CountUp value={count} /> <span className="font-sans text-2xs text-content-muted font-normal">days</span>
-                            </span>
-                          </div>
-                        </div>
+                          <Icon size={18} />
+                          {m.label}
+                        </button>
                       );
                     })}
                   </div>
+                </div>
 
-                  {/* Average & Consistency Footer */}
-                  {averageScore && (
-                    <div className="pt-3 border-t border-overlay-subtle flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-2 text-content-muted">
-                        <span>Days journaled:</span>
-                        <span className="figure text-success-text">
-                          {recordedPointsInRange.length} of {chartDaysCount} days ({Math.round((recordedPointsInRange.length / chartDaysCount) * 100)}%)
-                        </span>
+                <div className="space-y-2">
+                  <Tabs
+                    ariaLabel="Journal writing mode"
+                    variant="segmented"
+                    size="sm"
+                    value={showGuidedPrompt ? 'guided' : 'free'}
+                    onChange={(id) => toggleGuidedPrompt(id === 'guided')}
+                    items={[
+                      { id: 'guided', label: 'Guided prompt', icon: Sparkles },
+                      { id: 'free', label: 'Free write' },
+                    ]}
+                  />
+                  {showGuidedPrompt && (
+                    <div className="flex items-start justify-between gap-3 rounded-xl border border-overlay-default p-3.5 animate-fade-in">
+                      <div className="space-y-1.5 min-w-0">
+                        <span className={`badge text-2xs px-2 py-0.5 ${prompt.categoryColor}`}>{prompt.category}</span>
+                        <p className="text-sm font-medium text-content-primary leading-snug">{prompt.prompt}</p>
                       </div>
-                      <div className="flex items-center gap-2 text-content-muted">
-                        <span>Average mood:</span>
-                        <span className="figure text-success-text">
-                          {averageScore} / 4.0
-                        </span>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPromptOffset((n) => n + 1)}
+                        className={`shrink-0 text-xs text-content-muted hover:text-brand-text flex items-center gap-1 py-0.5 px-2 rounded-lg hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
+                        title="Show another prompt"
+                      >
+                        <RotateCcw size={12} />
+                        <span>Shuffle</span>
+                      </button>
                     </div>
                   )}
+                  <Textarea
+                    id="journal-notes"
+                    label="Notes"
+                    dir="auto"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder={showGuidedPrompt ? 'Write your answer to the prompt…' : 'What happened today? What went well? What could be better?'}
+                    className="min-h-[160px] resize-y leading-relaxed"
+                  />
+                  <div className="flex justify-end text-xs">
+                    <span className={cx('figure', hasEnoughContent ? 'text-success-text' : 'text-content-muted')}>
+                      {hasEnoughContent
+                        ? `${trimmedContent.length} characters`
+                        : `${MIN_JOURNAL_CONTENT_LENGTH - trimmedContent.length} more to save`}
+                    </span>
+                  </div>
                 </div>
-              )}
-            </div>
-          </>
-        }
-        aside={
-          <>
-            {/* JOURNAL HISTORY LIST (REDESIGNED ENTRY CARDS) */}
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                <h2 className="section-title flex items-center gap-2">
-                  <Calendar size={16} className="text-content-subtle" />
-                  <span>History ({entries.length})</span>
-                </h2>
-                <span className="text-xs text-content-disabled">
-                  Click an entry to read it
-                </span>
-              </div>
 
-              {entries.length === 0 ? (
-                <EmptyState
-                  icon={BookOpen}
-                  title="No journal entries yet"
-                  description="Write today's entry to start your history."
-                />
-              ) : (
-                <div className="card divide-y divide-overlay-subtle overflow-hidden">
-                  {entries.map((entry) => {
-                    const isToday = entry.date === todayKey();
-                    const moodMeta = MOOD_MAP[entry.mood] || MOOD_MAP.neutral;
-                    const Icon = moodMeta.icon;
-                    const hasNotes = Boolean(entry.content && entry.content.trim().length > 0);
+                <FormAlert />
 
-                    return (
-                      <div
-                        key={entry.id}
-                        onClick={() => setSelectedEntry(entry)}
-                        className={`enter-item p-4 w-full text-left flex items-center gap-3.5 transition-colors group cursor-pointer hover:bg-overlay-subtle border-l-4 ${moodMeta.borderLeftClass}`}
-                      >
-                        <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: `${moodMeta.color}18` }}
-                        >
-                          <Icon size={18} style={{ color: moodMeta.color }} />
-                        </div>
-
-                        {/* Entry Header & Snippet */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="item-name text-sm">
-                              {formatDateLong(entry.date)}
-                            </span>
-
-                            {isToday && (
-                              <span className="text-2xs bg-primary-500/20 text-brand-text border border-primary-500/30 px-2 py-0.5 rounded-full font-medium">
-                                Today
-                              </span>
-                            )}
-
-                            <span
-                              className="text-xs font-medium px-2 py-0.5 rounded-lg border"
-                              style={{
-                                backgroundColor: `${moodMeta.color}15`,
-                                borderColor: `${moodMeta.color}30`,
-                                color: moodMeta.color,
-                              }}
-                            >
-                              {moodMeta.label}
-                            </span>
-                          </div>
-
-                          <p className="text-xs text-content-muted mt-1 truncate">
-                            {hasNotes ? (
-                              entry.content
-                            ) : (
-                              <span className="italic text-content-muted flex items-center gap-1">
-                                <Info size={12} className="text-content-muted" />
-                                Mood recorded, no notes added
-                              </span>
-                            )}
-                          </p>
-                        </div>
-
-                        {/* Points & Action Buttons */}
-                        <div className="flex items-center gap-2.5 shrink-0">
-                          {entry.pointsAwarded && (
-                            <span className="figure text-xs text-success-text bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 flex items-center gap-1">
-                              <Award size={13} /> +{JOURNAL_POINTS.entryCompleted} pts
-                            </span>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteModalEntry(entry);
-                            }}
-                            className={`text-content-subtle hover:text-rose-theme p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
-                            title="Delete journal entry"
-                            aria-label="Delete journal entry"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-
-                          <ChevronRight
-                            size={16}
-                            className="text-content-subtle group-hover:text-content-tertiary transition-colors"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="flex items-center gap-2.5">
+                  {existingToday && (
+                    <button type="button" onClick={handleCancelEdit} disabled={isSaving} className="btn-secondary">
+                      Cancel
+                    </button>
+                  )}
+                  <button type="submit" disabled={isSaving} className="btn-primary flex-1">
+                    {isSaving ? <AscendLoadingIndicator size="sm" /> : <PenLine size={16} />}
+                    <span>
+                      {isSaving
+                        ? 'Saving…'
+                        : existingToday
+                          ? 'Save changes'
+                          : `Save entry (+${JOURNAL_POINTS.entryCompleted} pts)`}
+                    </span>
+                  </button>
                 </div>
-              )}
-            </div>
-          </>
-        }
-      />
+              </Form>
+            )}
+          </div>
 
-      {/* ENTRY DETAIL MODAL */}
+          <div className="space-y-3">
+            <h2 className="section-title">Earlier</h2>
+            {earlier.length === 0 ? (
+              <EmptyState icon={BookOpen} title="No earlier entries yet" description="Your past entries show here, newest first." />
+            ) : (
+              <>
+                <div className="card overflow-hidden divide-y divide-overlay-subtle">{earlier.slice(0, entriesShown).map(renderRow)}</div>
+                {earlier.length > entriesShown && (
+                  <button type="button" onClick={() => setEntriesShown((n) => n + ENTRIES_PAGE)} className="btn-secondary w-full">
+                    Show older entries
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </PageColumns>
+
       <Dialog
         open={!!selectedEntry}
         onClose={() => setSelectedEntry(null)}
-        title={selectedEntry ? `Journal entry, ${formatDateLong(selectedEntry.date)}` : ''}
+        title={selectedEntry ? formatDateLong(selectedEntry.date) : ''}
         maxWidth="max-w-lg"
         footer={
           <>
@@ -1096,85 +510,53 @@ export function Journal({ store }: { store: AppStore }) {
           </>
         }
       >
-        {selectedEntry && (() => {
-          const moodMeta = MOOD_MAP[selectedEntry.mood] || MOOD_MAP.neutral;
-          const Icon = moodMeta.icon;
-          const hasNotes = Boolean(selectedEntry.content && selectedEntry.content.trim().length > 0);
-
-          return (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3.5 border-b border-overlay-subtle">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${moodMeta.color}20` }}
-                  >
-                    <Icon size={18} style={{ color: moodMeta.color }} />
-                  </div>
-                  <div>
-                    <p className="stat-label">
-                      Mood
-                    </p>
-                    <p className="text-sm font-medium" style={{ color: moodMeta.color }}>
-                      {moodMeta.label}
-                    </p>
-                  </div>
-                </div>
-
+        {selectedEntry && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-overlay-subtle">
+              <MoodBadge mood={selectedEntry.mood} />
+              <span className="figure text-xs text-content-muted">
                 {selectedEntry.pointsAwarded ? (
-                  <span className="figure text-xs text-success-text bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 flex items-center gap-1.5">
-                    <Award size={14} /> +{JOURNAL_POINTS.entryCompleted} pts earned
-                  </span>
+                  <span className="text-purple-hierarchy">+{JOURNAL_POINTS.entryCompleted} pts</span>
                 ) : (
-                  <span className="text-xs text-content-disabled">
-                    No points
-                  </span>
+                  'No points'
                 )}
-              </div>
-
-              <div>
-                <h4 className="stat-label mb-2">
-                  Notes
-                </h4>
-                <div className="text-sm text-content-secondary leading-relaxed whitespace-pre-wrap min-h-[100px]">
-                  {hasNotes ? (
-                    selectedEntry.content
-                  ) : (
-                    <span className="italic text-content-disabled flex items-center gap-1.5">
-                      <Info size={15} /> Mood recorded, no notes added
-                    </span>
-                  )}
-                </div>
-              </div>
-
+              </span>
             </div>
-          );
-        })()}
+            <p className="text-sm text-content-secondary leading-relaxed whitespace-pre-wrap min-h-[100px]" dir="auto">
+              {selectedEntry.content?.trim() ? selectedEntry.content : <span className="text-content-muted">Mood only, no notes</span>}
+            </p>
+          </div>
+        )}
       </Dialog>
 
-      {/* CONFIRM DELETE MODAL */}
       <ConfirmDeleteModal
         open={!!deleteModalEntry}
         onClose={() => setDeleteModalEntry(null)}
         isDeleting={isDeleting}
         onConfirm={async () => {
-          if (deleteModalEntry) {
-            await executeDelete(async () => {
-              await store.deleteJournalEntry(deleteModalEntry.id);
-              setDeleteModalEntry(null);
-              showSuccessToast('Entry deleted', 'Journal entry removed successfully.', `journal_${deleteModalEntry.id}`);
-            });
-          }
+          if (!deleteModalEntry) return;
+          const target = deleteModalEntry;
+          await executeDelete(async () => {
+            await store.deleteJournalEntry(target.id);
+            setDeleteModalEntry(null);
+            showSuccessToast('Entry deleted', formatDateLong(target.date), `journal_${target.id}`);
+          });
         }}
         title="Delete journal entry?"
-        itemName={`Journal Entry (${deleteModalEntry?.date})`}
-        description={
-          deleteModalEntry?.pointsAwarded && deleteModalEntry.date === todayKey()
-            ? `Delete your journal entry for ${deleteModalEntry.date}? This reverses the +${JOURNAL_POINTS.entryCompleted} points awarded today.`
-            : deleteModalEntry?.pointsAwarded
-              ? `Delete your journal entry for ${deleteModalEntry.date}? Points already earned for that day stay.`
-              : `Delete your journal entry for ${deleteModalEntry?.date}?`
-        }
+        itemName={deleteModalEntry ? formatDateLong(deleteModalEntry.date) : ''}
+        description={[
+          'Your writing for this day is deleted for good.',
+          deleteModalEntry?.pointsAwarded
+            ? deletingToday
+              ? `Today's +${JOURNAL_POINTS.entryCompleted} points come off.`
+              : 'The points you earned that day stay.'
+            : '',
+          deletingToday
+            ? 'Your journal streak may go down.'
+            : 'Your journal streak can break, and the day leaves your mood chart.',
+        ]
+          .filter(Boolean)
+          .join(' ')}
       />
     </div>
   );
