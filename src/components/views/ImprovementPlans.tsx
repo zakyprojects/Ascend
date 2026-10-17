@@ -1599,6 +1599,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
         format={(n) => `${n} ${progressUpdate?.unit ?? ''}`.trim()}
         addLabel="Amount to add"
         setLabel="New total"
+        decimal
         tone="warning"
         onSave={(next) => {
           if (!progressUpdate) return;

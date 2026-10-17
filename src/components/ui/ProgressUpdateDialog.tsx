@@ -24,6 +24,8 @@ export interface ProgressUpdateDialogProps {
   setLabel: string;
   /** What the − / + buttons move by (5 for a percentage). */
   step?: number;
+  /** Amounts may have decimals (a plan target like 21.1 km). Whole numbers by default. */
+  decimal?: boolean;
   tone?: ProgressTone;
   /** Gets the new total. Throw to keep the dialog open with the reason shown. */
   onSave: (next: number) => void | Promise<void>;
@@ -48,6 +50,7 @@ export function ProgressUpdateDialog({
   addLabel,
   setLabel,
   step = 1,
+  decimal = false,
   tone = 'brand',
   onSave,
 }: ProgressUpdateDialogProps) {
@@ -74,8 +77,10 @@ export function ProgressUpdateDialog({
 
   const form = useUnsavedChanges(open, [mode, amount, total]);
 
-  const next = mode === 'add' ? clamp(current + amount, 0, target) : clamp(total, 0, target);
-  const delta = next - current;
+  // Rounded so decimal amounts never show float noise (0.1 + 0.2).
+  const round = (n: number) => Math.round(n * 100) / 100;
+  const next = round(mode === 'add' ? clamp(current + amount, 0, target) : clamp(total, 0, target));
+  const delta = round(next - current);
 
   const handleSubmit = async () => {
     if (delta === 0) {
@@ -96,8 +101,9 @@ export function ProgressUpdateDialog({
 
   const fieldId = mode === 'add' ? 'progress-update-amount' : 'progress-update-total';
   const value = mode === 'add' ? amount : total;
-  const min = mode === 'add' ? 1 : 0;
-  const max = mode === 'add' ? remaining : target;
+  // Add needs more than 0: whole numbers say "Enter 1 or more." natively, decimals via validate.
+  const min = mode === 'add' && !decimal ? 1 : 0;
+  const max = round(mode === 'add' ? remaining : target);
   const change = (n: number) => (mode === 'add' ? setAmount(n) : setTotal(n));
 
   const modeButton = (id: Mode, label: string, disabled = false) => (
@@ -141,7 +147,13 @@ export function ProgressUpdateDialog({
         </>
       }
     >
-      <Form id="progress-update-form" onSubmit={handleSubmit} controller={issues} className="space-y-5">
+      <Form
+        id="progress-update-form"
+        onSubmit={handleSubmit}
+        controller={issues}
+        validate={() => (mode === 'add' && amount <= 0 ? { message: 'Enter more than 0.', field: fieldId } : null)}
+        className="space-y-5"
+      >
         {/* Live preview: from → to, the change, and the bar at the new amount. */}
         <div className="rounded-xl border border-overlay-subtle bg-bg-800 p-4 space-y-3" aria-live="polite">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -178,7 +190,7 @@ export function ProgressUpdateDialog({
               type="button"
               aria-label="Decrease"
               disabled={value <= min}
-              onClick={() => change(clamp(value - step, min, max))}
+              onClick={() => change(round(clamp(value - step, min, max)))}
               className="btn-secondary h-11 w-11 shrink-0 p-0 disabled:opacity-40"
             >
               <Minus size={18} />
@@ -191,6 +203,7 @@ export function ProgressUpdateDialog({
               max={max}
               value={value}
               onValueChange={change}
+              decimal={decimal}
               enterKeyHint="done"
               className="text-center figure"
               hint={
@@ -203,7 +216,7 @@ export function ProgressUpdateDialog({
               type="button"
               aria-label="Increase"
               disabled={value >= max}
-              onClick={() => change(clamp(value + step, min, max))}
+              onClick={() => change(round(clamp(value + step, min, max)))}
               className="btn-secondary h-11 w-11 shrink-0 p-0 disabled:opacity-40"
             >
               <Plus size={18} />
