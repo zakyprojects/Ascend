@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { cx, Dialog, EmptyState as EmptyStateBase, ProgressBar, SlidingPill, Switch } from '@/components/ui/primitives';
+import { cx, Dialog, EmptyState as EmptyStateBase, FieldRow, Form, Input, ProgressBar, Select, SlidingPill, Switch, Textarea } from '@/components/ui/primitives';
+import { toUserMessage } from '@/lib/userMessage';
 import {
   Target,
   FolderKanban,
@@ -292,7 +293,7 @@ function TaskItemRow({
           <button
             onClick={() => setDeleteTaskTarget(task)}
             className={`p-1.5 text-content-muted hover:text-rose-theme transition-colors ${TAP_TARGET_Y}`}
-            title="Delete Task"
+            title="Delete task"
             aria-label={`Delete task "${task.title}"`}
           >
             <Trash2 size={14} />
@@ -359,7 +360,7 @@ function TaskItemRow({
                 <button
                   onClick={() => setDeleteSubtaskTarget({ taskId: task.id, subtask: st })}
                   className={`p-1 text-content-disabled hover:text-rose-theme transition-all ${TAP_TARGET}`}
-                  title="Delete Subtask"
+                  title="Delete subtask"
                 >
                   <Trash2 size={12} />
                 </button>
@@ -934,6 +935,11 @@ export function ProjectsGoalsView({
     setGoalModalOpen(true);
   };
 
+  // A failed save keeps the dialog open with what was typed and says why.
+  const reportSaveFailure = (what: string, err: unknown) => {
+    showErrorToast(`Couldn't save ${what}`, toUserMessage(err, 'Try again.'));
+  };
+
   const handleSaveGoal = async () => {
     if (!goalFormTitle.trim()) return;
 
@@ -961,7 +967,7 @@ export function ProjectsGoalsView({
         showSuccessToast('Goal created', `"${goalFormTitle.trim()}" is now active.`);
       }
       setGoalModalOpen(false);
-    });
+    }).catch((err) => reportSaveFailure('goal', err));
   };
 
   const handleUpdateGoalManualProgress = (goal: Goal, val: number) => {
@@ -1071,7 +1077,7 @@ export function ProjectsGoalsView({
         showSuccessToast('Project created', `"${projectFormTitle.trim()}" added.`);
       }
       setProjectModalOpen(false);
-    });
+    }).catch((err) => reportSaveFailure('project', err));
   };
 
   const handleUpdateProjectManualProgress = (project: Project, val: number) => {
@@ -1183,6 +1189,13 @@ export function ProjectsGoalsView({
     setTaskModalOpen(true);
   };
 
+  const addModalSubtask = () => {
+    const subtaskTitle = newModalSubtaskTitle.trim();
+    if (!subtaskTitle) return;
+    setTaskFormSubtasks((prev) => [...prev, { id: trustedNowMs().toString(), title: subtaskTitle, completed: false }]);
+    setNewModalSubtaskTitle('');
+  };
+
   const handleSaveTaskModal = async () => {
     if (!taskFormTitle.trim()) return;
 
@@ -1212,7 +1225,7 @@ export function ProjectsGoalsView({
         showSuccessToast('Task created', `"${taskFormTitle.trim()}" added.`);
       }
       setTaskModalOpen(false);
-    });
+    }).catch((err) => reportSaveFailure('task', err));
   };
 
   const handleToggleTask = (task: Task) => {
@@ -1712,7 +1725,7 @@ export function ProjectsGoalsView({
                           <button
                             onClick={() => setDeleteGoalTarget(goal)}
                             className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors ${TAP_TARGET_Y}`}
-                            title="Delete Goal"
+                            title="Delete goal"
                             aria-label={`Delete goal "${goal.title}"`}
                           >
                             <Trash2 size={14} />
@@ -2141,7 +2154,7 @@ export function ProjectsGoalsView({
                           <button
                             onClick={() => setDeleteProjectTarget(project)}
                             className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors ${TAP_TARGET_Y}`}
-                            title="Delete Project"
+                            title="Delete project"
                             aria-label={`Delete project "${project.title}"`}
                           >
                             <Trash2 size={14} />
@@ -2544,53 +2557,71 @@ export function ProjectsGoalsView({
         preventClose={isKeyLoading('save_goal')}
         onClose={() => setGoalModalOpen(false)}
         dirty={goalForm.dirty}
-        title={editingGoal ? 'Edit Goal' : 'Create New Goal'}
+        title={editingGoal ? 'Edit goal' : 'Create goal'}
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isKeyLoading('save_goal')}
+              onClick={() => goalForm.confirmDiscard(() => setGoalModalOpen(false))}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" form="pg-goal-form" disabled={isKeyLoading('save_goal')} className="btn-primary">
+              {isKeyLoading('save_goal') ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
+              <span>{editingGoal ? 'Save changes' : 'Create goal'}</span>
+            </button>
+          </>
+        }
       >
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="pg-goal-title" className="block label mb-1">
-              Goal Title <span className="text-rose-theme">*</span>
-            </label>
-            <input
-              id="pg-goal-title"
-              type="text"
-              placeholder="e.g. Achieve Financial Freedom, Run a Marathon, Master Spanish..."
-              value={goalFormTitle}
-              onChange={(e) => setGoalFormTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50"
-            />
-          </div>
+        <Form id="pg-goal-form" onSubmit={handleSaveGoal} className="space-y-4">
+          <Input
+            id="pg-goal-title"
+            label="Goal"
+            placeholder="e.g. Achieve Financial Freedom, Run a Marathon, Master Spanish"
+            value={goalFormTitle}
+            onChange={(e) => setGoalFormTitle(e.target.value)}
+            maxLength={120}
+            autoComplete="off"
+            required
+          />
+
+          <Textarea
+            id="pg-goal-description"
+            label="Description"
+            optional
+            rows={2}
+            placeholder="Why this goal matters and what success looks like"
+            value={goalFormDescription}
+            onChange={(e) => setGoalFormDescription(e.target.value)}
+            className="min-h-0"
+            maxLength={1000}
+          />
 
           <div>
-            <label htmlFor="pg-goal-description" className="block label mb-1">Description (Optional)</label>
-            <textarea
-              id="pg-goal-description"
-              rows={2}
-              placeholder="Why this goal matters and what success looks like..."
-              value={goalFormDescription}
-              onChange={(e) => setGoalFormDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="pg-goal-category" className="block label mb-1">Category Tag</label>
-            <input
+            <Input
               id="pg-goal-category"
-              type="text"
-              placeholder="e.g. Career, Health, Finance..."
+              label="Category"
+              optional
+              placeholder="e.g. Career, Health, Finance"
               value={goalFormCategory}
               onChange={(e) => setGoalFormCategory(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50 mb-1.5"
+              maxLength={40}
+              autoComplete="off"
             />
-            {/* Quick Suggestions */}
-            <div className="flex flex-wrap gap-x-1.5 gap-y-1.5">
+            <div className="flex flex-wrap gap-1.5 mt-2">
               {GOAL_CATEGORY_SUGGESTIONS.map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setGoalFormCategory(cat)}
-                  className="text-2xs px-2 py-0.5 rounded-full bg-overlay-subtle hover:bg-purple-500/20 text-content-muted hover:text-purple-hierarchy border border-overlay-subtle transition-colors"
+                  aria-pressed={goalFormCategory === cat}
+                  className={`min-h-9 sm:min-h-0 text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                    goalFormCategory === cat
+                      ? 'bg-primary-500/15 border-primary-500/40 text-brand-text'
+                      : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:text-content-secondary'
+                  }`}
                 >
                   {cat}
                 </button>
@@ -2598,72 +2629,46 @@ export function ProjectsGoalsView({
             </div>
           </div>
 
-          {/* Sequential Mode Toggle */}
-          <div className="p-3 bg-bg-900 border border-overlay-default rounded-xl flex items-center justify-between gap-3">
+          <div className="p-3 border border-overlay-default rounded-xl flex items-center justify-between gap-3">
             <div className="space-y-0.5">
-              <label className="text-xs font-medium text-content-secondary flex items-center gap-1.5 cursor-pointer">
-                <Lock size={13} className="text-warning-text" />
-                <span>Sequential Mode</span>
-              </label>
-              <p className="text-micro text-content-muted">
+              <p className="text-sm font-medium text-content-secondary flex items-center gap-1.5">
+                <Lock size={14} className="text-warning-text" />
+                <span>Sequential mode</span>
+              </p>
+              <p className="text-xs text-content-muted">
                 Linked projects must be finished in order, one at a time.
               </p>
             </div>
             <Switch
               checked={goalFormSequentialMode}
               onChange={() => setGoalFormSequentialMode(!goalFormSequentialMode)}
-              label="Sequential Mode"
+              label="Sequential mode"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="pg-goal-target-date" className="block label mb-1">Target Completion Date</label>
-              <input
-                id="pg-goal-target-date"
-                type="date"
-                min={minAllowedDate}
-                max={maxAllowedDate}
-                value={goalFormTargetDate}
-                onChange={(e) => setGoalFormTargetDate(e.target.value)}
-                className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="pg-goal-status" className="block label mb-1">Status</label>
-              <select
-                id="pg-goal-status"
-                value={goalFormStatus}
-                onChange={(e) => setGoalFormStatus(e.target.value as GoalStatus)}
-                className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50"
-              >
-                <option value="active">Active</option>
-                <option value="achieved">Achieved</option>
-                <option value="abandoned">Abandoned</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-overlay-subtle">
-            <button
-              type="button"
-              onClick={() => goalForm.confirmDiscard(() => setGoalModalOpen(false))}
-              className="btn-secondary text-xs px-4 py-2"
+          <FieldRow>
+            <Input
+              id="pg-goal-target-date"
+              label="Target date"
+              optional
+              type="date"
+              min={minAllowedDate}
+              max={maxAllowedDate}
+              value={goalFormTargetDate}
+              onChange={(e) => setGoalFormTargetDate(e.target.value)}
+            />
+            <Select
+              id="pg-goal-status"
+              label="Status"
+              value={goalFormStatus}
+              onChange={(e) => setGoalFormStatus(e.target.value as GoalStatus)}
             >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveGoal}
-              disabled={!goalFormTitle.trim() || isKeyLoading('save_goal')}
-              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 disabled:opacity-50"
-            >
-              {isKeyLoading('save_goal') ? <AscendLoadingIndicator size="sm" /> : <Check size={14} />}
-              <span>{editingGoal ? 'Save Changes' : 'Create Goal'}</span>
-            </button>
-          </div>
-        </div>
+              <option value="active">Active</option>
+              <option value="achieved">Achieved</option>
+              <option value="abandoned">Abandoned</option>
+            </Select>
+          </FieldRow>
+        </Form>
       </Dialog>
 
       {/* -------------------------------------------------------------------- */}
@@ -2674,114 +2679,98 @@ export function ProjectsGoalsView({
         preventClose={isKeyLoading('save_project')}
         onClose={() => setProjectModalOpen(false)}
         dirty={projectForm.dirty}
-        title={editingProject ? 'Edit Project' : 'Create New Project'}
-      >
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="pg-project-title" className="block label mb-1">
-              Project Title <span className="text-rose-theme">*</span>
-            </label>
-            <input
-              id="pg-project-title"
-              type="text"
-              placeholder="e.g. 30-Day Fitness Challenge, Start E-commerce Business, Kitchen Renovation..."
-              value={projectFormTitle}
-              onChange={(e) => setProjectFormTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="pg-project-description" className="block label mb-1">Description (Optional)</label>
-            <textarea
-              id="pg-project-description"
-              rows={2}
-              placeholder="Project scope and deliverables..."
-              value={projectFormDescription}
-              onChange={(e) => setProjectFormDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="pg-project-goal-id" className="block label mb-1">Link to Goal (Optional)</label>
-            <select
-              id="pg-project-goal-id"
-              value={projectFormGoalId}
-              onChange={(e) => setProjectFormGoalId(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50"
-            >
-              <option value="">None (Standalone Project)</option>
-              {goals.map((g) => (
-                <option key={g.id} value={g.id}>
-                  Goal: {g.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="pg-project-start-date" className="block label mb-1">Start Date</label>
-              <input
-                id="pg-project-start-date"
-                type="date"
-                min={minAllowedDate}
-                max={maxAllowedDate}
-                value={projectFormStartDate}
-                onChange={(e) => setProjectFormStartDate(e.target.value)}
-                className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="pg-project-due-date" className="block label mb-1">Due Date</label>
-              <input
-                id="pg-project-due-date"
-                type="date"
-                min={minAllowedDate}
-                max={maxAllowedDate}
-                value={projectFormDueDate}
-                onChange={(e) => setProjectFormDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="pg-project-status" className="block label mb-1">Status</label>
-            <select
-              id="pg-project-status"
-              value={projectFormStatus}
-              onChange={(e) => setProjectFormStatus(e.target.value as ProjectStatus)}
-              className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-primary-500/50"
-            >
-              <option value="not_started">Not Started</option>
-              <option value="in_progress">In Progress</option>
-              <option value="on_hold">On Hold</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-overlay-subtle">
+        title={editingProject ? 'Edit project' : 'Create project'}
+        footer={
+          <>
             <button
               type="button"
+              disabled={isKeyLoading('save_project')}
               onClick={() => projectForm.confirmDiscard(() => setProjectModalOpen(false))}
-              className="btn-secondary text-xs px-4 py-2"
+              className="btn-secondary"
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={handleSaveProject}
-              disabled={!projectFormTitle.trim() || isKeyLoading('save_project')}
-              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 disabled:opacity-50"
-            >
-              {isKeyLoading('save_project') ? <AscendLoadingIndicator size="sm" /> : <Check size={14} />}
-              <span>{editingProject ? 'Save Changes' : 'Create Project'}</span>
+            <button type="submit" form="pg-project-form" disabled={isKeyLoading('save_project')} className="btn-primary">
+              {isKeyLoading('save_project') ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
+              <span>{editingProject ? 'Save changes' : 'Create project'}</span>
             </button>
-          </div>
-        </div>
+          </>
+        }
+      >
+        <Form id="pg-project-form" onSubmit={handleSaveProject} className="space-y-4">
+          <Input
+            id="pg-project-title"
+            label="Project"
+            placeholder="e.g. 30-Day Fitness Challenge, Kitchen Renovation"
+            value={projectFormTitle}
+            onChange={(e) => setProjectFormTitle(e.target.value)}
+            maxLength={120}
+            autoComplete="off"
+            required
+          />
+
+          <Textarea
+            id="pg-project-description"
+            label="Description"
+            optional
+            rows={2}
+            placeholder="Project scope and deliverables"
+            value={projectFormDescription}
+            onChange={(e) => setProjectFormDescription(e.target.value)}
+            className="min-h-0"
+            maxLength={1000}
+          />
+
+          <Select
+            id="pg-project-goal-id"
+            label="Goal"
+            optional
+            value={projectFormGoalId}
+            onChange={(e) => setProjectFormGoalId(e.target.value)}
+          >
+            <option value="">None (standalone project)</option>
+            {goals.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.title}
+              </option>
+            ))}
+          </Select>
+
+          <FieldRow>
+            <Input
+              id="pg-project-start-date"
+              label="Start date"
+              optional
+              type="date"
+              min={minAllowedDate}
+              max={projectFormDueDate || maxAllowedDate}
+              value={projectFormStartDate}
+              onChange={(e) => setProjectFormStartDate(e.target.value)}
+            />
+            <Input
+              id="pg-project-due-date"
+              label="Due date"
+              optional
+              type="date"
+              min={projectFormStartDate || minAllowedDate}
+              max={maxAllowedDate}
+              value={projectFormDueDate}
+              onChange={(e) => setProjectFormDueDate(e.target.value)}
+            />
+          </FieldRow>
+
+          <Select
+            id="pg-project-status"
+            label="Status"
+            value={projectFormStatus}
+            onChange={(e) => setProjectFormStatus(e.target.value as ProjectStatus)}
+          >
+            <option value="not_started">Not started</option>
+            <option value="in_progress">In progress</option>
+            <option value="on_hold">On hold</option>
+            <option value="completed">Completed</option>
+          </Select>
+        </Form>
       </Dialog>
 
       {/* -------------------------------------------------------------------- */}
@@ -2792,157 +2781,128 @@ export function ProjectsGoalsView({
         preventClose={isKeyLoading('save_task_modal')}
         onClose={() => setTaskModalOpen(false)}
         dirty={taskForm.dirty}
-        title={editingTask ? 'Edit Task' : 'Create New Task'}
+        title={editingTask ? 'Edit task' : 'Create task'}
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isKeyLoading('save_task_modal')}
+              onClick={() => taskForm.confirmDiscard(() => setTaskModalOpen(false))}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" form="pg-task-form" disabled={isKeyLoading('save_task_modal')} className="btn-primary">
+              {isKeyLoading('save_task_modal') ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
+              <span>{editingTask ? 'Save changes' : 'Create task'}</span>
+            </button>
+          </>
+        }
       >
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="pg-task-title" className="block label mb-1">
-              Task Title <span className="text-rose-theme">*</span>
-            </label>
-            <input
-              id="pg-task-title"
-              type="text"
-              placeholder="e.g. Read 10 pages, Do 50 pushups, Research 5 suppliers..."
-              value={taskFormTitle}
-              onChange={(e) => setTaskFormTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-emerald-500/50"
-            />
-          </div>
+        <Form id="pg-task-form" onSubmit={handleSaveTaskModal} className="space-y-4">
+          <Input
+            id="pg-task-title"
+            label="Task"
+            placeholder="e.g. Read 10 pages, Research 5 suppliers"
+            value={taskFormTitle}
+            onChange={(e) => setTaskFormTitle(e.target.value)}
+            maxLength={120}
+            autoComplete="off"
+            required
+          />
 
-          <div>
-            <label htmlFor="pg-task-description" className="block label mb-1">Description (Optional)</label>
-            <textarea
-              id="pg-task-description"
-              rows={2}
-              placeholder="Task instructions and notes..."
-              value={taskFormDescription}
-              onChange={(e) => setTaskFormDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-emerald-500/50"
-            />
-          </div>
+          <Textarea
+            id="pg-task-description"
+            label="Description"
+            optional
+            rows={2}
+            placeholder="Task instructions and notes"
+            value={taskFormDescription}
+            onChange={(e) => setTaskFormDescription(e.target.value)}
+            className="min-h-0"
+            maxLength={1000}
+          />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="pg-task-project-id" className="block label mb-1">Linked Project</label>
-              <select
-                id="pg-task-project-id"
-                value={taskFormProjectId}
-                onChange={(e) => setTaskFormProjectId(e.target.value)}
-                className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-emerald-500/50"
-              >
-                <option value="">None (Standalone Task)</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="pg-task-priority" className="block label mb-1">Priority</label>
-              <select
-                id="pg-task-priority"
-                value={taskFormPriority}
-                onChange={(e) => setTaskFormPriority(e.target.value as TaskPriority)}
-                className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-emerald-500/50"
-              >
-                <option value="high">High Priority</option>
-                <option value="medium">Medium Priority</option>
-                <option value="low">Low Priority</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="pg-task-due-date" className="block label mb-1">Due Date</label>
-            <input
-              id="pg-task-due-date"
-              type="date"
-              min={minAllowedDate}
-              max={maxAllowedDate}
-              value={taskFormDueDate}
-              onChange={(e) => setTaskFormDueDate(e.target.value)}
-              className="w-full px-3 py-2 bg-bg-900 border border-overlay-default rounded-xl text-xs text-content-primary focus:outline-none focus:border-emerald-500/50"
-            />
-          </div>
-
-          {/* Subtasks in Modal */}
-          <div>
-            <label className="block label mb-1">Subtasks Checklist</label>
-            <div className="space-y-1.5 mb-2">
-              {taskFormSubtasks.map((st, idx) => (
-                <div key={st.id} className="flex items-center justify-between gap-2 p-1.5 bg-bg-900 rounded-lg border border-overlay-subtle">
-                  <span className="text-xs text-content-secondary truncate">{st.title}</span>
-                  <button
-                    type="button"
-                    onClick={() => setTaskFormSubtasks((prev) => prev.filter((_, i) => i !== idx))}
-                    className={`text-content-muted hover:text-rose-theme p-1 ${TAP_TARGET}`}
-                    aria-label={`Remove subtask "${st.title}"`}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
+          <FieldRow>
+            <Select
+              id="pg-task-project-id"
+              label="Project"
+              optional
+              value={taskFormProjectId}
+              onChange={(e) => setTaskFormProjectId(e.target.value)}
+            >
+              <option value="">None (standalone task)</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.title}
+                </option>
               ))}
-            </div>
+            </Select>
+            <Select
+              id="pg-task-priority"
+              label="Priority"
+              value={taskFormPriority}
+              onChange={(e) => setTaskFormPriority(e.target.value as TaskPriority)}
+            >
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </Select>
+          </FieldRow>
+
+          <Input
+            id="pg-task-due-date"
+            label="Due date"
+            optional
+            type="date"
+            min={minAllowedDate}
+            max={maxAllowedDate}
+            value={taskFormDueDate}
+            onChange={(e) => setTaskFormDueDate(e.target.value)}
+          />
+
+          <div role="group" aria-labelledby="pg-task-subtasks-label">
+            <p id="pg-task-subtasks-label" className="block label mb-1.5">Subtasks</p>
+            {taskFormSubtasks.length > 0 && (
+              <div className="space-y-1.5 mb-2">
+                {taskFormSubtasks.map((st, idx) => (
+                  <div key={st.id} className="flex items-center justify-between gap-2 py-1.5 pl-3 pr-1.5 rounded-lg border border-overlay-subtle">
+                    <span className="text-sm text-content-secondary truncate">{st.title}</span>
+                    <button
+                      type="button"
+                      onClick={() => setTaskFormSubtasks((prev) => prev.filter((_, i) => i !== idx))}
+                      className={`text-content-muted hover:text-rose-theme p-1 ${TAP_TARGET}`}
+                      aria-label={`Remove subtask "${st.title}"`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Add subtask title..."
+              <Input
+                aria-label="New subtask"
+                placeholder="Add a subtask"
                 value={newModalSubtaskTitle}
                 onChange={(e) => setNewModalSubtaskTitle(e.target.value)}
+                maxLength={120}
+                autoComplete="off"
+                enterKeyHint="enter"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    if (newModalSubtaskTitle.trim()) {
-                      setTaskFormSubtasks((prev) => [
-                        ...prev,
-                        { id: trustedNowMs().toString(), title: newModalSubtaskTitle.trim(), completed: false },
-                      ]);
-                      setNewModalSubtaskTitle('');
-                    }
+                    addModalSubtask();
                   }
                 }}
-                className="flex-1 px-3 py-1.5 bg-bg-900 border border-overlay-default rounded-lg text-xs text-content-primary focus:outline-none focus:border-primary-500/60 focus:ring-1 focus:ring-primary-500/30"
               />
-              <button
-                type="button"
-                onClick={() => {
-                  if (newModalSubtaskTitle.trim()) {
-                    setTaskFormSubtasks((prev) => [
-                      ...prev,
-                      { id: trustedNowMs().toString(), title: newModalSubtaskTitle.trim(), completed: false },
-                    ]);
-                    setNewModalSubtaskTitle('');
-                  }
-                }}
-                className="px-3 py-1.5 bg-overlay-subtle hover:bg-overlay-default text-content-secondary rounded-lg text-xs font-semibold"
-              >
+              <button type="button" onClick={addModalSubtask} className="btn-secondary shrink-0 min-h-11 sm:min-h-10">
                 Add
               </button>
             </div>
           </div>
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-overlay-subtle">
-            <button
-              type="button"
-              onClick={() => taskForm.confirmDiscard(() => setTaskModalOpen(false))}
-              className="btn-secondary text-xs px-4 py-2"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveTaskModal}
-              disabled={!taskFormTitle.trim() || isKeyLoading('save_task_modal')}
-              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 disabled:opacity-50"
-            >
-              {isKeyLoading('save_task_modal') ? <AscendLoadingIndicator size="sm" /> : <Check size={14} />}
-              <span>{editingTask ? 'Save Changes' : 'Create Task'}</span>
-            </button>
-          </div>
-        </div>
+        </Form>
       </Dialog>
 
       {/* -------------------------------------------------------------------- */}
@@ -2954,7 +2914,7 @@ export function ProjectsGoalsView({
         open={Boolean(deleteGoalTarget)}
         onClose={() => setDeleteGoalTarget(null)}
         onConfirm={handleDeleteGoalConfirm}
-        title="Delete Goal?"
+        title="Delete goal?"
         description={
           deleteGoalTarget
             ? `Delete goal "${deleteGoalTarget.title}"? Its ${
@@ -2962,7 +2922,7 @@ export function ProjectsGoalsView({
               } linked project(s) will become unlinked, not deleted.`
             : undefined
         }
-        confirmText="Delete Goal"
+        confirmText="Delete goal"
       />
 
       {/* 2. Delete Project Confirm */}
@@ -2970,7 +2930,7 @@ export function ProjectsGoalsView({
         open={Boolean(deleteProjectTarget)}
         onClose={() => setDeleteProjectTarget(null)}
         onConfirm={handleDeleteProjectConfirm}
-        title="Delete Project?"
+        title="Delete project?"
         description={
           deleteProjectTarget
             ? `Delete project "${deleteProjectTarget.title}"? Its ${
@@ -2978,7 +2938,7 @@ export function ProjectsGoalsView({
               } linked task(s) will become unlinked, not deleted.`
             : undefined
         }
-        confirmText="Delete Project"
+        confirmText="Delete project"
       />
 
       {/* 3. Delete Task Confirm */}
@@ -2986,9 +2946,9 @@ export function ProjectsGoalsView({
         open={Boolean(deleteTaskTarget)}
         onClose={() => setDeleteTaskTarget(null)}
         onConfirm={handleDeleteTaskConfirm}
-        title="Delete Task?"
+        title="Delete task?"
         itemName={deleteTaskTarget?.title}
-        confirmText="Delete Task"
+        confirmText="Delete task"
       />
 
       {/* 4. Delete Subtask Confirm */}
@@ -2996,9 +2956,9 @@ export function ProjectsGoalsView({
         open={Boolean(deleteSubtaskTarget)}
         onClose={() => setDeleteSubtaskTarget(null)}
         onConfirm={handleDeleteSubtaskConfirm}
-        title="Delete Subtask?"
+        title="Delete subtask?"
         itemName={deleteSubtaskTarget?.subtask.title}
-        confirmText="Delete Subtask"
+        confirmText="Delete subtask"
       />
 
       {/* -------------------------------------------------------------------- */}
