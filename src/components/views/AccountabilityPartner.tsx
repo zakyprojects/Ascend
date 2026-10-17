@@ -394,6 +394,17 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     });
   };
 
+  const handleDeclineInvite = async (inviteId: string) => {
+    setInviteError(null);
+    await executeWithKey(`decline_invite_${inviteId}`, async () => {
+      try {
+        await store.declinePartnerInvite(inviteId);
+      } catch (err: any) {
+        setInviteError(toUserMessage(err, "Couldn't decline the invite. Try again."));
+      }
+    });
+  };
+
   // Challenges specific to the currently selected partner relationship
   const isolatedChallenges = useMemo(() => {
     return sharedChallenges.filter(
@@ -669,7 +680,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      disabled={isKeyLoading(`accept_invite_${invite.id}`)}
+                      disabled={isKeyLoading(`accept_invite_${invite.id}`) || isKeyLoading(`decline_invite_${invite.id}`)}
                       onClick={() => handleAcceptInvite(invite.id)}
                       className="px-3 py-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed text-on-brand font-semibold rounded-lg transition-colors flex items-center gap-1.5"
                     >
@@ -679,10 +690,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                       <span>{isKeyLoading(`accept_invite_${invite.id}`) ? 'Accepting...' : 'Accept'}</span>
                     </button>
                     <button
-                      onClick={() => store.declinePartnerInvite(invite.id)}
-                      className="px-3 py-1 hover:bg-overlay-subtle text-content-tertiary font-medium rounded-lg border border-overlay-default transition-colors"
+                      disabled={isKeyLoading(`accept_invite_${invite.id}`) || isKeyLoading(`decline_invite_${invite.id}`)}
+                      onClick={() => handleDeclineInvite(invite.id)}
+                      className="px-3 py-1 hover:bg-overlay-subtle disabled:opacity-60 disabled:cursor-not-allowed text-content-tertiary font-medium rounded-lg border border-overlay-default transition-colors flex items-center gap-1.5"
                     >
-                      Decline
+                      {isKeyLoading(`decline_invite_${invite.id}`) ? <AscendLoadingIndicator size="sm" /> : null}
+                      <span>{isKeyLoading(`decline_invite_${invite.id}`) ? 'Declining...' : 'Decline'}</span>
                     </button>
                   </div>
                 </div>
@@ -1783,11 +1796,18 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           if (challengeToDelete) {
             const challengeId = challengeToDelete.id;
             const challengeTitle = challengeToDelete.title;
-            setChallengeToDelete(null);
-            store.deleteSharedChallenge(challengeId);
-            showSuccessToast('Pact removed', `Deleted "${challengeTitle}".`, `challenge_${challengeId}`);
+            await executeWithKey(`delete_pact_${challengeId}`, async () => {
+              try {
+                await store.deleteSharedChallenge(challengeId);
+                setChallengeToDelete(null);
+                showSuccessToast('Pact removed', `Deleted "${challengeTitle}".`, `challenge_${challengeId}`);
+              } catch (err: any) {
+                showErrorToast("Couldn't delete pact", toUserMessage(err, 'Try again.'));
+              }
+            });
           }
         }}
+        isDeleting={challengeToDelete ? isKeyLoading(`delete_pact_${challengeToDelete.id}`) : false}
         title="Delete Joint Pact?"
         itemName={challengeToDelete?.title}
         description={`Delete "${challengeToDelete?.title}"? This removes the pact for both of you, for good.`}
@@ -1802,11 +1822,18 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           if (inviteToCancel) {
             const inviteId = inviteToCancel.id;
             const toUser = inviteToCancel.toUsername;
-            setInviteToCancel(null);
-            store.cancelPartnerInvite(inviteId);
-            showSuccessToast('Invite cancelled', `Cancelled invite to ${toUser}.`, `invite_${inviteId}`);
+            await executeWithKey(`cancel_invite_${inviteId}`, async () => {
+              try {
+                await store.cancelPartnerInvite(inviteId);
+                setInviteToCancel(null);
+                showSuccessToast('Invite cancelled', `Cancelled invite to ${toUser}.`, `invite_${inviteId}`);
+              } catch (err: any) {
+                showErrorToast("Couldn't cancel invite", toUserMessage(err, 'Try again.'));
+              }
+            });
           }
         }}
+        isDeleting={inviteToCancel ? isKeyLoading(`cancel_invite_${inviteToCancel.id}`) : false}
         title="Cancel Partner Invite?"
         itemName={`Invite to ${inviteToCancel?.toUsername}`}
         description={`Cancel your invite to ${inviteToCancel?.toUsername}?`}
