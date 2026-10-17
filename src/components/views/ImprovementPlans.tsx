@@ -150,6 +150,8 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   const [expandedReflections, setExpandedReflections] = useState<{ [planId: string]: boolean }>({});
   const [editingNoteId, setEditingNoteId] = useState<{ [noteKey: string]: boolean }>({});
   const [editingNoteText, setEditingNoteText] = useState<{ [noteKey: string]: string }>({});
+  // The saved text of each note when its inline edit opened, so the leave guard can tell a change.
+  const [editingNoteOriginal, setEditingNoteOriginal] = useState<{ [noteKey: string]: string }>({});
 
   const [planToDelete, setPlanToDelete] = useState<ImprovementPlan | null>(null);
   const [followToDelete, setFollowToDelete] = useState<UserPlanFollow | null>(null);
@@ -211,6 +213,13 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   useUnsavedChanges(
     true,
     Object.entries(reflectionInput).filter(([, text]) => text.trim() !== '')
+  );
+  // The inline "edit reflection note" boxes: dirty while an open box differs from its saved note.
+  useUnsavedChanges(
+    true,
+    Object.entries(editingNoteText).filter(
+      ([key, text]) => editingNoteId[key] && text !== (editingNoteOriginal[key] ?? '')
+    )
   );
 
   const [noteToDelete, setNoteToDelete] = useState<{ planId: string; noteKey: string; mode: 'creator_interactive' | 'follower_interactive' } | null>(null);
@@ -830,6 +839,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                             onClick={() => {
                               setEditingNoteId({ ...editingNoteId, [noteKey]: !isEditingThisNote });
                               setEditingNoteText({ ...editingNoteText, [noteKey]: n.note });
+                              setEditingNoteOriginal({ ...editingNoteOriginal, [noteKey]: n.note });
                             }}
                             className={`text-content-muted hover:text-purple-hierarchy transition-colors ${TAP_TARGET_Y}`}
                             title="Edit note"

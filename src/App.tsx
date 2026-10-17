@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
 import { useAppState } from '@/lib/store';
 import { useViewRoute } from '@/lib/useViewRoute';
+import { confirmLeave } from '@/lib/unsavedChanges';
 import { authPathWithNext, nextFromSearch, pathForAuthRoute, pathForView } from '@/lib/routes';
 import { consumeSignOutByUser, logoutUser } from '@/lib/auth';
 import type { View } from '@/lib/views';
@@ -193,9 +194,11 @@ function App() {
   }, [appVisible]);
 
   // In-app sign-in buttons: a guest saves progress on /signup, anyone else signs in on /login;
-  // both come back to this page afterwards. Local-only mode has no sign-in, so no buttons.
+  // both come back to this page afterwards. Unsaved typing asks "Discard changes?" first, like any
+  // page change. Local-only mode has no sign-in, so no buttons.
   const openAuth = authGate
-    ? () => goToPath(authPathWithNext(currentUser ? 'signup' : 'login', pathForView(view) + search))
+    ? () =>
+        confirmLeave(() => goToPath(authPathWithNext(currentUser ? 'signup' : 'login', pathForView(view) + search)))
     : undefined;
 
   // The app itself: not while a sign-in page is up, nor for the one frame a redirect away from
