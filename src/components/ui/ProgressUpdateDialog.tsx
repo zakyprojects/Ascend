@@ -220,15 +220,27 @@ export function UpdateProgressButton({
   onClick,
   disabled,
   label = 'Update progress',
+  variant = 'secondary',
   className,
 }: {
   onClick: () => void;
   disabled?: boolean;
   label?: string;
+  /** Primary where updating is the card's main action (a book being read). */
+  variant?: 'primary' | 'secondary';
   className?: string;
 }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className={cx('btn-secondary text-xs disabled:opacity-50 disabled:cursor-not-allowed', className)}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cx(
+        variant === 'primary' ? 'btn-primary' : 'btn-secondary',
+        'text-xs whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed',
+        className
+      )}
+    >
       <TrendingUp size={14} aria-hidden="true" />
       <span>{label}</span>
     </button>

@@ -31,6 +31,7 @@ import { CapMeter } from '@/components/ui/CapMeter';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
 import { useAsyncAction } from '@/lib/useAsyncAction';
+import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { useToast } from '@/components/ui/Toast';
 import { BarChart } from '@/components/ui/charts';
@@ -73,7 +74,6 @@ export function ReadingHub({ store }: { store: AppStore }) {
   const [startTargetDate, setStartTargetDate] = useState<string>('');
 
   // Form states for Progress & Finish
-  const [progressInput, setProgressInput] = useState<number>(20);
   const [reflectionInput, setReflectionInput] = useState('');
 
   const addBookForm = useUnsavedChanges(addCustomModalOpen, [
@@ -88,7 +88,6 @@ export function ReadingHub({ store }: { store: AppStore }) {
   ]);
   const finishForm = useUnsavedChanges(finishModalBook?.id ?? null, reflectionInput);
   const startForm = useUnsavedChanges(startReadingModalBook?.id ?? null, [startTotalAmount, startUnit, startTargetDate]);
-  const progressForm = useUnsavedChanges(progressModalBook?.id ?? null, progressInput);
 
   const libraryBooks = store.state.libraryBooks;
   const readingLogs = store.state.readingLogs;
@@ -281,7 +280,6 @@ export function ReadingHub({ store }: { store: AppStore }) {
   }, [completedBooks]);
 
   const { isLoading: isAdding, executeFn: executeAdd } = useAsyncAction();
-  const { isLoading: isUpdatingProgress, executeFn: executeProgress } = useAsyncAction();
   const { isLoading: isFinishing, executeFn: executeFinish } = useAsyncAction();
 
   const handleAddCustomSubmit = async (e: React.FormEvent) => {
@@ -330,32 +328,19 @@ export function ReadingHub({ store }: { store: AppStore }) {
 
   const progressTotal = progressModalBook?.totalAmount ?? progressModalBook?.totalPages ?? 250;
 
-  const handleProgressSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // The dialog checks the range; this saves the new total like before (delta for the log).
+  const handleProgressSave = (newCurrent: number) => {
     if (!progressModalBook) return;
     const current = progressModalBook.currentAmount ?? progressModalBook.currentPage ?? 0;
-    const newCurrent = Number(progressInput);
-    const pagesDelta = newCurrent - current;
-    const total = progressModalBook.totalAmount ?? progressModalBook.totalPages ?? 250;
-
-    if (pagesDelta === 0) {
-      setProgressModalBook(null);
-      return;
+    store.updateReadingProgress(progressModalBook.id, newCurrent - current, newCurrent);
+    if (newCurrent >= progressTotal) {
+      setFinishModalBook({
+        ...progressModalBook,
+        currentAmount: progressTotal,
+        currentPage: progressTotal,
+        status: 'completed',
+      });
     }
-
-    await executeProgress(async () => {
-      store.updateReadingProgress(progressModalBook.id, pagesDelta, newCurrent);
-
-      if (newCurrent >= total) {
-        setFinishModalBook({
-          ...progressModalBook,
-          currentAmount: total,
-          currentPage: total,
-          status: 'completed',
-        });
-      }
-      setProgressModalBook(null);
-    });
   };
 
   const handleFinishSubmit = async (e: React.FormEvent) => {
@@ -609,16 +594,11 @@ export function ReadingHub({ store }: { store: AppStore }) {
                       {/* Action Controls */}
                       <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-2 pt-3 border-t border-overlay-subtle">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              setProgressModalBook(book);
-                              setProgressInput(book.currentAmount ?? book.currentPage ?? 0);
-                            }}
-                            className="btn-primary text-xs py-1.5 px-3 w-fit flex items-center gap-1.5 whitespace-nowrap"
-                          >
-                            <Plus size={14} className="shrink-0" />
-                            <span>Log Pages</span>
-                          </button>
+                          <UpdateProgressButton
+                            variant="primary"
+                            label="Log progress"
+                            onClick={() => setProgressModalBook(book)}
+                          />
                           <button
                             onClick={() => {
                               setFinishModalBook(book);
@@ -1072,60 +1052,18 @@ export function ReadingHub({ store }: { store: AppStore }) {
         </Form>
       </Dialog>
 
-      {/* MODAL: LOG PROGRESS (ABSOLUTE CURRENT PAGE MODEL) */}
-      <Dialog
+      {/* MODAL: LOG PROGRESS */}
+      <ProgressUpdateDialog
         open={Boolean(progressModalBook)}
-        preventClose={isUpdatingProgress}
         onClose={() => setProgressModalBook(null)}
-        dirty={progressForm.dirty}
         title={progressModalBook ? `Log progress: ${progressModalBook.title}` : 'Log progress'}
-        description={`Book length: ${progressTotal} ${progressModalBook?.unit || 'pages'}`}
-        footer={
-          <>
-            <button
-              type="button"
-              disabled={isUpdatingProgress}
-              onClick={() => progressForm.confirmDiscard(() => setProgressModalBook(null))}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-            <button type="submit" form="rh-progress-form" disabled={isUpdatingProgress} className="btn-primary">
-              {isUpdatingProgress ? <AscendLoadingIndicator size="sm" /> : null}
-              <span>Save progress</span>
-            </button>
-          </>
-        }
-      >
-        <Form id="rh-progress-form" onSubmit={handleProgressSubmit} className="space-y-4">
-          <NumberField
-            id="rh-progress-current"
-            label={`What ${progressModalBook?.unit === 'chapters' ? 'chapter' : 'page'} are you on now?`}
-            required
-            min={0}
-            max={progressTotal}
-            value={progressInput}
-            onValueChange={setProgressInput}
-            enterKeyHint="done"
-          />
-
-          <div role="group" aria-labelledby="rh-progress-quick-label">
-            <p id="rh-progress-quick-label" className="label block mb-1.5">Quick add</p>
-            <div className="grid grid-cols-4 gap-2">
-              {[1, 5, 10, 20].map((amount) => (
-                <button
-                  key={amount}
-                  type="button"
-                  onClick={() => setProgressInput((prev) => Math.min(progressTotal, prev + amount))}
-                  className="btn-secondary min-h-11 sm:min-h-9 text-xs py-1.5 px-2"
-                >
-                  +{amount}
-                </button>
-              ))}
-            </div>
-          </div>
-        </Form>
-      </Dialog>
+        current={progressModalBook?.currentAmount ?? progressModalBook?.currentPage ?? 0}
+        target={progressTotal}
+        format={(n) => `${n} ${progressModalBook?.unit === 'chapters' ? (n === 1 ? 'chapter' : 'chapters') : n === 1 ? 'page' : 'pages'}`}
+        addLabel={progressModalBook?.unit === 'chapters' ? 'Chapters read' : 'Pages read'}
+        setLabel={progressModalBook?.unit === 'chapters' ? 'Chapter you’re on' : 'Page you’re on'}
+        onSave={handleProgressSave}
+      />
 
       {/* MODAL: FINISH BOOK & REFLECTION (COMPULSORY REFLECTION) */}
       <Dialog
