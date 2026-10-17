@@ -304,6 +304,8 @@ export interface Skill {
   name: string;
   category?: string;
   manualLevel?: SkillLevel;
+  /** Practice minutes of logs the user cleared; still count toward hours and level. */
+  clearedMinutes?: number;
   createdAt: string;
 }
 

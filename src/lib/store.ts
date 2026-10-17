@@ -305,8 +305,9 @@ export function applyPresetHabitRemovalMigration(state: AppState, currentWeekKey
 const GUEST_STORAGE_KEY = 'ascend_guest_state_v2';
 /** How long the boot loader waits on a saved sign-in before offering Retry (offline). */
 const STORED_SESSION_WAIT_MS = 8000;
-/** Most workout logs one "Clear older logs" removes (tombstones must fit the 500-id list). */
+/** Most logs one "Clear older logs" removes (tombstones must fit the 500-id list). */
 const CLEAR_WORKOUTS_MAX = 300;
+const CLEAR_SKILL_LOGS_MAX = 300;
 export const LOCAL_THEME_STORAGE_KEY = 'ascend_theme_preference';
 
 export function getLocalThemePreference(): 'dark' | 'light' | null {
@@ -4639,6 +4640,41 @@ export function useAppState() {
         };
       },
       { immediate: true }
+    );
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Removes practice logs dated before `beforeDate` (a local day key). Points already earned stay
+   * (no earlier day is recomputed), and each skill keeps the cleared minutes in clearedMinutes so
+   * its hours and level do not drop. Capped per call like clearWorkoutsBefore.
+   */
+  const clearSkillLogsBefore = useCallback((beforeDate: string) => {
+    void (
+      setState(
+        (prev) => {
+          const toClear = prev.skillLogs
+            .filter((l) => l && l.date < beforeDate && l.date !== todayKey())
+            .slice(0, CLEAR_SKILL_LOGS_MAX);
+          if (toClear.length === 0) return prev;
+          const cleared = new Set(toClear.map((l) => l.id));
+          const minutesBySkill = new Map<string, number>();
+          for (const l of toClear) {
+            const mins = typeof l.durationMinutes === 'number' && Number.isFinite(l.durationMinutes) ? l.durationMinutes : 0;
+            minutesBySkill.set(l.skillId, (minutesBySkill.get(l.skillId) || 0) + mins);
+          }
+          return {
+            ...prev,
+            skills: prev.skills.map((sk) =>
+              minutesBySkill.get(sk.id) ? { ...sk, clearedMinutes: (sk.clearedMinutes || 0) + minutesBySkill.get(sk.id)! } : sk
+            ),
+            skillLogs: prev.skillLogs.filter((l) => !cleared.has(l.id)),
+            deletedEntityIds: [...(prev.deletedEntityIds || []), ...cleared].slice(-500),
+          };
+        },
+        { immediate: true, actionLabel: 'Clearing old practice logs' }
+      )
     );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -9111,6 +9147,7 @@ export function useAppState() {
     updateSkillLevel,
     deleteSkill,
     deleteSkillLog,
+    clearSkillLogsBefore,
     addBadHabit,
     logBadHabitDay,
     undoTodayBadHabitLog,

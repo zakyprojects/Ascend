@@ -123,7 +123,12 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
   const activeBooks = (store.state.libraryBooks || []).filter((b) => b.status === 'reading').length;
   const finishedBooks = (store.state.libraryBooks || []).filter((b) => b.status === 'completed').length;
 
-  const totalSkillHours = Math.round(store.state.skillLogs.reduce((sum, l) => sum + l.durationMinutes, 0) / 6) / 10;
+  const totalSkillHours =
+    Math.round(
+      (store.state.skillLogs.reduce((sum, l) => sum + l.durationMinutes, 0) +
+        store.state.skills.reduce((sum, s) => sum + (s.clearedMinutes || 0), 0)) /
+        6
+    ) / 10;
 
   const weeklyFocusMins = store.state.focusLogs
     .filter((l) => (parseDate(l.date) || new Date(0)) >= startOfWeek)
