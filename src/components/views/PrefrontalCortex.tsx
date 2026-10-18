@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
 import { addDays, startOfWeek, todayKey } from '@/lib/dates';
@@ -9,16 +9,40 @@ import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { FocusPanel } from '@/components/pfc/FocusPanel';
+import { SchedulePanel } from '@/components/pfc/SchedulePanel';
 import { FocusReflectionDialog } from '@/components/pfc/FocusReflectionDialog';
 import { DecisionJournal } from '@/components/pfc/DecisionJournal';
 import { EmotionLabeler } from '@/components/pfc/EmotionLabeler';
 import { dueDecisions, localDayOf } from '@/components/pfc/pfcLists';
 
-type PFCTab = 'focus' | 'decisions' | 'emotions';
+type PFCTab = 'focus' | 'schedule' | 'decisions' | 'emotions';
+
+/** Time Tracker's "Open section" and the `?tab=live` / `?mode=sync` link open the Schedule tab. */
+function initialTab(): PFCTab {
+  try {
+    if (sessionStorage.getItem('ascend_pending_pfc_timer_mode') === 'sync') return 'schedule';
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'live' || params.get('mode') === 'sync') return 'schedule';
+  } catch {
+    /* storage unavailable */
+  }
+  return 'focus';
+}
+
+/** The hand-offs are read by the first render (tab here, task in the timer), then dropped. */
+function clearHandOffs(): void {
+  try {
+    sessionStorage.removeItem('ascend_pending_pfc_timer_mode');
+    sessionStorage.removeItem('ascend_pending_focus_task');
+  } catch {
+    /* storage unavailable */
+  }
+}
 
 /** Prefrontal Cortex page: deep focus timer, decision journal, emotion labeling (components/pfc). */
 export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNavigate?: (view: View) => void }) {
-  const [tab, setTab] = useState<PFCTab>('focus');
+  const [tab, setTab] = useState<PFCTab>(initialTab);
+  useEffect(clearHandOffs, []);
   const { focusLogs, decisionLogs, emotionLogs, pointsHistory } = store.state;
 
   const today = todayKey();
@@ -78,8 +102,10 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
 
       <Tabs
         ariaLabel="Prefrontal cortex sections"
+        scrollable
         items={[
           { id: 'focus', label: 'Focus' },
+          { id: 'schedule', label: 'Schedule' },
           { id: 'decisions', label: 'Decisions', badge: dueCount },
           { id: 'emotions', label: 'Emotions' },
         ]}
@@ -87,7 +113,8 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
         onChange={(id) => setTab(id as PFCTab)}
       />
 
-      {tab === 'focus' && <FocusPanel store={store} onNavigate={onNavigate} />}
+      {tab === 'focus' && <FocusPanel store={store} />}
+      {tab === 'schedule' && <SchedulePanel store={store} onNavigate={onNavigate} onShowTimer={() => setTab('focus')} />}
       {tab === 'decisions' && <DecisionJournal store={store} />}
       {tab === 'emotions' && <EmotionLabeler store={store} />}
 

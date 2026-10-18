@@ -1,29 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Bell, BellOff, Coffee, Pause, Play, SkipForward, Square } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
-import type { View } from '@/lib/views';
-import { Dialog, FieldErrorBubble, Input, NumberField, ProgressBar, Select, Tabs } from '@/components/ui/primitives';
+import { Dialog, FieldErrorBubble, Input, NumberField, ProgressBar, Select } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';
 import { FOCUS_PRESETS, focusAlertsEnabled, focusTierPoints, formatClock, remainingSeconds, type FocusSession } from './focusSession';
 import { useFocusCountdown, useFocusSession } from './FocusSessionProvider';
 import { notificationPermission, requestNotificationPermission } from './focusNotifications';
-import { FollowSchedule } from './schedule/FollowSchedule';
 
-type CardMode = 'timer' | 'schedule';
-
-/** Time Tracker's schedule screen and the `?tab=live` / `?mode=sync` link open Follow schedule. */
-function initialCardMode(): CardMode {
-  try {
-    if (sessionStorage.getItem('ascend_pending_pfc_timer_mode') === 'sync') return 'schedule';
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('tab') === 'live' || params.get('mode') === 'sync') return 'schedule';
-  } catch {
-    /* storage unavailable */
-  }
-  return 'timer';
-}
-
-/** Projects' "Start focus" hands its task title over once (cleared after the first render). */
+/** Projects' "Start focus" hands its task title over once (the page clears it after its first render). */
 function pendingTask(): string | null {
   try {
     if (sessionStorage.getItem('ascend_pending_pfc_timer_mode') === 'sync') return null;
@@ -33,64 +17,33 @@ function pendingTask(): string | null {
   }
 }
 
-function clearHandOffs(): void {
-  try {
-    sessionStorage.removeItem('ascend_pending_pfc_timer_mode');
-    sessionStorage.removeItem('ascend_pending_focus_task');
-  } catch {
-    /* storage unavailable */
-  }
-}
-
 const pts = (n: number) => `${n} ${n === 1 ? 'pt' : 'pts'}`;
 
-/** The one timer card: plain timer or Follow schedule. */
-export function FocusTimerCard({ store, onNavigate }: { store: AppStore; onNavigate?: (view: View) => void }) {
-  const [mode, setMode] = useState<CardMode>(initialCardMode);
+/** The timer card on the Focus tab (Follow schedule has its own tab: SchedulePanel). */
+export function FocusTimerCard({ store }: { store: AppStore }) {
   const { session } = useFocusSession();
-  // The hand-offs are read by the first render (mode here, task in ManualTimer), then dropped.
-  useEffect(clearHandOffs, []);
   const status = !session ? 'Ready' : session.mode === 'break' ? 'Break' : session.isPaused ? 'Paused' : 'Running';
 
   return (
     <section className="card p-4 sm:p-6 space-y-5 border border-cyan-500/30" aria-label="Focus timer">
       <div className="flex items-center justify-between gap-3">
-        <Tabs
-          ariaLabel="Timer mode"
-          size="sm"
-          items={[
-            { id: 'timer', label: 'Timer' },
-            { id: 'schedule', label: 'Follow schedule' },
-          ]}
-          value={mode}
-          onChange={(id) => setMode(id as CardMode)}
-        />
-        {mode === 'timer' && (
-          <span
-            className={cx(
-              'badge text-2xs px-2.5 py-1 shrink-0',
-              status === 'Ready' ? 'bg-overlay-subtle text-content-tertiary' : status === 'Break' ? 'badge-emerald' : 'badge-cyan'
-            )}
-          >
-            {status}
-          </span>
-        )}
+        <h2 className="section-title">Timer</h2>
+        <span
+          className={cx(
+            'badge text-2xs px-2.5 py-1 shrink-0',
+            status === 'Ready' ? 'bg-overlay-subtle text-content-tertiary' : status === 'Break' ? 'badge-emerald' : 'badge-cyan'
+          )}
+        >
+          {status}
+        </span>
       </div>
-
-      {mode === 'timer' ? (
-        <ManualTimer store={store} />
-      ) : (
-        <>
-          {session && <RunningTimerStrip session={session} onShow={() => setMode('timer')} />}
-          <FollowSchedule store={store} onNavigate={onNavigate} onStopped={() => setMode('timer')} />
-        </>
-      )}
+      <ManualTimer store={store} />
     </section>
   );
 }
 
-/** Follow schedule view while the plain timer runs: a reminder line, so its end is no surprise. */
-function RunningTimerStrip({ session, onShow }: { session: FocusSession; onShow: () => void }) {
+/** Follow schedule while the plain timer runs: a reminder line, so its end is no surprise. */
+export function RunningTimerStrip({ session, onShow }: { session: FocusSession; onShow: () => void }) {
   const left = useFocusCountdown(session);
   const label = session.mode === 'break' ? 'Break' : session.isPaused ? 'Focus timer paused' : 'Focus timer running';
   return (

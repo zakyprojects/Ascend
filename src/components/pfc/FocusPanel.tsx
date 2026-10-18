@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { HelpCircle } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
-import type { View } from '@/lib/views';
 import { Disclosure, PageColumns } from '@/components/ui/primitives';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';
@@ -13,7 +12,7 @@ import { FocusHistory } from './FocusHistory';
 import { AboutFocusDialog } from './AboutFocusDialog';
 
 /** Focus tab: the timer card and the session history; chart and rules on the side. */
-export function FocusPanel({ store, onNavigate }: { store: AppStore; onNavigate?: (view: View) => void }) {
+export function FocusPanel({ store }: { store: AppStore }) {
   const [aboutOpen, setAboutOpen] = useState(false);
   const logs = store.state.focusLogs;
   const days = lastDayKeys(7);
@@ -23,7 +22,7 @@ export function FocusPanel({ store, onNavigate }: { store: AppStore; onNavigate?
 
   return (
     <PageColumns
-      lead={<FocusTimerCard store={store} onNavigate={onNavigate} />}
+      lead={<FocusTimerCard store={store} />}
       aside={
         <>
           {logs.length > 0 && (
