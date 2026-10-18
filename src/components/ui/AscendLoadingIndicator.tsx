@@ -31,7 +31,7 @@ function usePrefersReducedMotion(): boolean {
  * `ribbonWidth` is the ribbon's widest point and `swooshStroke` thickens the static swoosh,
  * both larger at small sizes so they stay legible.
  */
-function AscendLoaderMark({
+export function AscendLoaderMark({
   className,
   ribbonWidth,
   swooshStroke,
