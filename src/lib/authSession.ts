@@ -457,5 +457,8 @@ export async function hydrateUserSession(
     }
   }
 
-  return { user, state, tablesRead: tablePull.everyTableRead };
+  // `tablesRead` also means the settings doc came from the server, not the device cache
+  // (the rank-up memory lives there; a cached copy could be older and replay a celebration).
+  const settingsFromServer = !userDataRes.error && !profileRes.error;
+  return { user, state, tablesRead: tablePull.everyTableRead && settingsFromServer };
 }
