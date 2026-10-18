@@ -2,7 +2,8 @@
  * Recovers a page whose build files did not load: the main stylesheet came back empty or broken
  * (a bad copy in the service worker's asset cache, or a deploy that happened mid-load), or a lazy
  * page chunk failed to import (Vite's `vite:preloadError`). Either way the page drops the cached
- * build files and reloads once. A session flag stops a reload loop when the network itself fails.
+ * build files (the service worker's copies and the browser's HTTP-cached stylesheet) and reloads
+ * once. A session flag stops a reload loop when the network itself fails.
  */
 const RELOADED_KEY = 'ascend_asset_recovery_reloaded';
 /** Must match ASSET_CACHE_NAME's prefix in public/sw.js. */
@@ -14,6 +15,10 @@ function alreadyReloaded(): boolean {
   } catch {
     return true; // No session storage: never risk a loop.
   }
+}
+
+function mainStylesheetLink(): HTMLLinkElement | null {
+  return document.querySelector<HTMLLinkElement>('link[rel="stylesheet"][href*="/assets/"]');
 }
 
 async function dropCachedBuildAndReload(): Promise<void> {
@@ -29,12 +34,17 @@ async function dropCachedBuildAndReload(): Promise<void> {
   } catch {
     // Cache API unavailable: the reload still fetches what is missing.
   }
+  // Build files are served `immutable` for a year, so a bad copy in the browser's HTTP cache
+  // survives every reload under the same file name. `cache: 'reload'` refetches it from the
+  // network and overwrites that copy (through the service worker, which passes the mode on).
+  const link = mainStylesheetLink();
+  if (link) await fetch(link.href, { cache: 'reload' }).catch(() => undefined);
   window.location.reload();
 }
 
 /** Whether the build's own stylesheet (`/assets/*.css`) is missing or has no rules. */
 function mainStylesheetBroken(): boolean {
-  const link = document.querySelector<HTMLLinkElement>('link[rel="stylesheet"][href*="/assets/"]');
+  const link = mainStylesheetLink();
   if (!link) return false; // Dev server: styles come from modules, not a link.
   const sheet = link.sheet;
   if (!sheet) return true;
