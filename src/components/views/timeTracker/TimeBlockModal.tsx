@@ -1,52 +1,62 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, FieldGroup, Form, Input, Textarea, useFormController } from '@/components/ui/primitives';
+import { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
 import {
-  TimeTrackerActivity,
-  TimeTrackerBlock,
-} from '@/types';
-import {
-  timeStringToMinutes,
-  minutesToTimeString,
   formatTime12h,
   checkTimeCollision,
   calculateBlockDurationMinutes,
+  describeBlockSpan,
   formatDurationHuman,
   getActivityDisplayColor,
 } from '@/lib/timeTracker';
+import { addDays, formatDateKeyHuman, formatWeekdayDate } from '@/lib/dates';
 import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { Clock, AlertTriangle, Check } from 'lucide-react';
+import { Clock, MoonStar, Check } from 'lucide-react';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
+
+export interface BlockDraft {
+  activityId: string;
+  secondaryActivityIds?: string[];
+  startTime: string;
+  endTime: string;
+  customTitle?: string;
+  notes?: string;
+}
+
+/**
+ * Where the block goes. A day: a block past midnight saves its second part on the next day, so
+ * that part is checked against the next day's blocks. A template: both parts stay in the template.
+ */
+export type BlockContext =
+  | { kind: 'day'; dateKey: string; dayBlocks: TimeTrackerBlock[]; nextDayBlocks: TimeTrackerBlock[] }
+  | { kind: 'template'; blocks: TimeTrackerBlock[] };
 
 interface TimeBlockModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (blockData: {
-    activityId: string;
-    secondaryActivityIds?: string[];
-    startTime: string;
-    endTime: string;
-    customTitle?: string;
-    notes?: string;
-  }) => Promise<void> | void;
+  onSave: (draft: BlockDraft) => Promise<void> | void;
   activities: TimeTrackerActivity[];
-  existingBlocks: TimeTrackerBlock[];
+  context: BlockContext;
   editingBlock?: TimeTrackerBlock | null;
   defaultStartTime?: string;
-  defaultDurationMinutes?: number;
+  defaultEndTime?: string;
 }
+
+/** A time input cannot show 24:00; midnight as an end is entered and shown as 00:00. */
+const forInput = (time: string) => (time === '24:00' ? '00:00' : time);
 
 export function TimeBlockModal({
   open,
   onClose,
   onSave,
   activities,
-  existingBlocks,
+  context,
   editingBlock,
   defaultStartTime = '09:00',
-  defaultDurationMinutes = 60,
+  defaultEndTime = '10:00',
 }: TimeBlockModalProps) {
   const [activityId, setActivityId] = useState<string>('');
   const [secondaryActivityIds, setSecondaryActivityIds] = useState<string[]>([]);
@@ -67,48 +77,24 @@ export function TimeBlockModal({
 
   useEffect(() => {
     if (!open) return;
-
     if (editingBlock) {
       setActivityId(editingBlock.activityId);
       setSecondaryActivityIds(editingBlock.secondaryActivityIds || []);
       setStartTime(editingBlock.startTime);
-      setEndTime(editingBlock.endTime);
+      setEndTime(forInput(editingBlock.endTime));
       setCustomTitle(editingBlock.customTitle || '');
       setNotes(editingBlock.notes || '');
     } else {
       setActivityId('');
       setSecondaryActivityIds([]);
-
-      let computedStartTime = '00:00';
-      if (existingBlocks && existingBlocks.length > 0) {
-        let maxEndMins = 0;
-        for (const block of existingBlocks) {
-          const endM = timeStringToMinutes(block.endTime);
-          if (endM > maxEndMins) {
-            maxEndMins = endM;
-          }
-        }
-        computedStartTime = minutesToTimeString(maxEndMins);
-      } else {
-        computedStartTime = '00:00';
-      }
-
-      const startMins = timeStringToMinutes(computedStartTime);
-      const endMins = startMins + defaultDurationMinutes;
-
-      if (startMins >= 1439) {
-        setStartTime('00:00');
-        setEndTime(minutesToTimeString(defaultDurationMinutes));
-      } else {
-        setStartTime(minutesToTimeString(startMins));
-        setEndTime(minutesToTimeString(Math.min(1439, endMins)));
-      }
+      setStartTime(defaultStartTime);
+      setEndTime(forInput(defaultEndTime));
       setCustomTitle('');
       setNotes('');
     }
     formIssues.clear();
-    // Prefill once per open (and per edited block). Re-running on `existingBlocks`/`activities`
-    // changes would wipe what the user is typing whenever a sync or realtime update lands.
+    // Prefill once per open (and per edited block). Re-running on block lists or activities would
+    // wipe what the user is typing whenever a sync or realtime update lands.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editingBlock?.id]);
 
@@ -123,54 +109,48 @@ export function TimeBlockModal({
       }
     } else if (secondaryActivityIds.includes(actId)) {
       setSecondaryActivityIds((prev) => prev.filter((id) => id !== actId));
+    } else if (!activityId) {
+      setActivityId(actId);
     } else {
-      if (!activityId) {
-        setActivityId(actId);
-      } else {
-        setSecondaryActivityIds((prev) => [...prev, actId]);
-      }
+      setSecondaryActivityIds((prev) => [...prev, actId]);
     }
   };
 
-  const startMins = timeStringToMinutes(startTime);
-  const endMins = timeStringToMinutes(endTime);
-  const isMidnightCrossing = startMins > endMins;
-  const isZeroDuration = startMins === endMins;
-  const calculatedDuration = calculateBlockDurationMinutes(startTime, endTime);
-
-  // Selected Activity
-  const selectedActivity = activities.find((a) => a.id === activityId) || activities[0];
+  const span = describeBlockSpan(startTime, endTime);
+  const duration = calculateBlockDurationMinutes(startTime, endTime);
+  const selectedActivity = activities.find((a) => a.id === activityId);
+  const theme = getLocalThemePreference() || 'dark';
+  const nextDayLabel = context.kind === 'day' ? formatWeekdayDate(addDays(context.dateKey, 1)) : '';
+  const dayLabel = context.kind === 'day' ? formatWeekdayDate(context.dateKey) : '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activityId) {
-      formIssues.showError('Choose an activity for this block.', 'tt-block-activity');
+      formIssues.showError('Choose a category.', 'tt-block-activity');
       return;
     }
-    if (isZeroDuration) {
+    if (!span.valid) {
       formIssues.showError('End time can’t be the same as the start.', 'tt-block-end');
       return;
     }
 
-    // Local collision validation check (if not midnight crossing)
-    if (!isMidnightCrossing) {
-      const collision = checkTimeCollision(
-        { id: editingBlock?.id, startTime, endTime },
-        existingBlocks,
-        editingBlock?.id
-      );
-      if (collision.hasCollision) {
-        formIssues.showError(collision.message || 'This overlaps another block.', 'tt-block-start');
-        return;
-      }
-    } else {
-      // For midnight crossing: Part 1 and Part 2 collision checks
-      const part1 = { startTime, endTime: '23:59' };
-      const part2 = { startTime: '00:00', endTime };
-      const col1 = checkTimeCollision(part1, existingBlocks, editingBlock?.id);
-      const col2 = checkTimeCollision(part2, existingBlocks, editingBlock?.id);
-      if (col1.hasCollision || col2.hasCollision) {
-        formIssues.showError('Part of this block overlaps another scheduled block.', 'tt-block-start');
+    const ignoreId = editingBlock?.id;
+    const firstBlocks = context.kind === 'day' ? context.dayBlocks : context.blocks;
+    const first = checkTimeCollision({ ...span.first, id: ignoreId }, firstBlocks, ignoreId);
+    if (first.hasCollision) {
+      formIssues.showError(first.message || 'This overlaps another block.', 'tt-block-start');
+      return;
+    }
+    if (span.second) {
+      // A day's second part goes to the next day; the other half of an edited block is moved, not doubled.
+      const secondBlocks = context.kind === 'day' ? context.nextDayBlocks : context.blocks;
+      const partnerId = editingBlock?.splitPairId
+        ? secondBlocks.find((b) => b.splitPairId === editingBlock.splitPairId && b.id !== editingBlock.id)?.id
+        : undefined;
+      const second = checkTimeCollision(span.second, secondBlocks.filter((b) => b.id !== partnerId), ignoreId);
+      if (second.hasCollision) {
+        const where = context.kind === 'day' ? ` on ${nextDayLabel}` : '';
+        formIssues.showError(`The part after midnight overlaps ${formatTime12h(second.collidingBlock?.startTime || '')}–${formatTime12h(second.collidingBlock?.endTime || '')}${where}.`, 'tt-block-end');
         return;
       }
     }
@@ -186,7 +166,7 @@ export function TimeBlockModal({
         notes: notes.trim() || undefined,
       });
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       formIssues.showError(toUserMessage(err, "Couldn't save this block. Try again."));
     } finally {
       setIsSaving(false);
@@ -198,7 +178,8 @@ export function TimeBlockModal({
       open={open}
       onClose={onClose}
       dirty={form.dirty}
-      title={editingBlock ? 'Edit time block' : 'Schedule time block'}
+      title={editingBlock ? 'Edit block' : 'Add block'}
+      description={context.kind === 'day' ? formatDateKeyHuman(context.dateKey) : undefined}
       maxWidth="max-w-lg"
       preventClose={isSaving}
       footer={
@@ -208,47 +189,46 @@ export function TimeBlockModal({
           </button>
           <button type="submit" form="tt-block-form" disabled={isSaving} className="btn-primary">
             {isSaving ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
-            <span>{isSaving ? 'Saving…' : editingBlock ? 'Save block' : 'Schedule block'}</span>
+            <span>{isSaving ? 'Saving…' : editingBlock ? 'Save block' : 'Add block'}</span>
           </button>
         </>
       }
     >
       <Form id="tt-block-form" onSubmit={handleSubmit} controller={formIssues} className="space-y-4">
-        <FieldGroup id="tt-block-activity" label="Activity" hint="First pick is the primary activity; more are secondary.">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+        <FieldGroup id="tt-block-activity" label="Category" hint="The first one you pick is the main category.">
+          <div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
             {activities.map((act) => {
               const isPrimary = act.id === activityId;
               const isSecondary = secondaryActivityIds.includes(act.id);
-              const theme = getLocalThemePreference() || 'dark';
-              const resolvedColor = getActivityDisplayColor(act, theme);
+              const color = getActivityDisplayColor(act, theme);
               return (
                 <button
                   type="button"
                   key={act.id}
                   onClick={() => handleActivityClick(act.id)}
                   aria-pressed={isPrimary || isSecondary}
-                  className={`flex items-center gap-2 p-2.5 min-h-11 rounded-xl border text-left transition-all relative ${
+                  className={`relative flex min-h-11 items-center gap-2 rounded-xl border p-2.5 text-left transition-colors ${
                     isPrimary
-                      ? 'bg-primary-500/10 border-primary-500/50 text-content-primary'
+                      ? 'border-primary-500/50 bg-primary-500/10 text-content-primary'
                       : isSecondary
-                      ? 'bg-overlay-subtle border-primary-500/30 text-content-primary'
-                      : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle hover:border-overlay-default hover:text-content-secondary'
+                        ? 'border-primary-500/30 bg-overlay-subtle text-content-primary'
+                        : 'border-overlay-subtle text-content-muted hover:border-overlay-default hover:bg-overlay-subtle hover:text-content-secondary'
                   }`}
                 >
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${resolvedColor}25`, color: resolvedColor }}
+                  <span
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                    style={{ backgroundColor: `${color}25`, color }}
                   >
                     <ActivityIcon iconName={act.icon} size={15} />
-                  </div>
-                  <div className="truncate min-w-0 flex-1">
-                    <p className="item-name text-xs !text-current truncate">{act.name}</p>
-                    {(isPrimary || isSecondary || act.ascendModule) && (
-                      <p className={`text-2xs truncate mt-0.5 ${isPrimary || isSecondary ? 'text-brand-text font-medium' : 'text-content-muted'}`}>
-                        {isPrimary ? 'Primary' : isSecondary ? 'Secondary' : act.ascendModule}
-                      </p>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="item-name block truncate text-xs !text-current">{act.name}</span>
+                    {(isPrimary || isSecondary) && (
+                      <span className="mt-0.5 block truncate text-2xs font-medium text-brand-text">
+                        {isPrimary ? 'Main' : 'Also'}
+                      </span>
                     )}
-                  </div>
+                  </span>
                 </button>
               );
             })}
@@ -278,26 +258,32 @@ export function TimeBlockModal({
           />
         </div>
 
-        <div className="flex items-center justify-between gap-3 py-2.5 border-y border-overlay-subtle text-xs">
+        <div className="flex items-center justify-between gap-3 border-y border-overlay-subtle py-2.5 text-xs">
           <span className="flex items-center gap-2 text-content-muted">
-            <Clock size={14} />
-            Duration
+            <Clock size={14} aria-hidden="true" />
+            Length
           </span>
-          <span className="figure text-content-primary">
-            {formatDurationHuman(calculatedDuration)} ({calculatedDuration} min)
-          </span>
+          <span className="figure text-content-primary">{span.valid ? formatDurationHuman(duration) : '–'}</span>
         </div>
 
-        {isMidnightCrossing && (
-          <div className="p-3 bg-warning/10 border border-warning/25 rounded-xl flex items-start gap-2.5 text-xs">
-            <AlertTriangle size={16} className="text-warning-text shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-medium text-warning-text">Crosses midnight</p>
-              <p className="text-content-tertiary leading-relaxed">
-                It will be saved as two blocks: <span className="figure">{startTime}–23:59</span> today and{' '}
-                <span className="figure">00:00–{endTime}</span> tomorrow.
-              </p>
-            </div>
+        {span.second && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-overlay-default bg-overlay-subtle p-3 text-xs">
+            <MoonStar size={16} className="mt-0.5 shrink-0 text-brand-text" aria-hidden="true" />
+            <p className="leading-relaxed text-content-tertiary">
+              {context.kind === 'day' ? (
+                <>
+                  Runs past midnight, so it’s saved in two linked parts:{' '}
+                  <span className="figure text-content-secondary">{formatTime12h(span.first.startTime)}–12:00 AM</span> on {dayLabel} and{' '}
+                  <span className="figure text-content-secondary">12:00 AM–{formatTime12h(span.second.endTime)}</span> on {nextDayLabel}.
+                </>
+              ) : (
+                <>
+                  Runs past midnight, so this template keeps it as two parts: the day starts with{' '}
+                  <span className="figure text-content-secondary">12:00 AM–{formatTime12h(span.second.endTime)}</span> and ends with{' '}
+                  <span className="figure text-content-secondary">{formatTime12h(span.first.startTime)}–12:00 AM</span>.
+                </>
+              )}
+            </p>
           </div>
         )}
 
@@ -307,7 +293,7 @@ export function TimeBlockModal({
           optional
           value={customTitle}
           onChange={(e) => setCustomTitle(e.target.value)}
-          placeholder={`e.g. ${selectedActivity?.name || 'Deep Work Session'}`}
+          placeholder={`e.g. ${selectedActivity?.name || 'Deep work'}`}
           maxLength={80}
           autoComplete="off"
         />
@@ -318,7 +304,7 @@ export function TimeBlockModal({
           optional
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Notes, location..."
+          placeholder="Where, what to bring…"
           rows={2}
           className="min-h-0 resize-none"
           maxLength={500}

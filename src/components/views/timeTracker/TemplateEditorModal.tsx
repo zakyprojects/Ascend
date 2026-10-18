@@ -14,10 +14,11 @@ import {
   normalizeOrSplitMidnightBlock,
   getActivityDisplayColor,
   categoryTintStyle,
+  templateDays,
 } from '@/lib/timeTracker';
 import { getLocalThemePreference } from '@/lib/store';
 import { ActivityIcon } from './ActivityIcon';
-import { TimeBlockModal } from './TimeBlockModal';
+import { TimeBlockModal, type BlockDraft } from './TimeBlockModal';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Plus, Trash2, Edit2, Check } from 'lucide-react';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
@@ -68,13 +69,7 @@ export function TemplateEditorModal({
 
     if (editingTemplate) {
       setTitle(editingTemplate.title);
-      const existingDays =
-        Array.isArray(editingTemplate.activeDays) && editingTemplate.activeDays.length > 0
-          ? editingTemplate.activeDays
-          : Array.isArray(editingTemplate.autoApplyDays) && editingTemplate.autoApplyDays.length > 0
-          ? editingTemplate.autoApplyDays
-          : [];
-      setActiveDays(existingDays);
+      setActiveDays(templateDays(editingTemplate));
       setBlocks(editingTemplate.blocks || []);
     } else {
       setTitle('');
@@ -96,13 +91,7 @@ export function TemplateEditorModal({
     if (isAdding) {
       const conflictingTemplate = (templates || []).find((t) => {
         if (editingTemplate && t.id === editingTemplate.id) return false;
-        const currentDays =
-          Array.isArray(t.activeDays) && t.activeDays.length > 0
-            ? t.activeDays
-            : Array.isArray(t.autoApplyDays) && t.autoApplyDays.length > 0
-            ? t.autoApplyDays
-            : [];
-        return currentDays.some((d) => d.toLowerCase() === day.toLowerCase());
+        return templateDays(t).some((d) => d.toLowerCase() === day.toLowerCase());
       });
 
       if (conflictingTemplate) {
@@ -144,21 +133,16 @@ export function TemplateEditorModal({
     setShowBlockModal(true);
   };
 
-  const handleSaveBlockFromModal = (blockData: {
-    activityId: string;
-    secondaryActivityIds?: string[];
-    startTime: string;
-    endTime: string;
-    customTitle?: string;
-    notes?: string;
-  }) => {
+  const handleSaveBlockFromModal = (blockData: BlockDraft) => {
+    // Both parts of a block past midnight stay in the template (the day starts and ends with it);
+    // they are not one block on two days, so they are not linked.
     const splitBlocks = normalizeOrSplitMidnightBlock({
       ...blockData,
       secondaryActivityIds:
         blockData.secondaryActivityIds && blockData.secondaryActivityIds.length > 0
           ? blockData.secondaryActivityIds
           : undefined,
-    });
+    }).map(({ splitPairId: _pair, ...rest }) => rest);
 
     if (targetBlockForModal) {
       // Editing existing block in template
@@ -193,7 +177,7 @@ export function TemplateEditorModal({
     }
 
     if (blocks.length === 0) {
-      formIssues.showError('Add at least one time block.', 'tt-tpl-blocks');
+      formIssues.showError('Add at least one block.', 'tt-tpl-blocks');
       return;
     }
 
@@ -241,7 +225,7 @@ export function TemplateEditorModal({
             label="Name"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Weekday, Focus Day, Weekend Recovery"
+            placeholder="e.g. Weekday, Focus day, Weekend"
             maxLength={60}
             autoComplete="off"
             required
@@ -249,10 +233,10 @@ export function TemplateEditorModal({
 
           <div role="group" aria-labelledby="tt-tpl-days-label">
             <p id="tt-tpl-days-label" className="block label mb-1">
-              Auto-apply days
+              Fills these days
             </p>
             <p className="text-xs text-content-muted mb-2">
-              On these days, an empty schedule gets this template automatically.
+              On these weekdays, a day you haven't planned starts with this template.
             </p>
             <div className="flex flex-wrap gap-1.5">
               {DAYS_OF_WEEK.map((day) => {
@@ -276,7 +260,7 @@ export function TemplateEditorModal({
             </div>
           </div>
 
-          {/* Blueprint Blocks Section */}
+          {/* Blocks */}
           <div className="pt-2" data-field="tt-tpl-blocks">
             <div className="flex items-center justify-between mb-2">
               <p className="label">
@@ -331,11 +315,6 @@ export function TemplateEditorModal({
                             <p className="item-name text-xs text-content-secondary truncate">
                               {block.customTitle || act?.name || 'Block'}
                             </p>
-                            {act?.ascendModule && (
-                              <span className="text-2xs" style={{ color: resolvedColor }}>
-                                [{act.ascendModule}]
-                              </span>
-                            )}
                             {block.secondaryActivityIds &&
                               block.secondaryActivityIds.map((secId) => {
                                 const secAct = activities.find((a) => a.id === secId);
@@ -397,10 +376,10 @@ export function TemplateEditorModal({
         onSave={handleSaveBlockFromModal}
         activities={activities}
         editingBlock={targetBlockForModal}
-        existingBlocks={blocks.filter((b) => b.id !== targetBlockForModal?.id)}
+        context={{ kind: 'template', blocks: blocks.filter((b) => b.id !== targetBlockForModal?.id) }}
       />
 
-      {/* Transfer Auto-Apply Day Modal */}
+      {/* Move a weekday from another template */}
       {conflictState && (
         <Dialog
           open={conflictState.isOpen}
@@ -409,7 +388,7 @@ export function TemplateEditorModal({
           maxWidth="max-w-md"
           description={
             <>
-              <strong className="text-content-primary">{conflictState.day}</strong> is set to auto-apply{' '}
+              <strong className="text-content-primary">{conflictState.day}</strong> is filled by{' '}
               <strong className="text-content-primary">{conflictState.conflictingTitle}</strong>. Move it to this template instead?
             </>
           }

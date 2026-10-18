@@ -1,512 +1,269 @@
-import { useState, useMemo } from 'react';
-import {
-  TimeTrackerActivity,
-  TimeTrackerTemplate,
-} from '@/types';
+import { useMemo, useState } from 'react';
+import { Brain, Heart, Layers, Moon, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { ASCEND_RECOMMENDED_DAY_BLOCKS, ASCEND_RECOMMENDED_DAY_TITLE, TimeTrackerActivity, TimeTrackerTemplate } from '@/types';
 import { AppStore } from '@/lib/store';
 import {
-  formatTime12h,
   calculateBlockDurationMinutes,
-  formatDurationHuman,
-  timeStringToMinutes,
   DAYS_OF_WEEK,
+  formatDurationHuman,
+  formatTime12h,
   getActivityDisplayColor,
-  categoryTintStyle,
+  templateDays,
+  templateSignature,
+  timeStringToMinutes,
 } from '@/lib/timeTracker';
-import { formatDateKeyHuman } from '@/lib/dates';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
-import { Dialog, EmptyState } from '@/components/ui/primitives';
-import {
-  Layers,
-  Plus,
-  Edit2,
-  Trash2,
-  Calendar,
-  Compass,
-  Brain,
-  Heart,
-  Moon,
-  RotateCcw,
-  ChevronDown,
-} from 'lucide-react';
-import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
-import { toUserMessage } from '@/lib/userMessage';
+import { Dialog, Disclosure, EmptyState } from '@/components/ui/primitives';
+import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
 
 interface TemplatesTabProps {
   store: AppStore;
   templates: TimeTrackerTemplate[];
   activities: TimeTrackerActivity[];
-  selectedDateKey: string;
-  onOpenCreateTemplateModal: () => void;
-  onOpenEditTemplateModal: (template: TimeTrackerTemplate) => void;
-  onOpenApplyTemplateModal: (preselectedTemplateId?: string) => void;
+  onCreateTemplate: () => void;
+  onEditTemplate: (template: TimeTrackerTemplate) => void;
+  onApplyTemplate: (templateId?: string) => void;
 }
 
-export function TemplatesTab({
-  store,
-  templates,
-  activities,
-  selectedDateKey,
-  onOpenCreateTemplateModal,
-  onOpenEditTemplateModal,
-  onOpenApplyTemplateModal,
-}: TemplatesTabProps) {
-  const { showSuccessToast, showErrorToast } = useToast();
-  const [deleteTargetTemplate, setDeleteTargetTemplate] = useState<TimeTrackerTemplate | null>(null);
-  // Phones: the 8+8+8 guide starts folded; from md up it is always open and the toggle is hidden.
-  const [ruleOpen, setRuleOpen] = useState(false);
+const RECOMMENDED_SIGNATURE = templateSignature(ASCEND_RECOMMENDED_DAY_BLOCKS);
+const hasDay = (days: string[], day: string) => days.some((d) => d.toLowerCase() === day.toLowerCase());
+
+export function TemplatesTab({ store, templates, activities, onCreateTemplate, onEditTemplate, onApplyTemplate }: TemplatesTabProps) {
+  const { showSuccessToast } = useToast();
   const theme = store.state.themePreference || 'dark';
-  const [conflictState, setConflictState] = useState<{
-    isOpen: boolean;
-    day: string;
-    template: TimeTrackerTemplate;
-    conflictingTitle: string;
-  } | null>(null);
+  const [deleting, setDeleting] = useState<TimeTrackerTemplate | null>(null);
+  const [moveDay, setMoveDay] = useState<{ day: string; template: TimeTrackerTemplate; from: string } | null>(null);
 
-  const activityMap = useMemo(() => {
-    const map = new Map<string, TimeTrackerActivity>();
-    for (const act of activities) {
-      map.set(act.id, act);
-    }
-    return map;
-  }, [activities]);
+  const activityMap = useMemo(() => new Map(activities.map((a) => [a.id, a])), [activities]);
+  const hasRecommended = templates.some((t) => templateSignature(t.blocks || []) === RECOMMENDED_SIGNATURE);
 
-  const handleApplyToDate = (templateId: string, dateKey: string) => {
-    try {
-      const result = store.applyTemplateToDate(dateKey, templateId, 'merge');
-      if (result.added > 0 && result.rejected === 0) {
-        showSuccessToast('Blueprint merged', `Blueprint merged: ${result.added} blocks added to ${formatDateKeyHuman(dateKey)}.`);
-      } else if (result.added > 0 && result.rejected > 0) {
-        showSuccessToast('Blueprint merged', `Blueprint merged: ${result.added} added, ${result.rejected} skipped (overlap).`);
-      } else if (result.added === 0 && result.rejected > 0) {
-        showErrorToast('Nothing merged', `All ${result.rejected} blocks overlapped with existing schedule.`);
-      } else {
-        showSuccessToast('Blueprint applied', `Blueprint applied to ${formatDateKeyHuman(dateKey)}.`);
-      }
-    } catch (err: any) {
-      showErrorToast("Couldn't apply template", toUserMessage(err, 'Try again.'));
-    }
+  const addRecommended = () => {
+    store.createTimeTrackerTemplate({ title: ASCEND_RECOMMENDED_DAY_TITLE, activeDays: [], blocks: ASCEND_RECOMMENDED_DAY_BLOCKS });
+    showSuccessToast('Template added', `${ASCEND_RECOMMENDED_DAY_TITLE}. Pick its days to use it automatically.`);
   };
 
-  const handleConfirmDeleteTemplate = async () => {
-    if (!deleteTargetTemplate) return;
-    const templateId = deleteTargetTemplate.id;
-    store.deleteTimeTrackerTemplate(templateId);
-    showSuccessToast('Template deleted', 'Template removed.', `template_${templateId}`);
-    setDeleteTargetTemplate(null);
-  };
-
-  const handleToggleDay = (template: TimeTrackerTemplate, day: string) => {
-    const getDays = (t: TimeTrackerTemplate): string[] => {
-      if (Array.isArray(t.activeDays) && t.activeDays.length > 0) return t.activeDays;
-      if (Array.isArray(t.autoApplyDays) && t.autoApplyDays.length > 0) return t.autoApplyDays;
-      return [];
-    };
-
-    const currentDays = getDays(template);
-
-    const isAdding = !currentDays.some((d) => d.toLowerCase() === day.toLowerCase());
-
-    if (isAdding) {
-      const conflictingTemplate = templates.find((t) => {
-        if (t.id === template.id) return false;
-        const tDays = getDays(t);
-        return tDays.some((d) => d.toLowerCase() === day.toLowerCase());
-      });
-
-      if (conflictingTemplate) {
-        setConflictState({
-          isOpen: true,
-          day,
-          template,
-          conflictingTitle: conflictingTemplate.title,
-        });
+  const toggleDay = (template: TimeTrackerTemplate, day: string) => {
+    if (!hasDay(templateDays(template), day)) {
+      const holder = templates.find((t) => t.id !== template.id && hasDay(templateDays(t), day));
+      if (holder) {
+        setMoveDay({ day, template, from: holder.title });
         return;
       }
     }
-
     store.toggleTemplateAutoApplyDay(template.id, day);
   };
 
-  const confirmTransfer = () => {
-    if (conflictState) {
-      store.toggleTemplateAutoApplyDay(conflictState.template.id, conflictState.day);
-      setConflictState(null);
-    }
+  const confirmDelete = () => {
+    if (!deleting) return;
+    store.deleteTimeTrackerTemplate(deleting.id);
+    showSuccessToast('Template deleted', undefined, `template_${deleting.id}`);
+    setDeleting(null);
   };
 
   return (
     <div className="space-y-6">
-      {/* 1. Header and Action */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="section-title text-xl leading-tight flex items-center gap-2">
-            <Layers className="text-success-text" size={18} />
-            <span>Recurring Templates</span>
-          </h2>
-          <p className="text-xs text-content-muted mt-0.5">
-            Construct standard ideal day architectures (e.g. Weekdays, Deep Rest Weekends) that automatically auto-apply onto your schedule.
-          </p>
+          <h2 className="section-title">Templates</h2>
+          <p className="text-xs text-content-muted">Build a day once. It fills empty days on the weekdays you pick.</p>
         </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {!store.state.timeTracker?.templates?.some((t) => t.id === 'template-default-weekday') && (
-            <button
-              onClick={() => {
-                store.restoreTimeTrackerTemplate('template-default-weekday');
-                showSuccessToast('Template restored', 'Standard Productive Day blueprint has been restored.');
-              }}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-success-text bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl transition-colors cursor-pointer"
-            >
-              <RotateCcw size={13} />
-              <span>Restore Default Blueprint</span>
+        <div className="flex flex-wrap gap-2">
+          {!hasRecommended && (
+            <button type="button" onClick={addRecommended} className="btn-secondary text-xs">
+              <Sparkles size={14} /> Add Ascend recommended day
             </button>
           )}
-
-          <button
-            onClick={onOpenCreateTemplateModal}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-brand bg-primary-600 hover:bg-primary-700 rounded-xl shadow-sm transition-all shrink-0 cursor-pointer"
-          >
-            <Plus size={15} />
-            <span>Create Template</span>
+          <button type="button" onClick={onCreateTemplate} className="btn-primary text-xs">
+            <Plus size={14} /> Create template
           </button>
         </div>
       </div>
 
-      {/* Blueprint Philosophy / 8-8-8 Guide */}
-      <div className="p-4 rounded-2xl border border-overlay-subtle flex flex-row md:flex-col xl:flex-row gap-3 items-start">
-        <Compass className="text-success-text shrink-0 mt-1" size={18} />
-        <div className="flex-1 w-full">
-          <h3 className="section-title">
-            <button
-              type="button"
-              aria-expanded={ruleOpen}
-              aria-controls="eight-eight-eight-rule"
-              onClick={() => setRuleOpen((open) => !open)}
-              className="flex w-full items-center justify-between gap-2 text-left md:pointer-events-none md:cursor-default"
-            >
-              The 8+8+8 rule
-              <ChevronDown
-                size={16}
-                aria-hidden="true"
-                className={`shrink-0 text-content-muted transition-transform duration-base ease-emphasized motion-reduce:transition-none md:hidden ${ruleOpen ? 'rotate-180' : ''}`}
-              />
-            </button>
-          </h3>
-          <div
-            id="eight-eight-eight-rule"
-            className={`grid transition-[grid-template-rows] duration-base ease-emphasized motion-reduce:transition-none md:grid-rows-[1fr] ${ruleOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
-          >
-            <div className="min-h-0 overflow-hidden">
-              <p className="text-xs text-content-tertiary leading-relaxed mt-1.5 mb-3 max-w-3xl">
-                Split your 24 hours into three equal parts. Ascend blueprints are built around this.
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-0 md:divide-x md:divide-overlay-subtle">
-                {/* Hard Work */}
-                <div className="md:px-4 md:first:pl-0">
-                  <h4 className="item-name text-xs text-content-secondary mb-1 flex items-center gap-1.5">
-                    <Brain className="text-content-muted" size={13} /> 
-                    8 Hours: Hard Work
-                  </h4>
-                  <p className="text-2xs text-content-muted leading-snug">Deep focus and your career.</p>
-                </div>
-
-                {/* Life & Balance */}
-                <div className="md:px-4 md:first:pl-0">
-                  <h4 className="item-name text-xs text-content-secondary mb-1.5 flex items-center gap-1.5">
-                    <Heart className="text-content-muted" size={13} /> 
-                    8 Hours: 3Fs, 3Hs, & 3Ss
-                  </h4>
-                  <div className="text-2xs text-content-muted leading-snug space-y-0.5">
-                    <p><strong className="text-content-tertiary font-medium">3Fs:</strong> Family, Friends, Faith</p>
-                    <p><strong className="text-content-tertiary font-medium">3Hs:</strong> Health, Hygiene, Hobby</p>
-                    <p><strong className="text-content-tertiary font-medium">3Ss:</strong> Soul, Service, Smile</p>
-                  </div>
-                </div>
-
-                {/* Sleep */}
-                <div className="md:px-4 md:first:pl-0">
-                  <h4 className="item-name text-xs text-content-secondary mb-1 flex items-center gap-1.5">
-                    <Moon className="text-content-muted" size={13} /> 
-                    8 Hours: Good Sleep
-                  </h4>
-                  <p className="text-2xs text-content-muted leading-snug">Rest for your mind and body.</p>
-                </div>
-              </div>
-            </div>
+      <Disclosure title="The 8+8+8 guide" icon={Layers} tone="neutral">
+        <p className="mb-3 text-xs leading-relaxed text-content-tertiary">Split the 24 hours into three equal parts.</p>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div>
+            <h3 className="item-name mb-1 flex items-center gap-1.5 text-xs">
+              <Brain size={13} className="text-content-muted" aria-hidden="true" /> 8 hours: hard work
+            </h3>
+            <p className="text-2xs leading-snug text-content-muted">Deep focus and your career.</p>
+          </div>
+          <div>
+            <h3 className="item-name mb-1 flex items-center gap-1.5 text-xs">
+              <Heart size={13} className="text-content-muted" aria-hidden="true" /> 8 hours: life
+            </h3>
+            <p className="text-2xs leading-snug text-content-muted">Family, friends, faith · health, hygiene, hobby · soul, service, smile.</p>
+          </div>
+          <div>
+            <h3 className="item-name mb-1 flex items-center gap-1.5 text-xs">
+              <Moon size={13} className="text-content-muted" aria-hidden="true" /> 8 hours: sleep
+            </h3>
+            <p className="text-2xs leading-snug text-content-muted">Rest for your mind and body.</p>
           </div>
         </div>
-      </div>
+      </Disclosure>
 
-      {/* 2. Template Cards List */}
       {templates.length === 0 ? (
         <EmptyState
           icon={Layers}
-          title="No blueprints yet"
-          description="Build a daily routine once and reuse it. Blueprints apply automatically on the days you assign."
+          title="No templates yet"
+          description="A template is a day you can reuse."
           action={
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <button
-                onClick={onOpenCreateTemplateModal}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-on-brand text-xs font-semibold shadow-sm transition-all cursor-pointer"
-              >
-                <Plus size={14} />
-                <span>Create Your First Blueprint</span>
+            <div className="flex flex-wrap justify-center gap-2">
+              <button type="button" onClick={onCreateTemplate} className="btn-primary text-xs">
+                <Plus size={14} /> Create template
               </button>
-
-              {!store.state.timeTracker?.templates?.some((t) => t.id === 'template-default-weekday') && (
-                <button
-                  onClick={() => {
-                    store.restoreTimeTrackerTemplate('template-default-weekday');
-                    showSuccessToast('Template restored', 'Standard Productive Day blueprint has been restored.');
-                  }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-secondary border border-overlay-default text-xs font-semibold transition-all cursor-pointer"
-                >
-                  <RotateCcw size={14} className="text-success-text" />
-                  <span>Restore Default Blueprint</span>
-                </button>
-              )}
+              <button type="button" onClick={addRecommended} className="btn-secondary text-xs">
+                <Sparkles size={14} /> Add Ascend recommended day
+              </button>
             </div>
           }
         />
       ) : (
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {templates.map((tpl) => {
-            const sortedBlocks = [...(tpl.blocks || [])].sort(
-              (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
-            );
-
-            let totalMinutes = 0;
-            for (const b of sortedBlocks) {
-              totalMinutes += calculateBlockDurationMinutes(b.startTime, b.endTime);
-            }
-
+            const blocks = [...(tpl.blocks || [])].sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
+            const total = blocks.reduce((sum, b) => sum + calculateBlockDurationMinutes(b.startTime, b.endTime), 0);
+            const days = templateDays(tpl);
             return (
-              <div
-                key={tpl.id}
-                className="scroll-rise p-5 rounded-2xl border border-overlay-subtle hover:border-overlay-default transition-colors space-y-4 flex flex-col justify-between"
-              >
-                <div className="space-y-3">
-                  {/* Title & Actions */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="item-name text-base">{tpl.title}</h3>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-content-muted">
-                        <span className="figure text-content-tertiary">
-                          {sortedBlocks.length} block(s)
-                        </span>
-                        <span>·</span>
-                        <span className="figure text-success-text">
-                          {formatDurationHuman(totalMinutes)} planned
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => onOpenEditTemplateModal(tpl)}
-                        className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
-                        title="Edit template"
-                        aria-label="Edit template"
-                      >
-                        <Edit2 size={15} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTargetTemplate(tpl)}
-                        className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
-                        title="Delete template"
-                        aria-label="Delete template"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
+              <section key={tpl.id} className="card scroll-rise space-y-4 p-4 sm:p-5" aria-label={tpl.title}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="item-name truncate text-base">{tpl.title}</h3>
+                    <p className="figure text-xs text-content-muted">
+                      {blocks.length} block{blocks.length === 1 ? '' : 's'} · {formatDurationHuman(total)}
+                    </p>
                   </div>
-
-                  {/* Active Days Badges */}
-                  <div>
-                    <span className="stat-label block mb-1.5">
-                      Auto-Apply Days
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {DAYS_OF_WEEK.map((day) => {
-                        const tplDays =
-                          Array.isArray(tpl.activeDays) && tpl.activeDays.length > 0
-                            ? tpl.activeDays
-                            : Array.isArray(tpl.autoApplyDays) && tpl.autoApplyDays.length > 0
-                            ? tpl.autoApplyDays
-                            : [];
-                        const isDayActive = tplDays.some(
-                          (d) => d.toLowerCase() === day.toLowerCase()
-                        );
-                        return (
-                          <button
-                            type="button"
-                            key={day}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleToggleDay(tpl, day);
-                            }}
-                            title={`Toggle ${day} auto-apply for ${tpl.title}`}
-                            className={`px-2 py-0.5 rounded-lg text-2xs font-medium transition-all cursor-pointer ${
-                              isDayActive
-                                ? 'bg-emerald-500/20 text-success-text border border-emerald-500/30 hover:bg-emerald-500/30'
-                                : 'text-content-subtle border border-overlay-subtle hover:text-content-muted hover:border-overlay-default'
-                            }`}
-                          >
-                            {day.slice(0, 3)}
-                          </button>
-                        );
-                      })}
-                    </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => onEditTemplate(tpl)}
+                      className={cx('rounded-lg p-1.5 text-content-muted transition-colors hover:bg-overlay-subtle hover:text-content-secondary', TAP_TARGET)}
+                      aria-label={`Edit ${tpl.title}`}
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleting(tpl)}
+                      className={cx('rounded-lg p-1.5 text-content-muted transition-colors hover:bg-overlay-subtle hover:text-rose-theme', TAP_TARGET)}
+                      aria-label={`Delete ${tpl.title}`}
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
+                </div>
 
-                  {/* Visual Mini 24h Bar */}
-                  {sortedBlocks.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="relative w-full h-4 bg-bg-900 rounded-lg overflow-hidden border border-overlay-default flex">
-                        {sortedBlocks.map((block) => {
-                          const startMins = timeStringToMinutes(block.startTime);
-                          const endMins = timeStringToMinutes(block.endTime);
-                          const duration = Math.max(1, endMins - startMins);
-                          const leftPercent = (startMins / 1440) * 100;
-                          const widthPercent = (duration / 1440) * 100;
-                          const act = activityMap.get(block.activityId);
-                          const color = getActivityDisplayColor(act, theme);
-
-                          return (
-                            <div
-                              key={block.id}
-                              className="absolute h-full top-0 border-r border-overlay-subtle"
-                              style={{
-                                left: `${leftPercent}%`,
-                                width: `${widthPercent}%`,
-                                backgroundColor: color,
-                              }}
-                              title={`${block.customTitle || act?.name || 'Block'} (${formatTime12h(
-                                block.startTime
-                              )} - ${formatTime12h(block.endTime)})`}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Compact Block Timeline List */}
-                  <div className="divide-y divide-overlay-subtle max-h-44 overflow-y-auto pr-1">
-                    {sortedBlocks.map((block) => {
-                      const act = activityMap.get(block.activityId);
-                      const color = getActivityDisplayColor(act, theme);
+                <div role="group" aria-label={`Days that use ${tpl.title}`}>
+                  <p className="label mb-1.5">Fills these days</p>
+                  <div className="grid grid-cols-7 gap-1">
+                    {DAYS_OF_WEEK.map((day) => {
+                      const on = hasDay(days, day);
                       return (
-                        <div
-                          key={block.id}
-                          className="flex items-center justify-between py-2 text-xs"
-                        >
-                          <div className="flex flex-wrap items-center gap-2 min-w-0">
-                            <div
-                              className="w-2.5 h-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: color }}
-                            />
-                            <span className="figure text-micro text-content-muted shrink-0">
-                              {formatTime12h(block.startTime)} – {formatTime12h(block.endTime)}
-                            </span>
-                            <span className="item-name text-content-secondary truncate">
-                              {block.customTitle || act?.name || 'Block'}
-                            </span>
-                            {block.secondaryActivityIds &&
-                              block.secondaryActivityIds.map((secId) => {
-                                const secAct = activityMap.get(secId);
-                                if (!secAct) return null;
-                                return (
-                                  <span
-                                    key={secId}
-                                    className="text-2xs font-medium px-1.5 py-0.5 rounded shrink-0"
-                                    style={categoryTintStyle(getActivityDisplayColor(secAct, theme))}
-                                  >
-                                    +{secAct.name}
-                                  </span>
-                                );
-                              })}
-                          </div>
-                          {act?.ascendModule && (
-                            <span
-                              className="text-2xs px-1.5 py-0.5 rounded shrink-0"
-                              style={categoryTintStyle(color)}
-                            >
-                              {act.ascendModule}
-                            </span>
+                        <button
+                          type="button"
+                          key={day}
+                          onClick={() => toggleDay(tpl, day)}
+                          aria-pressed={on}
+                          aria-label={day}
+                          className={cx(
+                            'min-h-11 rounded-lg border text-xs font-medium transition-colors',
+                            on
+                              ? 'border-primary-500/40 bg-primary-500/15 text-brand-text'
+                              : 'border-overlay-subtle text-content-muted hover:border-overlay-default hover:text-content-secondary'
                           )}
-                        </div>
+                        >
+                          {day.slice(0, 2)}
+                        </button>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Bottom Card Actions */}
-                <div className="pt-3 border-t border-overlay-subtle flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => handleApplyToDate(tpl.id, selectedDateKey)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-overlay-subtle hover:bg-overlay-default text-content-secondary border border-overlay-default text-xs font-semibold transition-all cursor-pointer"
-                  >
-                    <span>Apply to {formatDateKeyHuman(selectedDateKey)}</span>
-                  </button>
+                {blocks.length > 0 && (
+                  <div className="relative h-3 overflow-hidden rounded-full bg-overlay-subtle" aria-hidden="true">
+                    {blocks.map((block) => {
+                      const start = timeStringToMinutes(block.startTime);
+                      const rawEnd = timeStringToMinutes(block.endTime);
+                      const end = rawEnd === 0 && start > 0 ? 1440 : rawEnd;
+                      return (
+                        <span
+                          key={block.id}
+                          className="absolute inset-y-0"
+                          style={{
+                            left: `${(start / 1440) * 100}%`,
+                            width: `${(Math.max(1, end - start) / 1440) * 100}%`,
+                            backgroundColor: getActivityDisplayColor(activityMap.get(block.activityId), theme),
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
 
-                  <button
-                    onClick={() => onOpenApplyTemplateModal(tpl.id)}
-                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-success-text border border-emerald-500/30 text-xs font-medium transition-colors cursor-pointer"
-                    title="Apply to another date"
-                  >
-                    <Calendar size={13} />
-                    <span>Apply to Date</span>
+                <ul className="max-h-44 divide-y divide-overlay-subtle overflow-y-auto pr-1">
+                  {blocks.map((block) => {
+                    const act = activityMap.get(block.activityId);
+                    return (
+                      <li key={block.id} className="flex items-center gap-2 py-1.5 text-xs">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: getActivityDisplayColor(act, theme) }} aria-hidden="true" />
+                        <span className="figure w-32 shrink-0 text-content-muted">
+                          {formatTime12h(block.startTime)}–{formatTime12h(block.endTime)}
+                        </span>
+                        <span className="truncate text-content-secondary">{block.customTitle || act?.name || 'Deleted category'}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="border-t border-overlay-subtle pt-3">
+                  <button type="button" onClick={() => onApplyTemplate(tpl.id)} className="btn-secondary w-full text-xs">
+                    Apply to a day…
                   </button>
                 </div>
-              </div>
+              </section>
             );
           })}
         </div>
       )}
 
-      {/* Delete Template Modal */}
-      {deleteTargetTemplate && (
-        <ConfirmDeleteModal
-          open={Boolean(deleteTargetTemplate)}
-          onClose={() => setDeleteTargetTemplate(null)}
-          onConfirm={handleConfirmDeleteTemplate}
-          title="Delete template?"
-          description={`Delete "${deleteTargetTemplate.title}"? Days already scheduled stay as they are.`}
-        />
-      )}
+      <ConfirmDeleteModal
+        open={Boolean(deleting)}
+        onClose={() => setDeleting(null)}
+        onConfirm={confirmDelete}
+        title="Delete template?"
+        itemName={deleting?.title}
+        description="Days already planned stay as they are."
+        confirmText="Delete template"
+      />
 
-      {/* Transfer Auto-Apply Day Modal */}
-      {conflictState && (
-        <Dialog
-          open={conflictState.isOpen}
-          onClose={() => setConflictState(null)}
-          title="Move this day?"
-          maxWidth="max-w-md"
-          description={
-            <>
-              <strong className="text-content-primary">{conflictState.day}</strong> is set to auto-apply{' '}
-              <strong className="text-content-primary">{conflictState.conflictingTitle}</strong>. Move it to this template instead?
-            </>
-          }
-          footer={
-            <>
-              <button type="button" onClick={() => setConflictState(null)} className="btn-secondary">
-                Cancel
-              </button>
-              <button type="button" onClick={confirmTransfer} className="btn-primary">
-                Move day
-              </button>
-            </>
-          }
-        >
-          {null}
-        </Dialog>
-      )}
+      <Dialog
+        open={Boolean(moveDay)}
+        onClose={() => setMoveDay(null)}
+        title="Move this day?"
+        maxWidth="max-w-md"
+        description={moveDay ? `${moveDay.day} is filled by ${moveDay.from}. Use ${moveDay.template.title} on ${moveDay.day} instead?` : undefined}
+        footer={
+          <>
+            <button type="button" onClick={() => setMoveDay(null)} className="btn-secondary">
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (moveDay) store.toggleTemplateAutoApplyDay(moveDay.template.id, moveDay.day);
+                setMoveDay(null);
+              }}
+              className="btn-primary"
+            >
+              Move day
+            </button>
+          </>
+        }
+      >
+        {null}
+      </Dialog>
     </div>
   );
 }

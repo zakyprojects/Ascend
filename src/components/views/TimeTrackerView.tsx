@@ -1,22 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppStore } from '@/lib/store';
-import {
-  TimeTrackerActivity,
-  TimeTrackerBlock,
-  TimeTrackerTemplate,
-} from '@/types';
-import { ensureDefaultActivities } from '@/lib/timeTracker';
-import { todayKey } from '@/lib/dates';
-import { ScheduleTab } from './timeTracker/ScheduleTab';
+import { TimeTrackerActivity, TimeTrackerBlock, TimeTrackerTemplate } from '@/types';
+import { ensureDefaultActivities, plannedBlocksForDate } from '@/lib/timeTracker';
+import { addDays } from '@/lib/dates';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { DayTab } from './timeTracker/DayTab';
 import { TemplatesTab } from './timeTracker/TemplatesTab';
 import { ActivitiesTab } from './timeTracker/ActivitiesTab';
-import { TimeBlockModal } from './timeTracker/TimeBlockModal';
+import { TimeBlockModal, type BlockDraft } from './timeTracker/TimeBlockModal';
 import { TemplateEditorModal } from './timeTracker/TemplateEditorModal';
 import { ApplyTemplateModal } from './timeTracker/ApplyTemplateModal';
 import { ActivityModal } from './timeTracker/ActivityModal';
 import { useToast } from '@/components/ui/Toast';
 import { Tabs } from '@/components/ui/primitives';
-import { Clock, Layers, Tag } from 'lucide-react';
+import { CalendarClock, Layers, Tag } from 'lucide-react';
 import { View } from '@/components/AppShell';
 
 interface TimeTrackerViewProps {
@@ -24,18 +21,34 @@ interface TimeTrackerViewProps {
   onNavigate?: (view: View) => void;
 }
 
-type TabType = 'schedule' | 'templates' | 'activities';
+type TabType = 'day' | 'templates' | 'categories';
 
 export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
   const { showSuccessToast } = useToast();
+  const today = useLocalDayKey();
 
-  const [activeTab, setActiveTab] = useState<TabType>('schedule');
-  const [selectedDateKey, setSelectedDateKey] = useState<string>(todayKey());
+  const [activeTab, setActiveTab] = useState<TabType>('day');
+  const [selectedDateKey, setSelectedDateKey] = useState<string>(today);
 
-  // Modal States
+  // Midnight with the page open: a page that was on "today" moves to the new today and fills it
+  // from its template, instead of staying on yesterday (now read-only).
+  const previousTodayRef = useRef(today);
+  useEffect(() => {
+    const previousToday = previousTodayRef.current;
+    if (previousToday === today) return;
+    previousTodayRef.current = today;
+    setSelectedDateKey((current) => (current === previousToday ? today : current));
+  }, [today]);
+
+  useEffect(() => {
+    store.hydrateTimeTrackerForDate(today);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today]);
+
+  // Dialogs
   const [blockModalOpen, setBlockModalOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<TimeTrackerBlock | null>(null);
-  const [defaultBlockStartTime, setDefaultBlockStartTime] = useState<string>('09:00');
+  const [blockDefaults, setBlockDefaults] = useState<{ start: string; end: string }>({ start: '09:00', end: '10:00' });
 
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<TimeTrackerTemplate | null>(null);
@@ -46,143 +59,98 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<TimeTrackerActivity | null>(null);
 
-  // Read TimeTracker State
-  const timeTrackerState = store.state.timeTracker;
-  const activities = useMemo(
-    () => ensureDefaultActivities(timeTrackerState?.activities || []),
-    [timeTrackerState?.activities]
+  const timeTracker = store.state.timeTracker;
+  const activities = useMemo(() => ensureDefaultActivities(timeTracker?.activities || []), [timeTracker?.activities]);
+  const templates = timeTracker?.templates || [];
+
+  const planned = useMemo(
+    () => (timeTracker ? plannedBlocksForDate(timeTracker, selectedDateKey, today) : { blocks: [], source: 'none' as const }),
+    [timeTracker, selectedDateKey, today]
   );
-  const templates = timeTrackerState?.templates || [];
+  const nextDayBlocks = useMemo(
+    () => (timeTracker ? plannedBlocksForDate(timeTracker, addDays(selectedDateKey, 1), today).blocks : []),
+    [timeTracker, selectedDateKey, today]
+  );
+  const openToday = (timeTracker?.dailyLogs?.[today] || []).filter((b) => !b.completed && !b.skipped).length;
 
-  const currentDailyBlocks = useMemo(() => {
-    return timeTrackerState?.dailyLogs?.[selectedDateKey] || [];
-  }, [timeTrackerState?.dailyLogs, selectedDateKey]);
-
-  // --- Handlers: Time Blocks ---
-  const handleOpenAddBlock = (defaultStart: string = '09:00') => {
+  const openAddBlock = (start: string, end: string) => {
     setEditingBlock(null);
-    setDefaultBlockStartTime(defaultStart);
+    setBlockDefaults({ start, end });
     setBlockModalOpen(true);
   };
 
-  const handleOpenEditBlock = (block: TimeTrackerBlock) => {
+  const openEditBlock = (block: TimeTrackerBlock) => {
     setEditingBlock(block);
     setBlockModalOpen(true);
   };
 
-  const handleSaveBlock = async (blockData: {
-    activityId: string;
-    secondaryActivityIds?: string[];
-    startTime: string;
-    endTime: string;
-    customTitle?: string;
-    notes?: string;
-  }) => {
+  const saveBlock = (draft: BlockDraft) => {
     // A failure reaches the dialog, which shows it in the form and stays open.
     if (editingBlock) {
-      store.updateDailyTimeBlock(selectedDateKey, editingBlock.id, blockData);
-      showSuccessToast('Time block updated');
+      store.updateDailyTimeBlock(selectedDateKey, editingBlock.id, draft);
+      showSuccessToast('Block saved');
     } else {
-      store.addDailyTimeBlock(selectedDateKey, blockData);
-      showSuccessToast('Time block scheduled');
+      store.addDailyTimeBlock(selectedDateKey, draft);
+      showSuccessToast('Block added');
     }
   };
 
-  // --- Handlers: Templates ---
-  const handleOpenCreateTemplate = () => {
-    setEditingTemplate(null);
-    setTemplateModalOpen(true);
-  };
-
-  const handleOpenEditTemplate = (template: TimeTrackerTemplate) => {
+  const openTemplateEditor = (template: TimeTrackerTemplate | null) => {
     setEditingTemplate(template);
     setTemplateModalOpen(true);
   };
 
-  const handleSaveTemplate = async (templateData: {
-    title: string;
-    activeDays: string[];
-    blocks: TimeTrackerBlock[];
-  }) => {
-    // A failure reaches the dialog, which shows it in the form and stays open.
+  const saveTemplate = (data: { title: string; activeDays: string[]; blocks: TimeTrackerBlock[] }) => {
     if (editingTemplate) {
-      store.updateTimeTrackerTemplate(editingTemplate.id, templateData);
-      showSuccessToast('Template updated');
+      store.updateTimeTrackerTemplate(editingTemplate.id, data);
+      showSuccessToast('Template saved');
     } else {
-      store.createTimeTrackerTemplate(templateData);
+      store.createTimeTrackerTemplate(data);
       showSuccessToast('Template created');
     }
   };
 
-  // --- Handlers: Apply Template ---
-  const handleOpenApplyTemplate = (templateId?: string) => {
+  const openApply = (templateId?: string) => {
     setPreselectedTemplateId(templateId);
     setApplyTemplateModalOpen(true);
   };
 
-  const handleApplyTemplate = async (templateId: string, mode: 'merge' | 'replace', targetDate: string) => {
-    // A failure reaches the dialog, which shows it in the form and stays open.
-    const dateToApply = targetDate || selectedDateKey;
-    const result = store.applyTemplateToDate(dateToApply, templateId, mode);
-
-    if (mode === 'replace') {
-      showSuccessToast('Template applied', `${result.added} blocks scheduled.`);
-    } else if (result.added > 0 && result.rejected === 0) {
-      showSuccessToast('Template merged', `${result.added} blocks added.`);
-    } else if (result.added > 0 && result.rejected > 0) {
-      showSuccessToast('Template merged', `${result.added} added, ${result.rejected} skipped (overlap).`);
-    } else if (result.added === 0 && result.rejected > 0) {
+  const applyTemplate = (templateId: string, mode: 'merge' | 'replace', dateKey: string) => {
+    const result = store.applyTemplateToDate(dateKey, templateId, mode);
+    if (!result.applied) {
       // Nothing changed: the dialog stays open and says why.
-      throw new Error(`All ${result.rejected} blocks overlap what's already scheduled. Pick Replace to use this template.`);
-    } else {
-      showSuccessToast('Template applied');
+      if (result.reason === 'past') throw new Error("Past days can't change. Pick today or a later day.");
+      if (result.reason === 'overlap') throw new Error(`All ${result.rejected} blocks overlap what's planned. Pick Replace to use this template.`);
+      throw new Error('This template is no longer there.');
     }
+    if (mode === 'replace') showSuccessToast('Template applied', `${result.added} blocks planned.`);
+    else if (result.rejected > 0) showSuccessToast('Template added', `${result.added} added, ${result.rejected} left out (they overlap).`);
+    else showSuccessToast('Template added', `${result.added} blocks added.`);
   };
 
-  // --- Handlers: Activities ---
-  const handleOpenCreateActivity = () => {
-    setEditingActivity(null);
-    setActivityModalOpen(true);
-  };
-
-  const handleOpenEditActivity = (activity: TimeTrackerActivity) => {
+  const openActivity = (activity: TimeTrackerActivity | null) => {
     setEditingActivity(activity);
     setActivityModalOpen(true);
   };
 
-  const handleSaveActivity = async (activityData: {
-    name: string;
-    color: string;
-    icon: string;
-    ascendModule?: string;
-  }) => {
-    // A failure reaches the dialog, which shows it in the form and stays open.
+  const saveActivity = (data: { name: string; color: string; icon: string; ascendModule?: string }) => {
     if (editingActivity) {
-      store.updateTimeTrackerActivity(editingActivity.id, activityData);
-      showSuccessToast('Activity updated');
+      store.updateTimeTrackerActivity(editingActivity.id, data);
+      showSuccessToast('Category saved');
     } else {
-      store.addTimeTrackerActivity({ ...activityData, isSystemDefault: false });
-      showSuccessToast('Activity created');
+      store.addTimeTrackerActivity({ ...data, isSystemDefault: false });
+      showSuccessToast('Category created');
     }
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12">
-      {/* 1. Main View Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 pb-12">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <div>
-            <div>
-              <h1 className="page-title">Time Tracker</h1>
-              <p className="page-subtitle">
-                Plan the day in blocks and see where the hours go.
-              </p>
-            </div>
-          </div>
+          <h1 className="page-title">Time Tracker</h1>
+          <p className="page-subtitle">Plan your day in blocks and tick them off.</p>
         </div>
-
-        {/* Tab Switcher */}
-        <div className="shrink-0 self-start md:self-auto max-w-full">
+        <div className="max-w-full shrink-0 self-start md:self-auto">
           <Tabs
             ariaLabel="Time Tracker sections"
             variant="segmented"
@@ -191,25 +159,26 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
             value={activeTab}
             onChange={(id) => setActiveTab(id as TabType)}
             items={[
-              { id: 'schedule', label: 'Daily Schedule', icon: Clock, badge: currentDailyBlocks.length },
-              { id: 'templates', label: 'Templates', icon: Layers, badge: templates.length },
-              { id: 'activities', label: 'Categories', icon: Tag, badge: activities.length },
+              { id: 'day', label: 'Day', icon: CalendarClock, badge: openToday || undefined },
+              { id: 'templates', label: 'Templates', icon: Layers },
+              { id: 'categories', label: 'Categories', icon: Tag },
             ]}
           />
         </div>
       </div>
 
-      {/* 2. Active Tab Content */}
-      {activeTab === 'schedule' && (
-        <ScheduleTab
+      {activeTab === 'day' && (
+        <DayTab
           store={store}
           activities={activities}
           templates={templates}
+          today={today}
           selectedDateKey={selectedDateKey}
+          planned={planned}
           onSelectDateKey={setSelectedDateKey}
-          onOpenAddBlockModal={handleOpenAddBlock}
-          onOpenEditBlockModal={handleOpenEditBlock}
-          onOpenApplyTemplateModal={() => handleOpenApplyTemplate()}
+          onAddBlock={openAddBlock}
+          onEditBlock={openEditBlock}
+          onApplyTemplate={() => openApply()}
           onNavigate={onNavigate}
         />
       )}
@@ -219,37 +188,37 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
           store={store}
           templates={templates}
           activities={activities}
-          selectedDateKey={selectedDateKey}
-          onOpenCreateTemplateModal={handleOpenCreateTemplate}
-          onOpenEditTemplateModal={handleOpenEditTemplate}
-          onOpenApplyTemplateModal={handleOpenApplyTemplate}
+          onCreateTemplate={() => openTemplateEditor(null)}
+          onEditTemplate={openTemplateEditor}
+          onApplyTemplate={openApply}
         />
       )}
 
-      {activeTab === 'activities' && (
+      {activeTab === 'categories' && (
         <ActivitiesTab
           store={store}
           activities={activities}
-          onOpenCreateActivityModal={handleOpenCreateActivity}
-          onOpenEditActivityModal={handleOpenEditActivity}
+          today={today}
+          onCreateCategory={() => openActivity(null)}
+          onEditCategory={openActivity}
         />
       )}
 
-      {/* 3. Global Modals */}
       <TimeBlockModal
         open={blockModalOpen}
         onClose={() => setBlockModalOpen(false)}
-        onSave={handleSaveBlock}
+        onSave={saveBlock}
         activities={activities}
-        existingBlocks={currentDailyBlocks}
+        context={{ kind: 'day', dateKey: selectedDateKey, dayBlocks: planned.blocks, nextDayBlocks }}
         editingBlock={editingBlock}
-        defaultStartTime={defaultBlockStartTime}
+        defaultStartTime={blockDefaults.start}
+        defaultEndTime={blockDefaults.end}
       />
 
       <TemplateEditorModal
         open={templateModalOpen}
         onClose={() => setTemplateModalOpen(false)}
-        onSave={handleSaveTemplate}
+        onSave={saveTemplate}
         activities={activities}
         templates={templates}
         editingTemplate={editingTemplate}
@@ -262,15 +231,17 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
           setPreselectedTemplateId(undefined);
         }}
         templates={templates}
-        initialDate={selectedDateKey}
+        today={today}
+        initialDate={selectedDateKey < today ? today : selectedDateKey}
         preselectedTemplateId={preselectedTemplateId}
-        onApply={handleApplyTemplate}
+        blocksForDate={(dateKey) => (timeTracker ? plannedBlocksForDate(timeTracker, dateKey, today).blocks : [])}
+        onApply={applyTemplate}
       />
 
       <ActivityModal
         open={activityModalOpen}
         onClose={() => setActivityModalOpen(false)}
-        onSave={handleSaveActivity}
+        onSave={saveActivity}
         editingActivity={editingActivity}
       />
     </div>

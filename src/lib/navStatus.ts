@@ -1,6 +1,7 @@
 import type { AppState, Habit } from '@/types';
 import type { View } from '@/lib/views';
 import { todayKey } from '@/lib/dates';
+import { dayProgress } from '@/lib/timeTracker';
 import { getActiveBadHabitsOrdered } from '@/lib/badHabitEligibility';
 import { trustedNow } from './clock';
 
@@ -67,11 +68,11 @@ export function getNavStatuses(state: AppState, isHabitDone: (habit: Habit) => b
   // Time tracker: today's blocks resolved (completed or skipped).
   const blocks = state.timeTracker?.dailyLogs?.[today] ?? [];
   if (blocks.length > 0) {
-    const resolved = blocks.filter((b) => b.completed || b.skipped).length;
+    const day = dayProgress(blocks);
     statuses['time-tracker'] = {
-      tone: resolved === blocks.length ? 'done' : 'pending',
-      meta: `${resolved}/${blocks.length}`,
-      label: `${resolved} of ${blocks.length} blocks done today`,
+      tone: day.open === 0 ? 'done' : 'pending',
+      meta: `${day.done}/${day.total}`,
+      label: `${day.done} done${day.skipped > 0 ? `, ${day.skipped} skipped` : ''} of ${day.total} blocks today`,
     };
   }
 

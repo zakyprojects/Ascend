@@ -47,6 +47,7 @@ import {
   TaskPriority,
   TimeTrackerActivity,
   TimeTrackerTemplate,
+  TimeTrackerState,
   TimeTrackerBlock,
   DEFAULT_TIME_TRACKER_ACTIVITIES,
   DEFAULT_TIME_TRACKER_STATE,
@@ -62,6 +63,11 @@ import {
   normalizeOrSplitMidnightBlock,
   timeStringToMinutes,
   minutesToTimeString,
+  commitTimeTrackerDays,
+  describeBlockSpan,
+  findSplitPartner,
+  plannedBlocksForDate,
+  templateDays,
 } from './timeTracker';
 import { findCuratedBook } from './books';
 import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
@@ -886,6 +892,7 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
         ])
       ),
       clearedDates: st.timeTracker?.clearedDates ?? [],
+      ...(st.timeTracker?.dayMeta ? { dayMeta: st.timeTracker.dayMeta } : {}),
     },
   };
 
@@ -7863,15 +7870,16 @@ export function useAppState() {
 
   const updateTimeTrackerActivity = useCallback(
     (id: string, updates: Partial<TimeTrackerActivity>) => {
+      const updatedAt = trustedNow().toISOString();
       setState((prev) => {
         const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+        // A built-in category edited for the first time is not in the saved list yet.
+        const activities = ensureDefaultActivities(currentTT.activities || []);
         return {
           ...prev,
           timeTracker: {
             ...currentTT,
-            activities: (currentTT.activities || []).map((a) =>
-              a.id === id ? { ...a, ...updates, id: a.id } : a
-            ),
+            activities: activities.map((a) => (a.id === id ? { ...a, ...updates, id: a.id, updatedAt } : a)),
           },
         };
       });
@@ -7881,44 +7889,53 @@ export function useAppState() {
     []
   );
 
+  /**
+   * Deletes a custom category. Its blocks on today and later days and in templates move to
+   * `replacementId`; past days keep their blocks as they were (shown as a deleted category).
+   */
   const deleteTimeTrackerActivity = useCallback(
-    (id: string) => {
+    (id: string, replacementId: string) => {
+      const known = ensureDefaultActivities(get().timeTracker?.activities || []);
+      const target = known.find((a) => a.id === id);
+      if (!target || target.isSystemDefault) throw new Error("Built-in categories can't be deleted.");
+      if (replacementId === id || !known.some((a) => a.id === replacementId)) throw new Error('Choose a category to move them to.');
+
+      const remap = (b: TimeTrackerBlock): TimeTrackerBlock => {
+        const usesIt = b.activityId === id || (b.secondaryActivityIds || []).includes(id);
+        if (!usesIt) return b;
+        const primary = b.activityId === id ? replacementId : b.activityId;
+        const secondary = Array.from(
+          new Set((b.secondaryActivityIds || []).map((s) => (s === id ? replacementId : s)))
+        ).filter((s) => s !== primary);
+        return { ...b, activityId: primary, secondaryActivityIds: secondary.length > 0 ? secondary : undefined };
+      };
+
       setState(
         (prev) => {
           const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-          const remainingActivities = (currentTT.activities || []).filter((a) => a.id !== id);
-          const fallbackActivityId = remainingActivities[0]?.id || 'deep_work';
-
-          // Cascade clean dailyLogs
-          const updatedDailyLogs: Record<string, TimeTrackerBlock[]> = {};
-          Object.entries(currentTT.dailyLogs || {}).forEach(([dateKey, blocks]) => {
-            updatedDailyLogs[dateKey] = (blocks || []).map((b) => ({
-              ...b,
-              activityId: b.activityId === id ? fallbackActivityId : b.activityId,
-              secondaryActivityIds: (b.secondaryActivityIds || []).filter((secId) => secId !== id),
-            }));
+          const nowIso = trustedNow().toISOString();
+          const today = todayKey();
+          const changedDays: Record<string, TimeTrackerBlock[]> = {};
+          for (const [dateKey, blocks] of Object.entries(currentTT.dailyLogs || {})) {
+            if (dateKey < today) continue;
+            const next = (blocks || []).map(remap);
+            if (next.some((b, i) => b !== blocks[i])) changedDays[dateKey] = next;
+          }
+          const templates = (currentTT.templates || []).map((t) => {
+            const blocks = (t.blocks || []).map(remap);
+            return blocks.some((b, i) => b !== t.blocks[i]) ? { ...t, blocks, updatedAt: nowIso } : t;
           });
-
-          // Cascade clean templates
-          const updatedTemplates = (currentTT.templates || []).map((t) => ({
-            ...t,
-            blocks: (t.blocks || []).map((b) => ({
-              ...b,
-              activityId: b.activityId === id ? fallbackActivityId : b.activityId,
-              secondaryActivityIds: (b.secondaryActivityIds || []).filter((secId) => secId !== id),
-            })),
-          }));
-
-          const updatedDeleted = [...(prev.deletedEntityIds || []), id].slice(-500);
+          const committed = commitTimeTrackerDays(currentTT, changedDays, nowIso);
+          const todayBlocks = changedDays[today];
           return {
             ...prev,
             timeTracker: {
-              ...currentTT,
-              activities: remainingActivities,
-              templates: updatedTemplates,
-              dailyLogs: updatedDailyLogs,
+              ...committed,
+              activities: (currentTT.activities || []).filter((a) => a.id !== id),
+              templates,
             },
-            deletedEntityIds: updatedDeleted,
+            deletedEntityIds: [...(prev.deletedEntityIds || []), id].slice(-500),
+            ...(todayBlocks ? recomputeTimeTrackerDailyPointsForState(prev, today, committed.dailyLogs[today]) : {}),
           };
         },
         { immediate: true }
@@ -7929,50 +7946,42 @@ export function useAppState() {
     []
   );
 
+  /** Templates with `days` taken off every template but `keepId` (one template per weekday). */
+  const withoutDaysElsewhere = (
+    templates: TimeTrackerTemplate[],
+    days: string[],
+    keepId: string,
+    updatedAt: string
+  ): TimeTrackerTemplate[] => {
+    if (days.length === 0) return templates;
+    const taken = new Set(days.map((d) => d.toLowerCase()));
+    return templates.map((t) => {
+      if (t.id === keepId) return t;
+      const current = templateDays(t);
+      const next = current.filter((d) => !taken.has(d.toLowerCase()));
+      return next.length === current.length ? t : { ...t, activeDays: next, autoApplyDays: next, updatedAt };
+    });
+  };
+
   const createTimeTrackerTemplate = useCallback(
     (template: Omit<TimeTrackerTemplate, 'id'>): TimeTrackerTemplate => {
-      const targetDays =
-        Array.isArray(template.activeDays) && template.activeDays.length > 0
-          ? template.activeDays
-          : Array.isArray(template.autoApplyDays) && template.autoApplyDays.length > 0
-          ? template.autoApplyDays
-          : [];
-
+      const targetDays = templateDays(template);
+      const nowIso = trustedNow().toISOString();
       const newTemplate: TimeTrackerTemplate = {
         ...template,
         activeDays: targetDays,
         autoApplyDays: targetDays,
         id: uid(),
-        createdAt: trustedNow().toISOString(),
+        createdAt: nowIso,
       };
 
       setState((prev) => {
         const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-        const otherTemplates = (currentTT.templates || []).map((t) => {
-          if (targetDays.length > 0) {
-            const currentDays =
-              Array.isArray(t.activeDays) && t.activeDays.length > 0
-                ? t.activeDays
-                : Array.isArray(t.autoApplyDays) && t.autoApplyDays.length > 0
-                ? t.autoApplyDays
-                : [];
-            const filteredDays = currentDays.filter(
-              (d) => !targetDays.some((nd) => nd.toLowerCase() === d.toLowerCase())
-            );
-            return {
-              ...t,
-              activeDays: filteredDays,
-              autoApplyDays: filteredDays,
-            };
-          }
-          return t;
-        });
-
         return {
           ...prev,
           timeTracker: {
             ...currentTT,
-            templates: [...otherTemplates, newTemplate],
+            templates: [...withoutDaysElsewhere(currentTT.templates || [], targetDays, newTemplate.id, nowIso), newTemplate],
           },
         };
       });
@@ -7985,61 +7994,16 @@ export function useAppState() {
 
   const updateTimeTrackerTemplate = useCallback(
     (id: string, updates: Partial<TimeTrackerTemplate>) => {
+      const nowIso = trustedNow().toISOString();
       setState((prev) => {
         const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-        const updatedDays =
-          Array.isArray(updates.activeDays) && updates.activeDays.length > 0
-            ? updates.activeDays
-            : Array.isArray(updates.autoApplyDays) && updates.autoApplyDays.length > 0
-            ? updates.autoApplyDays
-            : updates.activeDays !== undefined
-            ? updates.activeDays
-            : updates.autoApplyDays;
-
-        const updatedTemplates = (currentTT.templates || []).map((t) => {
-          if (t.id === id) {
-            const nextDays =
-              updatedDays !== undefined
-                ? updatedDays
-                : Array.isArray(t.activeDays) && t.activeDays.length > 0
-                ? t.activeDays
-                : Array.isArray(t.autoApplyDays) && t.autoApplyDays.length > 0
-                ? t.autoApplyDays
-                : [];
-            return {
-              ...t,
-              ...updates,
-              activeDays: nextDays,
-              autoApplyDays: nextDays,
-              id: t.id,
-            };
-          } else if (updatedDays && updatedDays.length > 0) {
-            // STRICT EXCLUSIVITY: Filter out any day that is now active in target template
-            const currentDays =
-              Array.isArray(t.activeDays) && t.activeDays.length > 0
-                ? t.activeDays
-                : Array.isArray(t.autoApplyDays) && t.autoApplyDays.length > 0
-                ? t.autoApplyDays
-                : [];
-            const filteredDays = currentDays.filter(
-              (d) => !updatedDays.some((nd) => nd.toLowerCase() === d.toLowerCase())
-            );
-            return {
-              ...t,
-              activeDays: filteredDays,
-              autoApplyDays: filteredDays,
-            };
-          }
-          return t;
-        });
-
-        return {
-          ...prev,
-          timeTracker: {
-            ...currentTT,
-            templates: updatedTemplates,
-          },
-        };
+        const target = (currentTT.templates || []).find((t) => t.id === id);
+        if (!target) return prev;
+        const daysGiven = updates.activeDays !== undefined || updates.autoApplyDays !== undefined;
+        const nextDays = daysGiven ? templateDays({ activeDays: updates.activeDays || [], autoApplyDays: updates.autoApplyDays }) : templateDays(target);
+        const updated: TimeTrackerTemplate = { ...target, ...updates, activeDays: nextDays, autoApplyDays: nextDays, id: target.id, updatedAt: nowIso };
+        const templates = withoutDaysElsewhere(currentTT.templates || [], nextDays, id, nowIso).map((t) => (t.id === id ? updated : t));
+        return { ...prev, timeTracker: { ...currentTT, templates } };
       });
     },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
@@ -8049,52 +8013,21 @@ export function useAppState() {
 
   const toggleTemplateAutoApplyDay = useCallback(
     (templateId: string, day: string) => {
+      const nowIso = trustedNow().toISOString();
       setState((prev) => {
         const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-        const targetTemplate = (currentTT.templates || []).find((t) => t.id === templateId);
-        if (!targetTemplate) return prev;
-
-        const getDays = (t: TimeTrackerTemplate): string[] => {
-          if (Array.isArray(t.activeDays) && t.activeDays.length > 0) return t.activeDays;
-          if (Array.isArray(t.autoApplyDays) && t.autoApplyDays.length > 0) return t.autoApplyDays;
-          return [];
-        };
-
-        const targetDays = getDays(targetTemplate);
-        const isRemoving = targetDays.some((d) => d.toLowerCase() === day.toLowerCase());
-
-        const updatedTemplates = (currentTT.templates || []).map((t) => {
-          if (t.id === templateId) {
-            const currentDays = getDays(t);
-            const nextDays = isRemoving
-              ? currentDays.filter((d) => d.toLowerCase() !== day.toLowerCase())
-              : [...currentDays.filter((d) => d.toLowerCase() !== day.toLowerCase()), day];
-            return {
-              ...t,
-              activeDays: nextDays,
-              autoApplyDays: nextDays,
-            };
-          } else {
-            // STRICT EXCLUSIVITY: If adding the day to target template, REMOVE it from all other templates
-            if (!isRemoving) {
-              const otherDays = getDays(t);
-              const nextDays = otherDays.filter((d) => d.toLowerCase() !== day.toLowerCase());
-              return {
-                ...t,
-                activeDays: nextDays,
-                autoApplyDays: nextDays,
-              };
-            }
-            return t;
-          }
-        });
-
+        const target = (currentTT.templates || []).find((t) => t.id === templateId);
+        if (!target) return prev;
+        const current = templateDays(target);
+        const isRemoving = current.some((d) => d.toLowerCase() === day.toLowerCase());
+        const nextDays = isRemoving
+          ? current.filter((d) => d.toLowerCase() !== day.toLowerCase())
+          : [...current, day];
+        const updated: TimeTrackerTemplate = { ...target, activeDays: nextDays, autoApplyDays: nextDays, updatedAt: nowIso };
+        const others = isRemoving ? currentTT.templates || [] : withoutDaysElsewhere(currentTT.templates || [], [day], templateId, nowIso);
         return {
           ...prev,
-          timeTracker: {
-            ...currentTT,
-            templates: updatedTemplates,
-          },
+          timeTracker: { ...currentTT, templates: others.map((t) => (t.id === templateId ? updated : t)) },
         };
       });
     },
@@ -8191,257 +8124,190 @@ export function useAppState() {
       : excised;
   };
 
+  /** "Overlaps 12:00 AM–6:00 AM." -> "The part after midnight overlaps 12:00 AM–6:00 AM tomorrow." */
+  const tomorrowOverlapMessage = (message?: string) =>
+    message?.startsWith('Overlaps ')
+      ? `The part after midnight ${message.charAt(0).toLowerCase()}${message.slice(1, -1)} tomorrow.`
+      : message || 'The part after midnight overlaps a block tomorrow.';
+
+  /**
+   * Adds a block. A block that runs past midnight is saved as two linked halves: start to 24:00 on
+   * `dateKey` and 00:00 to the end on the next day, each checked against its own day. A day that
+   * was never set up keeps the blocks its template shows, plus the new one.
+   */
   const addDailyTimeBlock = useCallback(
     (dateKey: string, block: Omit<TimeTrackerBlock, 'id'>) => {
       if (dateKey < todayKey()) {
-        throw new Error('Past days are read-only.');
+        throw new Error("Past days can't change.");
       }
-      const currentTT = state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-      const existingDateBlocks = currentTT.dailyLogs?.[dateKey] || [];
+      const currentTT = get().timeTracker || DEFAULT_TIME_TRACKER_STATE;
+      const parts = normalizeOrSplitMidnightBlock({
+        activityId: block.activityId,
+        ...(block.secondaryActivityIds?.length ? { secondaryActivityIds: block.secondaryActivityIds } : {}),
+        ...(block.customTitle ? { customTitle: block.customTitle } : {}),
+        ...(block.notes ? { notes: block.notes } : {}),
+        startTime: block.startTime,
+        endTime: block.endTime,
+      }).map((p, i) => (i === 0 ? { ...p, id: uid(), createdAt: trustedNow().toISOString() } : p));
 
-      // 1. Midnight boundary split check
-      const splitBlocks = normalizeOrSplitMidnightBlock(block);
-
-      if (splitBlocks.length === 1) {
-        // Single block on dateKey
-        const collision = checkTimeCollision(splitBlocks[0], existingDateBlocks);
-        if (collision.hasCollision) {
-          throw new Error(collision.message || 'Time block collides with an existing scheduled block.');
-        }
-
-        const createdBlock: TimeTrackerBlock = {
-          ...splitBlocks[0],
-          id: uid(),
-          createdAt: trustedNow().toISOString(),
-          completed: false,
-        };
-
-        setState((prev) => {
-          const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-          const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
-          const nextBlocks = [...prevDailyBlocks, createdBlock].sort(
-            (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
-          );
-          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextBlocks);
-
-          return {
-            ...prev,
-            timeTracker: {
-              ...prevTT,
-              dailyLogs: {
-                ...(prevTT.dailyLogs || {}),
-                [dateKey]: nextBlocks,
-              },
-            },
-            ...pointsUpdate,
-          };
-        });
-
-        return [createdBlock];
+      const first = checkTimeCollision(parts[0], plannedBlocksForDate(currentTT, dateKey).blocks);
+      if (first.hasCollision) throw new Error(first.message || 'This overlaps another block.');
+      const nextDayKey = addDays(dateKey, 1);
+      if (parts[1]) {
+        const second = checkTimeCollision(parts[1], plannedBlocksForDate(currentTT, nextDayKey).blocks);
+        if (second.hasCollision) throw new Error(tomorrowOverlapMessage(second.message));
       }
-
-      // Crossed midnight: Part 1 is on dateKey, Part 2 is on nextDayKey
-      const nextDayKey = getNextDateKey(dateKey);
-      const existingNextDayBlocks = currentTT.dailyLogs?.[nextDayKey] || [];
-
-      const part1Collision = checkTimeCollision(splitBlocks[0], existingDateBlocks);
-      if (part1Collision.hasCollision) {
-        throw new Error(part1Collision.message || `Part 1 (Today) collides with an existing block on ${dateKey}.`);
-      }
-
-      const part2Collision = checkTimeCollision(splitBlocks[1], existingNextDayBlocks);
-      if (part2Collision.hasCollision) {
-        throw new Error(part2Collision.message || `Part 2 (Tomorrow) collides with an existing block on ${nextDayKey}.`);
-      }
-
-      const createdPart1: TimeTrackerBlock = {
-        ...splitBlocks[0],
-        id: uid(),
-        createdAt: trustedNow().toISOString(),
-        completed: false,
-      };
-
-      const createdPart2: TimeTrackerBlock = {
-        ...splitBlocks[1],
-        id: uid(),
-        createdAt: trustedNow().toISOString(),
-        completed: false,
-      };
 
       setState((prev) => {
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-        const prevDateBlocks = prevTT.dailyLogs?.[dateKey] || [];
-        const prevNextDayBlocks = prevTT.dailyLogs?.[nextDayKey] || [];
-
-        const nextDateBlocks = [...prevDateBlocks, createdPart1].sort(
-          (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
-        );
-        const nextDaySortedBlocks = [...prevNextDayBlocks, createdPart2].sort(
-          (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
-        );
-
-        const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextDateBlocks);
-
+        const days: Record<string, TimeTrackerBlock[]> = {
+          [dateKey]: [...plannedBlocksForDate(prevTT, dateKey).blocks, parts[0]],
+        };
+        if (parts[1]) days[nextDayKey] = [...plannedBlocksForDate(prevTT, nextDayKey).blocks, parts[1]];
+        const nextTT = commitTimeTrackerDays(prevTT, days, trustedNow().toISOString());
         return {
           ...prev,
-          timeTracker: {
-            ...prevTT,
-            dailyLogs: {
-              ...(prevTT.dailyLogs || {}),
-              [dateKey]: nextDateBlocks,
-              [nextDayKey]: nextDaySortedBlocks,
-            },
-          },
-          ...pointsUpdate,
+          timeTracker: nextTT,
+          ...recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextTT.dailyLogs[dateKey]),
         };
       });
 
-      return [createdPart1, createdPart2];
+      return parts;
     },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.timeTracker]
+    []
   );
 
+  /**
+   * Edits a block. Changing its times clears the trim/pull-forward bookkeeping (so un-completing it
+   * later keeps the new times). For a half of a midnight block: a label/category change reaches the
+   * other half too; new times that still run past midnight move the other half; new times that no
+   * longer do unlink the two.
+   */
   const updateDailyTimeBlock = useCallback(
     (dateKey: string, blockId: string, updates: Partial<TimeTrackerBlock>) => {
       if (dateKey < todayKey()) {
-        throw new Error('Past days are read-only.');
+        throw new Error("Past days can't change.");
       }
-      const currentTT = state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-      const existingBlocks = currentTT.dailyLogs?.[dateKey] || [];
-      const targetBlock = existingBlocks.find((b) => b.id === blockId);
-      if (!targetBlock) {
-        throw new Error('Block not found.');
+      const currentTT = get().timeTracker || DEFAULT_TIME_TRACKER_STATE;
+      const dayBlocks = plannedBlocksForDate(currentTT, dateKey).blocks;
+      const target = dayBlocks.find((b) => b.id === blockId);
+      if (!target) {
+        throw new Error('This block is no longer there.');
       }
 
-      const merged = { ...targetBlock, ...updates };
-      const splitBlocks = normalizeOrSplitMidnightBlock(merged);
+      const partner = findSplitPartner(currentTT, dateKey, target);
+      const span = describeBlockSpan(updates.startTime ?? target.startTime, updates.endTime ?? target.endTime);
+      // A stored half never crosses midnight on its own, so new times that do always count as changed.
+      const timesChanged = Boolean(span.second) ||
+        span.first.startTime !== target.startTime ||
+        span.first.endTime !== describeBlockSpan(target.startTime, target.endTime).first.endTime;
 
-      if (splitBlocks.length === 1) {
-        const collision = checkTimeCollision(splitBlocks[0], existingBlocks, blockId);
-        if (collision.hasCollision) {
-          throw new Error(collision.message || 'Updated block collides with another scheduled block.');
-        }
-
-        const updatedSingleBlock: TimeTrackerBlock = {
+      let merged: TimeTrackerBlock = { ...target, ...updates, id: blockId };
+      if (timesChanged) {
+        merged = {
           ...merged,
-          startTime: splitBlocks[0].startTime,
-          endTime: splitBlocks[0].endTime,
-          updatedAt: trustedNow().toISOString(),
+          originalStartTime: undefined,
+          originalEndTime: undefined,
+          trimmedOriginalEndTime: undefined,
+          pulledForwardTriggerId: undefined,
+          trimmedDueToPullId: undefined,
         };
+      }
+      // The evening half keeps its pair when it still runs past midnight; any other new crossing
+      // starts a pair of its own.
+      const keepsPair = Boolean(span.second && partner && partner.dateKey > dateKey);
+      const parts = normalizeOrSplitMidnightBlock(keepsPair ? merged : { ...merged, splitPairId: undefined });
+      const first: TimeTrackerBlock = { ...parts[0], id: blockId };
+      if (!parts[1]) {
+        // Label or category only: the halves stay linked. New times: this block stands alone.
+        if (!timesChanged && target.splitPairId) first.splitPairId = target.splitPairId;
+        else delete first.splitPairId;
+      }
 
-        setState((prev) => {
-          const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-          const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
-          const nextBlocks = prevDailyBlocks
-            .map((b) => (b.id === blockId ? updatedSingleBlock : b))
-            .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
+      const collision = checkTimeCollision(first, dayBlocks, blockId);
+      if (collision.hasCollision) throw new Error(collision.message || 'This overlaps another block.');
 
-          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextBlocks);
+      const days: Record<string, TimeTrackerBlock[]> = {};
+      const nextDayKey = addDays(dateKey, 1);
+      const sharedFields = (b: TimeTrackerBlock): TimeTrackerBlock => ({
+        ...b,
+        activityId: first.activityId,
+        secondaryActivityIds: first.secondaryActivityIds,
+        customTitle: first.customTitle,
+        notes: first.notes,
+      });
 
-          return {
-            ...prev,
-            timeTracker: {
-              ...prevTT,
-              dailyLogs: {
-                ...(prevTT.dailyLogs || {}),
-                [dateKey]: nextBlocks,
-              },
-            },
-            ...pointsUpdate,
-          };
+      if (parts[1]) {
+        const nextBlocks = plannedBlocksForDate(currentTT, nextDayKey).blocks;
+        const second: TimeTrackerBlock = keepsPair && partner
+          ? { ...sharedFields(partner.block), startTime: parts[1].startTime, endTime: parts[1].endTime, splitPairId: first.splitPairId }
+          : parts[1];
+        const secondCollision = checkTimeCollision(second, nextBlocks, second.id);
+        if (secondCollision.hasCollision) throw new Error(tomorrowOverlapMessage(secondCollision.message));
+        days[nextDayKey] = keepsPair
+          ? nextBlocks.map((b) => (b.id === second.id ? second : b))
+          : [...nextBlocks, second];
+      }
+      // The old other half: still linked (label change only), or now on its own.
+      if (partner && !keepsPair && partner.dateKey >= todayKey()) {
+        const others = days[partner.dateKey] ?? plannedBlocksForDate(currentTT, partner.dateKey).blocks;
+        days[partner.dateKey] = others.map((b) => {
+          if (b.id !== partner.block.id) return b;
+          if (!timesChanged) return sharedFields(b);
+          const { splitPairId: _unlinked, ...rest } = b;
+          return rest;
         });
-        return;
       }
-
-      // Crossed midnight: split into Part 1 (today) and Part 2 (tomorrow)
-      const nextDayKey = getNextDateKey(dateKey);
-      const existingNextDayBlocks = currentTT.dailyLogs?.[nextDayKey] || [];
-
-      const part1Collision = checkTimeCollision(splitBlocks[0], existingBlocks, blockId);
-      if (part1Collision.hasCollision) {
-        throw new Error(part1Collision.message || `Part 1 (Today) collides with an existing block on ${dateKey}.`);
-      }
-
-      const part2Collision = checkTimeCollision(splitBlocks[1], existingNextDayBlocks);
-      if (part2Collision.hasCollision) {
-        throw new Error(part2Collision.message || `Part 2 (Tomorrow) collides with an existing block on ${nextDayKey}.`);
-      }
-
-      const updatedPart1: TimeTrackerBlock = {
-        ...merged,
-        startTime: splitBlocks[0].startTime,
-        endTime: splitBlocks[0].endTime,
-        id: blockId,
-        updatedAt: trustedNow().toISOString(),
-      };
-
-      const createdPart2: TimeTrackerBlock = {
-        ...merged,
-        startTime: splitBlocks[1].startTime,
-        endTime: splitBlocks[1].endTime,
-        id: uid(),
-        createdAt: trustedNow().toISOString(),
-        completed: false,
-      };
+      days[dateKey] = dayBlocks.map((b) => (b.id === blockId ? first : b));
 
       setState((prev) => {
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-        const prevDateBlocks = prevTT.dailyLogs?.[dateKey] || [];
-        const prevNextDayBlocks = prevTT.dailyLogs?.[nextDayKey] || [];
-
-        const nextDateBlocks = prevDateBlocks
-          .map((b) => (b.id === blockId ? updatedPart1 : b))
-          .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
-
-        const nextDaySortedBlocks = [...prevNextDayBlocks, createdPart2].sort(
-          (a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime)
-        );
-
-        const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextDateBlocks);
-
+        const nextTT = commitTimeTrackerDays(prevTT, days, trustedNow().toISOString());
         return {
           ...prev,
-          timeTracker: {
-            ...prevTT,
-            dailyLogs: {
-              ...(prevTT.dailyLogs || {}),
-              [dateKey]: nextDateBlocks,
-              [nextDayKey]: nextDaySortedBlocks,
-            },
-          },
-          ...pointsUpdate,
+          timeTracker: nextTT,
+          ...recomputeTimeTrackerDailyPointsForState(prev, todayKey(), nextTT.dailyLogs[todayKey()] || []),
         };
       });
     },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.timeTracker]
+    []
   );
 
+  /**
+   * Deletes a block. `withPartner` also deletes the other half of a midnight block (when its day
+   * can still change); otherwise that half stays on its own.
+   */
   const deleteDailyTimeBlock = useCallback(
-    (dateKey: string, blockId: string) => {
+    (dateKey: string, blockId: string, options?: { withPartner?: boolean }) => {
       setState(
         (prev) => {
-          if (dateKey < todayKey()) return prev;
+          const today = todayKey();
+          if (dateKey < today) return prev;
           const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-          const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
-          const updatedDeleted = [...(prev.deletedEntityIds || []), blockId].slice(-500);
-          const nextBlocks = prevDailyBlocks.filter((b) => b.id !== blockId);
-          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextBlocks);
-
+          const dayBlocks = plannedBlocksForDate(prevTT, dateKey).blocks;
+          const target = dayBlocks.find((b) => b.id === blockId);
+          if (!target) return prev;
+          const days: Record<string, TimeTrackerBlock[]> = { [dateKey]: dayBlocks.filter((b) => b.id !== blockId) };
+          const partner = findSplitPartner(prevTT, dateKey, target);
+          if (partner && partner.dateKey >= today) {
+            const others = plannedBlocksForDate(prevTT, partner.dateKey).blocks;
+            days[partner.dateKey] = options?.withPartner
+              ? others.filter((b) => b.id !== partner.block.id)
+              : others.map((b) => {
+                  if (b.id !== partner.block.id) return b;
+                  const { splitPairId: _unlinked, ...rest } = b;
+                  return rest;
+                });
+          }
+          const nextTT = commitTimeTrackerDays(prevTT, days, trustedNow().toISOString());
           return {
             ...prev,
-            timeTracker: {
-              ...prevTT,
-              dailyLogs: {
-                ...(prevTT.dailyLogs || {}),
-                [dateKey]: nextBlocks,
-              },
-            },
-            deletedEntityIds: updatedDeleted,
-            ...pointsUpdate,
+            timeTracker: nextTT,
+            ...(days[today] ? recomputeTimeTrackerDailyPointsForState(prev, today, nextTT.dailyLogs[today]) : {}),
           };
         },
         { immediate: true }
@@ -8529,13 +8395,7 @@ export function useAppState() {
 
           return {
             ...prev,
-            timeTracker: {
-              ...prevTT,
-              dailyLogs: {
-                ...(prevTT.dailyLogs || {}),
-                [dateKey]: updatedBlocks,
-              },
-            },
+            timeTracker: commitTimeTrackerDays(prevTT, { [dateKey]: updatedBlocks }, trustedNow().toISOString()),
             ...pointsUpdate,
           };
         }
@@ -8579,13 +8439,7 @@ export function useAppState() {
 
         return {
           ...prev,
-          timeTracker: {
-            ...prevTT,
-            dailyLogs: {
-              ...(prevTT.dailyLogs || {}),
-              [dateKey]: updatedBlocks,
-            },
-          },
+          timeTracker: commitTimeTrackerDays(prevTT, { [dateKey]: updatedBlocks }, trustedNow().toISOString()),
           ...pointsUpdate,
         };
       });
@@ -8614,13 +8468,7 @@ export function useAppState() {
 
           return {
             ...prev,
-            timeTracker: {
-              ...prevTT,
-              dailyLogs: {
-                ...(prevTT.dailyLogs || {}),
-                [dateKey]: updatedBlocks,
-              },
-            },
+            timeTracker: commitTimeTrackerDays(prevTT, { [dateKey]: updatedBlocks }, trustedNow().toISOString()),
             ...pointsUpdate,
           };
         }
@@ -8664,13 +8512,7 @@ export function useAppState() {
 
         return {
           ...prev,
-          timeTracker: {
-            ...prevTT,
-            dailyLogs: {
-              ...(prevTT.dailyLogs || {}),
-              [dateKey]: updatedBlocks,
-            },
-          },
+          timeTracker: commitTimeTrackerDays(prevTT, { [dateKey]: updatedBlocks }, trustedNow().toISOString()),
           ...pointsUpdate,
         };
       });
@@ -8695,13 +8537,7 @@ export function useAppState() {
 
         return {
           ...prev,
-          timeTracker: {
-            ...prevTT,
-            dailyLogs: {
-              ...(prevTT.dailyLogs || {}),
-              [dateKey]: updatedBlocks,
-            },
-          },
+          timeTracker: commitTimeTrackerDays(prevTT, { [dateKey]: updatedBlocks }, trustedNow().toISOString()),
           ...pointsUpdate,
         };
       });
@@ -8810,13 +8646,7 @@ export function useAppState() {
 
           return {
             ...prev,
-            timeTracker: {
-              ...prevTT,
-              dailyLogs: {
-                ...(prevTT.dailyLogs || {}),
-                [dateKey]: sortedBlocks,
-              },
-            },
+            timeTracker: commitTimeTrackerDays(prevTT, { [dateKey]: sortedBlocks }, trustedNow().toISOString()),
             ...pointsUpdate,
           };
         },
@@ -8876,13 +8706,7 @@ export function useAppState() {
 
         return {
           ...prev,
-          timeTracker: {
-            ...prevTT,
-            dailyLogs: {
-              ...(prevTT.dailyLogs || {}),
-              [dateKey]: updatedBlocks,
-            },
-          },
+          timeTracker: commitTimeTrackerDays(prevTT, { [dateKey]: updatedBlocks }, trustedNow().toISOString()),
         };
       });
     },
@@ -8912,13 +8736,7 @@ export function useAppState() {
 
         return {
           ...prev,
-          timeTracker: {
-            ...prevTT,
-            dailyLogs: {
-              ...(prevTT.dailyLogs || {}),
-              [dateKey]: updatedBlocks,
-            },
-          },
+          timeTracker: commitTimeTrackerDays(prevTT, { [dateKey]: updatedBlocks }, trustedNow().toISOString()),
         };
       });
     },
@@ -8953,13 +8771,7 @@ export function useAppState() {
 
         return {
           ...prev,
-          timeTracker: {
-            ...prevTT,
-            dailyLogs: {
-              ...(prevTT.dailyLogs || {}),
-              [dateKey]: updatedBlocks,
-            },
-          },
+          timeTracker: commitTimeTrackerDays(prevTT, { [dateKey]: updatedBlocks }, trustedNow().toISOString()),
         };
       });
     },
@@ -8991,13 +8803,7 @@ export function useAppState() {
 
         return {
           ...prev,
-          timeTracker: {
-            ...prevTT,
-            dailyLogs: {
-              ...(prevTT.dailyLogs || {}),
-              [dateKey]: updatedBlocks,
-            },
-          },
+          timeTracker: commitTimeTrackerDays(prevTT, { [dateKey]: updatedBlocks }, trustedNow().toISOString()),
         };
       });
     },
@@ -9006,104 +8812,79 @@ export function useAppState() {
     []
   );
 
+  /**
+   * What applying a template does to a date (pure, so the result is known before the state
+   * changes). Merge keeps what the day holds and adds the template blocks that fit; Replace swaps
+   * everything for fresh copies of the template's blocks.
+   */
+  const planTemplateApply = (
+    tt: TimeTrackerState,
+    dateKey: string,
+    templateId: string,
+    mode: 'merge' | 'replace'
+  ): { blocks: TimeTrackerBlock[]; added: number; rejected: number } | null => {
+    const template = (tt.templates || []).find((t) => t.id === templateId);
+    if (!template) return null;
+    const fresh = (b: TimeTrackerBlock): TimeTrackerBlock => ({
+      id: uid(),
+      createdAt: trustedNow().toISOString(),
+      startTime: b.startTime,
+      endTime: b.endTime,
+      activityId: b.activityId,
+      ...(b.secondaryActivityIds?.length ? { secondaryActivityIds: b.secondaryActivityIds } : {}),
+      ...(b.customTitle ? { customTitle: b.customTitle } : {}),
+      ...(b.notes ? { notes: b.notes } : {}),
+    });
+    if (mode === 'replace') {
+      const blocks = (template.blocks || []).map(fresh);
+      return { blocks, added: blocks.length, rejected: 0 };
+    }
+    const blocks = [...plannedBlocksForDate(tt, dateKey).blocks];
+    let added = 0;
+    let rejected = 0;
+    for (const tBlock of template.blocks || []) {
+      if (checkTimeCollision(tBlock, blocks).hasCollision) {
+        rejected++;
+      } else {
+        blocks.push(fresh(tBlock));
+        added++;
+      }
+    }
+    return { blocks, added, rejected };
+  };
+
+  /**
+   * Applies a template to today or a later date. The result is worked out from the current state
+   * first, so the counts it returns are what happened; nothing changes when `applied` is false
+   * (past date, template gone, or Merge with nothing that fits).
+   */
   const applyTemplateToDate = useCallback(
-    (dateKey: string, templateId: string, mode: 'merge' | 'replace' = 'merge') => {
-      let addedCount = 0;
-      let rejectedCount = 0;
+    (
+      dateKey: string,
+      templateId: string,
+      mode: 'merge' | 'replace' = 'merge'
+    ): { applied: boolean; added: number; rejected: number; reason?: 'past' | 'missing' | 'overlap' } => {
+      if (dateKey < todayKey()) return { applied: false, added: 0, rejected: 0, reason: 'past' };
+      const plan = planTemplateApply(get().timeTracker || DEFAULT_TIME_TRACKER_STATE, dateKey, templateId, mode);
+      if (!plan) return { applied: false, added: 0, rejected: 0, reason: 'missing' };
+      if (mode === 'merge' && plan.added === 0) return { applied: false, added: 0, rejected: plan.rejected, reason: 'overlap' };
 
       setState(
         (prev) => {
-          if (dateKey < todayKey()) return prev;
           const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-          const template = prevTT.templates?.find((t) => t.id === templateId);
-          if (!template) return prev;
-
-          const prevDailyBlocks = prevTT.dailyLogs?.[dateKey] || [];
-
-          // Internal helper for precise minute calculation
-          const getMins = (time: string) => {
-            const [h, m] = time.split(':').map(Number);
-            return h * 60 + m;
-          };
-
-          // Factory to ensure clean, untracked blocks with fresh IDs
-          const createFreshBlock = (b: any) => ({
-            ...b,
-            id: crypto.randomUUID(),
-            createdAt: trustedNow().toISOString(),
-            completed: false,
-            skipped: false,
-            completedAt: undefined,
-            skippedAt: undefined,
-            originalStartTime: undefined,
-            originalEndTime: undefined,
-            trimmedOriginalEndTime: undefined,
-          });
-
-          let updatedBlocks: TimeTrackerBlock[] = [];
-
-          if (mode === 'replace') {
-            // REPLACE: Wipe slate clean, map fresh template blocks
-            updatedBlocks = template.blocks.map(createFreshBlock);
-            addedCount = updatedBlocks.length;
-          } else {
-            // MERGE: Keep existing, carefully inject non-overlapping template blocks
-            updatedBlocks = [...prevDailyBlocks];
-
-            for (const tBlock of template.blocks) {
-              const tStart = getMins(tBlock.startTime);
-              const tEnd = getMins(tBlock.endTime);
-
-              const hasOverlap = updatedBlocks.some((existing) => {
-                const eStart = getMins(existing.startTime);
-                const eEnd = getMins(existing.endTime);
-                // Strict overlap formula
-                return tStart < eEnd && eStart < tEnd;
-              });
-
-              if (!hasOverlap) {
-                updatedBlocks.push(createFreshBlock(tBlock));
-                addedCount++;
-              } else {
-                rejectedCount++;
-              }
-            }
-          }
-
-          // Always keep the timeline chronologically sorted
-          updatedBlocks.sort((a, b) => getMins(a.startTime) - getMins(b.startTime));
-
-          const replacedBlockIds = mode === 'replace' ? prevDailyBlocks.map((b) => b.id) : [];
-          const updatedDeleted = replacedBlockIds.length > 0
-            ? [...(prev.deletedEntityIds || []), ...replacedBlockIds].slice(-500)
-            : prev.deletedEntityIds;
-
-          const updatedClearedDates = (prevTT.clearedDates || []).filter((d) => d !== dateKey);
-
-
-          const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, updatedBlocks);
-          const finalDeleted = pointsUpdate.deletedEntityIds
-            ? Array.from(new Set([...(updatedDeleted || []), ...pointsUpdate.deletedEntityIds])).slice(-500)
-            : updatedDeleted;
-
+          const again = planTemplateApply(prevTT, dateKey, templateId, mode);
+          if (!again) return prev;
+          const nextTT = commitTimeTrackerDays(prevTT, { [dateKey]: again.blocks }, trustedNow().toISOString());
           return {
             ...prev,
-            timeTracker: {
-              ...prevTT,
-              dailyLogs: {
-                ...(prevTT.dailyLogs || {}),
-                [dateKey]: updatedBlocks,
-              },
-              clearedDates: updatedClearedDates,
-            },
-            ...pointsUpdate,
-            ...(finalDeleted !== undefined ? { deletedEntityIds: finalDeleted } : {}),
+            timeTracker: { ...nextTT, clearedDates: (prevTT.clearedDates || []).filter((d) => d !== dateKey) },
+            ...recomputeTimeTrackerDailyPointsForState(prev, dateKey, nextTT.dailyLogs[dateKey]),
           };
         },
         { immediate: true }
       );
 
-      return { added: addedCount, rejected: rejectedCount };
+      return { applied: true, added: plan.added, rejected: plan.rejected };
     },
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -9115,34 +8896,13 @@ export function useAppState() {
       (prev) => {
         if (dateKey < todayKey()) return prev;
         const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
-        const existingBlocks = prevTT.dailyLogs?.[dateKey] || [];
-        const deletedIds = existingBlocks.map((b) => b.id);
-        const updatedDeleted = [...(prev.deletedEntityIds || []), ...deletedIds].slice(-500);
-
-        const nextLogs = {
-          ...(prevTT.dailyLogs || {}),
-          [dateKey]: [], // Intentionally empty array, prevents auto-hydration loop
-        };
-
-        const existingCleared = prevTT.clearedDates || [];
-        const nextCleared = existingCleared.includes(dateKey)
-          ? existingCleared
-          : [...existingCleared, dateKey];
-
-        const pointsUpdate = recomputeTimeTrackerDailyPointsForState(prev, dateKey, []);
-        const finalDeleted = pointsUpdate.deletedEntityIds
-          ? Array.from(new Set([...updatedDeleted, ...pointsUpdate.deletedEntityIds])).slice(-500)
-          : updatedDeleted;
-
+        // An empty saved day (not absent) keeps its template from filling it again.
+        const nextTT = commitTimeTrackerDays(prevTT, { [dateKey]: [] }, trustedNow().toISOString());
+        const cleared = prevTT.clearedDates || [];
         return {
           ...prev,
-          timeTracker: {
-            ...prevTT,
-            dailyLogs: nextLogs,
-            clearedDates: nextCleared,
-          },
-          ...pointsUpdate,
-          deletedEntityIds: finalDeleted,
+          timeTracker: { ...nextTT, clearedDates: cleared.includes(dateKey) ? cleared : [...cleared, dateKey] },
+          ...recomputeTimeTrackerDailyPointsForState(prev, dateKey, []),
         };
       },
       { immediate: true }
@@ -9151,8 +8911,14 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Fills TODAY from its weekday's template when it was never set up (boot, the page, Deep Focus).
+   * Other dates are never filled here: a later day shows its template as a preview until the user
+   * changes it, and a past day stays as it was.
+   */
   const hydrateTimeTrackerForDate = useCallback((dateKey: string) => {
     setState((prev) => {
+      if (dateKey !== todayKey()) return prev;
       const currentTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
       const { updatedState, hydrated } = autoHydrateDailyLog(currentTT, dateKey);
       if (!hydrated) return prev;
@@ -9160,6 +8926,19 @@ export function useAppState() {
         ...prev,
         timeTracker: updatedState,
       };
+    });
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Saves a later day's template preview as that day's plan (the "Use it" button). */
+  const keepTemplatePreview = useCallback((dateKey: string) => {
+    setState((prev) => {
+      if (dateKey < todayKey()) return prev;
+      const prevTT = prev.timeTracker || DEFAULT_TIME_TRACKER_STATE;
+      const planned = plannedBlocksForDate(prevTT, dateKey);
+      if (planned.source !== 'template') return prev;
+      return { ...prev, timeTracker: commitTimeTrackerDays(prevTT, { [dateKey]: planned.blocks }, trustedNow().toISOString()) };
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -9317,6 +9096,7 @@ export function useAppState() {
     startDailyBlockBreak,
     endDailyBlockBreakEarly,
     finalizeDailyBlockBreakNatural,
+    keepTemplatePreview,
     applyTemplateToDate,
     clearDailyTimeBlocks,
     hydrateTimeTrackerForDate,

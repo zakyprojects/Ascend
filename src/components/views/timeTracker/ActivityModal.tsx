@@ -27,13 +27,13 @@ interface ActivityModalProps {
 }
 
 const MODULE_OPTIONS = [
-  { label: 'None (General Activity)', value: '' },
-  { label: 'Deep Focus (Prefrontal Cortex)', value: 'Deep Focus' },
-  { label: 'Exercise & Training', value: 'Exercise' },
-  { label: 'Reading & Knowledge', value: 'Reading' },
-  { label: 'Habits & Routines', value: 'Habits' },
-  { label: 'Skill Mastery', value: 'Skills' },
-  { label: 'Addiction Recovery / Dopamine Reset', value: 'Recovery' },
+  { label: 'Not linked', value: '' },
+  { label: 'Deep Focus', value: 'Deep Focus' },
+  { label: 'Exercise', value: 'Exercise' },
+  { label: 'Reading', value: 'Reading' },
+  { label: 'Habits', value: 'Habits' },
+  { label: 'Skills', value: 'Skills' },
+  { label: 'Recovery', value: 'Recovery' },
 ];
 
 export function ActivityModal({
@@ -67,7 +67,9 @@ export function ActivityModal({
       setAscendModule('');
     }
     formIssues.clear();
-  }, [open, editingActivity, formIssues]);
+    // Prefill once per open (and per edited category): a sync or realtime update must not wipe typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editingActivity?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +85,7 @@ export function ActivityModal({
       });
       onClose();
     } catch (err: any) {
-      formIssues.showError(toUserMessage(err, "Couldn't save this activity. Try again."));
+      formIssues.showError(toUserMessage(err, "Couldn't save this category. Try again."));
     } finally {
       setIsSaving(false);
     }
@@ -94,7 +96,7 @@ export function ActivityModal({
       open={open}
       onClose={onClose}
       dirty={form.dirty}
-      title={editingActivity ? 'Edit activity' : 'New activity'}
+      title={editingActivity ? 'Edit category' : 'New category'}
       maxWidth="max-w-md"
       preventClose={isSaving}
       footer={
@@ -104,7 +106,7 @@ export function ActivityModal({
           </button>
           <button type="submit" form="tt-activity-form" disabled={isSaving} className="btn-primary">
             {isSaving ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
-            <span>{isSaving ? 'Saving…' : editingActivity ? 'Save activity' : 'Create activity'}</span>
+            <span>{isSaving ? 'Saving…' : editingActivity ? 'Save category' : 'Create category'}</span>
           </button>
         </>
       }
@@ -140,10 +142,10 @@ export function ActivityModal({
           </div>
           <div className="min-w-0">
             <p className="item-name text-sm truncate">
-              {name.trim() || 'Activity name'}
+              {name.trim() || 'Category name'}
             </p>
             <p className="text-xs text-content-muted">
-              {ascendModule ? `Linked to ${ascendModule}` : 'Standard activity'}
+              {ascendModule ? `Opens ${ascendModule}` : 'Not linked'}
             </p>
           </div>
         </div>
@@ -153,7 +155,7 @@ export function ActivityModal({
           label="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Client Consulting, Meditation, Piano"
+          placeholder="e.g. Client work, Meditation, Piano"
           maxLength={60}
           autoComplete="off"
           required
@@ -208,9 +210,9 @@ export function ActivityModal({
 
         <Select
           id="tt-act-module"
-          label="Link to an Ascend module"
+          label="Link to a section"
           optional
-          hint="A linked activity can open that section in one click."
+          hint="A block of this category gets a button that opens the section."
           value={ascendModule}
           onChange={(e) => setAscendModule(e.target.value)}
         >

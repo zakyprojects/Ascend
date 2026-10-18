@@ -23,7 +23,7 @@ import { ProgressRing } from '@/components/ui/charts';
 import { LEAGUE_CONFIG, getSeasonLabel } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { LeagueType } from '@/types';
-import { calculateBlockDurationMinutes, formatDurationHuman } from '@/lib/timeTracker';
+import { calculateBlockDurationMinutes, dayProgress, formatDurationHuman } from '@/lib/timeTracker';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 import { AutoNum, CountUp, Reveal } from '@/components/ui/Motion';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
@@ -146,7 +146,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
     (sum, b) => sum + calculateBlockDurationMinutes(b.startTime, b.endTime),
     0
   );
-  const todayCompletedBlocksCount = todayBlocks.filter((b) => b.completed).length;
+  const todayProgress = dayProgress(todayBlocks);
 
   return (
     <div className="space-y-6">
@@ -394,7 +394,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                     </div>
                     <div className="text-micro text-content-disabled">
                       {todayBlocks.length > 0 ? (
-                        <AutoNum text={`${todayCompletedBlocksCount}/${todayBlocks.length} blocks completed`} />
+                        <AutoNum text={`${todayProgress.done} done${todayProgress.skipped > 0 ? `, ${todayProgress.skipped} skipped` : ''} of ${todayProgress.total}`} />
                       ) : (
                         'No scheduled blocks yet'
                       )}

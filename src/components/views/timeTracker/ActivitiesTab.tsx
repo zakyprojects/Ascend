@@ -1,151 +1,195 @@
-import { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { TimeTrackerActivity } from '@/types';
 import { AppStore } from '@/lib/store';
 import { getActivityDisplayColor } from '@/lib/timeTracker';
 import { ActivityIcon } from './ActivityIcon';
-import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
-import {
-  Tag,
-  Plus,
-  Edit2,
-  Trash2,
-  Link as LinkIcon,
-  ShieldCheck,
-} from 'lucide-react';
-import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
+import { Dialog, Form, Select, useFormController } from '@/components/ui/primitives';
+import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
+import { toUserMessage } from '@/lib/userMessage';
+import { MODULE_LABELS } from './dayMeta';
 
 interface ActivitiesTabProps {
   store: AppStore;
   activities: TimeTrackerActivity[];
-  onOpenCreateActivityModal: () => void;
-  onOpenEditActivityModal: (activity: TimeTrackerActivity) => void;
+  today: string;
+  onCreateCategory: () => void;
+  onEditCategory: (activity: TimeTrackerActivity) => void;
 }
 
-export function ActivitiesTab({
-  store,
-  activities,
-  onOpenCreateActivityModal,
-  onOpenEditActivityModal,
-}: ActivitiesTabProps) {
-  const { showSuccessToast } = useToast();
-  const [deleteTargetActivity, setDeleteTargetActivity] = useState<TimeTrackerActivity | null>(null);
+export function ActivitiesTab({ store, activities, today, onCreateCategory, onEditCategory }: ActivitiesTabProps) {
   const theme = store.state.themePreference || 'dark';
-
-  const handleConfirmDeleteActivity = async () => {
-    if (!deleteTargetActivity) return;
-    const activityId = deleteTargetActivity.id;
-    store.deleteTimeTrackerActivity(activityId);
-    showSuccessToast('Activity removed', 'Activity category removed.', `activity_${activityId}`);
-    setDeleteTargetActivity(null);
-  };
+  const [deleting, setDeleting] = useState<TimeTrackerActivity | null>(null);
 
   return (
     <div className="space-y-6">
-      {/* 1. Header & Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="section-title text-xl leading-tight flex items-center gap-2">
-            <Tag className="text-success-text" size={18} />
-            <span>Activity categories</span>
-          </h2>
-          <p className="text-xs text-content-muted mt-0.5">
-            Set up your activities and link them to other Ascend sections to earn discipline XP.
-          </p>
+          <h2 className="section-title">Categories</h2>
+          <p className="text-xs text-content-muted">Link a category to a section to open it from a block.</p>
         </div>
-
-        <button
-          onClick={onOpenCreateActivityModal}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-on-brand bg-primary-600 hover:bg-primary-700 rounded-xl shadow-sm transition-all shrink-0 cursor-pointer"
-        >
-          <Plus size={15} />
-          <span>New Category</span>
+        <button type="button" onClick={onCreateCategory} className="btn-primary self-start text-xs sm:self-auto">
+          <Plus size={14} /> New category
         </button>
       </div>
 
-      {/* 2. Activities Grid */}
-      <div className="grid-cards gap-3.5">
+      <ul className="card divide-y divide-overlay-subtle p-0">
         {activities.map((act) => {
           const color = getActivityDisplayColor(act, theme);
           return (
-            <div
-              key={act.id}
-              className="scroll-rise p-4 rounded-2xl border border-overlay-subtle hover:border-overlay-default transition-colors flex items-start justify-between gap-3"
-            >
-              <div className="flex items-start gap-3 min-w-0">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                  style={{
-                    backgroundColor: `${color}25`,
-                    color,
-                    border: `1px solid ${color}40`,
-                  }}
-                >
-                  <ActivityIcon iconName={act.icon} size={20} />
-                </div>
-
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h4 className="item-name text-sm truncate">{act.name}</h4>
-                    {act.isSystemDefault && (
-                      <span
-                        className="px-1.5 py-0.2 rounded text-3xs font-medium bg-overlay-subtle text-content-muted border border-overlay-default flex items-center gap-0.5"
-                        title="System default"
-                      >
-                        <ShieldCheck size={10} />
-                        Core
-                      </span>
-                    )}
-                  </div>
-
-                  {act.ascendModule ? (
-                    <div className="flex items-center gap-1 mt-1.5 text-success-text text-micro font-medium">
-                      <LinkIcon size={12} className="shrink-0" />
-                      <span className="truncate">Linked: {act.ascendModule}</span>
-                    </div>
-                  ) : (
-                    <p className="text-micro text-content-disabled mt-1">General Activity</p>
-                  )}
-                </div>
+            <li key={act.id} className="flex items-center gap-3 px-4 py-3">
+              <span
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                style={{ backgroundColor: `${color}22`, color }}
+                aria-hidden="true"
+              >
+                <ActivityIcon iconName={act.icon} size={18} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="item-name truncate text-sm">{act.name}</p>
+                <p className="text-xs text-content-muted">
+                  {act.ascendModule ? `Opens ${MODULE_LABELS[act.ascendModule] || act.ascendModule}` : 'Not linked'}
+                  {act.isSystemDefault ? ' · Built-in' : ''}
+                </p>
               </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex shrink-0 items-center gap-1">
                 <button
-                  onClick={() => onOpenEditActivityModal(act)}
-                  className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
-                  title="Edit category"
-                  aria-label="Edit category"
+                  type="button"
+                  onClick={() => onEditCategory(act)}
+                  className={cx('rounded-lg p-1.5 text-content-muted transition-colors hover:bg-overlay-subtle hover:text-content-secondary', TAP_TARGET)}
+                  aria-label={`Edit ${act.name}`}
                 >
-                  <Edit2 size={14} />
+                  <Pencil size={15} />
                 </button>
-
                 {!act.isSystemDefault && (
                   <button
-                    onClick={() => setDeleteTargetActivity(act)}
-                    className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer ${TAP_TARGET_Y}`}
-                    title="Delete category"
-                    aria-label="Delete category"
+                    type="button"
+                    onClick={() => setDeleting(act)}
+                    className={cx('rounded-lg p-1.5 text-content-muted transition-colors hover:bg-overlay-subtle hover:text-rose-theme', TAP_TARGET)}
+                    aria-label={`Delete ${act.name}`}
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={15} />
                   </button>
                 )}
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
-      {/* Delete Activity Modal */}
-      {deleteTargetActivity && (
-        <ConfirmDeleteModal
-          open={Boolean(deleteTargetActivity)}
-          onClose={() => setDeleteTargetActivity(null)}
-          onConfirm={handleConfirmDeleteActivity}
-          title="Delete activity category?"
-          description={`Are you sure you want to remove the category "${deleteTargetActivity.name}"? Existing blocks will retain their color and information.`}
-        />
-      )}
+      <DeleteCategoryDialog
+        store={store}
+        activities={activities}
+        today={today}
+        category={deleting}
+        onClose={() => setDeleting(null)}
+      />
     </div>
+  );
+}
+
+interface DeleteCategoryDialogProps {
+  store: AppStore;
+  activities: TimeTrackerActivity[];
+  today: string;
+  category: TimeTrackerActivity | null;
+  onClose: () => void;
+}
+
+/**
+ * Deleting a category asks where its blocks go. Today, later days and templates move to the
+ * chosen category; past days keep theirs (shown as a deleted category).
+ */
+function DeleteCategoryDialog({ store, activities, today, category, onClose }: DeleteCategoryDialogProps) {
+  const { showSuccessToast } = useToast();
+  const formIssues = useFormController();
+  const [replacementId, setReplacementId] = useState('');
+  const open = Boolean(category);
+
+  useEffect(() => {
+    if (!open) return;
+    setReplacementId('');
+    formIssues.clear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, category?.id]);
+
+  const usage = useMemo(() => {
+    if (!category) return { blocks: 0, days: 0, templates: 0 };
+    const uses = (b: { activityId: string; secondaryActivityIds?: string[] }) =>
+      b.activityId === category.id || (b.secondaryActivityIds || []).includes(category.id);
+    let blocks = 0;
+    let days = 0;
+    for (const [dateKey, dayBlocks] of Object.entries(store.state.timeTracker?.dailyLogs || {})) {
+      if (dateKey < today) continue;
+      const count = (dayBlocks || []).filter(uses).length;
+      blocks += count;
+      if (count > 0) days++;
+    }
+    const templates = (store.state.timeTracker?.templates || []).filter((t) => (t.blocks || []).some(uses)).length;
+    return { blocks, days, templates };
+  }, [category, store.state.timeTracker, today]);
+
+  const others = activities.filter((a) => a.id !== category?.id);
+  const usageText = [
+    usage.blocks > 0 ? `${usage.blocks} block${usage.blocks === 1 ? '' : 's'} on ${usage.days} day${usage.days === 1 ? '' : 's'} from today on` : '',
+    usage.templates > 0 ? `${usage.templates} template${usage.templates === 1 ? '' : 's'}` : '',
+  ]
+    .filter(Boolean)
+    .join(' and ');
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!category) return;
+    try {
+      store.deleteTimeTrackerActivity(category.id, replacementId);
+      showSuccessToast('Category deleted', undefined, `activity_${category.id}`);
+      onClose();
+    } catch (err) {
+      formIssues.showError(toUserMessage(err, "Couldn't delete this category. Try again."));
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Delete category?"
+      description={
+        category
+          ? `${usageText ? `${category.name} is used by ${usageText}.` : `${category.name} isn't used from today on.`} Past days keep their blocks as they were.`
+          : undefined
+      }
+      maxWidth="max-w-md"
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="btn-secondary">
+            Cancel
+          </button>
+          <button type="submit" form="tt-delete-category-form" className="btn-danger-solid">
+            Delete category
+          </button>
+        </>
+      }
+    >
+      <Form id="tt-delete-category-form" onSubmit={submit} controller={formIssues} className="space-y-3">
+        <Select
+          id="tt-delete-category-replacement"
+          label="Move its blocks to"
+          value={replacementId}
+          onChange={(e) => setReplacementId(e.target.value)}
+          required
+        >
+          <option value="" disabled>
+            Choose a category
+          </option>
+          {others.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </Select>
+      </Form>
+    </Dialog>
   );
 }
