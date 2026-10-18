@@ -247,10 +247,22 @@ export function calculateElapsedDays(startDateVal?: string | Date | number | nul
 }
 
 /**
- * Calculates active streak for an Improvement Plan / Habit Journey.
- * If last completed date was today or yesterday (or within 7 days for weekly cadence),
- * returns streakCount.
- * If missed by >1 calendar day (or >7 days for weekly cadence), violently resets streak to 0.
+ * Whether a habit journey was already marked for the current period: today for a daily journey,
+ * this Monday-to-Sunday week for a weekly one.
+ */
+export function isPlanJourneyDoneThisPeriod(
+  lastCompletedDate?: string | null,
+  cadence: 'daily' | 'weekly' = 'daily',
+  now?: Date
+): boolean {
+  const last = parseDate(lastCompletedDate);
+  if (!last) return false;
+  return periodKey(cadence, last) === periodKey(cadence, now || getNow());
+}
+
+/**
+ * Active streak of a habit journey: the saved count while the last completion is in the current
+ * or the previous period (day or week), otherwise 0.
  */
 export function calculateActivePlanStreak(
   streakCount: number = 0,
@@ -259,28 +271,15 @@ export function calculateActivePlanStreak(
   now?: Date
 ): number {
   if (!lastCompletedDate || streakCount <= 0) return 0;
-  const lastD = parseDate(lastCompletedDate);
-  if (!lastD) return 0;
+  const last = parseDate(lastCompletedDate);
+  if (!last) return 0;
 
   const currentNow = now || getNow();
-  // Normalize dates to local midnight for exact calendar day diff
-  const todayLocal = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate());
-  const lastLocal = new Date(lastD.getFullYear(), lastD.getMonth(), lastD.getDate());
-
-  const diffMs = todayLocal.getTime() - lastLocal.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (cadence === 'weekly') {
-    if (diffDays <= 7) {
-      return streakCount;
-    }
-    return 0; // Missed by > 7 days -> streak reset to 0
-  } else {
-    if (diffDays <= 1) {
-      return streakCount;
-    }
-    return 0; // Missed by > 1 calendar day -> violent streak reset to 0
+  const lastKey = periodKey(cadence, last);
+  if (lastKey === periodKey(cadence, currentNow) || lastKey === previousPeriodKey(cadence, 1, currentNow)) {
+    return streakCount;
   }
+  return 0;
 }
 
 export function uid(): string {

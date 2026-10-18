@@ -533,19 +533,26 @@ export async function fetchProfileByUsernameFromSupabase(username: string) {
   }
 }
 
-const planSyncLocks = new Map<string, boolean>();
-const planPendingPayloads = new Map<string, any>();
+// Writes to one plan or copy run one at a time, in call order, so a slower earlier upsert can never
+// land after a newer one. Each caller still gets its own write's result.
+const rowSyncChains = new Map<string, Promise<unknown>>();
 
-export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string | null> {
-  if (!isSupabaseConfigured) return null;
+function serializeRowSync<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const previous = rowSyncChains.get(key) ?? Promise.resolve();
+  const next = previous.then(run, run);
+  rowSyncChains.set(key, next);
+  void next.finally(() => {
+    if (rowSyncChains.get(key) === next) rowSyncChains.delete(key);
+  });
+  return next;
+}
 
-  if (planSyncLocks.get(plan.id)) {
-    planPendingPayloads.set(plan.id, plan);
-    return null;
-  }
+export function syncPlanToSupabase(plan: ImprovementPlan): Promise<string | null> {
+  if (!isSupabaseConfigured) return Promise.resolve(null);
+  return serializeRowSync(`plan:${plan.id}`, () => upsertPlanRow(plan));
+}
 
-  planSyncLocks.set(plan.id, true);
-
+async function upsertPlanRow(plan: ImprovementPlan): Promise<string | null> {
   try {
     // 1. Await absolute current session token
     let { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -593,6 +600,7 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
       startDate: plan.startDate ?? anyPlan.start_date ?? null,
       streakCount: plan.streakCount ?? anyPlan.streak_count ?? 0,
       lastCompletedDate: plan.lastCompletedDate ?? anyPlan.last_completed_date ?? null,
+      previousCompletedDate: plan.previousCompletedDate ?? null,
       targetReviewDate: plan.targetReviewDate ?? anyPlan.target_review_date ?? null,
       reviewCadence: plan.reviewCadence ?? anyPlan.review_cadence ?? null,
       nextReviewDueAt: plan.nextReviewDueAt ?? anyPlan.next_review_due_at ?? null,
@@ -628,14 +636,6 @@ export async function syncPlanToSupabase(plan: ImprovementPlan): Promise<string 
   } catch (e: any) {
     console.warn(`[Supabase Sync Warning] Supabase plan sync error: ${e.message}`, e);
     return null;
-  } finally {
-    planSyncLocks.set(plan.id, false);
-
-    if (planPendingPayloads.has(plan.id)) {
-      const nextPlan = planPendingPayloads.get(plan.id);
-      planPendingPayloads.delete(plan.id);
-      void syncPlanToSupabase(nextPlan);
-    }
   }
 }
 
@@ -651,15 +651,20 @@ export async function deletePlanFromSupabase(planId: string) {
   }
 }
 
-export async function syncFollowedPlanToSupabase(followedPlan: UserPlanFollow) {
-  if (!isSupabaseConfigured) return;
+/** Upserts this user's copy of a plan; resolves true once the row is saved. */
+export function syncFollowedPlanToSupabase(followedPlan: UserPlanFollow): Promise<boolean> {
+  if (!isSupabaseConfigured) return Promise.resolve(false);
+  return serializeRowSync(`follow:${followedPlan.id}`, () => upsertFollowRow(followedPlan));
+}
+
+async function upsertFollowRow(followedPlan: UserPlanFollow): Promise<boolean> {
   try {
-    let { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    let sessionUser = session?.user;
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const sessionUser = session?.user;
 
     if (!sessionUser) {
       console.error('[Supabase SyncFollowedPlan] No active session found.', sessionError);
-      return;
+      return false;
     }
 
     const userId = sessionUser.id;
@@ -689,6 +694,7 @@ export async function syncFollowedPlanToSupabase(followedPlan: UserPlanFollow) {
       startDate: followedPlan.startDate,
       streakCount: followedPlan.streakCount ?? 0,
       lastCompletedDate: followedPlan.lastCompletedDate,
+      previousCompletedDate: followedPlan.previousCompletedDate ?? null,
       targetReviewDate: followedPlan.targetReviewDate,
       reviewCadence: followedPlan.reviewCadence ?? null,
       nextReviewDueAt: followedPlan.nextReviewDueAt ?? null,
@@ -710,21 +716,28 @@ export async function syncFollowedPlanToSupabase(followedPlan: UserPlanFollow) {
 
     if (error) {
       console.error('Error syncing followed plan to Supabase:', error);
+      return false;
     }
+    return true;
   } catch (e) {
     console.warn('Supabase followed plan sync error:', e);
+    return false;
   }
 }
 
-export async function deleteFollowedPlanFromSupabase(followedPlanId: string) {
-  if (!isSupabaseConfigured) return;
+/** Deletes this user's copy of a plan; resolves true once the row is gone (or never existed). */
+export async function deleteFollowedPlanFromSupabase(followedPlanId: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
   try {
     const { error } = await supabase.from('user_plan_follows').delete().eq('id', followedPlanId);
     if (error) {
       console.error('Error deleting followed plan from Supabase:', error);
+      return false;
     }
+    return true;
   } catch (e) {
     console.warn('Supabase followed plan delete error:', e);
+    return false;
   }
 }
 
@@ -777,6 +790,7 @@ export function mapRowToImprovementPlan(row: any): ImprovementPlan {
     startDate: stepsMeta.startDate || row?.start_date || trustedNow().toISOString(),
     streakCount: stepsMeta.streakCount !== undefined ? Number(stepsMeta.streakCount) : (row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : 0),
     lastCompletedDate: stepsMeta.lastCompletedDate || row?.last_completed_date || '',
+    previousCompletedDate: stepsMeta.previousCompletedDate || undefined,
     targetReviewDate: stepsMeta.targetReviewDate || row?.target_review_date || '',
     reviewCadence: row?.review_cadence || stepsMeta.reviewCadence || null,
     nextReviewDueAt: row?.next_review_due_at || stepsMeta.nextReviewDueAt || null,
@@ -820,6 +834,7 @@ export function mapRowToUserPlanFollow(row: any): UserPlanFollow {
     startDate: stepsMeta.startDate || row?.start_date || trustedNow().toISOString(),
     streakCount: stepsMeta.streakCount !== undefined ? Number(stepsMeta.streakCount) : (row?.streak_count !== undefined && row?.streak_count !== null ? Number(row.streak_count) : 0),
     lastCompletedDate: stepsMeta.lastCompletedDate || row?.last_completed_date || '',
+    previousCompletedDate: stepsMeta.previousCompletedDate || undefined,
     targetReviewDate: stepsMeta.targetReviewDate || row?.target_review_date || '',
     reviewCadence: row?.review_cadence || stepsMeta.reviewCadence || null,
     nextReviewDueAt: row?.next_review_due_at || stepsMeta.nextReviewDueAt || null,

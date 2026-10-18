@@ -518,6 +518,8 @@ export interface ImprovementPlan {
   startDate?: string;
   streakCount?: number;
   lastCompletedDate?: string;
+  /** The completion before lastCompletedDate, restored by Undo so the streak survives it. */
+  previousCompletedDate?: string;
   // Vision fields
   targetReviewDate?: string;
   reflectionNotes?: PlanReflectionNote[];
@@ -554,6 +556,8 @@ export interface UserPlanFollow {
   startDate?: string;
   streakCount?: number;
   lastCompletedDate?: string;
+  /** The completion before lastCompletedDate, restored by Undo so the streak survives it. */
+  previousCompletedDate?: string;
   // Vision fields
   targetReviewDate?: string;
   reflectionNotes?: PlanReflectionNote[];
@@ -561,6 +565,9 @@ export interface UserPlanFollow {
   // Phase C Review Loop Cadence
   reviewCadence?: 'weekly' | 'monthly' | null;
   nextReviewDueAt?: string | null;
+
+  // Synchronization status (client-side only)
+  syncStatus?: 'pending' | 'synced' | 'failed';
 }
 
 // Social Features 2: Accountability Partner & Shared Challenges

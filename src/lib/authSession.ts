@@ -1,6 +1,6 @@
 import { User } from '@supabase/supabase-js';
-import { AppState, DEFAULT_STATE, UserProfile, PlanStep, Partnership } from '@/types';
-import { generateNumericUID, parseDate, getNow, weekKey } from './dates';
+import { AppState, DEFAULT_STATE, UserProfile, Partnership } from '@/types';
+import { generateNumericUID, getNow, weekKey } from './dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { cachedSyncedCollections } from './sync/syncedCollections';
 import { cachedDeviceLocalState } from './deviceLocalState';
@@ -18,8 +18,7 @@ import {
   supabase,
   mapRowToImprovementPlan,
   mapRowToUserPlanFollow,
-  syncPlanToSupabase,
-  syncFollowedPlanToSupabase,
+  deleteFollowedPlanFromSupabase,
   cleanupPendingInvitesBetweenUsersSupabase,
   fetchMyPrivateProfile,
 } from './supabase';
@@ -180,32 +179,6 @@ export function buildUserProfile(
     isAnonymous,
     lastUsernameChangeAt: (profileData?.last_username_change_at as string | undefined) || undefined,
   };
-}
-
-function mergePlanSteps(dbSteps: PlanStep[] = [], savedSteps: PlanStep[] = []): PlanStep[] {
-  if (!Array.isArray(dbSteps) || dbSteps.length === 0) {
-    return Array.isArray(savedSteps) ? savedSteps : [];
-  }
-  if (!Array.isArray(savedSteps) || savedSteps.length === 0) {
-    return dbSteps;
-  }
-
-  const savedMap = new Map<string, PlanStep>();
-  savedSteps.forEach((s) => {
-    if (s && s.id) savedMap.set(s.id, s);
-  });
-
-  return dbSteps.map((dbStep) => {
-    const savedStep = savedMap.get(dbStep.id);
-    if (!savedStep) return dbStep;
-
-    const completed = Boolean(dbStep.completed || savedStep.completed);
-    return {
-      ...savedStep,
-      ...dbStep,
-      completed,
-    };
-  });
 }
 
 /**
@@ -373,138 +346,67 @@ export async function hydrateUserSession(
     state.notifications = fetchedNotifs.filter((n) => !tombstoneSet.has(n.id));
 
     const { data: dbPlans, error: dbPlansErr } = dbPlansResult;
-    // This device's copies (the blob no longer stores plans): offline edits,
-    // unconfirmed plans and higher streaks are merged into the table rows.
+    // This device's copies (the blob no longer stores plans). A copy marked pending or failed holds
+    // an edit the table has not confirmed, so it wins over the row and the store's retry saves it;
+    // every other copy takes the row, so an Undo or an unchecked step made on another device sticks.
     const localPlans = state.improvementPlans || [];
     const localFollows = state.followedPlans || [];
-
-    const savedPlansMap = new Map<string, any>();
-    localPlans.forEach((p: any) => savedPlansMap.set(p.id, p));
+    const isUnconfirmed = (item: { syncStatus?: string } | undefined) =>
+      item?.syncStatus === 'pending' || item?.syncStatus === 'failed';
 
     if (dbPlans && !dbPlansErr) {
       const dbPlanIds = new Set(dbPlans.map((r) => r.id));
+      const savedPlansMap = new Map(localPlans.map((p) => [p.id, p]));
 
       state.improvementPlans = dbPlans.map((row) => {
         const mapped = mapRowToImprovementPlan(row);
         const savedPlan = savedPlansMap.get(mapped.id);
-
-        let streakCount = mapped.streakCount || 0;
-        let lastCompletedDate = mapped.lastCompletedDate || '';
-        let steps = mapped.steps || [];
-
-        let needsSyncBack = false;
-        if (savedPlan) {
-          const savedStreak = savedPlan.streakCount || 0;
-          if (savedStreak > streakCount) {
-            streakCount = savedStreak;
-            needsSyncBack = true;
-          }
-          if (savedPlan.lastCompletedDate) {
-            const savedDate = parseDate(savedPlan.lastCompletedDate);
-            const currentDate = parseDate(lastCompletedDate);
-            if (!lastCompletedDate || (savedDate && currentDate && savedDate.getTime() > currentDate.getTime())) {
-              lastCompletedDate = savedPlan.lastCompletedDate;
-              needsSyncBack = true;
-            }
-          }
-
-          // Merge step items: dbStep.completed takes priority for existing plans
-          steps = mergePlanSteps(mapped.steps, savedPlan.steps);
-
-          // Check if savedPlan completed any steps that the DB had as false
-          const hasUnsyncedCompletedStep = steps.some((ms: any, i: number) => ms.completed && (!mapped.steps || !mapped.steps[i] || !mapped.steps[i].completed));
-          if (hasUnsyncedCompletedStep) {
-            needsSyncBack = true;
-          }
-        }
-
-        const merged = {
-          ...savedPlan,
-          ...mapped,
-          steps,
-          streakCount,
-          lastCompletedDate,
+        if (!isUnconfirmed(savedPlan)) return mapped;
+        // Server-owned fields always come from the row.
+        return {
+          ...savedPlan!,
+          copyCount: mapped.copyCount,
+          creatorUsername: mapped.creatorUsername,
+          creatorAvatar: mapped.creatorAvatar,
         };
-
-        // EXPLICIT GUARD: Never sync back a plan that does not exist in dbPlans (never resurrect deleted plans)
-        if (needsSyncBack && dbPlanIds.has(merged.id)) {
-          void syncPlanToSupabase(merged);
-        }
-
-        return merged;
       });
 
-      // Preserve unconfirmed local plans (syncStatus === 'pending' | 'failed') that are not yet in dbPlans
-      const unconfirmedPlans = localPlans.filter((p: any) => {
-        if (dbPlanIds.has(p.id)) return false;
-        const status = p.syncStatus || 'synced';
-        return status === 'pending' || status === 'failed';
-      });
+      // Plans created on this device that never reached the table.
+      const unconfirmedPlans = localPlans.filter((p) => !dbPlanIds.has(p.id) && isUnconfirmed(p));
       if (unconfirmedPlans.length > 0) {
         state.improvementPlans = [...state.improvementPlans, ...unconfirmedPlans];
       }
-    } else if (localPlans.length > 0) {
-      state.improvementPlans = localPlans;
     } else {
-      state.improvementPlans = [];
+      state.improvementPlans = localPlans;
     }
 
-    // SINGLE SOURCE OF TRUTH FOR FOLLOWED PLANS: user_plan_follows table + this device's copies
     const { data: dbFollows, error: dbFollowsErr } = dbFollowsResult;
-
-    const savedFollowsMap = new Map<string, any>();
-    localFollows.forEach((f: any) => savedFollowsMap.set(f.id, f));
 
     if (dbFollows && !dbFollowsErr) {
       const dbFollowIds = new Set(dbFollows.map((r) => r.id));
+      const savedFollowsMap = new Map(localFollows.map((f) => [f.id, f]));
 
-      state.followedPlans = dbFollows.map((row) => {
-        const mapped = mapRowToUserPlanFollow(row);
-        const savedFollow = savedFollowsMap.get(mapped.id);
+      state.followedPlans = dbFollows
+        .filter((row) => {
+          // A copy deleted on this device whose table delete did not go through: finish it.
+          if (!tombstoneSet.has(row.id)) return true;
+          void deleteFollowedPlanFromSupabase(row.id);
+          return false;
+        })
+        .map((row) => {
+          const mapped = mapRowToUserPlanFollow(row);
+          const savedFollow = savedFollowsMap.get(mapped.id);
+          return isUnconfirmed(savedFollow) ? savedFollow! : { ...mapped, syncStatus: 'synced' as const };
+        });
 
-        let streakCount = mapped.streakCount || 0;
-        let lastCompletedDate = mapped.lastCompletedDate || '';
-        let steps = mapped.steps || [];
-
-        let needsSyncBack = false;
-        if (savedFollow) {
-          const savedStreak = savedFollow.streakCount || 0;
-          if (savedStreak > streakCount) {
-            streakCount = savedStreak;
-            needsSyncBack = true;
-          }
-          if (savedFollow.lastCompletedDate) {
-            const savedDate = parseDate(savedFollow.lastCompletedDate);
-            const currentDate = parseDate(lastCompletedDate);
-            if (!lastCompletedDate || (savedDate && currentDate && savedDate.getTime() > currentDate.getTime())) {
-              lastCompletedDate = savedFollow.lastCompletedDate;
-              needsSyncBack = true;
-            }
-          }
-
-          // Merge step items: dbStep.completed takes priority for existing plans
-          steps = mergePlanSteps(mapped.steps, savedFollow.steps);
-        }
-
-        const merged = {
-          ...savedFollow,
-          ...mapped,
-          steps,
-          streakCount,
-          lastCompletedDate,
-        };
-
-        // EXPLICIT GUARD: Never sync back a followed plan that does not exist in dbFollows (never resurrect deleted followed plans)
-        if (needsSyncBack && dbFollowIds.has(merged.id)) {
-          void syncFollowedPlanToSupabase(merged);
-        }
-
-        return merged;
-      });
-    } else if (localFollows.length > 0) {
-      state.followedPlans = localFollows;
+      const unconfirmedFollows = localFollows.filter(
+        (f) => !dbFollowIds.has(f.id) && !tombstoneSet.has(f.id) && isUnconfirmed(f)
+      );
+      if (unconfirmedFollows.length > 0) {
+        state.followedPlans = [...state.followedPlans, ...unconfirmedFollows];
+      }
     } else {
-      state.followedPlans = [];
+      state.followedPlans = localFollows.filter((f) => !tombstoneSet.has(f.id));
     }
   } catch (e) {
     console.warn('Skipped loading partner social data or plans during hydration:', e);

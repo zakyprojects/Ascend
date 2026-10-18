@@ -2639,6 +2639,24 @@ export function useAppState() {
           return { ...prev, improvementPlans: [payload, ...prev.improvementPlans] };
         }
 
+        if (event === 'FOLLOW_UPDATED') {
+          // Another tab of the same account changed a copy: take it, so this tab's older copy
+          // never overwrites it on its next save.
+          if (!payload?.id || !prev.currentUser?.id || payload.userId !== prev.currentUser.id) return prev;
+          const exists = prev.followedPlans.some((f) => f.id === payload.id);
+          return {
+            ...prev,
+            followedPlans: exists
+              ? prev.followedPlans.map((f) => (f.id === payload.id ? { ...f, ...payload, syncStatus: f.syncStatus } : f))
+              : [{ ...payload, syncStatus: 'synced' }, ...prev.followedPlans],
+          };
+        }
+
+        if (event === 'FOLLOW_DELETED') {
+          if (!prev.followedPlans.some((f) => f.id === payload.followId)) return prev;
+          return { ...prev, followedPlans: prev.followedPlans.filter((f) => f.id !== payload.followId) };
+        }
+
         if (event === 'PARTNER_INVITE_SENT') {
           const invite = payload.invite || payload;
           const notif = payload.notification;
@@ -3041,61 +3059,14 @@ export function useAppState() {
     const retryUnconfirmedPlans = () => {
       if (typeof navigator !== 'undefined' && !navigator.onLine) return;
       const currentState = stateRef.current;
-      if (currentState?.improvementPlans && isSupabaseConfigured) {
-        const unconfirmedPlans = currentState.improvementPlans.filter(
-          (p) => p.syncStatus === 'pending' || p.syncStatus === 'failed'
-        );
-        for (const plan of unconfirmedPlans) {
-          syncPlanToSupabase(plan)
-            .then((res) => {
-              if (res) {
-                setState((prev) => ({
-                  ...prev,
-                  improvementPlans: prev.improvementPlans.map((p) =>
-                    p.id === plan.id ? { ...p, syncStatus: 'synced' } : p
-                  ),
-                }));
-              } else {
-                setState((prev) => ({
-                  ...prev,
-                  improvementPlans: prev.improvementPlans.map((p) =>
-                    p.id === plan.id ? { ...p, syncStatus: 'failed' } : p
-                  ),
-                }));
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(
-                    new CustomEvent('app-toast-error', {
-                      detail: {
-                        title: "Couldn't save plan",
-                        message: "It's saved on this device and will retry automatically.",
-                        dedupKey: `plan_sync_failed_${plan.id}`,
-                      },
-                    })
-                  );
-                }
-              }
-            })
-            .catch((_err) => {
-              setState((prev) => ({
-                ...prev,
-                improvementPlans: prev.improvementPlans.map((p) =>
-                  p.id === plan.id ? { ...p, syncStatus: 'failed' } : p
-                ),
-              }));
-              if (typeof window !== 'undefined') {
-                window.dispatchEvent(
-                  new CustomEvent('app-toast-error', {
-                    detail: {
-                      title: "Couldn't save plan",
-                      message: "It's saved on this device and will retry automatically.",
-                      dedupKey: `plan_sync_failed_${plan.id}`,
-                    },
-                  })
-                );
-              }
-            });
-        }
-      }
+      if (!currentState || !isSupabaseConfigured) return;
+      const isUnconfirmed = (status?: string) => status === 'pending' || status === 'failed';
+      (currentState.improvementPlans || [])
+        .filter((p) => isUnconfirmed(p.syncStatus))
+        .forEach((plan) => handlePlanSyncExecution(plan));
+      (currentState.followedPlans || [])
+        .filter((f) => isUnconfirmed(f.syncStatus))
+        .forEach((follow) => handleFollowSyncExecution(follow));
     };
 
     const checkUpdates = (simulatedNow?: Date) => {
@@ -6014,54 +5985,64 @@ export function useAppState() {
   }, []);
 
   // --- SOCIAL FEATURE 1: PERSONAL IMPROVEMENT PLANS ACTIONS ---
+  // Every change to a plan or a copy goes through these two: the row is marked pending, saved, and
+  // marked synced or failed. Pending and failed rows are retried (retryUnconfirmedPlans) and win over
+  // the table on the next load, so an edit made offline or during a failed save is never lost.
+  const notifyPlanSaveFailed = (id: string, isCopy: boolean) => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(
+      new CustomEvent('app-toast-error', {
+        detail: {
+          title: isCopy ? "Couldn't save your copy" : "Couldn't save plan",
+          message: "It's saved on this device and will retry automatically.",
+          dedupKey: `plan_sync_failed_${id}`,
+        },
+      })
+    );
+  };
+
   const handlePlanSyncExecution = useCallback((planToSync: ImprovementPlan) => {
+    const setStatus = (syncStatus: 'pending' | 'synced' | 'failed') =>
+      setState((prev) => {
+        if (!prev.improvementPlans.some((p) => p.id === planToSync.id)) return prev;
+        return {
+          ...prev,
+          improvementPlans: prev.improvementPlans.map((p) => (p.id === planToSync.id ? { ...p, syncStatus } : p)),
+        };
+      });
+    setStatus('pending');
     syncPlanToSupabase(planToSync)
       .then((res) => {
-        if (res) {
-          setState((prev) => ({
-            ...prev,
-            improvementPlans: prev.improvementPlans.map((p) =>
-              p.id === planToSync.id ? { ...p, syncStatus: 'synced' } : p
-            ),
-          }));
-        } else {
-          setState((prev) => ({
-            ...prev,
-            improvementPlans: prev.improvementPlans.map((p) =>
-              p.id === planToSync.id ? { ...p, syncStatus: 'failed' } : p
-            ),
-          }));
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-              new CustomEvent('app-toast-error', {
-                detail: {
-                  title: "Couldn't save plan",
-                  message: "It's saved on this device and will retry automatically.",
-                  dedupKey: `plan_sync_failed_${planToSync.id}`,
-                },
-              })
-            );
-          }
-        }
+        setStatus(res ? 'synced' : 'failed');
+        if (!res) notifyPlanSaveFailed(planToSync.id, false);
       })
-      .catch((_err) => {
-        setState((prev) => ({
+      .catch(() => {
+        setStatus('failed');
+        notifyPlanSaveFailed(planToSync.id, false);
+      });
+    // False positive: setState is stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleFollowSyncExecution = useCallback((followToSync: UserPlanFollow) => {
+    const setStatus = (syncStatus: 'pending' | 'synced' | 'failed') =>
+      setState((prev) => {
+        if (!prev.followedPlans.some((f) => f.id === followToSync.id)) return prev;
+        return {
           ...prev,
-          improvementPlans: prev.improvementPlans.map((p) =>
-            p.id === planToSync.id ? { ...p, syncStatus: 'failed' } : p
-          ),
-        }));
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(
-            new CustomEvent('app-toast-error', {
-              detail: {
-                title: "Couldn't save plan",
-                message: "It's saved on this device and will retry automatically.",
-                dedupKey: `plan_sync_failed_${planToSync.id}`,
-              },
-            })
-          );
-        }
+          followedPlans: prev.followedPlans.map((f) => (f.id === followToSync.id ? { ...f, syncStatus } : f)),
+        };
+      });
+    setStatus('pending');
+    syncBroadcaster.broadcast('FOLLOW_UPDATED', followToSync);
+    syncFollowedPlanToSupabase(followToSync)
+      .then((ok) => {
+        setStatus(ok ? 'synced' : 'failed');
+        if (!ok) notifyPlanSaveFailed(followToSync.id, true);
+      })
+      .catch(() => {
+        setStatus('failed');
+        notifyPlanSaveFailed(followToSync.id, true);
       });
     // False positive: setState is stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6191,7 +6172,7 @@ export function useAppState() {
     if (updatedPlan) {
       updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      handlePlanSyncExecution(updatedPlan);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6218,7 +6199,7 @@ export function useAppState() {
 
     if (updatedPlan) {
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      handlePlanSyncExecution(updatedPlan);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6259,7 +6240,7 @@ export function useAppState() {
     if (updatedPlan) {
       updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      handlePlanSyncExecution(updatedPlan);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6295,7 +6276,7 @@ export function useAppState() {
     if (updatedPlan) {
       updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      handlePlanSyncExecution(updatedPlan);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6321,7 +6302,7 @@ export function useAppState() {
     });
 
     if (updatedFollow) {
-      syncFollowedPlanToSupabase(updatedFollow);
+      handleFollowSyncExecution(updatedFollow);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6360,7 +6341,7 @@ export function useAppState() {
 
     if (updatedFollow) {
       const follow = updatedFollow as UserPlanFollow;
-      syncFollowedPlanToSupabase(follow);
+      handleFollowSyncExecution(follow);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6394,7 +6375,7 @@ export function useAppState() {
     });
 
     if (updatedFollow) {
-      syncFollowedPlanToSupabase(updatedFollow);
+      handleFollowSyncExecution(updatedFollow);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6427,7 +6408,7 @@ export function useAppState() {
     if (updatedPlan) {
       updateCachedPublicPlan(updatedPlan);
       syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      syncPlanToSupabase(updatedPlan);
+      handlePlanSyncExecution(updatedPlan);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6475,7 +6456,7 @@ export function useAppState() {
       const p = updatedPlan as ImprovementPlan;
       updateCachedPublicPlan(p);
       syncBroadcaster.broadcast('PLAN_UPDATED', p);
-      syncPlanToSupabase(p);
+      handlePlanSyncExecution(p);
       addReflectionNoteToSupabase({
         originalPlanId: planId,
         note: note.trim(),
@@ -6759,7 +6740,7 @@ export function useAppState() {
         };
       });
 
-      syncFollowedPlanToSupabase(createdFollow);
+      handleFollowSyncExecution(createdFollow);
     } catch (err: any) {
       console.error("[Copy Plan] FATAL ERROR CATCH:", err);
       dispatchToastError("Couldn't copy plan", toUserMessage(err, 'Try again in a moment.'));
@@ -6800,7 +6781,7 @@ export function useAppState() {
     });
 
     if (updatedFollow) {
-      syncFollowedPlanToSupabase(updatedFollow);
+      handleFollowSyncExecution(updatedFollow);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6828,7 +6809,7 @@ export function useAppState() {
     });
 
     if (updatedFollow) {
-      syncFollowedPlanToSupabase(updatedFollow);
+      handleFollowSyncExecution(updatedFollow);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6874,7 +6855,7 @@ export function useAppState() {
 
     if (updatedFollow) {
       const f = updatedFollow as UserPlanFollow;
-      syncFollowedPlanToSupabase(f);
+      handleFollowSyncExecution(f);
       addReflectionNoteToSupabase({
         followedPlanId: followId,
         note: note.trim(),
@@ -6911,7 +6892,7 @@ export function useAppState() {
     });
 
     if (updatedFollow) {
-      syncFollowedPlanToSupabase(updatedFollow);
+      handleFollowSyncExecution(updatedFollow);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6943,7 +6924,7 @@ export function useAppState() {
     );
 
     if (updatedFollow) {
-      syncFollowedPlanToSupabase(updatedFollow);
+      handleFollowSyncExecution(updatedFollow);
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
