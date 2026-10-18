@@ -64,31 +64,24 @@ export function calculateStreak(
     ? completions
     : Object.entries(completions).filter(([, c]) => c && c.done).map(([d]) => d);
   if (doneDates.length === 0) return 0;
-  const sorted = [...doneDates].sort();
+  const done = new Set(doneDates);
 
   const effectiveNow = now || getNow();
   let streak = 0;
-  let cursor = effectiveNow;
+  // Walk period keys (calendar days / weeks), not 24-hour steps, so a 23- or 25-hour day at a
+  // daylight-saving change never skips or repeats a day.
+  let key = periodKey(frequency, effectiveNow);
 
   // If the current period isn't completed, start from the previous one
-  const currentPeriod = periodKey(frequency, effectiveNow);
-  if (!sorted.includes(currentPeriod)) {
-    cursor = frequency === 'daily'
-      ? new Date(effectiveNow.getTime() - 86400000)
-      : new Date(effectiveNow.getTime() - 7 * 86400000);
+  if (!done.has(key)) {
+    key = previousPeriodKey(frequency, 1, effectiveNow);
   }
 
   // Walk backwards through periods
   for (let i = 0; i < 1000; i++) {
-    const key = periodKey(frequency, cursor);
-    if (sorted.includes(key)) {
-      streak++;
-      cursor = frequency === 'daily'
-        ? new Date(cursor.getTime() - 86400000)
-        : new Date(cursor.getTime() - 7 * 86400000);
-    } else {
-      break;
-    }
+    if (!done.has(key)) break;
+    streak++;
+    key = frequency === 'daily' ? addDays(key, -1) : addWeeks(key, -1);
   }
 
   return streak;
