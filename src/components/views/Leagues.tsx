@@ -1,35 +1,94 @@
-import { useState } from 'react';
-import { Dialog, PageColumns } from '@/components/ui/primitives';
-import { Trophy, Crown, Brain, Calendar, CalendarDays, ChevronDown, ChevronRight } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Brain, Calendar, CalendarDays, ChevronRight, Trophy, WifiOff } from 'lucide-react';
+import { Button, cx, Dialog, Disclosure, EmptyState, PageColumns, Skeleton, Tabs } from '@/components/ui/primitives';
 import { AppStore } from '@/lib/store';
-import { LeagueType, LeagueCompetitor } from '@/types';
+import { LeagueArchive, LeagueCompetitor, LeagueType } from '@/types';
 import {
   LEAGUE_CONFIG,
   ARCHIVES_SHOWN_PER_TYPE,
+  getArchivePeriodLabel,
   getArchivePeriodStart,
   getLeaguePeriodLabel,
-  getSeasonLabel,
   getLocalResetDetail,
+  pointsText,
 } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
+import { getCurrentTier } from '@/lib/tiers';
+import { leaguePeriodKey } from '@/lib/leagueStandingsRefresh';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { CompetitorProfileModal } from '@/components/ui/CompetitorProfileModal';
 import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
+import { PageHero } from '@/components/ui/PageHero';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { useLeagueStandingsRefresh } from '@/lib/useLeagueStandingsRefresh';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 
-const LEAGUE_ICONS: Record<string, typeof Trophy> = {
-  Calendar, CalendarDays, Brain,
+const LEAGUE_TYPES: LeagueType[] = ['weekly', 'monthly', 'ninetyDay'];
+
+const LEAGUE_TAB_LABEL: Record<LeagueType, string> = {
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  ninetyDay: 'Season',
 };
 
-// Theme-aware text colour per league (readable in light mode too).
-const LEAGUE_TEXT: Record<LeagueType, string> = {
-  weekly: 'var(--badge-emerald-text)',
-  monthly: 'var(--badge-sky-text)',
-  ninetyDay: 'var(--badge-purple-text)',
+const LEAGUE_ICONS: Record<string, typeof Trophy> = { Calendar, CalendarDays, Brain };
+
+/** Theme-aware tone per league (same tones as the Dashboard's league rows). */
+const LEAGUE_TONE_CLASS: Record<LeagueType, string> = {
+  weekly: 'badge-emerald',
+  monthly: 'badge-sky',
+  ninetyDay: 'badge-purple',
 };
+
+const PAST_HEADING: Record<LeagueType, string> = {
+  weekly: 'Past weeks',
+  monthly: 'Past months',
+  ninetyDay: 'Past seasons',
+};
+
+const PAST_EMPTY: Record<LeagueType, string> = {
+  weekly: 'No finished weeks yet',
+  monthly: 'No finished months yet',
+  ninetyDay: 'No finished seasons yet',
+};
+
+/** Skeleton rows while the table loads. */
+const SKELETON_ROWS = 5;
+
+function ordinal(n: number): string {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
+/** Server archives are recomputed for 48 hours after the period ends; until then they can change. */
+function isProvisional(archive: LeagueArchive): boolean {
+  return archive.source === 'server' && archive.final !== true;
+}
+
+function RankNumber({ rank }: { rank: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cx(
+        'figure w-6 shrink-0 text-center text-sm',
+        rank <= 3 ? 'font-semibold text-content-primary' : 'text-content-muted'
+      )}
+    >
+      {rank}
+    </span>
+  );
+}
+
+function YouTag() {
+  return <span className="badge badge-emerald shrink-0">You</span>;
+}
 
 interface LeaguesProps {
   store: AppStore;
@@ -40,39 +99,66 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const [activeLeague, setActiveLeague] = useState<LeagueType>('weekly');
   const [openArchiveId, setOpenArchiveId] = useState<string | null>(null);
   const [selectedCompetitor, setSelectedCompetitor] = useState<LeagueCompetitor | null>(null);
+  const [retrying, setRetrying] = useState(false);
   // Period labels re-render on rollover; the per-second countdown ticks inside LeagueCountdown.
   useLeaguePeriodRollover();
   // Other members' points: refetched on open, on return to the tab and every minute while visible.
   useLeagueStandingsRefresh(store);
 
   const now = leagueNow();
-  const leagueData = store.getLeagueData(activeLeague);
+  const periodKey = leaguePeriodKey(now);
+  const { getLeagueData } = store;
+  // All three tables at once: each one rebuilds every member, so never per tab button or per row.
+  const boards = useMemo(
+    () => ({
+      weekly: getLeagueData('weekly'),
+      monthly: getLeagueData('monthly'),
+      ninetyDay: getLeagueData('ninetyDay'),
+    }),
+    // periodKey: a new week, month or season starts the tables again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getLeagueData, periodKey]
+  );
+  // Tiers come from season points on every tab; weekly/monthly points only rank the table.
+  const seasonPointsById = useMemo(
+    () => new Map(boards.ninetyDay.competitors.map((c) => [c.id, c.points] as const)),
+    [boards]
+  );
+  const seasonPointsOf = (c: LeagueCompetitor) => seasonPointsById.get(c.id) ?? 0;
+
+  const board = boards[activeLeague];
+  const status = store.getLeagueStandingsStatus();
+  const loaded = status === 'ready';
+  const failed = status === 'failed' && !retrying;
+  const hasPlace = loaded && board.userPoints > 0;
   const config = LEAGUE_CONFIG[activeLeague];
-  const periodLabel = getLeaguePeriodLabel(activeLeague, now);
+  const LeagueIcon = LEAGUE_ICONS[config.icon] ?? Calendar;
+
   const archives = store.state.leagueArchives
     .filter((a) => a.type === activeLeague)
     .sort((a, b) => getArchivePeriodStart(b) - getArchivePeriodStart(a))
     .slice(0, ARCHIVES_SHOWN_PER_TYPE);
   // Looked up live so a sync that removes the archive closes the dialog instead of leaving it empty.
   const openArchive = openArchiveId ? store.state.leagueArchives.find((a) => a.id === openArchiveId) ?? null : null;
-  // Tiers come from season points on every tab; weekly/monthly points only rank the table.
-  const seasonPointsById = new Map(
-    store.getLeagueData('ninetyDay').competitors.map((c) => [c.id, c.points] as const)
-  );
-  const seasonPointsOf = (c: LeagueCompetitor) => seasonPointsById.get(c.id) ?? 0;
 
   const currentUser = store.state.currentUser;
 
+  const retry = async () => {
+    setRetrying(true);
+    try {
+      await store.refreshLeagueStandings({ full: true });
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Leagues</h1>
-          <p className="page-subtitle">Compete with real people and climb the table.</p>
-        </div>
+      <div>
+        <h1 className="page-title">Leagues</h1>
+        <p className="page-subtitle">Compete with real people and climb the table.</p>
       </div>
 
-      {/* Guest Mode Banner */}
       {(!currentUser || currentUser.isAnonymous) && onOpenAuth && (
         <GuestSaveBanner
           title={`You're competing as a guest (${currentUser?.username || store.state.username})`}
@@ -81,233 +167,233 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
         />
       )}
 
+      <Tabs
+        ariaLabel="Leagues"
+        value={activeLeague}
+        onChange={(id) => setActiveLeague(id as LeagueType)}
+        items={LEAGUE_TYPES.map((type) => ({
+          id: type,
+          label: LEAGUE_TAB_LABEL[type],
+          icon: LEAGUE_ICONS[LEAGUE_CONFIG[type].icon] ?? Calendar,
+        }))}
+      />
+
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel={`Your ${LEAGUE_TAB_LABEL[activeLeague].toLowerCase()} standing`}
+          lead={{
+            label: 'Your place',
+            value: hasPlace ? (
+              <>#<CountUp value={board.userRank} /></>
+            ) : (
+              <span aria-label="No place yet">—</span>
+            ),
+            hint: !loaded
+              ? failed
+                ? 'Table not loaded'
+                : 'Loading the table…'
+              : hasPlace
+                ? `of ${board.competitors.length} ${board.competitors.length === 1 ? 'member' : 'members'}`
+                : 'No points yet',
+          }}
+          stats={[
+            {
+              label: 'Points',
+              value: <CountUp value={board.userPoints} />,
+              hint: activeLeague === 'ninetyDay' ? 'this season' : activeLeague === 'monthly' ? 'this month' : 'this week',
+            },
+            {
+              label: activeLeague === 'ninetyDay' ? 'Season ends in' : 'Resets in',
+              value: <LeagueCountdown type={activeLeague} className="font-mono text-lg sm:text-2xl" />,
+              hint: getLocalResetDetail(activeLeague, now),
+            },
+          ]}
+        />
+      </Reveal>
+
+      {activeLeague === 'ninetyDay' && (
+        <Disclosure title="Why 90 days" icon={Brain}>
+          A new habit usually takes about 66–90 days of steady repetition to become automatic. This league
+          rewards that long-term consistency.
+        </Disclosure>
+      )}
+
       <PageColumns
         lead={
-          <>
-            {/* League tabs */}
-            <div className="grid grid-cols-3 gap-2">
-              {(Object.keys(LEAGUE_CONFIG) as LeagueType[]).map((type) => {
-                const active = activeLeague === type;
-                const data = store.getLeagueData(type);
-                const cfg = LEAGUE_CONFIG[type];
-                const Icon = LEAGUE_ICONS[cfg.icon] ?? Calendar;
-                return (
-                  <button
-                    key={type}
-                    onClick={() => setActiveLeague(type)}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-colors ${
-                      active ? '' : 'border-transparent hover:bg-overlay-subtle'
-                    }`}
-                    style={active ? { borderColor: `${cfg.color}66`, backgroundColor: `${cfg.color}14` } : undefined}
-                  >
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${cfg.color}1f` }}
-                    >
-                      <Icon size={18} style={{ color: cfg.color }} />
-                    </div>
-                    <span
-                      className="text-xs font-medium"
-                      style={{ color: active ? LEAGUE_TEXT[type] : 'var(--color-content-muted)' }}
-                    >
-                      {type === 'ninetyDay' ? `90-Day (${getSeasonLabel(now)})` : type === 'monthly' ? 'Monthly' : 'Weekly'}
-                    </span>
-                    <span className="text-2xs text-content-disabled">Rank #{data.userRank}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Active league leaderboard */}
-            <div className="card p-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${config.color}1f` }}
-                  >
-                    {(() => {
-                      const Icon = LEAGUE_ICONS[config.icon] ?? Calendar;
-                      return <Icon size={16} style={{ color: config.color }} />;
-                    })()}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="section-title">
-                        {activeLeague === 'ninetyDay' ? `${getSeasonLabel(now)} — 90-Day League` : config.name}
-                      </h2>
-                    </div>
-                    <p className="text-micro text-content-muted">{getLocalResetDetail(activeLeague, now)}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-xs text-content-tertiary self-start sm:self-auto">
-                  <span className="text-micro text-content-muted">
-                    {activeLeague === 'ninetyDay' ? 'Season ends in' : 'Resets in'}
-                  </span>
-                  <LeagueCountdown type={activeLeague} className="font-mono font-medium text-brand-text tabular-nums" />
+          <Reveal index={1}>
+            <section aria-labelledby="leagues-standings" className="card overflow-hidden">
+              <div className="flex items-center gap-3 border-b border-overlay-subtle px-4 py-3.5 sm:px-5">
+                <span className={cx(LEAGUE_TONE_CLASS[activeLeague], 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg')}>
+                  <LeagueIcon size={15} aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <h2 id="leagues-standings" className="section-title leading-tight">Standings</h2>
+                  <p className="text-xs text-content-muted">{getLeaguePeriodLabel(activeLeague, now)}</p>
                 </div>
               </div>
 
-              <p className="text-xs text-content-muted mb-4">
-                Current cycle: {periodLabel}
-              </p>
-
-              {/* 90-Day League neuroplasticity explanation */}
-              {activeLeague === 'ninetyDay' && (
-                <div className="rounded-xl border border-overlay-default border-l-2 p-4 mb-4" style={{ borderLeftColor: config.color }}>
-                  <div className="flex items-start gap-2">
-                    <Brain size={16} className="text-purple-hierarchy mt-0.5 shrink-0" />
-                    <div>
-                      <p className="item-name text-sm mb-1">Why 90 days</p>
-                      <p className="text-xs text-content-muted leading-relaxed">
-                        A new habit usually takes about 66–90 days of steady repetition to become automatic. This league
-                        rewards that long-term consistency.
-                      </p>
+              {failed && !loaded ? (
+                <EmptyState
+                  surface={false}
+                  className="p-8"
+                  icon={WifiOff}
+                  iconClassName="bg-overlay-subtle text-content-muted ring-1 ring-inset ring-overlay-default"
+                  title="Couldn't load the table"
+                  description="Check your connection, then try again."
+                  action={
+                    <Button variant="secondary" size="sm" type="button" onClick={retry} loading={retrying}>
+                      Retry
+                    </Button>
+                  }
+                />
+              ) : !loaded ? (
+                <div aria-busy="true" className="divide-y divide-overlay-subtle">
+                  <span className="sr-only" role="status">Loading the table</span>
+                  {Array.from({ length: SKELETON_ROWS }, (_, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5">
+                      <Skeleton className="h-3 w-5" />
+                      <Skeleton className="h-9 w-9 rounded-lg" />
+                      <Skeleton className="h-3.5 flex-1 max-w-[10rem]" />
+                      <Skeleton className="ml-auto h-3.5 w-12" />
                     </div>
-                  </div>
+                  ))}
                 </div>
+              ) : (
+                <ol className="divide-y divide-overlay-subtle">
+                  {board.competitors.map((competitor, idx) => {
+                    const rank = idx + 1;
+                    const isUser = !!competitor.isUser;
+                    const seasonPoints = seasonPointsOf(competitor);
+                    const tierName = getCurrentTier(seasonPoints).name;
+                    return (
+                      <li key={competitor.id || idx}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCompetitor(competitor)}
+                          aria-label={`${ordinal(rank)}, ${competitor.name}${isUser ? ', you' : ''}, ${tierName}, ${pointsText(competitor.points)}`}
+                          className={cx(
+                            'group flex w-full items-center gap-2.5 px-3 py-3 text-left transition-colors sm:gap-4 sm:px-5',
+                            isUser ? 'bg-overlay-subtle hover:bg-overlay-default' : 'hover:bg-overlay-subtle'
+                          )}
+                        >
+                          <RankNumber rank={rank} />
+                          <span
+                            aria-hidden="true"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-overlay-subtle text-base sm:h-10 sm:w-10 sm:text-lg"
+                          >
+                            {competitor.avatar}
+                          </span>
+                          <span className="flex min-w-0 flex-1 items-center gap-2">
+                            <span className="item-name truncate text-sm !text-content-secondary">{competitor.name}</span>
+                            {isUser && <YouTag />}
+                          </span>
+                          <span aria-hidden="true" className="shrink-0">
+                            <TierBadge totalPoints={seasonPoints} size="sm" showName={false} />
+                          </span>
+                          <span className="min-w-[3.5rem] shrink-0 text-right sm:min-w-[4.5rem]">
+                            <span className="figure text-sm text-content-primary">{competitor.points.toLocaleString()}</span>
+                            <span className="ml-1 text-2xs text-content-muted">pts</span>
+                          </span>
+                          <ChevronRight
+                            size={15}
+                            aria-hidden="true"
+                            className="shrink-0 text-content-muted transition-colors group-hover:text-content-secondary"
+                          />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
               )}
-
-              {/* Leaderboard list */}
-              <div className="divide-y divide-overlay-subtle -mx-2 sm:-mx-3">
-                {leagueData.competitors.map((competitor, idx) => {
-                  const rank = idx + 1;
-                  const isUser = competitor.isUser;
-                  const isTop3 = rank <= 3;
-                  const medalVarNames = ['var(--medal-gold)', 'var(--medal-silver)', 'var(--medal-bronze)'];
-
-                  return (
-                    <Reveal key={competitor.id || idx} index={idx}>
-                    <button
-                      onClick={() => setSelectedCompetitor(competitor)}
-                      className={`w-full flex items-center gap-2 sm:gap-4 px-2.5 sm:px-4 py-2.5 sm:py-3 transition-colors text-left cursor-pointer group ${
-                        isUser
-                          ? 'bg-primary-500/5 hover:bg-primary-500/10'
-                          : 'hover:bg-overlay-subtle'
-                      }`}
-                    >
-                      {/* Rank Position */}
-                      <div className="w-5 sm:w-7 text-center shrink-0">
-                        {isTop3 ? (
-                          <Crown size={15} className="mx-auto" style={{ color: medalVarNames[rank - 1] }} />
-                        ) : (
-                          <span className="figure text-xs sm:text-sm text-content-disabled">{rank}</span>
-                        )}
-                      </div>
-
-                      {/* Avatar */}
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-overlay-subtle flex items-center justify-center text-base sm:text-lg shrink-0">
-                        {competitor.avatar}
-                      </div>
-
-                      {/* Name */}
-                      <div className="flex-1 min-w-0">
-                        <span className={`item-name text-xs sm:text-sm truncate block ${isUser ? '!text-success-text' : '!text-content-secondary'}`}>
-                          {competitor.name}
-                        </span>
-                      </div>
-
-                      {/* Tier Badge visible for EVERY entry */}
-                      <div className="shrink-0">
-                        <TierBadge totalPoints={seasonPointsOf(competitor)} size="sm" showName={false} />
-                      </div>
-
-                      {/* Period Points */}
-                      <div className="text-right shrink-0 min-w-[55px] sm:min-w-[70px]">
-                        <span className="figure text-xs sm:text-sm text-success-text">
-                          <CountUp value={competitor.points} className="tabular-nums" />
-                        </span>
-                        <span className="text-2xs text-content-disabled ml-1">pts</span>
-                      </div>
-
-                      <ChevronRight size={15} className="text-content-subtle group-hover:text-content-tertiary transition-colors shrink-0" />
-                    </button>
-                    </Reveal>
-                  );
-                })}
-              </div>
-            </div>
-          </>
+            </section>
+          </Reveal>
         }
         aside={
-          // Archives
-          archives.length > 0 && (
-            <div>
-              <h2 className="section-title mb-3">
-                Past standings
-              </h2>
-              <div className="card divide-y divide-overlay-subtle overflow-hidden">
+          <section aria-labelledby="leagues-past">
+            <h2 id="leagues-past" className="section-title mb-3">{PAST_HEADING[activeLeague]}</h2>
+            {archives.length === 0 ? (
+              <EmptyState
+                size="sm"
+                icon={Trophy}
+                title={PAST_EMPTY[activeLeague]}
+                description="Your finished standings show up here."
+              />
+            ) : (
+              <ul className="card divide-y divide-overlay-subtle overflow-hidden">
                 {archives.map((archive) => (
-                  <button
-                    key={archive.id}
-                    onClick={() => setOpenArchiveId(archive.id ?? null)}
-                    className="p-4 hover:bg-overlay-subtle transition-colors w-full flex items-center gap-3 text-left"
-                  >
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: `${LEAGUE_CONFIG[archive.type].color}1f` }}
+                  <li key={archive.id ?? archive.archivedAt}>
+                    <button
+                      type="button"
+                      onClick={() => setOpenArchiveId(archive.id ?? null)}
+                      className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-overlay-subtle"
                     >
-                      <Trophy size={16} style={{ color: LEAGUE_CONFIG[archive.type].color }} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-content-secondary">{archive.periodLabel}</p>
-                      <p className="text-xs text-content-disabled">
-                        Finished #{archive.userRank} with {archive.userPoints.toLocaleString()} pts
-                      </p>
-                    </div>
-                    <ChevronDown size={16} className="text-content-subtle" />
-                  </button>
+                      <span className={cx(LEAGUE_TONE_CLASS[archive.type], 'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg')}>
+                        <Trophy size={16} aria-hidden="true" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-content-secondary">{getArchivePeriodLabel(archive)}</span>
+                        <span className="block text-xs text-content-muted">
+                          Finished #{archive.userRank} · {archive.userPoints.toLocaleString()} pts
+                        </span>
+                        {isProvisional(archive) && (
+                          <span className="block text-2xs text-content-muted">Final standings in up to 2 days</span>
+                        )}
+                      </span>
+                      <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-content-muted" />
+                    </button>
+                  </li>
                 ))}
-              </div>
-            </div>
-          )
+              </ul>
+            )}
+          </section>
         }
       />
 
-      {/* Archive detail modal */}
       <Dialog
         open={!!openArchive}
         onClose={() => setOpenArchiveId(null)}
-        title={openArchive ? `${LEAGUE_CONFIG[openArchive.type].name}: final standings` : ''}
+        title={
+          openArchive
+            ? `${LEAGUE_CONFIG[openArchive.type].name}: ${isProvisional(openArchive) ? 'standings' : 'final standings'}`
+            : ''
+        }
         maxWidth="max-w-lg"
       >
-        {openArchive && (() => {
-          const archive = openArchive;
-          return (
-            <div>
-              <p className="text-sm text-content-disabled mb-4">{archive.periodLabel}</p>
-              <div className="divide-y divide-overlay-subtle">
-                {archive.competitors.map((c, idx) => (
-                  <div
-                    key={idx}
-                    className={`scroll-rise flex items-center gap-3 p-3 ${
-                      c.isUser ? 'bg-primary-500/5' : ''
-                    }`}
-                  >
-                    <div className="w-7 text-center shrink-0">
-                      <span className="figure text-sm text-content-disabled">{idx + 1}</span>
-                    </div>
-                    <div className="w-9 h-9 rounded-lg bg-overlay-subtle flex items-center justify-center text-lg shrink-0">
-                      {c.avatar}
-                    </div>
-                    <span className={`item-name text-sm flex-1 truncate ${c.isUser ? '!text-success-text' : '!text-content-secondary'}`}>
-                      {c.name}
+        {openArchive && (
+          <div>
+            <p className="mb-4 text-sm text-content-muted">
+              {getArchivePeriodLabel(openArchive)}
+              {isProvisional(openArchive) && ' · Final standings in up to 2 days'}
+            </p>
+            <ol className="divide-y divide-overlay-subtle">
+              {openArchive.competitors.map((c, idx) => (
+                <li
+                  key={c.id ?? idx}
+                  className={cx('scroll-rise flex items-center gap-3 p-3', c.isUser && 'bg-overlay-subtle')}
+                >
+                  <span className="sr-only">{ordinal(idx + 1)}</span>
+                  <RankNumber rank={idx + 1} />
+                  <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-overlay-subtle text-lg">
+                    {c.avatar}
+                  </span>
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="item-name truncate text-sm !text-content-secondary">{c.name}</span>
+                    {c.isUser && <YouTag />}
+                  </span>
+                  {/* Only a season archive knows each member's season score. */}
+                  {openArchive.type === 'ninetyDay' && (
+                    <span aria-hidden="true">
+                      <TierBadge totalPoints={c.points} size="sm" showName={false} />
                     </span>
-                    {/* Only a season archive knows each member's season score. */}
-                    {archive.type === 'ninetyDay' && <TierBadge totalPoints={c.points} size="sm" showName={false} />}
-                    <span className="figure text-sm text-content-primary">
-                      {c.points.toLocaleString()} pts
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
+                  )}
+                  <span className="figure shrink-0 text-sm text-content-primary">{c.points.toLocaleString()} pts</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
       </Dialog>
 
-      {/* Clickable Profile Detail Modal */}
       <CompetitorProfileModal
         competitor={selectedCompetitor}
         seasonPoints={selectedCompetitor ? seasonPointsOf(selectedCompetitor) : 0}
