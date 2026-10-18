@@ -450,10 +450,15 @@
     }
   }
 
-  /* Custom scrollbar. Thumb colours come from the theme's overlay tokens, so light mode gets a
-     subtle grey thumb that steps a little darker on hover, and dark mode the same in white.
-     (bg-400 is a fixed dark value, which made the light thumb near-black and its hover lighter.) */
+  /* Custom scrollbar. Light mode uses the overlay tokens: a subtle grey thumb that steps a little
+     darker on hover. (bg-400 is a fixed dark value, which made the light thumb near-black.) */
   :root {
+    /* Dark theme keeps its original thumb (bg-400 at rest, bg-500 on hover). */
+    --scrollbar-thumb: #313747;
+    --scrollbar-thumb-hover: var(--color-bg-500);
+  }
+
+  [data-theme='light'] {
     --scrollbar-thumb: var(--border-overlay-strong);
     --scrollbar-thumb-hover: var(--border-overlay-heavy);
   }
