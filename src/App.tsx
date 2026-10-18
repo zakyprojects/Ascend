@@ -8,6 +8,7 @@ import type { View } from '@/lib/views';
 import { isSupabaseConfigured, storedAuthSession } from '@/lib/supabase';
 import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
 import { AppShell } from '@/components/AppShell';
+import { FocusSessionProvider } from '@/components/pfc/FocusSessionProvider';
 import {
   AccountabilityPartner,
   AddictionRecovery,
@@ -227,6 +228,7 @@ function App() {
             />
           )}
           {showApp && (
+            <FocusSessionProvider store={store} onOpenFocus={() => setView('prefrontal')}>
             <AppShell
               currentView={view}
               navigationKind={navigationKind}
@@ -273,6 +275,7 @@ function App() {
                 </Suspense>
               </ErrorBoundary>
             </AppShell>
+            </FocusSessionProvider>
           )}
 
           <ConfirmDeleteModal

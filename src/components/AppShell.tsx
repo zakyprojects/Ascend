@@ -37,6 +37,7 @@ import { ThemeToggle } from './ui/ThemeToggle';
 import type { View } from '@/lib/views';
 import type { NavigationKind } from '@/lib/useViewRoute';
 import { trustedNowMs } from '@/lib/clock';
+import { FocusTimerChip } from './pfc/FocusTimerChip';
 
 // Below lg the window scrolls; from lg up the shell is viewport-high and <main> scrolls.
 const DESKTOP_QUERY = '(min-width: 1024px)';
@@ -330,6 +331,8 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
             </ViewEntrance>
           </div>
         </main>
+
+        <FocusTimerChip hidden={currentView === 'prefrontal'} onOpen={() => goTo('prefrontal')} />
 
         {/* Mobile navigation: floating zone bar; the zone on screen opens its sheet. */}
         <MobileZoneBar
