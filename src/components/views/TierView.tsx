@@ -1,18 +1,58 @@
+import { useMemo } from 'react';
+import { Check, Compass, History, Lock } from 'lucide-react';
 import { getCurrentTier, getProgressToNextTier, getNextTier, TIERS } from '@/lib/tiers';
 import { AppStore } from '@/lib/store';
-import { PageColumns, ProgressBar } from '@/components/ui/primitives';
+import type { PointsEntry } from '@/types';
+import { cx, EmptyState, PageColumns, ProgressBar } from '@/components/ui/primitives';
 import { CountUp, Reveal } from '@/components/ui/Motion';
-import { LucideIcon, Compass, Rocket, BookOpen, Dumbbell, Trophy, Star, Gem, Shield, Crown, Check, Lock } from 'lucide-react';
+import { PageHero } from '@/components/ui/PageHero';
+import { TIER_ICONS } from '@/components/ui/TierBadge';
+import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
+import { getLocalResetDetail, sortPointsNewestFirst } from '@/lib/leagues';
+import { getSeasonNumber, getSeasonStart, leagueNow } from '@/lib/leagueTime';
+import { isTodayLocal, isYesterdayLocal } from '@/lib/dates';
 
-const TIER_ICONS: Record<string, LucideIcon> = {
-  Compass, Rocket, BookOpen, Dumbbell, Trophy, Star, Gem, Shield, Crown,
-};
+/** Entries the Recent points list shows (newest first). */
+const RECENT_POINTS_SHOWN = 10;
+
+const rankVar = (tierName: string, part: 'text' | 'bg' | 'border') => `var(--rank-${tierName.toLowerCase()}-${part})`;
+
+/** "Today 3:40 PM", "Yesterday 9:05 AM", "Oct 12 · 3:40 PM"; entries from an earlier season say which. */
+function formatEntryTime(entry: PointsEntry, now: Date, seasonStart: Date): string {
+  const d = new Date(entry.timestamp);
+  if (Number.isNaN(d.getTime())) return '';
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  if (d.getTime() < seasonStart.getTime()) {
+    const day = d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+    });
+    return `${day} · Season ${getSeasonNumber(d)}`;
+  }
+  if (isTodayLocal(entry.timestamp)) return `Today ${time}`;
+  if (isYesterdayLocal(entry.timestamp)) return `Yesterday ${time}`;
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${time}`;
+}
 
 export function TierView({ store }: { store: AppStore }) {
+  const now = leagueNow();
+  const seasonStart = getSeasonStart(now);
   const seasonPoints = store.getLeagueData('ninetyDay').userPoints;
   const currentTier = getCurrentTier(seasonPoints);
   const nextTier = getNextTier(seasonPoints);
   const progress = getProgressToNextTier(seasonPoints);
+  // Floored, so 99.75% never reads as 100% while a point is still missing.
+  const percent = Math.floor(progress.percent);
+  const toNext = nextTier ? nextTier.minPoints - seasonPoints : 0;
+  const rankText = rankVar(currentTier.name, 'text');
+
+  const pointsHistory = store.state.pointsHistory;
+  // Sorted by time: a sync pull can leave the stored ledger out of order.
+  const recentPoints = useMemo(
+    () => sortPointsNewestFirst(pointsHistory ?? []).slice(0, RECENT_POINTS_SHOWN),
+    [pointsHistory]
+  );
 
   return (
     <div className="space-y-6">
@@ -21,166 +61,176 @@ export function TierView({ store }: { store: AppStore }) {
         <p className="page-subtitle">Climb the ladder from Beginner to Master.</p>
       </div>
 
-      <PageColumns stickyAside
-        aside={
-          <>
-            {/* Current tier showcase */}
-            <div className="card p-6 text-center relative overflow-hidden">
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 opacity-[0.08] pointer-events-none"
-                style={{ background: `radial-gradient(circle at 50% 30%, var(--rank-${currentTier.name.toLowerCase()}-text), transparent 65%)` }}
-              />
-              <div className="relative">
-                <div
-                  className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4"
-                  style={{
-                    backgroundColor: `var(--rank-${currentTier.name.toLowerCase()}-bg)`,
-                    border: `2px solid var(--rank-${currentTier.name.toLowerCase()}-border)`,
-                  }}
-                >
-                  {(() => {
-                    const Icon = TIER_ICONS[currentTier.icon] ?? Compass;
-                    return <Icon size={36} strokeWidth={1.75} style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }} />;
-                  })()}
-                </div>
-                <h2 className="font-serif text-5xl leading-none" style={{ color: `var(--rank-${currentTier.name.toLowerCase()}-text)` }}>
-                  {currentTier.name}
-                </h2>
-                <p className="text-sm text-content-muted mt-1">
-                  <CountUp value={seasonPoints} className="figure text-content-secondary" /> points
-                </p>
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel="Your rank this season"
+          ring={{
+            value: percent,
+            max: 100,
+            label: nextTier ? `${percent}% of the way to ${nextTier.name}` : 'Top rank reached',
+            center: `${percent}%`,
+            caption: nextTier ? `to ${nextTier.name}` : 'Top rank',
+            color: rankText,
+          }}
+          lead={{
+            label: 'Rank',
+            value: <span style={{ color: rankText }}>{currentTier.name}</span>,
+            hint: (
+              <>
+                <CountUp value={seasonPoints} className="figure text-content-secondary" />{' '}
+                {seasonPoints === 1 ? 'season point' : 'season points'}
+              </>
+            ),
+          }}
+          stats={[
+            nextTier
+              ? {
+                  label: `To ${nextTier.name}`,
+                  value: <CountUp value={toNext} />,
+                  hint: toNext === 1 ? 'point' : 'points',
+                }
+              : { label: 'Next rank', value: 'Top rank', hint: 'Highest rank this season' },
+            {
+              label: 'Season ends in',
+              value: <LeagueCountdown type="ninetyDay" className="font-mono text-lg sm:text-2xl" />,
+              hint: getLocalResetDetail('ninetyDay', now),
+            },
+          ]}
+        />
+      </Reveal>
 
-                {/* Progress to next */}
-                {nextTier && (
-                  <div className="mt-5 max-w-sm mx-auto">
-                    <div className="flex items-center justify-between mb-2 text-sm">
-                      <span className="text-content-muted">Progress to {nextTier.name}</span>
-                      <span className="figure text-content-secondary"><CountUp value={Math.round(progress.percent)} />%</span>
-                    </div>
-                    <ProgressBar
-                      value={progress.percent}
-                      label={`Progress to ${nextTier.name}`}
-                      size="lg"
-                      fillStyle={{
-                        background: `linear-gradient(90deg, var(--rank-${currentTier.name.toLowerCase()}-text), var(--rank-${nextTier.name.toLowerCase()}-text))`,
-                      }}
-                    />
-                    <p className="text-xs text-content-muted mt-2">
-                      {(nextTier.minPoints - seasonPoints).toLocaleString()} points to reach {nextTier.name}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        }
-      >
-        {/* Tier ladder */}
-        <div>
-          <h2 className="section-title mb-3">All Ranks</h2>
-          <div className="card divide-y divide-overlay-subtle overflow-hidden">
-            {TIERS.map((tier, idx) => {
-              const isUnlocked = seasonPoints >= tier.minPoints;
-              const isCurrent = tier.name === currentTier.name;
-              const Icon = TIER_ICONS[tier.icon] ?? Compass;
-              const tierKey = tier.name.toLowerCase();
+      <PageColumns
+        lead={
+          <Reveal index={1}>
+            <section aria-labelledby="ranks-all">
+              <h2 id="ranks-all" className="section-title">All ranks</h2>
+              <p className="mb-3 mt-1 text-sm text-content-muted">
+                Your rank comes from this season’s points and starts again at Beginner each season.
+              </p>
+              <ol className="card divide-y divide-overlay-subtle overflow-hidden">
+                {TIERS.map((tier, idx) => {
+                  const reached = seasonPoints >= tier.minPoints;
+                  const isCurrent = tier.name === currentTier.name;
+                  const Icon = TIER_ICONS[tier.icon] ?? Compass;
+                  const tierText = rankVar(tier.name, 'text');
 
-              return (
-                <Reveal key={tier.name} index={idx}>
-                <div
-                  className={`p-4 flex items-center gap-4 ${
-                    isCurrent ? 'bg-primary-500/5' : ''
-                  } ${isUnlocked ? '' : 'opacity-50'}`}
-                >
-                  {/* Rank number */}
-                  <div className="figure text-xs text-content-subtle w-6 text-center">
-                    {idx + 1}
-                  </div>
-
-                  {/* Icon */}
-                  <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                      !isUnlocked ? 'bg-overlay-subtle border border-overlay-default' : ''
-                    }`}
-                    style={
-                      isUnlocked
-                        ? { backgroundColor: `var(--rank-${tierKey}-bg)`, border: `1.5px solid var(--rank-${tierKey}-border)` }
-                        : undefined
-                    }
-                  >
-                    {isUnlocked ? (
-                      <Icon size={18} style={{ color: `var(--rank-${tierKey}-text)` }} />
-                    ) : (
-                      <Lock size={16} className="text-content-subtle" />
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3
-                        className="text-lg font-semibold leading-none"
-                        style={{ color: isUnlocked ? `var(--rank-${tierKey}-text)` : 'var(--color-content-disabled)' }}
-                      >
-                        {tier.name}
-                      </h3>
+                  return (
+                    <li
+                      key={tier.name}
+                      aria-current={isCurrent ? 'step' : undefined}
+                      className={cx('relative flex items-start gap-3 p-4 sm:gap-4', isCurrent && 'bg-overlay-subtle')}
+                    >
                       {isCurrent && (
-                        <span className="badge badge-emerald">
-                          <Check size={11} /> Current
-                        </span>
+                        <span aria-hidden="true" className="absolute inset-y-0 left-0 w-0.5" style={{ backgroundColor: tierText }} />
                       )}
-                    </div>
-                    <p className="text-xs text-content-muted mt-0.5">
-                      <span className="figure">{tier.minPoints.toLocaleString()}</span> points
-                    </p>
-                    {tier.description && (
-                      <p className="text-xs text-content-disabled mt-1 leading-snug">
-                        {tier.description}
-                      </p>
-                    )}
-                  </div>
+                      <span className="figure w-5 shrink-0 pt-2.5 text-center text-xs text-content-muted">{idx + 1}</span>
 
-                  {/* Checkmark if unlocked */}
-                  {isUnlocked && !isCurrent && (
-                    <div className="w-6 h-6 rounded-full bg-primary-500/15 flex items-center justify-center shrink-0">
-                      <Check size={14} className="text-success-text" />
-                    </div>
-                  )}
-                </div>
-                </Reveal>
-              );
-            })}
-          </div>
-        </div>
+                      <span
+                        className={cx(
+                          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                          !reached && 'border border-overlay-default bg-overlay-subtle'
+                        )}
+                        style={
+                          reached
+                            ? { backgroundColor: rankVar(tier.name, 'bg'), border: `1.5px solid ${rankVar(tier.name, 'border')}` }
+                            : undefined
+                        }
+                      >
+                        {reached ? (
+                          <Icon size={18} aria-hidden="true" style={{ color: tierText }} />
+                        ) : (
+                          <>
+                            <Lock size={16} aria-hidden="true" className="text-content-muted" />
+                            <span className="sr-only">Locked</span>
+                          </>
+                        )}
+                      </span>
 
-        {/* Points history */}
-        {store.state.pointsHistory.length > 0 && (
-          <div>
-            <h2 className="section-title mb-3">Recent Points</h2>
-            <div className="card divide-y divide-overlay-subtle">
-              {store.state.pointsHistory.slice(0, 10).map((entry) => (
-                <div key={entry.id} className="scroll-rise flex items-center gap-3 p-3.5">
-                  <div className={`w-10 h-8 rounded-lg flex items-center justify-center shrink-0 ${entry.amount > 0 ? 'bg-primary-500/15' : 'bg-error/15'}`}>
-                    <span className={`figure text-xs ${entry.amount > 0 ? 'text-brand-text' : 'text-error'}`}>
-                      {entry.amount > 0 ? '+' : ''}
-                      {entry.amount}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-content-tertiary truncate">{entry.reason}</p>
-                    <p className="text-xs text-content-subtle">
-                      {new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      {' at '}
-                      {new Date(entry.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </PageColumns>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                            <h3
+                              className={cx('text-base font-semibold leading-tight', !reached && 'text-content-tertiary')}
+                              style={reached ? { color: tierText } : undefined}
+                            >
+                              {tier.name}
+                            </h3>
+                            {isCurrent && <span className="badge badge-emerald">Current</span>}
+                            {reached && !isCurrent && (
+                              <>
+                                <Check size={14} aria-hidden="true" className="text-success-text" />
+                                <span className="sr-only">Reached</span>
+                              </>
+                            )}
+                          </div>
+                          <span className="figure shrink-0 text-sm text-content-muted">
+                            {tier.minPoints.toLocaleString()} pts
+                          </span>
+                        </div>
+                        {tier.description && (
+                          <p className="mt-1 text-xs leading-snug text-content-muted">{tier.description}</p>
+                        )}
+                        {isCurrent && nextTier && (
+                          <div className="mt-3">
+                            <ProgressBar
+                              value={progress.current}
+                              max={progress.needed}
+                              size="sm"
+                              label={`Progress to ${nextTier.name}`}
+                              fillStyle={{ backgroundColor: tierText }}
+                            />
+                            <p className="mt-1.5 text-2xs text-content-muted">
+                              <span className="figure">{percent}%</span> of the way to {nextTier.name}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          </Reveal>
+        }
+        aside={
+          <section aria-labelledby="ranks-recent">
+            <h2 id="ranks-recent" className="section-title mb-3">Recent points</h2>
+            {recentPoints.length === 0 ? (
+              <EmptyState icon={History} size="sm" title="No points yet" description="Points you earn show up here." />
+            ) : (
+              <ul className="card divide-y divide-overlay-subtle overflow-hidden">
+                {recentPoints.map((entry) => {
+                  const amount = entry.amount || 0;
+                  return (
+                    <li key={entry.id} className="scroll-rise flex items-center gap-3 p-3.5">
+                      <span
+                        className={cx(
+                          'flex h-8 w-11 shrink-0 items-center justify-center rounded-lg',
+                          amount > 0 ? 'bg-primary-500/15' : amount < 0 ? 'bg-error/15' : 'bg-overlay-subtle'
+                        )}
+                      >
+                        <span
+                          className={cx(
+                            'figure text-xs',
+                            amount > 0 ? 'text-brand-text' : amount < 0 ? 'text-error' : 'text-content-muted'
+                          )}
+                        >
+                          {amount > 0 ? '+' : ''}
+                          {amount}
+                        </span>
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-content-secondary">{entry.reason}</p>
+                        <p className="text-xs text-content-muted">{formatEntryTime(entry, now, seasonStart)}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        }
+      />
     </div>
   );
 }
