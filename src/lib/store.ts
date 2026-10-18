@@ -4356,17 +4356,29 @@ export function useAppState() {
         const remainingReadingLogs = prev.readingLogs.filter((l) => !l.bookId || !allMatchingIds.has(l.bookId));
         const remainingBooks = prev.libraryBooks.filter((lb) => !allMatchingIds.has(lb.id));
 
-        // Only today's points follow the book (ascend_recompute_reading_bonus): today's page award and
-        // a finish bonus earned today. A bonus earned on an earlier day stays, and so does one the app
-        // gave before server bonuses (no minus row any more).
+        // Only today's page award follows the logs; earlier days' points stay. The book's finish
+        // bonus goes with it, as on the server: its server row is removed, and a bonus the app gave
+        // before server bonuses (book.pointsAwarded, no server row) is taken back with a minus row.
         const bonusIds = new Set(Array.from(allMatchingIds).map(readingBonusId));
-        const bonusTodayStartMs = new Date(`${todayKey()}T00:00:00`).getTime();
-        const { excisedEntryIds: _bonusExcised, ...withoutBonus } = excisePointsEntriesInternal(prev, (e) => {
-          if (!e || !bonusIds.has(e.id) || e.metadata?.legacyMarker === true) return false;
-          const at = new Date(e.timestamp).getTime();
-          return Number.isFinite(at) && at >= bonusTodayStartMs;
-        });
-        const afterBonus: AppState = { ...prev, ...withoutBonus };
+        const serverBonusIds = new Set((prev.pointsHistory || []).filter((e) => bonusIds.has(e.id)).map((e) => e.id));
+        const { excisedEntryIds: _bonusExcised, ...withoutBonus } = excisePointsEntriesInternal(prev, (e) => bonusIds.has(e.id));
+        let afterBonus: AppState = { ...prev, ...withoutBonus };
+        for (const lb of prev.libraryBooks) {
+          const legacyBonus = lb.pointsAwarded ?? 0;
+          if (!allMatchingIds.has(lb.id) || legacyBonus <= 0 || serverBonusIds.has(readingBonusId(lb.id))) continue;
+          afterBonus = {
+            ...afterBonus,
+            ...addPointsInternal(
+              afterBonus,
+              -legacyBonus,
+              `Book deleted: ${lb.title || 'Book'}`,
+              'reading_bonus',
+              { bookId: lb.id, legacyMarker: true, legacyAmount: legacyBonus },
+              trustedNow().toISOString(),
+              readingBonusId(lb.id)
+            ),
+          };
+        }
         const awards = applyReadingAwardsInternal(afterBonus, remainingReadingLogs, remainingBooks, todayKey());
         const updatedReadingLogs = awards.readingLogs;
 
