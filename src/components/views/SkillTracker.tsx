@@ -23,7 +23,8 @@ import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { nameTaken } from '@/lib/uniqueNames';
 
 const DAYS_PAGE = 7;
-const QUICK_MINUTES = [15, 30, 45, 60];
+const QUICK_MINUTES = [45, 60, 120, 180];
+const quickLabel = (m: number) => (m >= 120 && m % 60 === 0 ? `${m / 60} hrs` : `${m} min`);
 
 /** Level thresholds in practice hours (beginner → intermediate → advanced → expert). */
 const LEVELS: { level: SkillLevel; below: number | null; next: string | null }[] = [
@@ -70,7 +71,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
   const [skillName, setSkillName] = useState('');
   const [category, setCategory] = useState('');
   const [logSkillId, setLogSkillId] = useState('');
-  const [duration, setDuration] = useState(30);
+  const [duration, setDuration] = useState(QUICK_MINUTES[0]);
   const [note, setNote] = useState('');
   const addForm = useUnsavedChanges(addModalOpen, [skillName, category]);
   const logForm = useUnsavedChanges(logModalOpen, [logSkillId, duration, note]);
@@ -153,7 +154,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
   };
   const openLogModal = (skillId?: string) => {
     setLogSkillId(skillId || (skills.length === 1 ? skills[0].id : ''));
-    setDuration(30);
+    setDuration(QUICK_MINUTES[0]);
     setNote('');
     setLogModalOpen(true);
   };
@@ -563,7 +564,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                       : 'border-overlay-subtle text-content-muted hover:bg-overlay-subtle'
                   )}
                 >
-                  {m} min
+                  {quickLabel(m)}
                 </button>
               ))}
             </div>
