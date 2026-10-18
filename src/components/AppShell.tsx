@@ -27,6 +27,7 @@ import { getNavStatuses } from '@/lib/navStatus';
 import { prefersReducedMotion } from '@/lib/motion';
 import { pageLinkProps } from '@/lib/pageLink';
 import { RankChip } from './ui/RankChip';
+import { getNewestPointsEntry } from '@/lib/leagues';
 import { ViewEntrance } from './ViewEntrance';
 import { AppStore } from '@/lib/store';
 import { GuestLogoutWarningModal } from './ui/GuestLogoutWarningModal';
@@ -185,6 +186,8 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   const username = store.state.username;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `minute` follows the season clock
   const seasonPoints = useMemo(() => getLeagueData('ninetyDay').userPoints, [getLeagueData, minute]);
+  // By timestamp: a sync pull can leave the stored ledger out of order (rank-up freshness check).
+  const latestPointsTimestamp = useMemo(() => getNewestPointsEntry(appState.pointsHistory)?.timestamp, [appState.pointsHistory]);
   const userAvatar = currentUser?.avatar || '🧑';
 
   const handleLogoutClick = () => {
@@ -244,7 +247,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
           onSearch={() => setPaletteOpen(true)}
           onQuickLog={() => setQuickLogOpen(true)}
           bell={currentUser ? <NotificationCenter store={store} compact align="sidebar" /> : null}
-          standing={<RankChip seasonPoints={seasonPoints} latestEntryTimestamp={store.state.pointsHistory?.[0]?.timestamp} />}
+          standing={<RankChip seasonPoints={seasonPoints} latestEntryTimestamp={latestPointsTimestamp} />}
           renderAccount={(placement) => (
             <AccountMenu
               placement={placement}

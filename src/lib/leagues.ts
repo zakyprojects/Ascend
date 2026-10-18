@@ -64,23 +64,92 @@ export function getLeaguePeriodEnd(type: LeagueType, now: Date): Date {
   }
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function formatUtcDay(d: Date, withYear = false): string {
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(withYear ? { year: 'numeric' } : {}),
+    timeZone: 'UTC',
+  });
+}
+
+/**
+ * "Oct 12 – Oct 18": first and last day of a half-open period [start, end). The end instant is the
+ * next period's first moment, so the last day shown is the one just before it.
+ */
+function formatUtcRange(start: Date, end: Date, withYear = false): string {
+  const last = new Date(end.getTime() - 1);
+  const startYear = withYear && start.getUTCFullYear() !== last.getUTCFullYear();
+  return `${formatUtcDay(start, startYear)} – ${formatUtcDay(last, withYear)}`;
+}
+
+function seasonRangeLabel(seasonNumber: number): string {
+  const start = getSeasonStartByNumber(seasonNumber);
+  const end = getSeasonStartByNumber(seasonNumber + 1);
+  return `Season ${seasonNumber} (${formatUtcRange(start, end, true)})`;
+}
+
+/** The running period's dates; a week that began before the season starts at the season's first day. */
 export function getLeaguePeriodLabel(type: LeagueType, now: Date): string {
   switch (type) {
-    case 'weekly': {
-      const start = getWeekStart(now);
-      const end = getWeekEnd(now);
-      return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}`;
-    }
-    case 'monthly': {
+    case 'weekly':
+      return formatUtcRange(getLeaguePeriodStart('weekly', now), getWeekEnd(now));
+    case 'monthly':
       return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-    }
-    case 'ninetyDay': {
-      const seasonLabel = getSeasonLabel(now);
-      const start = getSeasonStart(now);
-      const end = getSeasonEnd(now);
-      return `${seasonLabel} (${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })})`;
+    case 'ninetyDay':
+      return seasonRangeLabel(getSeasonNumber(now));
+  }
+}
+
+/**
+ * Label for a finished period, built from the archive id (W:/M:/S:) so it shows the period's last
+ * day (stored server labels print the next period's first day). Falls back to the stored label.
+ */
+export function getArchivePeriodLabel(a: LeagueArchive): string {
+  const id = a.id ?? '';
+  const start = id ? getArchivePeriodStart(a) : 0;
+  if (id.startsWith('W:') && /^W:\d{4}-W\d{1,2}$/.test(id)) {
+    const weekStart = new Date(start);
+    const weekEnd = new Date(start + 7 * DAY_MS);
+    return formatUtcRange(clampToSeasonStart(weekStart, new Date(weekEnd.getTime() - 1)), weekEnd);
+  }
+  if (id.startsWith('M:') && /^M:\d{4}-\d{1,2}$/.test(id)) {
+    return new Date(start).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  }
+  if (/^S:\d+$/.test(id)) {
+    return seasonRangeLabel(parseInt(id.slice(2), 10));
+  }
+  return a.periodLabel;
+}
+
+/** "1 point", "420 points". */
+export function pointsText(n: number): string {
+  return `${n.toLocaleString()} ${Math.abs(n) === 1 ? 'point' : 'points'}`;
+}
+
+/** Newest first by timestamp, then id (sync pulls can leave the stored ledger out of order). */
+export function sortPointsNewestFirst(history: PointsEntry[]): PointsEntry[] {
+  return [...history].sort(
+    (a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime() ||
+      entryIdOrder.compare(b.id || '', a.id || '')
+  );
+}
+
+/** The newest ledger entry by timestamp (not by stored position). */
+export function getNewestPointsEntry(history: PointsEntry[] | undefined): PointsEntry | undefined {
+  let newest: PointsEntry | undefined;
+  let newestMs = -Infinity;
+  for (const entry of history ?? []) {
+    const ms = new Date(entry.timestamp).getTime();
+    if (ms > newestMs || (ms === newestMs && newest && entryIdOrder.compare(entry.id || '', newest.id || '') > 0)) {
+      newest = entry;
+      newestMs = ms;
     }
   }
+  return newest;
 }
 
 /** Returns milliseconds until the current period ends */
@@ -303,11 +372,17 @@ export function getArchivePeriodStart(a: LeagueArchive): number {
   return 0;
 }
 
+/** "Resets Mon, Oct 19 · 5:00 AM your time": the end instant in the device's own zone, with its date. */
 export function getLocalResetDetail(type: LeagueType, now: Date): string {
   const end = getLeaguePeriodEnd(type, now);
-  const dayName = end.toLocaleDateString(undefined, { weekday: 'long' });
-  const timeStr = end.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  return `Resets ${dayName} at ${timeStr} (your local time)`;
+  const day = end.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    ...(end.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+  });
+  const time = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return `${type === 'ninetyDay' ? 'Ends' : 'Resets'} ${day} · ${time} your time`;
 }
 
 export const LEAGUE_CONFIG: Record<LeagueType, { name: string; description: string; icon: string; color: string }> = {

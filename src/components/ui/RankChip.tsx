@@ -14,7 +14,7 @@ const RANK_UP_FRESHNESS_MS = 10_000;
 
 interface RankChipProps {
   seasonPoints: number;
-  /** Timestamp of the newest points-ledger entry (pointsHistory[0]). */
+  /** Timestamp of the newest points-ledger entry, by timestamp (getNewestPointsEntry). */
   latestEntryTimestamp?: string;
 }
 
