@@ -55,6 +55,21 @@ if (!isSupabaseConfigured) {
 // supabase-js's own default key, named here so the app can read it (unchanged: nobody is signed out).
 const AUTH_STORAGE_KEY = `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`;
 
+/**
+ * A password-reset email lands on `/reset-password#access_token=…&type=recovery` (or `#error=…`
+ * when the link expired or was used). Read before the client starts: it clears the hash once it
+ * has taken the session from it.
+ */
+function readRecoveryRedirect(): { recovery: boolean; error: string | null } {
+  if (typeof window === 'undefined') return { recovery: false, error: null };
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const query = new URLSearchParams(window.location.search);
+  const error = params.get('error_description') || params.get('error') || query.get('error_description') || query.get('error');
+  return { recovery: params.get('type') === 'recovery', error: error ? error.replace(/\+/g, ' ') : null };
+}
+const recoveryRedirect = readRecoveryRedirect();
+let passwordRecoverySession = recoveryRedirect.recovery;
+
 export const supabase = createClient(
   supabaseUrl,
   supabaseAnonKey,
@@ -67,6 +82,27 @@ export const supabase = createClient(
     },
   }
 );
+
+// Subscribed at once so the client's PASSWORD_RECOVERY (fired while it starts up) is never missed.
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') passwordRecoverySession = true;
+  else if (event === 'SIGNED_OUT') passwordRecoverySession = false;
+});
+
+/** This tab was opened from a password-reset email and its session may set a new password. */
+export function isPasswordRecoverySession(): boolean {
+  return passwordRecoverySession;
+}
+
+/** The new password is set (or the user left): the reset page stops offering the form. */
+export function endPasswordRecoverySession(): void {
+  passwordRecoverySession = false;
+}
+
+/** The error a reset link came back with (expired, already used), or null. */
+export function passwordRecoveryLinkError(): string | null {
+  return recoveryRedirect.error;
+}
 
 /**
  * Checks a password for the signed-in email without touching the app's own sign-in (D-S3): a

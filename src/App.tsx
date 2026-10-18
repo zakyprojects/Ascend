@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
 import { useAppState } from '@/lib/store';
 import { useViewRoute } from '@/lib/useViewRoute';
 import { confirmLeave } from '@/lib/unsavedChanges';
@@ -45,6 +45,11 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { BannerStack } from '@/components/ui/BannerStack';
 import { DiscardChangesDialog } from '@/components/ui/DiscardChangesDialog';
 
+// Where a password-reset email lands; rarely visited, so its code loads only then.
+const ResetPasswordPage = lazy(() =>
+  import('@/components/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage }))
+);
+
 function App() {
   const store = useAppState();
   // Page changes wait for the page's code first, so the view transition never shows a fallback.
@@ -69,9 +74,12 @@ function App() {
   // account is loaded (a new guest too, who would otherwise get the save-progress page).
   const [leavingAuth, setLeavingAuth] = useState(false);
   if (leavingAuth && !auth) setLeavingAuth(false);
+  // /reset-password is shown to anyone (signed in by its link or not) and never redirected.
+  const onResetPassword = auth === 'reset-password';
   let routeScreen: AuthScreen | null = null;
   if (authReady && authGate) {
-    if (auth) routeScreen = !currentUser ? auth : isGuest && !leavingAuth ? 'upgrade' : null;
+    if (onResetPassword) routeScreen = null;
+    else if (auth) routeScreen = !currentUser ? auth : isGuest && !leavingAuth ? 'upgrade' : null;
     // A sign-in still loading its data shows the session loader, not the sign-in page.
     else if (!currentUser && !store.isSessionLoading) routeScreen = 'login';
   }
@@ -89,6 +97,8 @@ function App() {
     const authHash = window.location.hash.startsWith('#/') ? '' : window.location.hash;
     if (!authGate) {
       if (auth) target = '/';
+    } else if (onResetPassword) {
+      // Stays put: the page itself offers the way on (sign in, new link, the app).
     } else if (auth) {
       if (currentUser && (!isGuest || leavingAuth)) target = nextFromSearch(search);
       else if (isGuest && auth === 'login') target = pathForAuthRoute('signup') + search + authHash;
@@ -99,7 +109,7 @@ function App() {
       target = plain ? pathForAuthRoute('login') : authPathWithNext('login', pathForView(view) + search) + authHash;
     }
     if (target) goToPath(target, { replace: true });
-  }, [authReady, authGate, authHold, leavingAuth, auth, currentUser, isGuest, search, view, store.isSessionLoading, goToPath]);
+  }, [authReady, authGate, authHold, leavingAuth, auth, onResetPassword, currentUser, isGuest, search, view, store.isSessionLoading, goToPath]);
 
   // The sign-in page's code (preloaded behind the splash by main.tsx).
   const [AuthPageView, setAuthPageView] = useState<ComponentType<AuthPageProps> | null>(() => loadedAuthPage());
@@ -225,6 +235,14 @@ function App() {
               }}
               onNavigate={(path) => goToPath(path)}
             />
+          )}
+          {authGate && onResetPassword && (
+            <Suspense fallback={null}>
+              <ResetPasswordPage
+                signedIn={Boolean(currentUser && !isGuest)}
+                onNavigate={(path, replace) => goToPath(path, { replace })}
+              />
+            </Suspense>
           )}
           {showApp && (
             <FocusSessionProvider store={store} onOpenFocus={() => setView('prefrontal')}>

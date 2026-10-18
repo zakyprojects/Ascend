@@ -49,6 +49,9 @@ function runFixtures() {
   assert(authRouteFromPath('/Login') === 'login', 'case');
   assert(authRouteFromPath('/habits') === null, 'a page is not a sign-in page');
   assert(authRouteFromPath('/login/extra') === null, 'nested path is not a sign-in page');
+  assert(authRouteFromPath('/reset-password') === 'reset-password', '/reset-password');
+  assert(pathForAuthRoute('reset-password') === '/reset-password', 'reset path');
+  assert(safeNextPath('/reset-password') === '/', 'no loop through the reset page');
   assert(viewFromPath('/login') === null, '/login is not a page');
 
   // next: only same-site paths

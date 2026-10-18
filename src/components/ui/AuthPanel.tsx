@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Mail, User, Check, LogIn, UserPlus, ArrowLeft, ArrowRight } from 'lucide-react';
-import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser } from '@/lib/auth';
+import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnonymousUser, requestPasswordReset } from '@/lib/auth';
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 import { PasswordInput } from './PasswordInput';
@@ -157,6 +157,8 @@ interface AuthPanelProps {
   onClimbChange?: (state: AuthClimbState) => void;
   /** The page's heading; rendered here so the sign-up form's Back link can sit above it. */
   title: React.ReactNode;
+  /** /login?forgot=1 (from an expired reset link) opens on the "Forgot password" step. */
+  startForgot?: boolean;
 }
 
 /** Whether a screen shows the form (the signup choice does not). */
@@ -228,7 +230,7 @@ function FocusLine() {
  * The sign-in / sign-up / guest-upgrade form with its success screen. Screen changes slide in;
  * the first screen shown does not.
  */
-export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, onClimbChange, title }: AuthPanelProps) {
+export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, onClimbChange, title, startForgot = false }: AuthPanelProps) {
   const isAnonymousUser = Boolean(guestState.currentUser?.isAnonymous);
 
   const [email, setEmail] = useState('');
@@ -261,12 +263,18 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   // during render so a new screen's first frame animates.
   const [slide, setSlide] = useState<'left' | 'right' | null>(null);
   const [signupStep, setSignupStep] = useState<'choice' | 'form'>('choice');
+  // Sign in's second step: ask for a password-reset email. `resetSentTo` = the email it went to.
+  const [loginStep, setLoginStep] = useState<'form' | 'forgot'>(startForgot && mode === 'login' ? 'forgot' : 'form');
+  const [resetSentTo, setResetSentTo] = useState<string | null>(null);
   const [shownMode, setShownMode] = useState(mode);
   if (mode !== shownMode) {
-    // Arriving at /signup always starts on the choice.
+    // Arriving at /signup always starts on the choice; /login on the sign-in form.
     setShownMode(mode);
     setSignupStep('choice');
+    setLoginStep('form');
+    setResetSentTo(null);
   }
+  const forgot = mode === 'login' && loginStep === 'forgot';
   const screen: AuthScreen = mode === 'signup' ? `signup-${signupStep}` : mode;
   const [shownScreen, setShownScreen] = useState(screen);
   if (screen !== shownScreen) {
@@ -299,6 +307,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   }, [screen]);
 
   const form = useFormController();
+  const forgotForm = useFormController();
   /** Counts each problem shown, so the page (mascot) can react to it. */
   const noteError = () => {
     setErrorTick((tick) => tick + 1);
@@ -339,16 +348,24 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       return;
     }
 
+    // A newer value cancels an older check, so a late answer never lands on a newer name.
+    let cancelled = false;
+    setUsernameStatus(null);
     const timer = setTimeout(async () => {
       try {
         const result = await isUsernameAvailable(username, guestState.currentUser?.id);
-        setUsernameStatus({ ...result, checkedFor: username.trim() });
+        if (cancelled) return;
+        // Couldn't check (offline, server error): no badge; the server still refuses a taken name on save.
+        setUsernameStatus(result.unknown ? null : { ...result, checkedFor: username.trim() });
       } catch {
-        setUsernameStatus({ available: true, checkedFor: username.trim() });
+        if (!cancelled) setUsernameStatus(null);
       }
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [username, mode, guestState.currentUser]);
 
 
@@ -365,9 +382,11 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const passwordValid = isNewAccount ? !newPasswordProblem(password) : password.length > 0;
   const confirmValid = confirmPassword.length > 0 && confirmPassword === password;
 
-  const steps = screen === 'login' ? 2 : screen === 'signup-choice' ? 0 : 5;
+  const steps = forgot ? 1 : screen === 'login' ? 2 : screen === 'signup-choice' ? 0 : 5;
   const progress =
-    screen === 'login'
+    forgot
+      ? Number(emailValid)
+      : screen === 'login'
       ? Number(emailValid) + Number(passwordValid)
       : screen === 'signup-choice'
       ? 0
@@ -469,7 +488,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
       } else if (mode === 'signup') {
         const check = await isUsernameAvailable(username);
         if (!check.available) {
-          showError(check.reason || 'Pick a valid username that isn’t taken.');
+          showError(check.reason || 'Pick a valid username that isn’t taken.', 'auth-username');
           return;
         }
 
@@ -501,13 +520,49 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
         authErr.status === 429 ||
         authErr.message?.includes('email rate limit')
       ) {
-        showError('Too many sign-up attempts. Wait a few minutes and try again.');
+        showError(
+          mode === 'login'
+            ? 'Too many sign-in attempts. Wait a few minutes and try again.'
+            : 'Too many sign-up attempts. Wait a few minutes and try again.'
+        );
       } else {
         showError(toUserMessage(err, 'Something went wrong. Try again.'));
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  /** "Forgot password": sends the reset email. The answer never says whether the email has an account. */
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await withTimeout(requestPasswordReset(email));
+      setResetSentTo(email.trim());
+    } catch (err: unknown) {
+      console.error('Password reset email failed:', err);
+      const authErr = err as { code?: string; status?: number; message?: string };
+      if (authErr.code === 'over_email_send_rate_limit' || authErr.status === 429 || authErr.message?.includes('rate limit')) {
+        forgotForm.showError('Too many reset emails. Wait a few minutes and try again.');
+      } else {
+        forgotForm.showError(toUserMessage(err, 'Couldn’t send the email. Try again.'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openForgot = () => {
+    setSlide('right');
+    setResetSentTo(null);
+    setLoginStep('forgot');
+    setFocus(null);
+  };
+  const closeForgot = () => {
+    setSlide('left');
+    setLoginStep('form');
+    setFocus(null);
   };
 
   /** Hover/focus handlers that tell the page which route on the choice screen is being considered. */
@@ -525,6 +580,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const statusLine = formScreen
     ? STATUS_LINES[formScreen][phase === 'idle' ? (formReady ? 'ready' : 'empty') : phase]
     : '';
+  const forgotStatus = loading ? 'Sending…' : emailValid ? 'Ready.' : 'Enter the email you sign in with.';
 
   return (
     <div>
@@ -538,7 +594,13 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
           <ArrowLeft size={14} aria-hidden="true" /> Back
         </button>
       )}
-      {title}
+      {forgot && !successTitle ? (
+        <h1 id="auth-page-title" className="text-2xl sm:text-3xl font-semibold tracking-tight text-content-primary">
+          Reset your password
+        </h1>
+      ) : (
+        title
+      )}
       <div className="mt-2 space-y-4">
         {/* Error / Success Notifications */}
         {successMsg && (
@@ -561,17 +623,101 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
 
         {/* Sign in / sign up / save progress */}
         {!successTitle && (
-          <div key={screen} className={`space-y-4 ${slideClass}`}>
+          <div key={forgot ? 'login-forgot' : screen} className={`space-y-4 ${slideClass}`}>
             {/* The page's own h1 names the screen; this line says what it is for. */}
             <p className="text-sm text-content-muted">
-              {mode === 'upgrade'
+              {forgot
+                ? 'Forgot your password? Enter your email and we’ll send you a link to set a new one.'
+                : mode === 'upgrade'
                 ? 'Turn your guest progress into a full account. Your habits, points, and league rank stay.'
                 : mode === 'signup'
                 ? 'Create an account to compete in weekly, monthly, and 90-day leagues.'
                 : 'Sign in to see your habits, rank, and league points.'}
             </p>
 
-            {screen === 'signup-choice' ? (
+            {forgot ? (
+              resetSentTo ? (
+                <div className="space-y-4">
+                  <div role="status" className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start gap-2 text-xs text-content-primary">
+                    <Mail size={16} aria-hidden="true" className="shrink-0 mt-0.5 text-success-text" />
+                    <span>
+                      If an account uses <span className="font-medium break-all">{resetSentTo}</span>, a link to set a new password
+                      is on its way. It can take a minute; check your spam folder too.
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button type="button" onClick={closeForgot} className="btn-primary w-full min-h-11">
+                      <ArrowLeft size={16} aria-hidden="true" /> Back to sign in
+                    </button>
+                    <button type="button" onClick={() => setResetSentTo(null)} className="btn-ghost w-full min-h-11 text-xs">
+                      Use a different email
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <Form
+                    onSubmit={handleForgotSubmit}
+                    controller={forgotForm}
+                    alert="manual"
+                    onIssue={noteError}
+                    className="space-y-3.5"
+                    {...formFocusHandlers}
+                  >
+                    <div data-field="auth-email">
+                      <FieldLabel htmlFor="auth-email" required valid={emailValid}>
+                        Email
+                      </FieldLabel>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
+                          <Mail size={16} aria-hidden="true" />
+                        </div>
+                        <input
+                          id="auth-email"
+                          type="email"
+                          required
+                          autoComplete="email"
+                          placeholder="you@example.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className={`${INPUT_CLASS} input-has-icon pr-3`}
+                        />
+                        <FocusLine />
+                      </div>
+                      <FieldMessage htmlFor="auth-email" />
+                    </div>
+                    <FormAlert />
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className={`w-full h-11 border font-medium text-sm rounded-xl shadow-sm transition-colors duration-base flex items-center justify-center gap-2 disabled:cursor-default ${
+                        emailValid || loading
+                          ? 'bg-primary-600 hover:bg-primary-700 border-transparent text-on-brand'
+                          : 'bg-bg-600 hover:bg-bg-500 border-overlay-default text-content-secondary'
+                      }`}
+                    >
+                      {loading ? (
+                        <span className="inline-flex animate-enter-fade">
+                          <AscendLoadingIndicator size="sm" />
+                          <span className="sr-only">Sending…</span>
+                        </span>
+                      ) : (
+                        'Send reset link'
+                      )}
+                    </button>
+                    <p aria-live="polite" className="text-xs text-center text-content-muted">
+                      {forgotStatus}
+                    </p>
+                  </Form>
+                  <p className="text-xs text-content-muted text-center pt-1">
+                    Remembered it?{' '}
+                    <button type="button" onClick={closeForgot} disabled={loading} className={PAGE_LINK_CLASS}>
+                      Back to sign in
+                    </button>
+                  </p>
+                </>
+              )
+            ) : screen === 'signup-choice' ? (
               <div className="space-y-3 pt-1">
                 <button
                   type="button"
@@ -639,7 +785,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                       role="group"
                       aria-label="Leaderboard avatar"
                       tabIndex={-1}
-                      className="grid grid-cols-8 gap-1.5 p-2 bg-bg-800 rounded-xl border border-overlay-subtle outline-none aria-[invalid=true]:border-rose-500/70"
+                      className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 p-2 bg-bg-800 rounded-xl border border-overlay-subtle outline-none aria-[invalid=true]:border-rose-500/70"
                     >
                       {EMOJI_AVATARS.map((emoji) => (
                         <button
@@ -648,7 +794,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                           aria-label={`Select avatar ${emoji}`}
                           aria-pressed={avatar === emoji}
                           onClick={() => setAvatar(emoji)}
-                          className={`w-8 h-8 rounded-lg text-lg flex items-center justify-center transition-all ${
+                          className={`min-h-11 w-full rounded-lg text-lg flex items-center justify-center transition-all ${
                             avatar === emoji
                               ? 'bg-primary-500/25 border-2 border-primary-400 scale-110'
                               : 'hover:bg-overlay-subtle'
@@ -679,7 +825,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                         className={`${INPUT_CLASS} input-has-icon pr-24`}
                       />
                       <FocusLine />
-                      {username.trim() && (
+                      {trimmedUsername && usernameStatus?.checkedFor === trimmedUsername && (
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           {usernameStatus?.available ? (
                             <span className="badge-emerald text-micro font-medium flex items-center gap-1 px-2 py-0.5 rounded-lg">
@@ -693,7 +839,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                         </div>
                       )}
                     </div>
-                    {usernameStatus && !usernameStatus.available && usernameStatus.reason ? (
+                    {usernameStatus && usernameStatus.checkedFor === trimmedUsername && !usernameStatus.available && usernameStatus.reason ? (
                       <FieldErrorBubble message={usernameStatus.reason} />
                     ) : (
                       <FieldMessage htmlFor="auth-username" />
@@ -745,6 +891,18 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                 </div>
                 <FieldMessage htmlFor="auth-password" />
                 {isNewAccount && <PasswordStaircase password={password} />}
+                {mode === 'login' && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={openForgot}
+                      disabled={loading}
+                      className="min-h-11 -mb-2 px-1 text-xs font-medium text-brand-text hover:underline underline-offset-2 disabled:opacity-50"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
               </div>
 
               {isNewAccount && (
@@ -792,14 +950,14 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                     <span className="sr-only">Please wait…</span>
                   </span>
                 ) : mode === 'upgrade' ? (
-                  'Save to Full Account'
+                  'Save progress'
                 ) : mode === 'signup' ? (
                   <>
-                    <UserPlus size={18} /> Create Account
+                    <UserPlus size={18} aria-hidden="true" /> Create account
                   </>
                 ) : (
                   <>
-                    <LogIn size={18} /> Sign In
+                    <LogIn size={18} aria-hidden="true" /> Sign in
                   </>
                 )}
               </button>

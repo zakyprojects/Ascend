@@ -483,6 +483,26 @@ export async function changeUserPassword(newPassword: string, current?: { email:
 }
 
 /**
+ * Sends a password-reset email. The link opens `/reset-password` on this site (the address must be
+ * on the Supabase redirect allow-list). Supabase answers the same whether or not the email has an
+ * account, so the screen never says which. Throws Supabase's error as is (429 = too many emails).
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+  if (error) throw error;
+}
+
+/** Sets a new password for the session a reset link opened (no current password: the email proved it). */
+export async function setRecoveredPassword(newPassword: string): Promise<void> {
+  const problem = newPasswordProblem(newPassword);
+  if (problem) throw new Error(`${problem}.`);
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}
+
+/**
  * Permanently delete the signed-in user's account. The `delete_own_account` RPC removes the
  * auth user; every user row (profile, user_data, partnerships, plans, notifications...)
  * cascades from it. Throws when the server refuses, so the caller can keep the user signed in.

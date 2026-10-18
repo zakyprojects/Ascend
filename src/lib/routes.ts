@@ -64,9 +64,13 @@ export function viewFromLocation(location: Pick<Location, 'pathname' | 'hash'> =
  * account, or save a guest's progress). A signed-out visit to a page goes to
  * `/login?next=<that page>` and comes back to it after signing in.
  */
-export type AuthRoute = 'login' | 'signup';
+export type AuthRoute = 'login' | 'signup' | 'reset-password';
 
-const AUTH_PATHS: Record<AuthRoute, string> = { login: '/login', signup: '/signup' };
+/**
+ * `/reset-password` is where a password-reset email lands: it sits with the sign-in pages (outside
+ * the shell, never a `next` target), but App shows it to anyone and never redirects away from it.
+ */
+const AUTH_PATHS: Record<AuthRoute, string> = { login: '/login', signup: '/signup', 'reset-password': '/reset-password' };
 
 export function pathForAuthRoute(route: AuthRoute): string {
   return AUTH_PATHS[route];
@@ -75,7 +79,7 @@ export function pathForAuthRoute(route: AuthRoute): string {
 /** The sign-in page a path names (case and slashes at either end do not matter), or null. */
 export function authRouteFromPath(pathname: string): AuthRoute | null {
   const segment = pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
-  return segment === 'login' || segment === 'signup' ? segment : null;
+  return segment === 'login' || segment === 'signup' || segment === 'reset-password' ? segment : null;
 }
 
 /**
@@ -106,7 +110,7 @@ export function nextFromSearch(search: string): string {
 }
 
 /** A sign-in page's address that returns to `next` afterwards (no `next` when it is the dashboard). */
-export function authPathWithNext(route: AuthRoute, next: string): string {
+export function authPathWithNext(route: Exclude<AuthRoute, 'reset-password'>, next: string): string {
   const safe = safeNextPath(next);
   return safe === '/' ? AUTH_PATHS[route] : `${AUTH_PATHS[route]}?next=${encodeURIComponent(safe)}`;
 }

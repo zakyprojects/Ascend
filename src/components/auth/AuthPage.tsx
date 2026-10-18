@@ -274,6 +274,7 @@ export function AuthPage({ screen, search, guestState, onAuthSuccess, onDone, on
             guestState={guestState}
             pageLinks={{ ...links, navigate: onNavigate }}
             onClimbChange={setClimb}
+            startForgot={new URLSearchParams(search).get('forgot') === '1'}
           />
         </div>
       </main>
