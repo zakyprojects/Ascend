@@ -54,14 +54,18 @@ export function UpdateBanner() {
   if (!hasUpdate) return null;
 
   return (
-    <div className="bg-primary-700 text-white text-xs px-4 py-2.5 flex items-center justify-between shadow-md relative z-50">
-      <div className="flex items-center gap-2">
-        <RefreshCw size={14} />
-        <span className="font-medium">A new version of Ascend is available.</span>
+    <div
+      role="status"
+      className="bg-primary-700 text-white text-xs pl-4 pr-2 py-1.5 flex items-center justify-between gap-3 shadow-sm relative z-50"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <RefreshCw size={14} aria-hidden="true" className="shrink-0" />
+        <span className="font-medium">A new version of Ascend is ready.</span>
       </div>
       <button
+        type="button"
         onClick={() => window.location.reload()}
-        className="px-3 py-1 bg-white hover:bg-primary-50 text-primary-700 font-semibold rounded text-xs transition-colors cursor-pointer"
+        className="min-h-11 px-3 bg-white hover:bg-primary-50 text-primary-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-700"
       >
         Reload
       </button>

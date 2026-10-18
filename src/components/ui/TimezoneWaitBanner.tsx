@@ -58,15 +58,15 @@ export function TimezoneWaitBanner() {
 
   return (
     <div
-      className="fixed top-[calc(0.5rem_+_env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-popover max-w-lg w-[calc(100%-2rem)] bg-warning/15 border border-warning/30 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-3 animate-slide-down"
+      className="fixed top-[calc(0.5rem_+_env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-popover max-w-lg w-[calc(100%-2rem)] bg-bg-700 border border-overlay-default px-4 py-2.5 rounded-2xl shadow-sm flex items-center gap-3 animate-slide-down"
       role="status"
     >
-      <div className="p-1.5 rounded-lg bg-warning/20 shrink-0 text-warning-text">
-        <Clock size={16} />
+      <div className="p-1.5 rounded-lg bg-overlay-subtle shrink-0 text-content-secondary">
+        <Clock size={16} aria-hidden="true" />
       </div>
       <div className="min-w-0">
-        <p className="text-xs font-medium text-warning-text">Your timezone change is waiting</p>
-        <p className="text-micro text-warning-text-muted">
+        <p className="text-xs font-medium text-content-primary">Your timezone change is waiting</p>
+        <p className="text-micro text-content-secondary">
           Today's ticks earn points from about {formatResume(wait.resumesAt)}.
         </p>
       </div>

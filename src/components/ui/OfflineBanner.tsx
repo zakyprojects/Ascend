@@ -119,23 +119,16 @@ export function OfflineBanner() {
   if (!isOnline) {
     return (
       <div
-        className="fixed top-[calc(0.5rem_+_env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-popover max-w-lg w-[calc(100%-2rem)] bg-warning/15 border border-warning/30 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-lg flex items-center justify-between gap-3 animate-slide-down"
+        className="fixed top-[calc(0.5rem_+_env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-popover max-w-lg w-[calc(100%-2rem)] bg-bg-700 border border-overlay-default px-4 py-2.5 rounded-2xl shadow-sm flex items-center gap-3 animate-slide-down"
         role="alert"
         aria-live="assertive"
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="p-1.5 rounded-lg bg-warning/20 shrink-0 text-warning-text">
-            <WifiOff size={16} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-warning-text flex items-center gap-1.5">
-              <span>You’re offline</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-warning-text" />
-            </p>
-            <p className="text-micro text-warning-text-muted truncate">
-              Changes won't save until you're back online.
-            </p>
-          </div>
+        <div className="p-1.5 rounded-lg bg-overlay-subtle shrink-0 text-content-secondary">
+          <WifiOff size={16} aria-hidden="true" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-content-primary">You’re offline</p>
+          <p className="text-micro text-content-secondary">Changes stay on this device and sync when you’re back online.</p>
         </div>
       </div>
     );
@@ -144,15 +137,13 @@ export function OfflineBanner() {
   if (showRestored) {
     return (
       <div
-        className="fixed top-[calc(0.5rem_+_env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-popover max-w-lg w-[calc(100%-2rem)] bg-emerald-500/15 border border-emerald-500/30 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-3 animate-slide-down"
+        className="fixed top-[calc(0.5rem_+_env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-popover max-w-lg w-[calc(100%-2rem)] bg-bg-700 border border-emerald-500/30 px-4 py-2.5 rounded-2xl shadow-sm flex items-center gap-3 animate-slide-down"
         role="status"
       >
-        <div className="p-1.5 rounded-lg bg-emerald-500/20 shrink-0 text-success-text">
-          <Wifi size={16} />
+        <div className="p-1.5 rounded-lg bg-emerald-500/15 shrink-0 text-success-text">
+          <Wifi size={16} aria-hidden="true" />
         </div>
-        <p className="text-xs font-medium text-success-text">
-          Back online.
-        </p>
+        <p className="text-xs font-medium text-content-primary">Back online. Your changes are syncing.</p>
       </div>
     );
   }

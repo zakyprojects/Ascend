@@ -18,16 +18,16 @@ export function GuestSaveBanner({ title, description, onCreateAccount }: GuestSa
         </div>
         <div>
           <p className="text-xs font-medium text-content-secondary">{title}</p>
-          <p className="text-micro text-content-muted">{description}</p>
+          <p className="text-xs text-content-muted">{description}</p>
         </div>
       </div>
       {onCreateAccount && (
         <button
           type="button"
           onClick={onCreateAccount}
-          className="px-3.5 py-1.5 bg-primary-600 hover:bg-primary-700 text-on-brand text-xs font-semibold rounded-lg transition-colors shrink-0 w-full sm:w-auto"
+          className="btn-primary min-h-11 text-xs shrink-0 w-full sm:w-auto"
         >
-          Create Account
+          Create account
         </button>
       )}
     </div>

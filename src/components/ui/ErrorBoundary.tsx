@@ -28,20 +28,26 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="card p-6 border border-rose-500/30 bg-rose-500/10 text-content-secondary rounded-xl my-4 space-y-4">
-          <div className="flex items-center gap-3 text-error-text">
-            <AlertTriangle size={24} />
-            <h3 className="text-lg font-semibold leading-tight">{this.props.fallbackTitle || 'This section couldn’t load'}</h3>
+        <div role="alert" className="card p-6 border border-rose-500/30 my-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={22} aria-hidden="true" className="shrink-0 text-error-text" />
+            <h2 className="section-title">{this.props.fallbackTitle || 'This section couldn’t load'}</h2>
           </div>
-          <p className="text-xs text-content-muted">
-            Something went wrong while showing it.
+          <p className="text-sm text-content-secondary">
+            Something went wrong while showing it. Your data is safe. Try again, or reload the page if it keeps happening.
           </p>
-          <button
-            onClick={() => this.setState({ hasError: false, error: null })}
-            className="btn-secondary text-xs flex items-center gap-2 py-1.5 px-3"
-          >
-            <RefreshCw size={14} /> Try again
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => this.setState({ hasError: false, error: null })}
+              className="btn-secondary min-h-11 text-xs"
+            >
+              <RefreshCw size={14} aria-hidden="true" /> Try again
+            </button>
+            <button type="button" onClick={() => window.location.reload()} className="btn-ghost min-h-11 text-xs">
+              Reload page
+            </button>
+          </div>
         </div>
       );
     }
