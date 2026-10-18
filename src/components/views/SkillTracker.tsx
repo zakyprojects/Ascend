@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Clock, Flame, Plus, Target, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
+import { ptsText } from '@/lib/leagues';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncAction } from '@/lib/useAsyncAction';
@@ -77,7 +79,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
   const skills = store.state.skills;
   const skillLogs = store.state.skillLogs;
-  const today = todayKey();
+  const today = useLocalDayKey();
 
   const categories = useMemo(
     () => ['All', ...Array.from(new Set(skills.map((s) => s.category?.trim()).filter((c): c is string => Boolean(c))))],
@@ -170,7 +172,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
     await executeLog(async () => {
       await store.logSkillPractice(logSkillId, Number(duration), note.trim());
       setLogModalOpen(false);
-      showSuccessToast('Practice logged', previewPoints > 0 ? `+${previewPoints} pts` : `${nameOf(logSkillId)} saved.`);
+      showSuccessToast('Practice logged', previewPoints > 0 ? ptsText(previewPoints, true) : `${nameOf(logSkillId)} saved.`);
     });
   };
 
@@ -189,13 +191,13 @@ export function SkillTracker({ store }: { store: AppStore }) {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {(log.pointsAwarded || 0) > 0 && (
-          <span className="figure text-xs text-purple-hierarchy whitespace-nowrap">+{log.pointsAwarded} pts</span>
+          <span className="figure text-xs text-purple-hierarchy whitespace-nowrap">{ptsText(log.pointsAwarded, true)}</span>
         )}
         <button
           onClick={() => setDeleteModalLog(log)}
           aria-label="Delete practice log"
           title="Delete practice log"
-          className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+          className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
         >
           <Trash2 size={16} />
         </button>
@@ -352,7 +354,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                           onClick={() => setDeleteModalSkill(skill)}
                           aria-label={`Delete ${skill.name}`}
                           title="Delete skill"
-                          className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+                          className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -413,7 +415,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                     <div key={day}>
                       <div className="flex items-center justify-between mb-1.5 px-1 text-xs text-content-muted">
                         <span>{formatDateLong(day)}</span>
-                        {dayPoints > 0 && <span className="figure">+{dayPoints} pts</span>}
+                        {dayPoints > 0 && <span className="figure">{ptsText(dayPoints, true)}</span>}
                       </div>
                       <div className="card overflow-hidden divide-y divide-overlay-subtle">{list.map(renderRow)}</div>
                     </div>
@@ -567,10 +569,10 @@ export function SkillTracker({ store }: { store: AppStore }) {
               {remainingCap === 0
                 ? `${SKILLS_POINTS.dailyCap} pts reached today. It still saves.`
                 : previewRaw > previewPoints
-                  ? `Only ${remainingCap} pts left today.`
+                  ? `Only ${ptsText(remainingCap)} left today.`
                   : 'Points to earn'}
             </span>
-            <span className="figure text-purple-hierarchy shrink-0">+{previewPoints} pts</span>
+            <span className="figure text-purple-hierarchy shrink-0">{ptsText(previewPoints, true)}</span>
           </div>
         </Form>
       </Dialog>

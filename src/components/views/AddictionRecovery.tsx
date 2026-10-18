@@ -344,11 +344,11 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
                         <div className="min-w-0 flex-1 text-xs space-y-0.5">
                           <p className="item-name text-sm text-content-secondary truncate">{log.trigger || 'Craving'}</p>
                           {log.copingStrategy && <p className="text-content-muted truncate">Helped: {log.copingStrategy}</p>}
-                          <p className="text-content-disabled">{cravingDay(log) ? formatDateLong(cravingDay(log)!) : ''}</p>
+                          <p className="text-content-muted">{cravingDay(log) ? formatDateLong(cravingDay(log)!) : ''}</p>
                         </div>
                         <button
                           onClick={() => setDeleteCravingModalLog(log)}
-                          className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
+                          className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
                           title="Delete craving"
                           aria-label="Delete craving"
                         >

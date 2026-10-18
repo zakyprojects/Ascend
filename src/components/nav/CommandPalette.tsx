@@ -178,8 +178,8 @@ export function CommandPalette({ open, onOpenChange, currentView, onViewChange }
                 >
                   <Icon size={16} aria-hidden="true" className={selected ? 'text-brand-text' : 'text-content-muted'} />
                   <span className="flex-1 truncate font-medium">{entry.label}</span>
-                  {entry.id === currentView && <span className="text-2xs text-content-disabled">Current</span>}
-                  <span className="text-2xs text-content-disabled">{entry.group}</span>
+                  {entry.id === currentView && <span className="text-2xs text-content-muted">Current</span>}
+                  <span className="text-2xs text-content-muted">{entry.group}</span>
                   {goKey && (
                     <span className="hidden sm:inline-flex gap-0.5" aria-label={`Shortcut G then ${goKey.toUpperCase()}`}>
                       <kbd className="kbd">G</kbd>
@@ -193,7 +193,7 @@ export function CommandPalette({ open, onOpenChange, currentView, onViewChange }
           </ul>
         )}
 
-        <p className="hidden sm:flex items-center justify-between text-2xs text-content-disabled border-t border-overlay-subtle pt-2.5">
+        <p className="hidden sm:flex items-center justify-between text-2xs text-content-muted border-t border-overlay-subtle pt-2.5">
           <span>↑ ↓ to move · Enter to open · Esc to close</span>
           <span>
             <kbd className="kbd">{IS_APPLE_PLATFORM ? '⌘' : 'Ctrl'}</kbd> <kbd className="kbd">K</kbd>

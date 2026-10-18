@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Trash2, Edit3, CheckCircle2, Sparkles, RotateCcw, BookOpen, PenLine } from 'lucide-react';
 import { AppStore } from '@/lib/store';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { Mood, JournalEntry } from '@/types';
-import { formatDateLong, todayKey, calculateStreak, formatWeekdayShort, formatWeekdayDate } from '@/lib/dates';
+import { formatDateLong, calculateStreak, formatWeekdayShort, formatWeekdayDate } from '@/lib/dates';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
 import { isRetiredAppJournalAward } from '@/lib/journalAwards';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -29,7 +30,7 @@ type ChartRange = '7d' | '30d';
 
 export function Journal({ store }: { store: AppStore }) {
   const existingToday = store.getTodayJournalEntry();
-  const today = todayKey();
+  const today = useLocalDayKey();
 
   const [mood, setMood] = useState<Mood>('happy');
   const [content, setContent] = useState('');
@@ -171,7 +172,7 @@ export function Journal({ store }: { store: AppStore }) {
           onClick={() => setDeleteModalEntry(entry)}
           aria-label="Delete journal entry"
           title="Delete journal entry"
-          className={`mr-2.5 p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
+          className={`mr-2.5 p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
         >
           <Trash2 size={16} />
         </button>

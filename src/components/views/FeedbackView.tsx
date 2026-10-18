@@ -6,6 +6,7 @@ import { Button, Card, FieldErrorBubble, Form, FormAlert, Input, Select, Textare
 import { FOCUS_RING, TAP_TARGET } from '@/components/ui/primitives/shared';
 import { NAV_DASHBOARD, NAV_GROUPS, NAV_SETTINGS, getViewLabel } from '@/components/nav/navConfig';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { pageLinkProps } from '@/lib/pageLink';
 import {
   FeedbackKind,
   IMPACT_OPTIONS,
@@ -213,13 +214,12 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
           <p className="page-subtitle">{copy.subtitle}</p>
         </div>
         <div className="page-header-actions">
-          <button
-            type="button"
-            onClick={() => onNavigate(copy.other.view)}
-            className={cx('text-sm font-medium text-brand-text hover:underline rounded-lg', FOCUS_RING)}
+          <a
+            {...pageLinkProps(copy.other.view, onNavigate)}
+            className={cx('inline-flex min-h-11 items-center text-sm font-medium text-brand-text hover:underline rounded-lg', FOCUS_RING)}
           >
             {copy.other.label}
-          </button>
+          </a>
         </div>
       </div>
 
@@ -341,7 +341,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isPreparing}
                     className={cx(
-                      'flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-overlay-strong text-content-muted hover:text-content-primary hover:border-primary-500 transition-colors disabled:opacity-60',
+                      'flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-overlay-strong text-content-muted hover:text-content-primary hover:border-primary-500 transition-colors disabled:cursor-wait disabled:hover:text-content-muted disabled:hover:border-overlay-strong',
                       FOCUS_RING
                     )}
                   >

@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Activity, Calendar, Dumbbell, Flame, Plus, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
+import { ptsText } from '@/lib/leagues';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { WorkoutLog } from '@/types';
@@ -62,7 +64,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   const [clearOpen, setClearOpen] = useState(false);
 
   const workouts = store.state.workouts;
-  const today = todayKey();
+  const today = useLocalDayKey();
 
   // Newest first, then grouped by day.
   const sorted = useMemo(
@@ -163,7 +165,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
     await executeLog(async () => {
       await store.logWorkout(name, measure === 'mins' ? amount : 0, amount, measure);
       setLogModalOpen(false);
-      showSuccessToast('Workout logged', previewPoints > 0 ? `+${previewPoints} pts` : `${name} saved.`);
+      showSuccessToast('Workout logged', previewPoints > 0 ? ptsText(previewPoints, true) : `${name} saved.`);
     });
   };
 
@@ -180,13 +182,13 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {(w.pointsAwarded || 0) > 0 && (
-          <span className="figure text-xs text-success-text whitespace-nowrap">+{w.pointsAwarded} pts</span>
+          <span className="figure text-xs text-success-text whitespace-nowrap">{ptsText(w.pointsAwarded, true)}</span>
         )}
         <button
           onClick={() => setDeleteModalWorkout(w)}
           aria-label={`Delete ${w.type}`}
           title="Delete workout"
-          className={`p-1.5 rounded-lg text-content-disabled hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
+          className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
         >
           <Trash2 size={16} />
         </button>
@@ -252,7 +254,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                   <Calendar size={18} className="text-brand-text" />
                   This week
                 </h2>
-                <span className="text-xs text-content-disabled">points a day</span>
+                <span className="text-xs text-content-muted">points a day</span>
               </div>
               {/* Scaled to the daily cap so a capped day reads as a full bar. */}
               <BarChart
@@ -347,7 +349,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                     <div key={day}>
                       <div className="flex items-center justify-between mb-1.5 px-1 text-xs text-content-muted">
                         <span>{formatDateLong(day)}</span>
-                        {dayPoints > 0 && <span className="figure">+{dayPoints} pts</span>}
+                        {dayPoints > 0 && <span className="figure">{ptsText(dayPoints, true)}</span>}
                       </div>
                       <div className="card overflow-hidden divide-y divide-overlay-subtle">{list.map(renderRow)}</div>
                     </div>
@@ -452,10 +454,10 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
               {remainingCap === 0
                 ? `Today's ${WORKOUT_POINTS.dailyCap} pts are reached. It still saves.`
                 : previewRaw > previewPoints
-                ? `Only ${remainingCap} pts left today.`
+                ? `Only ${ptsText(remainingCap)} left today.`
                 : 'You earn'}
             </span>
-            <span className="figure text-success-text shrink-0">+{previewPoints} pts</span>
+            <span className="figure text-success-text shrink-0">{ptsText(previewPoints, true)}</span>
           </div>
         </Form>
       </Dialog>
