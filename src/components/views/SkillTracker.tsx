@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Clock, Flame, Plus, Target, Trash2 } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore, CLEAR_SKILL_LOGS_MAX } from '@/lib/store';
 import { ptsText } from '@/lib/leagues';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -85,7 +85,10 @@ export function SkillTracker({ store }: { store: AppStore }) {
     () => ['All', ...Array.from(new Set(skills.map((s) => s.category?.trim()).filter((c): c is string => Boolean(c))))],
     [skills]
   );
-  const filteredSkills = selectedCategory === 'All' ? skills : skills.filter((s) => s.category?.trim() === selectedCategory);
+  // A picked category that no longer exists (its last skill deleted) or whose chips are hidden
+  // (2 or fewer categories) falls back to All, so skills never hide behind a filter you can't see.
+  const activeCategory = categories.length > 2 && categories.includes(selectedCategory) ? selectedCategory : 'All';
+  const filteredSkills = activeCategory === 'All' ? skills : skills.filter((s) => s.category?.trim() === activeCategory);
   const nameOf = (id: string) => skills.find((s) => s.id === id)?.name || 'Skill';
 
   // Newest first, then grouped by day.
@@ -317,10 +320,10 @@ export function SkillTracker({ store }: { store: AppStore }) {
                         key={cat}
                         type="button"
                         onClick={() => setSelectedCategory(cat)}
-                        aria-pressed={selectedCategory === cat}
+                        aria-pressed={activeCategory === cat}
                         className={cx(
                           'min-h-9 sm:min-h-0 px-2.5 py-1 rounded-lg text-xs border transition-colors',
-                          selectedCategory === cat
+                          activeCategory === cat
                             ? 'bg-purple-500/15 text-purple-hierarchy border-purple-500/40 font-medium'
                             : 'text-content-muted border-transparent hover:text-content-secondary hover:bg-overlay-subtle'
                         )}
@@ -635,12 +638,24 @@ export function SkillTracker({ store }: { store: AppStore }) {
           await executeDelete(async () => {
             await store.clearSkillLogsBefore(weekStartKey);
             setClearOpen(false);
-            showSuccessToast('Older logs cleared', 'Your points, hours and levels stay as they were.', 'skill_logs_cleared');
+            showSuccessToast(
+              'Older logs cleared',
+              olderLogCount > CLEAR_SKILL_LOGS_MAX
+                ? `${CLEAR_SKILL_LOGS_MAX} cleared. Tap Clear older logs again for the rest. Points, hours and levels stay.`
+                : 'Your points, hours and levels stay as they were.',
+              'skill_logs_cleared'
+            );
           });
         }}
         title="Clear older logs?"
-        itemName={`${olderLogCount} practice ${olderLogCount === 1 ? 'log' : 'logs'} before this week`}
-        description="The points you earned stay, and each skill keeps its hours and level. Skill streaks can break, and your session count goes down. This week's logs are kept."
+        itemName={
+          olderLogCount > CLEAR_SKILL_LOGS_MAX
+            ? `${CLEAR_SKILL_LOGS_MAX} of the ${olderLogCount} practice logs before this week`
+            : `${olderLogCount} practice ${olderLogCount === 1 ? 'log' : 'logs'} before this week`
+        }
+        description={`The points you earned stay, and each skill keeps its hours and level. Skill streaks can break, and your session count goes down. This week's logs are kept.${
+          olderLogCount > CLEAR_SKILL_LOGS_MAX ? ` Up to ${CLEAR_SKILL_LOGS_MAX} go at a time: tap again for the rest.` : ''
+        }`}
         confirmText="Clear logs"
       />
     </div>

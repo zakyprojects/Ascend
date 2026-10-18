@@ -5,6 +5,7 @@ import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { Mood, JournalEntry } from '@/types';
 import { formatDateLong, calculateStreak, formatWeekdayShort, formatWeekdayDate } from '@/lib/dates';
 import { JOURNAL_POINTS } from '@/lib/pointsConfig';
+import { ptsText } from '@/lib/leagues';
 import { isRetiredAppJournalAward } from '@/lib/journalAwards';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useAsyncAction } from '@/lib/useAsyncAction';
@@ -74,6 +75,11 @@ export function Journal({ store }: { store: AppStore }) {
       setContent(existingToday.content || '');
       if (!sameEntry) setIsEditingToday(false);
     } else {
+      // No entry for today (deleted, or local midnight passed): a blank editor, never the old text,
+      // so one tap can't save deleted writing or yesterday's entry as today's.
+      setMood('happy');
+      setContent('');
+      setPromptOffset(0);
       setIsEditingToday(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,14 +170,14 @@ export function Journal({ store }: { store: AppStore }) {
             <p className="text-xs text-content-muted mt-1 truncate">{hasNotes ? entry.content : 'Mood only, no notes'}</p>
           </div>
           {entry.pointsAwarded && (
-            <span className="figure text-xs text-purple-hierarchy whitespace-nowrap shrink-0">+{JOURNAL_POINTS.entryCompleted} pts</span>
+            <span className="figure text-xs text-purple-hierarchy whitespace-nowrap shrink-0">{ptsText(JOURNAL_POINTS.entryCompleted, true)}</span>
           )}
         </button>
         <button
           type="button"
           onClick={() => setDeleteModalEntry(entry)}
-          aria-label="Delete journal entry"
-          title="Delete journal entry"
+          aria-label={`Delete entry for ${formatDateLong(entry.date)}`}
+          title={`Delete entry for ${formatDateLong(entry.date)}`}
           className={`mr-2.5 p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors shrink-0 ${TAP_TARGET}`}
         >
           <Trash2 size={16} />
@@ -198,7 +204,7 @@ export function Journal({ store }: { store: AppStore }) {
           lead={{ label: 'Journal streak', value: <CountUp value={journalStreak} />, hint: journalStreak === 1 ? 'day in a row' : 'days in a row', valueClassName: 'text-warning-text' }}
           stats={[
             { label: 'Entries', value: <CountUp value={entries.length} />, valueClassName: 'text-brand-text' },
-            { label: 'Points earned', value: <>+<CountUp value={Math.max(0, journalPoints)} /></>, valueClassName: 'text-purple-hierarchy' },
+            { label: 'Points earned', value: <>{journalPoints > 0 && '+'}<CountUp value={Math.max(0, journalPoints)} /></>, valueClassName: 'text-purple-hierarchy' },
           ]}
           side={<CapMeterConnected state={store.state} capId="journal" bare />}
         />
@@ -235,7 +241,7 @@ export function Journal({ store }: { store: AppStore }) {
                   const Icon = meta?.icon;
                   const name = `${formatWeekdayDate(k)}: ${meta ? meta.label : 'no entry'}`;
                   return (
-                    <div key={k} role="listitem" className="flex flex-col items-center gap-1" title={name} aria-label={name}>
+                    <div key={k} role="listitem" className="flex flex-col items-center gap-1">
                       <button
                         type="button"
                         disabled={!entry}
@@ -247,6 +253,7 @@ export function Journal({ store }: { store: AppStore }) {
                         )}
                         style={meta ? { backgroundColor: `${meta.color}20`, borderColor: `${meta.color}40`, color: meta.color } : undefined}
                         aria-label={name}
+                        title={name}
                       >
                         {Icon && <Icon size={chartRange === '7d' ? 16 : 13} />}
                       </button>

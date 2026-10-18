@@ -6,7 +6,7 @@ import { Badge, Dialog, Disclosure, EmptyState, PageColumns, ProgressBar, Switch
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, CuratedBook, UserBook } from '@/types';
-import { todayKey, formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort, addDays } from '@/lib/dates';
+import { formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort, addDays } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
 import { READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, isRetiredAppReadingAward } from '@/lib/readingAwards';
 import { getCapStatus } from '@/lib/capStatus';
@@ -17,7 +17,7 @@ import { useToast } from '@/components/ui/Toast';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
-import { trustedNow } from '@/lib/clock';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { BookCard, ClampedText } from '@/components/reading/BookCard';
 import { BookFormDialog } from '@/components/reading/BookFormDialog';
 import { StartReadingDialog } from '@/components/reading/StartReadingDialog';
@@ -94,8 +94,9 @@ export function ReadingHub({ store }: { store: AppStore }) {
   };
 
   // Hero and chart numbers, computed live.
-  const today = todayKey(trustedNow());
-  const pageDays = lastDayKeys(7);
+  // Rolls at local midnight like the other day-scoped pages (streak, Last 7 days, points today).
+  const today = useLocalDayKey();
+  const pageDays = lastDayKeys(7, today);
   const pagesByDay = sumPerDay(readingLogs, pageDays, (l) => l.pagesRead);
   const pagesThisWeek = pagesByDay.reduce((sum, p) => sum + p, 0);
 
@@ -210,7 +211,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
           stats={[
             { label: 'Reading now', value: <CountUp value={readingBooks.length} />, valueClassName: 'text-brand-text' },
             { label: 'Finished', value: <CountUp value={finishedBooks.length} />, valueClassName: 'text-success-text' },
-            { label: 'Points earned', value: <>+<CountUp value={Math.max(0, readingPoints)} /></>, valueClassName: 'text-purple-hierarchy' },
+            { label: 'Points earned', value: <>{readingPoints > 0 && '+'}<CountUp value={Math.max(0, readingPoints)} /></>, valueClassName: 'text-purple-hierarchy' },
           ]}
           side={<CapMeterConnected state={store.state} capId="reading" bare />}
         />

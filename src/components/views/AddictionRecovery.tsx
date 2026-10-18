@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { HeartPulse, AlertTriangle, RefreshCw, Activity, PhoneCall, Play, Pause, RotateCcw, Trash2, Medal, Trophy, Crown, Check, Plus } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore, CLEAR_CRAVING_LOGS_MAX } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
@@ -192,7 +192,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
               valueClassName: 'text-success-text',
             }}
             stats={[
-              { label: 'Points this season', value: <>+<CountUp value={heldSeasonPoints} /></>, valueClassName: 'text-purple-hierarchy' },
+              { label: 'Points this season', value: <>{heldSeasonPoints > 0 && '+'}<CountUp value={heldSeasonPoints} /></>, valueClassName: 'text-purple-hierarchy' },
               { label: 'Cravings this week', value: <CountUp value={cravingsThisWeek} />, valueClassName: 'text-brand-text' },
             ]}
             side={<CapMeter variant="bar" label="Recovery points this season" earned={heldSeasonPoints} cap={RECOVERY_POINTS.seasonCap} />}
@@ -562,13 +562,25 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
           await executeWithKey('clear_old_cravings', async () => {
             await store.clearCravingLogsBefore(weekStartKey);
             setClearOpen(false);
-            showSuccessToast('Older cravings cleared', 'Your streak and points stay as they were.', 'cravings_cleared');
+            showSuccessToast(
+              'Older cravings cleared',
+              olderCravingCount > CLEAR_CRAVING_LOGS_MAX
+                ? `${CLEAR_CRAVING_LOGS_MAX} cleared. Tap Clear older cravings again for the rest.`
+                : 'Your streak and points stay as they were.',
+              'cravings_cleared'
+            );
           });
         }}
         isDeleting={isKeyLoading('clear_old_cravings')}
         title="Clear older cravings?"
-        itemName={`${olderCravingCount} ${olderCravingCount === 1 ? 'craving' : 'cravings'} before this week`}
-        description="Your streak and points don't change. Their triggers and what helped are deleted for good. This week's cravings are kept."
+        itemName={
+          olderCravingCount > CLEAR_CRAVING_LOGS_MAX
+            ? `${CLEAR_CRAVING_LOGS_MAX} of the ${olderCravingCount} cravings before this week`
+            : `${olderCravingCount} ${olderCravingCount === 1 ? 'craving' : 'cravings'} before this week`
+        }
+        description={`Your streak and points don't change. Their triggers and what helped are deleted for good. This week's cravings are kept.${
+          olderCravingCount > CLEAR_CRAVING_LOGS_MAX ? ` Up to ${CLEAR_CRAVING_LOGS_MAX} go at a time: tap again for the rest.` : ''
+        }`}
         confirmText="Clear cravings"
       />
     </div>

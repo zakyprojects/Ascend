@@ -314,9 +314,9 @@ const GUEST_STORAGE_KEY = 'ascend_guest_state_v2';
 /** How long the boot loader waits on a saved sign-in before offering Retry (offline). */
 const STORED_SESSION_WAIT_MS = 8000;
 /** Most logs one "Clear older logs" removes (tombstones must fit the 500-id list). */
-const CLEAR_WORKOUTS_MAX = 300;
-const CLEAR_SKILL_LOGS_MAX = 300;
-const CLEAR_CRAVING_LOGS_MAX = 300;
+export const CLEAR_WORKOUTS_MAX = 300;
+export const CLEAR_SKILL_LOGS_MAX = 300;
+export const CLEAR_CRAVING_LOGS_MAX = 300;
 export const LOCAL_THEME_STORAGE_KEY = 'ascend_theme_preference';
 
 export function getLocalThemePreference(): 'dark' | 'light' | null {

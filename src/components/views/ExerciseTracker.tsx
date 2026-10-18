@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Activity, Calendar, Dumbbell, Flame, Plus, Trash2 } from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { AppStore, CLEAR_WORKOUTS_MAX } from '@/lib/store';
 import { ptsText } from '@/lib/leagues';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
@@ -186,8 +186,8 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
         )}
         <button
           onClick={() => setDeleteModalWorkout(w)}
-          aria-label={`Delete ${w.type}`}
-          title="Delete workout"
+          aria-label={`Delete ${w.type}, ${formatAmount(amountOf(w), measureOf(w))}`}
+          title={`Delete ${w.type}, ${formatAmount(amountOf(w), measureOf(w))}`}
           className={`p-1.5 rounded-lg text-content-muted hover:text-rose-theme hover:bg-rose-500/10 transition-colors ${TAP_TARGET}`}
         >
           <Trash2 size={16} />
@@ -263,7 +263,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                 highlightIndex={todayChartIndex >= 0 ? todayChartIndex : undefined}
                 max={maxPointsInChart}
                 height={140}
-                formatTooltip={(datum, i) => `${formatWeekdayDate(weekDays[i].key)}: ${datum.value} pts`}
+                formatTooltip={(datum, i) => `${formatWeekdayDate(weekDays[i].key)}: ${ptsText(datum.value)}`}
               />
             </Reveal>
             <Disclosure title="How points work">
@@ -492,12 +492,24 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
           await executeDelete(async () => {
             await store.clearWorkoutsBefore(weekStartKey);
             setClearOpen(false);
-            showSuccessToast('Older logs cleared', 'Your points stay as they were.', 'workouts_cleared');
+            showSuccessToast(
+              'Older logs cleared',
+              olderLogCount > CLEAR_WORKOUTS_MAX
+                ? `${CLEAR_WORKOUTS_MAX} cleared. Tap Clear older logs again for the rest. Your points stay.`
+                : 'Your points stay as they were.',
+              'workouts_cleared'
+            );
           });
         }}
         title="Clear older logs?"
-        itemName={`${olderLogCount} ${olderLogCount === 1 ? 'workout' : 'workouts'} before this week`}
-        description="The points you earned stay. Your exercise streak can break, and the exercise minutes on your profile go down. This week's logs are kept."
+        itemName={
+          olderLogCount > CLEAR_WORKOUTS_MAX
+            ? `${CLEAR_WORKOUTS_MAX} of the ${olderLogCount} workouts before this week`
+            : `${olderLogCount} ${olderLogCount === 1 ? 'workout' : 'workouts'} before this week`
+        }
+        description={`The points you earned stay. Your exercise streak can break, and the exercise minutes on your profile go down. This week's logs are kept.${
+          olderLogCount > CLEAR_WORKOUTS_MAX ? ` Up to ${CLEAR_WORKOUTS_MAX} go at a time: tap again for the rest.` : ''
+        }`}
         confirmText="Clear logs"
       />
     </div>
