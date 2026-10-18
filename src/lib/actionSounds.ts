@@ -170,8 +170,8 @@ export const SWIPE_SOUNDS: ActionSound[] = [
   },
 ];
 
-/** The sounds the app plays. Change these after Zakria picks in the gallery. */
-export const TICK_SOUND_ID = 't1';
+/** The sounds the app plays: T2 Bubble and S1 Tick, Zakria's pick (2026-10-18). Keep the other candidates for the gallery. */
+export const TICK_SOUND_ID = 't2';
 export const SWIPE_SOUND_ID = 's1';
 
 let noise: AudioBuffer | null = null;
