@@ -32,7 +32,7 @@ const UNDERLINE_TAP_TARGET =
   "relative after:absolute after:-inset-x-2 after:top-1/2 after:h-[max(100%,44px)] after:-translate-y-1/2 after:content-['']";
 // A scrollable strip clips its children's hit areas to its own height (overflow-x also clips
 // vertically), so on touch screens its tabs are 44px tall themselves.
-const SCROLLABLE_TOUCH_HEIGHT = '[@media(pointer:coarse)]:min-h-11';
+const SCROLLABLE_TOUCH_HEIGHT = '[@media(pointer:coarse)]:min-h-[44px]';
 
 export const Tabs: React.FC<TabsProps> = ({
   items,
