@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Check, Edit3, PenLine, Plus, Trash2 } from 'lucide-react';
 import type { WeeklyGoalReflection } from '@/types';
-import { AppStore, getWeeklyReflectionNetPoints, isWeeklyReflectionAwarded } from '@/lib/store';
+import { AppStore, getWeeklyReflectionNetPoints, isWeeklyReflectionAwarded, weeklyReflectionAwardedToday } from '@/lib/store';
 import { WEEKLY_REFLECTION_POINTS } from '@/lib/pointsConfig';
 import { reflectionWindow } from '@/lib/weeklyAwards';
 import { getNow, parseDate } from '@/lib/dates';
@@ -96,8 +96,10 @@ export function ReflectionsCard({
     });
   };
 
-  // Removing the week's last reflection inside the window takes the award back (server weekly_review_rev_).
-  const deleteTakesPoints = !notYetRewarded && reflections.length === 1;
+  // Removing the week's last reflection takes the award back only when it was earned today (server
+  // weekly_review_rev_); an award from an earlier day stays.
+  const isLastReflection = !notYetRewarded && reflections.length === 1;
+  const deleteTakesPoints = isLastReflection && weeklyReflectionAwardedToday(store.state, weekKey);
 
   return (
     <section className="card space-y-4 p-5" aria-label="Weekly reflection">
@@ -234,8 +236,10 @@ export function ReflectionsCard({
         itemName={deleting ? (deleting.content.length > 30 ? `${deleting.content.slice(0, 30)}…` : deleting.content) : ''}
         description={
           deleteTakesPoints
-            ? `It earned +${WEEKLY_REFLECTION_POINTS.awarded} pts, so they come off this week. Your goals stay as they are.`
-            : 'Your goals stay as they are.'
+            ? `It earned +${WEEKLY_REFLECTION_POINTS.awarded} pts today, so they come off. Your goals stay as they are.`
+            : isLastReflection
+              ? `The +${WEEKLY_REFLECTION_POINTS.awarded} pts it earned on an earlier day stay. Your goals stay as they are.`
+              : 'Your goals stay as they are.'
         }
         confirmText="Delete reflection"
       />

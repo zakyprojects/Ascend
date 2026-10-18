@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { weekKey, getWeekDates, offsetWeekKey, formatWeekRange, getNow, parseDate } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
-import { isReflectionWindowOpen } from '@/lib/weeklyAwards';
+import { isReflectionWindowOpen, weeklyScoringGoals } from '@/lib/weeklyAwards';
 import { WeeklyGoalItem } from '@/types';
 import { computeLinkedGoalProgress, GoalProgressResult } from '@/lib/linkedGoalMetrics';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
@@ -22,7 +22,7 @@ import { GoalRow } from '@/components/weekly/GoalRow';
 import { GoalFormDialog, type GoalPayload } from '@/components/weekly/GoalFormDialog';
 import { ReflectionsCard } from '@/components/weekly/ReflectionsCard';
 import { CarryOverCard, type UnfinishedGoal } from '@/components/weekly/CarryOverCard';
-import { isGoalAchieved, pointsLostOnDelete, weekLabel, weekLabelInline, weekPointsFromLedger } from '@/components/weekly/weekMeta';
+import { heldWeekGoals, isGoalAchieved, pointsLostOnDelete, weekLabel, weekLabelInline, weekPointsFromLedger } from '@/components/weekly/weekMeta';
 
 const TREND_WEEKS = 8;
 const CARRY_OVER_LOOKBACK_WEEKS = 4;
@@ -93,8 +93,10 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
 
   const ledgerPoints = weekPointsFromLedger(store.state, selectedWeekKey);
   const weekPoints = Math.max(0, ledgerPoints.goals + ledgerPoints.reflection);
-  // Before the server's row arrives, the meter shows what the week's goals earn (same rule).
-  const goalPointsPreview = calculateWeeklyGoalsPoints(allWeekGoals);
+  // Before the server's row arrives, the meter shows what the week's goals earn (same rule):
+  // goals counted on an earlier day keep their points even when unticked or deleted.
+  const heldGoals = heldWeekGoals(store.state, selectedWeekKey, new Date(`${today}T00:00:00`).getTime());
+  const goalPointsPreview = calculateWeeklyGoalsPoints(weeklyScoringGoals(allWeekGoals, heldGoals));
 
   // Average progress of each of the last 8 weeks, oldest first.
   const weekTrend = useMemo(
@@ -167,7 +169,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
       showSuccessToast('Goal deleted', undefined, `weekly_goal_${goalId}`);
     });
   };
-  const deletePoints = deletingGoal && !isFutureWeek ? pointsLostOnDelete(allWeekGoals, deletingGoal.id) : 0;
+  const deletePoints = deletingGoal && !isFutureWeek ? pointsLostOnDelete(allWeekGoals, deletingGoal.id, heldGoals) : 0;
   const deleteDescription = deletingGoal
     ? [
         deletePoints > 0 ? `It counts toward ${selectedText}'s points, so ${deletePoints} pts come off.` : '',

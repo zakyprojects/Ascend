@@ -82,7 +82,15 @@ import { computeRecoveryChanges, RECOVERY_MILESTONES, trackerStartMs } from './r
 import { computeJournalAward, isJournalDayEntry, isRetiredAppJournalAward, journalEntryEarns } from './journalAwards';
 import { computeFocusAwards, isFocusDayEntry, isRetiredAppFocusAward } from './focusAwards';
 import { computeTimeTrackerAward, timeTrackerAwardId } from './timeTrackerAwards';
-import { isReflectionWindowOpen, reflectionWindow, weeklyGoalAwardTimestamp } from './weeklyAwards';
+import {
+  countedGoalRefs,
+  heldCountedGoals,
+  isReflectionWindowOpen,
+  legacyHeldWeeklyPoints,
+  reflectionWindow,
+  weeklyGoalAwardTimestamp,
+  weeklyScoringGoals,
+} from './weeklyAwards';
 import { computeLessonAward, isLessonReadInSeason, lessonReadId } from './lessonAwards';
 import { computeReadingDayAward, isReadingDayEntry, isRetiredAppReadingAward, meetsReadingBonusGates, readingBonusId } from './readingAwards';
 import {
@@ -1241,6 +1249,17 @@ function applyReadingAwardsInternal(
   return { points, readingLogs: nextLogs };
 }
 
+/** Local midnight of a day key, in ms (the start of "today" for the earlier-day rule). */
+const localDayStartMs = (day: string): number => new Date(`${day}T00:00:00`).getTime();
+
+/** The week's reflection award row is live and was earned on today's local day. */
+export function weeklyReflectionAwardedToday(state: AppState, weekKey: string): boolean {
+  const award = (state.pointsHistory || []).find((e) => e && e.id === `weekly_review_${weekKey}`);
+  if (!award) return false;
+  const at = new Date(award.timestamp).getTime();
+  return Number.isFinite(at) && at >= localDayStartMs(todayKey());
+}
+
 export function getWeeklyReflectionNetPoints(state: AppState, weekKey: string): number {
   const awardId = `weekly_review_${weekKey}`;
   const revId = `weekly_review_rev_${weekKey}`;
@@ -1253,6 +1272,15 @@ export function getWeeklyReflectionNetPoints(state: AppState, weekKey: string): 
   }
 
   return total;
+}
+
+/**
+ * A week's goal row written before metadata.counted existed keeps what it held before today: the
+ * same row with only its amount lowered to `amount` (ascend_recompute_weekly_goal_awards).
+ */
+function withWeeklyEntryAmount(baseState: AppState, entry: PointsEntry, amount: number): Partial<AppState> {
+  const { excisedEntryIds: _excised, ...excised } = excisePointsEntriesInternal(baseState, (e) => e?.id === entry.id);
+  return addPointsInternal({ ...baseState, ...excised }, amount, entry.reason, entry.source, entry.metadata, entry.timestamp, entry.id);
 }
 
 /**
@@ -1273,13 +1301,21 @@ function recomputeSeasonSplitWeeklyGoalsPoints(
   const entryId = getWeeklyGoalSeasonSplitEntryId(targetWeekKey, seasonNumber);
   const existing = currentHistory.find((e) => e && e.id === entryId);
 
-  const score = calculateWeeklyGoalsPoints(newGoals);
+  // Goals counted on an earlier day stay counted (an earlier day's points never drop).
+  const todayStartMs = localDayStartMs(todayKey());
+  const scoringGoals = weeklyScoringGoals(newGoals, heldCountedGoals(existing, todayStartMs));
+  const score = calculateWeeklyGoalsPoints(scoringGoals);
   const earlierSeasonPoints = earlierEntry
     ? earlierEntry.amount || 0
-    : calculateWeeklyGoalsPointsBefore(newGoals, seasonStart);
+    : calculateWeeklyGoalsPointsBefore(scoringGoals, seasonStart);
   const newPoints = Math.max(0, score.pointsAwarded - earlierSeasonPoints);
 
-  const timestamp = weeklyGoalAwardTimestamp(newGoals, seasonStart, leagueNow());
+  const legacyHold = legacyHeldWeeklyPoints(existing, todayStartMs);
+  if (existing && legacyHold > newPoints) {
+    return legacyHold < existing.amount ? withWeeklyEntryAmount(baseState, existing, legacyHold) : {};
+  }
+
+  const timestamp = weeklyGoalAwardTimestamp(scoringGoals, seasonStart, leagueNow());
   if (existing ? existing.amount === newPoints && existing.timestamp === timestamp : newPoints === 0) {
     return {};
   }
@@ -1304,6 +1340,7 @@ function recomputeSeasonSplitWeeklyGoalsPoints(
       ...(triggerGoalId ? { goalId: triggerGoalId } : {}),
       countedGoalsCount: score.countedGoalsCount,
       completedGoalsCount: score.completedGoalsCount,
+      counted: countedGoalRefs(scoringGoals),
     },
     timestamp,
     entryId
@@ -1334,15 +1371,25 @@ export const recomputeWeeklyGoalsPointsForState = (
     );
   }
 
-  const score = calculateWeeklyGoalsPoints(newGoals);
-  const newPoints = score.pointsAwarded;
   const entryId = getWeeklyGoalEntryId(targetWeekKey);
   const isWeekEntry = (e: PointsEntry | null | undefined) =>
     Boolean(e && (e.id === entryId || (!isWeeklyGoalSeasonSplitEntryId(e.id) && extractWeekKeyFromWeeklyGoalEntry(e) === targetWeekKey)));
 
   const currentHistory = baseState.pointsHistory || [];
   const allWeekEntries = currentHistory.filter(isWeekEntry);
-  const canonicalTimestamp = weeklyGoalAwardTimestamp(newGoals, getWeekDates(targetWeekKey).start, leagueNow());
+
+  // Goals counted on an earlier day stay counted (an earlier day's points never drop).
+  const existingEntry = currentHistory.find((e) => e && e.id === entryId);
+  const todayStartMs = localDayStartMs(todayKey());
+  const scoringGoals = weeklyScoringGoals(newGoals, heldCountedGoals(existingEntry, todayStartMs));
+  const score = calculateWeeklyGoalsPoints(scoringGoals);
+  const newPoints = score.pointsAwarded;
+  const canonicalTimestamp = weeklyGoalAwardTimestamp(scoringGoals, getWeekDates(targetWeekKey).start, leagueNow());
+
+  const legacyHold = legacyHeldWeeklyPoints(existingEntry, todayStartMs);
+  if (existingEntry && legacyHold > newPoints) {
+    return legacyHold < existingEntry.amount ? withWeeklyEntryAmount(baseState, existingEntry, legacyHold) : {};
+  }
 
   // True no-op: exactly one canonical entry already matching current target points and time
   if (
@@ -1399,6 +1446,7 @@ export const recomputeWeeklyGoalsPointsForState = (
       ...(triggerGoalId ? { goalId: triggerGoalId } : {}),
       countedGoalsCount: score.countedGoalsCount,
       completedGoalsCount: score.completedGoalsCount,
+      counted: countedGoalRefs(scoringGoals),
     },
     canonicalTimestamp,
     entryId
@@ -1756,8 +1804,10 @@ export function reconcileReflectionPoints(
       `weekly_review_${weekKey}`
     );
     currentState = { ...currentState, ...pointsAward };
-  } else if (!latest && isWeekAwarded) {
-    // Reverse what the week actually holds: an award kept at an older value (20) is undone in full.
+  } else if (!latest && isWeekAwarded && weeklyReflectionAwardedToday(prevState, weekKey)) {
+    // Only a reflection award earned today is taken back; one earned on an earlier day stays
+    // (ascend_recompute_weekly_reflection_award). Reverse what the week actually holds: an award
+    // kept at an older value (20) is undone in full.
     const pointsDeduct = addPointsInternal(
       currentState,
       -netPoints,
@@ -4306,29 +4356,17 @@ export function useAppState() {
         const remainingReadingLogs = prev.readingLogs.filter((l) => !l.bookId || !allMatchingIds.has(l.bookId));
         const remainingBooks = prev.libraryBooks.filter((lb) => !allMatchingIds.has(lb.id));
 
-        // Only today's page award follows the logs; earlier days' points stay. The book's finish
-        // bonus goes with it, as on the server: its server row is removed, and a bonus the app gave
-        // before server bonuses (book.pointsAwarded, no server row) is taken back with a minus row.
+        // Only today's points follow the book (ascend_recompute_reading_bonus): today's page award and
+        // a finish bonus earned today. A bonus earned on an earlier day stays, and so does one the app
+        // gave before server bonuses (no minus row any more).
         const bonusIds = new Set(Array.from(allMatchingIds).map(readingBonusId));
-        const serverBonusIds = new Set((prev.pointsHistory || []).filter((e) => bonusIds.has(e.id)).map((e) => e.id));
-        const { excisedEntryIds: _bonusExcised, ...withoutBonus } = excisePointsEntriesInternal(prev, (e) => bonusIds.has(e.id));
-        let afterBonus: AppState = { ...prev, ...withoutBonus };
-        for (const lb of prev.libraryBooks) {
-          const legacyBonus = lb.pointsAwarded ?? 0;
-          if (!allMatchingIds.has(lb.id) || legacyBonus <= 0 || serverBonusIds.has(readingBonusId(lb.id))) continue;
-          afterBonus = {
-            ...afterBonus,
-            ...addPointsInternal(
-              afterBonus,
-              -legacyBonus,
-              `Book deleted: ${lb.title || 'Book'}`,
-              'reading_bonus',
-              { bookId: lb.id, legacyMarker: true, legacyAmount: legacyBonus },
-              trustedNow().toISOString(),
-              readingBonusId(lb.id)
-            ),
-          };
-        }
+        const bonusTodayStartMs = new Date(`${todayKey()}T00:00:00`).getTime();
+        const { excisedEntryIds: _bonusExcised, ...withoutBonus } = excisePointsEntriesInternal(prev, (e) => {
+          if (!e || !bonusIds.has(e.id) || e.metadata?.legacyMarker === true) return false;
+          const at = new Date(e.timestamp).getTime();
+          return Number.isFinite(at) && at >= bonusTodayStartMs;
+        });
+        const afterBonus: AppState = { ...prev, ...withoutBonus };
         const awards = applyReadingAwardsInternal(afterBonus, remainingReadingLogs, remainingBooks, todayKey());
         const updatedReadingLogs = awards.readingLogs;
 

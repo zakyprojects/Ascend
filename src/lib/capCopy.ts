@@ -27,7 +27,7 @@ export function capReachedText(earned: number, cap: number): string {
 }
 
 export function weeklyGoalsCapNote(): string {
-  return `Each achieved goal = ${WEEKLY_GOALS_POINTS.pointsPerGoal} pts; only the first ${WEEKLY_GOALS_POINTS.maxGoalsCounted} achieved goals (by completion time) count; goals max = ${WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts; the weekly reflection's +${WEEKLY_REFLECTION_POINTS.awarded} pts goes to the first reflection written in the week's Reflection Window (Friday 6:00 AM to the end of Monday, your local time); only the current week earns points.`;
+  return `Each achieved goal = ${WEEKLY_GOALS_POINTS.pointsPerGoal} pts; only the first ${WEEKLY_GOALS_POINTS.maxGoalsCounted} achieved goals (by completion time) count; goals max = ${WEEKLY_GOALS_POINTS.maxWeeklyPoints} pts; the weekly reflection's +${WEEKLY_REFLECTION_POINTS.awarded} pts goes to the first reflection written in the week's Reflection Window (Friday 6:00 AM to the end of Monday, your local time); only the current week earns points; a goal achieved on an earlier day keeps its points even if you untick or delete it later, and so does a reflection rewarded on an earlier day.`;
 }
 
 export function timeTrackerCapNote(): string {

@@ -271,7 +271,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   days ago.
                 </li>
                 <li>The pages Finish adds for you earn no page points.</li>
-                <li>Removing a book takes back its finish bonus and today's points from it. Earlier days keep their points.</li>
+                <li>Removing a book takes back only today's points from it (and a finish bonus earned today). Earlier days keep their points, finish bonus included.</li>
               </ul>
             </Disclosure>
           </>
@@ -707,7 +707,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         }}
         title="Remove book?"
         itemName={deleteBook?.title}
-        description={`Its reading logs go too, so today's points from it and its finish bonus are taken back. Earlier days keep their page points, but the chart and your streak may drop.${
+        description={`Its reading logs go too, so today's points from it are taken back (and its finish bonus, if earned today). Points from earlier days stay, finish bonus included, but the chart and your streak may drop.${
           linkedGoalsCount > 0
             ? ` ${linkedGoalsCount} linked weekly goal${linkedGoalsCount > 1 ? 's' : ''} from this week on ${linkedGoalsCount > 1 ? 'are' : 'is'} deleted too.`
             : ''

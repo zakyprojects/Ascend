@@ -2,6 +2,7 @@ import type { AppState, WeeklyGoalItem } from '@/types';
 import type { GoalProgressResult } from '@/lib/linkedGoalMetrics';
 import { formatWeekRange, offsetWeekKey } from '@/lib/dates';
 import { calculateWeeklyGoalsPoints } from '@/lib/pointsConfig';
+import { heldCountedGoals, weeklyScoringGoals, type CountedGoalRef } from '@/lib/weeklyAwards';
 
 /** "This week", "Last week", "Next week", or the week's dates, never the raw week key. */
 export function weekLabel(targetWeekKey: string, currentWeekKey: string): string {
@@ -58,9 +59,23 @@ export function weekPointsFromLedger(state: Pick<AppState, 'pointsHistory'>, tar
   return { goals, reflection };
 }
 
-/** Points that deleting this goal takes off the week (0 when it is not one of the counted three). */
-export function pointsLostOnDelete(goals: WeeklyGoalItem[], goalId: string): number {
-  const before = calculateWeeklyGoalsPoints(goals).pointsAwarded;
-  const after = calculateWeeklyGoalsPoints(goals.filter((g) => g.id !== goalId)).pointsAwarded;
+/**
+ * Goals the week's points row counted on an earlier day (achieved before today): they keep their
+ * points even when unticked or deleted (weeklyScoringGoals). Reads the week's own row and, in a
+ * week a season started in, its season row.
+ */
+export function heldWeekGoals(state: Pick<AppState, 'pointsHistory'>, targetWeekKey: string, todayStartMs: number): CountedGoalRef[] {
+  const goalId = `weekly_goal_${targetWeekKey}`;
+  const held: CountedGoalRef[] = [];
+  for (const e of state.pointsHistory || []) {
+    if (e?.id === goalId || e?.id?.startsWith(`${goalId}_s`)) held.push(...heldCountedGoals(e, todayStartMs));
+  }
+  return held.filter((h, i) => held.findIndex((x) => x.id === h.id) === i);
+}
+
+/** Points that deleting this goal takes off the week (0 when it is not one of the counted three, or it was counted on an earlier day). */
+export function pointsLostOnDelete(goals: WeeklyGoalItem[], goalId: string, held: CountedGoalRef[] = []): number {
+  const before = calculateWeeklyGoalsPoints(weeklyScoringGoals(goals, held)).pointsAwarded;
+  const after = calculateWeeklyGoalsPoints(weeklyScoringGoals(goals.filter((g) => g.id !== goalId), held)).pointsAwarded;
   return Math.max(0, before - after);
 }
