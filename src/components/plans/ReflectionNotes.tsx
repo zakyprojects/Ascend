@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { formatDateShort } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { ShowMoreText, ShowMoreToggle } from './ShowMore';
 
 /** Legacy notes were keyed by their date; newer ones by id. */
 function noteKeyOf(note: PlanReflectionNote): string {
@@ -122,7 +123,7 @@ export function ReflectionNotes({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-content-secondary whitespace-pre-wrap break-words">{note.note}</p>
+                  <ShowMoreText text={note.note} lines={4} className="text-sm text-content-secondary" />
                 )}
               </li>
             );
@@ -131,13 +132,12 @@ export function ReflectionNotes({
       )}
 
       {notes.length > 1 && (
-        <button
-          type="button"
-          onClick={() => setShowAll((v) => !v)}
-          className="text-xs font-medium text-content-tertiary hover:text-content-primary"
-        >
-          {showAll ? 'Show latest only' : `Show all ${notes.length} check-ins`}
-        </button>
+        <ShowMoreToggle
+          expanded={showAll}
+          onToggle={() => setShowAll((v) => !v)}
+          moreLabel={`Show all ${notes.length} check-ins`}
+          lessLabel="Show latest only"
+        />
       )}
     </div>
   );

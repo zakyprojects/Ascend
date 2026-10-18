@@ -1,36 +1,8 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/primitives';
 import { PLAN_TYPE_META, type AnyPlan, planTypeOf } from './planMeta';
 import { PlanBody, type PlanActions } from './PlanBody';
-
-function ExpandableDescription({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const [overflowing, setOverflowing] = useState(false);
-  const ref = useRef<HTMLParagraphElement>(null);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (el && !expanded) setOverflowing(el.scrollHeight > el.clientHeight + 1);
-  }, [text, expanded]);
-
-  if (!text) return null;
-  return (
-    <div>
-      <p ref={ref} className={`text-sm text-content-muted whitespace-pre-wrap break-words ${expanded ? '' : 'line-clamp-2'}`}>
-        {text}
-      </p>
-      {(overflowing || expanded) && (
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="mt-1 text-xs font-medium text-content-tertiary hover:text-content-primary"
-        >
-          {expanded ? 'Show less' : 'Show more'}
-        </button>
-      )}
-    </div>
-  );
-}
+import { ShowMoreText } from './ShowMore';
 
 /**
  * One card for every plan on the page: the user's own plans, their copies and Discover. Only the
@@ -74,7 +46,7 @@ export function PlanCard({
         </div>
         <h3 className="item-name text-base leading-snug break-words">{plan.title}</h3>
         {source && <p className="text-xs text-content-muted">{source}</p>}
-        <ExpandableDescription text={plan.description} />
+        <ShowMoreText text={plan.description} lines={2} />
       </header>
 
       <PlanBody plan={plan} actions={actions} />

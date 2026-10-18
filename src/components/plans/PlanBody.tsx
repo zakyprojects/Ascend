@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { CalendarClock, CheckCircle2, Circle, Flame, RotateCcw } from 'lucide-react';
 import { Badge, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
 import { formatDateShort } from '@/lib/dates';
 import { ReflectionNotes } from './ReflectionNotes';
+import { ShowMoreToggle } from './ShowMore';
 import {
   type AnyPlan,
   PLAN_TYPE_META,
@@ -28,6 +29,9 @@ export interface PlanActions {
   requestDeleteNote: (noteKey: string) => void;
 }
 
+/** Steps a card shows before "+N more", so a long milestone list never stretches its card. */
+const STEPS_SHOWN = 5;
+
 function formatNumber(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
@@ -40,11 +44,14 @@ export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActio
   const reviewDue = !readOnly && isReviewDue(plan);
   const notes = plan.reflectionNotes || [];
   const showNotes = type === 'vision' || cadence !== null;
+  const [allSteps, setAllSteps] = useState(false);
 
   let body: ReactNode = null;
 
   if (type === 'milestone') {
     const { done, total } = milestoneProgress(plan);
+    const steps = plan.steps || [];
+    const hiddenSteps = Math.max(0, steps.length - STEPS_SHOWN);
     body = (
       <div className="space-y-3">
         <div className="flex items-baseline justify-between text-xs">
@@ -55,7 +62,7 @@ export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActio
         </div>
         <ProgressBar value={done} max={Math.max(total, 1)} label="Steps done" tone={meta.bar} size="sm" />
         <ul className="space-y-0.5">
-          {(plan.steps || []).map((step) => {
+          {(allSteps ? steps : steps.slice(0, STEPS_SHOWN)).map((step) => {
             const icon = step.completed ? (
               <CheckCircle2 size={16} className="text-success-text shrink-0" />
             ) : (
@@ -88,6 +95,13 @@ export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActio
             );
           })}
         </ul>
+        {hiddenSteps > 0 && (
+          <ShowMoreToggle
+            expanded={allSteps}
+            onToggle={() => setAllSteps((v) => !v)}
+            moreLabel={`+${hiddenSteps} more`}
+          />
+        )}
       </div>
     );
   } else if (type === 'target_goal') {

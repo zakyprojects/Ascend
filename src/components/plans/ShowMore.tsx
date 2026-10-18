@@ -45,7 +45,14 @@ export function ShowMoreText({
 
   useLayoutEffect(() => {
     const el = ref.current;
-    if (el && !expanded) setOverflowing(el.scrollHeight > el.clientHeight + 1);
+    if (!el || expanded) return;
+    const measure = () => setOverflowing(el.scrollHeight > el.clientHeight + 1);
+    measure();
+    // The card's width changes with the grid (rotation, sidebar fold), and with it the line count.
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [text, expanded, lines]);
 
   if (!text) return null;
