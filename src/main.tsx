@@ -10,6 +10,7 @@ import '@fontsource/instrument-serif/400.css';
 import '@fontsource/instrument-serif/400-italic.css';
 import './index.css';
 import { startTrustedClock } from './lib/clock';
+import { installAssetRecovery } from './lib/assetRecovery';
 import { installPageVisibilityFlag, installWindowFocusFlag } from './lib/motion';
 import { installScrollRise } from './lib/scrollRise';
 import { installCardSpotlight } from './lib/cardSpotlight';
@@ -18,6 +19,8 @@ import { authRouteFromPath, nextFromSearch, viewFromLocation, viewFromPath } fro
 import { installPagePrefetch, preloadView } from './components/views/lazyViews';
 import { preloadAuthPage } from './components/auth/lazyAuthPage';
 
+// Before anything else: a page whose build files failed to load reloads once with fresh ones.
+installAssetRecovery();
 // First, so the server time is known before the session's days and periods are worked out.
 startTrustedClock();
 installPageVisibilityFlag();

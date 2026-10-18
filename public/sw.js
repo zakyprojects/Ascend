@@ -6,7 +6,8 @@ const STATIC_CACHE_NAME = 'ascend-static-v1';
 const STATIC_FILE = /\.(?:png|svg|ico|webp|jpg|jpeg|woff2|webmanifest)$|^\/manifest\.json$/;
 // Build files (/assets/*) carry a content hash in their name and never change, so they are served
 // from this cache first. It keeps the newest ASSET_CACHE_LIMIT files; older builds' files go.
-const ASSET_CACHE_NAME = 'ascend-assets-v1';
+// v2 (2026-10-18): drops a v1 cache that served a broken stylesheet to installed apps.
+const ASSET_CACHE_NAME = 'ascend-assets-v2';
 const ASSET_CACHE_LIMIT = 200;
 // Push bookkeeping (not a page cache): the endpoint replaced in 'pushsubscriptionchange', kept
 // until the page removes it from the account (src/lib/push.ts reads the same names).
@@ -72,11 +73,21 @@ async function cacheFirstAsset(request) {
   const cached = await cache.match(request);
   if (cached) return cached;
   const response = await fetch(request);
-  if (response.ok) {
+  if (response.ok && hasAssetType(request, response)) {
     await cache.put(request, response.clone());
     trimAssetCache(cache).catch(() => undefined);
   }
   return response;
+}
+
+// Only a real stylesheet or script is kept under a .css/.js name, so a wrong response (an HTML
+// page, an error body) is never served from the cache for the life of that file name.
+function hasAssetType(request, response) {
+  const type = response.headers.get('content-type') || '';
+  const path = new URL(request.url).pathname;
+  if (path.endsWith('.css')) return type.includes('text/css');
+  if (path.endsWith('.js')) return type.includes('javascript');
+  return true;
 }
 
 // Keys come back in insertion order, so the oldest files are deleted first.
