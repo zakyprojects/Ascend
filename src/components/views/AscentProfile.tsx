@@ -46,6 +46,8 @@ export function AscentProfile({ totalPoints }: { totalPoints: number }) {
   const next = getNextTier(totalPoints);
   const index = getTierIndex(totalPoints);
   const { percent } = getProgressToNextTier(totalPoints);
+  // Whole percent for the label (as on Ranks); the drawing keeps the exact position.
+  const percentShown = Math.floor(percent);
   const here = positionOnLadder(index, next ? percent / 100 : 1);
   const climbedWidth = seen ? here.x : 0;
 
@@ -54,7 +56,7 @@ export function AscentProfile({ totalPoints }: { totalPoints: number }) {
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <div className="stat-label">Rank</div>
-          <div className="font-serif text-2xl leading-tight" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
+          <div className="text-xl font-semibold leading-tight" style={{ color: `var(--rank-${tier.name.toLowerCase()}-text)` }}>
             {tier.name}
           </div>
         </div>
@@ -64,7 +66,7 @@ export function AscentProfile({ totalPoints }: { totalPoints: number }) {
               <span className="figure text-content-secondary">{(next.minPoints - totalPoints).toLocaleString()}</span> to {next.name}
             </>
           ) : (
-            'Top of the ladder'
+            'Top rank'
           )}
         </div>
       </div>
@@ -73,7 +75,7 @@ export function AscentProfile({ totalPoints }: { totalPoints: number }) {
         viewBox={`0 0 ${W} ${H}`}
         className="mt-2 block h-auto w-full overflow-visible"
         role="img"
-        aria-label={next ? `${tier.name}, ${percent}% of the way to ${next.name}` : `${tier.name}, top rank`}
+        aria-label={next ? `${tier.name}, ${percentShown}% of the way to ${next.name}` : `${tier.name}, top rank`}
       >
         <defs>
           <clipPath id="ascent-climbed">
@@ -108,7 +110,7 @@ export function AscentProfile({ totalPoints }: { totalPoints: number }) {
         />
       </svg>
 
-      <div className="mt-1 flex justify-between text-2xs text-content-disabled">
+      <div aria-hidden="true" className="mt-1 flex justify-between text-2xs text-content-muted">
         <span>{TIERS[0].name}</span>
         <span>{TIERS[steps].name}</span>
       </div>
