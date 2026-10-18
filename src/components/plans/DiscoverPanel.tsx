@@ -13,6 +13,7 @@ import type { DiscoverSort, useDiscoverPlans } from './useDiscoverPlans';
 type Discover = ReturnType<typeof useDiscoverPlans>;
 
 function copiesLabel(n: number): string {
+  if (n <= 0) return 'Not copied yet';
   return n === 1 ? 'Copied once' : `Copied ${n} times`;
 }
 

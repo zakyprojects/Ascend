@@ -16,7 +16,7 @@ import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { isPartnershipUser1 } from '@/lib/partnershipSide';
 import { calculateElapsedDays } from '@/lib/dates';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
-import { ptsText } from '@/lib/leagues';
+import { ptUnit, ptsText } from '@/lib/leagues';
 import { createNotificationSupabase } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { toUserMessage } from '@/lib/userMessage';
@@ -668,7 +668,7 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
                         <>
                           <p className="text-base">
                             <CountUp value={side.points} className="figure text-content-primary" />
-                            <span className="text-xs text-content-muted"> pts</span>
+                            <span className="text-xs text-content-muted"> {ptUnit(side.points)}</span>
                           </p>
                           <p className="flex items-center gap-1 text-xs text-content-muted">
                             <Flame size={12} className="text-brand-text" />

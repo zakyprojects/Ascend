@@ -414,6 +414,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
       <CompetitorProfileModal
         competitor={selectedCompetitor}
         seasonPoints={selectedCompetitor ? seasonPointsOf(selectedCompetitor) : 0}
+        periodLabel={activeLeague === 'ninetyDay' ? 'This season' : activeLeague === 'monthly' ? 'This month' : 'This week'}
         viewerIsPublic={currentUser ? (currentUser.isProfilePublic ?? true) : true}
         isPartner={selectedCompetitor && !selectedCompetitor.isUser ? partnerIds.has(selectedCompetitor.id ?? '') || (!selectedCompetitor.id && partnerNames.has(selectedCompetitor.name.toLowerCase())) : false}
         open={!!selectedCompetitor}

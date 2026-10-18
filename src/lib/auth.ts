@@ -688,7 +688,9 @@ export function getRegisteredCompetitors(
     const prefCurrentActive = p.stats?.currentStreakIsActive !== undefined
       ? p.stats.currentStreakIsActive
       : highestInfo.currentStreak.isActive;
-    const stats = {
+    // The server sends stats = null when this viewer may not see them: keep them undefined, never
+    // zeros that would read as real numbers in the profile dialog (C4).
+    const stats = p.stats ? {
       streakDays: prefCurrentDays,
       streakSource: prefCurrentDays > 0 ? prefCurrentCat : undefined,
       currentStreakDays: prefCurrentDays,
@@ -699,7 +701,7 @@ export function getRegisteredCompetitors(
       exerciseMinutes: p.stats?.exerciseMinutes || 0,
       booksRead: p.stats?.booksRead || 0,
       skillsPracticedCount: p.stats?.skillsPracticedCount || 0,
-    };
+    } : undefined;
 
     competitors.push({
       id: p.id,

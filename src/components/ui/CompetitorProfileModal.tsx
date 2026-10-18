@@ -5,11 +5,14 @@ import { Flame, CheckSquare, BookOpen, Activity, Book, Target, Lock, EyeOff, typ
 import { getProfileStreakStats } from '@/lib/streakLogic';
 import { getCurrentTier } from '@/lib/tiers';
 import { formatDateShort } from '@/lib/dates';
+import { ptsText } from '@/lib/leagues';
 
 interface CompetitorProfileModalProps {
   competitor: LeagueCompetitor | null;
   /** The member's season points, which set their tier (competitor.points are the open tab's period points). */
   seasonPoints: number;
+  /** Which league period competitor.points cover, e.g. 'This week' (C12). */
+  periodLabel: string;
   viewerIsPublic?: boolean;
   /** Partners always see each other's stats (the server sends them whatever the privacy setting). */
   isPartner?: boolean;
@@ -20,6 +23,7 @@ interface CompetitorProfileModalProps {
 export function CompetitorProfileModal({
   competitor,
   seasonPoints,
+  periodLabel,
   viewerIsPublic = true,
   isPartner = false,
   open,
@@ -66,18 +70,20 @@ export function CompetitorProfileModal({
                 )}
               </div>
 
-              {/* UID Display directly under username */}
-              {(competitor.uid || competitor.id) && (
-                <div className="text-micro font-mono tabular-nums text-content-muted mt-0.5 truncate">
-                  ID: #{competitor.uid || competitor.id?.slice(0, 8)}
-                </div>
-              )}
+              {/* Their 6-digit ID; never a made-up one from the account id (C11), like Settings. */}
+              <div className="text-micro font-mono tabular-nums text-content-muted mt-0.5 truncate">
+                {competitor.uid ? (
+                  <>ID: #{competitor.uid}</>
+                ) : (
+                  <>
+                    ID: <span aria-label="not available">—</span>
+                  </>
+                )}
+              </div>
 
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-content-muted">League points:</span>
-                <span className="figure text-xs text-brand-text">
-                  {competitor.points.toLocaleString()} pts
-                </span>
+                <span className="text-xs text-content-muted">{periodLabel}:</span>
+                <span className="figure text-xs text-brand-text">{ptsText(competitor.points)}</span>
               </div>
             </div>
           </div>
@@ -115,7 +121,21 @@ export function CompetitorProfileModal({
           </div>
         ) : (
           <>
-            {stats && <ActivityStats stats={stats} />}
+            {stats ? (
+              <ActivityStats stats={stats} />
+            ) : isSelf ? null : (
+              // Allowed by this device's view, but the server sent no stats (a partnership or privacy
+              // switch changed elsewhere): neutral note, never zeros that look real (C4).
+              <div className="rounded-xl border border-overlay-subtle p-6 text-center space-y-1.5">
+                <div className="flex items-center justify-center text-content-muted">
+                  <EyeOff size={18} aria-hidden="true" />
+                </div>
+                <h4 className="text-base font-semibold leading-tight text-content-secondary">Stats hidden</h4>
+                <p className="text-xs text-content-muted max-w-sm mx-auto leading-relaxed">
+                  Their stats aren't shared with you right now. Their username, rank, and league points are still visible.
+                </p>
+              </div>
+            )}
 
             {/* Past Seasons & Trophies */}
             {seasonHistory && seasonHistory.length > 0 && (
@@ -139,7 +159,7 @@ export function CompetitorProfileModal({
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="figure text-sm text-brand-text">{historyRecord.points.toLocaleString()} pts</p>
+                          <p className="figure text-sm text-brand-text">{ptsText(historyRecord.points)}</p>
                           {historyRecord.date && (
                             <p className="text-2xs text-content-muted">{formatDateShort(historyRecord.date, historyRecord.date)}</p>
                           )}
@@ -165,7 +185,7 @@ function ActivityStats({ stats }: { stats: NonNullable<LeagueCompetitor['stats']
       icon: Flame,
       color: 'var(--badge-orange-text)',
       label: 'Current streak',
-      value: `${streak.currentStreakDays} days`,
+      value: `${streak.currentStreakDays} ${streak.currentStreakDays === 1 ? 'day' : 'days'}`,
       hint: streak.currentStreakCategory || undefined,
     },
     { icon: CheckSquare, color: 'var(--badge-emerald-text)', label: 'Habits done', value: stats.habitsCompletedCount.toLocaleString() },

@@ -130,8 +130,13 @@ export function pointsText(n: number): string {
 }
 
 /** Short form for rows and chips: "1 pt", "3 pts"; `signed` adds "+" or "−" ("+2 pts", "−3 pts"). */
+/** 'pt' for ±1, else 'pts': the unit beside an animated or separately styled number. */
+export function ptUnit(n: number): 'pt' | 'pts' {
+  return Math.abs(n) === 1 ? 'pt' : 'pts';
+}
+
 export function ptsText(n: number, signed = false): string {
-  const unit = Math.abs(n) === 1 ? 'pt' : 'pts';
+  const unit = ptUnit(n);
   const sign = signed ? (n > 0 ? '+' : n < 0 ? '−' : '') : n < 0 ? '−' : '';
   return `${sign}${Math.abs(n).toLocaleString()} ${unit}`;
 }
