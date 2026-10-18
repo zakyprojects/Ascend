@@ -60,7 +60,8 @@ interface AppShellProps {
   navigationKind: NavigationKind;
   /** A page change still loading its page: the nav already highlights it and a progress bar runs. */
   pendingView?: View | null;
-  onViewChange: (view: View) => void;
+  /** `search` (optional, e.g. `?section=notifications`) rides along on the new page's address. */
+  onViewChange: (view: View, search?: string) => void;
   store: AppStore;
   /** Absent in local-only mode (no Supabase): there is no sign-in to open. */
   onOpenAuth?: () => void;
@@ -158,8 +159,8 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   const currentViewRef = useRef(currentView);
   currentViewRef.current = currentView;
   const goTo = useCallback(
-    (view: View) => {
-      if (view !== currentViewRef.current) return onViewChange(view);
+    (view: View, search?: string) => {
+      if (view !== currentViewRef.current) return onViewChange(view, search);
       const main = mainRef.current;
       if (!main) return;
       const behavior: ScrollBehavior = prefersReducedMotion() ? 'instant' : 'smooth';

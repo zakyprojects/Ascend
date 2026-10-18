@@ -77,6 +77,31 @@ function canonicalizeUrl(target: RouteTarget): void {
 }
 
 /**
+ * The address of the page on show, query included. Pages rewrite their own query in place
+ * (Settings' `?section=`, PFC's `?tab=`) with replaceState, which fires no event, so both history
+ * writers are wrapped once to keep this current; back/forward has already moved the address by
+ * the time popstate runs, so this is the only record of where the user was.
+ */
+let lastAddress = typeof window === 'undefined' ? '/' : window.location.pathname + window.location.search;
+let historyTracked = false;
+function trackHistoryWrites(): void {
+  if (historyTracked || typeof window === 'undefined') return;
+  historyTracked = true;
+  lastAddress = window.location.pathname + window.location.search;
+  const { history } = window;
+  const push = history.pushState.bind(history);
+  const replace = history.replaceState.bind(history);
+  history.pushState = (...args: Parameters<History['pushState']>) => {
+    push(...args);
+    lastAddress = window.location.pathname + window.location.search;
+  };
+  history.replaceState = (...args: Parameters<History['replaceState']>) => {
+    replace(...args);
+    lastAddress = window.location.pathname + window.location.search;
+  };
+}
+
+/**
  * `prepare(view)` loads a page's code; a page change waits for it before the view transition
  * starts, so the transition snapshots the finished page rather than a loading fallback.
  */
@@ -154,18 +179,23 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
     window.history.scrollRestoration = 'manual';
 
     // Back/forward (and a hash typed into the address bar, which also fires popstate).
+    trackHistoryWrites();
     const onHistoryMove = () => {
       const target = routeFromLocation();
+      const previousAddress = lastAddress;
+      lastAddress = window.location.pathname + window.location.search;
       if (target.auth || authRef.current) {
         syncToLocation('pop'); // to or from a sign-in page: no page transition, no chunk wait
         return;
       }
       if (hasUnsavedChanges() && target.view !== viewRef.current) {
         // Back/forward can't be cancelled and the address has already moved: put the current
-        // page's address back first, and go only if the user discards the unsaved typing.
-        window.history.pushState(null, '', pathForView(viewRef.current));
+        // page's address back first (query included: `?section=account`), and go only if the user
+        // discards the unsaved typing, to the target's full address.
+        const targetAddress = window.location.pathname + window.location.search;
+        window.history.pushState(null, '', previousAddress);
         confirmLeave(() => {
-          window.history.replaceState(null, '', pathForView(target.view));
+          window.history.replaceState(null, '', targetAddress);
           show(target.view, 'pop');
         });
         return;
@@ -178,11 +208,12 @@ export function useViewRoute(prepare?: (view: View) => Promise<unknown>) {
   }, [show, syncToLocation]);
 
   const navigate = useCallback(
-    (view: View) => {
-      // A new path drops the query: `?tab=live` belongs to the visit that came with it. The URL
-      // changes when the page does, so a superseded click never leaves a history entry.
+    (view: View, search = '') => {
+      // A new path drops the query: `?tab=live` belongs to the visit that came with it, unless the
+      // caller names one (`?section=notifications`). The URL changes when the page does, so a
+      // superseded click (or "Keep editing") never leaves a history entry or a stale request.
       if (view === targetRef.current) return;
-      confirmLeave(() => show(view, 'push', () => window.history.pushState(null, '', pathForView(view))));
+      confirmLeave(() => show(view, 'push', () => window.history.pushState(null, '', pathForView(view) + search)));
     },
     [show]
   );

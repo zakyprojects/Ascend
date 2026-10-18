@@ -45,7 +45,7 @@ const FOCUSABLE =
 interface NotificationCenterProps {
   store: AppStore;
   /** Opens a page (AppShell's navigation). Without it a tap only marks the notice read. */
-  onNavigate?: (view: View) => void;
+  onNavigate?: (view: View, search?: string) => void;
   compact?: boolean;
   align?: 'right' | 'left' | 'sidebar';
   className?: string;
@@ -177,8 +177,10 @@ export function NotificationCenter({
     if (!onNavigate || !isPlainClick(event)) return;
     event.preventDefault();
     close(false);
-    requestSettingsSection('notifications');
-    onNavigate('settings');
+    // Settings already open: it switches section itself (asking first about unsaved typing).
+    // Otherwise the section rides on the new address, so "Keep editing" leaves nothing behind.
+    if (window.location.pathname === pathForView('settings')) requestSettingsSection('notifications');
+    else onNavigate('settings', '?section=notifications');
   };
 
   const toggleGroup = (id: string) =>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell, Eye, Info, KeyRound, Palette, User, type LucideIcon } from 'lucide-react';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { AppStore } from '@/lib/store';
@@ -54,13 +54,16 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
     }
   }, [section]);
 
-  // Asked for while Settings is already open (the notifications panel's settings link).
+  // Asked for while Settings is already open (the notifications panel's settings link): the same
+  // "Discard changes?" guard as a tap on the section list.
+  const sectionRef = useRef(section);
+  sectionRef.current = section;
   useEffect(() => {
     const onRequest = (event: Event) => {
       const next = (event as CustomEvent).detail;
       if (isSettingsSection(next)) {
         clearPendingSettingsSection();
-        setSection(next);
+        if (next !== sectionRef.current) confirmLeave(() => setSection(next));
       }
     };
     window.addEventListener(SETTINGS_SECTION_EVENT, onRequest);

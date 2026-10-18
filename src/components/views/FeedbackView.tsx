@@ -118,6 +118,8 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
   const [sentRef, setSentRef] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState(() => trustedNowMs());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // After Send the form is replaced: focus (and screen readers) move to the "sent" heading.
+  const sentHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const context = useMemo(
     () => feedbackContext(currentUser ? { uid: currentUser.uid, isAnonymous: currentUser.isAnonymous } : null),
@@ -187,6 +189,10 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
     }
   };
 
+  useEffect(() => {
+    if (sentRef) sentHeadingRef.current?.focus();
+  }, [sentRef]);
+
   const resetForm = () => {
     screenshots.forEach((s) => URL.revokeObjectURL(s.previewUrl));
     setTitle('');
@@ -227,9 +233,11 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
         <Card padding="lg" className="enter-item">
           <div className="flex flex-col items-center text-center gap-3 py-4">
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-500/15 text-brand-text">
-              <Check size={24} />
+              <Check size={24} aria-hidden="true" />
             </span>
-            <h2 className="section-title">Thanks, it’s sent</h2>
+            <h2 ref={sentHeadingRef} tabIndex={-1} className="section-title outline-none">
+              Thanks, it’s sent
+            </h2>
             <p className="text-sm text-content-secondary max-w-sm">
               Your reference is <span className="figure font-semibold text-content-primary">{sentRef}</span>. Mention it
               if you write to us about this.
