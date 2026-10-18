@@ -2805,6 +2805,12 @@ export function useAppState() {
     // A new account (or a fresh sign-in) waits for its own first inbox fetch.
     setNotificationsStatus('loading');
     setPartnersStatus('loading');
+    // Offline at start: the channel never subscribes and polling waits for 'online', so nothing would
+    // end the loading state. Show Couldn't load / Retry now; the 'online' handler re-syncs (C1).
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setNotificationsStatus('failed');
+      setPartnersStatus('failed');
+    }
 
     /** Keeps local "read" marks (a mark-read may still be on its way) and drops cleared rows. */
     const mergeFetchedNotifications = (prev: AppState, fetched: AppNotification[]): AppNotification[] => {
@@ -3095,6 +3101,9 @@ export function useAppState() {
 
     const handleOffline = () => {
       stopFallbackPolling();
+      // A first load still waiting when the connection drops would never finish.
+      setPartnersStatus((s) => (s === 'loading' ? 'failed' : s));
+      setNotificationsStatus((s) => (s === 'loading' ? 'failed' : s));
     };
 
     window.addEventListener('online', handleOnline);

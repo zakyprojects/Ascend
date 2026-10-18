@@ -235,8 +235,10 @@ export function calculateElapsedDays(startDateVal?: string | Date | number | nul
   const [tY, tM, tD] = targetKeyStr.split('-').map(Number);
   const targetMidnight = new Date(tY, tM - 1, tD).getTime();
 
+  // Rounded, not floored: across a DST change two local midnights are 23 or 25 hours apart, and
+  // this must count calendar days like the server's date subtraction (C9).
   const diffMs = targetMidnight - startMidnight;
-  return Math.max(1, Math.floor(diffMs / 86400000) + 1);
+  return Math.max(1, Math.round(diffMs / 86400000) + 1);
 }
 
 /**
@@ -373,10 +375,9 @@ export function formatDateKeyHuman(dateKey: string): string {
   const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
   const today = todayKey();
   if (dateKey === today) return 'Today';
-  const yesterday = todayKey(new Date(trustedNowMs() - 86400000));
-  if (dateKey === yesterday) return 'Yesterday';
-  const tomorrow = todayKey(new Date(trustedNowMs() + 86400000));
-  if (dateKey === tomorrow) return 'Tomorrow';
+  // Calendar steps, not ±24 hours (an hour off around a DST change).
+  if (dateKey === addDays(today, -1)) return 'Yesterday';
+  if (dateKey === addDays(today, 1)) return 'Tomorrow';
   return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 

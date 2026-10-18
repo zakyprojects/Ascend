@@ -11,8 +11,8 @@ import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
 import { toUserMessage } from '@/lib/userMessage';
 import { AppStore } from '@/lib/store';
-import { todayKey } from '@/lib/dates';
-import { trustedNow } from '@/lib/clock';
+import { addDays } from '@/lib/dates';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import type { Goal, GoalStatus, Project, ProjectStatus, Task, TaskPriority, TaskSubtask } from '@/types';
 import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
 import { goalStatusPatch, projectStatusPatch, sortBySequence, useHierarchy } from '@/components/projects/hierarchy';
@@ -129,7 +129,8 @@ export function ProjectsGoalsView({
   const projects = useMemo(() => store.state.projects || [], [store.state.projects]);
   const tasks = useMemo(() => store.state.tasks || [], [store.state.tasks]);
   const h = useHierarchy(goals, projects, tasks);
-  const today = todayKey();
+  // Re-renders at local midnight: overdue / due today counts and filters roll over (C5).
+  const today = useLocalDayKey();
 
   const [activeTab, setActiveTab] = useState<SubViewTab>('tasks');
   const [tabOrder, setTabOrder] = useState<TabOrder>('taskFirst');
@@ -297,9 +298,7 @@ export function ProjectsGoalsView({
 
   const filteredTasks = useMemo(() => {
     const q = taskSearch.trim().toLowerCase();
-    const next7 = trustedNow();
-    next7.setDate(next7.getDate() + 7);
-    const next7Key = todayKey(next7);
+    const next7Key = addDays(today, 7);
     return tasks.filter((t) => {
       if (activeProjectFilter === 'standalone' ? t.projectId : activeProjectFilter && t.projectId !== activeProjectFilter) return false;
       if (taskPriorityFilter !== 'all' && t.priority !== taskPriorityFilter) return false;

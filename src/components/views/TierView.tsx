@@ -11,6 +11,7 @@ import { LeagueCountdown } from '@/components/ui/LeagueCountdown';
 import { getLocalResetDetail, sortPointsNewestFirst } from '@/lib/leagues';
 import { getSeasonNumber, getSeasonStart, leagueNow } from '@/lib/leagueTime';
 import { isTodayLocal, isYesterdayLocal } from '@/lib/dates';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 
 /** Entries the Recent points list shows (newest first). */
 const RECENT_POINTS_SHOWN = 10;
@@ -36,6 +37,8 @@ function formatEntryTime(entry: PointsEntry, now: Date, seasonStart: Date): stri
 }
 
 export function TierView({ store }: { store: AppStore }) {
+  // Re-renders at local midnight, so "Today" / "Yesterday" labels on recent points roll over (C5).
+  useLocalDayKey();
   const now = leagueNow();
   const seasonStart = getSeasonStart(now);
   const seasonPoints = store.getLeagueData('ninetyDay').userPoints;
@@ -212,11 +215,12 @@ export function TierView({ store }: { store: AppStore }) {
                         <span
                           className={cx(
                             'figure text-xs',
-                            amount > 0 ? 'text-brand-text' : amount < 0 ? 'text-error' : 'text-content-muted'
+                            amount > 0 ? 'text-brand-text' : amount < 0 ? 'text-error-text' : 'text-content-muted'
                           )}
                         >
-                          {amount > 0 ? '+' : ''}
-                          {amount}
+                          {/* Readable red in light theme (C10); a real minus sign like the rest of the app. */}
+                          {amount > 0 ? '+' : amount < 0 ? '−' : ''}
+                          {Math.abs(amount).toLocaleString()}
                         </span>
                       </span>
                       <div className="min-w-0 flex-1">

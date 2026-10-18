@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Target } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { WEEKLY_REFLECTION_POINTS, WEEKLY_GOALS_POINTS, calculateWeeklyGoalsPoints } from '@/lib/pointsConfig';
@@ -8,7 +8,8 @@ import { weeklyGoalsCapNote } from '@/lib/capCopy';
 import { EmptyState, PageColumns } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
-import { weekKey, getWeekDates, offsetWeekKey, formatWeekRange, getNow } from '@/lib/dates';
+import { weekKey, getWeekDates, offsetWeekKey, formatWeekRange, getNow, parseDate } from '@/lib/dates';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { isReflectionWindowOpen } from '@/lib/weeklyAwards';
 import { WeeklyGoalItem } from '@/types';
 import { computeLinkedGoalProgress, GoalProgressResult } from '@/lib/linkedGoalMetrics';
@@ -30,8 +31,18 @@ const WEEK_POINTS_MAX = WEEKLY_GOALS_POINTS.maxWeeklyPoints + WEEKLY_REFLECTION_
 export function WeeklyGoalsView({ store }: { store: AppStore }) {
   const { showErrorToast, showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
-  const currentWeekKey = weekKey();
+  // Re-renders at local midnight, so Monday 00:00 starts the new week with the page open (C5).
+  const today = useLocalDayKey();
+  const currentWeekKey = weekKey(parseDate(today) ?? undefined);
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(currentWeekKey);
+  // A page that was on "this week" moves to the new week (like Time Tracker's day).
+  const previousWeekKeyRef = useRef(currentWeekKey);
+  useEffect(() => {
+    const previous = previousWeekKeyRef.current;
+    if (previous === currentWeekKey) return;
+    previousWeekKeyRef.current = currentWeekKey;
+    setSelectedWeekKey((selected) => (selected === previous ? currentWeekKey : selected));
+  }, [currentWeekKey]);
 
   const isPastWeek = selectedWeekKey < currentWeekKey;
   const isFutureWeek = selectedWeekKey > currentWeekKey;

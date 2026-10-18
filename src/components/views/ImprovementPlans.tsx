@@ -19,12 +19,15 @@ import { EditPlanDialog } from '@/components/plans/EditPlanDialog';
 import { DiscoverPanel } from '@/components/plans/DiscoverPanel';
 import { useDiscoverPlans } from '@/components/plans/useDiscoverPlans';
 import { type AnyPlan, finishLineShare, isReviewDue, journeyState, planTypeOf, targetProgress } from '@/components/plans/planMeta';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 
 type Owner = 'own' | 'copy';
 
 export function ImprovementPlans({ store }: { store: AppStore }) {
   const { showSuccessToast, showErrorToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
+  // Re-renders at local midnight: journeys' "done this period" and day counts roll over (C5).
+  useLocalDayKey();
 
   const [activeTab, setActiveTab] = useState<'my_plans' | 'discover'>('my_plans');
   // Bumped on every open so the create dialog always starts fresh.
