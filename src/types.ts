@@ -745,6 +745,15 @@ export interface AppState {
 
   // Theme Preference
   themePreference?: 'dark' | 'light';
+
+  /** Highest rank already celebrated this season (lib/rankCelebration); null until first set. */
+  rankCelebrated?: RankCelebrated | null;
+}
+
+/** Rank-up memory: `tierIndex` into TIERS, celebrated in `season`. */
+export interface RankCelebrated {
+  season: number;
+  tierIndex: number;
 }
 
 export interface TimeTrackerActivity {
@@ -979,6 +988,7 @@ export const DEFAULT_STATE: AppState = {
   restoredEntityIds: [],
   timeTracker: DEFAULT_TIME_TRACKER_STATE,
   themePreference: 'dark',
+  rankCelebrated: null,
 };
 
 

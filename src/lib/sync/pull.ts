@@ -211,13 +211,19 @@ async function fetchRows(
   }
 }
 
+export interface PullResult {
+  changes: RemoteChange[];
+  /** Every table answered (false: some kept their device copy this time). */
+  everyTableRead: boolean;
+}
+
 /**
  * full: every row (app boot), so the device converges even if a delta was missed.
  * Otherwise only rows changed since the last pull (reconnect, tab focus).
  */
-export async function pullSyncedRows(userId: string, full: boolean): Promise<RemoteChange[]> {
+export async function pullSyncedRows(userId: string, full: boolean): Promise<PullResult> {
   const { data } = await supabase.auth.getSession();
-  if (data.session?.user.id !== userId) return [];
+  if (data.session?.user.id !== userId) return { changes: [], everyTableRead: false };
 
   const stale = full && missedPurgedDeletes(userId);
   let everyTableRead = true;
@@ -241,6 +247,5 @@ export async function pullSyncedRows(userId: string, full: boolean): Promise<Rem
     })
   );
   if (full && everyTableRead) localStorage.setItem(lastFullPullKey(userId), new Date(trustedNowMs()).toISOString());
-  const changes = perTable.flat();
-  return changes;
+  return { changes: perTable.flat(), everyTableRead };
 }

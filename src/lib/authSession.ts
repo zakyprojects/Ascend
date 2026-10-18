@@ -4,7 +4,7 @@ import { generateNumericUID, getNow, weekKey } from './dates';
 import { reconcileSharedChallengeLifecycle } from './pactLifecycle';
 import { cachedSyncedCollections } from './sync/syncedCollections';
 import { cachedDeviceLocalState } from './deviceLocalState';
-import { applyRemoteChanges, pullSyncedRows } from './sync/pull';
+import { applyRemoteChanges, pullSyncedRows, type PullResult } from './sync/pull';
 import { applyPresetHabitRemovalMigration } from './store';
 import {
   fetchUserDataWithStatusFromSupabase,
@@ -192,16 +192,16 @@ export async function hydrateUserSession(
   email: string,
   authUser?: User | null,
   signupDefaults?: SignUpDefaults
-): Promise<{ user: UserProfile; state: AppState }> {
+): Promise<{ user: UserProfile; state: AppState; tablesRead: boolean }> {
   // Fetch profile and saved user_data in parallel
-  const [profileRes, userDataRes, tableChanges] = await Promise.all([
+  const [profileRes, userDataRes, tablePull] = await Promise.all([
     fetchProfileForUser(userId),
     fetchUserDataWithStatusFromSupabase(userId),
     // Table-backed modules are read before boot finishes, so points and streak
     // reconciliation never runs on a state that is missing them.
-    pullSyncedRows(userId, true).catch((err) => {
+    pullSyncedRows(userId, true).catch((err): PullResult => {
       console.error('[HYDRATION] Table read failed, using device cache:', err);
-      return [];
+      return { changes: [], everyTableRead: false };
     }),
   ]);
   const profileData = profileRes.data;
@@ -260,7 +260,7 @@ export async function hydrateUserSession(
       currentUser: user,
       username: user.username,
     };
-    state = applyRemoteChanges(state, tableChanges);
+    state = applyRemoteChanges(state, tablePull.changes);
     state = applyPresetHabitRemovalMigration(state, weekKey(getNow()));
     setUserDataWatermark(userId, state);
   } else {
@@ -457,5 +457,5 @@ export async function hydrateUserSession(
     }
   }
 
-  return { user, state };
+  return { user, state, tablesRead: tablePull.everyTableRead };
 }

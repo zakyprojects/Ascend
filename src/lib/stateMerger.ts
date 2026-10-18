@@ -30,6 +30,7 @@ import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
 import { isWeeklyGoalSeasonSplitEntryId } from './weeklyGoalSeasons';
 import { computeStateDataWeight, type UserDataWeight } from './dataWeight';
 import { trustedNow, trustedNowMs } from './clock';
+import { mergeRankCelebrated } from './rankCelebration';
 
 function mergeEntityArrays<T extends { id?: string; createdAt?: string | number; updatedAt?: string; timestamp?: string }>(
   baseArr: T[] = [],
@@ -1314,6 +1315,7 @@ function mergeAppStateInternal(
     restoredEntityIds: mergedRestoredEntityIds,
     timeTracker: mergedTimeTracker,
     themePreference: incomingState.themePreference || baseState.themePreference || 'dark',
+    rankCelebrated: mergeRankCelebrated(baseState.rankCelebrated, incomingState.rankCelebrated),
   };
 }
 

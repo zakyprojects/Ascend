@@ -52,7 +52,9 @@ import {
   DEFAULT_TIME_TRACKER_ACTIVITIES,
   DEFAULT_TIME_TRACKER_STATE,
   NotificationPreferenceKey,
+  RankCelebrated,
 } from '@/types';
+import { mergeRankCelebrated } from './rankCelebration';
 
 /** The on/off UserProfile settings the Settings switches write to the profile row. */
 type ProfileSwitchKey = NotificationPreferenceKey | 'isProfilePublic' | 'acceptPartnerInvites';
@@ -1845,6 +1847,10 @@ export function useAppState() {
   const storedSessionWaitRef = useRef(false);
   const storedSessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHydrated = useRef(false);
+  // The signed-in account's data came from the server this session: hydration finished and every
+  // synced table was read (at boot, or by a later pull if a boot read failed). A device cache alone
+  // never sets it, so moments that compare against saved memory (the rank-up) wait for it.
+  const [isServerDataApplied, setIsServerDataApplied] = useState(false);
   const canPersistLocally = useRef(false);
   const authGenerationRef = useRef(0);
   const currentUserRef = useRef<UserProfile | null>(state.currentUser);
@@ -2076,9 +2082,12 @@ export function useAppState() {
   const syncTables = useCallback(
     async (userId: string, full: boolean) => {
       await flushOutbox(userId);
-      const changes = await pullSyncedRows(userId, full);
-      if (changes.length === 0) return;
-      setState((prev) => (prev.currentUser?.id === userId ? applyRemoteChanges(prev, changes) : prev));
+      const { changes, everyTableRead } = await pullSyncedRows(userId, full);
+      const applied = everyTableRead && isHydrated.current && currentUserRef.current?.id === userId;
+      if (changes.length > 0) {
+        setState((prev) => (prev.currentUser?.id === userId ? applyRemoteChanges(prev, changes) : prev));
+      }
+      if (applied) setIsServerDataApplied(true);
     },
     [setState]
   );
@@ -2469,6 +2478,7 @@ export function useAppState() {
           }
           pendingImmediateResolvers.current = [];
           isHydrated.current = false;
+          setIsServerDataApplied(false);
           canPersistLocally.current = false;
           currentUserRef.current = null;
 
@@ -2521,6 +2531,7 @@ export function useAppState() {
 
           const myGeneration = ++authGenerationRef.current;
           if (event === 'SIGNED_IN') setIsSessionLoading(true);
+          if (currentUserRef.current?.id !== session.user.id) setIsServerDataApplied(false);
           // A member signed in after boot (or a different one) gets the standings their session can see.
           void refreshLeagueStandings({ full: leagueRefresher.fetchedUserId() !== session.user.id });
 
@@ -2545,7 +2556,7 @@ export function useAppState() {
           );
 
           try {
-            const { user, state: hydratedState } = await Promise.race([
+            const { user, state: hydratedState, tablesRead } = await Promise.race([
               hydrateUserSession(userId, email, session.user, signupDefaults),
               timeoutPromise,
             ]);
@@ -2604,6 +2615,8 @@ export function useAppState() {
               lastKnownGoodStateRef.current = reconciledMergedState;
 
               setState(reconciledMergedState);
+              // Same batch as the state: the first render that sees the flag sees the server data.
+              setIsServerDataApplied(tablesRead && !guardResult.hasSuspiciousDrop);
 
               if (guardResult.hasSuspiciousDrop) {
                 const isZeroOut = guardResult.mergedCount === 0;
@@ -2647,6 +2660,7 @@ export function useAppState() {
 
               // CRITICAL: isHydrated MUST remain false so no empty/fallback state is auto-saved over Supabase
               isHydrated.current = false;
+              setIsServerDataApplied(false);
 
               if (cachedState) {
                 const sanitizedCached = sanitizeLoadedState(cachedState, fallbackUser);
@@ -3871,6 +3885,14 @@ export function useAppState() {
       { immediate: true }
     );
   }, [setState]);
+
+  /** Rank-up memory (lib/rankCelebration), saved at once so a reload or another device never shows it again. */
+  const setRankCelebrated = useCallback(
+    (memory: RankCelebrated) => {
+      setState((prev) => ({ ...prev, rankCelebrated: mergeRankCelebrated(prev.rankCelebrated, memory) }), { immediate: true });
+    },
+    [setState]
+  );
 
   // Flips one on/off profile setting: the switch moves at once, and if the profile write fails
   // it moves back and says so, so a switch never shows a setting the server does not hold.
@@ -9092,6 +9114,8 @@ export function useAppState() {
     state,
     isAuthChecking,
     isSessionLoading,
+    isServerDataApplied,
+    setRankCelebrated,
     storedSessionWait,
     setAuthSessionState,
     logout,
