@@ -210,7 +210,7 @@ This means:
 
 This is why doing 5 minutes of meditation daily for 90 days is far more powerful than doing 2 hours once a week. The daily repetition keeps those neurons firing together, wiring them into a permanent pathway.
 
-**The 90-day framing:** Research suggests that it takes roughly 66-90 days of consistent repetition for a new behavior to become automatic — to literally wire itself into your brain's default circuitry. This is why the 90-Day League exists: it's not just a competition, it's a scientifically-grounded window for real neurological change.`,
+**How long it takes:** In a well-known study (Lally, 2009), a new daily habit took a median of 66 days to feel automatic, with a range from 18 to 254 days. Simple habits come sooner; harder ones take longer. A 90-day season gives most habits time to settle in, which is why the 90-Day League is 90 days long.`,
   },
   {
     id: 'neuro-2',
@@ -230,10 +230,10 @@ Think of it like walking a path through a field. One trip doesn't make a trail. 
 
 **Practical implications:**
 - A 10-minute daily habit beats a 2-hour weekly session
-- Missing one day is fine; missing three starts to weaken the pathway
+- Missing one day barely matters; a run of missed days is what lets the pathway weaken
 - The goal isn't perfection — it's frequency
 
-This is why the app rewards daily habit completion rather than time spent. The reward is for showing up, not for intensity. Your brain doesn't care how hard you worked — it cares that the circuit fired again today.`,
+This is why Ascend rewards showing up every day: a habit scores each day you complete it, however long it took. Your brain doesn't care how hard you worked once. It cares that the circuit fired again today.`,
   },
   {
     id: 'neuro-3',

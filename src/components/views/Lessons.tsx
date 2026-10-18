@@ -1,258 +1,183 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { BookOpen, Check, Clock, Search } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
-import { Lesson } from '@/types';
-import { Dialog, EmptyState, ToolbarInput } from '@/components/ui/primitives';
+import type { Lesson } from '@/types';
+import { cx, EmptyState, Switch, Tabs, ToolbarInput } from '@/components/ui/primitives';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { getSeasonNumber, leagueNow } from '@/lib/leagueTime';
 import { isLessonReadInSeason } from '@/lib/lessonAwards';
+import { LessonReader, pointsLabel } from '@/components/lessons/LessonReader';
+
+const ALL = 'all';
 
 export function Lessons({ store }: { store: AppStore }) {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [category, setCategory] = useState<string>(ALL);
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [openLesson, setOpenLesson] = useState<Lesson | null>(null);
   const [search, setSearch] = useState('');
 
   const readIds = store.state.readLessonIds;
-  const activeSeasonNum = getSeasonNumber(leagueNow());
-  const isLessonReadThisSeason = (lessonId: string) => isLessonReadInSeason(readIds, lessonId, activeSeasonNum);
+  const season = getSeasonNumber(leagueNow());
+  const isRead = (lessonId: string) => isLessonReadInSeason(readIds, lessonId, season);
 
-  const readCount = LESSONS.filter((l) => isLessonReadThisSeason(l.id)).length;
+  const readLessons = LESSONS.filter((l) => isRead(l.id));
   const totalPoints = LESSONS.reduce((sum, l) => sum + l.points, 0);
-  const earnedPoints = LESSONS.filter((l) => isLessonReadThisSeason(l.id)).reduce((sum, l) => sum + l.points, 0);
+  const earnedPoints = readLessons.reduce((sum, l) => sum + l.points, 0);
+  const nextUnread = LESSONS.find((l) => !isRead(l.id));
 
-  const filtered = LESSONS.filter((lesson) => {
-    if (search && !lesson.title.toLowerCase().includes(search.toLowerCase())) return false;
-    if (selectedCategory && lesson.category !== selectedCategory) return false;
-    return true;
-  });
+  const searchMatches = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return LESSONS;
+    return LESSONS.filter((l) => [l.title, l.category, l.content].some((s) => s.toLowerCase().includes(q)));
+  }, [search]);
+
+  const filtered = searchMatches.filter(
+    (l) => (category === ALL || l.category === category) && (!unreadOnly || !isRead(l.id))
+  );
+
+  const nextInList = (lesson: Lesson) => {
+    // From the category's list, so a lesson just read (and hidden by Unread only) still has a next.
+    const list = searchMatches.filter((l) => category === ALL || l.category === category);
+    const index = list.findIndex((l) => l.id === lesson.id);
+    return index >= 0 ? list.slice(index + 1).find((l) => !unreadOnly || !isRead(l.id)) : undefined;
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="page-title">Lessons</h1>
-        <p className="page-subtitle">Short, practical self-improvement reads.</p>
+        <p className="page-subtitle">Short, practical reads on how habits, focus and the brain work.</p>
       </div>
 
       <Reveal index={0}>
         <PageHero
-          ariaLabel="Your lessons"
-          ring={{ value: readCount, max: LESSONS.length, label: `Lessons read in Season ${activeSeasonNum}`, center: readCount, caption: `of ${LESSONS.length} read` }}
-          lead={{ label: 'Points earned', value: <CountUp value={earnedPoints} />, hint: `of ${totalPoints} this season`, valueClassName: 'text-brand-text' }}
+          ariaLabel="Your lessons this season"
+          ring={{
+            value: readLessons.length,
+            max: LESSONS.length,
+            label: `Lessons read in Season ${season}: ${readLessons.length} of ${LESSONS.length}`,
+            center: readLessons.length,
+            caption: `of ${LESSONS.length} read`,
+          }}
+          lead={{
+            label: 'Points earned',
+            value: <CountUp value={earnedPoints} />,
+            hint: `of ${totalPoints} this season. Every lesson pays again next season.`,
+            valueClassName: 'text-brand-text',
+          }}
+          stats={
+            nextUnread
+              ? [
+                  {
+                    label: 'Next to read',
+                    value: (
+                      <button
+                        type="button"
+                        onClick={() => setOpenLesson(nextUnread)}
+                        className="line-clamp-2 text-left text-sm font-medium leading-snug text-content-primary hover:underline sm:text-base"
+                      >
+                        {nextUnread.title}
+                      </button>
+                    ),
+                    hint: `${nextUnread.readTime} min · ${pointsLabel(nextUnread.points)}`,
+                  },
+                ]
+              : [{ label: 'This season', value: 'All read', valueClassName: 'text-success-text' }]
+          }
         />
       </Reveal>
 
-      {/* Search */}
-      <ToolbarInput
-        id="lessons-search"
-        type="search"
-        icon={Search}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search lessons..."
-        aria-label="Search lessons"
-      />
-
-      {/* Category filter */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setSelectedCategory(null)}
-          className={`badge px-3 py-1.5 transition-all ${
-            selectedCategory === null
-              ? 'bg-primary-500/15 text-brand-text'
-              : 'text-content-muted hover:bg-overlay-subtle'
-          }`}
-        >
-          All
-        </button>
-        {LESSON_CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`badge px-3 py-1.5 transition-all ${
-              selectedCategory === cat
-                ? 'bg-primary-500/15 text-brand-text'
-                : 'text-content-muted hover:bg-overlay-subtle'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+      <div className="space-y-3">
+        <ToolbarInput
+          id="lessons-search"
+          type="search"
+          icon={Search}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search lessons"
+          aria-label="Search lessons"
+        />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Tabs
+            ariaLabel="Lesson categories"
+            size="sm"
+            scrollable
+            className="min-w-0 flex-1"
+            value={category}
+            onChange={setCategory}
+            items={[
+              { id: ALL, label: 'All', badge: searchMatches.length },
+              ...LESSON_CATEGORIES.map((cat) => ({
+                id: cat,
+                label: cat,
+                badge: searchMatches.filter((l) => l.category === cat).length,
+              })),
+            ]}
+          />
+          <div className="flex shrink-0 items-center gap-2 text-xs text-content-muted">
+            <Switch checked={unreadOnly} onChange={() => setUnreadOnly(!unreadOnly)} label="Unread only" />
+            <span>Unread only</span>
+          </div>
+        </div>
       </div>
 
-      {/* Lesson list */}
-      <div className="grid-cards-lg gap-2.5">
-        {filtered.map((lesson) => {
-          const isRead = isLessonReadThisSeason(lesson.id);
-          return (
-            <button
-              key={lesson.id}
-              onClick={() => setOpenLesson(lesson)}
-              className="card p-4 card-hover w-full flex items-center gap-3 text-left"
-            >
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isRead ? 'bg-primary-500/15' : 'bg-overlay-subtle'}`}>
-                {isRead ? (
-                  <Check size={18} className="text-brand-text" />
-                ) : (
-                  <BookOpen size={18} className="text-content-subtle" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="item-name text-sm text-content-secondary truncate">{lesson.title}</h3>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-content-disabled">{lesson.category}</span>
-                  <span className="figure text-xs text-content-subtle flex items-center gap-0.5">
-                    <Clock size={11} /> {lesson.readTime} min
-                  </span>
-                  <span className="figure text-xs text-brand-text">+{lesson.points} pts</span>
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {filtered.length === 0 && (
+      {filtered.length === 0 ? (
         <EmptyState
           icon={BookOpen}
-          title="No lessons found"
-          description="Try a different search or category."
+          title={unreadOnly && searchMatches.length > 0 ? 'All read here' : 'No lessons found'}
+          description={unreadOnly && searchMatches.length > 0 ? 'Turn off Unread only to read one again.' : 'Try a different search or category.'}
         />
+      ) : (
+        <div className="grid-cards-lg gap-2.5">
+          {filtered.map((lesson) => {
+            const read = isRead(lesson.id);
+            return (
+              <button
+                key={lesson.id}
+                type="button"
+                onClick={() => setOpenLesson(lesson)}
+                className="card card-hover enter-item flex w-full items-start gap-3 p-4 text-left"
+              >
+                <span
+                  className={cx(
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
+                    read ? 'bg-primary-500/15 text-brand-text' : 'bg-overlay-subtle text-content-muted'
+                  )}
+                >
+                  {read ? <Check size={18} aria-hidden="true" /> : <BookOpen size={18} aria-hidden="true" />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={cx('item-name line-clamp-2 text-sm leading-snug', read ? 'text-content-tertiary' : 'text-content-primary')}>
+                    {lesson.title}
+                  </span>
+                  <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-content-muted">
+                    <span>{lesson.category}</span>
+                    <span className="figure flex items-center gap-0.5">
+                      <Clock size={11} aria-hidden="true" /> {lesson.readTime} min
+                    </span>
+                    {read ? (
+                      <span className="text-success-text">Read</span>
+                    ) : (
+                      <span className="figure text-brand-text">{pointsLabel(lesson.points)}</span>
+                    )}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       )}
 
-      {/* Lesson reader modal */}
-      <Dialog
-        open={!!openLesson}
+      <LessonReader
+        lesson={openLesson}
+        isRead={openLesson ? isRead(openLesson.id) : false}
+        next={openLesson ? nextInList(openLesson) : undefined}
+        onMarkRead={(id) => store.markLessonRead(id)}
+        onOpenLesson={setOpenLesson}
         onClose={() => setOpenLesson(null)}
-        title={openLesson?.title ?? ''}
-        maxWidth="max-w-lg"
-      >
-        {openLesson && (
-          <div>
-            <div className="flex items-center gap-3 mb-4 text-xs text-content-disabled">
-              <span className="text-content-muted">{openLesson.category}</span>
-              <span className="flex items-center gap-0.5">
-                <Clock size={11} /> {openLesson.readTime} min read
-              </span>
-              <span className="text-brand-text">+{openLesson.points} pts</span>
-            </div>
-            <div>
-              {renderLessonContent(openLesson.content)}
-            </div>
-            <div className="mt-6 pt-4 border-t border-overlay-subtle">
-              {isLessonReadThisSeason(openLesson.id) ? (
-                <div className="flex items-center gap-2 text-sm text-brand-text">
-                  <Check size={16} />
-                  Lesson completed
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    store.markLessonRead(openLesson.id);
-                  }}
-                  className="btn-primary w-full"
-                >
-                  <Check size={16} />
-                  Mark as Read (+{openLesson.points} pts)
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </Dialog>
+      />
     </div>
   );
-}
-
-// Lesson bodies (lib/lessons.ts) use a small Markdown subset: ``` callouts, blank-line
-// separated blocks, "- " and "1. " lists, and **bold**. Rendered here so no syntax shows.
-type LessonBlock =
-  | { kind: 'p'; text: string }
-  | { kind: 'ul'; items: string[] }
-  | { kind: 'ol'; items: string[]; start: number };
-
-const BULLET = /^- (.*)$/;
-const NUMBERED = /^(\d+)\. (.*)$/;
-
-function parseLessonBlocks(text: string): LessonBlock[] {
-  const blocks: LessonBlock[] = [];
-  for (const line of text.split('\n').map((l) => l.trim())) {
-    const last = blocks[blocks.length - 1];
-    const bullet = BULLET.exec(line);
-    const numbered = NUMBERED.exec(line);
-    if (!line) {
-      blocks.push({ kind: 'p', text: '' });
-    } else if (bullet) {
-      if (last?.kind === 'ul') last.items.push(bullet[1]);
-      else blocks.push({ kind: 'ul', items: [bullet[1]] });
-    } else if (numbered) {
-      if (last?.kind === 'ol') last.items.push(numbered[2]);
-      else blocks.push({ kind: 'ol', items: [numbered[2]], start: Number(numbered[1]) });
-    } else if (last?.kind === 'p' && last.text) {
-      last.text += ` ${line}`;
-    } else {
-      blocks.push({ kind: 'p', text: line });
-    }
-  }
-  return blocks.filter((b) => b.kind !== 'p' || b.text);
-}
-
-function renderInline(text: string) {
-  return text.split(/\*\*(.+?)\*\*/).map((part, i) =>
-    i % 2 === 1 ? (
-      <strong key={i} className="font-semibold text-content-primary">
-        {part}
-      </strong>
-    ) : (
-      part
-    )
-  );
-}
-
-const LIST_CLASS = 'text-sm text-content-tertiary leading-relaxed mb-3 pl-5 space-y-1.5 marker:text-content-disabled';
-
-function renderLessonContent(content: string) {
-  // Odd parts of the ``` split are callouts.
-  return content.split(/```([\s\S]*?)```/).map((part, idx) => {
-    if (idx % 2 === 1) {
-      return (
-        <div
-          key={idx}
-          className="my-3 pl-3 border-l-2 border-primary-500/50 text-sm text-content-tertiary italic"
-        >
-          {renderInline(part.trim())}
-        </div>
-      );
-    }
-    return (
-      <div key={idx}>
-        {parseLessonBlocks(part).map((block, bIdx) => {
-          if (block.kind === 'ul') {
-            return (
-              <ul key={bIdx} className={`list-disc ${LIST_CLASS}`}>
-                {block.items.map((item, i) => (
-                  <li key={i}>{renderInline(item)}</li>
-                ))}
-              </ul>
-            );
-          }
-          if (block.kind === 'ol') {
-            return (
-              <ol key={bIdx} start={block.start} className={`list-decimal ${LIST_CLASS}`}>
-                {block.items.map((item, i) => (
-                  <li key={i}>{renderInline(item)}</li>
-                ))}
-              </ol>
-            );
-          }
-          return (
-            <p key={bIdx} className="text-sm text-content-tertiary leading-relaxed mb-3">
-              {renderInline(block.text)}
-            </p>
-          );
-        })}
-      </div>
-    );
-  });
 }
