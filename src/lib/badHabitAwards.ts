@@ -1,7 +1,7 @@
 import type { BadHabit, BadHabitLog, PointsEntry } from '@/types';
 import { BAD_HABIT_POINTS } from './pointsConfig';
 import { getPointEligibleHabitIds } from './badHabitEligibility';
-import { getMissPenaltyMultiplier } from './habitPenalties';
+import { badHabitCreatedDay, getBadHabitBadDaysBefore, getMissPenaltyMultiplier } from './habitPenalties';
 
 /**
  * Bad-habit points are written by the server (supabase/migrations/20261015130000_server_bad_habit_awards.sql).
@@ -55,7 +55,8 @@ function firstLogPerHabit(logs: BadHabitLog[], liveIds: Set<string>, day: string
  * Mirror of ascend_recompute_bad_habit_awards: the resist and occurred rows of one local day,
  * and each of the day's logs' points. Resists: the 2 oldest active habits earn +3 (a log that
  * already earned goes first), at most 2 a day and 6 points. Occurred: a penalty already
- * written keeps its amount; a new one is 5 x the miss multiplier, point-eligible habits only.
+ * written keeps its amount; a new one is 5 x the miss multiplier (bad days in a row, see
+ * getBadHabitBadDaysBefore), point-eligible habits only.
  */
 export function computeBadHabitAwards(
   badHabits: BadHabit[],
@@ -69,6 +70,7 @@ export function computeBadHabitAwards(
   const eligible = getPointEligibleHabitIds(badHabits);
   const names = new Map(badHabits.filter(Boolean).map((h) => [h.id, h.name]));
   const liveIds = new Set(names.keys());
+  const created = new Map(badHabits.filter(Boolean).map((h) => [h.id, badHabitCreatedDay(h.createdAt)]));
   const live = new Map((pointsHistory || []).filter(Boolean).map((e) => [e.id, e]));
   const stamp = (log: BadHabitLog) => new Date(Math.min(Math.max(timeOf(log.createdAt), dayStartMs), nowMs)).toISOString();
 
@@ -108,14 +110,8 @@ export function computeBadHabitAwards(
     }
     if (!eligible.has(log.badHabitId)) continue;
 
-    let occurrences = 1;
-    const before = logs
-      .filter((l) => l && l.badHabitId === log.badHabitId && l.date < day)
-      .sort((a, b) => b.date.localeCompare(a.date));
-    for (const l of before) {
-      if (l.status !== 'occurred' && l.status !== 'no_report') break;
-      occurrences++;
-    }
+    // 1 + the bad days in a row before the day (slipped, no-report or not logged).
+    const occurrences = 1 + getBadHabitBadDaysBefore(logs, log.badHabitId, day, created.get(log.badHabitId) ?? null);
     const multiplier = getMissPenaltyMultiplier(occurrences, seasonPoints);
     const penalty = Math.round(BAD_HABIT_POINTS.occurBase * multiplier);
     if (penalty <= 0) continue;

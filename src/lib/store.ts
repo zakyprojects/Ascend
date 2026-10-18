@@ -120,7 +120,9 @@ import {
 import { hydrateUserSession } from './authSession';
 import { createLeagueStandingsRefresher, leaguePeriodKey } from './leagueStandingsRefresh';
 import {
+  badHabitCreatedDay,
   getAppStateSeasonPoints,
+  getBadHabitBadDaysBefore,
 } from './habitPenalties';
 import { toSeasonHistory } from './seasonArchive';
 import { addPointsInternal } from './pointsLedger';
@@ -4827,17 +4829,11 @@ export function useAppState() {
       const existingLog = prev.badHabitLogs.find((l) => l.badHabitId === badHabitId && l.date === date);
       if (existingLog && existingLog.status === status) return prev;
 
-      let consecutiveOccurrences = 0;
-      if (status === 'occurred') {
-        consecutiveOccurrences = 1;
-        const pastLogs = prev.badHabitLogs
-          .filter((l) => l && l.badHabitId === badHabitId && l.date < date)
-          .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-        for (const log of pastLogs) {
-          if (log.status !== 'occurred' && log.status !== 'no_report') break;
-          consecutiveOccurrences++;
-        }
-      }
+      // Same count as the server (habitPenalties.ts getBadHabitBadDaysBefore): 1 + bad days in a row.
+      const consecutiveOccurrences =
+        status === 'occurred'
+          ? 1 + getBadHabitBadDaysBefore(prev.badHabitLogs, badHabitId, date, badHabitCreatedDay(bh.createdAt))
+          : 0;
 
       const nowIso = trustedNow().toISOString();
       const newLog: BadHabitLog = {

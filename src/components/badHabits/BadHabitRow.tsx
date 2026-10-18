@@ -2,7 +2,7 @@ import { AlertTriangle, Check, Flame, Trash2, Undo2, X } from 'lucide-react';
 import type { BadHabit, BadHabitLog } from '@/types';
 import { addDays, todayKey, parseDate } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
-import { getMissPenaltyMultiplier } from '@/lib/habitPenalties';
+import { badHabitCreatedDay, getBadHabitBadDaysBefore, getMissPenaltyMultiplier } from '@/lib/habitPenalties';
 import { ptsText } from '@/lib/leagues';
 import { lastDayKeys } from '@/lib/weeklyActivity';
 import { SwipeRow } from '@/components/ui/SwipeRow';
@@ -35,16 +35,11 @@ function resistStreaks(logs: BadHabitLog[], today: string): { current: number; b
 }
 
 /**
- * Slips and unlogged days in a row before today (the same walk as badHabitAwards.ts and the
- * server); slipping today is penalised at this count + 1.
+ * Slips and unlogged days in a row before today (the server's walk, getBadHabitBadDaysBefore);
+ * slipping today is penalised at this count + 1.
  */
-function slipsInARow(logs: BadHabitLog[], today: string): number {
-  let count = 0;
-  for (const log of logs.filter((l) => l.date < today).sort((a, b) => b.date.localeCompare(a.date))) {
-    if (log.status !== 'occurred' && log.status !== 'no_report') break;
-    count++;
-  }
-  return count;
+function slipsInARow(habit: BadHabit, logs: BadHabitLog[], today: string): number {
+  return getBadHabitBadDaysBefore(logs, habit.id, today, badHabitCreatedDay(habit.createdAt));
 }
 
 /** What slipping today would cost: the server's formula and rounding (D-B1). */
@@ -174,7 +169,7 @@ export function BadHabitRow({
 }: BadHabitRowProps) {
   const status = todayLog?.status === 'no_report' ? undefined : todayLog?.status;
   const { current, best } = resistStreaks(logs, today);
-  const slips = earnsPoints && !status ? slipsInARow(logs, today) : 0;
+  const slips = earnsPoints && !status ? slipsInARow(habit, logs, today) : 0;
   const points = todayLog?.pointsAwardedOrDeducted ?? 0;
 
   const pointsLabel = status
