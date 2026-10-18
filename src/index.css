@@ -1420,6 +1420,16 @@ html[data-page-hidden] *::after {
   scale: 1.25;
 }
 
+/* Swipeable tab panels (TabPanel, lib/useTabSwipe.ts): on touch screens vertical pans and pinch-zoom
+   stay with the browser and sideways drags come to the panel, which follows the finger and springs
+   back. If a device shows this switching off Android's edge back gesture over the panel, drop this
+   rule: the hook only uses passive touch events and works without it (a drift may then scroll). */
+@media (pointer: coarse) {
+  [data-tab-swipe] {
+    touch-action: pan-y pinch-zoom;
+  }
+}
+
 /* Sliding active pill (Tabs indicator, SlidingPill): glides between options at the nav pill's pace. */
 .sliding-pill-move {
   transition-property: left, top, width, height, background-color, border-color, box-shadow, color;

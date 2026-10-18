@@ -23,6 +23,7 @@ import {
   NavItem,
   NavSection,
   Select,
+  TabPanel,
   Tabs,
   Textarea,
   type BadgeTone,
@@ -289,6 +290,48 @@ function TabsDemo() {
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+const SWIPE_TABS: TabItem[] = [
+  { id: 'chart', label: 'Chart' },
+  { id: 'long', label: 'Long list' },
+  { id: 'form', label: 'Form' },
+];
+
+// Tab swipe test bed (lib/useTabSwipe): a chart that scrubs, a long panel with buttons, text fields.
+function TabSwipeDemo() {
+  const [tab, setTab] = useState('chart');
+  const [presses, setPresses] = useState(0);
+  const ids = SWIPE_TABS.map((t) => t.id);
+
+  return (
+    <div className="space-y-4">
+      <Tabs idBase="gallery-swipe" ariaLabel="Swipe demo" size="sm" scrollable items={SWIPE_TABS} value={tab} onChange={setTab} />
+      <TabPanel idBase="gallery-swipe" ids={ids} value={tab} onChange={setTab} className="space-y-3">
+        {tab === 'chart' && (
+          <div className="card p-4 space-y-2">
+            <p className="text-sm text-content-secondary">Swipe here to change tab; scrubbing the chart must not.</p>
+            <Sparkline points={CHART_TREND} label="Points, last 14 days" />
+          </div>
+        )}
+        {tab === 'long' &&
+          Array.from({ length: 30 }, (_, i) => (
+            <div key={i} className="card p-4 flex items-center justify-between">
+              <span className="text-sm text-content-secondary">Row {i + 1}</span>
+              <Button size="sm" variant="secondary" onClick={() => setPresses((n) => n + 1)}>
+                Press ({presses})
+              </Button>
+            </div>
+          ))}
+        {tab === 'form' && (
+          <div className="card p-4 space-y-3">
+            <Input label="Name" placeholder="Dragging in here selects text" />
+            <Textarea label="Note" placeholder="Swipes starting here never change tab" />
+          </div>
+        )}
+      </TabPanel>
     </div>
   );
 }
@@ -992,6 +1035,10 @@ export function Gallery() {
         {/* Section 7: Tabs */}
         <Section title="Tabs">
           <TabsDemo />
+        </Section>
+
+        <Section title="Tab swipe">
+          <TabSwipeDemo />
         </Section>
 
         <Section title="Charts">

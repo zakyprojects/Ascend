@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useActiveBox } from '@/lib/useActiveBox';
 import { useHoverGlide } from '@/lib/useHoverGlide';
 import { useScrollFade } from '@/lib/useScrollFade';
+import { useTabSwipe } from '@/lib/useTabSwipe';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
 import type { NavStatusTone } from '@/lib/navStatus';
 
@@ -24,7 +25,14 @@ export interface TabsProps {
   scrollable?: boolean;
   ariaLabel: string;
   className?: string;
+  /** Pairs the strip with its TabPanel (same idBase): ids for aria-controls/aria-labelledby. */
+  idBase?: string;
 }
+
+const stripDomId = (idBase: string) => `${idBase}-tablist`;
+const panelDomId = (idBase: string) => `${idBase}-panel`;
+// Tab ids can be free text (lesson categories); DOM ids used in aria references can't hold spaces.
+const tabDomId = (idBase: string, id: string) => `${idBase}-tab-${id.replace(/[^\w-]/g, '-')}`;
 
 // Underline tabs sit 16px apart (gap-4): their hit area also spans half the gap on each side, so a
 // tap between two tabs still lands on one.
@@ -43,6 +51,7 @@ export const Tabs: React.FC<TabsProps> = ({
   scrollable = false,
   ariaLabel,
   className,
+  idBase,
 }) => {
   const isSegmented = variant === 'segmented';
   const isSm = size === 'sm';
@@ -102,6 +111,7 @@ export const Tabs: React.FC<TabsProps> = ({
   return (
     <div
       ref={listRef}
+      id={idBase && stripDomId(idBase)}
       role="tablist"
       aria-label={ariaLabel}
       onKeyDown={handleKeyDown}
@@ -143,6 +153,8 @@ export const Tabs: React.FC<TabsProps> = ({
             }}
             type="button"
             role="tab"
+            id={idBase && tabDomId(idBase, item.id)}
+            aria-controls={idBase && active ? panelDomId(idBase) : undefined}
             data-glide-item=""
             aria-selected={active}
             tabIndex={active ? 0 : -1}
@@ -206,3 +218,35 @@ export const Tabs: React.FC<TabsProps> = ({
     </div>
   );
 };
+
+export interface TabPanelProps {
+  /** The idBase given to the Tabs strip this panel belongs to. */
+  idBase: string;
+  /** The strip's tab ids in strip order, and the same value/onChange the strip uses. */
+  ids: string[];
+  value: string;
+  onChange: (id: string) => void;
+  className?: string;
+  children: React.ReactNode;
+}
+
+/**
+ * The active tab's content: the tabpanel the strip points at, swiped sideways on touch screens to
+ * reach the neighbouring tab (lib/useTabSwipe). Only the active panel is rendered by the page.
+ */
+export function TabPanel({ idBase, ids, value, onChange, className, children }: TabPanelProps) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  useTabSwipe(ref, { ids, value, onChange, stripId: stripDomId(idBase) });
+  return (
+    <div
+      ref={ref}
+      id={panelDomId(idBase)}
+      role="tabpanel"
+      aria-labelledby={tabDomId(idBase, value)}
+      data-tab-swipe=""
+      className={className}
+    >
+      {children}
+    </div>
+  );
+}

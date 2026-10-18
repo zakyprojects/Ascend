@@ -53,8 +53,8 @@ export type { EmptyStateProps } from './EmptyState';
 export { NavItem, NavSection } from './Nav';
 export type { NavItemProps, NavSectionProps } from './Nav';
 
-export { Tabs } from './Tabs';
-export type { TabItem, TabsProps } from './Tabs';
+export { TabPanel, Tabs } from './Tabs';
+export type { TabItem, TabPanelProps, TabsProps } from './Tabs';
 
 export { SlidingPill } from './SlidingPill';
 export type { SlidingPillProps } from './SlidingPill';
