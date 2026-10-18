@@ -26,6 +26,14 @@ export interface TabsProps {
   className?: string;
 }
 
+// Underline tabs sit 16px apart (gap-4): their hit area also spans half the gap on each side, so a
+// tap between two tabs still lands on one.
+const UNDERLINE_TAP_TARGET =
+  "relative after:absolute after:-inset-x-2 after:top-1/2 after:h-[max(100%,44px)] after:-translate-y-1/2 after:content-['']";
+// A scrollable strip clips its children's hit areas to its own height (overflow-x also clips
+// vertically), so on touch screens its tabs are 44px tall themselves.
+const SCROLLABLE_TOUCH_HEIGHT = '[@media(pointer:coarse)]:min-h-11';
+
 export const Tabs: React.FC<TabsProps> = ({
   items,
   value,
@@ -153,7 +161,8 @@ export const Tabs: React.FC<TabsProps> = ({
                     'border-b-2 border-transparent',
                     active ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary'
                   ),
-              TAP_TARGET,
+              isSegmented ? TAP_TARGET : UNDERLINE_TAP_TARGET,
+              scrollable && SCROLLABLE_TOUCH_HEIGHT,
               FOCUS_RING,
               TRANSITION
             )}
