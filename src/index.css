@@ -153,9 +153,9 @@
     --rank-trainer-bg: rgba(251, 146, 60, 0.08);
     --rank-trainer-border: rgba(251, 146, 60, 0.25);
 
-    --rank-achiever-text: #f59e0b;
-    --rank-achiever-bg: rgba(245, 158, 11, 0.08);
-    --rank-achiever-border: rgba(245, 158, 11, 0.25);
+    --rank-achiever-text: #a3e635;
+    --rank-achiever-bg: rgba(163, 230, 53, 0.08);
+    --rank-achiever-border: rgba(163, 230, 53, 0.25);
 
     --rank-performer-text: #a78bfa;
     --rank-performer-bg: rgba(167, 139, 250, 0.08);
@@ -364,9 +364,9 @@
     --rank-trainer-bg: #fff7ed;
     --rank-trainer-border: #fdba74;
 
-    --rank-achiever-text: #b45309;
-    --rank-achiever-bg: #fef3c7;
-    --rank-achiever-border: #fcd34d;
+    --rank-achiever-text: #4d7c0f;
+    --rank-achiever-bg: #f7fee7;
+    --rank-achiever-border: #bef264;
 
     --rank-performer-text: #6d28d9;
     --rank-performer-bg: #f5f3ff;

@@ -1,6 +1,6 @@
 import { getCurrentTier } from '@/lib/tiers';
 import { LucideIcon } from 'lucide-react';
-import { Compass, Rocket, BookOpen, Dumbbell, Trophy, Star, Gem, Shield, Crown } from 'lucide-react';
+import { Compass, Rocket, BookOpen, Dumbbell, Trophy, Swords, Crosshair, Flag, Crown } from 'lucide-react';
 
 /** Lucide icon per tier `icon` name (tiers.ts); the one map every rank view uses. */
 export const TIER_ICONS: Record<string, LucideIcon> = {
@@ -9,9 +9,9 @@ export const TIER_ICONS: Record<string, LucideIcon> = {
   BookOpen,
   Dumbbell,
   Trophy,
-  Star,
-  Gem,
-  Shield,
+  Swords,
+  Crosshair,
+  Flag,
   Crown,
 };
 

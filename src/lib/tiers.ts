@@ -38,7 +38,7 @@ export const TIERS: Tier[] = [
   {
     name: 'Achiever',
     minPoints: 1400,
-    color: '#f59e0b',
+    color: '#a3e635',
     icon: 'Trophy',
     description: 'Consistently hitting weekly targets and resisting bad habit triggers.',
   },
@@ -46,21 +46,21 @@ export const TIERS: Tier[] = [
     name: 'Performer',
     minPoints: 2000,
     color: '#a78bfa',
-    icon: 'Star',
+    icon: 'Swords',
     description: 'High-stakes execution where discipline is non-negotiable and accountable.',
   },
   {
     name: 'Expert',
     minPoints: 2700,
     color: '#14b8a6',
-    icon: 'Gem',
+    icon: 'Crosshair',
     description: 'Deep mastery over focus, reading volume, and mental fortitude.',
   },
   {
     name: 'Leader',
     minPoints: 3500,
     color: '#ef4444',
-    icon: 'Shield',
+    icon: 'Flag',
     description: 'Setting the standard in the arena with unshakeable season momentum.',
   },
   {
