@@ -8,6 +8,7 @@ import { settingsSectionPath } from '@/lib/settingsSections';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PasswordStaircase } from '@/components/ui/PasswordStaircase';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
+import { AppLockup } from '@/components/ui/AppLogo';
 import { Form, FormAlert, focusField, isFinePointer, useFormController } from '@/components/ui/primitives';
 
 export interface ResetPasswordPageProps {
@@ -92,9 +93,8 @@ export function ResetPasswordPage({ signedIn, onNavigate }: ResetPasswordPagePro
     <main className="relative isolate flex-1 bg-bg-900 flex items-center justify-center px-4 py-10">
       <div aria-hidden="true" className="app-atmosphere" />
       <div className="card w-full max-w-md p-6 sm:p-8 space-y-5">
-        <div className="flex items-center gap-3">
-          <img src="/logo-torch.svg" alt="" width={40} height={40} className="w-10 h-10 shrink-0" />
-          <span className="font-display font-bold text-content-primary">Ascend</span>
+        <div className="flex">
+          <AppLockup className="h-6 w-auto shrink-0 text-content-primary" />
         </div>
 
         {done ? (

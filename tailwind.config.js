@@ -59,6 +59,7 @@ export default {
         },
         brand: {
           text: 'var(--color-brand-text)',
+          mark: 'var(--color-brand-mark)',
         },
         // Secondary — warm amber for streaks/energy
         secondary: {

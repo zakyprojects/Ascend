@@ -46,6 +46,8 @@
     /* Brand & High-Vibrancy Action Tokens (Dark mode defaults) */
     --color-text-on-brand: #ffffff;
     --color-brand-text: #34d399;
+    /* The Ascend mark (AppLogo, loaders): emerald on dark. */
+    --color-brand-mark: #10b981;
 
     /* Semantic Status Tokens - Text/Foreground (Dark mode defaults) */
     --color-success-text: #10b981;
@@ -258,6 +260,7 @@
     /* Brand & High-Vibrancy Action Tokens (White text on solid green buttons in both themes) */
     --color-text-on-brand: #ffffff;
     --color-brand-text: #047857;
+    --color-brand-mark: #059669;
 
     /* Semantic Status Tokens - Text/Foreground (High contrast on light backgrounds) */
     --color-success-text: #047857;
@@ -572,48 +575,6 @@
 }
 
 @layer components {
-  /* Theme-aware in-app logo (see AppLogo.tsx); dark is the default theme. */
-  .app-logo-light {
-    display: none;
-  }
-  [data-theme='light'] .app-logo-dark {
-    display: none;
-  }
-  [data-theme='light'] .app-logo-light {
-    display: block;
-  }
-
-  /* Branded loader (see AscendLoaderMark in AscendLoadingIndicator.tsx): solid chip colours per theme. */
-  .ascend-loader {
-    --al-chip: #112725;
-    --al-chip-border: #114136;
-    --al-stairs: #059669;
-    --al-steps: #6ee7b7;
-    --al-leg-a-0: #10b981;
-    --al-leg-a-1: #6ee7b7;
-    --al-leg-b-0: #34d399;
-    --al-leg-b-1: #059669;
-  }
-  [data-theme='light'] .ascend-loader {
-    --al-chip: #cdf2e5;
-    --al-chip-border: #9fdfc6;
-    --al-stairs: #047857;
-    --al-steps: #10b981;
-    --al-leg-a-0: #047857;
-    --al-leg-a-1: #10b981;
-    --al-leg-b-0: #059669;
-    --al-leg-b-1: #065f46;
-  }
-  .ascend-loader-chip {
-    fill: var(--al-chip);
-    stroke: var(--al-chip-border);
-  }
-  .ascend-loader-stairs {
-    fill: var(--al-stairs);
-  }
-  .ascend-loader-steps {
-    fill: var(--al-steps);
-  }
   .glass {
     @apply bg-bg-800/80 backdrop-blur-xl border border-overlay-subtle;
   }
@@ -1103,6 +1064,12 @@
     @apply btn bg-rose-600 text-white hover:bg-rose-700;
   }
 
+  /* The Streak loader (index.html) is brand emerald; on a solid emerald or rose fill it takes the
+     button's text colour instead, so it never vanishes into the fill. */
+  :is(.btn-primary, .btn-danger-solid, .bg-primary-600, .bg-rose-600) .streak-loader {
+    color: inherit;
+  }
+
   /* A dialog's action row (Dialog `footer`): buttons share the width on phones with a 44px
      tap height, and sit right-aligned at their natural width from sm. */
   .dialog-actions {
@@ -1551,7 +1518,7 @@ html.vt-auth-handoff::view-transition-new(root) {
 
 /* Reduced motion: one global switch for every animation and transition in the app.
    Loading spinners keep moving, since a frozen spinner reads as a hung app. The branded loader
-   is JS-driven and shows its static logo under reduced motion (AscendLoaderMark). */
+   shows the still mark under reduced motion (.streak-loader rules in index.html). */
 @media (prefers-reduced-motion: reduce) {
   *:not(.animate-spin),
   *::before,

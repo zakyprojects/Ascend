@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { AppLockup } from '@/components/ui/AppLogo';
 import { Ember, EmberFocus, EmberPhase, EmberRoute } from './Ember';
 
 export type ClimbPanelMode = 'login' | 'signup' | 'signup-choice' | 'upgrade';
@@ -26,7 +27,7 @@ export interface ClimbPanelProps {
   className?: string;
 }
 
-/** Brand emerald: the panel keeps it in both themes (the logo chip's dark colour). */
+/** Brand dark emerald: the panel keeps it in both themes. */
 export const CLIMB_PANEL_BG = '#112725';
 
 const COPY: Record<ClimbPanelMode, { headline: string; line: string }> = {
@@ -65,7 +66,7 @@ const CONTOURS: CSSProperties = {
 };
 
 /**
- * The brand side of the sign-in pages: dark emerald with contour lines, the torch chip, a serif
+ * The brand side of the sign-in pages: dark emerald with contour lines, the Ascend lockup, a serif
  * headline and Ember, the mascot, which reacts to the form. Size and placement
  * come from the page (`className`); the panel fills the box it is given. Everything here repeats
  * or decorates the form, so none of it is needed to sign in.
@@ -104,10 +105,7 @@ export function ClimbPanel({
         />
       ))}
 
-      <div className="flex items-center gap-2.5 lg:gap-3">
-        <img src="/logo-torch.svg" alt="" width={40} height={40} className="w-9 h-9 lg:w-10 lg:h-10 shrink-0" />
-        <span className="text-base lg:text-lg font-semibold tracking-tight">Ascend</span>
-      </div>
+      <AppLockup className="self-start h-5 lg:h-6 w-auto shrink-0 text-primary-50" markClassName="text-primary-500" />
 
       {/* Phones: headline and Ember side by side in the band. Desktop: headline centred, Ember below. */}
       <div className="flex-1 flex items-end gap-3 lg:flex-col lg:items-start lg:gap-0">

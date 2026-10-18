@@ -278,7 +278,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
         {/* Mobile header */}
         <header className="app-header lg:hidden glass border-b px-4 pt-[calc(0.75rem_+_env(safe-area-inset-top))] pb-3 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <AppLogo className="w-8 h-8 rounded-[22%] object-cover shrink-0" />
+            <AppLogo variant="small" className="w-8 h-8 shrink-0" />
             <span className="font-display font-bold text-content-primary">Ascend</span>
             <span className="whitespace-nowrap shrink-0 px-1.5 py-0.5 rounded-lg badge-beta text-3xs font-semibold">
               Beta
