@@ -96,7 +96,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
       : ' It earns no points, so your points stay the same.';
     const goals =
       linkedGoalsCount > 0
-        ? ` Deleting this habit will also delete ${linkedGoalsCount} linked Weekly Goal${linkedGoalsCount > 1 ? 's' : ''} from this week and upcoming weeks (past weeks are kept).`
+        ? ` ${linkedGoalsCount} linked weekly goal${linkedGoalsCount > 1 ? 's' : ''} for this week and later go too.`
         : '';
     return `This removes its history and streak.${points}${goals}`;
   };
@@ -229,7 +229,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
           if (confirmDelete) {
             await store.deleteHabit(confirmDelete.id);
             setConfirmDelete(null);
-            showSuccessToast('Habit deleted', 'Habit removed successfully.', `habit_${confirmDelete.id}`);
+            showSuccessToast(`Deleted ${confirmDelete.name}`, undefined, `habit_${confirmDelete.id}`);
           }
         }}
         title="Delete habit?"

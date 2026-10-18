@@ -26,7 +26,7 @@ export function HabitCheck({ habit, done, onToggle, size = 'md', iconClassName }
   const md = size === 'md';
   const when = habit.frequency === 'weekly' ? ' this week' : '';
   const label = linked
-    ? `${habit.name}: ${done ? 'done' : 'not done'}${when}, logged in Reading Hub`
+    ? `${habit.name}: ${done ? `done${when || ' today'}` : 'not done yet'}. Log pages in Reading Hub to tick it.`
     : `Mark ${habit.name} done${when}`;
 
   return (

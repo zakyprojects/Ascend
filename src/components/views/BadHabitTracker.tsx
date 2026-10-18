@@ -3,7 +3,7 @@ import { Info, Plus, ShieldAlert } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { useToast } from '@/components/ui/Toast';
 import { BadHabit } from '@/types';
-import { getNow } from '@/lib/dates';
+import { getNow, todayKey } from '@/lib/dates';
 import { BAD_HABIT_POINTS } from '@/lib/pointsConfig';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -49,6 +49,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
     if (!name.trim()) return;
     store.addBadHabit(name.trim());
     setShowAdd(false);
+    showSuccessToast('Bad habit added', name.trim());
   };
 
   const setPopping = (id: string, popping: boolean) =>
@@ -63,11 +64,12 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
   const resist = (habit: BadHabit) => {
     setPopping(habit.id, true);
     hapticSuccess();
-    store.logBadHabitDay(habit.id, today, 'resisted');
+    // The day at the tap, not at the last render: just after midnight the store would refuse a stale date.
+    store.logBadHabitDay(habit.id, todayKey(), 'resisted');
   };
   const slip = (habit: BadHabit) => {
     setPopping(habit.id, false);
-    store.logBadHabitDay(habit.id, today, 'occurred');
+    store.logBadHabitDay(habit.id, todayKey(), 'occurred');
   };
   const undo = (habit: BadHabit) => {
     setPopping(habit.id, false);

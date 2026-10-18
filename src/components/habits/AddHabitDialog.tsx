@@ -101,7 +101,7 @@ export function AddHabitDialog({ open, onClose, habits, onAddPreset, onAddCustom
         {tab === 'library' ? (
           <div className="space-y-5">
             <p className="text-xs text-content-muted">
-              Preset habits earn points, up to <span className="figure">{PRESET_HABIT_POINTS.dailyCap}</span> a day for
+              Preset habits earn points, up to <span className="figure">{ptsText(PRESET_HABIT_POINTS.dailyCap)}</span> a day for
               all of them together. The ones you tick first count first.
             </p>
             {PRESET_CATEGORIES.map((category) => (
