@@ -1196,7 +1196,7 @@ function SoundsDemo() {
   );
 }
 
-// Every single step plus the jumps Zakria asked for; points are the new rank's threshold (+51).
+// Every single step plus the jumps Zakria asked for; points shown are the new rank's exact threshold.
 const RANK_UP_DEMOS: Array<[number, number]> = [
   ...TIERS.slice(1).map((_, i): [number, number] => [i, i + 1]),
   [0, 4],
@@ -1224,7 +1224,7 @@ function RankUpDemo() {
           key={playing.join('-')}
           from={playing[0]}
           to={playing[1]}
-          seasonPoints={TIERS[playing[1]].minPoints + 51}
+          seasonPoints={TIERS[playing[1]].minPoints}
           onClose={() => setPlaying(null)}
           forceSound
         />
