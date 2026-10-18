@@ -1462,6 +1462,11 @@ export function getLinkedGoalCompletionTimestamp(
   if (goal.linkedModule === 'habit') {
     const habit = (state.habits || []).find((h) => h.id === goal.linkedItemId);
     if (!habit || !habit.completions) return undefined;
+    // A weekly habit counts once a week (linkedGoalMetrics): its week tick is the completion.
+    if (habit.frequency === 'weekly' && !Array.isArray(habit.completions) && dateStrings.length > 0) {
+      const weekTick = habit.completions[weekKey(parseDate(dateStrings[0]) ?? undefined)];
+      return weekTick?.done && targetVal <= 1 ? weekTick.updatedAt : undefined;
+    }
 
     const entries: { timestamp: string }[] = [];
     if (Array.isArray(habit.completions)) {

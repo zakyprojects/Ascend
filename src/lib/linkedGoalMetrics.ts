@@ -1,4 +1,5 @@
 import { AppState, WeeklyGoalItem } from '@/types';
+import { weekKey } from './dates';
 
 export type LinkedModule = 'habit' | 'exercise' | 'reading' | 'skill';
 
@@ -27,6 +28,11 @@ export const LINKED_GOAL_METRICS: Record<LinkedModule, LinkedGoalMetricDefinitio
       aggregator: (state, item, dateStrings) => {
         const habit = (state.habits || []).find((h) => h.id === item.linkedItemId);
         if (!habit || !habit.completions) return 0;
+        // A weekly habit's ticks are keyed by week (periodKey), not by day: it counts once a week.
+        if (habit.frequency === 'weekly' && !Array.isArray(habit.completions) && dateStrings.length > 0) {
+          const [y, m, d] = dateStrings[0].split('-').map(Number);
+          return habit.completions[weekKey(new Date(y, m - 1, d))]?.done ? 1 : 0;
+        }
         if (Array.isArray(habit.completions)) {
           // Defensive only: state passed here has already gone through sanitizeState() 
           // in store.ts, which normalizes legacy string[] completions into the 
