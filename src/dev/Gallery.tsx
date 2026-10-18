@@ -20,6 +20,7 @@ import {
   Info,
   Settings,
   HelpCircle,
+  Play,
 } from 'lucide-react';
 import {
   Badge,
@@ -62,6 +63,8 @@ import { SwipeRow } from '../components/ui/SwipeRow';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { ToastProvider, useToast } from '../components/ui/Toast';
 import { HabitCheck } from '../components/habits/HabitCheck';
+import { RankUpCelebration } from '../components/ui/RankUpCelebration';
+import { TIERS } from '@/lib/tiers';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import type { NavStatus } from '@/lib/navStatus';
 import type { Habit } from '@/types';
@@ -1193,6 +1196,43 @@ function SoundsDemo() {
   );
 }
 
+// Every single step plus the jumps Zakria asked for; points are the new rank's threshold (+51).
+const RANK_UP_DEMOS: Array<[number, number]> = [
+  ...TIERS.slice(1).map((_, i): [number, number] => [i, i + 1]),
+  [0, 4],
+  [0, 7],
+  [0, 8],
+  [6, 8],
+];
+
+/** The real rank-up overlay for each step and jump, with its fanfare (whatever the tick choice). */
+function RankUpDemo() {
+  const [playing, setPlaying] = useState<[number, number] | null>(null);
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-2 sm:grid-cols-2">
+        {RANK_UP_DEMOS.map(([from, to]) => (
+          <Button key={`${from}-${to}`} variant="secondary" onClick={() => setPlaying([from, to])} className="justify-start">
+            <Play size={14} aria-hidden="true" />
+            {TIERS[from].name} → {TIERS[to].name}
+            {to - from >= 2 && <span className="text-2xs font-medium text-content-muted">jump</span>}
+          </Button>
+        ))}
+      </div>
+      {playing && (
+        <RankUpCelebration
+          key={playing.join('-')}
+          from={playing[0]}
+          to={playing[1]}
+          seasonPoints={TIERS[playing[1]].minPoints + 51}
+          onClose={() => setPlaying(null)}
+          forceSound
+        />
+      )}
+    </div>
+  );
+}
+
 const NAV_DEMO_GROUPS: Array<{
   id: string;
   label: string;
@@ -1683,6 +1723,13 @@ function GalleryContent() {
 
         <Section title="Sound & vibration">
           <SoundsDemo />
+        </Section>
+
+        <Section
+          title="Rank up"
+          note="The real overlay with its fanfare (sound plays even if your tick choice is vibration). Starter to Trainer clean, Achiever to Expert richer, Leader and Master the full show; a jump is one level grander. Try both themes and reduced motion."
+        >
+          <RankUpDemo />
         </Section>
 
         <Section title="Charts">
