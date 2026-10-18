@@ -13,7 +13,7 @@ import {
   verifyAccountPassword,
 } from './supabase';
 import { trustedNow, trustedNowMs } from './clock';
-import { looksLikeUsername } from './usernameRules';
+import { isUsernameTakenError, looksLikeUsername, sameUsername, USERNAME_TAKEN, usernameFormatProblem } from './usernameRules';
 import { NETWORK_MESSAGE } from './userMessage';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
@@ -106,36 +106,27 @@ export async function isUsernameAvailable(
   currentUserId?: string
 ): Promise<{ available: boolean; reason?: string; unknown?: boolean }> {
   const trimmed = username.trim();
-  if (!trimmed) {
-    return { available: false, reason: 'Username cannot be empty' };
+  const formatProblem = usernameFormatProblem(trimmed);
+  if (formatProblem) {
+    return { available: false, reason: formatProblem };
   }
-  if (trimmed.length < 3) {
-    return { available: false, reason: 'Username must be at least 3 characters' };
-  }
-  if (trimmed.length > 20) {
-    return { available: false, reason: 'Username must be 20 characters or less' };
-  }
-  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
-    return { available: false, reason: 'Username can only contain letters, numbers, underscores, and hyphens' };
-  }
-
-  const lower = trimmed.toLowerCase();
 
   if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username')
-        .ilike('username', trimmed);
+        // No wildcards = case-insensitive equality; "_" is a LIKE wildcard, so it is escaped.
+        .ilike('username', trimmed.replace(/_/g, '\\_'));
 
       if (error) {
         // Not known: the server still refuses a taken name when it is saved.
         console.warn('Username check query error:', error.message);
         return { available: true, unknown: true };
       } else if (data && data.length > 0) {
-        const taken = data.some((p) => p.id !== currentUserId && p.username.toLowerCase() === lower);
+        const taken = data.some((p) => p.id !== currentUserId && sameUsername(p.username, trimmed));
         if (taken) {
-          return { available: false, reason: 'Username is already taken' };
+          return { available: false, reason: USERNAME_TAKEN };
         }
       }
     } catch (e) {
@@ -349,7 +340,7 @@ export async function upgradeAnonymousUser(
   if (Object.keys(updates).length > 0) {
     const { error: profileError } = await supabase.from('profiles').update(updates).eq('id', user.id);
     if (profileError) {
-      if (profileError.code === '23505') throw new Error('Username is already taken');
+      if (isUsernameTakenError(profileError)) throw new Error(USERNAME_TAKEN);
       throw new Error("Couldn't save your profile. Try again.");
     }
   }
@@ -464,6 +455,7 @@ export async function updateUsernameWithCooldown(
     });
 
     if (updateErr) {
+      if (isUsernameTakenError(updateErr)) throw new Error(USERNAME_TAKEN);
       throw new Error(updateErr.message || "Couldn't change your username. Try again.");
     }
     const nowIso = typeof changedAt === 'string' ? changedAt : trustedNow().toISOString();

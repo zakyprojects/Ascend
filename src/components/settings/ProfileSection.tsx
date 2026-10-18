@@ -11,16 +11,9 @@ import { toUserMessage } from '@/lib/userMessage';
 import { trustedNowMs } from '@/lib/clock';
 import { useToast } from '@/components/ui/Toast';
 import { SettingsCard } from './SettingRow';
+import { USERNAME_TAKEN, usernameFormatProblem } from '@/lib/usernameRules';
 
 const COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const FORMAT_RULE = 'Use 3–20 letters, numbers, _ or -.';
-const TAKEN = 'That username is taken.';
-
-/** The same format rule the server applies (ascend_change_username); null when it is fine. */
-function usernameFormatProblem(name: string): string | null {
-  if (name.length < 3 || name.length > 20 || !/^[a-zA-Z0-9_-]+$/.test(name)) return FORMAT_RULE;
-  return null;
-}
 
 type NameCheck = { state: 'idle' } | { state: 'available' } | { state: 'problem'; message: string };
 
@@ -81,7 +74,7 @@ export function ProfileSection({ store }: { store: AppStore }) {
       if (cancelled) return;
       // Unknown (offline, server error): no answer here; the server decides on save (S3).
       if ('unknown' in result && result.unknown) setNameCheck({ state: 'idle' });
-      else setNameCheck(result.available ? { state: 'available' } : { state: 'problem', message: TAKEN });
+      else setNameCheck(result.available ? { state: 'available' } : { state: 'problem', message: USERNAME_TAKEN });
     }, 300);
     return () => {
       cancelled = true;
