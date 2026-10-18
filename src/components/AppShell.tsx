@@ -246,7 +246,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
           onNavigate={goTo}
           onSearch={() => setPaletteOpen(true)}
           onQuickLog={() => setQuickLogOpen(true)}
-          bell={currentUser ? <NotificationCenter store={store} compact align="sidebar" /> : null}
+          bell={currentUser ? <NotificationCenter store={store} onNavigate={goTo} compact align="sidebar" /> : null}
           standing={<RankChip seasonPoints={seasonPoints} latestEntryTimestamp={latestPointsTimestamp} />}
           renderAccount={(placement) => (
             <AccountMenu
@@ -281,7 +281,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
             <Button variant="ghost" size="icon" aria-label="Quick log" onClick={() => setQuickLogOpen(true)}>
               <Plus size={20} aria-hidden="true" />
             </Button>
-            {currentUser && <NotificationCenter store={store} compact />}
+            {currentUser && <NotificationCenter store={store} onNavigate={goTo} compact />}
             {!currentUser && onOpenAuth && (
               <button
                 onClick={onOpenAuth}
