@@ -23,7 +23,7 @@ export function PlanCard({
   source?: ReactNode;
   /** Extra badges after the type (visibility). */
   tags?: ReactNode;
-  /** Corner icon buttons. */
+  /** Owner icon buttons (PlanIconButton), shown at the end of the badge row. */
   controls?: ReactNode;
   footer?: ReactNode;
   actions?: PlanActions;
@@ -34,7 +34,7 @@ export function PlanCard({
   return (
     <article className="card enter-item flex flex-col gap-4 p-4 sm:p-5">
       <header className="space-y-2">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             <Badge tone={meta.badge} size="xs">
               <TypeIcon size={12} /> {meta.label}
@@ -42,7 +42,13 @@ export function PlanCard({
             {tags}
             {category && <span className="text-2xs text-content-muted">{category}</span>}
           </div>
-          {controls && <div className="-mr-2 -mt-2 flex shrink-0 items-center">{controls}</div>}
+          {controls && (
+            // Sits in the badge row without making it taller on desktop; on touch the buttons are
+            // bigger and the row grows to fit them instead of pushing into the card's corner.
+            <div className="-my-1.5 -mr-1 flex shrink-0 items-center gap-1 [@media(pointer:coarse)]:my-0 [@media(pointer:coarse)]:gap-1.5">
+              {controls}
+            </div>
+          )}
         </div>
         <h3 className="item-name text-base leading-snug break-words">{plan.title}</h3>
         {source && <p className="text-xs text-content-muted">{source}</p>}

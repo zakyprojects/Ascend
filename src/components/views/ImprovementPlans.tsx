@@ -9,10 +9,10 @@ import { ProgressUpdateDialog } from '@/components/ui/ProgressUpdateDialog';
 import { PageHero } from '@/components/ui/PageHero';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { Badge, Dialog, EmptyState, Form, NumberField, TabPanel, Tabs } from '@/components/ui/primitives';
-import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { ImprovementPlan, UserPlanFollow } from '@/types';
 import { toUserMessage } from '@/lib/userMessage';
 import { PlanCard } from '@/components/plans/PlanCard';
+import { PlanIconButton } from '@/components/plans/PlanIconButton';
 import type { PlanActions } from '@/components/plans/PlanBody';
 import { CreatePlanDialog } from '@/components/plans/CreatePlanDialog';
 import { EditPlanDialog } from '@/components/plans/EditPlanDialog';
@@ -109,32 +109,21 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     const busy = isKeyLoading(`toggle_vis_${plan.id}`);
     return (
       <>
-        <button
-          type="button"
+        <PlanIconButton
           disabled={busy}
+          active={plan.isPublic}
           onClick={() => toggleVisibility(plan)}
-          className={`rounded-lg text-content-muted hover:text-content-primary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
-          title={plan.isPublic ? 'Make it only yours' : 'Share in Discover'}
-          aria-label={plan.isPublic ? `Make "${plan.title}" private` : `Share "${plan.title}" in Discover`}
+          title={plan.isPublic ? 'Public in Discover. Make it only yours' : 'Only you. Share in Discover'}
+          label={plan.isPublic ? `Make "${plan.title}" private` : `Share "${plan.title}" in Discover`}
         >
           {busy ? <AscendLoadingIndicator size="sm" /> : plan.isPublic ? <Globe size={16} /> : <Lock size={16} />}
-        </button>
-        <button
-          type="button"
-          onClick={() => setEditingPlanId(plan.id)}
-          className={`rounded-lg text-content-muted hover:text-content-primary hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
-          aria-label={`Edit "${plan.title}"`}
-        >
+        </PlanIconButton>
+        <PlanIconButton onClick={() => setEditingPlanId(plan.id)} title="Edit" label={`Edit "${plan.title}"`}>
           <Edit3 size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={() => setPlanToDelete(plan)}
-          className={`rounded-lg text-content-muted hover:text-rose-theme hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
-          aria-label={`Delete "${plan.title}"`}
-        >
+        </PlanIconButton>
+        <PlanIconButton tone="danger" onClick={() => setPlanToDelete(plan)} title="Delete" label={`Delete "${plan.title}"`}>
           <Trash2 size={16} />
-        </button>
+        </PlanIconButton>
       </>
     );
   };
@@ -252,14 +241,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                       plan={follow}
                       source={copySource(follow)}
                       controls={
-                        <button
-                          type="button"
+                        <PlanIconButton
+                          tone="danger"
                           onClick={() => setFollowToDelete(follow)}
-                          className={`rounded-lg text-content-muted hover:text-rose-theme hover:bg-overlay-subtle transition-colors ${TAP_TARGET}`}
-                          aria-label={`Remove copy "${follow.title}"`}
+                          title="Remove copy"
+                          label={`Remove copy "${follow.title}"`}
                         >
                           <Trash2 size={16} />
-                        </button>
+                        </PlanIconButton>
                       }
                       actions={actionsFor('copy', follow)}
                     />
