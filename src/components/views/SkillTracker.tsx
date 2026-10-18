@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Clock, Flame, Plus, Target, Trash2 } from 'lucide-react';
 import { AppStore, CLEAR_SKILL_LOGS_MAX } from '@/lib/store';
+import { ledgerPointsByDay } from '@/lib/ledgerDayPoints';
+import { isRetiredAppSkillAward } from '@/lib/skillAwards';
 import { ptsText } from '@/lib/leagues';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -80,6 +82,10 @@ export function SkillTracker({ store }: { store: AppStore }) {
 
   const skills = store.state.skills;
   const skillLogs = store.state.skillLogs;
+  // Day points come from the ledger, so deleting or clearing an earlier day's practice never
+  // shows that day's points going down (they stay on the server).
+  const pointsHistory = store.state.pointsHistory;
+  const ledgerDayPoints = useMemo(() => ledgerPointsByDay(pointsHistory, 'skill', isRetiredAppSkillAward), [pointsHistory]);
   const today = useLocalDayKey();
 
   const categories = useMemo(
@@ -418,7 +424,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
                   )}
                 </div>
                 {earlierDays.slice(0, daysShown).map(([day, list]) => {
-                  const dayPoints = list.reduce((sum, l) => sum + (l.pointsAwarded || 0), 0);
+                  const dayPoints = ledgerDayPoints.get(day) || 0;
                   return (
                     <div key={day}>
                       <div className="flex items-center justify-between mb-1.5 px-1 text-xs text-content-muted">

@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Activity, Calendar, Dumbbell, Flame, Plus, Trash2 } from 'lucide-react';
 import { AppStore, CLEAR_WORKOUTS_MAX } from '@/lib/store';
+import { ledgerPointsByDay } from '@/lib/ledgerDayPoints';
+import { isRetiredAppWorkoutAward } from '@/lib/workoutAwards';
 import { ptsText } from '@/lib/leagues';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { WORKOUT_POINTS, calculateWorkoutPoints } from '@/lib/pointsConfig';
@@ -64,6 +66,10 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
   const [clearOpen, setClearOpen] = useState(false);
 
   const workouts = store.state.workouts;
+  // Day points come from the ledger, so deleting or clearing an earlier day's workout never
+  // shows that day's points going down (they stay on the server).
+  const pointsHistory = store.state.pointsHistory;
+  const ledgerDayPoints = useMemo(() => ledgerPointsByDay(pointsHistory, 'exercise', isRetiredAppWorkoutAward), [pointsHistory]);
   const today = useLocalDayKey();
 
   // Newest first, then grouped by day.
@@ -111,7 +117,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
       dayLabel,
       key,
       count: dayWorkouts.length,
-      points: dayWorkouts.reduce((sum, w) => sum + (w.pointsAwarded || 0), 0),
+      points: ledgerDayPoints.get(key) || 0,
       isToday: key === today,
     };
   });
@@ -344,7 +350,7 @@ export function ExerciseTracker({ store }: { store: AppStore }) {
                   )}
                 </div>
                 {earlierDays.slice(0, daysShown).map(([day, list]) => {
-                  const dayPoints = list.reduce((sum, w) => sum + (w.pointsAwarded || 0), 0);
+                  const dayPoints = ledgerDayPoints.get(day) || 0;
                   return (
                     <div key={day}>
                       <div className="flex items-center justify-between mb-1.5 px-1 text-xs text-content-muted">
