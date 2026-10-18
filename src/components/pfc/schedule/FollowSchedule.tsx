@@ -58,10 +58,13 @@ export function FollowSchedule({
   const [ignited, setIgnited] = useState(() => readIgnited(day));
   const [confirmStop, setConfirmStop] = useState(false);
 
-  // A new day starts unfollowed.
+  // A new day starts unfollowed, and is filled from its template like at boot and on Time Tracker,
+  // so the start screen counts today's real blocks after midnight (C6).
   useEffect(() => {
     setIgnited(readIgnited(day));
     pruneOldIgnitionKeys(day);
+    store.hydrateTimeTrackerForDate(day);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- store methods are stable; runs per day
   }, [day]);
 
   const theme = store.state.themePreference || 'dark';

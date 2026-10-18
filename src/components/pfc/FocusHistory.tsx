@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Timer, Trash2 } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
 import type { FocusSessionLog } from '@/types';
-import { formatDateLong, todayKey } from '@/lib/dates';
+import { formatDateLong } from '@/lib/dates';
 import { trustedNowMs } from '@/lib/clock';
 import { computeFocusAwards } from '@/lib/focusAwards';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -17,7 +17,7 @@ function todaysFocusPoints(logs: FocusSessionLog[], today: string): number {
 }
 
 /** Sessions, newest first: Today, then earlier days a week at a time. */
-export function FocusHistory({ store }: { store: AppStore }) {
+export function FocusHistory({ store, today }: { store: AppStore; today: string }) {
   const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [daysShown, setDaysShown] = useState(DAYS_PAGE);
@@ -25,7 +25,6 @@ export function FocusHistory({ store }: { store: AppStore }) {
 
   const logs = store.state.focusLogs;
   const skills = store.state.skills;
-  const today = todayKey();
   const sorted = useMemo(() => [...logs].sort(byNewest((l) => l.date, (l) => l.createdAt)), [logs]);
   const todayLogs = sorted.filter((l) => l.date === today);
   const earlierDays = useMemo(() => groupByDay(sorted.filter((l) => l.date !== today), (l) => l.date), [sorted, today]);

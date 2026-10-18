@@ -12,10 +12,10 @@ import { FocusHistory } from './FocusHistory';
 import { AboutFocusDialog } from './AboutFocusDialog';
 
 /** Focus tab: the timer card and the session history; chart and rules on the side. */
-export function FocusPanel({ store }: { store: AppStore }) {
+export function FocusPanel({ store, today }: { store: AppStore; today: string }) {
   const [aboutOpen, setAboutOpen] = useState(false);
   const logs = store.state.focusLogs;
-  const days = lastDayKeys(7);
+  const days = lastDayKeys(7, today);
   const minutesByDay = sumPerDay(logs, days, (l) => l.durationMinutes);
   const weekTotal = minutesByDay.reduce((sum, m) => sum + m, 0);
   const tiers = [...PFC_POINTS.focus.tiers].reverse();
@@ -67,7 +67,7 @@ export function FocusPanel({ store }: { store: AppStore }) {
         </>
       }
     >
-      <FocusHistory store={store} />
+      <FocusHistory store={store} today={today} />
     </PageColumns>
   );
 }

@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Plus, Scale } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
 import type { DecisionLog } from '@/types';
-import { todayKey } from '@/lib/dates';
 import { EmptyState } from '@/components/ui/primitives';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -15,7 +14,7 @@ import { dueDecisions } from './pfcLists';
 const REFLECTED_PAGE = 10;
 
 /** Decisions tab: To revisit, Coming up, Reflected. Decisions earn no points. */
-export function DecisionJournal({ store }: { store: AppStore }) {
+export function DecisionJournal({ store, today }: { store: AppStore; today: string }) {
   const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [formOpen, setFormOpen] = useState(false);
@@ -25,7 +24,6 @@ export function DecisionJournal({ store }: { store: AppStore }) {
   const [reflectedShown, setReflectedShown] = useState(REFLECTED_PAGE);
 
   const logs = store.state.decisionLogs;
-  const today = todayKey();
   const due = useMemo(() => dueDecisions(logs, today), [logs, today]);
   const upcoming = useMemo(
     () => logs.filter((d) => !d.isReflected && d.revisitDate > today).sort((a, b) => a.revisitDate.localeCompare(b.revisitDate)),

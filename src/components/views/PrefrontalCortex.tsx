@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
 import { addDays, startOfWeek, todayKey } from '@/lib/dates';
+import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { isFocusDayEntry } from '@/lib/focusAwards';
 import { PFC_POINTS } from '@/lib/pointsConfig';
 import { Tabs } from '@/components/ui/primitives';
@@ -45,7 +46,8 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
   useEffect(clearHandOffs, []);
   const { focusLogs, decisionLogs, emotionLogs, pointsHistory } = store.state;
 
-  const today = todayKey();
+  // Re-renders at local midnight, so "today" numbers and the tabs below roll over (C5).
+  const today = useLocalDayKey();
   const weekStart = todayKey(startOfWeek());
   const todayFocus = focusLogs.filter((l) => l.date === today);
   const focusMinutesToday = todayFocus.reduce((sum, l) => sum + l.durationMinutes, 0);
@@ -113,10 +115,10 @@ export function PrefrontalCortex({ store, onNavigate }: { store: AppStore; onNav
         onChange={(id) => setTab(id as PFCTab)}
       />
 
-      {tab === 'focus' && <FocusPanel store={store} />}
+      {tab === 'focus' && <FocusPanel store={store} today={today} />}
       {tab === 'schedule' && <SchedulePanel store={store} onNavigate={onNavigate} onShowTimer={() => setTab('focus')} />}
-      {tab === 'decisions' && <DecisionJournal store={store} />}
-      {tab === 'emotions' && <EmotionLabeler store={store} />}
+      {tab === 'decisions' && <DecisionJournal store={store} today={today} />}
+      {tab === 'emotions' && <EmotionLabeler store={store} today={today} />}
 
       <FocusReflectionDialog store={store} />
     </div>

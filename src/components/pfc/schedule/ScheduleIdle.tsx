@@ -43,7 +43,7 @@ export function ScheduleStopConfirm({ onKeep, onStop }: { onKeep: () => void; on
       </div>
       <div className="space-y-1.5">
         <h3 className="section-title">Stop following your schedule?</h3>
-        <p className="text-sm text-content-tertiary">The card goes back to the plain timer. Your blocks stay as they are.</p>
+        <p className="text-sm text-content-tertiary">You go back to the Focus tab. Your blocks stay as they are.</p>
       </div>
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
         <button type="button" onClick={onKeep} className="w-full sm:w-auto btn-secondary min-h-11">

@@ -247,8 +247,11 @@ function CategoryRadioList({
     else return;
     event.preventDefault();
     const opt = options[next];
-    onChange(opt.id);
-    refs.current.get(opt.id)?.focus();
+    // A click (not onChange): the form clears a shown "Choose an option." on a button click, so
+    // picking by arrow keys clears it too, like the mouse and Space/Enter (C3).
+    const target = refs.current.get(opt.id);
+    target?.click();
+    target?.focus();
   };
 
   if (options.length === 0) return <p className="text-xs text-content-muted">No other category to move to.</p>;

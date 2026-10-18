@@ -120,12 +120,18 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
     if (!result.applied) {
       // Nothing changed: the dialog stays open and says why.
       if (result.reason === 'past') throw new Error("Past days can't change. Pick today or a later day.");
-      if (result.reason === 'overlap') throw new Error(`All ${result.rejected} blocks overlap what's planned. Pick Replace to use this template.`);
+      if (result.reason === 'overlap')
+        throw new Error(
+          result.rejected === 1
+            ? "That block overlaps what's planned. Pick Replace to use this template."
+            : `All ${result.rejected} blocks overlap what's planned. Pick Replace to use this template.`
+        );
       throw new Error('This template is no longer there.');
     }
-    if (mode === 'replace') showSuccessToast('Template applied', `${result.added} blocks planned.`);
+    const blocks = (n: number) => `${n} block${n === 1 ? '' : 's'}`;
+    if (mode === 'replace') showSuccessToast('Template applied', `${blocks(result.added)} planned.`);
     else if (result.rejected > 0) showSuccessToast('Template added', `${result.added} added, ${result.rejected} left out (they overlap).`);
-    else showSuccessToast('Template added', `${result.added} blocks added.`);
+    else showSuccessToast('Template added', `${blocks(result.added)} added.`);
   };
 
   const openActivity = (activity: TimeTrackerActivity | null) => {

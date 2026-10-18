@@ -136,7 +136,7 @@ export function ScheduleGap({
           surface={false}
           icon={CalendarDays}
           title="No blocks scheduled today"
-          description="Open Time Tracker to apply a blueprint or add blocks for today."
+          description="Open Time Tracker to apply a template or add blocks for today."
         />
       )}
     </div>

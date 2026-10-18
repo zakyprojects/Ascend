@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { HeartHandshake, Plus, Trash2 } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
 import type { EmotionLog } from '@/types';
-import { addDays, formatDateLong, todayKey } from '@/lib/dates';
+import { addDays, formatDateLong } from '@/lib/dates';
 import { EmptyState } from '@/components/ui/primitives';
 import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -14,7 +14,7 @@ import { byNewest, COMMON_EMOTIONS, DAYS_PAGE, emotionSummary, groupByDay, local
 const SUMMARY_DAYS = 30;
 
 /** Emotions tab: quick labels, a 30-day summary, and every entry by day. No points. */
-export function EmotionLabeler({ store }: { store: AppStore }) {
+export function EmotionLabeler({ store, today }: { store: AppStore; today: string }) {
   const { showSuccessToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
   const [formEmotion, setFormEmotion] = useState<string | null>(null);
@@ -22,7 +22,6 @@ export function EmotionLabeler({ store }: { store: AppStore }) {
   const [daysShown, setDaysShown] = useState(DAYS_PAGE);
 
   const logs = store.state.emotionLogs;
-  const today = todayKey();
   const sorted = useMemo(() => [...logs].sort(byNewest((l) => localDayOf(l.date), (l) => l.date)), [logs]);
   const todayLogs = sorted.filter((l) => localDayOf(l.date) === today);
   const earlierDays = useMemo(
