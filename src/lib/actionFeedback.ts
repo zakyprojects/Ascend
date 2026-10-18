@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from 'react';
-import { prefersReducedMotion } from '@/lib/motion';
 import { findActionSound, playActionSound, SWIPE_SOUND_ID, TICK_SOUND_ID, type ActionSound } from '@/lib/actionSounds';
 
 /**
@@ -7,7 +6,9 @@ import { findActionSound, playActionSound, SWIPE_SOUND_ID, TICK_SOUND_ID, type A
  * in Settings > Sound & vibration. Kept on this device only (localStorage), like the theme: a phone
  * and a laptop want different things, and nothing about it belongs to the account.
  *
- * - 'tick': checking off a habit, resisting a bad habit, finishing a task or a weekly goal.
+ * - 'tick': a "done" moment the user causes: a habit, bad habit resisted, task, subtask, weekly goal,
+ *   plan step or journey, lesson read, book finished, schedule block completed, partner challenge day.
+ *   Never plain taps (navigation, profiles, settings, saving a form): feedback stays rare.
  * - 'swipe': a swipe row arming its action, a tab or page swipe arming or flicking.
  *
  * Vibration is Android-only (iOS Safari and desktops have no Vibration API). The browser cannot set
@@ -48,10 +49,10 @@ export function canPlaySound(): boolean {
   return typeof window !== 'undefined' && typeof window.AudioContext === 'function';
 }
 
-/** Until the user chooses: vibration where the device has it, nothing elsewhere. Users who asked
- *  the system for reduced motion start with none, as before this setting existed. */
+/** Until the user chooses: a soft sound for both (Zakria, 2026-10-18); vibration, then nothing,
+ *  where the browser has no Web Audio. */
 function defaultPrefs(): FeedbackPrefs {
-  const mode: FeedbackMode = canVibrate() && !prefersReducedMotion() ? 'vibration' : 'none';
+  const mode: FeedbackMode = canPlaySound() ? 'sound' : canVibrate() ? 'vibration' : 'none';
   return { tick: mode, swipe: mode, vibrationStrength: 'medium', soundVolume: 'soft' };
 }
 

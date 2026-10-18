@@ -13,6 +13,7 @@ import { formatClock } from '../focusSession';
 import { getBlockContextualMessage, getSkipToastMessage } from '../scheduleMessages';
 import { ActivityTile, SCHEDULE_ACTION as ACTION, StopScheduleButton, blockRange, blockTitle, hhmm, type Theme } from './shared';
 import { TakeBreakDialog } from './TakeBreakDialog';
+import { actionFeedback } from '@/lib/actionFeedback';
 
 /** The block happening now: countdown to its end, break, skip, complete. */
 export function ScheduleActiveBlock({
@@ -252,6 +253,7 @@ export function ScheduleActiveBlock({
               act(() => {
                 const at = hhmm(now);
                 store.toggleDailyTimeBlockCompleted(day, block.id, at);
+                if (!block.completed) actionFeedback('tick');
                 if (!block.completed) showSuccessToast('Block completed', `Ended at ${formatTime12h(at)}.`);
               }, "Couldn't complete block")
             }

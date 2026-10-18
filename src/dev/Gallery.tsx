@@ -1150,12 +1150,14 @@ function SoundsDemo() {
               setLast(sound.id);
             }}
             className={`rounded-xl border px-3 py-2.5 text-left transition-colors hover:bg-overlay-subtle ${
-              last === sound.id ? 'border-primary-500/60' : 'border-overlay-default'
+              sound.id === inUse ? 'border-primary-500/60 bg-primary-500/5' : last === sound.id ? 'border-overlay-strong' : 'border-overlay-default'
             }`}
           >
             <span className="text-sm font-medium text-content-primary">
               {sound.id.toUpperCase()} · {sound.name}
-              {sound.id === inUse && <span className="ml-2 text-xs text-brand-text">in use</span>}
+              {sound.id === inUse && (
+                <span className="ml-2 rounded-full bg-primary-500/15 px-2 py-0.5 text-2xs font-medium text-brand-text">In use in the app</span>
+              )}
             </span>
             <span className="block text-xs text-content-muted">{sound.hint}</span>
           </button>

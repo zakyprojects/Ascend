@@ -6,6 +6,7 @@ import { cx, ProgressBar } from '@/components/ui/primitives';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { Chip } from './ItemCard';
+import { actionFeedback } from '@/lib/actionFeedback';
 
 const PRIORITY_DOT: Record<TaskPriority, string> = {
   high: 'bg-rose-500',
@@ -191,7 +192,11 @@ export function TaskRow({
                     <button
                       type="button"
                       onClick={() => {
-                        if (!st.completed) armCompletionPop();
+                        if (!st.completed) {
+                          armCompletionPop();
+                          // The last open subtask completes the task, whose pop plays the tick itself.
+                          if (subtasks.some((other) => other.id !== st.id && !other.completed)) actionFeedback('tick');
+                        }
                         onToggleSubtask(st.id);
                       }}
                       disabled={locked}

@@ -7,6 +7,7 @@ import { toUserMessage } from '@/lib/userMessage';
 import { getSkipToastMessage } from '../scheduleMessages';
 import { cx } from '@/components/ui/primitives/shared';
 import { ActivityTile, SCHEDULE_ACTION, StopScheduleButton, blockRange, blockTitle, type Theme } from './shared';
+import { actionFeedback } from '@/lib/actionFeedback';
 
 /** A block whose end has passed without being marked done or skipped: the schedule waits for an answer. */
 export function ScheduleOverdue({
@@ -30,6 +31,7 @@ export function ScheduleOverdue({
   const complete = () => {
     try {
       store.toggleDailyTimeBlockCompleted(day, block.id);
+      actionFeedback('tick');
       showSuccessToast('Block completed', 'Marked as completed.');
     } catch (err) {
       showErrorToast("Couldn't complete block", toUserMessage(err, 'Try again.'));

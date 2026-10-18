@@ -16,6 +16,7 @@ import {
   planTypeOf,
   targetProgress,
 } from './planMeta';
+import { actionFeedback } from '@/lib/actionFeedback';
 
 /** What the user can do on their own plan or copy. Discover cards pass none and stay read-only. */
 export interface PlanActions {
@@ -83,7 +84,10 @@ export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActio
                 ) : (
                   <button
                     type="button"
-                    onClick={() => actions.toggleStep(step.id)}
+                    onClick={() => {
+                      if (!step.completed) actionFeedback('tick');
+                      actions.toggleStep(step.id);
+                    }}
                     className="flex w-full items-start gap-2.5 rounded-lg py-1.5 text-left text-sm hover:bg-overlay-subtle"
                     aria-label={step.completed ? `Mark "${step.title}" not done` : `Mark "${step.title}" done`}
                   >
@@ -183,7 +187,10 @@ export function PlanBody({ plan, actions }: { plan: AnyPlan; actions?: PlanActio
                 </button>
               </>
             ) : (
-              <button type="button" onClick={actions.markJourney} className="btn-primary text-xs inline-flex items-center gap-1.5">
+              <button type="button" onClick={() => {
+                  actionFeedback('tick');
+                  actions.markJourney();
+                }} className="btn-primary text-xs inline-flex items-center gap-1.5">
                 <CheckCircle2 size={14} /> Mark {journey.cadence === 'weekly' ? 'this week' : 'today'} done
               </button>
             )}

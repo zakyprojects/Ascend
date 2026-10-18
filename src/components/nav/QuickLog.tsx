@@ -8,6 +8,7 @@ import type { NavStatuses } from '@/lib/navStatus';
 import { pageLinkProps } from '@/lib/pageLink';
 import { HabitCheck } from '@/components/habits/HabitCheck';
 import { habitPointsMeta } from '@/components/habits/habitPointsMeta';
+import { actionFeedback } from '@/lib/actionFeedback';
 
 /** Pages Quick log jumps to: their logging needs the page's own form. */
 const JUMPS: View[] = ['journal', 'exercise', 'reading', 'time-tracker'];
@@ -51,7 +52,11 @@ export function QuickLog({ open, onClose, store, statuses, onNavigate }: QuickLo
                 const meta = habitPointsMeta(habit, done);
                 return (
                   <li key={habit.id} className="flex items-center gap-3 rounded-xl px-1 py-0.5">
-                    <HabitCheck habit={habit} done={done} size="sm" onToggle={() => store.toggleHabit(habit.id)} />
+                    <HabitCheck habit={habit} done={done} size="sm" onToggle={() => {
+                        if (!done) actionFeedback('tick');
+                        store.toggleHabit(habit.id);
+                      }}
+                    />
                     <span className={cx('min-w-0 flex-1 truncate text-sm', done ? 'text-content-muted line-through decoration-overlay-strong' : 'text-content-secondary')}>
                       {habit.name}
                     </span>

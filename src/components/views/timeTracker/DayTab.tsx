@@ -27,6 +27,7 @@ import { WeekStrip } from './WeekStrip';
 import { NowCard } from './NowCard';
 import { DayTimeline, type TimelineBlock } from './DayTimeline';
 import { blockName, blockRange, ledgerDayPoints, nextTierHint, useNowTick } from './dayMeta';
+import { actionFeedback } from '@/lib/actionFeedback';
 
 interface DayTabProps {
   store: AppStore;
@@ -120,6 +121,7 @@ export function DayTab({
   const toggleDone = (block: TimeTrackerBlock) =>
     run(() => {
       store.toggleDailyTimeBlockCompleted(selectedDateKey, block.id);
+      if (!block.completed) actionFeedback('tick');
       if (!block.completed) showSuccessToast('Done', blockName(block, activityMap.get(block.activityId)));
     }, "Couldn't update block");
 

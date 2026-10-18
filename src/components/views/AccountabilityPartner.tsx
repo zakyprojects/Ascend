@@ -22,6 +22,7 @@ import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { toUserMessage } from '@/lib/userMessage';
 import { sameName } from '@/lib/uniqueNames';
 import { Partnership, SharedChallenge, PartnerInvite } from '@/types';
+import { actionFeedback } from '@/lib/actionFeedback';
 
 const EMPTY_PARTNERSHIPS: Partnership[] = [];
 const EMPTY_INVITES: PartnerInvite[] = [];
@@ -371,7 +372,10 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
           <button
             type="button"
             disabled={busy}
-            onClick={() => handleToggleToday(c)}
+            onClick={() => {
+              if (!mineDone) actionFeedback('tick');
+              handleToggleToday(c);
+            }}
             aria-pressed={mineDone}
             aria-label={mineDone ? `Undo today for ${mine}` : `Mark ${mine} done today`}
             className={cx(

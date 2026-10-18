@@ -10,6 +10,7 @@ import { READING_POINTS } from '@/lib/pointsConfig';
 import { READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, readingBonusId } from '@/lib/readingAwards';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { bookProgress } from './bookMeta';
+import { actionFeedback } from '@/lib/actionFeedback';
 
 /**
  * Finishes a book with its key takeaway (required). Shows whether the one-time finish bonus
@@ -54,6 +55,7 @@ export function FinishBookDialog({
   const submit = () => {
     if (!book || !takeaway.trim()) return;
     store.finishBook(book.id, takeaway.trim());
+    actionFeedback('tick');
     onClose();
   };
 

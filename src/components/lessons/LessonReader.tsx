@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ArrowRight, Check, Clock } from 'lucide-react';
 import type { Lesson } from '@/types';
 import { Dialog } from '@/components/ui/primitives';
+import { actionFeedback } from '@/lib/actionFeedback';
 
 export const pointsLabel = (n: number) => `+${n} ${n === 1 ? 'pt' : 'pts'}`;
 
@@ -62,7 +63,11 @@ export function LessonReader({
             )}
           </>
         ) : (
-          <button type="button" onClick={() => onMarkRead(lesson.id)} className="btn-primary w-full">
+          <button type="button" onClick={() => {
+              actionFeedback('tick');
+              onMarkRead(lesson.id);
+            }}
+            className="btn-primary w-full">
             <Check size={16} aria-hidden="true" />
             Mark as read ({pointsLabel(lesson.points)})
           </button>
