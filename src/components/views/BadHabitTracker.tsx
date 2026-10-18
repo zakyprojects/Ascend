@@ -16,6 +16,7 @@ import { getEffectiveSeasonPoints, ptsText } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { hapticSuccess } from '@/lib/haptics';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
+import { nameTaken } from '@/lib/uniqueNames';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { BadHabitRow } from '@/components/badHabits/BadHabitRow';
 
@@ -210,7 +211,14 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
           </>
         }
       >
-        <Form id="bad-habit-add-form" onSubmit={handleAdd} className="space-y-4">
+        <Form
+          id="bad-habit-add-form"
+          onSubmit={handleAdd}
+          validate={() =>
+            nameTaken(name, habits) ? { message: 'You already have a bad habit with this name.', field: 'bad-habit-name-input' } : null
+          }
+          className="space-y-4"
+        >
           <Input
             id="bad-habit-name-input"
             label="Bad habit"

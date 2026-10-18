@@ -5,6 +5,7 @@ import { PRESET_CATEGORIES, type PresetHabit } from '@/lib/presets';
 import { PRESET_HABIT_POINTS } from '@/lib/pointsConfig';
 import { ptsText } from '@/lib/leagues';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { nameTaken, sameName } from '@/lib/uniqueNames';
 import { Dialog, Form, Input, Tabs } from '@/components/ui/primitives';
 import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 
@@ -21,6 +22,8 @@ const FREQUENCIES: { id: HabitFrequency; label: string; icon: typeof Calendar }[
 ];
 
 const normalise = (name: string) => name.trim().toLowerCase();
+
+const PRESET_NAMES = PRESET_CATEGORIES.flatMap((category) => category.habits.map((preset) => preset.name));
 
 interface AddHabitDialogProps {
   open: boolean;
@@ -147,7 +150,18 @@ export function AddHabitDialog({ open, onClose, habits, onAddPreset, onAddCustom
             ))}
           </div>
         ) : (
-          <Form id="habit-custom-form" onSubmit={submitCustom} className="space-y-4">
+          <Form
+            id="habit-custom-form"
+            onSubmit={submitCustom}
+            validate={() =>
+              nameTaken(name, habits)
+                ? { message: 'You already have a habit with this name.', field: 'habit-name-input' }
+                : PRESET_NAMES.some((presetName) => sameName(presetName, name))
+                  ? { message: 'That habit is in the Library. Add it from there to earn its points.', field: 'habit-name-input' }
+                  : null
+            }
+            className="space-y-4"
+          >
             <Input
               id="habit-name-input"
               label="Habit name"

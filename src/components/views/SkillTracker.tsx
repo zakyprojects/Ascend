@@ -18,6 +18,7 @@ import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { lastDayKeys, sumPerDay } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
+import { nameTaken } from '@/lib/uniqueNames';
 
 const DAYS_PAGE = 7;
 const QUICK_MINUTES = [15, 30, 45, 60];
@@ -155,6 +156,10 @@ export function SkillTracker({ store }: { store: AppStore }) {
     e.preventDefault();
     if (!skillName.trim()) {
       addIssues.showError('Fill in this field.', 'skill-name-input');
+      return;
+    }
+    if (nameTaken(skillName, skills)) {
+      addIssues.showError('You already have a skill with this name.', 'skill-name-input');
       return;
     }
     store.addSkill(skillName, category);

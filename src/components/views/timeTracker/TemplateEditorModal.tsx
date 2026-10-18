@@ -24,6 +24,7 @@ import { Plus, Trash2, Edit2, Check } from 'lucide-react';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { toUserMessage } from '@/lib/userMessage';
+import { nameTaken } from '@/lib/uniqueNames';
 
 interface TemplateEditorModalProps {
   open: boolean;
@@ -174,6 +175,10 @@ export function TemplateEditorModal({
     e.preventDefault();
     if (!title.trim()) {
       return; // the name field's required rule says so
+    }
+    if (nameTaken(title, templates, { editing: editingTemplate })) {
+      formIssues.showError('You already have a template with this name.', 'tt-tpl-title');
+      return;
     }
 
     if (blocks.length === 0) {

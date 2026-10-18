@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Brain, Heart, Layers, Moon, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { ASCEND_RECOMMENDED_DAY_BLOCKS, ASCEND_RECOMMENDED_DAY_TITLE, TimeTrackerActivity, TimeTrackerTemplate } from '@/types';
 import { AppStore } from '@/lib/store';
+import { firstFreeName } from '@/lib/uniqueNames';
 import {
   calculateBlockDurationMinutes,
   DAYS_OF_WEEK,
@@ -39,8 +40,10 @@ export function TemplatesTab({ store, templates, activities, onCreateTemplate, o
   const hasRecommended = templates.some((t) => templateSignature(t.blocks || []) === RECOMMENDED_SIGNATURE);
 
   const addRecommended = () => {
-    store.createTimeTrackerTemplate({ title: ASCEND_RECOMMENDED_DAY_TITLE, activeDays: [], blocks: ASCEND_RECOMMENDED_DAY_BLOCKS });
-    showSuccessToast('Template added', `${ASCEND_RECOMMENDED_DAY_TITLE}. Pick its days to use it automatically.`);
+    // A template of yours may already carry this name (edited blocks): the new one gets "… 2".
+    const title = firstFreeName(ASCEND_RECOMMENDED_DAY_TITLE, templates.map((t) => t.title));
+    store.createTimeTrackerTemplate({ title, activeDays: [], blocks: ASCEND_RECOMMENDED_DAY_BLOCKS });
+    showSuccessToast('Template added', `${title}. Pick its days to use it automatically.`);
   };
 
   const toggleDay = (template: TimeTrackerTemplate, day: string) => {

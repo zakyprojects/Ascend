@@ -1,8 +1,9 @@
 import type { TimeTrackerActivity } from '@/types';
 import { trustedNow } from '@/lib/clock';
+import { nameKey, nameTaken } from '@/lib/uniqueNames';
 
-/** Category names compare trimmed and case-insensitive ("Reading" = " reading "). */
-export const categoryNameKey = (name: string): string => name.trim().toLocaleLowerCase();
+/** Category names follow the app's one name rule (lib/uniqueNames): " Deep  work" = "deep work". */
+export const categoryNameKey = nameKey;
 
 /**
  * True when another category (built-in included) already has this name. A category keeping its
@@ -13,10 +14,7 @@ export function categoryNameTaken(
   activities: TimeTrackerActivity[],
   editing?: TimeTrackerActivity | null
 ): boolean {
-  const key = categoryNameKey(name);
-  if (!key) return false;
-  if (editing && categoryNameKey(editing.name) === key) return false;
-  return activities.some((a) => a.id !== editing?.id && categoryNameKey(a.name) === key);
+  return nameTaken(name, activities, { editing });
 }
 
 function madeLabel(createdAt?: string): string {
