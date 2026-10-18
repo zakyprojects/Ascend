@@ -15,8 +15,6 @@ const METRIC_TABS = [
 interface WeekActivityCardProps {
   /** Last 7 days, oldest first, today last. */
   points: DayPoints[];
-  /** True when the ledger cap may have cut off entries from the earliest days. */
-  pointsPartial: boolean;
   habits: DayHabits[];
 }
 
@@ -24,7 +22,7 @@ interface WeekActivityCardProps {
  * The last seven days at a glance: points (everything that earns, across modules) or daily
  * habits (consistency). Today is the highlighted bar.
  */
-export function WeekActivityCard({ points, pointsPartial, habits }: WeekActivityCardProps) {
+export function WeekActivityCard({ points, habits }: WeekActivityCardProps) {
   const [metric, setMetric] = useState<Metric>('points');
   const todayIndex = points.length - 1;
 
@@ -65,9 +63,6 @@ export function WeekActivityCard({ points, pointsPartial, habits }: WeekActivity
               return `${fullDay(points[i].day)}: +${datum.value} pts${penalty}`;
             }}
           />
-          {pointsPartial && (
-            <p className="text-micro text-content-muted">Older history is trimmed, so the earliest days may be incomplete.</p>
-          )}
         </>
       ) : habitsTotal === 0 ? (
         <p className="py-8 text-center text-sm text-content-muted">Add a daily habit to see your week here.</p>

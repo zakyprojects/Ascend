@@ -1,9 +1,6 @@
 import { Habit, PointsEntry } from '@/types';
 import { addDays, parseDate, todayKey } from './dates';
 
-/** The ledger keeps only the newest entries (pointsLedger.ts caps it at 500). */
-const POINTS_HISTORY_CAP = 500;
-
 /** The last `count` local date keys, oldest first, ending today. */
 export function lastDayKeys(count: number, today = todayKey()): string[] {
   return Array.from({ length: count }, (_, i) => addDays(today, i - (count - 1)));
@@ -16,26 +13,35 @@ export interface DayPoints {
   lost: number;
 }
 
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
 /**
- * Points earned and lost per local day, from the points ledger. `partial` is true when the
- * ledger is at its cap and its oldest kept entry falls inside the window, so the earliest
- * days may be missing entries.
+ * The local day an entry belongs to. Missed-habit and unreported bad-habit penalties are issued
+ * just after the day ends, so they count on the day that was missed (their metadata names it);
+ * a weekly habit's period is a week, so it keeps its issue day. Everything else: its timestamp.
+ * Display only: league points read the server ledger and never this.
  */
-export function dailyPoints(history: PointsEntry[], days: string[]): { days: DayPoints[]; partial: boolean } {
+function entryDay(entry: PointsEntry): string | null {
+  const meta = entry.metadata;
+  const missedDay =
+    entry.source === 'habit_missed' ? meta?.period : entry.source === 'bad_habit_no_report' ? meta?.date : undefined;
+  if (typeof missedDay === 'string' && DAY_KEY.test(missedDay)) return missedDay;
+  const date = parseDate(entry.timestamp);
+  return date ? todayKey(date) : null;
+}
+
+/** Points earned and lost per local day, from the points ledger. */
+export function dailyPoints(history: PointsEntry[], days: string[]): DayPoints[] {
   const byDay = new Map<string, DayPoints>(days.map((day) => [day, { day, earned: 0, lost: 0 }]));
-  let oldest: string | null = null;
   for (const entry of history) {
-    const date = parseDate(entry?.timestamp);
-    if (!date || !Number.isFinite(entry.amount)) continue;
-    const key = todayKey(date);
-    if (oldest === null || key < oldest) oldest = key;
-    const bucket = byDay.get(key);
+    if (!entry || !Number.isFinite(entry.amount)) continue;
+    const key = entryDay(entry);
+    const bucket = key ? byDay.get(key) : undefined;
     if (!bucket) continue;
     if (entry.amount >= 0) bucket.earned += entry.amount;
     else bucket.lost -= entry.amount;
   }
-  const partial = history.length >= POINTS_HISTORY_CAP && oldest !== null && oldest > days[0];
-  return { days: days.map((day) => byDay.get(day)!), partial };
+  return days.map((day) => byDay.get(day)!);
 }
 
 export interface DayHabits {

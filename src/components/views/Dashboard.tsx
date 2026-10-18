@@ -279,7 +279,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
             </Reveal>
 
             <Reveal index={2}>
-              <WeekActivityCard points={weekPoints.days} pointsPartial={weekPoints.partial} habits={weekHabits} />
+              <WeekActivityCard points={weekPoints} habits={weekHabits} />
             </Reveal>
           </div>
         }
