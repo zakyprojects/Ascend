@@ -243,6 +243,7 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         onClose={() => setActivityModalOpen(false)}
         onSave={saveActivity}
         editingActivity={editingActivity}
+        activities={activities}
       />
     </div>
   );

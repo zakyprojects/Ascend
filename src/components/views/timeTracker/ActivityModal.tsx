@@ -13,6 +13,7 @@ import { getLocalThemePreference } from '@/lib/store';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { Shapes, Check } from 'lucide-react';
 import { toUserMessage } from '@/lib/userMessage';
+import { categoryNameTaken } from './categoryNames';
 
 interface ActivityModalProps {
   open: boolean;
@@ -24,6 +25,8 @@ interface ActivityModalProps {
     ascendModule?: string;
   }) => Promise<void> | void;
   editingActivity?: TimeTrackerActivity | null;
+  /** Every category (built-in included), so a new name can't repeat one. */
+  activities: TimeTrackerActivity[];
 }
 
 const MODULE_OPTIONS = [
@@ -41,6 +44,7 @@ export function ActivityModal({
   onClose,
   onSave,
   editingActivity,
+  activities,
 }: ActivityModalProps) {
   const [name, setName] = useState<string>('');
   const [color, setColor] = useState<string>('');
@@ -116,7 +120,9 @@ export function ActivityModal({
         onSubmit={handleSubmit}
         controller={formIssues}
         validate={() =>
-          !color
+          categoryNameTaken(name, activities, editingActivity)
+            ? { message: 'You already have a category with this name.', field: 'tt-act-name' }
+            : !color
             ? { message: 'Pick a colour.', field: 'tt-act-colour' }
             : !icon
               ? { message: 'Pick an icon.', field: 'tt-act-icon' }

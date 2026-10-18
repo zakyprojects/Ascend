@@ -1,14 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
 import { TimeTrackerActivity } from '@/types';
 import { AppStore } from '@/lib/store';
 import { getActivityDisplayColor } from '@/lib/timeTracker';
 import { ActivityIcon } from './ActivityIcon';
 import { useToast } from '@/components/ui/Toast';
-import { Dialog, Form, Select, useFormController } from '@/components/ui/primitives';
-import { cx, TAP_TARGET } from '@/components/ui/primitives/shared';
+import { Dialog, FieldGroup, Form, useFormController } from '@/components/ui/primitives';
+import { cx, FOCUS_RING, TAP_TARGET } from '@/components/ui/primitives/shared';
 import { toUserMessage } from '@/lib/userMessage';
 import { MODULE_LABELS } from './dayMeta';
+import { categoryDisplayNames } from './categoryNames';
 
 interface ActivitiesTabProps {
   store: AppStore;
@@ -21,6 +22,7 @@ interface ActivitiesTabProps {
 export function ActivitiesTab({ store, activities, today, onCreateCategory, onEditCategory }: ActivitiesTabProps) {
   const theme = store.state.themePreference || 'dark';
   const [deleting, setDeleting] = useState<TimeTrackerActivity | null>(null);
+  const names = useMemo(() => categoryDisplayNames(activities), [activities]);
 
   return (
     <div className="space-y-6">
@@ -47,7 +49,7 @@ export function ActivitiesTab({ store, activities, today, onCreateCategory, onEd
                 <ActivityIcon iconName={act.icon} size={18} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="item-name truncate text-sm">{act.name}</p>
+                <p className="item-name truncate text-sm">{names.get(act.id) ?? act.name}</p>
                 <p className="text-xs text-content-muted">
                   {act.ascendModule ? `Opens ${MODULE_LABELS[act.ascendModule] || act.ascendModule}` : 'Not linked'}
                   {act.isSystemDefault ? ' · Built-in' : ''}
@@ -130,7 +132,14 @@ function DeleteCategoryDialog({ store, activities, today, category, onClose }: D
     return { blocks, days, templates };
   }, [category, store.state.timeTracker, today]);
 
-  const others = activities.filter((a) => a.id !== category?.id);
+  const names = useMemo(() => categoryDisplayNames(activities), [activities]);
+  // Your own categories first, then the built-in ones (each group in its list order).
+  const others = useMemo(() => {
+    const rest = activities.filter((a) => a.id !== category?.id);
+    return [...rest.filter((a) => !a.isSystemDefault), ...rest.filter((a) => a.isSystemDefault)];
+  }, [activities, category?.id]);
+  const target = others.find((a) => a.id === replacementId);
+  const targetName = target ? (names.get(target.id) ?? target.name) : '';
   const usageText = [
     usage.blocks > 0 ? `${usage.blocks} block${usage.blocks === 1 ? '' : 's'} on ${usage.days} day${usage.days === 1 ? '' : 's'} from today on` : '',
     usage.templates > 0 ? `${usage.templates} template${usage.templates === 1 ? '' : 's'}` : '',
@@ -143,7 +152,7 @@ function DeleteCategoryDialog({ store, activities, today, category, onClose }: D
     if (!category) return;
     try {
       store.deleteTimeTrackerActivity(category.id, replacementId);
-      showSuccessToast('Category deleted', undefined, `activity_${category.id}`);
+      showSuccessToast('Category deleted', targetName ? `Blocks move to ${targetName}.` : undefined, `activity_${category.id}`);
       onClose();
     } catch (err) {
       formIssues.showError(toUserMessage(err, "Couldn't delete this category. Try again."));
@@ -172,24 +181,131 @@ function DeleteCategoryDialog({ store, activities, today, category, onClose }: D
         </>
       }
     >
-      <Form id="tt-delete-category-form" onSubmit={submit} controller={formIssues} className="space-y-3">
-        <Select
-          id="tt-delete-category-replacement"
-          label="Move its blocks to"
-          value={replacementId}
-          onChange={(e) => setReplacementId(e.target.value)}
-          required
-        >
-          <option value="" disabled>
-            Choose a category
-          </option>
-          {others.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </Select>
+      <Form
+        id="tt-delete-category-form"
+        onSubmit={submit}
+        controller={formIssues}
+        validate={() => (target ? null : { message: 'Choose an option.', field: 'tt-delete-category-replacement' })}
+        className="space-y-3"
+      >
+        <FieldGroup id="tt-delete-category-replacement" label="Move its blocks to">
+          <CategoryRadioList
+            labelledBy="tt-delete-category-replacement-label"
+            options={others}
+            names={names}
+            value={replacementId}
+            onChange={setReplacementId}
+            theme={store.state.themePreference || 'dark'}
+          />
+        </FieldGroup>
+        <p className="text-xs text-content-secondary" aria-live="polite">
+          {targetName ? (
+            <>
+              Blocks move to <span className="font-semibold text-content-primary break-words [overflow-wrap:anywhere]">{targetName}</span>.
+            </>
+          ) : (
+            'Pick where its blocks go.'
+          )}
+        </p>
       </Form>
     </Dialog>
+  );
+}
+
+/**
+ * One-choice list of categories (colour, icon, Custom/Built-in) used as a radio group: arrow keys
+ * move and pick, Home/End jump, Space/Enter pick; only the picked row (or the first) is in the Tab order.
+ */
+function CategoryRadioList({
+  labelledBy,
+  options,
+  names,
+  value,
+  onChange,
+  theme,
+}: {
+  labelledBy: string;
+  options: TimeTrackerActivity[];
+  names: Map<string, string>;
+  value: string;
+  onChange: (id: string) => void;
+  theme: 'dark' | 'light';
+}) {
+  const refs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const selectedIndex = options.findIndex((o) => o.id === value);
+  const tabStop = selectedIndex >= 0 ? selectedIndex : 0;
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (options.length === 0) return;
+    const current = options.findIndex((o) => refs.current.get(o.id) === document.activeElement);
+    const from = current >= 0 ? current : tabStop;
+    let next = -1;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') next = (from + 1) % options.length;
+    else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') next = (from - 1 + options.length) % options.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = options.length - 1;
+    else return;
+    event.preventDefault();
+    const opt = options[next];
+    onChange(opt.id);
+    refs.current.get(opt.id)?.focus();
+  };
+
+  if (options.length === 0) return <p className="text-xs text-content-muted">No other category to move to.</p>;
+
+  return (
+    <div
+      role="radiogroup"
+      aria-labelledby={labelledBy}
+      aria-required="true"
+      onKeyDown={onKeyDown}
+      className="max-h-72 overflow-y-auto rounded-xl border border-overlay-subtle divide-y divide-overlay-subtle"
+    >
+      {options.map((opt, i) => {
+        const checked = opt.id === value;
+        const color = getActivityDisplayColor(opt, theme);
+        const label = names.get(opt.id) ?? opt.name;
+        return (
+          <button
+            key={opt.id}
+            ref={(el) => {
+              if (el) refs.current.set(opt.id, el);
+              else refs.current.delete(opt.id);
+            }}
+            type="button"
+            role="radio"
+            aria-checked={checked}
+            tabIndex={i === tabStop ? 0 : -1}
+            onClick={() => onChange(opt.id)}
+            className={cx(
+              'flex w-full min-h-11 items-center gap-3 px-3 py-2 text-left transition-colors',
+              checked ? 'bg-primary-500/15' : 'hover:bg-overlay-subtle',
+              FOCUS_RING
+            )}
+          >
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+              style={{ backgroundColor: `${color}22`, color }}
+              aria-hidden="true"
+            >
+              <ActivityIcon iconName={opt.icon} size={16} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className={cx('block truncate text-sm', checked ? 'font-semibold text-content-primary' : 'text-content-secondary')}>{label}</span>
+              <span className="block text-2xs text-content-muted">{opt.isSystemDefault ? 'Built-in' : 'Custom'}</span>
+            </span>
+            <span
+              className={cx(
+                'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2',
+                checked ? 'border-primary-600 bg-primary-600 text-white' : 'border-overlay-strong'
+              )}
+              aria-hidden="true"
+            >
+              {checked && <Check size={12} strokeWidth={3} />}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
