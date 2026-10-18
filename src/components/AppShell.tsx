@@ -92,9 +92,6 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   const navStatuses = useMemo(() => getNavStatuses(appState, isHabitDone), [appState, isHabitDone, minute]);
 
   useNavShortcuts({
-    onDashboard: () => goTo(NAV_DASHBOARD.id),
-    onSettings: () => goTo(NAV_SETTINGS.id),
-    onZone: (zone) => onViewChange(lastByGroup[zone]),
     onPageIndex: (index) => {
       const item = (activeGroup ?? NAV_GROUPS[0]).items[index];
       if (item) goTo(item.id);

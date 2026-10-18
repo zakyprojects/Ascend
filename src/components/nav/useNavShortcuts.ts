@@ -1,16 +1,6 @@
 import { useEffect, useRef } from 'react';
-import type { NavGroup } from './navConfig';
-
-type ZoneId = NavGroup['id'];
-
-/** G then this key opens a zone (Linear/GitHub style two-key "go to"). */
-export const ZONE_KEYS: Record<ZoneId, string> = { track: 't', mind: 'm', plan: 'p', play: 'l' };
-const GO_WINDOW_MS = 1200;
 
 interface NavShortcutHandlers {
-  onDashboard: () => void;
-  onSettings: () => void;
-  onZone: (zone: ZoneId) => void;
   /** 1–9: the n-th page of the zone the desktop panel shows (0-based index). */
   onPageIndex: (index: number) => void;
 }
@@ -21,8 +11,9 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 /**
- * Desktop keyboard navigation: G+D Dashboard, G+T/M/P/L zones, G+S Settings, 1–9 pages of the
- * shown zone. Silent while typing, with a modifier held, or while a modal is open.
+ * Desktop keyboard navigation: 1–9 open the pages of the shown zone. "G then a letter" belongs to
+ * the command palette alone (one owner, so two handlers never fight over the same keystroke).
+ * Silent while typing, with a modifier held, or while a modal is open.
  */
 export function useNavShortcuts(handlers: NavShortcutHandlers) {
   const handlersRef = useRef(handlers);
@@ -35,25 +26,17 @@ export function useNavShortcuts(handlers: NavShortcutHandlers) {
       if (document.querySelector('[aria-modal="true"]')) return;
       if (!window.matchMedia('(min-width: 1024px)').matches) return;
       const key = event.key.toLowerCase();
-      const h = handlersRef.current;
-
-      if (goPressedAt && event.timeStamp - goPressedAt < GO_WINDOW_MS) {
-        goPressedAt = 0;
-        const zone = (Object.keys(ZONE_KEYS) as ZoneId[]).find((id) => ZONE_KEYS[id] === key);
-        if (key === 'd') h.onDashboard();
-        else if (key === 's') h.onSettings();
-        else if (zone) h.onZone(zone);
-        else return;
-        event.preventDefault();
-        return;
-      }
+      // A digit straight after "g" is the second key of a palette sequence, not a page jump.
       if (key === 'g') {
         goPressedAt = event.timeStamp;
         return;
       }
+      const afterGo = goPressedAt !== 0 && event.timeStamp - goPressedAt < 1200;
+      goPressedAt = 0;
+      if (afterGo) return;
       if (/^[1-9]$/.test(key)) {
         event.preventDefault();
-        h.onPageIndex(Number(key) - 1);
+        handlersRef.current.onPageIndex(Number(key) - 1);
       }
     };
     window.addEventListener('keydown', onKeyDown);

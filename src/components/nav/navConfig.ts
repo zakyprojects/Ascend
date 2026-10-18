@@ -64,7 +64,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: ListChecks,
     items: [
       { id: 'habits', label: 'Habits', icon: CheckSquare },
-      { id: 'bad-habits', label: 'Bad Habits', icon: ShieldAlert },
+      { id: 'bad-habits', label: 'Bad habits', icon: ShieldAlert },
       { id: 'exercise', label: 'Exercise', icon: Activity },
       { id: 'reading', label: 'Reading Hub', icon: BookOpen },
       { id: 'skills', label: 'Skills', icon: Zap },
@@ -100,7 +100,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'leagues', label: 'Leagues', icon: Trophy },
       { id: 'tiers', label: 'Ranks', icon: Award },
-      { id: 'partner', label: 'Partner', icon: Users },
+      { id: 'partner', label: 'Partners', icon: Users },
     ],
   },
 ];

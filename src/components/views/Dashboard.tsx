@@ -464,7 +464,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                 <ModuleLink
                   tone="rose"
                   icon={ShieldAlert}
-                  title="Bad Habits"
+                  title="Bad habits"
                   view="bad-habits"
                   navigate={onViewChange}
                   value={<CountUp value={resistedTodayCount} />}
