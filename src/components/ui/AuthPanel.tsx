@@ -177,6 +177,8 @@ function inAppClick(href: string, navigate: (href: string) => void) {
 }
 
 const PAGE_LINK_CLASS = 'font-medium text-brand-text hover:underline underline-offset-2';
+/** Seconds after a reset email before "Resend" is offered (matches Supabase's per-email resend window). */
+const RESET_RESEND_SECONDS = 60;
 
 const INPUT_CLASS =
   'w-full py-2.5 bg-bg-800 border border-overlay-default rounded-xl text-sm text-content-primary placeholder:text-content-disabled focus:outline-none focus:border-primary-400 aria-[invalid=true]:border-rose-500/70 transition-all';
@@ -267,6 +269,13 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   // Sign in's second step: ask for a password-reset email. `resetSentTo` = the email it went to.
   const [loginStep, setLoginStep] = useState<'form' | 'forgot'>(startForgot && mode === 'login' ? 'forgot' : 'form');
   const [resetSentTo, setResetSentTo] = useState<string | null>(null);
+  // Seconds left before the reset email can be resent; counts down while the "sent" screen shows.
+  const [resendIn, setResendIn] = useState(0);
+  useEffect(() => {
+    if (!resetSentTo || resendIn <= 0) return;
+    const timer = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resetSentTo, resendIn]);
   const [shownMode, setShownMode] = useState(mode);
   if (mode !== shownMode) {
     // Arriving at /signup always starts on the choice; /login on the sign-in form.
@@ -547,24 +556,41 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     }
   };
 
-  /** "Forgot password": sends the reset email. The answer never says whether the email has an account. */
-  const handleForgotSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  /**
+   * "Forgot password": sends the reset email. The answer never says whether the email has an account
+   * (saying "no account" would let anyone check who uses Ascend), so the sent screen is the same for both.
+   */
+  const sendResetEmail = async (to: string, showError: (message: string) => void) => {
     setLoading(true);
     try {
-      await withTimeout(requestPasswordReset(email));
-      setResetSentTo(email.trim());
+      await withTimeout(requestPasswordReset(to));
+      setResetSentTo(to.trim());
+      setResendIn(RESET_RESEND_SECONDS);
     } catch (err: unknown) {
       console.error('Password reset email failed:', err);
       const authErr = err as { code?: string; status?: number; message?: string };
       if (authErr.code === 'over_email_send_rate_limit' || authErr.status === 429 || authErr.message?.includes('rate limit')) {
-        forgotForm.showError('Too many reset emails. Wait a few minutes and try again.');
+        showError('Too many reset emails. Wait a few minutes and try again.');
       } else {
-        forgotForm.showError(toUserMessage(err, 'Couldn’t send the email. Try again.'));
+        showError(toUserMessage(err, 'Couldn’t send the email. Try again.'));
       }
     } finally {
       setLoading(false);
     }
+  };
+  const handleForgotSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void sendResetEmail(email, forgotForm.showError);
+  };
+  const [resendError, setResendError] = useState<string | null>(null);
+  const handleResend = () => {
+    if (!resetSentTo) return;
+    setResendError(null);
+    void sendResetEmail(resetSentTo, setResendError);
+  };
+  const useDifferentEmail = () => {
+    setResendError(null);
+    setResetSentTo(null);
   };
 
   const openForgot = () => {
@@ -572,6 +598,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     if (!email.includes('@')) setEmail('');
     setSlide('right');
     setResetSentTo(null);
+    setResendError(null);
     setLoginStep('forgot');
     setFocus(null);
   };
@@ -657,15 +684,41 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
                   <div role="status" className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start gap-2 text-xs text-content-primary">
                     <Mail size={16} aria-hidden="true" className="shrink-0 mt-0.5 text-success-text" />
                     <span>
-                      If an account uses <span className="font-medium break-all">{resetSentTo}</span>, a link to set a new password
-                      is on its way. It can take a minute; check your spam folder too.
+                      If <span className="font-medium break-all">{resetSentTo}</span> has an Ascend account, we’ve sent it a link
+                      to set a new password. It can take a minute.
                     </span>
                   </div>
+                  <div className="text-xs text-content-muted space-y-1.5">
+                    <p className="font-medium text-content-secondary">No email?</p>
+                    <ul className="list-disc pl-4 space-y-1">
+                      <li>Check your spam or promotions folder.</li>
+                      <li>Make sure it’s the email you signed up with. A typo or another address gets nothing.</li>
+                      <li>
+                        No account yet?{' '}
+                        <a href={pageLinks.signup} onClick={inAppClick(pageLinks.signup, pageLinks.navigate)} className={PAGE_LINK_CLASS}>
+                          Create one
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+                  {resendError && (
+                    <p role="alert" className="text-xs text-error-text">
+                      {resendError}
+                    </p>
+                  )}
                   <div className="flex flex-col gap-2">
-                    <button type="button" onClick={closeForgot} className="btn-primary w-full min-h-11">
+                    <button type="button" onClick={closeForgot} disabled={loading} className="btn-primary w-full min-h-11">
                       <ArrowLeft size={16} aria-hidden="true" /> Back to sign in
                     </button>
-                    <button type="button" onClick={() => setResetSentTo(null)} className="btn-ghost w-full min-h-11 text-xs">
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={loading || resendIn > 0}
+                      className="btn-ghost w-full min-h-11 text-xs disabled:opacity-60 disabled:cursor-default"
+                    >
+                      {loading ? 'Sending…' : resendIn > 0 ? `Resend email in ${resendIn}s` : 'Resend email'}
+                    </button>
+                    <button type="button" onClick={useDifferentEmail} disabled={loading} className="btn-ghost w-full min-h-11 text-xs">
                       Use a different email
                     </button>
                   </div>
