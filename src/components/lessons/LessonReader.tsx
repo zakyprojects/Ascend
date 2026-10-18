@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { ArrowRight, Check, Clock } from 'lucide-react';
 import type { Lesson } from '@/types';
 import { Dialog } from '@/components/ui/primitives';
@@ -24,12 +25,24 @@ export function LessonReader({
   onOpenLesson: (lesson: Lesson) => void;
   onClose: () => void;
 }) {
+  // Mark as read swaps the footer: focus moves to its new button instead of dropping to the page.
+  const afterReadRef = useRef<HTMLButtonElement>(null);
+  const wasReadRef = useRef(isRead);
+  useEffect(() => {
+    const justRead = isRead && !wasReadRef.current;
+    wasReadRef.current = isRead;
+    if (!justRead) return;
+    const active = document.activeElement;
+    if (!active || active === document.body) afterReadRef.current?.focus();
+  }, [isRead, lesson?.id]);
+
   return (
     <Dialog
       open={Boolean(lesson)}
       onClose={onClose}
       title={lesson?.title ?? ''}
       maxWidth="max-w-lg"
+      contentKey={lesson?.id}
       footer={
         lesson &&
         (isRead ? (
@@ -39,11 +52,11 @@ export function LessonReader({
               Read this season
             </span>
             {next ? (
-              <button type="button" onClick={() => onOpenLesson(next)} className="btn-secondary">
+              <button ref={afterReadRef} type="button" onClick={() => onOpenLesson(next)} className="btn-secondary">
                 Next lesson <ArrowRight size={14} aria-hidden="true" />
               </button>
             ) : (
-              <button type="button" onClick={onClose} className="btn-secondary">
+              <button ref={afterReadRef} type="button" onClick={onClose} className="btn-secondary">
                 Done
               </button>
             )}

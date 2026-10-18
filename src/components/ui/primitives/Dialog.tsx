@@ -23,6 +23,9 @@ export interface DialogProps {
   placement?: 'center' | 'top';
   /** Unsaved typing (`useUnsavedChanges`): Esc, backdrop and X ask "Discard changes?" first. */
   dirty?: boolean;
+  /** What the open dialog shows (e.g. a lesson id). When it changes, the body scrolls back to the
+   *  top and focus moves to the panel, as if the dialog had just opened on the new content. */
+  contentKey?: string;
 }
 
 // Matches the longest exit animation (dialog-out / exit-fade, tailwind.config.js).
@@ -46,6 +49,7 @@ export const Dialog: React.FC<DialogProps> = ({
   preventClose = false,
   placement = 'center',
   dirty = false,
+  contentKey,
 }) => {
   // Stays mounted for its exit animation after `open` turns false. The last open title and
   // content are shown while it leaves, so a parent clearing its data on close cannot make the
@@ -74,6 +78,14 @@ export const Dialog: React.FC<DialogProps> = ({
   const titleId = React.useId();
   const descriptionId = React.useId();
   const panelRef = React.useRef<HTMLDivElement>(null);
+  const bodyRef = React.useRef<HTMLDivElement>(null);
+  const shownKeyRef = React.useRef(contentKey);
+  React.useLayoutEffect(() => {
+    if (!open || shownKeyRef.current === contentKey) return;
+    shownKeyRef.current = contentKey;
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+    panelRef.current?.focus({ preventScroll: true });
+  }, [open, contentKey]);
   const rootRef = React.useRef<HTMLDivElement>(null);
   // A leaving dialog is inert, not aria-hidden: inert also drops focus from the button that
   // closed it, so the browser never sees focus inside hidden content. Focus then returns to
@@ -272,7 +284,7 @@ export const Dialog: React.FC<DialogProps> = ({
           </div>
         </div>
         {hasBody && (
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">{content.children}</div>
+          <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">{content.children}</div>
         )}
         {content.footer && (
           <div className={cx('dialog-actions shrink-0 px-4 py-3', hasBody && 'border-t border-bg-700')}>{content.footer}</div>
