@@ -36,7 +36,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { fetchPublicPlansFromSupabase, mapRowToImprovementPlan, supabase, syncBroadcaster } from '@/lib/supabase';
 import { getProfileSeasonPointsByUsername } from '@/lib/auth';
 import { leagueNow } from '@/lib/leagueTime';
-import { isTodayLocal, calculateActivePlanStreak, formatDateShort, parseDate } from '@/lib/dates';
+import { isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, formatDateShort, parseDate } from '@/lib/dates';
 import { STARTER_TEMPLATES } from '@/data/planTemplates';
 import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
@@ -120,7 +120,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
   const [editDescription, setEditDescription] = useState('');
   const [editCategory, setEditCategory] = useState('Personal Growth');
   const [editIsPublic, setEditIsPublic] = useState(true);
-  const [editSteps, setEditSteps] = useState<string[]>([]);
+  const [editSteps, setEditSteps] = useState<{ id?: string; title: string }[]>([]);
   const [editTargetValue, setEditTargetValue] = useState<number>(10);
   const [editTargetUnit, setEditTargetUnit] = useState<string>('books');
   const [editTargetDate, setEditTargetDate] = useState<string>('');
@@ -654,7 +654,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
     setEditDescription(plan.description);
     setEditCategory(plan.category || 'Personal Growth');
     setEditIsPublic(plan.isPublic);
-    setEditSteps((plan.steps || []).map((s) => s.title));
+    setEditSteps((plan.steps || []).map((s) => ({ id: s.id, title: s.title })));
     setEditTargetValue(plan.targetValue || 10);
     setEditTargetUnit(plan.targetUnit || 'books');
     setEditTargetDate(plan.targetDate || '');
@@ -979,7 +979,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
       const streak = calculateActivePlanStreak(plan.streakCount || 0, plan.lastCompletedDate, plan.cadence || 'daily');
       const cadenceText = plan.cadence === 'weekly' ? 'Week' : 'Day';
       const durationText = plan.duration ? `${plan.duration} ${plan.cadence === 'weekly' ? 'weeks' : 'days'}` : 'Ongoing';
-      const isCompletedToday = isTodayLocal(plan.lastCompletedDate);
+      const isCompletedToday = isPlanJourneyDoneThisPeriod(plan.lastCompletedDate, plan.cadence || 'daily');
 
       return (
         <div>
@@ -2106,7 +2106,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
                 <p className="block label">Steps and milestones</p>
                 <button
                   type="button"
-                  onClick={() => setEditSteps([...editSteps, `Step ${editSteps.length + 1}`])}
+                  onClick={() => setEditSteps([...editSteps, { title: `Step ${editSteps.length + 1}` }])}
                   className="text-xs text-blue-theme hover:text-content-primary hover:underline"
                 >
                   + Add Step
@@ -2114,14 +2114,14 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
               </div>
               <div className="space-y-2">
                 {editSteps.map((step, idx) => (
-                  <div key={idx} className="flex items-start gap-2">
+                  <div key={step.id || idx} className="flex items-start gap-2">
                     <Input
                       id={`pip-edit-step-${idx}`}
                       aria-label={`Step ${idx + 1}`}
-                      value={step}
+                      value={step.title}
                       onChange={(e) => {
                         const next = [...editSteps];
-                        next[idx] = e.target.value;
+                        next[idx] = { ...next[idx], title: e.target.value };
                         setEditSteps(next);
                       }}
                       placeholder={`Step ${idx + 1}`}

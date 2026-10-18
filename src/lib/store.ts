@@ -64,7 +64,7 @@ import {
   minutesToTimeString,
 } from './timeTracker';
 import { findCuratedBook } from './books';
-import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isTodayLocal, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
+import { uid, generateUUID, generateNumericUID, periodKey, todayKey, isPlanJourneyDoneThisPeriod, calculateActivePlanStreak, getWeekDates, parseDate, getNow, getNextDateKey, weekKey, addDays } from './dates';
 import { computeLinkedGoalProgress } from './linkedGoalMetrics';
 import { reconcileSharedChallengeLifecycle, applyPledgeToggle, mergeSharedChallenge } from './pactLifecycle';
 import { isPartnershipUser1 } from './partnershipSide';
@@ -153,8 +153,8 @@ import {
   syncBroadcaster,
   syncPlanToSupabase,
   syncFollowedPlanToSupabase,
+  deletePlanFromSupabase,
   deleteFollowedPlanFromSupabase,
-  addReflectionNoteToSupabase,
   sendPartnerInviteSupabase,
   fetchUserDataWithStatusFromSupabase,
   getUserDataWatermark,
@@ -6212,8 +6212,8 @@ export function useAppState() {
       if (idx === -1) return prev;
       const target = prev.improvementPlans[idx];
 
-      // GUARD: Block if already completed today in local calendar date
-      if (isTodayLocal(target.lastCompletedDate)) {
+      // Once per period: today for a daily journey, this week for a weekly one.
+      if (isPlanJourneyDoneThisPeriod(target.lastCompletedDate, target.cadence || 'daily')) {
         return prev;
       }
 
@@ -6229,6 +6229,7 @@ export function useAppState() {
         ...target,
         streakCount: newStreak,
         lastCompletedDate: nowIso,
+        previousCompletedDate: target.lastCompletedDate || undefined,
       };
 
       const updatedPlans = [...prev.improvementPlans];
@@ -6253,18 +6254,20 @@ export function useAppState() {
       if (idx === -1) return prev;
       const target = prev.improvementPlans[idx];
 
-      // Only allow undo if lastCompletedDate is today's local date
-      if (!isTodayLocal(target.lastCompletedDate)) {
+      // Undo only the current period's completion.
+      if (!isPlanJourneyDoneThisPeriod(target.lastCompletedDate, target.cadence || 'daily')) {
         return prev;
       }
 
       const currentStreak = target.streakCount || 0;
       const newStreak = Math.max(0, currentStreak - 1);
 
+      // The completion before this one comes back, so the streak it carried survives tomorrow.
       updatedPlan = {
         ...target,
         streakCount: newStreak,
-        lastCompletedDate: undefined,
+        lastCompletedDate: target.previousCompletedDate || undefined,
+        previousCompletedDate: undefined,
       };
 
       const updatedPlans = [...prev.improvementPlans];
@@ -6315,7 +6318,8 @@ export function useAppState() {
       if (idx === -1) return prev;
       const target = prev.followedPlans[idx];
 
-      if (isTodayLocal(target.lastCompletedDate)) {
+      // Once per period: today for a daily journey, this week for a weekly one.
+      if (isPlanJourneyDoneThisPeriod(target.lastCompletedDate, target.cadence || 'daily')) {
         return prev;
       }
 
@@ -6331,6 +6335,7 @@ export function useAppState() {
         ...target,
         streakCount: newStreak,
         lastCompletedDate: nowIso,
+        previousCompletedDate: target.lastCompletedDate || undefined,
       };
 
       const updatedFollows = [...prev.followedPlans];
@@ -6354,18 +6359,20 @@ export function useAppState() {
       if (idx === -1) return prev;
       const target = prev.followedPlans[idx];
 
-      // Only allow undo if lastCompletedDate is today's local date
-      if (!isTodayLocal(target.lastCompletedDate)) {
+      // Undo only the current period's completion.
+      if (!isPlanJourneyDoneThisPeriod(target.lastCompletedDate, target.cadence || 'daily')) {
         return prev;
       }
 
       const currentStreak = target.streakCount || 0;
       const newStreak = Math.max(0, currentStreak - 1);
 
+      // The completion before this one comes back, so the streak it carried survives tomorrow.
       updatedFollow = {
         ...target,
         streakCount: newStreak,
-        lastCompletedDate: undefined,
+        lastCompletedDate: target.previousCompletedDate || undefined,
+        previousCompletedDate: undefined,
       };
 
       const updatedFollows = [...prev.followedPlans];
@@ -6457,12 +6464,6 @@ export function useAppState() {
       updateCachedPublicPlan(p);
       syncBroadcaster.broadcast('PLAN_UPDATED', p);
       handlePlanSyncExecution(p);
-      addReflectionNoteToSupabase({
-        originalPlanId: planId,
-        note: note.trim(),
-        nextReviewDueAt: nextDue,
-        reviewCadence: p.reviewCadence,
-      });
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6510,7 +6511,7 @@ export function useAppState() {
     description: string,
     category: string,
     isPublic: boolean,
-    stepTitles?: string[],
+    stepEdits?: { id?: string; title: string }[],
     typeParams?: {
       targetValue?: number;
       targetUnit?: string;
@@ -6527,14 +6528,19 @@ export function useAppState() {
       if (idx === -1) return prev;
       const target = prev.improvementPlans[idx];
 
-      const steps: PlanStep[] = (stepTitles || [])
-        .filter((t) => t.trim().length > 0)
-        .map((t, i) => ({
-          id: target.steps[i]?.id || uid(),
-          title: t.trim(),
-          orderIndex: i,
-          completed: target.steps[i]?.completed || false,
-        }));
+      // Steps match by id, so removing or reordering a step never moves another step's completion.
+      const existingSteps = new Map((target.steps || []).map((st) => [st.id, st]));
+      const steps: PlanStep[] = (stepEdits || [])
+        .filter((st) => st.title.trim().length > 0)
+        .map((st, i) => {
+          const existing = st.id ? existingSteps.get(st.id) : undefined;
+          return {
+            id: existing?.id || uid(),
+            title: st.title.trim(),
+            orderIndex: i,
+            completed: existing?.completed || false,
+          };
+        });
 
       const isVision = target.planType === 'vision';
       const newReviewCadence = isVision
@@ -6703,6 +6709,7 @@ export function useAppState() {
         completed: false,
       }));
 
+      const copyReviewCadence = originalPlan.reviewCadence || (originalPlan.planType === 'vision' ? 'weekly' : null);
       const createdFollow: UserPlanFollow = {
         id: generateUUID(),
         userId: session.user.id,
@@ -6719,7 +6726,8 @@ export function useAppState() {
         targetValue: originalPlan.targetValue,
         targetUnit: originalPlan.targetUnit,
         currentProgress: 0, // Reset progress for copier
-        targetDate: originalPlan.targetDate,
+        // A deadline the creator already passed means nothing to the copier.
+        targetDate: originalPlan.targetDate && originalPlan.targetDate >= todayKey() ? originalPlan.targetDate : undefined,
         cadence: originalPlan.cadence,
         duration: originalPlan.duration,
         startDate: trustedNow().toISOString(),
@@ -6729,8 +6737,11 @@ export function useAppState() {
         reflectionNotes: [], // Reset reflections to empty for copier
 
         // Review loop cadence
-        reviewCadence: originalPlan.reviewCadence || (originalPlan.planType === 'vision' ? 'weekly' : null),
-        nextReviewDueAt: originalPlan.nextReviewDueAt || (originalPlan.planType === 'vision' ? new Date(trustedNowMs() + 7 * 24 * 60 * 60 * 1000).toISOString() : null),
+        // The copier's first review is one cadence from now, never the creator's due date.
+        reviewCadence: copyReviewCadence,
+        nextReviewDueAt: copyReviewCadence
+          ? new Date(trustedNowMs() + (copyReviewCadence === 'weekly' ? 7 : 30) * 24 * 60 * 60 * 1000).toISOString()
+          : null,
       };
 
       setState((prev) => {
@@ -6856,12 +6867,6 @@ export function useAppState() {
     if (updatedFollow) {
       const f = updatedFollow as UserPlanFollow;
       handleFollowSyncExecution(f);
-      addReflectionNoteToSupabase({
-        followedPlanId: followId,
-        note: note.trim(),
-        nextReviewDueAt: nextDue,
-        reviewCadence: f.reviewCadence,
-      });
     }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6930,8 +6935,9 @@ export function useAppState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const deleteFollowedPlan = useCallback((followedPlanId: string) => {
-    deleteFollowedPlanFromSupabase(followedPlanId);
+  const deleteFollowedPlan = useCallback(async (followedPlanId: string) => {
+    // Optimistic: the copy leaves at once and its tombstone is saved, so a failed table delete is
+    // finished on the next load instead of the copy coming back.
     setState(
       (prev) => {
         const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), followedPlanId].slice(-500);
@@ -6943,6 +6949,11 @@ export function useAppState() {
       },
       { immediate: true }
     );
+    syncBroadcaster.broadcast('FOLLOW_DELETED', { followId: followedPlanId });
+    const ok = await deleteFollowedPlanFromSupabase(followedPlanId);
+    if (!ok) {
+      dispatchToastError("Couldn't remove copy everywhere", "It's removed here and will finish the next time Ascend loads.");
+    }
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -6992,50 +7003,24 @@ export function useAppState() {
   }, []);
 
   const deletePlan = useCallback(async (planId: string) => {
-    try {
-      console.log(`[Delete Plan] Initiating DB deletion for plan ID: ${planId}`);
+    // The table delete comes first (the caller keeps its confirm dialog open and shows the error
+    // if it fails). A plan that never reached the table deletes the same way.
+    await deletePlanFromSupabase(planId);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        throw new Error('Log in and try again.');
-      }
-
-      // 1. Force the database delete FIRST
-      const { data, error } = await supabase
-        .from('improvement_plans')
-        .delete()
-        .eq('id', planId)
-        .eq('creator_id', session.user.id)
-        .select();
-
-      if (error || !data || data.length === 0) {
-        console.error("[Delete Plan] DB Error or 0 rows deleted:", error, data);
-        throw error ?? new Error('Try again in a moment.');
-      }
-
-      console.log(`[Delete Plan] DB Success! Removing from local Zustand state...`);
-
-      // 2. DB Success! Now remove from Zustand/UI state & save clean user_data
-      removeCachedPublicPlan(planId);
-      syncBroadcaster.broadcast('PLAN_DELETED', { planId });
-
-      setState(
-        (prev) => {
-          const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), planId].slice(-500);
-          return {
-            ...prev,
-            improvementPlans: prev.improvementPlans.filter((p) => p.id !== planId),
-            followedPlans: prev.followedPlans.filter((f) => f.originalPlanId !== planId),
-            deletedEntityIds: updatedDeletedEntityIds,
-          };
-        },
-        { immediate: true }
-      );
-    } catch (err: any) {
-      console.error("[Delete Plan] Fatal error deleting plan:", err);
-      // The caller shows the error toast and keeps the confirm dialog open.
-      throw err;
-    }
+    removeCachedPublicPlan(planId);
+    syncBroadcaster.broadcast('PLAN_DELETED', { planId });
+    setState(
+      (prev) => {
+        const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), planId].slice(-500);
+        return {
+          ...prev,
+          improvementPlans: prev.improvementPlans.filter((p) => p.id !== planId),
+          followedPlans: prev.followedPlans.filter((f) => f.originalPlanId !== planId),
+          deletedEntityIds: updatedDeletedEntityIds,
+        };
+      },
+      { immediate: true }
+    );
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

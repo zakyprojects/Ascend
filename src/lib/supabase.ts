@@ -639,16 +639,21 @@ async function upsertPlanRow(plan: ImprovementPlan): Promise<string | null> {
   }
 }
 
-export async function deletePlanFromSupabase(planId: string) {
-  if (!isSupabaseConfigured) return;
-  try {
-    const { error } = await supabase.from('improvement_plans').delete().eq('id', planId);
-    if (error) {
-      console.error('Error deleting plan from Supabase:', error);
-    }
-  } catch (e) {
-    console.warn('Supabase plan delete error:', e);
-  }
+/**
+ * Deletes one of the user's own plans, after any save still running for it, so a late save can
+ * never bring it back. Resolves once the row is gone (or never reached the table); rejects on error.
+ */
+export function deletePlanFromSupabase(planId: string): Promise<void> {
+  return serializeRowSync(`plan:${planId}`, async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) throw new Error('Log in and try again.');
+    const { error } = await supabase
+      .from('improvement_plans')
+      .delete()
+      .eq('id', planId)
+      .eq('creator_id', session.user.id);
+    if (error) throw error;
+  });
 }
 
 /** Upserts this user's copy of a plan; resolves true once the row is saved. */
@@ -911,66 +916,6 @@ export async function fetchPublicPlansFromSupabase(options?: FetchPublicPlansPar
   } catch (e) {
     console.error('Error fetching public plans from Supabase:', e);
     return [];
-  }
-}
-
-export async function addReflectionNoteToSupabase(params: {
-  originalPlanId?: string;
-  followedPlanId?: string;
-  note: string;
-  nextReviewDueAt?: string | null;
-  reviewCadence?: 'weekly' | 'monthly' | null;
-}): Promise<PlanReflectionNote | null> {
-  if (!isSupabaseConfigured) return null;
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const ownerId = session?.user?.id;
-    if (!ownerId) return null;
-
-    const noteId = crypto.randomUUID();
-    const { data, error } = await supabase
-      .from('plan_reflection_notes')
-      .insert({
-        id: noteId,
-        original_plan_id: params.originalPlanId || null,
-        followed_plan_id: params.followedPlanId || null,
-        owner_id: ownerId,
-        note: params.note,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error inserting reflection note:', error);
-      return null;
-    }
-
-    // Recalculate and update next_review_due_at on target plan table
-    if (params.nextReviewDueAt !== undefined) {
-      if (params.originalPlanId) {
-        await supabase
-          .from('improvement_plans')
-          .update({ next_review_due_at: params.nextReviewDueAt })
-          .eq('id', params.originalPlanId);
-      } else if (params.followedPlanId) {
-        await supabase
-          .from('user_plan_follows')
-          .update({ next_review_due_at: params.nextReviewDueAt })
-          .eq('id', params.followedPlanId);
-      }
-    }
-
-    return {
-      id: data.id,
-      originalPlanId: data.original_plan_id,
-      followedPlanId: data.followed_plan_id,
-      ownerId: data.owner_id,
-      note: data.note,
-      createdAt: data.created_at,
-    };
-  } catch (e) {
-    console.error('Error in addReflectionNoteToSupabase:', e);
-    return null;
   }
 }
 
