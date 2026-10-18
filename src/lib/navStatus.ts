@@ -35,13 +35,14 @@ export function getNavStatuses(state: AppState, isHabitDone: (habit: Habit) => b
   if (habits.length > 0) {
     const open = habits.filter((h) => !isHabitDone(h));
     if (open.length === 0) {
-      statuses.habits = { tone: 'done', meta: `${habits.length}/${habits.length}`, label: 'all habits done today' };
+      statuses.habits = { tone: 'done', meta: `${habits.length}/${habits.length}`, label: 'all habits done' };
     } else {
       const dailyOpen = open.some((h) => h.frequency === 'daily');
       statuses.habits = {
         tone: late && dailyOpen ? 'risk' : 'pending',
         meta: `${open.length} left`,
-        label: `${open.length} ${open.length === 1 ? 'habit' : 'habits'} left today`,
+        // Counts weekly habits still open this week too, so no "today".
+        label: `${open.length} ${open.length === 1 ? 'habit' : 'habits'} left`,
       };
     }
   }

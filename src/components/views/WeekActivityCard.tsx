@@ -4,6 +4,7 @@ import { BarChart } from '@/components/ui/charts';
 import { CountUp } from '@/components/ui/Motion';
 import { formatWeekdayDate as fullDay, formatWeekdayShort as weekday } from '@/lib/dates';
 import type { DayHabits, DayPoints } from '@/lib/weeklyActivity';
+import { ptsText } from '@/lib/leagues';
 
 type Metric = 'points' | 'habits';
 
@@ -49,9 +50,9 @@ export function WeekActivityCard({ points, habits }: WeekActivityCardProps) {
         <>
           <div className="flex items-baseline gap-1.5">
             <CountUp value={earned} className="text-4xl font-medium leading-none text-content-primary tabular-nums" />
-            <span className="text-sm text-content-muted">pts earned</span>
+            <span className="text-sm text-content-muted">{earned === 1 ? 'pt' : 'pts'} earned</span>
             {lost > 0 && (
-              <span className="figure ml-auto text-xs text-warning-text">−{lost.toLocaleString()} penalties</span>
+              <span className="figure ml-auto text-xs text-warning-text">{ptsText(-lost)} in penalties</span>
             )}
           </div>
           <BarChart
@@ -59,8 +60,8 @@ export function WeekActivityCard({ points, habits }: WeekActivityCardProps) {
             label={`Points earned per day, last 7 days: ${earned} total`}
             highlightIndex={todayIndex}
             formatTooltip={(datum, i) => {
-              const penalty = points[i].lost > 0 ? ` · −${points[i].lost} penalty` : '';
-              return `${fullDay(points[i].day)}: +${datum.value} pts${penalty}`;
+              const penalty = points[i].lost > 0 ? ` · ${ptsText(-points[i].lost)} in penalties` : '';
+              return `${fullDay(points[i].day)}: ${ptsText(datum.value, true)}${penalty}`;
             }}
           />
         </>

@@ -6,7 +6,8 @@ import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
 import type { NavStatuses } from '@/lib/navStatus';
 import { pageLinkProps } from '@/lib/pageLink';
-import { HabitCheck, isReadingLinked } from '@/components/habits/HabitCheck';
+import { HabitCheck } from '@/components/habits/HabitCheck';
+import { habitPointsMeta } from '@/components/habits/habitPointsMeta';
 
 /** Pages Quick log jumps to: their logging needs the page's own form. */
 const JUMPS: View[] = ['journal', 'exercise', 'reading', 'time-tracker'];
@@ -47,16 +48,16 @@ export function QuickLog({ open, onClose, store, statuses, onNavigate }: QuickLo
             <ul className="space-y-1.5">
               {habits.map((habit) => {
                 const done = store.isHabitDone(habit);
-                const isLinked = isReadingLinked(habit);
+                const meta = habitPointsMeta(habit, done);
                 return (
                   <li key={habit.id} className="flex items-center gap-3 rounded-xl px-1 py-0.5">
                     <HabitCheck habit={habit} done={done} size="sm" onToggle={() => store.toggleHabit(habit.id)} />
                     <span className={cx('min-w-0 flex-1 truncate text-sm', done ? 'text-content-muted line-through decoration-overlay-strong' : 'text-content-secondary')}>
                       {habit.name}
                     </span>
-                    {habit.isPreset && habit.points > 0 && !isLinked && (
-                      <span className={cx('text-2xs font-medium tabular-nums', done ? 'text-content-muted' : 'text-brand-text')}>+{habit.points}</span>
-                    )}
+                    <span className={cx('shrink-0 text-2xs font-medium tabular-nums', meta.earns && !done ? 'text-brand-text' : 'text-content-muted')}>
+                      {meta.text}
+                    </span>
                   </li>
                 );
               })}

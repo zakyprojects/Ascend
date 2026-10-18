@@ -21,7 +21,8 @@ import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 import { AppStore } from '@/lib/store';
 import { View } from '@/components/AppShell';
 import { Habit, LeagueType } from '@/types';
-import { formatDateLong, parseDate, periodKey, startOfWeek } from '@/lib/dates';
+import { habitPointsMeta } from '@/components/habits/habitPointsMeta';
+import { formatDateLong, parseDate, startOfWeek } from '@/lib/dates';
 import { ProgressRing } from '@/components/ui/charts';
 import { LEAGUE_CONFIG, pointsText, ptsText } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
@@ -37,7 +38,7 @@ import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { useCompletionPop } from '@/lib/useCompletionPop';
 import { pageLinkProps } from '@/lib/pageLink';
 import { dailyHabitCompletions, dailyPoints, lastDayKeys } from '@/lib/weeklyActivity';
-import { HabitCheck, isReadingLinked } from '@/components/habits/HabitCheck';
+import { HabitCheck } from '@/components/habits/HabitCheck';
 import { MoodBadge } from '@/components/journal/moods';
 import { WeekActivityCard } from './WeekActivityCard';
 import { AscentProfile } from './AscentProfile';
@@ -398,10 +399,10 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
                 <a
                   {...pageLinkProps('journal', onViewChange)}
                   className={cx('card card-hover block p-4', FOCUS_RING)}
-                  aria-label={todayEntry ? "Edit today's journal entry" : "Write today's journal entry"}
                 >
                   {todayEntry ? (
                     <span className="block">
+                      <span className="sr-only">Today's journal: </span>
                       <span className="mb-1.5 flex items-center justify-between gap-2">
                         <MoodBadge mood={todayEntry.mood} />
                         <span className="text-xs text-content-muted">Edit</span>
@@ -519,17 +520,7 @@ export function Dashboard({ store, onViewChange, onOpenAuth }: DashboardProps) {
 /** One habit in the Today card: tick or untick in place, with its points. */
 function TodayHabitRow({ habit, done, onToggle }: { habit: Habit; done: boolean; onToggle: () => void }) {
   const { arm, popClass } = useCompletionPop(done);
-  const linked = isReadingLinked(habit);
-  const awarded = (habit.completions as Habit['completions'] | string[] | undefined);
-  const pointsAwarded = Array.isArray(awarded) ? undefined : awarded?.[periodKey(habit.frequency)]?.pointsAwarded;
-  const meta = linked
-    ? 'Reading Hub'
-    : !habit.isPreset
-      ? 'No points'
-      : done && pointsAwarded === 0 && habit.points > 0
-        ? 'Cap reached'
-        : ptsText(habit.points, true);
-  const earns = !linked && habit.isPreset && habit.points > 0 && !(done && pointsAwarded === 0);
+  const { text: meta, earns } = habitPointsMeta(habit, done);
 
   return (
     <li className="flex items-center gap-3 px-4 py-2.5">
@@ -625,7 +616,7 @@ function LeagueRow({ type, rank, points, status, navigate }: LeagueRowProps) {
             </span>
           )}
           <span className="mt-1 block figure text-2xs text-content-muted">
-            {points > 0 ? <><CountUp value={points} /> pts</> : 'No points yet'}
+            {points > 0 ? <><CountUp value={points} /> {points === 1 ? 'pt' : 'pts'}</> : 'No points yet'}
           </span>
         </span>
       </a>

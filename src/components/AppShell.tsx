@@ -284,8 +284,8 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
                 onClick={onOpenAuth}
                 className="btn-primary text-xs py-1 px-2.5 flex items-center gap-1"
               >
-                <LogIn size={13} />
-                Sign In
+                <LogIn size={13} aria-hidden="true" />
+                Sign in
               </button>
             )}
             <Button
@@ -377,10 +377,8 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
       >
         <div className="space-y-2">
           {currentUser && (
-            <p
-              className={`text-xs font-medium ${currentUser.isAnonymous ? 'text-warning-text' : 'text-brand-text'}`}
-            >
-              {currentUser.isAnonymous ? 'Guest account' : 'Account active'}
+            <p className="text-xs font-medium text-content-muted">
+              {currentUser.isAnonymous ? 'Guest account' : 'Signed in'}
             </p>
           )}
           {currentUser?.isAnonymous && onOpenAuth && (
@@ -392,7 +390,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
                 onOpenAuth();
               }}
             >
-              Create Account to Save Progress
+              Save progress
             </Button>
           )}
           {!currentUser && onOpenAuth && (
@@ -404,7 +402,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
                 onOpenAuth();
               }}
             >
-              Sign In or Register
+              Sign in or register
             </Button>
           )}
           <NavItemPrimitive
@@ -443,7 +441,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
                 handleLogoutClick();
               }}
             >
-              Log Out
+              Log out
             </Button>
           )}
         </div>

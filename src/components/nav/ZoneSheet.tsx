@@ -67,7 +67,27 @@ export const ZoneSheet = memo(function ZoneSheet({ open, group, currentView, sta
     const previousOverflow = root.style.overflow;
     root.style.overflow = 'hidden';
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') requestClose();
+      if (event.key === 'Escape') {
+        requestClose();
+        return;
+      }
+      // Tab stays inside the sheet (it is modal: the page behind is not reachable).
+      const sheet = sheetRef.current;
+      if (event.key !== 'Tab' || !sheet) return;
+      const focusables = Array.from(sheet.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')).filter(
+        (el) => el.tabIndex >= 0 && el.getClientRects().length > 0
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !sheet.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !sheet.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {

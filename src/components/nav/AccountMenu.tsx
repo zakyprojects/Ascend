@@ -92,7 +92,7 @@ export function AccountMenu({
     items[(index + step + items.length) % items.length]?.focus();
   };
 
-  const status = !user ? 'Not signed in' : user.isGuest ? 'Guest account' : 'Account active';
+  const status = !user ? 'Not signed in' : user.isGuest ? 'Guest account' : 'Signed in';
 
   return (
     <>
