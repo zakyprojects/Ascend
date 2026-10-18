@@ -37,19 +37,18 @@ export function ActivityTile({
   );
 }
 
-export function StopScheduleButton({ onClick, tone = 'neutral' }: { onClick: () => void; tone?: 'neutral' | 'danger' }) {
+/** Compact action button used in a row by the live and overdue block states. */
+export const SCHEDULE_ACTION =
+  'flex-1 min-w-[7rem] sm:flex-none justify-center min-h-10 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap';
+
+export function StopScheduleButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label="Stop following schedule"
       title="Stop following schedule"
-      className={cx(
-        'shrink-0 min-h-10 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors',
-        tone === 'danger'
-          ? 'text-error-text hover:text-content-primary hover:bg-rose-500/20'
-          : 'text-content-muted hover:text-rose-theme hover:bg-rose-500/10'
-      )}
+      className="shrink-0 min-h-10 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors text-content-muted hover:text-rose-theme hover:bg-rose-500/10"
     >
       <PowerOff size={14} aria-hidden="true" />
       <span className="hidden sm:inline">Stop</span>

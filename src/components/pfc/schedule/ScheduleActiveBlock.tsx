@@ -11,11 +11,8 @@ import { useToast } from '@/components/ui/Toast';
 import { toUserMessage } from '@/lib/userMessage';
 import { formatClock } from '../focusSession';
 import { getBlockContextualMessage, getSkipToastMessage } from '../scheduleMessages';
-import { ActivityTile, StopScheduleButton, blockRange, blockTitle, hhmm, type Theme } from './shared';
+import { ActivityTile, SCHEDULE_ACTION as ACTION, StopScheduleButton, blockRange, blockTitle, hhmm, type Theme } from './shared';
 import { TakeBreakDialog } from './TakeBreakDialog';
-
-const ACTION =
-  'flex-1 min-w-[7rem] sm:flex-none justify-center min-h-10 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap';
 
 /** The block happening now: countdown to its end, break, skip, complete. */
 export function ScheduleActiveBlock({
