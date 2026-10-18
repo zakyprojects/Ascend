@@ -103,6 +103,7 @@ export function CreatePlanDialog({ store, open, onClose }: { store: AppStore; op
       dirty={guard.dirty}
       title={title}
       maxWidth="max-w-lg"
+      contentKey={choice?.key ?? 'choose'}
       footer={
         choice ? (
           <>

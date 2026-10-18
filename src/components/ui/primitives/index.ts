@@ -24,6 +24,7 @@ export type {
 } from './Card';
 
 export { Dialog } from './Dialog';
+export { focusField, isFinePointer, useFocusOnRender } from './focus';
 export type { DialogProps } from './Dialog';
 
 export { Input, Select, Textarea, NumberField, Form, FormAlert, FieldGroup, FieldMessage, FieldRow, FieldErrorBubble, useFormController, useFieldIssue } from './Field';

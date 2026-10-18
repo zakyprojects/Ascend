@@ -507,6 +507,7 @@ export function SkillTracker({ store }: { store: AppStore }) {
         onClose={() => setLogModalOpen(false)}
         dirty={logForm.dirty}
         title="Log practice"
+        initialFocus={logSkillId ? 'skill-duration-input' : undefined}
         preventClose={isLogging}
         footer={
           <>

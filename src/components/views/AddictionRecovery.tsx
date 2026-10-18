@@ -409,6 +409,7 @@ export function AddictionRecovery({ store }: { store: AppStore }) {
         onClose={() => setCravingModalOpen(false)}
         dirty={cravingForm.dirty}
         title="Log a craving"
+        initialFocus="craving-trigger"
         footer={
           <>
             <button type="button" onClick={() => cravingForm.confirmDiscard(() => setCravingModalOpen(false))} className="btn-secondary">

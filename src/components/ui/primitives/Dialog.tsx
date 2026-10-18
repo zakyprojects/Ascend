@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
 import { prefersReducedMotion } from '@/lib/motion';
 import { requestDiscard } from '@/lib/unsavedChanges';
+import { focusField, isFinePointer, isTypingField } from './focus';
 
 export interface DialogProps {
   open: boolean;
@@ -23,9 +24,12 @@ export interface DialogProps {
   placement?: 'center' | 'top';
   /** Unsaved typing (`useUnsavedChanges`): Esc, backdrop and X ask "Discard changes?" first. */
   dirty?: boolean;
-  /** What the open dialog shows (e.g. a lesson id). When it changes, the body scrolls back to the
-   *  top and focus moves to the panel, as if the dialog had just opened on the new content. */
+  /** What the open dialog shows (e.g. a lesson id, a form step). When it changes, the body scrolls
+   *  back to the top and focus is placed again, as if the dialog had just opened on the new content. */
   contentKey?: string;
+  /** Id of the field to focus on open instead of the first one, when the primary typing field is not
+   *  first (e.g. after a slider). Same rule as the default: mouse/trackpad only. */
+  initialFocus?: string;
 }
 
 // Matches the longest exit animation (dialog-out / exit-fade, tailwind.config.js).
@@ -34,6 +38,9 @@ const EXIT_MS = 200;
 const dialogStack: symbol[] = [];
 let lockCount = 0;
 let previousOverflow = '';
+
+const FIELD_SELECTOR =
+  'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])';
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -50,6 +57,7 @@ export const Dialog: React.FC<DialogProps> = ({
   placement = 'center',
   dirty = false,
   contentKey,
+  initialFocus,
 }) => {
   // Stays mounted for its exit animation after `open` turns false. The last open title and
   // content are shown while it leaves, so a parent clearing its data on close cannot make the
@@ -79,13 +87,33 @@ export const Dialog: React.FC<DialogProps> = ({
   const descriptionId = React.useId();
   const panelRef = React.useRef<HTMLDivElement>(null);
   const bodyRef = React.useRef<HTMLDivElement>(null);
+  const initialFocusRef = React.useRef(initialFocus);
+  initialFocusRef.current = initialFocus;
+  // Where focus starts. An explicit [data-autofocus] wins on every device. Otherwise, with a
+  // mouse/trackpad, the named `initialFocus` field or the dialog's first field when that is a typing
+  // field (a first Select, date, slider or checkbox means the user picks before typing, so no field).
+  // Touch skips fields: focusing one throws the on-screen keyboard over the dialog before the user
+  // chose to type. Without a field the panel takes focus (never the close or a destructive button).
+  const focusInitial = React.useCallback((movePanel: boolean) => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const explicit = panel.querySelector<HTMLElement>('[data-autofocus]');
+    if (explicit) return focusField(explicit);
+    if (isFinePointer()) {
+      const named = initialFocusRef.current ? document.getElementById(initialFocusRef.current) : null;
+      if (named && panel.contains(named)) return focusField(named);
+      const first = panel.querySelector(FIELD_SELECTOR);
+      if (isTypingField(first)) return focusField(first);
+    }
+    if (movePanel || !panel.contains(document.activeElement)) panel.focus({ preventScroll: true });
+  }, []);
   const shownKeyRef = React.useRef(contentKey);
   React.useLayoutEffect(() => {
     if (!open || shownKeyRef.current === contentKey) return;
     shownKeyRef.current = contentKey;
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
-    panelRef.current?.focus({ preventScroll: true });
-  }, [open, contentKey]);
+    focusInitial(true);
+  }, [open, contentKey, focusInitial]);
   const rootRef = React.useRef<HTMLDivElement>(null);
   // A leaving dialog is inert, not aria-hidden: inert also drops focus from the button that
   // closed it, so the browser never sees focus inside hidden content. Focus then returns to
@@ -119,21 +147,7 @@ export const Dialog: React.FC<DialogProps> = ({
 
     previousActiveElement.current = document.activeElement as HTMLElement | null;
 
-    // An explicit [data-autofocus] wins; otherwise, with a mouse/keyboard, the first text field of a
-    // form dialog takes focus so typing can start at once. Touch skips this: focusing a field would
-    // throw the on-screen keyboard over the dialog before the user chose to type.
-    const autofocusEl =
-      panelRef.current?.querySelector<HTMLElement>('[data-autofocus]') ??
-      (window.matchMedia('(pointer: fine)').matches
-        ? panelRef.current?.querySelector<HTMLElement>(
-            'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly])'
-          )
-        : null);
-    if (autofocusEl) {
-      autofocusEl.focus();
-    } else if (panelRef.current && !panelRef.current.contains(document.activeElement)) {
-      panelRef.current.focus();
-    }
+    focusInitial(false);
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (dialogStack[dialogStack.length - 1] !== dialogId) {
@@ -191,7 +205,7 @@ export const Dialog: React.FC<DialogProps> = ({
     let focusTimer: ReturnType<typeof setTimeout> | undefined;
     const handleFocusIn = (event: FocusEvent) => {
       const target = event.target as HTMLElement | null;
-      if (!target?.matches('input, textarea, select') || window.matchMedia('(pointer: fine)').matches) return;
+      if (!target?.matches('input, textarea, select') || isFinePointer()) return;
       clearTimeout(focusTimer);
       focusTimer = setTimeout(() => target.scrollIntoView({ block: 'nearest' }), 300);
     };
@@ -217,7 +231,7 @@ export const Dialog: React.FC<DialogProps> = ({
         previousActiveElement.current.focus();
       }
     };
-  }, [open, dialogId]);
+  }, [open, dialogId, focusInitial]);
 
   if (!rendered) return null;
   const hasBody = content.children != null && content.children !== false;
