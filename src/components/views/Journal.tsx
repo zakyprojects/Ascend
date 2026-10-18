@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Smile, Meh, Frown, Zap, Trash2, Edit3, CheckCircle2, Sparkles, RotateCcw, BookOpen, PenLine } from 'lucide-react';
+import { Trash2, Edit3, CheckCircle2, Sparkles, RotateCcw, BookOpen, PenLine } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { Mood, JournalEntry } from '@/types';
 import { formatDateLong, todayKey, calculateStreak, formatWeekdayShort, formatWeekdayDate } from '@/lib/dates';
@@ -18,47 +18,14 @@ import { lastDayKeys } from '@/lib/weeklyActivity';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
 import { getDailyPrompt } from '@/data/journalPrompts';
+import { MOODS, MOOD_MAP, MoodBadge } from '@/components/journal/moods';
 
 // Minimum non-whitespace characters to save an entry
 const MIN_JOURNAL_CONTENT_LENGTH = 10;
 const PROMPT_PREF_STORAGE_KEY = 'ascend_journal_prompt_mode';
 const ENTRIES_PAGE = 10;
 
-export interface MoodMeta {
-  value: Mood;
-  label: string;
-  score: number; // 1 to 4, for the average
-  icon: typeof Smile;
-  color: string; // Hex for inline styles
-}
-
-const MOODS: MoodMeta[] = [
-  { value: 'sad', label: 'Sad', score: 1, icon: Frown, color: '#38bdf8' },
-  { value: 'neutral', label: 'Neutral', score: 2, icon: Meh, color: '#94a3b8' },
-  { value: 'happy', label: 'Happy', score: 3, icon: Smile, color: '#10b981' },
-  { value: 'motivated', label: 'Motivated', score: 4, icon: Zap, color: '#f59e0b' },
-];
-
-const MOOD_MAP: Record<Mood, MoodMeta> = MOODS.reduce((acc, m) => {
-  acc[m.value] = m;
-  return acc;
-}, {} as Record<Mood, MoodMeta>);
-
 type ChartRange = '7d' | '30d';
-
-function MoodBadge({ mood }: { mood: Mood }) {
-  const meta = MOOD_MAP[mood] || MOOD_MAP.neutral;
-  const Icon = meta.icon;
-  return (
-    <span
-      className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-lg border"
-      style={{ backgroundColor: `${meta.color}15`, borderColor: `${meta.color}30`, color: meta.color }}
-    >
-      <Icon size={12} />
-      {meta.label}
-    </span>
-  );
-}
 
 export function Journal({ store }: { store: AppStore }) {
   const existingToday = store.getTodayJournalEntry();

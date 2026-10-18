@@ -129,6 +129,13 @@ export function pointsText(n: number): string {
   return `${n.toLocaleString()} ${Math.abs(n) === 1 ? 'point' : 'points'}`;
 }
 
+/** Short form for rows and chips: "1 pt", "3 pts"; `signed` adds "+" or "−" ("+2 pts", "−3 pts"). */
+export function ptsText(n: number, signed = false): string {
+  const unit = Math.abs(n) === 1 ? 'pt' : 'pts';
+  const sign = signed ? (n > 0 ? '+' : n < 0 ? '−' : '') : n < 0 ? '−' : '';
+  return `${sign}${Math.abs(n).toLocaleString()} ${unit}`;
+}
+
 /** Newest first by timestamp, then id (sync pulls can leave the stored ledger out of order). */
 export function sortPointsNewestFirst(history: PointsEntry[]): PointsEntry[] {
   return [...history].sort(
