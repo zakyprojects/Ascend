@@ -8,7 +8,7 @@ import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, CuratedBook, UserBook } from '@/types';
 import { formatDateLong, getNow, weekKey, formatWeekdayDate, formatWeekdayShort, addDays } from '@/lib/dates';
 import { READING_POINTS } from '@/lib/pointsConfig';
-import { READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, isRetiredAppReadingAward } from '@/lib/readingAwards';
+import { READING_BONUS_MIN_LOG_DAYS, READING_BONUS_MIN_SPAN_DAYS, bookRemovalPoints, isRetiredAppReadingAward } from '@/lib/readingAwards';
 import { getCapStatus } from '@/lib/capStatus';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { PageHero } from '@/components/ui/PageHero';
@@ -113,8 +113,8 @@ export function ReadingHub({ store }: { store: AppStore }) {
   }, [readingLogs, today]);
 
   const pointsToday = getCapStatus(store.state, 'reading', getNow()).earned;
-  // Points come from the points ledger (page points and finish bonuses), so removing a book
-  // never lowers an earlier day's points here either.
+  // Points come from the points ledger (page points and finish bonuses): removing a book keeps
+  // earlier days' page points here and takes back only what the ledger takes back.
   const readingPoints = useMemo(
     () =>
       pointsHistory
@@ -158,6 +158,23 @@ export function ReadingHub({ store }: { store: AppStore }) {
         0
       );
   }, [deleteBook, store.state.weeklyGoals]);
+
+  // Points removing the book takes back (its finish bonus + today's page points from it), the same
+  // number deleteBook and the server take back.
+  const deletePoints = useMemo(
+    () => (deleteBook ? bookRemovalPoints(deleteBook, libraryBooks, readingLogs, pointsHistory, today) : null),
+    [deleteBook, libraryBooks, readingLogs, pointsHistory, today]
+  );
+  const deletePointsLine = (() => {
+    if (!deletePoints || deletePoints.total <= 0) return '';
+    const what =
+      deletePoints.bonus > 0 && deletePoints.today > 0
+        ? 'finish bonus and today’s pages'
+        : deletePoints.bonus > 0
+          ? 'finish bonus'
+          : 'today’s pages';
+    return `Removing this book takes back its ${deletePoints.total} point${deletePoints.total === 1 ? '' : 's'} (${what}). `;
+  })();
 
   const readingHabit = store.state.habits.find((h) => h.linkedModule === 'reading');
   // A book you added yourself with the same title and author counts as this curated book, so it
@@ -271,7 +288,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
                   days ago.
                 </li>
                 <li>The pages Finish adds for you earn no page points.</li>
-                <li>Removing a book takes back only today's points from it (and a finish bonus earned today). Earlier days keep their points, finish bonus included.</li>
+                <li>Removing a book takes back its finish bonus and today's points from it. Earlier days keep their points.</li>
               </ul>
             </Disclosure>
           </>
@@ -707,7 +724,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
         }}
         title="Remove book?"
         itemName={deleteBook?.title}
-        description={`Its reading logs go too, so today's points from it are taken back (and its finish bonus, if earned today). Points from earlier days stay, finish bonus included, but the chart and your streak may drop.${
+        description={`${deletePointsLine}Its reading logs go too. Earlier days keep their page points, but the chart and your streak may drop.${
           linkedGoalsCount > 0
             ? ` ${linkedGoalsCount} linked weekly goal${linkedGoalsCount > 1 ? 's' : ''} from this week on ${linkedGoalsCount > 1 ? 'are' : 'is'} deleted too.`
             : ''

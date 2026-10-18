@@ -111,3 +111,44 @@ export function meetsReadingBonusGates(book: UserBook, logs: ReadingLog[], today
   const first = [...days].sort()[0];
   return first <= addDays(today, -READING_BONUS_MIN_SPAN_DAYS);
 }
+
+/**
+ * Points removing a library book takes back, as deleteBook and the server do
+ * (ascend_recompute_reading_bonus + ascend_recompute_reading_awards for today):
+ * - bonus: its live finish bonus row (reading_bonus_<id>), or, with no live row, the bonus the app
+ *   gave before server bonuses (book.pointsAwarded), which the server takes back as a minus row
+ *   (its deleted legacy marker's legacyAmount, the same number for every such book).
+ * - today: today's page award now minus today's award without this book's logs (the daily cap is
+ *   shared, so this can be less than the book's own pages). Earlier days' page points stay.
+ */
+export function bookRemovalPoints(
+  book: UserBook,
+  libraryBooks: UserBook[],
+  readingLogs: ReadingLog[],
+  pointsHistory: PointsEntry[],
+  today: string
+): { bonus: number; today: number; total: number } {
+  const ids = new Set<string>([book.id, book.linkedBookId].filter((id): id is string => Boolean(id)));
+
+  let bonus = 0;
+  for (const id of ids) {
+    const row = pointsHistory.find((e) => e && e.id === readingBonusId(id));
+    if (row) {
+      bonus += Math.max(0, Number(row.amount) || 0);
+      continue;
+    }
+    const lb = libraryBooks.find((b) => b && b.id === id);
+    bonus += Math.max(0, lb?.pointsAwarded ?? 0);
+  }
+
+  const todayNow = pointsHistory
+    .filter((e) => e && isReadingDayEntry(e, today))
+    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const remainingLogs = readingLogs.filter((l) => l && !(l.bookId && ids.has(l.bookId)));
+  const remainingBooks = libraryBooks.filter((b) => b && !ids.has(b.id));
+  const dayStartMs = new Date(`${today}T00:00:00`).getTime();
+  const todayAfter = computeReadingDayAward(remainingLogs, remainingBooks, today, dayStartMs, dayStartMs).entry?.amount ?? 0;
+  const todayLoss = Math.max(0, todayNow - todayAfter);
+
+  return { bonus, today: todayLoss, total: bonus + todayLoss };
+}
