@@ -32,9 +32,11 @@ export function PlanCard({
   const TypeIcon = meta.icon;
 
   return (
-    <article className="card enter-item flex flex-col gap-4 p-4 sm:p-5">
+    // self-start: a card is as tall as its own (clamped) content, so one expanded card never
+    // stretches the rest of its grid row.
+    <article className="card enter-item flex flex-col gap-4 self-start p-4 sm:p-5">
       <header className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             <Badge tone={meta.badge} size="xs">
               <TypeIcon size={12} /> {meta.label}
