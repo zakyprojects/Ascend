@@ -1,387 +1,116 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { cx, Dialog, EmptyState as EmptyStateBase, FieldRow, Form, Input, ProgressBar, Select, SlidingPill, Switch, Textarea, ToolbarInput, ToolbarSelect, useFormController } from '@/components/ui/primitives';
-import { toUserMessage } from '@/lib/userMessage';
-import {
-  Target,
-  FolderKanban,
-  CheckSquare,
-  Plus,
-  ArrowRight,
-  Calendar,
-  ChevronDown,
-  ChevronUp,
-  Check,
-  Timer,
-  Edit3,
-  Trash2,
-  Filter,
-  Search,
-  Tag,
-  X,
-  Lock,
-  Unlock,
-  ArrowDownUp,
-  HelpCircle,
-} from 'lucide-react';
-import { AppStore } from '@/lib/store';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowDownUp, CheckSquare, Filter, FolderKanban, HelpCircle, Plus, Search, Target, X } from 'lucide-react';
+import { cx, EmptyState as EmptyStateBase, SlidingPill, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
+import { TAP_TARGET } from '@/components/ui/primitives/shared';
+import { PageHero } from '@/components/ui/PageHero';
+import { Reveal } from '@/components/ui/Motion';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
+import { ProgressUpdateDialog } from '@/components/ui/ProgressUpdateDialog';
 import { useToast } from '@/components/ui/Toast';
 import { useAsyncActionKey } from '@/lib/useAsyncAction';
-import {
-  Goal,
-  Project,
-  Task,
-  TaskSubtask,
-  GoalStatus,
-  ProjectStatus,
-  TaskPriority,
-} from '@/types';
-import { earliestTargetDate, isNewPastDate, todayKey, formatDateShort } from '@/lib/dates';
+import { toUserMessage } from '@/lib/userMessage';
+import { AppStore } from '@/lib/store';
+import { todayKey } from '@/lib/dates';
+import { trustedNow } from '@/lib/clock';
+import type { Goal, GoalStatus, Project, ProjectStatus, Task, TaskPriority, TaskSubtask } from '@/types';
 import { EmptyState } from '@/components/views/ProjectsGoalsEmptyState';
-import { useCompletionPop } from '@/lib/useCompletionPop';
-import { TAP_TARGET, TAP_TARGET_Y } from '@/components/ui/primitives/shared';
-import { CountUp } from '@/components/ui/Motion';
-import { ProgressUpdateDialog, UpdateProgressButton } from '@/components/ui/ProgressUpdateDialog';
-import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { useScrollFade } from '@/lib/useScrollFade';
-import { trustedNow, trustedNowMs } from '@/lib/clock';
-
-// Active look of each status filter, worn by the row's SlidingPill.
-const GOAL_FILTER_PILL: Record<string, string> = {
-  all: 'bg-overlay-default border-overlay-strong',
-  active: 'bg-emerald-500/20 border-emerald-500/30',
-  achieved: 'bg-[var(--badge-purple-bg)] border-[var(--badge-purple-border)]',
-  abandoned: 'bg-overlay-default border-overlay-default',
-};
-
-const PROJECT_FILTER_PILL: Record<string, string> = {
-  all: 'bg-overlay-default border-overlay-strong',
-  in_progress: 'bg-[var(--badge-cyan-bg)] border-[var(--badge-cyan-border)]',
-  not_started: 'bg-overlay-default border-overlay-default',
-  on_hold: 'bg-amber-500/20 border-amber-500/30',
-  completed: 'bg-emerald-500/20 border-emerald-500/30',
-  locked: 'bg-amber-500/20 border-amber-500/35',
-};
+import { goalStatusPatch, projectStatusPatch, sortBySequence, useHierarchy } from '@/components/projects/hierarchy';
+import { GoalCard } from '@/components/projects/GoalCard';
+import { ProjectCard } from '@/components/projects/ProjectCard';
+import { TaskRow } from '@/components/projects/TaskRow';
+import { GoalFormDialog, ProjectFormDialog, TaskFormDialog, type GoalPayload, type ProjectPayload, type TaskPayload } from '@/components/projects/HierarchyForms';
+import { HowItWorksDialog } from '@/components/projects/HowItWorksDialog';
 
 type SubViewTab = 'goals' | 'projects' | 'tasks';
+type TabOrder = 'taskFirst' | 'projectFirst' | 'goalFirst';
+type TaskView = 'all' | 'active' | 'today' | 'overdue' | 'next7' | 'completed' | 'locked';
 
-const GOAL_CATEGORY_SUGGESTIONS = [
-  'Career & Business',
-  'Health & Fitness',
-  'Finance & Wealth',
-  'Skill Mastery',
-  'Personal Growth',
-  'Relationships',
-  'Mindset & Focus',
+const TAB_ORDER: Record<TabOrder, SubViewTab[]> = {
+  taskFirst: ['tasks', 'projects', 'goals'],
+  projectFirst: ['projects', 'tasks', 'goals'],
+  goalFirst: ['goals', 'projects', 'tasks'],
+};
+const NEXT_ORDER: Record<TabOrder, TabOrder> = { taskFirst: 'projectFirst', projectFirst: 'goalFirst', goalFirst: 'taskFirst' };
+const ORDER_LABEL: Record<TabOrder, string> = { taskFirst: 'Tasks first', projectFirst: 'Projects first', goalFirst: 'Goals first' };
+const TAB_META = {
+  tasks: { label: 'Tasks', icon: CheckSquare },
+  projects: { label: 'Projects', icon: FolderKanban },
+  goals: { label: 'Goals', icon: Target },
+} as const;
+
+const TASK_VIEWS: { id: TaskView; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'active', label: 'To do' },
+  { id: 'today', label: 'Due today' },
+  { id: 'overdue', label: 'Overdue' },
+  { id: 'next7', label: 'Next 7 days' },
+  { id: 'completed', label: 'Done' },
+  { id: 'locked', label: 'Locked' },
 ];
 
-function TaskItemRow({
-  task,
-  currentToday,
-  expandedTaskIds,
-  getProjectLockStatus,
-  store,
-  priorityColor,
-  setFilterProjectId,
-  setActiveTab,
-  getProjectName,
-  formatDateShort,
-  onStartFocusSession,
-  openEditTaskModal,
-  setDeleteTaskTarget,
-  toggleTaskExpand,
-  setDeleteSubtaskTarget,
-  newSubtaskInputs,
-  setNewSubtaskInputs,
-  handleAddInlineSubtask,
+/** A row of filter options with a gliding active pill. */
+function FilterRow<T extends string>({
+  options,
+  value,
+  onChange,
+  activeClass,
+  label,
+  className,
+  id,
 }: {
-  task: Task;
-  currentToday: string;
-  expandedTaskIds: Set<string>;
-  getProjectLockStatus: (projectId: string) => any;
-  store: AppStore;
-  priorityColor: (p: TaskPriority) => string;
-  setFilterProjectId: (id: string | null) => void;
-  setActiveTab: (tab: 'goals' | 'projects' | 'tasks') => void;
-  getProjectName: (id?: string) => string | null;
-  formatDateShort: (d: string) => string;
-  onStartFocusSession?: (taskTitle: string) => void;
-  openEditTaskModal: (task: Task) => void;
-  setDeleteTaskTarget: (task: Task) => void;
-  toggleTaskExpand: (taskId: string) => void;
-  setDeleteSubtaskTarget: (target: { taskId: string; subtask: TaskSubtask }) => void;
-  newSubtaskInputs: Record<string, string>;
-  setNewSubtaskInputs: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  handleAddInlineSubtask: (taskId: string) => void;
+  options: { id: T; label: string }[];
+  value: T;
+  onChange: (id: T) => void;
+  activeClass: Partial<Record<T, string>>;
+  label: string;
+  className?: string;
+  id?: string;
 }) {
-  const isOverdue = task.dueDate && task.dueDate < currentToday && !task.completed;
-  const isDueToday = task.dueDate === currentToday && !task.completed;
-  const subtasks = task.subtasks || [];
-  const completedSubtasks = subtasks.filter((st) => st.completed).length;
-  const isExpanded = expandedTaskIds.has(task.id);
-  const hasSubtasks = subtasks.length > 0;
-  const projectLock = task.projectId ? getProjectLockStatus(task.projectId) : { isLocked: false, reason: '' };
-
-  // Armed by the task checkbox and by subtask clicks: ticking the last subtask
-  // completes the task, which is the user's own action too.
-  const { arm: armCompletionPop, popClass } = useCompletionPop(task.completed);
-
   return (
-    <div
-      key={task.id}
-      className={`enter-item p-4 transition-colors space-y-3 ${
-        projectLock.isLocked
-          ? 'bg-amber-500/5'
-          : task.completed
-          ? 'opacity-75'
-          : 'hover:bg-overlay-subtle'
-      }`}
-    >
-      {/* Main Row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          {/* Task Checkbox */}
-          <button
-            onClick={() => {
-              if (!hasSubtasks && !projectLock.isLocked) {
-                if (!task.completed) armCompletionPop();
-                store.toggleTaskCompleted(task.id);
-              }
-            }}
-            disabled={hasSubtasks || projectLock.isLocked}
-            aria-label={
-              projectLock.isLocked
-                ? `Task "${task.title}" is locked`
-                : task.completed
-                ? `Mark task "${task.title}" incomplete`
-                : `Mark task "${task.title}" complete`
-            }
-            className={`mt-0.5 w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
-              hasSubtasks || projectLock.isLocked ? 'cursor-not-allowed opacity-90' : ''
-            } ${
-              task.completed
-                ? 'bg-emerald-500 border-emerald-400 text-on-brand'
-                : projectLock.isLocked
-                ? 'border-amber-500/30 bg-amber-500/10 text-warning-text'
-                : 'border-overlay-strong hover:border-emerald-400 text-transparent'
-            }`}
-            title={
-              projectLock.isLocked
-                ? (projectLock.reason || 'Project is locked by sequence order')
-                : hasSubtasks
-                ? 'Completes automatically when all subtasks are done'
-                : task.completed
-                ? 'Mark incomplete'
-                : 'Mark complete'
-            }
-          >
-            {projectLock.isLocked ? (
-              <Lock size={11} className="text-warning-text" />
-            ) : (
-              <Check size={13} strokeWidth={3} className={`${task.completed ? 'block' : 'hidden'} ${popClass}`} />
-            )}
-          </button>
-
-          <div className="space-y-1 flex-1 min-w-0">
-            <div className="flex items-center gap-x-2 gap-y-1.5 flex-wrap">
-              <span
-                className={`item-name text-sm leading-snug break-words ${
-                  task.completed ? 'line-through text-content-muted' : 'text-content-primary'
-                }`}
-              >
-                {task.title}
-              </span>
-
-              <span className={`badge text-2xs capitalize border ${priorityColor(task.priority)}`}>
-                {task.priority}
-              </span>
-
-              {task.projectId && (
-                <button
-                  onClick={() => {
-                    setFilterProjectId(task.projectId || null);
-                    setActiveTab('tasks');
-                  }}
-                  className={`badge text-2xs flex items-center gap-1 max-w-[180px] truncate border ${
-                    projectLock.isLocked
-                      ? 'bg-amber-500/10 text-warning-text border-amber-500/30'
-                      : 'badge-cyan'
-                  }`}
-                  title={`Project: ${getProjectName(task.projectId)} ${projectLock.isLocked ? '(Locked)' : ''}`}
-                >
-                  {projectLock.isLocked ? <Lock size={10} className="shrink-0 text-warning-text" /> : <FolderKanban size={10} className="shrink-0" />}
-                  <span className="truncate">{getProjectName(task.projectId)}</span>
-                </button>
-              )}
-
-              {task.dueDate && (
-                <span
-                  className={`badge text-2xs flex items-center gap-1 border ${
-                    isOverdue
-                      ? 'bg-rose-500/15 text-rose-theme border-rose-500/30 font-medium'
-                      : isDueToday
-                      ? 'bg-amber-500/15 text-warning-text border-amber-500/30 font-medium'
-                      : 'bg-overlay-subtle text-content-muted border-overlay-default'
-                  }`}
-                >
-                  <Calendar size={10} />
-                  <span>
-                    {isOverdue ? 'Overdue: ' : isDueToday ? 'Today: ' : 'Due: '}
-                    {formatDateShort(task.dueDate)}
-                  </span>
-                </span>
-              )}
-            </div>
-
-            {task.description && (
-              <p className="text-xs text-content-muted leading-relaxed whitespace-pre-wrap">
-                {task.description}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Start Deep Focus Session Button */}
-          <button
-            onClick={() => {
-              if (onStartFocusSession) {
-                onStartFocusSession(task.title);
-              }
-            }}
-            className="bg-cyan-500/15 px-2.5 py-1.5 rounded-xl hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-hierarchy text-xs font-medium flex items-center gap-1.5 transition-colors"
-            title="Start a focus session with this task"
-          >
-            <Timer size={13} />
-            <span className="hidden sm:inline">Focus</span>
-          </button>
-
-          <button
-            onClick={() => openEditTaskModal(task)}
-            className={`p-1.5 text-content-muted hover:text-content-secondary transition-colors ${TAP_TARGET_Y}`}
-            title="Edit task"
-            aria-label={`Edit task "${task.title}"`}
-          >
-            <Edit3 size={14} />
-          </button>
-
-          <button
-            onClick={() => setDeleteTaskTarget(task)}
-            className={`p-1.5 text-content-muted hover:text-rose-theme transition-colors ${TAP_TARGET_Y}`}
-            title="Delete task"
-            aria-label={`Delete task "${task.title}"`}
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
-
-      {/* Subtasks Section */}
-      <div className="pt-2 border-t border-overlay-subtle">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => toggleTaskExpand(task.id)}
-            className="text-micro text-content-muted hover:text-content-secondary font-medium flex items-center gap-1.5 transition-colors"
-          >
-            {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-            <span>
-              Subtasks ({completedSubtasks}/{subtasks.length})
-            </span>
-          </button>
-
-          {subtasks.length > 0 && (
-            <span className="figure text-2xs text-content-muted">
-              {Math.round((completedSubtasks / subtasks.length) * 100)}%
-            </span>
+    <div id={id} role="group" aria-label={label} className={cx('relative isolate flex flex-wrap items-center gap-1.5', className)}>
+      <SlidingPill
+        active={value}
+        className={cx('rounded-lg border', activeClass[value] ?? 'border-overlay-strong bg-overlay-default')}
+        contentKey={options.map((o) => o.label).join('|')}
+      />
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          data-pill-id={o.id}
+          aria-pressed={value === o.id}
+          onClick={() => onChange(o.id)}
+          className={cx(
+            'shrink-0 rounded-lg border border-transparent px-3 py-1.5 text-xs font-semibold transition-colors',
+            value === o.id ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary'
           )}
-        </div>
-        {subtasks.length > 0 && (
-          <ProgressBar
-            value={completedSubtasks}
-            max={subtasks.length}
-            label="Subtask progress"
-            tone={completedSubtasks === subtasks.length ? 'success' : 'cyan'}
-            size="sm"
-            className="mt-1.5"
-          />
-        )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
-        {isExpanded && (
-          <div className="mt-2.5 pl-4 border-l-2 border-overlay-default space-y-2 animate-fade-in">
-            {subtasks.map((st) => (
-              <div key={st.id} className="flex items-center justify-between gap-2 group/st">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <button
-                    onClick={() => {
-                      if (!st.completed) armCompletionPop();
-                      store.toggleSubtask(task.id, st.id);
-                    }}
-                    disabled={projectLock.isLocked}
-                    aria-label={
-                      st.completed
-                        ? `Mark subtask "${st.title}" incomplete`
-                        : `Mark subtask "${st.title}" complete`
-                    }
-                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0 ${
-                      projectLock.isLocked ? 'cursor-not-allowed opacity-60' : ''
-                    } ${
-                      st.completed
-                        ? 'bg-emerald-500 border-emerald-400 text-on-brand'
-                        : 'border-overlay-strong hover:border-emerald-400 text-transparent'
-                    }`}
-                    title={projectLock.isLocked ? 'Project is locked by sequence order' : undefined}
-                  >
-                    <Check size={10} strokeWidth={3} className={st.completed ? 'block' : 'hidden'} />
-                  </button>
-                  <span
-                    className={`text-xs ${
-                      st.completed ? 'line-through text-content-disabled' : 'text-content-tertiary'
-                    } truncate`}
-                  >
-                    {st.title}
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => setDeleteSubtaskTarget({ taskId: task.id, subtask: st })}
-                  className={`p-1 text-content-disabled hover:text-rose-theme transition-all ${TAP_TARGET}`}
-                  title="Delete subtask"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            ))}
-
-            {/* Add Subtask Input */}
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                type="text"
-                placeholder="Add a subtask..."
-                value={newSubtaskInputs[task.id] || ''}
-                onChange={(e) =>
-                  setNewSubtaskInputs((prev) => ({ ...prev, [task.id]: e.target.value }))
-                }
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddInlineSubtask(task.id);
-                  }
-                }}
-                className="w-full bg-bg-900 border border-overlay-default rounded-lg px-2.5 py-1 text-xs text-content-secondary placeholder:text-content-subtle focus:outline-none focus:border-emerald-500/50"
-              />
-              <button
-                type="button"
-                onClick={() => handleAddInlineSubtask(task.id)}
-                className="px-2 py-1 bg-overlay-subtle hover:bg-overlay-default text-content-tertiary rounded-lg text-xs font-semibold shrink-0"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+/** "Projects of the goal X" / "Tasks of the project X", with a way back to everything. */
+function ScopeBar({ icon: Icon, text, name, onClear }: { icon: typeof Target; text: string; name: string; onClear: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-overlay-subtle bg-overlay-subtle px-3 py-2">
+      <p className="flex min-w-0 items-center gap-2 text-xs text-content-tertiary">
+        <Icon size={14} className="shrink-0 text-content-muted" aria-hidden="true" />
+        <span className="truncate">
+          {text} <strong className="font-medium text-content-primary">{name}</strong>
+        </span>
+      </p>
+      <button
+        type="button"
+        onClick={onClear}
+        className={cx('flex shrink-0 items-center gap-1 text-xs font-medium text-content-muted hover:text-content-primary', TAP_TARGET)}
+      >
+        <X size={13} aria-hidden="true" />
+        <span>Show all</span>
+      </button>
     </div>
   );
 }
@@ -396,1780 +125,643 @@ export function ProjectsGoalsView({
   const { showSuccessToast, showErrorToast } = useToast();
   const { isKeyLoading, executeWithKey } = useAsyncActionKey();
 
-  // Active sub-view tab
-  const [activeTab, setActiveTab] = useState<SubViewTab>('tasks');
-  const subViewTabsRef = useRef<HTMLDivElement>(null);
-  useScrollFade(subViewTabsRef);
-
-  // Filter drilldown state
-  const [filterGoalId, setFilterGoalId] = useState<string | null>(null);
-  const [filterProjectId, setFilterProjectId] = useState<string | null>(null);
-
-  // Search queries & local filters
-  const [goalStatusFilter, setGoalStatusFilter] = useState<'all' | GoalStatus>('all');
-  const [goalSearch, setGoalSearch] = useState('');
-
-  const [projectStatusFilter, setProjectStatusFilter] = useState<'all' | ProjectStatus | 'locked'>('all');
-  const [projectGoalFilter, setProjectGoalFilter] = useState<string>('all');
-  const [projectSearch, setProjectSearch] = useState('');
-
-  const [taskViewFilter, setTaskViewFilter] = useState<
-    'all' | 'today' | 'overdue' | 'this_week' | 'active' | 'completed' | 'locked'
-  >('all');
-  const [taskPriorityFilter, setTaskPriorityFilter] = useState<'all' | TaskPriority>('all');
-  const [taskProjectFilter, setTaskProjectFilter] = useState<string>('all');
-  const [taskSearch, setTaskSearch] = useState('');
-  // Phones: the task filters sit behind one Filters button so the list starts higher.
-  const [taskFiltersOpen, setTaskFiltersOpen] = useState(false);
-  const activeTaskFilterCount =
-    Number(taskPriorityFilter !== 'all') +
-    Number(!filterProjectId && taskProjectFilter !== 'all') +
-    Number(taskViewFilter !== 'all');
-
-  // Quick Task Add Input state
-  const quickTaskInputRef = useRef<HTMLInputElement | null>(null);
-  const [quickTaskTitle, setQuickTaskTitle] = useState('');
-  const [quickTaskPriority, setQuickTaskPriority] = useState<TaskPriority>('medium');
-  const [quickTaskProjectId, setQuickTaskProjectId] = useState<string>(filterProjectId || '');
-
-  // Keep quickTaskProjectId pre-filled when filterProjectId changes (approach a)
-  useEffect(() => {
-    setQuickTaskProjectId(filterProjectId || '');
-  }, [filterProjectId]);
-
-  // Expanded subtasks state (set of taskId)
-  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set());
-  const [newSubtaskInputs, setNewSubtaskInputs] = useState<Record<string, string>>({});
-
-  // Modals state
-  const [tabOrder, setTabOrder] = useState<'taskFirst' | 'projectFirst' | 'goalFirst'>('taskFirst');
-  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
-  const [goalModalOpen, setGoalModalOpen] = useState(false);
-  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
-  const [goalFormTitle, setGoalFormTitle] = useState('');
-  const [goalFormDescription, setGoalFormDescription] = useState('');
-  const [goalFormCategory, setGoalFormCategory] = useState('');
-  const [goalFormTargetDate, setGoalFormTargetDate] = useState('');
-  const [goalFormStatus, setGoalFormStatus] = useState<GoalStatus>('active');
-  const [goalFormSequentialMode, setGoalFormSequentialMode] = useState<boolean>(false);
-
-  const [projectModalOpen, setProjectModalOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [projectFormTitle, setProjectFormTitle] = useState('');
-  const [projectFormDescription, setProjectFormDescription] = useState('');
-  const [projectFormGoalId, setProjectFormGoalId] = useState<string>('');
-  const [projectFormStartDate, setProjectFormStartDate] = useState('');
-  const [projectFormDueDate, setProjectFormDueDate] = useState('');
-  const [projectFormStatus, setProjectFormStatus] = useState<ProjectStatus>('not_started');
-
-  const [taskModalOpen, setTaskModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  // The goal or project (without tasks/projects) whose % is being set by hand.
-  const [progressUpdate, setProgressUpdate] = useState<{ kind: 'goal' | 'project'; id: string; title: string; current: number } | null>(null);
-  const [taskFormTitle, setTaskFormTitle] = useState('');
-  const [taskFormDescription, setTaskFormDescription] = useState('');
-  const [taskFormProjectId, setTaskFormProjectId] = useState<string>('');
-  const [taskFormDueDate, setTaskFormDueDate] = useState('');
-  const [taskFormPriority, setTaskFormPriority] = useState<TaskPriority>('medium');
-  const [taskFormSubtasks, setTaskFormSubtasks] = useState<{ id: string; title: string; completed: boolean }[]>([]);
-  const [newModalSubtaskTitle, setNewModalSubtaskTitle] = useState('');
-
-  const goalForm = useUnsavedChanges(goalModalOpen, [
-    goalFormTitle,
-    goalFormDescription,
-    goalFormCategory,
-    goalFormTargetDate,
-    goalFormStatus,
-    goalFormSequentialMode,
-  ]);
-  const projectForm = useUnsavedChanges(projectModalOpen, [
-    projectFormTitle,
-    projectFormDescription,
-    projectFormGoalId,
-    projectFormStartDate,
-    projectFormDueDate,
-    projectFormStatus,
-  ]);
-  const taskForm = useUnsavedChanges(taskModalOpen, [
-    taskFormTitle,
-    taskFormDescription,
-    taskFormProjectId,
-    taskFormDueDate,
-    taskFormPriority,
-    taskFormSubtasks,
-    newModalSubtaskTitle,
-  ]);
-
-  // Delete Modals
-  const [deleteGoalTarget, setDeleteGoalTarget] = useState<Goal | null>(null);
-  const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null);
-  const [deleteTaskTarget, setDeleteTaskTarget] = useState<Task | null>(null);
-  const [deleteSubtaskTarget, setDeleteSubtaskTarget] = useState<{
-    taskId: string;
-    subtask: TaskSubtask;
-  } | null>(null);
-
   const goals = useMemo(() => store.state.goals || [], [store.state.goals]);
   const projects = useMemo(() => store.state.projects || [], [store.state.projects]);
   const tasks = useMemo(() => store.state.tasks || [], [store.state.tasks]);
+  const h = useHierarchy(goals, projects, tasks);
+  const today = todayKey();
 
-  const currentToday = todayKey();
+  const [activeTab, setActiveTab] = useState<SubViewTab>('tasks');
+  const [tabOrder, setTabOrder] = useState<TabOrder>('taskFirst');
 
-  // Date input bounds (e.g. today minus 2 years to today plus 20 years)
-  const currentYear = trustedNow().getFullYear();
-  const minAllowedDate = `${currentYear - 2}-01-01`;
-  const maxAllowedDate = `${currentYear + 20}-12-31`;
+  // Drill-down: a goal's projects, a project's tasks.
+  const [filterGoalId, setFilterGoalId] = useState<string | null>(null);
+  const [filterProjectId, setFilterProjectId] = useState<string | null>(null);
 
-  // A due/target date can't be set in the past. An old past date already on an item can stay
-  // when editing it (it is just overdue), so only a new or changed date is checked.
-  const pastDueIssue = (value: string, saved: string | undefined, field: string) =>
-    isNewPastDate(value, saved) ? { message: 'Pick a later date.', field } : null;
+  const [goalStatusFilter, setGoalStatusFilter] = useState<'all' | GoalStatus>('all');
+  const [goalSearch, setGoalSearch] = useState('');
+  const [projectStatusFilter, setProjectStatusFilter] = useState<'all' | ProjectStatus | 'locked'>('all');
+  const [projectGoalFilter, setProjectGoalFilter] = useState('all');
+  const [projectSearch, setProjectSearch] = useState('');
+  const [taskView, setTaskView] = useState<TaskView>('all');
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState<'all' | TaskPriority>('all');
+  const [taskProjectFilter, setTaskProjectFilter] = useState('all');
+  const [taskSearch, setTaskSearch] = useState('');
+  // Phones: the task filters sit behind one Filters button so the list starts higher.
+  const [taskFiltersOpen, setTaskFiltersOpen] = useState(false);
 
-  const sanitizeDateBounds = (dateStr?: string): string | undefined => {
-    if (!dateStr || !dateStr.trim()) return undefined;
-    const trimmed = dateStr.trim();
-    if (trimmed < minAllowedDate) return minAllowedDate;
-    if (trimmed > maxAllowedDate) return maxAllowedDate;
-    return trimmed;
-  };
+  // Quick add
+  const quickTaskInputRef = useRef<HTMLInputElement | null>(null);
+  const [quickTaskTitle, setQuickTaskTitle] = useState('');
+  const [quickTaskPriority, setQuickTaskPriority] = useState<TaskPriority>('medium');
+  const [quickTaskProjectId, setQuickTaskProjectId] = useState('');
+  const [focusQuickAdd, setFocusQuickAdd] = useState(false);
+  useEffect(() => {
+    setQuickTaskProjectId(filterProjectId || '');
+  }, [filterProjectId]);
+  // Focus the quick-add box once the Tasks tab has rendered it.
+  useEffect(() => {
+    if (!focusQuickAdd || activeTab !== 'tasks') return;
+    const input = quickTaskInputRef.current;
+    if (input) {
+      input.focus();
+      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setFocusQuickAdd(false);
+  }, [focusQuickAdd, activeTab]);
 
-  // --------------------------------------------------------------------------
-  // COMPUTED PROGRESS & COMPLETION HELPERS (Bottom-Up Hierarchy)
-  // --------------------------------------------------------------------------
+  // Dialogs (each form is keyed so it opens fresh)
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [goalForm, setGoalForm] = useState<{ key: number; editing: Goal | null } | null>(null);
+  const [projectForm, setProjectForm] = useState<{ key: number; editing: Project | null; goalId?: string } | null>(null);
+  const [taskForm, setTaskForm] = useState<{ key: number; editing: Task | null; projectId?: string } | null>(null);
+  const [progressUpdate, setProgressUpdate] = useState<{ kind: 'goal' | 'project'; id: string; title: string; current: number } | null>(null);
+  const [deleteGoalTarget, setDeleteGoalTarget] = useState<Goal | null>(null);
+  const [deleteProjectTarget, setDeleteProjectTarget] = useState<Project | null>(null);
+  const [deleteTaskTarget, setDeleteTaskTarget] = useState<Task | null>(null);
+  const [deleteSubtaskTarget, setDeleteSubtaskTarget] = useState<{ taskId: string; subtask: TaskSubtask } | null>(null);
+  const formKey = useRef(0);
 
-  // 1. Task progress: returns completion percentage of a project
-  // Task-linked mode if >= 1 task (calculates fractional progress from subtasks if present), manual mode if 0 tasks
-  const getProjectProgress = useCallback(
-    (projectId: string): { total: number; completed: number; percent: number; isManual: boolean } => {
-      const project = projects.find((p) => p.id === projectId);
-      const linkedTasks = tasks.filter((t) => t.projectId === projectId);
-      const total = linkedTasks.length;
-      if (total === 0) {
-        const percent = Math.min(100, Math.max(0, project?.manualProgress ?? 0));
-        return { total: 0, completed: 0, percent, isManual: true };
-      }
-
-      const completed = linkedTasks.filter((t) => t.completed).length;
-
-      // Sum of fractional task contributions
-      let sumOfTaskContributions = 0;
-      for (const t of linkedTasks) {
-        const subtasks = t.subtasks || [];
-        if (subtasks.length > 0) {
-          const completedSub = subtasks.filter((st) => st.completed).length;
-          sumOfTaskContributions += completedSub / subtasks.length;
-        } else {
-          sumOfTaskContributions += t.completed ? 1 : 0;
-        }
-      }
-
-      const percent = Math.round((sumOfTaskContributions / total) * 100);
-      return { total, completed, percent, isManual: false };
-    },
-    [tasks, projects]
-  );
-
-  // Checks whether a project is completed either explicitly via status or by reaching 100% progress
-  const isProjectComplete = useCallback(
-    (projectId: string): boolean => {
-      const p = projects.find((proj) => proj.id === projectId);
-      if (!p) return false;
-      if (p.status === 'completed') return true;
-      const prog = getProjectProgress(p.id);
-      return prog.percent === 100;
-    },
-    [projects, getProjectProgress]
-  );
+  const goalName = (id?: string) => (id ? goals.find((g) => g.id === id)?.title ?? null : null);
+  const projectById = (id?: string) => (id ? projects.find((p) => p.id === id) : undefined);
 
   // --------------------------------------------------------------------------
-  // SEQUENTIAL LOCK HELPER (Live-computed single source of truth for both Views)
-  // --------------------------------------------------------------------------
-  const getProjectLockStatus = useCallback(
-    (projectId: string): {
-      isLocked: boolean;
-      reason?: string;
-      blockingProject?: Project;
-      stepIndex?: number;
-      totalSteps?: number;
-      isSequentialGoal: boolean;
-    } => {
-      const project = projects.find((p) => p.id === projectId);
-      if (!project || !project.goalId) {
-        return { isLocked: false, isSequentialGoal: false };
-      }
-      const goal = goals.find((g) => g.id === project.goalId);
-      if (!goal || !goal.sequentialMode) {
-        return { isLocked: false, isSequentialGoal: false };
-      }
-
-      // Projects under this goal sorted by defined order ascending, then createdAt ascending
-      const linked = projects
-        .filter((p) => p.goalId === project.goalId)
-        .sort(
-          (a, b) =>
-            (a.order ?? 0) - (b.order ?? 0) ||
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
-            a.id.localeCompare(b.id)
-        );
-
-      const index = linked.findIndex((p) => p.id === projectId);
-      if (index <= 0) {
-        return { isLocked: false, stepIndex: 1, totalSteps: linked.length, isSequentialGoal: true };
-      }
-
-      // Check all previous projects in sequence
-      const priorProjects = linked.slice(0, index);
-      const uncompletedPrior = priorProjects.find((p) => !isProjectComplete(p.id));
-
-      if (uncompletedPrior) {
-        return {
-          isLocked: true,
-          reason: `Locked: Complete previous project "${uncompletedPrior.title}" first.`,
-          blockingProject: uncompletedPrior,
-          stepIndex: index + 1,
-          totalSteps: linked.length,
-          isSequentialGoal: true,
-        };
-      }
-
-      return { isLocked: false, stepIndex: index + 1, totalSteps: linked.length, isSequentialGoal: true };
-    },
-    [projects, goals, isProjectComplete]
-  );
-
-  const isProjectLocked = useCallback(
-    (projectId: string): boolean => {
-      return getProjectLockStatus(projectId).isLocked;
-    },
-    [getProjectLockStatus]
-  );
-
-  // 2. Goal progress:
-  // Linked-projects mode (>= 1 project): flat simple average of ALL linked projects' percentages (task-based or manual)
-  // Standalone mode (0 projects): manual mode using goal.manualProgress (default 0)
-  const getGoalProgress = useCallback(
-    (goalId: string): {
-      linkedProjectsCount: number;
-      completedProjectsCount: number;
-      totalTasksCount: number;
-      completedTasksCount: number;
-      percent: number;
-      isManual: boolean;
-    } => {
-      const goal = goals.find((g) => g.id === goalId);
-      const linkedProjects = projects.filter((p) => p.goalId === goalId);
-      const linkedProjectsCount = linkedProjects.length;
-
-      if (linkedProjectsCount === 0) {
-        const percent = Math.min(100, Math.max(0, goal?.manualProgress ?? 0));
-        return {
-          linkedProjectsCount: 0,
-          completedProjectsCount: 0,
-          totalTasksCount: 0,
-          completedTasksCount: 0,
-          percent,
-          isManual: true,
-        };
-      }
-
-      let totalPercentSum = 0;
-      let completedProjectsCount = 0;
-      let totalTasksCount = 0;
-      let completedTasksCount = 0;
-
-      linkedProjects.forEach((p) => {
-        const prog = getProjectProgress(p.id);
-        totalTasksCount += prog.total;
-        completedTasksCount += prog.completed;
-        totalPercentSum += prog.percent;
-        if (p.status === 'completed' || prog.percent === 100) {
-          completedProjectsCount++;
-        }
-      });
-
-      const percent = Math.round(totalPercentSum / linkedProjectsCount);
-
-      return {
-        linkedProjectsCount,
-        completedProjectsCount,
-        totalTasksCount,
-        completedTasksCount,
-        percent,
-        isManual: false,
-      };
-    },
-    [goals, projects, getProjectProgress]
-  );
-
-  // --------------------------------------------------------------------------
-  // REACTIVE AUTO TRANSITIONS: ACTIVE <-> ACHIEVED FOR PROJECT-LINKED GOALS
+  // Automatic status: a project with tasks completes when they are all done, a goal with
+  // projects is achieved when they are all done, and both reopen when that stops being true.
+  // Abandoned goals are a choice and never change on their own.
   // --------------------------------------------------------------------------
   useEffect(() => {
-    goals.forEach((goal) => {
-      // Rule 3: Abandoned goals are intentional manual choices and NEVER auto-transition
-      if (goal.status === 'abandoned') return;
-
-      const linkedProjects = projects.filter((p) => p.goalId === goal.id);
-      // Only applies to goals with at least 1 linked project (manual-only goals are untouched)
-      if (linkedProjects.length === 0) return;
-
-      const prog = getGoalProgress(goal.id);
-
-      // Rule 1: Active -> Achieved when all linked projects reach 100%
-      if (goal.status === 'active' && prog.percent === 100) {
-        store.updateGoal(goal.id, { status: 'achieved' });
-      }
-      // Rule 2: Achieved -> Active when progress drops below 100% (e.g. project uncompleted or new project added)
-      else if (goal.status === 'achieved' && prog.percent < 100) {
-        store.updateGoal(goal.id, { status: 'active' });
-      }
-    });
-  }, [goals, projects, tasks, getGoalProgress, store]);
-
-  // Overall Hierarchy Stats (Excluding locked items from active actionable work metrics)
-  const hierarchyStats = useMemo(() => {
-    const activeGoals = goals.filter((g) => g.status === 'active').length;
-    const activeProjects = projects.filter(
-      (p) => (p.status === 'in_progress' || p.status === 'not_started') && !isProjectLocked(p.id)
-    ).length;
-    const pendingTasks = tasks.filter(
-      (t) => !t.completed && (!t.projectId || !isProjectLocked(t.projectId))
-    ).length;
-    return { activeGoals, activeProjects, pendingTasks };
-  }, [goals, projects, tasks, isProjectLocked]);
+    for (const p of projects) {
+      const prog = h.getProjectProgress(p);
+      if (prog.isManual) continue;
+      if (prog.percent === 100 && p.status !== 'completed') store.updateProject(p.id, { status: 'completed' });
+      else if (prog.percent < 100 && p.status === 'completed') store.updateProject(p.id, { status: 'in_progress' });
+    }
+    for (const g of goals) {
+      if (g.status === 'abandoned') continue;
+      const prog = h.getGoalProgress(g);
+      if (prog.isManual) continue;
+      if (prog.percent === 100 && g.status === 'active') store.updateGoal(g.id, { status: 'achieved' });
+      else if (prog.percent < 100 && g.status === 'achieved') store.updateGoal(g.id, { status: 'active' });
+    }
+  }, [goals, projects, h, store]);
 
   // --------------------------------------------------------------------------
-  // FILTERING LOGIC
+  // Hero numbers
   // --------------------------------------------------------------------------
+  const stats = useMemo(() => {
+    const activeGoals = goals.filter((g) => g.status === 'active');
+    const avgGoal = activeGoals.length
+      ? Math.round(activeGoals.reduce((sum, g) => sum + h.getGoalProgress(g).percent, 0) / activeGoals.length)
+      : 0;
+    const openTasks = tasks.filter((t) => !t.completed && !h.isLockedId(t.projectId));
+    return {
+      activeGoals: activeGoals.length,
+      achievedGoals: goals.filter((g) => g.status === 'achieved').length,
+      avgGoal,
+      activeProjects: projects.filter((p) => (p.status === 'in_progress' || p.status === 'not_started') && !h.getLockStatus(p).isLocked).length,
+      pendingTasks: openTasks.length,
+      overdue: openTasks.filter((t) => t.dueDate && t.dueDate < today).length,
+      dueToday: openTasks.filter((t) => t.dueDate === today).length,
+    };
+  }, [goals, projects, tasks, h, today]);
 
-  // Base filtered goals matching search
-  const baseSearchGoals = useMemo(() => {
-    return goals.filter((g) => {
-      if (goalSearch.trim()) {
-        const q = goalSearch.toLowerCase();
-        const matchesTitle = g.title.toLowerCase().includes(q);
-        const matchesDesc = (g.description || '').toLowerCase().includes(q);
-        const matchesCat = (g.category || '').toLowerCase().includes(q);
-        if (!matchesTitle && !matchesDesc && !matchesCat) return false;
-      }
-      return true;
-    });
+  // --------------------------------------------------------------------------
+  // Lists
+  // --------------------------------------------------------------------------
+  const goalSearchMatches = useMemo(() => {
+    const q = goalSearch.trim().toLowerCase();
+    if (!q) return goals;
+    return goals.filter((g) => [g.title, g.description, g.category].some((s) => (s || '').toLowerCase().includes(q)));
   }, [goals, goalSearch]);
 
-  // Status counts for Goal filter tabs
-  const goalStatusCounts = useMemo(() => {
+  const filteredGoals = useMemo(
+    () => goalSearchMatches.filter((g) => goalStatusFilter === 'all' || g.status === goalStatusFilter),
+    [goalSearchMatches, goalStatusFilter]
+  );
+
+  const activeGoalFilter = filterGoalId || (projectGoalFilter !== 'all' ? projectGoalFilter : null);
+  const projectsInScope = useMemo(() => {
+    if (!activeGoalFilter) return projects;
+    return projects.filter((p) => (activeGoalFilter === 'standalone' ? !p.goalId : p.goalId === activeGoalFilter));
+  }, [projects, activeGoalFilter]);
+
+  const projectSearchMatches = useMemo(() => {
+    const q = projectSearch.trim().toLowerCase();
+    if (!q) return projectsInScope;
+    return projectsInScope.filter((p) => [p.title, p.description].some((s) => (s || '').toLowerCase().includes(q)));
+  }, [projectsInScope, projectSearch]);
+
+  const projectMatchesStatus = (p: Project, f: typeof projectStatusFilter) => {
+    const locked = h.getLockStatus(p).isLocked;
+    if (f === 'all') return true;
+    if (f === 'locked') return locked;
+    if (f === 'completed') return p.status === 'completed';
+    return p.status === f && !locked;
+  };
+
+  const projectCounts = useMemo(() => {
+    const count = (f: typeof projectStatusFilter) => projectSearchMatches.filter((p) => projectMatchesStatus(p, f)).length;
     return {
-      all: baseSearchGoals.length,
-      active: baseSearchGoals.filter((g) => g.status === 'active').length,
-      achieved: baseSearchGoals.filter((g) => g.status === 'achieved').length,
-      abandoned: baseSearchGoals.filter((g) => g.status === 'abandoned').length,
+      all: projectSearchMatches.length,
+      in_progress: count('in_progress'),
+      not_started: count('not_started'),
+      on_hold: count('on_hold'),
+      completed: count('completed'),
+      locked: count('locked'),
     };
-  }, [baseSearchGoals]);
+    // projectMatchesStatus reads only h, which is listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectSearchMatches, h]);
 
-  // Filtered Goals
-  const filteredGoals = useMemo(() => {
-    return baseSearchGoals.filter((g) => {
-      if (goalStatusFilter !== 'all' && g.status !== goalStatusFilter) return false;
-      return true;
-    });
-  }, [baseSearchGoals, goalStatusFilter]);
+  const scopedGoal = activeGoalFilter && activeGoalFilter !== 'standalone' ? goals.find((g) => g.id === activeGoalFilter) : undefined;
+  // Up/down only make sense while the list shows one ordered goal's projects in their order.
+  const showReorder = Boolean(scopedGoal?.sequentialMode) && projectStatusFilter === 'all' && !projectSearch.trim();
 
-  // Base filtered projects matching active goal filter and search
-  const baseGoalAndSearchProjects = useMemo(() => {
-    const activeGoalFilter = filterGoalId || (projectGoalFilter !== 'all' ? projectGoalFilter : null);
-
-    return projects.filter((p) => {
-      if (activeGoalFilter) {
-        if (activeGoalFilter === 'standalone' && p.goalId) return false;
-        if (activeGoalFilter !== 'standalone' && p.goalId !== activeGoalFilter) return false;
-      }
-      if (projectSearch.trim()) {
-        const q = projectSearch.toLowerCase();
-        const matchesTitle = p.title.toLowerCase().includes(q);
-        const matchesDesc = (p.description || '').toLowerCase().includes(q);
-        if (!matchesTitle && !matchesDesc) return false;
-      }
-      return true;
-    });
-  }, [projects, filterGoalId, projectGoalFilter, projectSearch]);
-
-  // Live counts for status tabs (with single source of truth for locked status)
-  const projectStatusCounts = useMemo(() => {
-    return {
-      all: baseGoalAndSearchProjects.length,
-      in_progress: baseGoalAndSearchProjects.filter((p) => p.status === 'in_progress' && !isProjectLocked(p.id)).length,
-      not_started: baseGoalAndSearchProjects.filter((p) => p.status === 'not_started' && !isProjectLocked(p.id)).length,
-      on_hold: baseGoalAndSearchProjects.filter((p) => p.status === 'on_hold' && !isProjectLocked(p.id)).length,
-      completed: baseGoalAndSearchProjects.filter((p) => p.status === 'completed').length,
-      locked: baseGoalAndSearchProjects.filter((p) => isProjectLocked(p.id)).length,
-    };
-  }, [baseGoalAndSearchProjects, isProjectLocked]);
-
-  // Filtered & Sorted Projects for the single list view
   const filteredProjects = useMemo(() => {
-    let list = baseGoalAndSearchProjects.filter((p) => {
-      if (projectStatusFilter === 'all') return true;
-      if (projectStatusFilter === 'locked') return isProjectLocked(p.id);
-      if (projectStatusFilter === 'in_progress') {
-        return p.status === 'in_progress' && !isProjectLocked(p.id);
-      }
-      if (projectStatusFilter === 'not_started') {
-        return p.status === 'not_started' && !isProjectLocked(p.id);
-      }
-      if (projectStatusFilter === 'on_hold') {
-        return p.status === 'on_hold' && !isProjectLocked(p.id);
-      }
-      if (projectStatusFilter === 'completed') {
-        return p.status === 'completed';
-      }
-      return true;
-    });
-
-    const activeGoalFilter = filterGoalId || (projectGoalFilter !== 'all' ? projectGoalFilter : null);
-    const activeGoal = activeGoalFilter && activeGoalFilter !== 'standalone' ? goals.find((g) => g.id === activeGoalFilter) : null;
-
+    const list = projectSearchMatches.filter((p) => projectMatchesStatus(p, projectStatusFilter));
     if (projectStatusFilter === 'completed') {
-      // Sort by most-recently-completed first
-      list = [...list].sort((a, b) => {
-        const timeA = a.completedAt ? new Date(a.completedAt).getTime() : new Date(a.createdAt).getTime();
-        const timeB = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.createdAt).getTime();
-        return timeB - timeA;
-      });
-    } else if (activeGoal?.sequentialMode) {
-      // Sort by defined sequence order within sequential goal
-      list = [...list].sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    } else {
-      // Sort by createdAt descending (newest first)
-      list = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return [...list].sort((a, b) => (b.completedAt || b.createdAt).localeCompare(a.completedAt || a.createdAt));
     }
+    if (scopedGoal?.sequentialMode) return sortBySequence(list);
+    return [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    // projectMatchesStatus reads only h, which is listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectSearchMatches, projectStatusFilter, scopedGoal, h]);
 
-    return list;
-  }, [baseGoalAndSearchProjects, projectStatusFilter, filterGoalId, projectGoalFilter, goals, isProjectLocked]);
+  const activeProjectFilter = filterProjectId || (taskProjectFilter !== 'all' ? taskProjectFilter : null);
+  const tasksInScope = useMemo(() => {
+    if (!filterProjectId) return tasks;
+    return tasks.filter((t) => t.projectId === filterProjectId);
+  }, [tasks, filterProjectId]);
 
-  // Filtered Tasks
   const filteredTasks = useMemo(() => {
-    const activeProjectFilter = filterProjectId || (taskProjectFilter !== 'all' ? taskProjectFilter : null);
-
+    const q = taskSearch.trim().toLowerCase();
+    const next7 = trustedNow();
+    next7.setDate(next7.getDate() + 7);
+    const next7Key = todayKey(next7);
     return tasks.filter((t) => {
-      // Project filter
-      if (activeProjectFilter) {
-        if (activeProjectFilter === 'standalone' && t.projectId) return false;
-        if (activeProjectFilter !== 'standalone' && t.projectId !== activeProjectFilter) return false;
-      }
-
-      // Priority filter
+      if (activeProjectFilter === 'standalone' ? t.projectId : activeProjectFilter && t.projectId !== activeProjectFilter) return false;
       if (taskPriorityFilter !== 'all' && t.priority !== taskPriorityFilter) return false;
-
-      const isParentLocked = t.projectId ? isProjectLocked(t.projectId) : false;
-      const hasSearch = taskSearch.trim().length > 0;
-
-      // View Filters: Exclude tasks under locked projects only from 'active' view unless searching
-      if (isParentLocked && !hasSearch && taskViewFilter === 'active') {
-        return false;
-      }
-
-      // View Filters
-      if (taskViewFilter === 'locked' && !isParentLocked) return false;
-      if (taskViewFilter === 'active' && t.completed) return false;
-      if (taskViewFilter === 'completed' && !t.completed) return false;
-      if (taskViewFilter === 'today') {
-        if (t.dueDate !== currentToday) return false;
-      }
-      if (taskViewFilter === 'overdue') {
-        if (!t.dueDate || t.dueDate >= currentToday || t.completed) return false;
-      }
-      if (taskViewFilter === 'this_week') {
-        // Due within 7 days from todayKey
-        if (!t.dueDate) return false;
-        const due = t.dueDate;
-        if (due < currentToday) return false;
-        // Simple 7 day check
-        const dObj = trustedNow();
-        dObj.setDate(dObj.getDate() + 7);
-        const maxDue = todayKey(dObj);
-        if (due > maxDue) return false;
-      }
-
-      // Search filter (Search finds locked tasks too)
-      if (hasSearch) {
-        const q = taskSearch.toLowerCase();
-        const matchesTitle = t.title.toLowerCase().includes(q);
-        const matchesDesc = (t.description || '').toLowerCase().includes(q);
-        if (!matchesTitle && !matchesDesc) return false;
-      }
-
+      const locked = h.isLockedId(t.projectId);
+      if (taskView === 'locked' && !locked) return false;
+      if (taskView === 'active' && (t.completed || (locked && !q))) return false;
+      if (taskView === 'completed' && !t.completed) return false;
+      if (taskView === 'today' && t.dueDate !== today) return false;
+      if (taskView === 'overdue' && (!t.dueDate || t.dueDate >= today || t.completed)) return false;
+      if (taskView === 'next7' && (!t.dueDate || t.dueDate < today || t.dueDate > next7Key)) return false;
+      if (q && ![t.title, t.description].some((s) => (s || '').toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [tasks, filterProjectId, taskProjectFilter, taskPriorityFilter, taskViewFilter, taskSearch, currentToday, isProjectLocked]);
+  }, [tasks, activeProjectFilter, taskPriorityFilter, taskView, taskSearch, today, h]);
+
+  const activeTaskFilterCount =
+    Number(taskPriorityFilter !== 'all') + Number(!filterProjectId && taskProjectFilter !== 'all') + Number(taskView !== 'all');
+
+  const clearGoalFilters = () => {
+    setGoalSearch('');
+    setGoalStatusFilter('all');
+  };
+  const clearProjectFilters = () => {
+    setProjectSearch('');
+    setProjectStatusFilter('all');
+    setProjectGoalFilter('all');
+  };
+  const clearTaskFilters = () => {
+    setTaskSearch('');
+    setTaskView('all');
+    setTaskPriorityFilter('all');
+    setTaskProjectFilter('all');
+  };
 
   // --------------------------------------------------------------------------
-  // GOAL ACTIONS
+  // Navigation between levels
   // --------------------------------------------------------------------------
-
-  const openCreateGoalModal = () => {
-    setEditingGoal(null);
-    setGoalFormTitle('');
-    setGoalFormDescription('');
-    setGoalFormCategory('');
-    setGoalFormTargetDate('');
-    setGoalFormStatus('active');
-    setGoalFormSequentialMode(false);
-    setGoalModalOpen(true);
+  const openGoalProjects = (goalId: string) => {
+    setFilterGoalId(goalId);
+    setProjectStatusFilter('all');
+    setProjectSearch('');
+    setActiveTab('projects');
+  };
+  const openProjectTasks = (projectId: string) => {
+    setFilterProjectId(projectId);
+    setTaskView('all');
+    setTaskSearch('');
+    setActiveTab('tasks');
+  };
+  const startTaskForProject = (projectId: string) => {
+    openProjectTasks(projectId);
+    setFocusQuickAdd(true);
   };
 
-  const openEditGoalModal = (goal: Goal) => {
-    setEditingGoal(goal);
-    setGoalFormTitle(goal.title);
-    setGoalFormDescription(goal.description || '');
-    setGoalFormCategory(goal.category || '');
-    setGoalFormTargetDate(goal.targetDate || '');
-    setGoalFormStatus(goal.status);
-    setGoalFormSequentialMode(goal.sequentialMode ?? false);
-    setGoalModalOpen(true);
-  };
+  // --------------------------------------------------------------------------
+  // Saves
+  // --------------------------------------------------------------------------
+  const nextKey = () => ++formKey.current;
 
-  // A failed save keeps the dialog open with what was typed and says why.
-  const goalIssues = useFormController();
-  const projectIssues = useFormController();
-  const taskIssues = useFormController();
-  const issuesFor = { goal: goalIssues, project: projectIssues, task: taskIssues };
-  const reportSaveFailure = (what: 'goal' | 'project' | 'task', err: unknown) => {
-    issuesFor[what].showError(toUserMessage(err, `Couldn't save this ${what}. Try again.`));
-  };
-
-  const handleSaveGoal = async () => {
-    if (!goalFormTitle.trim()) return;
-
-    await executeWithKey('save_goal', async () => {
-      const sanitizedTargetDate = sanitizeDateBounds(goalFormTargetDate);
-      if (editingGoal) {
-        store.updateGoal(editingGoal.id, {
-          title: goalFormTitle.trim(),
-          description: goalFormDescription.trim() || undefined,
-          category: goalFormCategory.trim() || undefined,
-          targetDate: sanitizedTargetDate,
-          status: goalFormStatus,
-          sequentialMode: goalFormSequentialMode,
-        });
-        showSuccessToast('Goal updated', `"${goalFormTitle.trim()}" saved.`);
-      } else {
-        store.createGoal({
-          title: goalFormTitle.trim(),
-          description: goalFormDescription.trim() || undefined,
-          category: goalFormCategory.trim() || undefined,
-          targetDate: sanitizedTargetDate,
-          status: goalFormStatus,
-          sequentialMode: goalFormSequentialMode,
-        });
-        showSuccessToast('Goal created', `"${goalFormTitle.trim()}" is now active.`);
-      }
-      setGoalModalOpen(false);
-    }).catch((err) => reportSaveFailure('goal', err));
-  };
-
-  const handleUpdateGoalManualProgress = (goal: Goal, val: number) => {
-    const clamped = Math.max(0, Math.min(100, Math.round(val)));
-    let newStatus = goal.status;
-
-    // Abandoned goals are never auto-overridden
-    if (goal.status !== 'abandoned') {
-      if (clamped === 100 && goal.status !== 'achieved') {
-        newStatus = 'achieved';
-      } else if (clamped < 100 && goal.status === 'achieved') {
-        newStatus = 'active';
-      }
+  const saveGoal = (payload: GoalPayload) => {
+    const editing = goalForm?.editing ?? null;
+    const hasProjects = editing ? (h.projectsByGoal.get(editing.id)?.length ?? 0) > 0 : false;
+    const statusFields = goalStatusPatch(editing, payload.status, hasProjects);
+    if (editing) {
+      store.updateGoal(editing.id, { ...payload, ...statusFields });
+      showSuccessToast('Goal saved', `"${payload.title}" is updated.`);
+    } else {
+      store.createGoal({ ...payload, manualProgress: statusFields.manualProgress });
+      showSuccessToast('Goal created', `Next, add a project to "${payload.title}".`);
     }
-
-    store.updateGoal(goal.id, {
-      manualProgress: clamped,
-      status: newStatus,
-    });
   };
 
-  const handleMoveGoalStatus = async (goalId: string, newStatus: GoalStatus) => {
-    await executeWithKey(`move_goal_${goalId}`, async () => {
-      const linkedProjects = projects.filter((p) => p.goalId === goalId);
-      const isManual = linkedProjects.length === 0;
-
-      if (isManual && newStatus === 'achieved') {
-        store.updateGoal(goalId, {
-          status: newStatus,
-          manualProgress: 100,
-        });
-      } else {
-        store.updateGoal(goalId, {
-          status: newStatus,
-        });
-      }
-    });
+  const saveProject = (payload: ProjectPayload) => {
+    const editing = projectForm?.editing ?? null;
+    const hasTasks = editing ? (h.tasksByProject.get(editing.id)?.length ?? 0) > 0 : false;
+    const statusFields = projectStatusPatch(editing, payload.status, hasTasks);
+    if (editing) {
+      store.updateProject(editing.id, { ...payload, ...statusFields });
+      showSuccessToast('Project saved', `"${payload.title}" is updated.`);
+    } else {
+      store.createProject({ ...payload, manualProgress: statusFields.manualProgress });
+      showSuccessToast('Project created', `Next, add its first task.`);
+    }
   };
 
+  const saveTask = (payload: TaskPayload) => {
+    const editing = taskForm?.editing ?? null;
+    if (editing) {
+      store.updateTask(editing.id, payload);
+      showSuccessToast('Task saved', `"${payload.title}" is updated.`);
+    } else {
+      store.createTask({ ...payload, completed: false });
+      showSuccessToast('Task added', `"${payload.title}" is on your list.`);
+    }
+  };
+
+  const handleQuickAddTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const title = quickTaskTitle.trim();
+    if (!title) return;
+    await executeWithKey('quick_add_task', async () => {
+      store.createTask({ title, priority: quickTaskPriority, projectId: quickTaskProjectId || undefined, completed: false, subtasks: [] });
+      setQuickTaskTitle('');
+      showSuccessToast('Task added', `"${title}" is on your list.`);
+    }).catch((err) => showErrorToast("Couldn't add the task", toUserMessage(err, 'Try again.')));
+  };
+
+  const changeGoalStatus = (goal: Goal, next: GoalStatus) => {
+    const hasProjects = (h.projectsByGoal.get(goal.id)?.length ?? 0) > 0;
+    store.updateGoal(goal.id, goalStatusPatch(goal, next, hasProjects));
+  };
+
+  const changeProjectStatus = (project: Project, next: ProjectStatus) => {
+    const lock = h.getLockStatus(project);
+    if (lock.isLocked) return; // the menu is disabled while locked
+    const hasTasks = (h.tasksByProject.get(project.id)?.length ?? 0) > 0;
+    store.updateProject(project.id, projectStatusPatch(project, next, hasTasks));
+  };
+
+  /** A hand-updated %: reaching 100 marks it done, dropping below takes that back. */
+  const saveManualProgress = (next: number) => {
+    if (!progressUpdate) return;
+    const value = Math.max(0, Math.min(100, Math.round(next)));
+    if (progressUpdate.kind === 'goal') {
+      const goal = goals.find((g) => g.id === progressUpdate.id);
+      if (!goal) return;
+      const status: GoalStatus =
+        goal.status === 'abandoned' ? goal.status : value === 100 ? 'achieved' : goal.status === 'achieved' ? 'active' : goal.status;
+      store.updateGoal(goal.id, { manualProgress: value, status });
+    } else {
+      const project = projects.find((p) => p.id === progressUpdate.id);
+      if (!project || h.getLockStatus(project).isLocked) return;
+      const status: ProjectStatus = value === 100 ? 'completed' : project.status === 'completed' ? 'in_progress' : project.status;
+      store.updateProject(project.id, { manualProgress: value, status });
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // Deletes
+  // --------------------------------------------------------------------------
   const handleDeleteGoalConfirm = async () => {
-    if (!deleteGoalTarget) return;
-    await executeWithKey(`delete_goal_${deleteGoalTarget.id}`, async () => {
-      await store.deleteGoal(deleteGoalTarget.id);
-      showSuccessToast('Goal deleted', 'Linked projects were safely unlinked.', `goal_${deleteGoalTarget.id}`);
+    const target = deleteGoalTarget;
+    if (!target) return;
+    await executeWithKey(`delete_goal_${target.id}`, async () => {
+      await store.deleteGoal(target.id);
+      showSuccessToast('Goal deleted', 'Its projects are kept, now without a goal.', `goal_${target.id}`);
       setDeleteGoalTarget(null);
-      if (filterGoalId === deleteGoalTarget.id) {
-        setFilterGoalId(null);
-      }
-    });
-  };
-
-  // --------------------------------------------------------------------------
-  // PROJECT ACTIONS
-  // --------------------------------------------------------------------------
-
-  const openCreateProjectModal = (preselectedGoalId?: string, defaultStatus?: ProjectStatus) => {
-    setEditingProject(null);
-    setProjectFormTitle('');
-    setProjectFormDescription('');
-    setProjectFormGoalId(preselectedGoalId || filterGoalId || '');
-    setProjectFormStartDate(todayKey());
-    setProjectFormDueDate('');
-    const initialStatus =
-      defaultStatus ||
-      (projectStatusFilter !== 'all' && projectStatusFilter !== 'locked' ? projectStatusFilter : 'not_started');
-    setProjectFormStatus(initialStatus);
-    setProjectModalOpen(true);
-  };
-
-  const openEditProjectModal = (project: Project) => {
-    setEditingProject(project);
-    setProjectFormTitle(project.title);
-    setProjectFormDescription(project.description || '');
-    setProjectFormGoalId(project.goalId || '');
-    setProjectFormStartDate(project.startDate || '');
-    setProjectFormDueDate(project.dueDate || '');
-    setProjectFormStatus(project.status);
-    setProjectModalOpen(true);
-  };
-
-  const handleSaveProject = async () => {
-    if (!projectFormTitle.trim()) return;
-
-    await executeWithKey('save_project', async () => {
-      const sanitizedStartDate = sanitizeDateBounds(projectFormStartDate);
-      const sanitizedDueDate = sanitizeDateBounds(projectFormDueDate);
-
-      if (editingProject) {
-        store.updateProject(editingProject.id, {
-          title: projectFormTitle.trim(),
-          description: projectFormDescription.trim() || undefined,
-          goalId: projectFormGoalId || undefined,
-          startDate: sanitizedStartDate,
-          dueDate: sanitizedDueDate,
-          status: projectFormStatus,
-        });
-        showSuccessToast('Project updated', `"${projectFormTitle.trim()}" saved.`);
-      } else {
-        store.createProject({
-          title: projectFormTitle.trim(),
-          description: projectFormDescription.trim() || undefined,
-          goalId: projectFormGoalId || undefined,
-          startDate: sanitizedStartDate,
-          dueDate: sanitizedDueDate,
-          status: projectFormStatus,
-        });
-        showSuccessToast('Project created', `"${projectFormTitle.trim()}" added.`);
-      }
-      setProjectModalOpen(false);
-    }).catch((err) => reportSaveFailure('project', err));
-  };
-
-  const handleUpdateProjectManualProgress = (project: Project, val: number) => {
-    const lock = getProjectLockStatus(project.id);
-    if (lock.isLocked) {
-      showErrorToast('Project locked', `This project is locked until "${lock.blockingProject?.title}" is completed.`);
-      return;
-    }
-
-    const clamped = Math.max(0, Math.min(100, Math.round(val)));
-    let newStatus = project.status;
-    let newCompletedAt = project.completedAt;
-
-    if (clamped === 100 && project.status !== 'completed') {
-      newStatus = 'completed';
-      newCompletedAt = trustedNow().toISOString();
-    } else if (clamped < 100 && project.status === 'completed') {
-      newStatus = 'in_progress';
-      newCompletedAt = undefined;
-    }
-
-    store.updateProject(project.id, {
-      manualProgress: clamped,
-      status: newStatus,
-      completedAt: newCompletedAt,
-    });
-  };
-
-  const handleMoveProjectStatus = async (projectId: string, newStatus: ProjectStatus) => {
-    const lock = getProjectLockStatus(projectId);
-    if (lock.isLocked && (newStatus === 'completed' || newStatus === 'in_progress')) {
-      showErrorToast('Project locked', `This project is locked in sequential mode until "${lock.blockingProject?.title}" is completed.`);
-      return;
-    }
-
-    await executeWithKey(`move_project_${projectId}`, async () => {
-      const linkedTasks = tasks.filter((t) => t.projectId === projectId);
-      const isManual = linkedTasks.length === 0;
-
-      if (isManual && newStatus === 'completed') {
-        store.updateProject(projectId, {
-          status: 'completed',
-          manualProgress: 100,
-          completedAt: trustedNow().toISOString(),
-        });
-      } else {
-        store.moveProjectStatus(projectId, newStatus);
-      }
+      if (filterGoalId === target.id) setFilterGoalId(null);
+      if (projectGoalFilter === target.id) setProjectGoalFilter('all');
     });
   };
 
   const handleDeleteProjectConfirm = async () => {
-    if (!deleteProjectTarget) return;
-    await executeWithKey(`delete_project_${deleteProjectTarget.id}`, async () => {
-      await store.deleteProject(deleteProjectTarget.id);
-      showSuccessToast('Project deleted', 'Linked tasks were safely unlinked.', `project_${deleteProjectTarget.id}`);
+    const target = deleteProjectTarget;
+    if (!target) return;
+    await executeWithKey(`delete_project_${target.id}`, async () => {
+      await store.deleteProject(target.id);
+      showSuccessToast('Project deleted', 'Its tasks are kept, now without a project.', `project_${target.id}`);
       setDeleteProjectTarget(null);
-      if (filterProjectId === deleteProjectTarget.id) {
-        setFilterProjectId(null);
-      }
+      if (filterProjectId === target.id) setFilterProjectId(null);
+      if (taskProjectFilter === target.id) setTaskProjectFilter('all');
     });
-  };
-
-  // --------------------------------------------------------------------------
-  // TASK ACTIONS
-  // --------------------------------------------------------------------------
-
-  const handleQuickAddTask = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!quickTaskTitle.trim()) return;
-
-    const title = quickTaskTitle.trim();
-    const projId = quickTaskProjectId || undefined;
-
-    await executeWithKey('quick_add_task', async () => {
-      store.createTask({
-        title,
-        priority: quickTaskPriority,
-        projectId: projId,
-        completed: false,
-        subtasks: [],
-      });
-      setQuickTaskTitle('');
-      showSuccessToast('Task added', `"${title}" added.`);
-    });
-  };
-
-  const openCreateTaskModal = (preselectedProjectId?: string) => {
-    setEditingTask(null);
-    setTaskFormTitle('');
-    setTaskFormDescription('');
-    setTaskFormProjectId(preselectedProjectId || filterProjectId || '');
-    setTaskFormDueDate('');
-    setTaskFormPriority('medium');
-    setTaskFormSubtasks([]);
-    setNewModalSubtaskTitle('');
-    setTaskModalOpen(true);
-  };
-
-  const openEditTaskModal = (task: Task) => {
-    setEditingTask(task);
-    setTaskFormTitle(task.title);
-    setTaskFormDescription(task.description || '');
-    setTaskFormProjectId(task.projectId || '');
-    setTaskFormDueDate(task.dueDate || '');
-    setTaskFormPriority(task.priority);
-    setTaskFormSubtasks([...(task.subtasks || [])]);
-    setNewModalSubtaskTitle('');
-    setTaskModalOpen(true);
-  };
-
-  const addModalSubtask = () => {
-    const subtaskTitle = newModalSubtaskTitle.trim();
-    if (!subtaskTitle) return;
-    setTaskFormSubtasks((prev) => [...prev, { id: trustedNowMs().toString(), title: subtaskTitle, completed: false }]);
-    setNewModalSubtaskTitle('');
-  };
-
-  const handleSaveTaskModal = async () => {
-    if (!taskFormTitle.trim()) return;
-
-    await executeWithKey('save_task_modal', async () => {
-      const sanitizedDueDate = sanitizeDateBounds(taskFormDueDate);
-
-      if (editingTask) {
-        store.updateTask(editingTask.id, {
-          title: taskFormTitle.trim(),
-          description: taskFormDescription.trim() || undefined,
-          projectId: taskFormProjectId || undefined,
-          dueDate: sanitizedDueDate,
-          priority: taskFormPriority,
-          subtasks: taskFormSubtasks,
-        });
-        showSuccessToast('Task updated', `"${taskFormTitle.trim()}" saved.`);
-      } else {
-        store.createTask({
-          title: taskFormTitle.trim(),
-          description: taskFormDescription.trim() || undefined,
-          projectId: taskFormProjectId || undefined,
-          dueDate: sanitizedDueDate,
-          priority: taskFormPriority,
-          completed: false,
-          subtasks: taskFormSubtasks,
-        });
-        showSuccessToast('Task created', `"${taskFormTitle.trim()}" added.`);
-      }
-      setTaskModalOpen(false);
-    }).catch((err) => reportSaveFailure('task', err));
   };
 
   const handleDeleteTaskConfirm = async () => {
-    if (!deleteTaskTarget) return;
-    await executeWithKey(`delete_task_${deleteTaskTarget.id}`, async () => {
-      await store.deleteTask(deleteTaskTarget.id);
-      showSuccessToast('Task deleted', 'Task removed.', `task_${deleteTaskTarget.id}`);
+    const target = deleteTaskTarget;
+    if (!target) return;
+    await executeWithKey(`delete_task_${target.id}`, async () => {
+      await store.deleteTask(target.id);
+      showSuccessToast('Task deleted', 'Task removed.', `task_${target.id}`);
       setDeleteTaskTarget(null);
     });
   };
 
   const handleDeleteSubtaskConfirm = async () => {
-    if (!deleteSubtaskTarget) return;
-    await executeWithKey(`delete_subtask_${deleteSubtaskTarget.subtask.id}`, async () => {
-      await store.deleteSubtask(deleteSubtaskTarget.taskId, deleteSubtaskTarget.subtask.id);
-      showSuccessToast('Subtask deleted', 'Subtask removed.', `subtask_${deleteSubtaskTarget.subtask.id}`);
+    const target = deleteSubtaskTarget;
+    if (!target) return;
+    await executeWithKey(`delete_subtask_${target.subtask.id}`, async () => {
+      await store.deleteSubtask(target.taskId, target.subtask.id);
+      showSuccessToast('Subtask deleted', 'Subtask removed.', `subtask_${target.subtask.id}`);
       setDeleteSubtaskTarget(null);
     });
   };
 
-  const toggleTaskExpand = (taskId: string) => {
-    setExpandedTaskIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(taskId)) {
-        next.delete(taskId);
-      } else {
-        next.add(taskId);
-      }
-      return next;
-    });
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+  const deleteGoalText = (goal: Goal) => {
+    const count = h.projectsByGoal.get(goal.id)?.length ?? 0;
+    return count > 0
+      ? `"${goal.title}" will be deleted. Its ${plural(count, 'project stays', 'projects stay')}, just without a goal.`
+      : `"${goal.title}" will be deleted.`;
   };
 
-  const handleAddInlineSubtask = (taskId: string) => {
-    const val = (newSubtaskInputs[taskId] || '').trim();
-    if (!val) return;
-    store.addSubtask(taskId, val);
-    setNewSubtaskInputs((prev) => ({ ...prev, [taskId]: '' }));
+  const deleteProjectText = (project: Project) => {
+    const count = h.tasksByProject.get(project.id)?.length ?? 0;
+    const lock = h.getLockStatus(project);
+    const laterSteps = lock.isSequentialGoal && (lock.stepIndex ?? 0) < (lock.totalSteps ?? 0);
+    return [
+      `"${project.title}" will be deleted.`,
+      count > 0 ? `Its ${plural(count, 'task stays', 'tasks stay')}, just without a project.` : '',
+      laterSteps ? 'The projects after it in this goal move up one step.' : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
   };
 
-  // Helper colors
-  const priorityColor = (p: TaskPriority) => {
-    switch (p) {
-      case 'high':
-        return 'bg-rose-500/15 text-rose-theme border-rose-500/30';
-      case 'medium':
-        return 'bg-amber-500/15 text-warning-text border-amber-500/30';
-      case 'low':
-        return 'bg-overlay-subtle text-content-tertiary border-overlay-default';
-    }
-  };
+  // --------------------------------------------------------------------------
+  // Render
+  // --------------------------------------------------------------------------
+  const orderedTabs = TAB_ORDER[tabOrder];
+  const tabCounts = { tasks: tasks.length, projects: projects.length, goals: goals.length };
+  const primaryAction =
+    activeTab === 'tasks'
+      ? { label: 'New task', onClick: () => setTaskForm({ key: nextKey(), editing: null, projectId: filterProjectId ?? undefined }) }
+      : activeTab === 'projects'
+        ? { label: 'New project', onClick: () => setProjectForm({ key: nextKey(), editing: null, goalId: scopedGoal?.id }) }
+        : { label: 'New goal', onClick: () => setGoalForm({ key: nextKey(), editing: null }) };
 
-  const goalStatusBadge = (status: GoalStatus) => {
-    switch (status) {
-      case 'active':
-        return <span className="badge bg-emerald-500/15 text-success-text border border-emerald-500/30 text-2xs">Active</span>;
-      case 'achieved':
-        return <span className="badge badge-purple text-2xs">Achieved</span>;
-      case 'abandoned':
-        return <span className="badge bg-overlay-subtle text-content-muted border border-overlay-default text-2xs">Abandoned</span>;
-    }
-  };
+  const heroStats = [
+    { key: 'projects', label: 'Active projects', value: stats.activeProjects, valueClassName: 'text-cyan-hierarchy' },
+    { key: 'goals', label: 'Active goals', value: stats.activeGoals, valueClassName: 'text-purple-hierarchy' },
+  ];
+  if (tabOrder === 'goalFirst') heroStats.reverse();
 
-  // Find goal name helper
-  const getGoalName = (goalId?: string) => {
-    if (!goalId) return null;
-    return goals.find((g) => g.id === goalId)?.title || null;
-  };
-
-  // Find project name helper
-  const getProjectName = (projectId?: string) => {
-    if (!projectId) return null;
-    return projects.find((p) => p.id === projectId)?.title || null;
-  };
+  const filterGoal = filterGoalId ? goals.find((g) => g.id === filterGoalId) : undefined;
+  const filterProject = projectById(filterProjectId ?? undefined);
+  const filterProjectLock = filterProject ? h.getLockStatus(filterProject) : undefined;
 
   return (
     <div className="space-y-6">
-      {/* HEADER & TOP NAVIGATION */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="page-title">Projects & Goals</h1>
-              <button
-                type="button"
-                onClick={() => setIsGuideModalOpen(true)}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-overlay-subtle text-content-muted hover:text-content-primary text-xs font-medium transition-colors"
-                title="How goals, projects and tasks fit together"
-              >
-                <HelpCircle size={13} />
-                <span>How it works</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-stretch sm:self-auto">
-            {activeTab === 'tasks' && (
-              <button
-                id="btn-new-task-modal"
-                onClick={() => openCreateTaskModal()}
-                className="btn-primary text-xs flex items-center justify-center gap-1.5 px-3.5 py-2 w-full sm:w-auto"
-              >
-                <Plus size={15} />
-                <span>New Task</span>
-              </button>
-            )}
-
-            {activeTab === 'projects' && (
-              <button
-                id="btn-new-project"
-                onClick={() => openCreateProjectModal(undefined, projectStatusFilter !== 'all' && projectStatusFilter !== 'locked' ? projectStatusFilter : undefined)}
-                className="btn-primary text-xs flex items-center justify-center gap-1.5 px-3.5 py-2 w-full sm:w-auto"
-              >
-                <Plus size={15} />
-                <span>New Project</span>
-              </button>
-            )}
-
-            {activeTab === 'goals' && (
-              <button
-                id="btn-new-goal"
-                onClick={openCreateGoalModal}
-                className="btn-primary text-xs flex items-center justify-center gap-1.5 px-3.5 py-2 w-full sm:w-auto"
-              >
-                <Plus size={15} />
-                <span>New Goal</span>
-              </button>
-            )}
-          </div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="page-title">Projects & Goals</h1>
+          <p className="page-subtitle">
+            Dream it, plan it, do it.{' '}
+            <button
+              type="button"
+              onClick={() => setGuideOpen(true)}
+              className="inline-flex items-center gap-1 font-medium text-content-secondary underline-offset-2 hover:text-content-primary hover:underline"
+            >
+              <HelpCircle size={13} aria-hidden="true" />
+              How it works
+            </button>
+          </p>
         </div>
-
-        {/* STATS OVERVIEW BAR */}
-        <div className="grid grid-cols-3 divide-x divide-overlay-subtle py-1">
-          {tabOrder === 'taskFirst' && (
-            <>
-              <div className="px-3 sm:px-4 first:pl-0">
-                <div>
-                  <span className="stat-label">Pending Tasks</span>
-                  <CountUp value={hierarchyStats.pendingTasks} className="block font-medium text-xl sm:text-2xl leading-tight text-success-text tabular-nums" />
-                </div>
-              </div>
-
-              <div className="px-3 sm:px-4 first:pl-0">
-                <div>
-                  <span className="stat-label">Active Projects</span>
-                  <CountUp value={hierarchyStats.activeProjects} className="block font-medium text-xl sm:text-2xl leading-tight text-cyan-hierarchy tabular-nums" />
-                </div>
-              </div>
-
-              <div className="px-3 sm:px-4 first:pl-0">
-                <div>
-                  <span className="stat-label">Active Goals</span>
-                  <CountUp value={hierarchyStats.activeGoals} className="block font-medium text-xl sm:text-2xl leading-tight text-purple-hierarchy tabular-nums" />
-                </div>
-              </div>
-            </>
-          )}
-
-          {tabOrder === 'projectFirst' && (
-            <>
-              <div className="px-3 sm:px-4 first:pl-0">
-                <div>
-                  <span className="stat-label">Active Projects</span>
-                  <CountUp value={hierarchyStats.activeProjects} className="block font-medium text-xl sm:text-2xl leading-tight text-cyan-hierarchy tabular-nums" />
-                </div>
-              </div>
-
-              <div className="px-3 sm:px-4 first:pl-0">
-                <div>
-                  <span className="stat-label">Pending Tasks</span>
-                  <CountUp value={hierarchyStats.pendingTasks} className="block font-medium text-xl sm:text-2xl leading-tight text-success-text tabular-nums" />
-                </div>
-              </div>
-
-              <div className="px-3 sm:px-4 first:pl-0">
-                <div>
-                  <span className="stat-label">Active Goals</span>
-                  <CountUp value={hierarchyStats.activeGoals} className="block font-medium text-xl sm:text-2xl leading-tight text-purple-hierarchy tabular-nums" />
-                </div>
-              </div>
-            </>
-          )}
-
-          {tabOrder === 'goalFirst' && (
-            <>
-              <div className="px-3 sm:px-4 first:pl-0">
-                <div>
-                  <span className="stat-label">Active Goals</span>
-                  <CountUp value={hierarchyStats.activeGoals} className="block font-medium text-xl sm:text-2xl leading-tight text-purple-hierarchy tabular-nums" />
-                </div>
-              </div>
-
-              <div className="px-3 sm:px-4 first:pl-0">
-                <div>
-                  <span className="stat-label">Active Projects</span>
-                  <CountUp value={hierarchyStats.activeProjects} className="block font-medium text-xl sm:text-2xl leading-tight text-cyan-hierarchy tabular-nums" />
-                </div>
-              </div>
-
-              <div className="px-3 sm:px-4 first:pl-0">
-                <div>
-                  <span className="stat-label">Pending Tasks</span>
-                  <CountUp value={hierarchyStats.pendingTasks} className="block font-medium text-xl sm:text-2xl leading-tight text-success-text tabular-nums" />
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* SUB-VIEW TABS & DYNAMIC HIERARCHY SORTER */}
-        <div className="flex items-center justify-between border-b border-overlay-subtle gap-1 sm:gap-2 pb-2 w-full overflow-hidden">
-          <div ref={subViewTabsRef} className="scroll-fade flex-1 min-w-0 flex items-center gap-1 sm:gap-2 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-1 pr-1">
-            {(tabOrder === 'taskFirst'
-              ? [
-                  { id: 'tasks' as const, label: `1. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
-                  { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'badge-cyan' },
-                  { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target, activeColor: 'badge-purple' },
-                ]
-              : tabOrder === 'projectFirst'
-              ? [
-                  { id: 'projects' as const, label: `1. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'badge-cyan' },
-                  { id: 'tasks' as const, label: `2. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
-                  { id: 'goals' as const, label: `3. Goals (${goals.length})`, icon: Target, activeColor: 'badge-purple' },
-                ]
-              : [
-                  { id: 'goals' as const, label: `1. Goals (${goals.length})`, icon: Target, activeColor: 'badge-purple' },
-                  { id: 'projects' as const, label: `2. Projects (${projects.length})`, icon: FolderKanban, activeColor: 'badge-cyan' },
-                  { id: 'tasks' as const, label: `3. Tasks (${tasks.length})`, icon: CheckSquare, activeColor: 'bg-emerald-500/15 text-success-text border-emerald-500/30' },
-                ]
-            ).map((tab) => {
-              const TabIcon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  id={`tab-${tab.id}-view`}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1 sm:gap-2 px-1.5 sm:px-4 py-1 sm:py-2.5 rounded-xl font-medium text-2xs sm:text-xs transition-all shrink-0 ${
-                    isActive ? `${tab.activeColor} border` : 'text-content-muted hover:bg-overlay-subtle'
-                  }`}
-                >
-                  <TabIcon size={14} className="sm:w-4 sm:h-4" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Dynamic Hierarchy Sorter Button (Locked Gamification) */}
-          <button
-            type="button"
-            disabled={goals.length === 0}
-            onClick={() => {
-              if (goals.length > 0) {
-                setTabOrder((prev) =>
-                  prev === 'taskFirst'
-                    ? 'projectFirst'
-                    : prev === 'projectFirst'
-                    ? 'goalFirst'
-                    : 'taskFirst'
-                );
-              }
-            }}
-            title={
-              goals.length === 0
-                ? 'Add a goal to change the sort order.'
-                : tabOrder === 'taskFirst'
-                ? 'Sort: projects first (Project → Task → Goal)'
-                : tabOrder === 'projectFirst'
-                ? 'Sort: goals first (Goal → Project → Task)'
-                : 'Sort: tasks first (Task → Project → Goal)'
-            }
-            className={`flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-xs font-semibold transition-all shrink-0 ${
-              goals.length === 0
-                ? 'opacity-50 cursor-not-allowed border-transparent text-content-disabled'
-                : 'border-transparent hover:bg-purple-500/20 text-content-muted hover:text-purple-hierarchy cursor-pointer'
-            }`}
-          >
-            <ArrowDownUp size={13} className={goals.length === 0 ? 'text-content-disabled' : 'text-purple-hierarchy'} />
-            <span className="hidden sm:inline">
-              {goals.length === 0
-                ? 'Sort View'
-                : tabOrder === 'taskFirst'
-                ? 'Tasks First'
-                : tabOrder === 'projectFirst'
-                ? 'Projects First'
-                : 'Goals First'}
-            </span>
-          </button>
-        </div>
+        <button type="button" onClick={primaryAction.onClick} className="btn-primary self-start md:self-auto">
+          <Plus size={16} aria-hidden="true" /> {primaryAction.label}
+        </button>
       </div>
 
-      {/* -------------------------------------------------------------------- */}
-      {/* 1. GOALS SUB-VIEW (Full-Width List) */}
-      {/* -------------------------------------------------------------------- */}
+      <Reveal index={0}>
+        <PageHero
+          ariaLabel="Projects and goals overview"
+          ring={{
+            value: stats.avgGoal,
+            max: 100,
+            label: `Average progress of active goals: ${stats.avgGoal}%`,
+            center: stats.activeGoals ? `${stats.avgGoal}%` : '–',
+            caption: stats.activeGoals ? 'goal progress' : 'no goals yet',
+            tone: 'purple',
+          }}
+          lead={{
+            label: 'Tasks to do',
+            value: stats.pendingTasks,
+            hint:
+              stats.overdue > 0
+                ? `${stats.overdue} overdue${stats.dueToday ? `, ${stats.dueToday} due today` : ''}`
+                : stats.dueToday > 0
+                  ? `${stats.dueToday} due today`
+                  : tasks.length === 0
+                    ? 'Add one small step to start'
+                    : 'Nothing overdue',
+            valueClassName: 'text-success-text',
+          }}
+          stats={[
+            ...heroStats.map(({ label, value, valueClassName }) => ({ label, value, valueClassName })),
+            { label: 'Goals achieved', value: stats.achievedGoals },
+          ]}
+        />
+      </Reveal>
+
+      <div className="flex items-center gap-2">
+        <Tabs
+          ariaLabel="Projects and goals sections"
+          className="min-w-0 flex-1"
+          scrollable
+          value={activeTab}
+          onChange={(id) => setActiveTab(id as SubViewTab)}
+          items={orderedTabs.map((id, index) => ({
+            id,
+            label: `${index + 1}. ${TAB_META[id].label}`,
+            icon: TAB_META[id].icon,
+            badge: tabCounts[id],
+          }))}
+        />
+        {/* The order switch unlocks once there is a goal to lead with. */}
+        <button
+          type="button"
+          disabled={goals.length === 0}
+          onClick={() => setTabOrder(NEXT_ORDER[tabOrder])}
+          title={goals.length === 0 ? 'Add a goal to change the order' : `Order: ${ORDER_LABEL[tabOrder]}. Tap to switch.`}
+          aria-label={goals.length === 0 ? 'Change order (add a goal first)' : `Order: ${ORDER_LABEL[tabOrder]}. Switch to ${ORDER_LABEL[NEXT_ORDER[tabOrder]]}`}
+          className={cx(
+            'flex shrink-0 items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors',
+            goals.length === 0 ? 'cursor-not-allowed text-content-disabled' : 'text-content-muted hover:bg-overlay-subtle hover:text-content-primary',
+            TAP_TARGET
+          )}
+        >
+          <ArrowDownUp size={14} aria-hidden="true" />
+          <span className="max-sm:hidden">{ORDER_LABEL[tabOrder]}</span>
+        </button>
+      </div>
+
+      {/* ------------------------------------------------------------------ GOALS */}
       {activeTab === 'goals' && (
         <div className="space-y-4">
-          {/* Goals Control Bar with Two-Tier Filter & Search */}
-          <div className="flex flex-col gap-3">
-            {/* Top Row: Search */}
-            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <ToolbarInput
-                type="search"
-                icon={Search}
-                aria-label="Search goals"
-                placeholder="Search goals..."
-                value={goalSearch}
-                onChange={(e) => setGoalSearch(e.target.value)}
-                wrapperClassName="flex-1"
-              />
-            </div>
-
-            {/* Bottom Row: Status Filter Tabs */}
-            <div className="relative isolate flex flex-wrap items-center gap-1.5 sm:gap-2 pt-3 border-t border-overlay-subtle">
-              <SlidingPill
-                active={goalStatusFilter}
-                className={cx('rounded-lg', GOAL_FILTER_PILL[goalStatusFilter])}
-              />
-              <button
-                id="filter-goals-all"
-                data-pill-id="all"
-                onClick={() => setGoalStatusFilter('all')}
-                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
-                  goalStatusFilter === 'all' ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary'
-                }`}
-              >
-                All ({goalStatusCounts.all})
-              </button>
-              <button
-                id="filter-goals-active"
-                data-pill-id="active"
-                onClick={() => setGoalStatusFilter('active')}
-                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
-                  goalStatusFilter === 'active' ? 'text-success-text' : 'text-content-muted hover:text-content-secondary'
-                }`}
-              >
-                Active ({goalStatusCounts.active})
-              </button>
-              <button
-                id="filter-goals-achieved"
-                data-pill-id="achieved"
-                onClick={() => setGoalStatusFilter('achieved')}
-                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
-                  goalStatusFilter === 'achieved' ? 'text-[var(--badge-purple-text)]' : 'text-content-muted hover:text-content-secondary'
-                }`}
-              >
-                Achieved ({goalStatusCounts.achieved})
-              </button>
-              <button
-                id="filter-goals-abandoned"
-                data-pill-id="abandoned"
-                onClick={() => setGoalStatusFilter('abandoned')}
-                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
-                  goalStatusFilter === 'abandoned' ? 'text-content-tertiary' : 'text-content-muted hover:text-content-secondary'
-                }`}
-              >
-                Abandoned ({goalStatusCounts.abandoned})
-              </button>
-            </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <ToolbarInput
+              type="search"
+              icon={Search}
+              aria-label="Search goals"
+              placeholder="Search goals"
+              value={goalSearch}
+              onChange={(e) => setGoalSearch(e.target.value)}
+              wrapperClassName="flex-1"
+            />
+            <FilterRow
+              label="Goal status"
+              value={goalStatusFilter}
+              onChange={setGoalStatusFilter}
+              activeClass={{
+                active: 'border-emerald-500/30 bg-emerald-500/15',
+                achieved: 'border-[var(--badge-purple-border)] bg-[var(--badge-purple-bg)]',
+              }}
+              options={[
+                { id: 'all', label: `All ${goalSearchMatches.length}` },
+                { id: 'active', label: `Active ${goalSearchMatches.filter((g) => g.status === 'active').length}` },
+                { id: 'achieved', label: `Achieved ${goalSearchMatches.filter((g) => g.status === 'achieved').length}` },
+                { id: 'abandoned', label: `Abandoned ${goalSearchMatches.filter((g) => g.status === 'abandoned').length}` },
+              ]}
+            />
           </div>
 
-          {/* Full-Width Goals List */}
           {filteredGoals.length === 0 ? (
             <EmptyState
               tier="goals"
               isFiltered={goals.length > 0}
-              onCreate={openCreateGoalModal}
+              onClearFilters={clearGoalFilters}
+              onCreate={() => setGoalForm({ key: nextKey(), editing: null })}
             />
           ) : (
-            <div className="grid-cards-xl gap-3 items-start">
-              {filteredGoals.map((goal) => {
-                const prog = getGoalProgress(goal.id);
-                return (
-                  <div
-                    key={goal.id}
-                    className="card enter-item p-4 sm:p-4.5 border border-overlay-default bg-bg-800 rounded-2xl space-y-3.5 hover:border-purple-500/30 transition-all shadow-sm group"
-                  >
-                    {/* Top Row: Info & Metadata (Left) + Actions & Controls (Right) */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                      {/* Left: Status Badges, Title, Description */}
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
-                          {goalStatusBadge(goal.status)}
-                          {goal.sequentialMode && (
-                            <span className="badge bg-amber-500/15 text-warning-text border border-amber-500/30 text-2xs flex items-center gap-1">
-                              <Lock size={10} className="shrink-0" />
-                              <span>Sequential Mode</span>
-                            </span>
-                          )}
-                          {goal.category && (
-                            <span className="badge bg-overlay-subtle text-content-tertiary border border-overlay-default text-2xs flex items-center gap-1">
-                              <Tag size={10} className="text-purple-hierarchy shrink-0" />
-                              <span className="truncate max-w-[140px]">{goal.category}</span>
-                            </span>
-                          )}
-                          {goal.targetDate ? (
-                            <span className="badge bg-overlay-subtle text-content-tertiary border border-overlay-default text-2xs flex items-center gap-1">
-                              <Calendar size={10} className="text-purple-hierarchy shrink-0" />
-                              <span>Target: {formatDateShort(goal.targetDate)}</span>
-                            </span>
-                          ) : (
-                            <span className="text-2xs text-content-disabled italic">No target date</span>
-                          )}
-                        </div>
-
-                        <h4 className="font-semibold text-lg sm:text-xl leading-tight text-content-primary" title={goal.title}>
-                          {goal.title}
-                        </h4>
-
-                        {goal.description && (
-                          <p className="text-xs text-content-muted line-clamp-2 leading-relaxed">
-                            {goal.description}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Right: Status Dropdown, Linked Button, Edit/Delete */}
-                      <div className="flex items-center gap-2 shrink-0 self-start pt-0.5 flex-wrap sm:flex-nowrap">
-                        <select
-                          value={goal.status}
-                          onChange={(e) => handleMoveGoalStatus(goal.id, e.target.value as GoalStatus)}
-                          className="bg-bg-900 border border-overlay-default text-xs rounded-xl px-2.5 py-1.5 text-content-tertiary focus:outline-none focus:border-primary-500/50"
-                        >
-                          <option value="active">Active</option>
-                          <option value="achieved">Achieved</option>
-                          <option value="abandoned">Abandoned</option>
-                        </select>
-
-                        {prog.linkedProjectsCount > 0 ? (
-                          <button
-                            onClick={() => {
-                              setFilterGoalId(goal.id);
-                              setActiveTab('projects');
-                            }}
-                            className="text-xs text-purple-hierarchy font-medium flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-colors shrink-0 whitespace-nowrap"
-                            title="View linked projects"
-                          >
-                            <span>Projects</span>
-                            <ArrowRight size={12} />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => openCreateProjectModal(goal.id)}
-                            className="text-xs text-content-muted hover:text-purple-hierarchy font-medium flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-overlay-subtle border border-overlay-default transition-colors shrink-0 whitespace-nowrap"
-                            title="Create first project for this goal"
-                          >
-                            <Plus size={12} />
-                            <span>Project</span>
-                          </button>
-                        )}
-
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button
-                            onClick={() => openEditGoalModal(goal)}
-                            className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors ${TAP_TARGET_Y}`}
-                            title="Edit goal"
-                            aria-label={`Edit goal "${goal.title}"`}
-                          >
-                            <Edit3 size={14} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteGoalTarget(goal)}
-                            className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors ${TAP_TARGET_Y}`}
-                            title="Delete goal"
-                            aria-label={`Delete goal "${goal.title}"`}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Goal Nudge: 0 Linked Projects */}
-                    {prog.linkedProjectsCount === 0 && (
-                      <div className="badge-purple p-3 rounded-lg text-xs flex items-center justify-between mt-3">
-                        <span className="leading-relaxed">A goal without a plan is just a wish. Link a project to define your action phases.</span>
-                        <button
-                          type="button"
-                          onClick={() => openCreateProjectModal(goal.id)}
-                          className="bg-purple-500/20 px-2.5 py-1 rounded-lg hover:bg-purple-500/30 text-purple-hierarchy font-medium border border-purple-500/30 transition-colors shrink-0 ml-3 whitespace-nowrap"
-                        >
-                          + Link Project
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Bottom Row: Full-Width Progress Section with High-Contrast Percentage */}
-                    <div className="pt-2.5 border-t border-overlay-subtle space-y-2">
-                      <div className="flex items-center justify-between text-xs text-content-tertiary">
-                        <div className="flex items-center gap-2">
-                          <span className="stat-label">
-                            {prog.isManual ? 'Manual Progress' : 'Overall Progress'}
-                          </span>
-                          {prog.isManual ? (
-                            <span className="badge badge-purple text-2xs px-2 py-0.5">
-                              0 linked projects
-                            </span>
-                          ) : (
-                            <span className="figure text-micro text-content-muted">
-                              ({prog.completedProjectsCount}/{prog.linkedProjectsCount} projects complete)
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className="figure text-sm text-content-primary">
-                            {prog.percent}%
-                          </span>
-                          <span className="text-2xs text-content-disabled hidden sm:inline">
-                            • Created {formatDateShort(goal.createdAt)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Progress bar; a goal without projects is updated by hand */}
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <ProgressBar
-                          value={prog.percent}
-                          label="Goal progress"
-                          tone={prog.percent >= 100 ? 'success' : 'purple'}
-                          size="lg"
-                          className="flex-1 min-w-[8rem]"
-                        />
-                        {prog.isManual && (
-                          <UpdateProgressButton
-                            label="Update"
-                            onClick={() => setProgressUpdate({ kind: 'goal', id: goal.id, title: goal.title, current: prog.percent })}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="grid-cards-xl items-start gap-3">
+              {filteredGoals.map((goal) => (
+                <GoalCard
+                  key={goal.id}
+                  goal={goal}
+                  prog={h.getGoalProgress(goal)}
+                  today={today}
+                  onStatusChange={(s) => changeGoalStatus(goal, s)}
+                  onOpenProjects={() => openGoalProjects(goal.id)}
+                  onAddProject={() => setProjectForm({ key: nextKey(), editing: null, goalId: goal.id })}
+                  onUpdateProgress={() =>
+                    setProgressUpdate({ kind: 'goal', id: goal.id, title: goal.title, current: h.getGoalProgress(goal).percent })
+                  }
+                  onEdit={() => setGoalForm({ key: nextKey(), editing: goal })}
+                  onDelete={() => setDeleteGoalTarget(goal)}
+                />
+              ))}
             </div>
           )}
         </div>
       )}
 
-      {/* -------------------------------------------------------------------- */}
-      {/* 2. PROJECTS SUB-VIEW (Status-Filtered List) */}
-      {/* -------------------------------------------------------------------- */}
+      {/* ------------------------------------------------------------------ PROJECTS */}
       {activeTab === 'projects' && (
         <div className="space-y-4">
-          {/* Breadcrumb if filtered by Goal */}
-          {filterGoalId && (
-            <div className="bg-purple-500/10 p-3 border border-purple-500/20 rounded-2xl flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <Target size={16} className="text-purple-hierarchy shrink-0" />
-                <span className="text-xs text-content-tertiary">
-                  Showing projects linked to Goal:{' '}
-                  <strong className="text-purple-hierarchy font-medium">{getGoalName(filterGoalId)}</strong>
-                </span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => {
-                    setFilterGoalId(null);
-                    setActiveTab('goals');
-                  }}
-                  className="text-xs text-purple-hierarchy hover:text-purple-hierarchy underline font-medium"
-                >
-                  ← Back to all Goals
-                </button>
-                <button
-                  onClick={() => setFilterGoalId(null)}
-                  className={`p-1 text-content-muted hover:text-content-secondary ${TAP_TARGET}`}
-                  title="Clear filter"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
+          {filterGoal && (
+            <ScopeBar icon={Target} text="Projects of the goal" name={filterGoal.title} onClear={() => setFilterGoalId(null)} />
           )}
 
-          {/* Projects Control Bar with Two-Tier Filter & Search */}
           <div className="flex flex-col gap-3">
-            {/* Top Row: Search & Goal Dropdown Filter */}
-            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <ToolbarInput
                 type="search"
                 icon={Search}
                 aria-label="Search projects"
-                placeholder="Search projects..."
+                placeholder="Search projects"
                 value={projectSearch}
                 onChange={(e) => setProjectSearch(e.target.value)}
                 wrapperClassName="flex-1"
               />
-
               {!filterGoalId && (
-                <div className="grid grid-cols-1 sm:flex items-center gap-2 w-full sm:w-auto shrink-0">
-                  <Filter size={14} className="text-content-muted shrink-0 hidden sm:inline-block" />
-                  <ToolbarSelect
-                    aria-label="Filter projects by goal"
-                    value={projectGoalFilter}
-                    onChange={(e) => setProjectGoalFilter(e.target.value)}
-                  >
-                    <option value="all">All Goals ({projects.length} projects)</option>
-                    <option value="standalone">Standalone Projects (No Goal)</option>
-                    {goals.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        Goal: {g.title}
-                      </option>
-                    ))}
-                  </ToolbarSelect>
-                </div>
+                <ToolbarSelect aria-label="Filter projects by goal" value={projectGoalFilter} onChange={(e) => setProjectGoalFilter(e.target.value)}>
+                  <option value="all">All goals</option>
+                  <option value="standalone">No goal</option>
+                  {goals.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.title}
+                    </option>
+                  ))}
+                </ToolbarSelect>
               )}
             </div>
-
-            {/* Bottom Row: Status Filter Tabs */}
-            <div className="relative isolate flex flex-wrap items-center gap-1.5 sm:gap-2 pt-3 border-t border-overlay-subtle">
-              <SlidingPill
-                active={projectStatusFilter}
-                className={cx('rounded-lg', PROJECT_FILTER_PILL[projectStatusFilter])}
-              />
-              <button
-                id="filter-projects-all"
-                data-pill-id="all"
-                onClick={() => setProjectStatusFilter('all')}
-                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
-                  projectStatusFilter === 'all' ? 'text-content-primary' : 'text-content-muted hover:text-content-secondary'
-                }`}
-              >
-                All ({projectStatusCounts.all})
-              </button>
-              <button
-                id="filter-projects-in-progress"
-                data-pill-id="in_progress"
-                onClick={() => setProjectStatusFilter('in_progress')}
-                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
-                  projectStatusFilter === 'in_progress' ? 'text-[var(--badge-cyan-text)]' : 'text-content-muted hover:text-content-secondary'
-                }`}
-              >
-                In Progress ({projectStatusCounts.in_progress})
-              </button>
-              <button
-                id="filter-projects-not-started"
-                data-pill-id="not_started"
-                onClick={() => setProjectStatusFilter('not_started')}
-                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
-                  projectStatusFilter === 'not_started' ? 'text-content-secondary' : 'text-content-muted hover:text-content-secondary'
-                }`}
-              >
-                Not Started ({projectStatusCounts.not_started})
-              </button>
-              <button
-                id="filter-projects-on-hold"
-                data-pill-id="on_hold"
-                onClick={() => setProjectStatusFilter('on_hold')}
-                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
-                  projectStatusFilter === 'on_hold' ? 'text-warning-text' : 'text-content-muted hover:text-content-secondary'
-                }`}
-              >
-                On Hold ({projectStatusCounts.on_hold})
-              </button>
-              <button
-                id="filter-projects-completed"
-                data-pill-id="completed"
-                onClick={() => setProjectStatusFilter('completed')}
-                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors ${
-                  projectStatusFilter === 'completed' ? 'text-success-text' : 'text-content-muted hover:text-content-secondary'
-                }`}
-              >
-                Completed ({projectStatusCounts.completed})
-              </button>
-              <button
-                id="filter-projects-locked"
-                data-pill-id="locked"
-                onClick={() => setProjectStatusFilter('locked')}
-                className={`px-3 py-1.5 rounded-lg border border-transparent text-xs font-semibold shrink-0 transition-colors flex items-center gap-1.5 ${
-                  projectStatusFilter === 'locked' ? 'text-warning-text' : 'text-content-muted hover:text-warning-text'
-                }`}
-              >
-                <Lock size={12} className="shrink-0" />
-                <span>Locked ({projectStatusCounts.locked})</span>
-              </button>
-            </div>
+            <FilterRow
+              label="Project status"
+              value={projectStatusFilter}
+              onChange={setProjectStatusFilter}
+              activeClass={{
+                in_progress: 'border-[var(--badge-cyan-border)] bg-[var(--badge-cyan-bg)]',
+                completed: 'border-emerald-500/30 bg-emerald-500/15',
+              }}
+              options={[
+                { id: 'all', label: `All ${projectCounts.all}` },
+                { id: 'in_progress', label: `In progress ${projectCounts.in_progress}` },
+                { id: 'not_started', label: `Not started ${projectCounts.not_started}` },
+                { id: 'on_hold', label: `On hold ${projectCounts.on_hold}` },
+                { id: 'completed', label: `Completed ${projectCounts.completed}` },
+                ...(projectCounts.locked > 0 || projectStatusFilter === 'locked'
+                  ? [{ id: 'locked' as const, label: `Locked ${projectCounts.locked}` }]
+                  : []),
+              ]}
+            />
           </div>
 
-          {/* FULL-WIDTH VERTICAL LIST */}
           {filteredProjects.length === 0 ? (
             <EmptyState
               tier="projects"
-              isFiltered={projects.length > 0}
-              onCreate={() =>
-                openCreateProjectModal(
-                  undefined,
-                  projectStatusFilter !== 'all' && projectStatusFilter !== 'locked'
-                    ? projectStatusFilter
-                    : undefined
-                )
-              }
+              isFiltered={projectsInScope.length > 0 || (!filterGoalId && projects.length > 0)}
+              onClearFilters={clearProjectFilters}
+              onCreate={() => setProjectForm({ key: nextKey(), editing: null, goalId: scopedGoal?.id })}
             />
           ) : (
-            <div className="grid-cards-xl gap-3 items-start">
+            <div className="grid-cards-xl items-start gap-3">
               {filteredProjects.map((project) => {
-                const prog = getProjectProgress(project.id);
-                const isOverdue = project.dueDate && project.dueDate < currentToday && project.status !== 'completed';
-                const isDueToday = project.dueDate === currentToday && project.status !== 'completed';
-                const lockStatus = getProjectLockStatus(project.id);
-
+                const lock = h.getLockStatus(project);
+                const prog = h.getProjectProgress(project);
+                const index = showReorder ? filteredProjects.indexOf(project) : -1;
                 return (
-                  <div
+                  <ProjectCard
                     key={project.id}
-                    className={`card enter-item p-4 sm:p-4.5 border rounded-2xl space-y-3.5 transition-all shadow-sm group ${
-                      lockStatus.isLocked
-                        ? 'border-amber-500/20 bg-bg-800/80 hover:border-amber-500/40'
-                        : 'border-overlay-default bg-bg-800 hover:border-cyan-500/30'
-                    }`}
-                  >
-                    {/* Locked Banner if Locked */}
-                    {lockStatus.isLocked && (
-                      <div className="p-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-2 text-xs text-warning-text">
-                        <Lock size={13} className="shrink-0 text-warning-text" />
-                        <span className="font-medium">
-                          {lockStatus.reason || 'Locked until the earlier projects in this goal are done.'}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Top Row: Info & Metadata (Left) + Actions & Controls (Right) */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                      {/* Left: Badges, Title, Description */}
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
-                          {/* Goal badge */}
-                          {project.goalId ? (
-                            <button
-                              onClick={() => {
-                                setFilterGoalId(project.goalId || null);
-                                setActiveTab('goals');
-                              }}
-                              className="badge bg-purple-500/10 text-purple-hierarchy hover:bg-purple-500/20 border border-purple-500/20 text-2xs truncate flex items-center gap-1 transition-colors"
-                              title={`Linked to Goal: ${getGoalName(project.goalId)}`}
-                            >
-                              <Target size={10} className="shrink-0" />
-                              <span className="truncate max-w-[150px]">{getGoalName(project.goalId)}</span>
-                            </button>
-                          ) : (
-                            <span className="badge bg-overlay-subtle text-content-muted border border-overlay-default text-2xs">Standalone</span>
-                          )}
-
-                          {/* Sequential Step Badge */}
-                          {lockStatus.isSequentialGoal && (
-                            <span
-                              className={`badge text-2xs flex items-center gap-1 border ${
-                                lockStatus.isLocked
-                                  ? 'bg-amber-500/15 text-warning-text border-amber-500/30'
-                                  : project.status === 'completed'
-                                  ? 'bg-emerald-500/15 text-success-text border-emerald-500/30'
-                                  : 'badge-cyan'
-                              }`}
-                            >
-                              {lockStatus.isLocked ? (
-                                <Lock size={10} className="shrink-0" />
-                              ) : (
-                                <Unlock size={10} className="shrink-0" />
-                              )}
-                              <span>
-                                Step {lockStatus.stepIndex} of {lockStatus.totalSteps}
-                                {lockStatus.isLocked ? ' (Locked)' : project.status === 'completed' ? ' (Done)' : ' (Active)'}
-                              </span>
-                            </span>
-                          )}
-
-                          {project.dueDate ? (
-                            <span
-                              className={`badge text-2xs flex items-center gap-1 border ${
-                                isOverdue
-                                  ? 'bg-rose-500/15 text-rose-theme border-rose-500/30 font-medium'
-                                  : isDueToday
-                                  ? 'bg-amber-500/15 text-warning-text border-amber-500/30 font-medium'
-                                  : 'bg-overlay-subtle text-content-tertiary border border-overlay-default'
-                              }`}
-                            >
-                              <Calendar size={10} className="shrink-0" />
-                              <span>
-                                {isOverdue ? 'Overdue: ' : isDueToday ? 'Today: ' : 'Due: '}
-                                {formatDateShort(project.dueDate)}
-                              </span>
-                            </span>
-                          ) : (
-                            <span className="text-2xs text-content-disabled italic">No due date</span>
-                          )}
-                        </div>
-
-                        <h4
-                          className={`item-name text-sm sm:text-base leading-snug ${
-                            lockStatus.isLocked ? 'text-content-tertiary' : 'text-content-primary'
-                          }`}
-                          title={project.title}
-                        >
-                          {project.title}
-                        </h4>
-
-                        {project.description && (
-                          <p className="text-xs text-content-muted line-clamp-2 leading-relaxed">
-                            {project.description}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Right: Reorder Buttons, Status Dropdown, Tasks Button, Edit/Delete */}
-                      <div className="flex items-center gap-2 shrink-0 self-start pt-0.5 flex-wrap sm:flex-nowrap">
-                        {/* Move Up/Down Order Buttons (if linked to a Goal) */}
-                        {project.goalId && (
-                          <div className="flex items-center bg-bg-900 border border-overlay-default rounded-xl p-0.5 shrink-0" title="Reorder Project sequence in Goal">
-                            <button
-                              type="button"
-                              onClick={() => store.moveProjectOrder(project.id, 'up')}
-                              className={`p-1 text-content-muted hover:text-content-secondary hover:bg-overlay-default rounded-lg transition-colors ${TAP_TARGET_Y}`}
-                              title="Move Up in sequence"
-                            >
-                              <ChevronUp size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => store.moveProjectOrder(project.id, 'down')}
-                              className={`p-1 text-content-muted hover:text-content-secondary hover:bg-overlay-default rounded-lg transition-colors ${TAP_TARGET_Y}`}
-                              title="Move Down in sequence"
-                            >
-                              <ChevronDown size={14} />
-                            </button>
-                          </div>
-                        )}
-
-                        <select
-                          value={project.status}
-                          disabled={lockStatus.isLocked}
-                          onChange={(e) => handleMoveProjectStatus(project.id, e.target.value as ProjectStatus)}
-                          className="bg-bg-900 border border-overlay-default text-xs rounded-xl px-2.5 py-1.5 text-content-tertiary focus:outline-none focus:border-primary-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
-                          title={lockStatus.isLocked ? 'Project is locked by sequence order' : undefined}
-                        >
-                          <option value="not_started">Not Started</option>
-                          <option value="in_progress" disabled={lockStatus.isLocked}>
-                            In Progress {lockStatus.isLocked ? '(Locked)' : ''}
-                          </option>
-                          <option value="on_hold">On Hold</option>
-                          <option
-                            value="completed"
-                            disabled={lockStatus.isLocked}
-                            title={lockStatus.isLocked ? 'Project is locked by sequence order' : undefined}
-                          >
-                            Completed {lockStatus.isLocked ? '(Locked)' : ''}
-                          </option>
-                        </select>
-
-                        <button
-                          onClick={() => {
-                            setFilterProjectId(project.id);
-                            setActiveTab('tasks');
-                          }}
-                          className="bg-cyan-500/10 text-xs text-cyan-hierarchy hover:text-cyan-hierarchy font-medium flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-cyan-500/20 border border-cyan-500/30 transition-colors shrink-0 whitespace-nowrap"
-                          title="View project tasks"
-                        >
-                          <span>Tasks</span>
-                          <ArrowRight size={12} />
-                        </button>
-
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button
-                            onClick={() => openEditProjectModal(project)}
-                            className={`p-1.5 text-content-muted hover:text-content-secondary hover:bg-overlay-subtle rounded-lg transition-colors ${TAP_TARGET_Y}`}
-                            title="Edit project"
-                            aria-label={`Edit project "${project.title}"`}
-                          >
-                            <Edit3 size={14} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteProjectTarget(project)}
-                            className={`p-1.5 text-content-muted hover:text-rose-theme hover:bg-rose-500/10 rounded-lg transition-colors ${TAP_TARGET_Y}`}
-                            title="Delete project"
-                            aria-label={`Delete project "${project.title}"`}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Project Nudge: 0 Linked Tasks */}
-                    {prog.total === 0 && (
-                      <div className="badge-cyan p-3 rounded-lg text-xs flex items-center justify-between mt-3">
-                        <span className="leading-relaxed">This project is stalled. Break it down and add an atomic task to start the engine.</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setQuickTaskProjectId(project.id);
-                            setActiveTab('tasks');
-                            if (quickTaskInputRef.current) {
-                              quickTaskInputRef.current.focus();
-                              quickTaskInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                          }}
-                          className="bg-cyan-500/20 px-2.5 py-1 rounded-lg hover:bg-cyan-500/30 text-cyan-hierarchy font-medium border border-cyan-500/30 transition-colors shrink-0 ml-3 whitespace-nowrap"
-                        >
-                          + Add Task
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Bottom Row: Full-Width Progress Section with High-Contrast Percentage */}
-                    <div className="pt-2.5 border-t border-overlay-subtle space-y-2">
-                      <div className="flex items-center justify-between text-xs text-content-tertiary">
-                        <div className="flex items-center gap-2">
-                          <span className="stat-label">
-                            {prog.isManual ? 'Manual Progress' : 'Task Completion'}
-                          </span>
-                          {prog.isManual ? (
-                            <span className="badge badge-cyan text-2xs px-2 py-0.5">
-                              0 linked tasks
-                            </span>
-                          ) : (
-                            <span className="text-micro text-content-muted font-medium">
-                              ({prog.completed}/{prog.total} tasks complete)
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className="figure text-sm text-content-primary">
-                            {prog.percent}%
-                          </span>
-                          <span className="text-2xs text-content-disabled hidden sm:inline">
-                            • Created {formatDateShort(project.createdAt)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Progress bar; a project without tasks is updated by hand */}
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <ProgressBar
-                          value={prog.percent}
-                          label="Project progress"
-                          tone={prog.percent >= 100 ? 'success' : 'cyan'}
-                          size="lg"
-                          className="flex-1 min-w-[8rem]"
-                        />
-                        {prog.isManual && (
-                          <UpdateProgressButton
-                            label="Update"
-                            disabled={lockStatus.isLocked}
-                            onClick={() => setProgressUpdate({ kind: 'project', id: project.id, title: project.title, current: prog.percent })}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                    project={project}
+                    prog={prog}
+                    lock={lock}
+                    goalName={goalName(project.goalId)}
+                    today={today}
+                    reorder={
+                      showReorder
+                        ? {
+                            canUp: index > 0,
+                            canDown: index < filteredProjects.length - 1,
+                            onMove: (direction) => store.moveProjectOrder(project.id, direction),
+                          }
+                        : undefined
+                    }
+                    onStatusChange={(s) => changeProjectStatus(project, s)}
+                    onOpenGoal={() => project.goalId && openGoalProjects(project.goalId)}
+                    onOpenTasks={() => openProjectTasks(project.id)}
+                    onAddTask={() => startTaskForProject(project.id)}
+                    onUpdateProgress={() => setProgressUpdate({ kind: 'project', id: project.id, title: project.title, current: prog.percent })}
+                    onEdit={() => setProjectForm({ key: nextKey(), editing: project })}
+                    onDelete={() => setDeleteProjectTarget(project)}
+                  />
                 );
               })}
             </div>
@@ -2177,125 +769,71 @@ export function ProjectsGoalsView({
         </div>
       )}
 
-      {/* -------------------------------------------------------------------- */}
-      {/* 3. TASKS SUB-VIEW (Flat Checklist) */}
-      {/* -------------------------------------------------------------------- */}
+      {/* ------------------------------------------------------------------ TASKS */}
       {activeTab === 'tasks' && (
         <div className="space-y-4">
-          {/* Breadcrumb & Lock Banner if filtered by Project */}
-          {filterProjectId && (() => {
-            const filterLock = getProjectLockStatus(filterProjectId);
-            return (
-              <div className="space-y-2">
-                <div className="bg-cyan-500/10 p-3 border border-cyan-500/20 rounded-2xl flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <FolderKanban size={16} className="text-cyan-hierarchy shrink-0" />
-                    <span className="text-xs text-content-tertiary">
-                      Showing tasks for Project:{' '}
-                      <strong className="text-cyan-hierarchy font-medium">{getProjectName(filterProjectId)}</strong>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => {
-                        setFilterProjectId(null);
-                        setActiveTab('projects');
-                      }}
-                      className="text-xs text-cyan-hierarchy hover:text-cyan-hierarchy underline font-medium"
-                    >
-                      ← Back to all Projects
-                    </button>
-                    <button
-                      onClick={() => setFilterProjectId(null)}
-                      className={`p-1 text-content-muted hover:text-content-secondary ${TAP_TARGET}`}
-                      title="Clear filter"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                </div>
+          {filterProject && (
+            <div className="space-y-2">
+              <ScopeBar icon={FolderKanban} text="Tasks of the project" name={filterProject.title} onClear={() => setFilterProjectId(null)} />
+              {filterProjectLock?.isLocked && filterProjectLock.blockingProject && (
+                <p className="px-1 text-xs text-content-muted">
+                  These tasks unlock when "{filterProjectLock.blockingProject.title}" is done.
+                </p>
+              )}
+            </div>
+          )}
 
-                {filterLock.isLocked && (
-                  <div className="p-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-2 text-xs text-warning-text">
-                    <Lock size={13} className="shrink-0 text-warning-text" />
-                    <span className="font-medium">
-                      {filterLock.reason || 'Locked by the goal\'s order. Finish the earlier projects to unlock these tasks.'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* QUICK-ADD TASK BAR */}
-          <form
-            onSubmit={handleQuickAddTask}
-            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
-          >
+          <form onSubmit={handleQuickAddTask} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <ToolbarInput
               ref={quickTaskInputRef}
               id="input-quick-add-task"
               type="text"
               icon={CheckSquare}
               aria-label="New task"
-              placeholder="e.g., Read 10 pages, Do 50 pushups, Drink 3L water..."
+              placeholder="e.g. Read 10 pages, do 50 pushups, drink 3L water"
               value={quickTaskTitle}
               onChange={(e) => setQuickTaskTitle(e.target.value)}
+              maxLength={120}
               wrapperClassName="flex-1"
             />
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-              <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
-                <ToolbarSelect
-                  aria-label="New task priority"
-                  value={quickTaskPriority}
-                  onChange={(e) => setQuickTaskPriority(e.target.value as TaskPriority)}
-                  className="min-w-[110px]"
-                >
-                  <option value="high">High Priority</option>
-                  <option value="medium">Medium Priority</option>
-                  <option value="low">Low Priority</option>
+            <div className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 sm:flex">
+              <ToolbarSelect aria-label="New task priority" value={quickTaskPriority} onChange={(e) => setQuickTaskPriority(e.target.value as TaskPriority)}>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </ToolbarSelect>
+              {filterProjectId ? (
+                <span aria-hidden="true" />
+              ) : (
+                <ToolbarSelect aria-label="New task project" value={quickTaskProjectId} onChange={(e) => setQuickTaskProjectId(e.target.value)} className="truncate">
+                  <option value="">No project</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
                 </ToolbarSelect>
-
-                {!filterProjectId && (
-                  <ToolbarSelect
-                    aria-label="New task project"
-                    value={quickTaskProjectId}
-                    onChange={(e) => setQuickTaskProjectId(e.target.value)}
-                    className="min-w-[110px] truncate"
-                  >
-                    <option value="">No Project</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.title}
-                      </option>
-                    ))}
-                  </ToolbarSelect>
-                )}
-              </div>
-
+              )}
               <button
                 id="btn-quick-add-task"
                 type="submit"
                 disabled={!quickTaskTitle.trim() || isKeyLoading('quick_add_task')}
-                className="w-full sm:w-auto btn-primary text-xs px-3.5 py-2 flex items-center justify-center gap-1 shrink-0 disabled:opacity-50"
+                className="btn-primary shrink-0 px-3.5 py-2 text-xs disabled:opacity-50"
               >
-                {isKeyLoading('quick_add_task') ? <AscendLoadingIndicator size="sm" /> : <Plus size={14} />}
-                <span>Add Task</span>
+                {isKeyLoading('quick_add_task') ? <AscendLoadingIndicator size="sm" /> : <Plus size={14} aria-hidden="true" />}
+                <span>Add</span>
               </button>
             </div>
           </form>
 
-          {/* FILTERS & SEARCH */}
           <div className="flex flex-col gap-3">
-            {/* Top Row: Search & Dropdown Selects */}
-            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <div className="flex w-full flex-1 items-center gap-2">
                 <ToolbarInput
                   type="search"
                   icon={Search}
                   aria-label="Search tasks"
-                  placeholder="Search tasks..."
+                  placeholder="Search tasks"
                   value={taskSearch}
                   onChange={(e) => setTaskSearch(e.target.value)}
                   wrapperClassName="flex-1"
@@ -2306,7 +844,7 @@ export function ProjectsGoalsView({
                   aria-controls="task-filters-selects task-filters-status"
                   onClick={() => setTaskFiltersOpen((open) => !open)}
                   className={cx(
-                    'sm:hidden flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors',
+                    'flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors sm:hidden',
                     taskFiltersOpen || activeTaskFilterCount > 0
                       ? 'border-emerald-500/30 bg-emerald-500/15 text-success-text'
                       : 'border-overlay-default bg-bg-900 text-content-muted'
@@ -2317,163 +855,110 @@ export function ProjectsGoalsView({
                   {activeTaskFilterCount > 0 && <span className="tabular-nums">{activeTaskFilterCount}</span>}
                 </button>
               </div>
-
-              <div
-                id="task-filters-selects"
-                className={cx('grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto', !taskFiltersOpen && 'max-sm:hidden')}
-              >
-                {/* Priority Dropdown Filter */}
-                <ToolbarSelect
-                  aria-label="Filter tasks by priority"
-                  value={taskPriorityFilter}
-                  onChange={(e) => setTaskPriorityFilter(e.target.value as 'all' | TaskPriority)}
-                >
-                  <option value="all">All Priorities</option>
-                  <option value="high">High Priority</option>
-                  <option value="medium">Medium Priority</option>
-                  <option value="low">Low Priority</option>
+              <div id="task-filters-selects" className={cx('grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto', !taskFiltersOpen && 'max-sm:hidden')}>
+                <ToolbarSelect aria-label="Filter tasks by priority" value={taskPriorityFilter} onChange={(e) => setTaskPriorityFilter(e.target.value as 'all' | TaskPriority)}>
+                  <option value="all">Any priority</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
                 </ToolbarSelect>
-
                 {!filterProjectId && (
-                  <ToolbarSelect
-                    aria-label="Filter tasks by project"
-                    value={taskProjectFilter}
-                    onChange={(e) => setTaskProjectFilter(e.target.value)}
-                  >
-                    <option value="all">All Projects</option>
-                    <option value="standalone">Standalone Tasks Only</option>
+                  <ToolbarSelect aria-label="Filter tasks by project" value={taskProjectFilter} onChange={(e) => setTaskProjectFilter(e.target.value)}>
+                    <option value="all">All projects</option>
+                    <option value="standalone">No project</option>
                     {projects.map((p) => (
                       <option key={p.id} value={p.id}>
-                        Project: {p.title}
+                        {p.title}
                       </option>
                     ))}
                   </ToolbarSelect>
                 )}
               </div>
             </div>
-
-            {/* Bottom Row: Quick Segment Filter Buttons */}
-            <div
+            <FilterRow
               id="task-filters-status"
-              className={cx('flex flex-wrap items-center gap-1.5 sm:gap-2 pt-3 border-t border-overlay-subtle', !taskFiltersOpen && 'max-sm:hidden')}
-            >
-              {(
-                [
-                  { id: 'all', label: 'All' },
-                  { id: 'active', label: 'Active' },
-                  { id: 'today', label: 'Due Today' },
-                  { id: 'overdue', label: 'Overdue' },
-                  { id: 'this_week', label: 'This Week' },
-                  { id: 'completed', label: 'Completed' },
-                  { id: 'locked', label: 'Locked' },
-                ] as const
-              ).map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setTaskViewFilter(f.id)}
-                  className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-                    taskViewFilter === f.id
-                      ? f.id === 'locked'
-                        ? 'bg-amber-500/20 text-warning-text border border-amber-500/35'
-                        : 'bg-emerald-500/20 text-success-text border border-emerald-500/30'
-                      : f.id === 'locked'
-                      ? 'text-content-muted hover:text-warning-text'
-                      : 'text-content-muted hover:text-content-secondary'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
+              label="Task view"
+              value={taskView}
+              onChange={setTaskView}
+              className={cx(!taskFiltersOpen && 'max-sm:hidden')}
+              activeClass={{
+                active: 'border-emerald-500/30 bg-emerald-500/15',
+                today: 'border-emerald-500/30 bg-emerald-500/15',
+                overdue: 'border-rose-500/30 bg-rose-500/15',
+                next7: 'border-emerald-500/30 bg-emerald-500/15',
+                completed: 'border-emerald-500/30 bg-emerald-500/15',
+              }}
+              options={TASK_VIEWS}
+            />
           </div>
 
-          {/* TASK LIST */}
           {filteredTasks.length === 0 ? (
-            goals.length === 0 ? (
-              /* No goals at all: point to a goal first */
+            tasksInScope.length > 0 ? (
+              <EmptyState tier="tasks" isFiltered onClearFilters={clearTaskFilters} onCreate={() => setFocusQuickAdd(true)} />
+            ) : goals.length === 0 && tasks.length === 0 ? (
               <EmptyStateBase
                 icon={Target}
                 iconClassName="badge-purple"
                 title="Start with a goal"
-                description="Goals give your daily tasks a direction."
+                description="Tasks feel lighter when they lead somewhere. Set a goal first, or just add a task."
                 action={
                   <div className="flex flex-col items-center gap-2">
                     <button
                       type="button"
-                      onClick={openCreateGoalModal}
-                      className="btn-primary bg-purple-600 hover:bg-purple-500 text-white text-xs px-4 py-2 inline-flex items-center gap-1.5"
+                      onClick={() => setGoalForm({ key: nextKey(), editing: null })}
+                      className="btn-primary inline-flex items-center gap-1.5 bg-purple-600 px-4 py-2 text-xs text-white hover:bg-purple-500"
                     >
                       <Plus size={14} aria-hidden="true" />
-                      <span>Create Your First Goal</span>
+                      <span>Create your first goal</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => quickTaskInputRef.current?.focus()}
-                      className="text-xs text-content-muted hover:text-content-secondary underline-offset-2 hover:underline"
+                      onClick={() => setFocusQuickAdd(true)}
+                      className="text-xs text-content-muted underline-offset-2 hover:text-content-secondary hover:underline"
                     >
-                      Or add a task above without a goal
+                      Or add a task without a goal
                     </button>
                   </div>
                 }
               />
             ) : (
-              <EmptyState
-                tier="tasks"
-                isFiltered={tasks.length > 0}
-                onCreate={() => {
-                  if (quickTaskInputRef.current) {
-                    quickTaskInputRef.current.focus();
-                    quickTaskInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  } else {
-                    openCreateTaskModal();
-                  }
-                }}
-              />
+              <EmptyState tier="tasks" onCreate={() => setFocusQuickAdd(true)} />
             )
           ) : (
-            <div>
-              {/* Task Level Nudge: Low Data Catalyst */}
-              {tasks.length > 0 && tasks.length <= 3 && (
-                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-success-text text-xs flex items-center gap-2 mb-4">
-                  <span className="leading-relaxed">
-                    Add a few more tasks to fill out your day.
-                  </span>
-                </div>
+            <div className="space-y-3">
+              {tasks.length <= 3 && taskView === 'all' && !taskSearch.trim() && !filterProjectId && (
+                <p className="px-1 text-xs text-content-muted">A few more small tasks will fill out your day.</p>
               )}
-
-              <div className="card p-0 overflow-hidden divide-y divide-overlay-subtle">
-              {filteredTasks.map((task) => (
-                <TaskItemRow
-                  key={task.id}
-                  task={task}
-                  currentToday={currentToday}
-                  expandedTaskIds={expandedTaskIds}
-                  getProjectLockStatus={getProjectLockStatus}
-                  store={store}
-                  priorityColor={priorityColor}
-                  setFilterProjectId={setFilterProjectId}
-                  setActiveTab={setActiveTab}
-                  getProjectName={getProjectName}
-                  formatDateShort={formatDateShort}
-                  onStartFocusSession={onStartFocusSession}
-                  openEditTaskModal={openEditTaskModal}
-                  setDeleteTaskTarget={setDeleteTaskTarget}
-                  toggleTaskExpand={toggleTaskExpand}
-                  setDeleteSubtaskTarget={setDeleteSubtaskTarget}
-                  newSubtaskInputs={newSubtaskInputs}
-                  setNewSubtaskInputs={setNewSubtaskInputs}
-                  handleAddInlineSubtask={handleAddInlineSubtask}
-                />
-              ))}
+              <div className="card divide-y divide-overlay-subtle overflow-hidden p-0">
+                {filteredTasks.map((task) => {
+                  const project = projectById(task.projectId);
+                  const lock = project ? h.getLockStatus(project) : undefined;
+                  return (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      today={today}
+                      lockedBy={lock?.isLocked ? lock.blockingProject?.title : undefined}
+                      projectName={project?.title ?? null}
+                      goalName={goalName(project?.goalId)}
+                      onToggle={() => store.toggleTaskCompleted(task.id)}
+                      onToggleSubtask={(id) => store.toggleSubtask(task.id, id)}
+                      onAddSubtask={(title) => store.addSubtask(task.id, title)}
+                      onDeleteSubtask={(subtask) => setDeleteSubtaskTarget({ taskId: task.id, subtask })}
+                      onOpenProject={() => task.projectId && openProjectTasks(task.projectId)}
+                      onFocus={onStartFocusSession ? () => onStartFocusSession(task.title) : undefined}
+                      onEdit={() => setTaskForm({ key: nextKey(), editing: task })}
+                      onDelete={() => setDeleteTaskTarget(task)}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* -------------------------------------------------------------------- */}
-      {/* GOAL MODAL (CREATE / EDIT) */}
-      {/* -------------------------------------------------------------------- */}
+      {/* ------------------------------------------------------------------ DIALOGS */}
       <ProgressUpdateDialog
         open={Boolean(progressUpdate)}
         onClose={() => setProgressUpdate(null)}
@@ -2485,433 +970,73 @@ export function ProjectsGoalsView({
         setLabel="New percent"
         step={5}
         tone={progressUpdate?.kind === 'project' ? 'cyan' : 'purple'}
-        onSave={(next) => {
-          if (!progressUpdate) return;
-          if (progressUpdate.kind === 'goal') {
-            const goal = goals.find((g) => g.id === progressUpdate.id);
-            if (goal) handleUpdateGoalManualProgress(goal, next);
-          } else {
-            const project = projects.find((p) => p.id === progressUpdate.id);
-            if (project) handleUpdateProjectManualProgress(project, next);
-          }
-        }}
+        onSave={saveManualProgress}
       />
 
-      <Dialog
-        open={goalModalOpen}
-        preventClose={isKeyLoading('save_goal')}
-        onClose={() => setGoalModalOpen(false)}
-        dirty={goalForm.dirty}
-        title={editingGoal ? 'Edit goal' : 'Create goal'}
-        footer={
-          <>
-            <button
-              type="button"
-              disabled={isKeyLoading('save_goal')}
-              onClick={() => goalForm.confirmDiscard(() => setGoalModalOpen(false))}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-            <button type="submit" form="pg-goal-form" disabled={isKeyLoading('save_goal')} className="btn-primary">
-              {isKeyLoading('save_goal') ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
-              <span>{editingGoal ? 'Save changes' : 'Create goal'}</span>
-            </button>
-          </>
-        }
-      >
-        <Form
-          id="pg-goal-form"
-          onSubmit={handleSaveGoal}
-          controller={goalIssues}
-          validate={() => pastDueIssue(goalFormTargetDate, editingGoal?.targetDate, 'pg-goal-target-date')}
-          className="space-y-4">
-          <Input
-            id="pg-goal-title"
-            label="Goal"
-            placeholder="e.g. Achieve Financial Freedom, Run a Marathon, Master Spanish"
-            value={goalFormTitle}
-            onChange={(e) => setGoalFormTitle(e.target.value)}
-            maxLength={120}
-            autoComplete="off"
-            required
-          />
+      {goalForm && (
+        <GoalFormDialog
+          key={goalForm.key}
+          open
+          editing={goalForm.editing}
+          hasProjects={goalForm.editing ? (h.projectsByGoal.get(goalForm.editing.id)?.length ?? 0) > 0 : false}
+          onClose={() => setGoalForm(null)}
+          onSave={saveGoal}
+        />
+      )}
+      {projectForm && (
+        <ProjectFormDialog
+          key={projectForm.key}
+          open
+          editing={projectForm.editing}
+          goals={goals}
+          defaultGoalId={projectForm.goalId}
+          hasTasks={projectForm.editing ? (h.tasksByProject.get(projectForm.editing.id)?.length ?? 0) > 0 : false}
+          onClose={() => setProjectForm(null)}
+          onSave={saveProject}
+        />
+      )}
+      {taskForm && (
+        <TaskFormDialog
+          key={taskForm.key}
+          open
+          editing={taskForm.editing}
+          projects={projects}
+          defaultProjectId={taskForm.projectId}
+          onClose={() => setTaskForm(null)}
+          onSave={saveTask}
+        />
+      )}
 
-          <Textarea
-            id="pg-goal-description"
-            label="Description"
-            optional
-            rows={2}
-            placeholder="Why this goal matters and what success looks like"
-            value={goalFormDescription}
-            onChange={(e) => setGoalFormDescription(e.target.value)}
-            className="min-h-0"
-            maxLength={1000}
-          />
-
-          <div>
-            <Input
-              id="pg-goal-category"
-              label="Category"
-              optional
-              placeholder="e.g. Career, Health, Finance"
-              value={goalFormCategory}
-              onChange={(e) => setGoalFormCategory(e.target.value)}
-              maxLength={40}
-              autoComplete="off"
-            />
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {GOAL_CATEGORY_SUGGESTIONS.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setGoalFormCategory(cat)}
-                  aria-pressed={goalFormCategory === cat}
-                  className={`min-h-9 sm:min-h-0 text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                    goalFormCategory === cat
-                      ? 'bg-primary-500/15 border-primary-500/40 text-brand-text'
-                      : 'bg-overlay-subtle border-overlay-subtle text-content-muted hover:text-content-secondary'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="p-3 border border-overlay-default rounded-xl flex items-center justify-between gap-3">
-            <div className="space-y-0.5">
-              <p className="text-sm font-medium text-content-secondary flex items-center gap-1.5">
-                <Lock size={14} className="text-warning-text" />
-                <span>Sequential mode</span>
-              </p>
-              <p className="text-xs text-content-muted">
-                Linked projects must be finished in order, one at a time.
-              </p>
-            </div>
-            <Switch
-              checked={goalFormSequentialMode}
-              onChange={() => setGoalFormSequentialMode(!goalFormSequentialMode)}
-              label="Sequential mode"
-            />
-          </div>
-
-          <FieldRow>
-            <Input
-              id="pg-goal-target-date"
-              label="Target date"
-              optional
-              type="date"
-              min={earliestTargetDate(editingGoal?.targetDate)}
-              max={maxAllowedDate}
-              value={goalFormTargetDate}
-              onChange={(e) => setGoalFormTargetDate(e.target.value)}
-            />
-            <Select
-              id="pg-goal-status"
-              label="Status"
-              value={goalFormStatus}
-              onChange={(e) => setGoalFormStatus(e.target.value as GoalStatus)}
-            >
-              <option value="active">Active</option>
-              <option value="achieved">Achieved</option>
-              <option value="abandoned">Abandoned</option>
-            </Select>
-          </FieldRow>
-        </Form>
-      </Dialog>
-
-      {/* -------------------------------------------------------------------- */}
-      {/* PROJECT MODAL (CREATE / EDIT) */}
-      {/* -------------------------------------------------------------------- */}
-      <Dialog
-        open={projectModalOpen}
-        preventClose={isKeyLoading('save_project')}
-        onClose={() => setProjectModalOpen(false)}
-        dirty={projectForm.dirty}
-        title={editingProject ? 'Edit project' : 'Create project'}
-        footer={
-          <>
-            <button
-              type="button"
-              disabled={isKeyLoading('save_project')}
-              onClick={() => projectForm.confirmDiscard(() => setProjectModalOpen(false))}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-            <button type="submit" form="pg-project-form" disabled={isKeyLoading('save_project')} className="btn-primary">
-              {isKeyLoading('save_project') ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
-              <span>{editingProject ? 'Save changes' : 'Create project'}</span>
-            </button>
-          </>
-        }
-      >
-        <Form
-          id="pg-project-form"
-          onSubmit={handleSaveProject}
-          controller={projectIssues}
-          validate={() => pastDueIssue(projectFormDueDate, editingProject?.dueDate, 'pg-project-due-date')}
-          className="space-y-4">
-          <Input
-            id="pg-project-title"
-            label="Project"
-            placeholder="e.g. 30-Day Fitness Challenge, Kitchen Renovation"
-            value={projectFormTitle}
-            onChange={(e) => setProjectFormTitle(e.target.value)}
-            maxLength={120}
-            autoComplete="off"
-            required
-          />
-
-          <Textarea
-            id="pg-project-description"
-            label="Description"
-            optional
-            rows={2}
-            placeholder="Project scope and deliverables"
-            value={projectFormDescription}
-            onChange={(e) => setProjectFormDescription(e.target.value)}
-            className="min-h-0"
-            maxLength={1000}
-          />
-
-          <Select
-            id="pg-project-goal-id"
-            label="Goal"
-            optional
-            value={projectFormGoalId}
-            onChange={(e) => setProjectFormGoalId(e.target.value)}
-          >
-            <option value="">None (standalone project)</option>
-            {goals.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.title}
-              </option>
-            ))}
-          </Select>
-
-          <FieldRow>
-            <Input
-              id="pg-project-start-date"
-              label="Start date"
-              optional
-              type="date"
-              min={minAllowedDate}
-              max={projectFormDueDate || maxAllowedDate}
-              value={projectFormStartDate}
-              onChange={(e) => setProjectFormStartDate(e.target.value)}
-            />
-            <Input
-              id="pg-project-due-date"
-              label="Due date"
-              optional
-              type="date"
-              min={projectFormStartDate > earliestTargetDate(editingProject?.dueDate) ? projectFormStartDate : earliestTargetDate(editingProject?.dueDate)}
-              max={maxAllowedDate}
-              value={projectFormDueDate}
-              onChange={(e) => setProjectFormDueDate(e.target.value)}
-            />
-          </FieldRow>
-
-          <Select
-            id="pg-project-status"
-            label="Status"
-            value={projectFormStatus}
-            onChange={(e) => setProjectFormStatus(e.target.value as ProjectStatus)}
-          >
-            <option value="not_started">Not started</option>
-            <option value="in_progress">In progress</option>
-            <option value="on_hold">On hold</option>
-            <option value="completed">Completed</option>
-          </Select>
-        </Form>
-      </Dialog>
-
-      {/* -------------------------------------------------------------------- */}
-      {/* TASK MODAL (CREATE / EDIT) */}
-      {/* -------------------------------------------------------------------- */}
-      <Dialog
-        open={taskModalOpen}
-        preventClose={isKeyLoading('save_task_modal')}
-        onClose={() => setTaskModalOpen(false)}
-        dirty={taskForm.dirty}
-        title={editingTask ? 'Edit task' : 'Create task'}
-        footer={
-          <>
-            <button
-              type="button"
-              disabled={isKeyLoading('save_task_modal')}
-              onClick={() => taskForm.confirmDiscard(() => setTaskModalOpen(false))}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-            <button type="submit" form="pg-task-form" disabled={isKeyLoading('save_task_modal')} className="btn-primary">
-              {isKeyLoading('save_task_modal') ? <AscendLoadingIndicator size="sm" /> : <Check size={16} />}
-              <span>{editingTask ? 'Save changes' : 'Create task'}</span>
-            </button>
-          </>
-        }
-      >
-        <Form
-          id="pg-task-form"
-          onSubmit={handleSaveTaskModal}
-          controller={taskIssues}
-          validate={() => pastDueIssue(taskFormDueDate, editingTask?.dueDate, 'pg-task-due-date')}
-          className="space-y-4">
-          <Input
-            id="pg-task-title"
-            label="Task"
-            placeholder="e.g. Read 10 pages, Research 5 suppliers"
-            value={taskFormTitle}
-            onChange={(e) => setTaskFormTitle(e.target.value)}
-            maxLength={120}
-            autoComplete="off"
-            required
-          />
-
-          <Textarea
-            id="pg-task-description"
-            label="Description"
-            optional
-            rows={2}
-            placeholder="Task instructions and notes"
-            value={taskFormDescription}
-            onChange={(e) => setTaskFormDescription(e.target.value)}
-            className="min-h-0"
-            maxLength={1000}
-          />
-
-          <FieldRow>
-            <Select
-              id="pg-task-project-id"
-              label="Project"
-              optional
-              value={taskFormProjectId}
-              onChange={(e) => setTaskFormProjectId(e.target.value)}
-            >
-              <option value="">None (standalone task)</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title}
-                </option>
-              ))}
-            </Select>
-            <Select
-              id="pg-task-priority"
-              label="Priority"
-              value={taskFormPriority}
-              onChange={(e) => setTaskFormPriority(e.target.value as TaskPriority)}
-            >
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </Select>
-          </FieldRow>
-
-          <Input
-            id="pg-task-due-date"
-            label="Due date"
-            optional
-            type="date"
-            min={earliestTargetDate(editingTask?.dueDate)}
-            max={maxAllowedDate}
-            value={taskFormDueDate}
-            onChange={(e) => setTaskFormDueDate(e.target.value)}
-          />
-
-          <div role="group" aria-labelledby="pg-task-subtasks-label">
-            <p id="pg-task-subtasks-label" className="block label mb-1.5">Subtasks</p>
-            {taskFormSubtasks.length > 0 && (
-              <div className="space-y-1.5 mb-2">
-                {taskFormSubtasks.map((st, idx) => (
-                  <div key={st.id} className="flex items-center justify-between gap-2 py-1.5 pl-3 pr-1.5 rounded-lg border border-overlay-subtle">
-                    <span className="text-sm text-content-secondary truncate">{st.title}</span>
-                    <button
-                      type="button"
-                      onClick={() => setTaskFormSubtasks((prev) => prev.filter((_, i) => i !== idx))}
-                      className={`text-content-muted hover:text-rose-theme p-1 ${TAP_TARGET}`}
-                      aria-label={`Remove subtask "${st.title}"`}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex items-center gap-2">
-              <Input
-                aria-label="New subtask"
-                placeholder="Add a subtask"
-                value={newModalSubtaskTitle}
-                onChange={(e) => setNewModalSubtaskTitle(e.target.value)}
-                maxLength={120}
-                autoComplete="off"
-                enterKeyHint="enter"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addModalSubtask();
-                  }
-                }}
-              />
-              <button type="button" onClick={addModalSubtask} className="btn-secondary shrink-0 min-h-11 sm:min-h-10">
-                Add
-              </button>
-            </div>
-          </div>
-        </Form>
-      </Dialog>
-
-      {/* -------------------------------------------------------------------- */}
-      {/* CONFIRM DELETE MODALS */}
-      {/* -------------------------------------------------------------------- */}
-
-      {/* 1. Delete Goal Confirm */}
       <ConfirmDeleteModal
         open={Boolean(deleteGoalTarget)}
         onClose={() => setDeleteGoalTarget(null)}
         onConfirm={handleDeleteGoalConfirm}
         title="Delete goal?"
-        description={
-          deleteGoalTarget
-            ? `Delete goal "${deleteGoalTarget.title}"? Its ${
-                projects.filter((p) => p.goalId === deleteGoalTarget.id).length
-              } linked project(s) will become unlinked, not deleted.`
-            : undefined
-        }
+        description={deleteGoalTarget ? deleteGoalText(deleteGoalTarget) : undefined}
         confirmText="Delete goal"
       />
-
-      {/* 2. Delete Project Confirm */}
       <ConfirmDeleteModal
         open={Boolean(deleteProjectTarget)}
         onClose={() => setDeleteProjectTarget(null)}
         onConfirm={handleDeleteProjectConfirm}
         title="Delete project?"
-        description={
-          deleteProjectTarget
-            ? `Delete project "${deleteProjectTarget.title}"? Its ${
-                tasks.filter((t) => t.projectId === deleteProjectTarget.id).length
-              } linked task(s) will become unlinked, not deleted.`
-            : undefined
-        }
+        description={deleteProjectTarget ? deleteProjectText(deleteProjectTarget) : undefined}
         confirmText="Delete project"
       />
-
-      {/* 3. Delete Task Confirm */}
       <ConfirmDeleteModal
         open={Boolean(deleteTaskTarget)}
         onClose={() => setDeleteTaskTarget(null)}
         onConfirm={handleDeleteTaskConfirm}
         title="Delete task?"
-        itemName={deleteTaskTarget?.title}
+        description={
+          deleteTaskTarget
+            ? `"${deleteTaskTarget.title}" will be deleted${
+                (deleteTaskTarget.subtasks || []).length > 0 ? `, with its ${plural(deleteTaskTarget.subtasks.length, 'subtask', 'subtasks')}` : ''
+              }.`
+            : undefined
+        }
         confirmText="Delete task"
       />
-
-      {/* 4. Delete Subtask Confirm */}
       <ConfirmDeleteModal
         open={Boolean(deleteSubtaskTarget)}
         onClose={() => setDeleteSubtaskTarget(null)}
@@ -2921,104 +1046,7 @@ export function ProjectsGoalsView({
         confirmText="Delete subtask"
       />
 
-      {/* -------------------------------------------------------------------- */}
-      {/* 4. EDUCATIONAL HIERARCHY GUIDE MODAL */}
-      {/* -------------------------------------------------------------------- */}
-      <Dialog
-        open={isGuideModalOpen}
-        onClose={() => setIsGuideModalOpen(false)}
-        title="How goals, projects and tasks work"
-      >
-        <div className="space-y-4">
-          <p className="text-xs sm:text-sm text-content-tertiary leading-relaxed">
-            Ascend has three levels that connect big goals to what you do today.
-          </p>
-
-          <div className="divide-y divide-overlay-subtle border-y border-overlay-subtle">
-            {/* 1. Goal */}
-            <div className="py-3.5 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-hierarchy border border-purple-500/30 flex items-center justify-center figure text-xs">3</span>
-                <h4 className="item-name text-xs sm:text-sm flex items-center gap-1.5">
-                  <Target size={14} className="text-purple-hierarchy" /> Goal (Long Term)
-                </h4>
-              </div>
-              <p className="text-xs text-content-tertiary leading-relaxed pl-8">
-                What you want your life to look like in the future.
-              </p>
-              <div className="pl-8 pt-1 text-micro text-purple-hierarchy">
-                <span className="text-content-muted">Examples:</span> Financial freedom, get fit, speak a new language, become debt-free.
-              </div>
-            </div>
-
-            {/* 2. Project */}
-            <div className="py-3.5 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-hierarchy border border-cyan-500/30 flex items-center justify-center figure text-xs">2</span>
-                <h4 className="item-name text-xs sm:text-sm flex items-center gap-1.5">
-                  <FolderKanban size={14} className="text-cyan-hierarchy" /> Project (Medium Term)
-                </h4>
-              </div>
-              <p className="text-xs text-content-tertiary leading-relaxed pl-8">
-                A shorter piece of work, linked to a goal, that gets you closer to it.
-              </p>
-              <div className="pl-8 pt-1 text-micro text-cyan-hierarchy">
-                <span className="text-content-muted">Examples:</span> 90-day gym plan, launch a Shopify store, 30-day speaking course, pay off a credit card.
-              </div>
-            </div>
-
-            {/* 3. Task */}
-            <div className="py-3.5 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-emerald-500/20 text-success-text border border-emerald-500/30 flex items-center justify-center figure text-xs">1</span>
-                <h4 className="item-name text-xs sm:text-sm flex items-center gap-1.5">
-                  <CheckSquare size={14} className="text-success-text" /> Task (Daily)
-                </h4>
-              </div>
-              <p className="text-xs text-content-tertiary leading-relaxed pl-8">
-                The small piece of work you do <em>today</em>.
-              </p>
-              <div className="pl-8 pt-1 text-micro text-success-text">
-                <span className="text-content-muted">Examples:</span> Do 50 pushups, list 5 new products, read 10 pages out loud, move $50 to savings.
-              </div>
-            </div>
-
-            {/* Sequential Mode Feature */}
-            <div className="py-3.5 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-warning-text border border-amber-500/30 flex items-center justify-center">
-                  <Lock size={12} />
-                </span>
-                <h4 className="item-name text-xs sm:text-sm flex items-center gap-1.5">
-                  Sequential Mode (Goal Setting)
-                </h4>
-              </div>
-              <p className="text-micro sm:text-xs text-content-tertiary leading-relaxed pl-8">
-                An option when creating a goal. Projects unlock one at a time: Project B stays locked until Project A is done.
-              </p>
-              <div className="pl-8 pt-1 text-micro sm:text-xs text-warning-text-muted space-y-1">
-                <p><span className="text-content-muted">How it helps:</span> You work on one thing at a time.</p>
-                <p className="pt-0.5"><span className="text-content-muted">Example (Goal: Start a Business):</span></p>
-                <ul className="list-disc pl-4 space-y-0.5 text-warning-text-muted">
-                  <li>Project 1: Market Research <span className="text-success-text">(Active)</span></li>
-                  <li>Project 2: Build MVP <span className="text-content-muted">(Locked)</span></li>
-                  <li>Project 3: Launch <span className="text-content-muted">(Locked)</span></li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-2 border-t border-overlay-subtle">
-            <button
-              type="button"
-              onClick={() => setIsGuideModalOpen(false)}
-              className="btn-primary text-xs px-5 py-2"
-            >
-              Got It
-            </button>
-          </div>
-        </div>
-      </Dialog>
+      <HowItWorksDialog open={guideOpen} onClose={() => setGuideOpen(false)} />
     </div>
   );
 }
