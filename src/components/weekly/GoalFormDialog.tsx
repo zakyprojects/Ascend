@@ -4,6 +4,7 @@ import { Dialog, FieldRow, Form, Input, NumberField, Select, Textarea, useFormCo
 import { LINKED_GOAL_METRICS, type LinkedModule } from '@/lib/linkedGoalMetrics';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
+import { nameTaken } from '@/lib/uniqueNames';
 
 const DEFAULT_WORKOUT_TYPES = ['Running', 'Cycling', 'Weightlifting', 'HIIT', 'Yoga', 'Swimming', 'Walking', 'Boxing', 'Pilates'];
 
@@ -20,6 +21,7 @@ export function GoalFormDialog({
   open,
   editing,
   state,
+  weekGoals,
   weekText,
   onClose,
   onSave,
@@ -27,6 +29,8 @@ export function GoalFormDialog({
   open: boolean;
   editing: WeeklyGoalItem | null;
   state: AppState;
+  /** The goals already in this week, so a new or renamed one can't repeat a name. */
+  weekGoals: WeeklyGoalItem[];
   /** "this week", "next week": where a new goal goes. */
   weekText: string;
   onClose: () => void;
@@ -88,7 +92,20 @@ export function GoalFormDialog({
         </>
       }
     >
-      <Form id="weekly-goal-form" onSubmit={handleSubmit} controller={issues} className="space-y-4">
+      <Form
+        id="weekly-goal-form"
+        onSubmit={handleSubmit}
+        controller={issues}
+        validate={() =>
+          nameTaken(title, weekGoals, { editing })
+            ? {
+                message: `You already have a goal with this name ${weekText.endsWith('week') ? weekText : `for ${weekText}`}.`,
+                field: 'goal-title',
+              }
+            : null
+        }
+        className="space-y-4"
+      >
         <Input
           id="goal-title"
           label="Goal"

@@ -2,8 +2,13 @@ import type { BookCategory, PointsEntry, UserBook } from '@/types';
 import { formatDateLong, todayKey } from '@/lib/dates';
 import { readingBonusId } from '@/lib/readingAwards';
 import { trustedNow } from '@/lib/clock';
+import { sameName } from '@/lib/uniqueNames';
 
 export type BookUnit = 'pages' | 'chapters';
+
+/** The same book: title and author both match under the app's name rule (lib/uniqueNames). */
+export const sameBook = (a: Pick<UserBook, 'title' | 'author'>, b: Pick<UserBook, 'title' | 'author'>): boolean =>
+  sameName(a.title, b.title) && sameName(a.author || 'Unknown Author', b.author || 'Unknown Author');
 
 export const DEFAULT_BOOK_LENGTH = 250;
 

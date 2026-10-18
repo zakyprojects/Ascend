@@ -20,6 +20,7 @@ import { ptUnit, ptsText } from '@/lib/leagues';
 import { createNotificationSupabase } from '@/lib/supabase';
 import { calculateUnifiedStreak } from '@/lib/streakLogic';
 import { toUserMessage } from '@/lib/userMessage';
+import { sameName } from '@/lib/uniqueNames';
 import { Partnership, SharedChallenge, PartnerInvite } from '@/types';
 
 const EMPTY_PARTNERSHIPS: Partnership[] = [];
@@ -266,6 +267,12 @@ export function AccountabilityPartner({ store }: { store: AppStore }) {
     }
     if (!theirs) {
       challengeIssues.showError(`Write what ${partnerName} will do every day.`, 'challenge-partner-goal');
+      return;
+    }
+    // The challenge is named after your goal; two running ones with this partner can't share it.
+    const running = store.state.sharedChallenges.filter((c) => c.partnershipId === activePartnership.id && c.status === 'active');
+    if (running.some((c) => sameName(c.title, mine))) {
+      challengeIssues.showError('You already have a running challenge with this name.', 'challenge-my-goal');
       return;
     }
     await executeCreateChallenge(async () => {

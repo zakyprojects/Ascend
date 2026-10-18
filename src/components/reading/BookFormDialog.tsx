@@ -6,7 +6,7 @@ import { BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, UserBook, UserBookStatus } from '@/types';
 import { earliestTargetDate, isNewPastDate } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { DEFAULT_BOOK_LENGTH, bookProgress, bookUnit, formatAmount, type BookUnit } from './bookMeta';
+import { DEFAULT_BOOK_LENGTH, bookProgress, bookUnit, formatAmount, sameBook, type BookUnit } from './bookMeta';
 
 interface BookFormValues {
   title: string;
@@ -77,6 +77,14 @@ export function BookFormDialog({
   const minLength = book && !finished ? Math.max(1, bookProgress(book).current) : 1;
   const unitWord = values.unit === 'chapters' ? 'Chapters' : 'Pages';
 
+  // Two books may share a title, so a book is the same book when title and author both match. A book
+  // keeping its own title and author is fine (old duplicates can still be edited).
+  const isDuplicateBook = () => {
+    const entry = { title: values.title, author: values.author.trim() || 'Unknown Author' };
+    if (book && sameBook(book, entry)) return false;
+    return (store.state.libraryBooks || []).some((b) => b.id !== book?.id && sameBook(b, entry));
+  };
+
   const submit = () => {
     const author = values.author.trim() || 'Unknown Author';
     const targetFinishDate = finished ? undefined : values.targetFinishDate.trim() || undefined;
@@ -129,7 +137,9 @@ export function BookFormDialog({
         id="rh-book-form"
         onSubmit={submit}
         validate={() =>
-          !finished && isNewPastDate(values.targetFinishDate, book?.targetFinishDate)
+          isDuplicateBook()
+            ? { message: 'You already have this book (same title and author).', field: 'rh-book-title' }
+            : !finished && isNewPastDate(values.targetFinishDate, book?.targetFinishDate)
             ? { message: 'Pick a later date.', field: 'rh-book-date' }
             : null
         }

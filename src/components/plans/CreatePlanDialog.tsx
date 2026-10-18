@@ -6,7 +6,8 @@ import type { PlanType } from '@/types';
 import { addDays, isNewPastDate, todayKey } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { STARTER_TEMPLATES, type PlanTemplate } from '@/data/planTemplates';
-import { PLAN_TYPES, PLAN_TYPE_META } from './planMeta';
+import { PLAN_NAME_TAKEN, PLAN_TYPES, PLAN_TYPE_META, ownPlans } from './planMeta';
+import { nameTaken } from '@/lib/uniqueNames';
 import { PlanFields, type PlanFormValues } from './PlanFields';
 
 function blankValues(type: PlanType): PlanFormValues {
@@ -124,7 +125,9 @@ export function CreatePlanDialog({ store, open, onClose }: { store: AppStore; op
           id="pip-create-form"
           onSubmit={submit}
           validate={() =>
-            choice.type === 'target_goal' && isNewPastDate(values.targetDate)
+            nameTaken(values.title, ownPlans(store.state.improvementPlans, store.state.currentUser?.id))
+              ? { message: PLAN_NAME_TAKEN, field: 'pip-create-title' }
+              : choice.type === 'target_goal' && isNewPastDate(values.targetDate)
               ? { message: 'Pick today or a later date.', field: 'pip-create-target-date' }
               : choice.type === 'vision' && isNewPastDate(values.targetReviewDate)
               ? { message: 'Pick today or a later date.', field: 'pip-create-review-date' }

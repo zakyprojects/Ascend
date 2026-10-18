@@ -7,6 +7,7 @@ import { earliestTargetDate, isNewPastDate, todayKey, uid } from '@/lib/dates';
 import { trustedNow } from '@/lib/clock';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
 import { toUserMessage } from '@/lib/userMessage';
+import { nameTaken } from '@/lib/uniqueNames';
 
 /**
  * Create/edit dialogs for goals, projects and tasks. Each is mounted fresh for every open (the
@@ -63,12 +64,15 @@ export type GoalPayload = Pick<Goal, 'title' | 'description' | 'category' | 'tar
 export function GoalFormDialog({
   open,
   editing,
+  goals,
   hasProjects,
   onClose,
   onSave,
 }: {
   open: boolean;
   editing: Goal | null;
+  /** Every goal, so a new or renamed one can't repeat a name. */
+  goals: Goal[];
   /** A goal with projects is achieved when they are all done, not by choice. */
   hasProjects: boolean;
   onClose: () => void;
@@ -114,7 +118,11 @@ export function GoalFormDialog({
         id="pg-goal-form"
         onSubmit={handleSubmit}
         controller={issues}
-        validate={() => pastDateIssue(targetDate, editing?.targetDate, 'pg-goal-target-date')}
+        validate={() =>
+          nameTaken(title, goals, { editing })
+            ? { message: 'You already have a goal with this name.', field: 'pg-goal-title' }
+            : pastDateIssue(targetDate, editing?.targetDate, 'pg-goal-target-date')
+        }
         className="space-y-4"
       >
         <Input
@@ -211,6 +219,7 @@ export function ProjectFormDialog({
   open,
   editing,
   goals,
+  projects,
   defaultGoalId,
   hasTasks,
   onClose,
@@ -219,6 +228,8 @@ export function ProjectFormDialog({
   open: boolean;
   editing: Project | null;
   goals: Goal[];
+  /** Every project, so a new or renamed one can't repeat a name. */
+  projects: Project[];
   defaultGoalId?: string;
   /** A project with tasks completes when they are all done, not by choice. */
   hasTasks: boolean;
@@ -267,7 +278,11 @@ export function ProjectFormDialog({
         id="pg-project-form"
         onSubmit={handleSubmit}
         controller={issues}
-        validate={() => pastDateIssue(dueDate, editing?.dueDate, 'pg-project-due-date')}
+        validate={() =>
+          nameTaken(title, projects, { editing })
+            ? { message: 'You already have a project with this name.', field: 'pg-project-title' }
+            : pastDateIssue(dueDate, editing?.dueDate, 'pg-project-due-date')
+        }
         className="space-y-4"
       >
         <Input
@@ -344,6 +359,7 @@ export function TaskFormDialog({
   open,
   editing,
   projects,
+  tasks,
   defaultProjectId,
   onClose,
   onSave,
@@ -351,6 +367,8 @@ export function TaskFormDialog({
   open: boolean;
   editing: Task | null;
   projects: Project[];
+  /** Every task; names are unique within one project (or among tasks with no project). */
+  tasks: Task[];
   defaultProjectId?: string;
   onClose: () => void;
   onSave: (payload: TaskPayload) => void;
@@ -401,7 +419,16 @@ export function TaskFormDialog({
         id="pg-task-form"
         onSubmit={handleSubmit}
         controller={issues}
-        validate={() => pastDateIssue(dueDate, editing?.dueDate, 'pg-task-due-date')}
+        validate={() =>
+          nameTaken(title, tasks.filter((t) => (t.projectId || '') === projectId), {
+            editing: editing && (editing.projectId || '') === projectId ? editing : null,
+          })
+            ? {
+                message: projectId ? 'This project already has a task with this name.' : 'You already have a task with this name.',
+                field: 'pg-task-title',
+              }
+            : pastDateIssue(dueDate, editing?.dueDate, 'pg-task-due-date')
+        }
         className="space-y-4"
       >
         <Input

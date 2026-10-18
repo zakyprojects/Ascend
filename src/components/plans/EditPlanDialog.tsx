@@ -4,7 +4,8 @@ import type { AppStore } from '@/lib/store';
 import type { ImprovementPlan } from '@/types';
 import { isNewPastDate, todayKey } from '@/lib/dates';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
-import { PLAN_TYPE_META, planTypeOf } from './planMeta';
+import { PLAN_NAME_TAKEN, PLAN_TYPE_META, ownPlans, planTypeOf } from './planMeta';
+import { nameTaken } from '@/lib/uniqueNames';
 import { PlanFields, type PlanFormValues } from './PlanFields';
 
 function valuesFrom(plan: ImprovementPlan): PlanFormValues {
@@ -83,7 +84,9 @@ export function EditPlanDialog({ store, plan, onClose }: { store: AppStore; plan
         id="pip-edit-form"
         onSubmit={submit}
         validate={() =>
-          type === 'target_goal' && isNewPastDate(values.targetDate, plan.targetDate)
+          nameTaken(values.title, ownPlans(store.state.improvementPlans, store.state.currentUser?.id), { editing: plan })
+            ? { message: PLAN_NAME_TAKEN, field: 'pip-edit-title' }
+            : type === 'target_goal' && isNewPastDate(values.targetDate, plan.targetDate)
             ? { message: 'Pick a later date.', field: 'pip-edit-target-date' }
             : type === 'vision' && isNewPastDate(values.targetReviewDate, plan.targetReviewDate)
             ? { message: 'Pick a later date.', field: 'pip-edit-review-date' }

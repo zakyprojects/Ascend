@@ -22,7 +22,7 @@ import { BookCard, ClampedText } from '@/components/reading/BookCard';
 import { BookFormDialog } from '@/components/reading/BookFormDialog';
 import { StartReadingDialog } from '@/components/reading/StartReadingDialog';
 import { FinishBookDialog } from '@/components/reading/FinishBookDialog';
-import { bookBonus, bookProgress, byNewest, formatAmount, matchesBookFilter, targetLine } from '@/components/reading/bookMeta';
+import { bookBonus, bookProgress, byNewest, formatAmount, matchesBookFilter, sameBook, targetLine } from '@/components/reading/bookMeta';
 
 type ReadingHubTab = 'reading' | 'library' | 'finished' | 'discover';
 type DiscoverSort = 'trending' | 'bestsellers' | 'az';
@@ -160,7 +160,10 @@ export function ReadingHub({ store }: { store: AppStore }) {
   }, [deleteBook, store.state.weeklyGoals]);
 
   const readingHabit = store.state.habits.find((h) => h.linkedModule === 'reading');
-  const bookForCurated = (curated: CuratedBook) => libraryBooks.find((b) => b.curatedBookId === curated.id);
+  // A book you added yourself with the same title and author counts as this curated book, so it
+  // can't be added twice.
+  const bookForCurated = (curated: CuratedBook) =>
+    libraryBooks.find((b) => b.curatedBookId === curated.id) ?? libraryBooks.find((b) => !b.curatedBookId && sameBook(b, curated));
 
   const handleProgressSave = (newCurrent: number) => {
     if (!progressBook) return;

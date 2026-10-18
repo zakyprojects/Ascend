@@ -385,6 +385,7 @@ export function WeeklyGoalsView({ store }: { store: AppStore }) {
         open={formOpen}
         editing={editingGoal}
         state={store.state}
+        weekGoals={weekGoals}
         weekText={selectedText}
         onClose={() => setFormOpen(false)}
         onSave={saveGoal}

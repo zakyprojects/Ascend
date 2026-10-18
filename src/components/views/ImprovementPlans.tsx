@@ -18,7 +18,7 @@ import { CreatePlanDialog } from '@/components/plans/CreatePlanDialog';
 import { EditPlanDialog } from '@/components/plans/EditPlanDialog';
 import { DiscoverPanel } from '@/components/plans/DiscoverPanel';
 import { useDiscoverPlans } from '@/components/plans/useDiscoverPlans';
-import { type AnyPlan, finishLineShare, isReviewDue, journeyState, planTypeOf, targetProgress } from '@/components/plans/planMeta';
+import { type AnyPlan, finishLineShare, isReviewDue, journeyState, ownPlans, planTypeOf, targetProgress } from '@/components/plans/planMeta';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 
 type Owner = 'own' | 'copy';
@@ -43,8 +43,7 @@ export function ImprovementPlans({ store }: { store: AppStore }) {
 
   const currentUserId = store.state.currentUser?.id;
   const followedPlans = store.state.followedPlans;
-  // The plans list holds only this user's plans; the id check keeps it right after a rename.
-  const myPlans = store.state.improvementPlans.filter((p) => !currentUserId || !p.creatorId || p.creatorId === currentUserId);
+  const myPlans = ownPlans(store.state.improvementPlans, currentUserId);
 
   const discover = useDiscoverPlans(store, activeTab === 'discover');
   const remoteById = useMemo(() => new Map(discover.plans.map((p) => [p.id, p])), [discover.plans]);

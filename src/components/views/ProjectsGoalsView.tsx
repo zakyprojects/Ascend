@@ -977,6 +977,7 @@ export function ProjectsGoalsView({
           key={goalForm.key}
           open
           editing={goalForm.editing}
+          goals={goals}
           hasProjects={goalForm.editing ? (h.projectsByGoal.get(goalForm.editing.id)?.length ?? 0) > 0 : false}
           onClose={() => setGoalForm(null)}
           onSave={saveGoal}
@@ -988,6 +989,7 @@ export function ProjectsGoalsView({
           open
           editing={projectForm.editing}
           goals={goals}
+          projects={projects}
           defaultGoalId={projectForm.goalId}
           hasTasks={projectForm.editing ? (h.tasksByProject.get(projectForm.editing.id)?.length ?? 0) > 0 : false}
           onClose={() => setProjectForm(null)}
@@ -1000,6 +1002,7 @@ export function ProjectsGoalsView({
           open
           editing={taskForm.editing}
           projects={projects}
+          tasks={tasks}
           defaultProjectId={taskForm.projectId}
           onClose={() => setTaskForm(null)}
           onSave={saveTask}

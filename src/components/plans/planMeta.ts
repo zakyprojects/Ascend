@@ -8,6 +8,14 @@ import { trustedNowMs } from '@/lib/clock';
 /** A plan the user made, or their own copy of someone else's: both render with the same card. */
 export type AnyPlan = ImprovementPlan | UserPlanFollow;
 
+/** The user's own plans ("Created by me"); the id check keeps it right after a rename. */
+export function ownPlans(plans: ImprovementPlan[], currentUserId: string | undefined): ImprovementPlan[] {
+  return plans.filter((p) => !currentUserId || !p.creatorId || p.creatorId === currentUserId);
+}
+
+/** A new or renamed plan of yours can't take the name of another plan you made (copies live apart). */
+export const PLAN_NAME_TAKEN = 'You already have a plan with this name.';
+
 export interface PlanTypeMeta {
   label: string;
   /** One line for the type picker. */
