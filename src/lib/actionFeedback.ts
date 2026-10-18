@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { prefersReducedMotion } from '@/lib/motion';
+import { findActionSound, playActionSound, SWIPE_SOUND_ID, TICK_SOUND_ID, type ActionSound } from '@/lib/actionSounds';
 
 /**
  * Feedback for the user's own actions: a short vibration or a soft sound, chosen per action kind
@@ -10,8 +11,8 @@ import { prefersReducedMotion } from '@/lib/motion';
  * - 'swipe': a swipe row arming its action, a tab or page swipe arming or flicking.
  *
  * Vibration is Android-only (iOS Safari and desktops have no Vibration API). The browser cannot set
- * vibration force, only its length, so strength is the pulse length. Sounds are synthesised with
- * Web Audio (no audio files), play at the media volume, and on iOS follow the silent switch and
+ * vibration force, only its length, so strength is the pulse length. Sounds (lib/actionSounds) are
+ * synthesised with Web Audio (no audio files), play at the media volume, and on iOS follow the silent switch and
  * leave music playing (audio session 'ambient').
  */
 
@@ -151,39 +152,21 @@ if (typeof window !== 'undefined') {
   window.addEventListener('keydown', unlock, { capture: true, passive: true });
 }
 
-/** One soft enveloped tone gliding from `from` to `to` Hz. */
-function tone(ctx: AudioContext, start: number, from: number, to: number, length: number, peak: number, type: OscillatorType) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(from, start);
-  osc.frequency.exponentialRampToValueAtTime(to, start + length * 0.6);
-  gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(peak, start + 0.005);
-  gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(start);
-  osc.stop(start + length + 0.02);
+function playSound(kind: ActionFeedbackKind, volume: SoundVolume): void {
+  const sound = findActionSound(kind === 'tick' ? TICK_SOUND_ID : SWIPE_SOUND_ID);
+  if (sound) playSoundAt(sound, volume);
 }
 
-function playSound(kind: ActionFeedbackKind, volume: SoundVolume): void {
+/** Plays one sound at a volume step (also the gallery's audition). */
+export function playSoundAt(sound: ActionSound, volume: SoundVolume): void {
   const ctx = audioContext();
-  if (!ctx) return;
-  const peak = SOUND_GAIN[volume];
-  const now = ctx.currentTime + 0.005;
-  if (kind === 'tick') {
-    // A rising two-note "pi-ding" (about 0.2 s), rounded sine tones in a major sixth.
-    tone(ctx, now, 740, 880, 0.12, peak, 'sine');
-    tone(ctx, now + 0.07, 1180, 1320, 0.16, peak * 0.8, 'sine');
-  } else {
-    // A short low "tup" (about 50 ms), quieter than a tick: it can fire on every swipe.
-    tone(ctx, now, 520, 360, 0.05, peak * 0.7, 'triangle');
-  }
+  if (ctx) playActionSound(ctx, sound, SOUND_GAIN[volume]);
 }
 
 // --- Play --------------------------------------------------------------------------------------
 
-function vibrate(strength: VibrationStrength): void {
+/** One pulse at a strength step (also the gallery's audition). */
+export function vibrate(strength: VibrationStrength): void {
   if (!canVibrate()) return;
   try {
     navigator.vibrate(VIBRATION_MS[strength]);

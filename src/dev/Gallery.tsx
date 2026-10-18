@@ -30,6 +30,8 @@ import {
   type TabItem,
 } from '../components/ui/primitives';
 import { AscendLoadingIndicator, AscendLoadingOverlay } from '../components/ui/AscendLoadingIndicator';
+import { canVibrate, playSoundAt, vibrate, type SoundVolume, type VibrationStrength } from '@/lib/actionFeedback';
+import { SWIPE_SOUNDS, SWIPE_SOUND_ID, TICK_SOUNDS, TICK_SOUND_ID, type ActionSound } from '@/lib/actionSounds';
 
 interface SectionProps {
   title: string;
@@ -332,6 +334,67 @@ function TabSwipeDemo() {
           </div>
         )}
       </TabPanel>
+    </div>
+  );
+}
+
+// Sound & vibration auditions (lib/actionSounds, lib/actionFeedback). Numbers match the ids Zakria picks from.
+const SOUND_VOLUMES: SoundVolume[] = ['soft', 'medium', 'loud'];
+const VIBRATION_STRENGTHS: VibrationStrength[] = ['light', 'medium', 'strong'];
+
+function SoundsDemo() {
+  const [volume, setVolume] = useState<SoundVolume>('soft');
+  const [last, setLast] = useState('');
+  const group = (title: string, sounds: ActionSound[], inUse: string) => (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-content-primary">{title}</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {sounds.map((sound) => (
+          <button
+            key={sound.id}
+            type="button"
+            onClick={() => {
+              playSoundAt(sound, volume);
+              setLast(sound.id);
+            }}
+            className={`rounded-xl border px-3 py-2.5 text-left transition-colors hover:bg-overlay-subtle ${
+              last === sound.id ? 'border-primary-500/60' : 'border-overlay-default'
+            }`}
+          >
+            <span className="text-sm font-medium text-content-primary">
+              {sound.id.toUpperCase()} · {sound.name}
+              {sound.id === inUse && <span className="ml-2 text-xs text-brand-text">in use</span>}
+            </span>
+            <span className="block text-xs text-content-muted">{sound.hint}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-content-muted">Volume</span>
+        {SOUND_VOLUMES.map((v) => (
+          <Button key={v} size="sm" variant={v === volume ? 'primary' : 'secondary'} onClick={() => setVolume(v)}>
+            {v}
+          </Button>
+        ))}
+      </div>
+      {group('Tick sounds (ticking off)', TICK_SOUNDS, TICK_SOUND_ID)}
+      {group('Swipe sounds', SWIPE_SOUNDS, SWIPE_SOUND_ID)}
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-content-primary">Vibration strength</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {VIBRATION_STRENGTHS.map((strength) => (
+            <Button key={strength} size="sm" variant="secondary" disabled={!canVibrate()} onClick={() => vibrate(strength)}>
+              {strength}
+            </Button>
+          ))}
+          {!canVibrate() && <span className="text-xs text-content-muted">This device can&apos;t vibrate (open on an Android phone).</span>}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1039,6 +1102,10 @@ export function Gallery() {
 
         <Section title="Tab swipe">
           <TabSwipeDemo />
+        </Section>
+
+        <Section title="Sound & vibration">
+          <SoundsDemo />
         </Section>
 
         <Section title="Charts">
