@@ -1,6 +1,6 @@
 /**
  * The username rule, the same one the server applies (ascend_change_username, the
- * sign-in-username Edge Function, unique index on lower(username)): trimmed, 3–20 letters,
+ * sign-in-username Edge Function, CHECK profiles_username_format, unique index on lower(username)): trimmed, 3–20 letters,
  * numbers, _ or -, unique without regard to case ("Zakria" and "zakria" are the same name).
  */
 export const USERNAME_PATTERN = /^[A-Za-z0-9_-]{3,20}$/;
@@ -18,6 +18,17 @@ export function usernameFormatProblem(value: string): string | null {
   const name = value.trim();
   if (!name) return 'Fill in this field.';
   return USERNAME_PATTERN.test(name) ? null : USERNAME_FORMAT_RULE;
+}
+
+/**
+ * A username with the rule's shape built from any text (an email's local part, an old metadata
+ * name): signs the rule does not allow are dropped and the result is cut to 20 characters; one
+ * too short gets "_user". A taken name is handled where the profile is inserted (number suffix).
+ */
+export function usernameFrom(value: string): string {
+  const cleaned = value.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 20);
+  if (cleaned.length >= 3) return cleaned;
+  return cleaned ? `${cleaned}_user` : 'user';
 }
 
 /** Two usernames are the same name when they match without regard to case (after trimming). */

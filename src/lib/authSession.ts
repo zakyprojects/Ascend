@@ -23,6 +23,7 @@ import {
   fetchMyPrivateProfile,
 } from './supabase';
 import { trustedNow } from './clock';
+import { usernameFrom } from './usernameRules';
 
 export type SignUpDefaults = {
   username: string;
@@ -148,16 +149,19 @@ export function buildUserProfile(
 
   const metadata = authUser?.user_metadata ?? {};
 
+  // A stored profile name is used as it is; a name about to be inserted must have the rule's shape
+  // (the database refuses any other), so a metadata name or the email fallback is cleaned first.
+  const metadataUsername = metadata.username as string | undefined;
   let username =
     (profileData?.username as string | undefined) ||
-    (metadata.username as string | undefined);
+    (metadataUsername ? usernameFrom(metadataUsername.trim()) : undefined);
 
   if (!username) {
     if (isAnonymous || !email) {
       const suffix = userId.replace(/-/g, '').slice(-4).toUpperCase();
       username = `Guest_${suffix}`;
     } else {
-      username = email.split('@')[0];
+      username = usernameFrom(email.split('@')[0]);
     }
   }
 
