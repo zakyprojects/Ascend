@@ -3,7 +3,7 @@ import { Bell, Eye, Info, KeyRound, Palette, User, type LucideIcon } from 'lucid
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
-import { cx, FOCUS_RING, Tabs } from '@/components/ui/primitives';
+import { cx, FOCUS_RING, TabPanel, Tabs } from '@/components/ui/primitives';
 import { Reveal } from '@/components/ui/Motion';
 import { confirmLeave } from '@/lib/unsavedChanges';
 import {
@@ -34,6 +34,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: LucideIcon }[] = [
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'about', label: 'About', icon: Info },
 ];
+const SECTION_IDS = SECTIONS.map(({ id }) => id);
 
 export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProps) {
   const currentUser = store.state.currentUser;
@@ -46,6 +47,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
   const openSection = (next: SettingsSection) => {
     if (next !== section) confirmLeave(() => setSection(next));
   };
+  const changeSection = (id: string) => isSettingsSection(id) && openSection(id);
 
   useEffect(() => {
     const path = settingsSectionPath(section);
@@ -88,10 +90,11 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
       <div className="flex flex-col gap-5 sm:grid sm:grid-cols-[12.5rem_minmax(0,1fr)] sm:items-start">
         {/* Phones: a scrollable tab strip. */}
         <Tabs
+          idBase="settings"
           className="sm:hidden"
           items={SECTIONS.map(({ id, label }) => ({ id, label }))}
           value={section}
-          onChange={(id) => isSettingsSection(id) && openSection(id)}
+          onChange={changeSection}
           variant="underline"
           size="sm"
           scrollable
@@ -130,14 +133,17 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
           </ul>
         </nav>
 
-        <Reveal key={section} index={0} className="min-w-0">
-          {section === 'profile' && <ProfileSection store={store} />}
-          {section === 'account' && <AccountSection store={store} onOpenAuth={onOpenAuth} />}
-          {section === 'notifications' && <NotificationsSection store={store} />}
-          {section === 'privacy' && <PrivacySection store={store} />}
-          {section === 'appearance' && <AppearanceSection store={store} />}
-          {section === 'about' && <AboutSection onNavigate={onNavigate} />}
-        </Reveal>
+        {/* Phones swipe between sections (the strip above); from sm up the strip is hidden and so is the swipe. */}
+        <TabPanel idBase="settings" ids={SECTION_IDS} value={section} onChange={changeSection} className="min-w-0">
+          <Reveal key={section} index={0} className="min-w-0">
+            {section === 'profile' && <ProfileSection store={store} />}
+            {section === 'account' && <AccountSection store={store} onOpenAuth={onOpenAuth} />}
+            {section === 'notifications' && <NotificationsSection store={store} />}
+            {section === 'privacy' && <PrivacySection store={store} />}
+            {section === 'appearance' && <AppearanceSection store={store} />}
+            {section === 'about' && <AboutSection onNavigate={onNavigate} />}
+          </Reveal>
+        </TabPanel>
       </div>
     </div>
   );
