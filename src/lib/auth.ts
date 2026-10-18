@@ -13,6 +13,9 @@ import {
   verifyAccountPassword,
 } from './supabase';
 import { trustedNow, trustedNowMs } from './clock';
+import { looksLikeUsername } from './usernameRules';
+import { NETWORK_MESSAGE } from './userMessage';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 
 let cachedProfiles: any[] = [];
 let cachedPublicPlans: ImprovementPlan[] = [];
@@ -226,29 +229,72 @@ export async function signUpUser(
   return { type: 'session' };
 }
 
+/** Shown for a wrong password or an unknown account alike, so it never says which. */
+const WRONG_EMAIL_LOGIN = 'Wrong email or password.';
+const WRONG_USERNAME_LOGIN = 'Wrong username or password.';
+
 /**
- * Log in an existing user account with Supabase Auth.
+ * Log in an existing user account with Supabase Auth, by email or by username (one field: an
+ * entry with "@" is an email; usernames can't contain one).
  *
- * IMPORTANT: This function ONLY calls supabase.auth.signInWithPassword() and returns.
+ * IMPORTANT: This function ONLY signs in with Supabase Auth and returns.
  * It does NOT hydrate profile/user_data or set any app state.
  * All state setup is handled by onAuthStateChange in store.ts (single source of truth).
  */
-export async function loginUser(email: string, password: string): Promise<void> {
-  const trimmedEmail = email.trim().toLowerCase();
+export async function loginUser(identifier: string, password: string): Promise<void> {
+  const trimmed = identifier.trim();
+  if (!trimmed.includes('@')) {
+    await loginWithUsername(trimmed, password);
+    return;
+  }
 
   const { error: authError } = await supabase.auth.signInWithPassword({
-    email: trimmedEmail,
+    email: trimmed.toLowerCase(),
     password,
   });
 
   if (authError) {
-    const msg = authError.message || 'Invalid email or password.';
-    if (msg.toLowerCase().includes('invalid login credentials')) {
-      throw new Error('Invalid email or password. Please check your credentials and try again.');
+    const msg = authError.message || WRONG_EMAIL_LOGIN;
+    if (authError.code === 'invalid_credentials' || msg.toLowerCase().includes('invalid login credentials')) {
+      throw new Error(WRONG_EMAIL_LOGIN);
     }
-    throw new Error(msg);
+    throw authError;
   }
   // Success: onAuthStateChange fires SIGNED_IN, hydrates profile+state in store.ts
+}
+
+/**
+ * Username sign-in: the sign-in-username Edge Function finds the account's email on the server
+ * (it is never sent to the app), signs in, and returns the session, which setSession stores. That
+ * fires SIGNED_IN like an email sign-in does.
+ */
+async function loginWithUsername(username: string, password: string): Promise<void> {
+  if (!looksLikeUsername(username)) throw new Error(WRONG_USERNAME_LOGIN);
+
+  const { data, error } = await supabase.functions.invoke<{ access_token?: string; refresh_token?: string }>(
+    'sign-in-username',
+    { body: { username, password } }
+  );
+
+  if (error) {
+    const status = error instanceof FunctionsHttpError ? (error.context as Response | undefined)?.status : undefined;
+    if (status === 401) throw new Error(WRONG_USERNAME_LOGIN);
+    if (status === 403) throw new Error('Confirm your email first: open the link we sent you, then sign in.');
+    if (status === 429) throw new Error('Too many sign-in attempts. Wait a few minutes, or sign in with your email.');
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error(NETWORK_MESSAGE);
+    console.error('Username sign-in failed:', error);
+    throw new Error('Couldn’t sign in with your username right now. Try your email instead.');
+  }
+  if (!data?.access_token || !data.refresh_token) {
+    throw new Error('Couldn’t sign in with your username right now. Try your email instead.');
+  }
+
+  const { error: sessionError } = await supabase.auth.setSession({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+  });
+  if (sessionError) throw new Error('Couldn’t finish signing in. Try again.');
+  // Success: setSession fires SIGNED_IN, hydrates profile+state in store.ts
 }
 
 /**

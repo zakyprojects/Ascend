@@ -8,6 +8,7 @@ import { FieldErrorBubble, FieldMessage, Form, FormAlert, useFormController } fr
 import { PasswordStaircase } from './PasswordStaircase';
 import { newPasswordProblem } from '@/lib/passwordRules';
 import { toUserMessage } from '@/lib/userMessage';
+import { looksLikeUsername } from '@/lib/usernameRules';
 
 /** How long the sign-in/sign-up success screen shows before `onDone` runs. */
 const AUTH_SUCCESS_MS = 900;
@@ -17,7 +18,7 @@ const SUBMIT_CHECK_MS = 280;
 /** The plain status line under the submit button, per form screen and state. */
 const STATUS_LINES: Record<'login' | 'signup-form' | 'upgrade', Record<'empty' | 'ready' | 'submitting' | 'success', string>> = {
   login: {
-    empty: 'Enter your email and password.',
+    empty: 'Enter your email or username and password.',
     ready: 'Ready.',
     submitting: 'Signing you in…',
     success: 'Signed in.',
@@ -379,6 +380,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   const usernameValid = usernameChecked || (mode === 'upgrade' && !trimmedUsername);
   const avatarValid = Boolean(avatar);
   const emailValid = EMAIL_PATTERN.test(email.trim());
+  // Sign in takes an email or a username in the same field.
+  const loginIdValid = emailValid || (!email.includes('@') && looksLikeUsername(email));
   const passwordValid = isNewAccount ? !newPasswordProblem(password) : password.length > 0;
   const confirmValid = confirmPassword.length > 0 && confirmPassword === password;
 
@@ -387,7 +390,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     forgot
       ? Number(emailValid)
       : screen === 'login'
-      ? Number(emailValid) + Number(passwordValid)
+      ? Number(loginIdValid) + Number(passwordValid)
       : screen === 'signup-choice'
       ? 0
       : Number(usernameValid) + Number(avatarValid) + Number(emailValid) + Number(passwordValid) + Number(confirmValid);
@@ -458,6 +461,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
 
   // Rules the fields can't express; the fields' own rules (required, email) are checked first.
   const validateAuth = () => {
+    if (mode === 'login' && !loginIdValid) return { message: 'Enter your email or username.', field: 'auth-email' };
     if ((mode === 'signup' || mode === 'upgrade') && !avatar) return { message: 'Pick an avatar.', field: 'auth-avatar' };
     const passwordProblem = isNewAccount ? newPasswordProblem(password) : null;
     if (passwordProblem) return { message: `${passwordProblem}.`, field: 'auth-password' };
@@ -554,6 +558,8 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
   };
 
   const openForgot = () => {
+    // The reset goes to an email; a username typed to sign in is not carried over.
+    if (!email.includes('@')) setEmail('');
     setSlide('right');
     setResetSentTo(null);
     setLoginStep('forgot');
@@ -849,23 +855,40 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
               )}
 
               <div data-field="auth-email">
-                <FieldLabel htmlFor="auth-email" required valid={emailValid}>
-                  Email
+                <FieldLabel htmlFor="auth-email" required valid={mode === 'login' ? loginIdValid : emailValid}>
+                  {mode === 'login' ? 'Email or username' : 'Email'}
                 </FieldLabel>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-content-disabled">
-                    <Mail size={16} />
+                    {mode === 'login' ? <User size={16} /> : <Mail size={16} />}
                   </div>
-                  <input
-                    id="auth-email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`${INPUT_CLASS} input-has-icon pr-3`}
-                  />
+                  {mode === 'login' ? (
+                    <input
+                      id="auth-email"
+                      type="text"
+                      required
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      inputMode="email"
+                      placeholder="you@example.com or your username"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={`${INPUT_CLASS} input-has-icon pr-3`}
+                    />
+                  ) : (
+                    <input
+                      id="auth-email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={`${INPUT_CLASS} input-has-icon pr-3`}
+                    />
+                  )}
                   <FocusLine />
                 </div>
                 <FieldMessage htmlFor="auth-email" />
