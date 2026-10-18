@@ -1,13 +1,14 @@
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
-import { computeLiveSchedule, timeStringToMinutes } from '@/lib/timeTracker';
+import { computeLiveSchedule, getBlockTimingAt, timeStringToMinutes } from '@/lib/timeTracker';
+import { todayKey } from '@/lib/dates';
 
 /**
  * Which of today's time blocks Follow schedule shows right now. Everything that decides "the
  * block at this moment" lives here, so it can be swapped in one place.
  *
- * Known gap (audit P4, left for the shared Time Tracker helper): blocks are read as same-day
- * ranges, so an overnight block (end before start, e.g. Sleep 23:00–07:00) is never active at
- * night and counts as overdue from its end time in the morning.
+ * "Now", "over" and "upcoming" come from getBlockTimingAt, so blocks ending at midnight (24:00),
+ * the split halves of a block across midnight, and old unsplit overnight blocks (23:00–07:00)
+ * are judged on their real start and end instants.
  */
 export interface CurrentScheduleBlock {
   activeBlock: TimeTrackerBlock | null;
@@ -35,19 +36,23 @@ export function currentScheduleBlock(
   now: Date
 ): CurrentScheduleBlock {
   const live = computeLiveSchedule(todayBlocks, activities, now);
+  const day = todayKey(now);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const nowSeconds = nowMinutes * 60 + now.getSeconds();
+  const timing = (b: TimeTrackerBlock) => getBlockTimingAt(b, day, now);
+  const unresolved = todayBlocks
+    .filter((b) => !b.completed && !b.skipped)
+    .sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
 
-  const overdueBlock = todayBlocks.find(
-    (b) => !b.completed && !b.skipped && nowSeconds >= timeStringToMinutes(b.endTime) * 60
-  );
+  const activeBlock = unresolved.find((b) => timing(b) === 'current') ?? null;
+  const nextBlock = unresolved.find((b) => timing(b) === 'upcoming') ?? null;
+  const activeBlockActivity = activeBlock ? activities.find((a) => a.id === activeBlock.activityId) ?? null : null;
+  const overdueBlock = unresolved.find((b) => timing(b) === 'over');
 
   // Most recently resolved first: the block the user just acted on.
   const currentResolvedBlock = todayBlocks
     .filter((b) => {
-      const start = timeStringToMinutes(b.startTime);
-      const end = timeStringToMinutes(b.trimmedOriginalEndTime || b.originalEndTime || b.endTime);
-      return nowMinutes >= start && nowMinutes < end && (b.completed || b.skipped);
+      const window = { startTime: b.startTime, endTime: b.trimmedOriginalEndTime || b.originalEndTime || b.endTime };
+      return (b.completed || b.skipped) && getBlockTimingAt(window, day, now) === 'current';
     })
     .sort((a, b) => resolvedAt(b) - resolvedAt(a))[0];
 
@@ -57,9 +62,9 @@ export function currentScheduleBlock(
     .sort((a, b) => resolvedAt(b) - resolvedAt(a) || timeStringToMinutes(b.endTime) - timeStringToMinutes(a.endTime))[0];
 
   return {
-    activeBlock: live.activeBlock,
-    activeBlockActivity: live.activeBlockActivity,
-    nextBlock: live.nextBlock,
+    activeBlock,
+    activeBlockActivity,
+    nextBlock,
     overdueBlock,
     currentResolvedBlock,
     gapTriggerBlock: currentResolvedBlock?.trimmedOriginalEndTime ? currentResolvedBlock : lastEarlyResolved,

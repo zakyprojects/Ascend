@@ -3,7 +3,8 @@ import { CheckCircle2, ChevronRight, Coffee, RotateCcw, SkipForward } from 'luci
 import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
 import type { TimeTrackerActivity, TimeTrackerBlock } from '@/types';
-import { formatTime12h, getAscendViewForModule, timeStringToMinutes } from '@/lib/timeTracker';
+import { blockIntervalMs, formatTime12h, getAscendViewForModule } from '@/lib/timeTracker';
+import { todayKey } from '@/lib/dates';
 import { ProgressBar } from '@/components/ui/primitives';
 import { cx } from '@/components/ui/primitives/shared';
 import { useToast } from '@/components/ui/Toast';
@@ -41,12 +42,12 @@ export function ScheduleActiveBlock({
   const { showSuccessToast, showErrorToast } = useToast();
   const [breakOpen, setBreakOpen] = useState(false);
 
-  const nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-  const startSecs = timeStringToMinutes(block.startTime) * 60;
-  const endSecs = timeStringToMinutes(block.endTime) * 60;
-  const remaining = Math.max(0, endSecs - nowSecs);
-  const total = Math.max(1, endSecs - startSecs);
-  const progress = Math.min(100, Math.max(0, ((nowSecs - startSecs) / total) * 100));
+  // Real instants, so a block ending at 24:00 or running past midnight counts down correctly.
+  const { startMs, endMs } = blockIntervalMs(block, todayKey(now));
+  const nowMs = now.getTime();
+  const remaining = Math.max(0, Math.floor((endMs - nowMs) / 1000));
+  const total = Math.max(1, (endMs - startMs) / 1000);
+  const progress = Math.min(100, Math.max(0, ((nowMs - startMs) / 1000 / total) * 100));
 
   // Break state, from the block's own timestamps.
   let onBreak = false;
