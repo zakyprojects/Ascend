@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { BookOpen, CheckCircle2, ListTodo, Pause, Pencil, PlayCircle, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Badge, Dialog, Disclosure, EmptyState, PageColumns, ProgressBar, Switch, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
+import { Badge, Dialog, Disclosure, EmptyState, PageColumns, ProgressBar, Switch, TabPanel, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { CURATED_BOOKS, BOOK_CATEGORIES } from '@/lib/books';
 import type { BookCategory, CuratedBook, UserBook } from '@/types';
@@ -25,6 +25,7 @@ import { FinishBookDialog } from '@/components/reading/FinishBookDialog';
 import { bookBonus, bookProgress, byNewest, formatAmount, matchesBookFilter, sameBook, targetLine } from '@/components/reading/bookMeta';
 
 type ReadingHubTab = 'reading' | 'library' | 'finished' | 'discover';
+const READING_TABS: ReadingHubTab[] = ['reading', 'library', 'finished', 'discover'];
 type DiscoverSort = 'trending' | 'bestsellers' | 'az';
 
 const TARGET_TONE = {
@@ -296,6 +297,7 @@ export function ReadingHub({ store }: { store: AppStore }) {
       >
         <div className="space-y-3">
           <Tabs
+            idBase="reading"
             ariaLabel="Reading Hub sections"
             variant="segmented"
             size="sm"
@@ -352,97 +354,17 @@ export function ReadingHub({ store }: { store: AppStore }) {
           )}
         </div>
 
-        {/* READING */}
-        {activeTab === 'reading' &&
-          (readingBooks.length === 0 ? (
-            <EmptyState
-              icon={BookOpen}
-              title="Nothing in progress"
-              description="Start a book from your library, pick one in Discover, or add your own."
-              action={
-                <div className="flex items-center justify-center gap-3 pt-2">
-                  <button type="button" onClick={() => openAdd('reading')} className="btn-primary text-xs py-1.5 px-3">
-                    <Plus size={14} />
-                    <span>Add book</span>
-                  </button>
-                  <button type="button" onClick={() => changeTab('discover')} className="btn-secondary text-xs py-1.5 px-3">
-                    Discover books
-                  </button>
-                </div>
-              }
-            />
-          ) : (
-            <div className="grid-cards-lg gap-4">
-              {readingBooks.map((book) => {
-                const p = bookProgress(book);
-                const target = targetLine(book);
-                return (
-                  <BookCard
-                    key={book.id}
-                    title={book.title}
-                    author={book.author}
-                    category={book.category}
-                    controls={
-                      <>
-                        <IconAction label="Edit book" onClick={() => openEdit(book)}>
-                          <Pencil size={15} />
-                        </IconAction>
-                        <IconAction label="Remove book" danger onClick={() => setDeleteBookId(book.id)}>
-                          <Trash2 size={15} />
-                        </IconAction>
-                      </>
-                    }
-                    footer={
-                      <>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <UpdateProgressButton variant="primary" label="Log progress" onClick={() => setProgressBookId(book.id)} />
-                          <button type="button" onClick={() => openFinish(book)} className="btn-secondary text-xs py-1.5 px-3">
-                            <CheckCircle2 size={14} className="text-success-text" />
-                            <span>Finish</span>
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => store.updateUserBookStatus(book.id, 'to-read')}
-                          className={cx('inline-flex items-center gap-1.5 text-xs font-medium text-content-muted hover:text-content-secondary', TAP_TARGET)}
-                        >
-                          <Pause size={13} />
-                          <span>Move to library</span>
-                        </button>
-                      </>
-                    }
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="figure text-sm text-content-secondary">
-                          <span className="text-lg font-semibold text-content-primary">{p.current}</span> / {formatAmount(p.total, p.unit)}
-                        </span>
-                        <span className="figure text-xs text-warning-text">{p.percent}%</span>
-                      </div>
-                      <ProgressBar value={p.percent} label={`Reading progress: ${p.percent}%`} tone="warning" />
-                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
-                        <span className="text-content-muted">{p.left > 0 ? `${formatAmount(p.left, p.unit)} left` : 'All read'}</span>
-                        {target && <span className={TARGET_TONE[target.tone]}>{target.text}</span>}
-                      </div>
-                    </div>
-                    <ClampedText text={book.description} />
-                  </BookCard>
-                );
-              })}
-            </div>
-          ))}
-
-        {/* LIBRARY */}
-        {activeTab === 'library' &&
-          (shownLibrary.length === 0 ? (
-            libraryList.length === 0 ? (
+        <TabPanel idBase="reading" ids={READING_TABS} value={activeTab} onChange={(id) => changeTab(id as ReadingHubTab)}>
+          {/* READING */}
+          {activeTab === 'reading' &&
+            (readingBooks.length === 0 ? (
               <EmptyState
-                icon={ListTodo}
-                title="Your library is empty"
-                description="Save books you want to read next, from Discover or your own."
+                icon={BookOpen}
+                title="Nothing in progress"
+                description="Start a book from your library, pick one in Discover, or add your own."
                 action={
                   <div className="flex items-center justify-center gap-3 pt-2">
-                    <button type="button" onClick={() => openAdd('to-read')} className="btn-primary text-xs py-1.5 px-3">
+                    <button type="button" onClick={() => openAdd('reading')} className="btn-primary text-xs py-1.5 px-3">
                       <Plus size={14} />
                       <span>Add book</span>
                     </button>
@@ -453,200 +375,282 @@ export function ReadingHub({ store }: { store: AppStore }) {
                 }
               />
             ) : (
-              <EmptyState size="sm" title="No books match" description="Try another search or category." />
-            )
-          ) : (
-            <div className="grid-cards gap-4">
-              {shownLibrary.map((book) => {
-                const p = bookProgress(book);
-                const started = p.current > 0;
-                return (
-                  <BookCard
-                    key={book.id}
-                    title={book.title}
-                    author={book.author}
-                    category={book.category}
-                    controls={
-                      <>
-                        <IconAction label="Edit book" onClick={() => openEdit(book)}>
-                          <Pencil size={15} />
-                        </IconAction>
-                        <IconAction label="Remove book" danger onClick={() => setDeleteBookId(book.id)}>
-                          <Trash2 size={15} />
-                        </IconAction>
-                      </>
-                    }
-                    footer={
-                      <>
-                        <span className="figure text-xs text-content-muted">
-                          {started ? `Paused at ${p.current} / ${formatAmount(p.total, p.unit)}` : formatAmount(p.total, p.unit)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => (started ? store.updateUserBookStatus(book.id, 'reading') : openStart(book))}
-                          className="btn-primary text-xs py-1.5 px-3"
-                        >
-                          <PlayCircle size={14} />
-                          <span>{started ? 'Continue reading' : 'Start reading'}</span>
-                        </button>
-                      </>
-                    }
-                  >
-                    {started && <ProgressBar value={p.percent} label={`Reading progress: ${p.percent}%`} tone="warning" />}
-                    <ClampedText text={book.description} />
-                  </BookCard>
-                );
-              })}
-            </div>
-          ))}
-
-        {/* FINISHED */}
-        {activeTab === 'finished' &&
-          (shownFinished.length === 0 ? (
-            finishedBooks.length === 0 ? (
-              <EmptyState icon={CheckCircle2} title="No finished books yet" description="Finish a book to save what you learned from it." />
-            ) : (
-              <EmptyState size="sm" title="No books match" description="Try another search or category." />
-            )
-          ) : (
-            <div className="grid-cards-lg gap-4">
-              {shownFinished.map((book) => {
-                const p = bookProgress(book);
-                const bonus = bookBonus(book, pointsHistory);
-                return (
-                  <BookCard
-                    key={book.id}
-                    title={book.title}
-                    author={book.author}
-                    category={book.category}
-                    tags={
-                      bonus > 0 ? (
-                        <Badge tone="purple" size="xs">
-                          <span className="figure">+{bonus}</span> bonus
-                        </Badge>
-                      ) : undefined
-                    }
-                    controls={
-                      <>
-                        <IconAction label="Edit book" onClick={() => openEdit(book)}>
-                          <Pencil size={15} />
-                        </IconAction>
-                        <IconAction label="Remove book" danger onClick={() => setDeleteBookId(book.id)}>
-                          <Trash2 size={15} />
-                        </IconAction>
-                      </>
-                    }
-                    footer={
-                      <>
-                        <span className="text-xs text-content-muted">
-                          {book.dateCompleted || book.completedAt
-                            ? `Finished ${formatDateLong(book.dateCompleted || book.completedAt)}`
-                            : 'Finished'}
-                          {' · '}
-                          <span className="figure">{formatAmount(p.total, p.unit)}</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            store.restartBook(book.id);
-                            showSuccessToast('Reading again', `${book.title} is back in Reading.`, `book_reread_${book.id}`);
-                          }}
-                          className="btn-secondary text-xs py-1.5 px-3"
-                        >
-                          <RotateCcw size={14} />
-                          <span>Read again</span>
-                        </button>
-                      </>
-                    }
-                  >
-                    {book.reflection ? (
-                      <div className="rounded-xl border border-overlay-subtle bg-overlay-subtle/40 p-3.5">
-                        <span className="stat-label block mb-1">Key takeaway</span>
-                        <ClampedText text={book.reflection} lines={3} />
-                      </div>
-                    ) : (
-                      <p className="text-xs text-content-disabled">No takeaway saved.</p>
-                    )}
-                  </BookCard>
-                );
-              })}
-            </div>
-          ))}
-
-        {/* DISCOVER: the curated list, never changed by what users add. */}
-        {activeTab === 'discover' &&
-          (shownCurated.length === 0 ? (
-            <EmptyState size="sm" title="No books match" description="Try another search or category." />
-          ) : (
-            <div className="grid-cards gap-4">
-              {shownCurated.map((curated) => {
-                const owned = bookForCurated(curated);
-                const statusLabel = owned
-                  ? owned.status === 'completed'
-                    ? 'Finished'
-                    : owned.status === 'reading'
-                      ? 'Reading'
-                      : 'In library'
-                  : null;
-                return (
-                  <BookCard
-                    key={curated.id}
-                    title={curated.title}
-                    author={curated.author}
-                    category={curated.category}
-                    tags={
-                      statusLabel ? (
-                        <Badge tone={owned?.status === 'completed' ? 'emerald' : owned?.status === 'reading' ? 'warning' : 'neutral'} size="xs">
-                          {statusLabel}
-                        </Badge>
-                      ) : undefined
-                    }
-                    footer={
-                      <>
-                        <span className="figure text-xs text-content-muted">{formatAmount(curated.totalPages || 250, 'pages')}</span>
-                        {owned ? (
-                          <button
-                            type="button"
-                            onClick={() => changeTab(owned.status === 'completed' ? 'finished' : owned.status === 'reading' ? 'reading' : 'library')}
-                            className="text-xs font-medium text-content-tertiary hover:text-content-primary"
-                          >
-                            Open
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                store.addCuratedBookToLibrary(curated, 'to-read');
-                                showSuccessToast('Saved to library', curated.title, `book_add_${curated.id}`);
-                              }}
-                              className="btn-secondary text-xs py-1.5 px-3"
-                            >
-                              <Plus size={14} />
-                              <span>Library</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                store.addCuratedBookToLibrary(curated, 'reading');
-                                showSuccessToast('Started reading', curated.title, `book_add_${curated.id}`);
-                              }}
-                              className="btn-primary text-xs py-1.5 px-3"
-                            >
-                              <PlayCircle size={14} />
-                              <span>Start</span>
+              <div className="grid-cards-lg gap-4">
+                {readingBooks.map((book) => {
+                  const p = bookProgress(book);
+                  const target = targetLine(book);
+                  return (
+                    <BookCard
+                      key={book.id}
+                      title={book.title}
+                      author={book.author}
+                      category={book.category}
+                      controls={
+                        <>
+                          <IconAction label="Edit book" onClick={() => openEdit(book)}>
+                            <Pencil size={15} />
+                          </IconAction>
+                          <IconAction label="Remove book" danger onClick={() => setDeleteBookId(book.id)}>
+                            <Trash2 size={15} />
+                          </IconAction>
+                        </>
+                      }
+                      footer={
+                        <>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <UpdateProgressButton variant="primary" label="Log progress" onClick={() => setProgressBookId(book.id)} />
+                            <button type="button" onClick={() => openFinish(book)} className="btn-secondary text-xs py-1.5 px-3">
+                              <CheckCircle2 size={14} className="text-success-text" />
+                              <span>Finish</span>
                             </button>
                           </div>
-                        )}
-                      </>
-                    }
-                  >
-                    <ClampedText text={curated.description} lines={3} />
-                  </BookCard>
-                );
-              })}
-            </div>
-          ))}
+                          <button
+                            type="button"
+                            onClick={() => store.updateUserBookStatus(book.id, 'to-read')}
+                            className={cx('inline-flex items-center gap-1.5 text-xs font-medium text-content-muted hover:text-content-secondary', TAP_TARGET)}
+                          >
+                            <Pause size={13} />
+                            <span>Move to library</span>
+                          </button>
+                        </>
+                      }
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="figure text-sm text-content-secondary">
+                            <span className="text-lg font-semibold text-content-primary">{p.current}</span> / {formatAmount(p.total, p.unit)}
+                          </span>
+                          <span className="figure text-xs text-warning-text">{p.percent}%</span>
+                        </div>
+                        <ProgressBar value={p.percent} label={`Reading progress: ${p.percent}%`} tone="warning" />
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
+                          <span className="text-content-muted">{p.left > 0 ? `${formatAmount(p.left, p.unit)} left` : 'All read'}</span>
+                          {target && <span className={TARGET_TONE[target.tone]}>{target.text}</span>}
+                        </div>
+                      </div>
+                      <ClampedText text={book.description} />
+                    </BookCard>
+                  );
+                })}
+              </div>
+            ))}
+
+          {/* LIBRARY */}
+          {activeTab === 'library' &&
+            (shownLibrary.length === 0 ? (
+              libraryList.length === 0 ? (
+                <EmptyState
+                  icon={ListTodo}
+                  title="Your library is empty"
+                  description="Save books you want to read next, from Discover or your own."
+                  action={
+                    <div className="flex items-center justify-center gap-3 pt-2">
+                      <button type="button" onClick={() => openAdd('to-read')} className="btn-primary text-xs py-1.5 px-3">
+                        <Plus size={14} />
+                        <span>Add book</span>
+                      </button>
+                      <button type="button" onClick={() => changeTab('discover')} className="btn-secondary text-xs py-1.5 px-3">
+                        Discover books
+                      </button>
+                    </div>
+                  }
+                />
+              ) : (
+                <EmptyState size="sm" title="No books match" description="Try another search or category." />
+              )
+            ) : (
+              <div className="grid-cards gap-4">
+                {shownLibrary.map((book) => {
+                  const p = bookProgress(book);
+                  const started = p.current > 0;
+                  return (
+                    <BookCard
+                      key={book.id}
+                      title={book.title}
+                      author={book.author}
+                      category={book.category}
+                      controls={
+                        <>
+                          <IconAction label="Edit book" onClick={() => openEdit(book)}>
+                            <Pencil size={15} />
+                          </IconAction>
+                          <IconAction label="Remove book" danger onClick={() => setDeleteBookId(book.id)}>
+                            <Trash2 size={15} />
+                          </IconAction>
+                        </>
+                      }
+                      footer={
+                        <>
+                          <span className="figure text-xs text-content-muted">
+                            {started ? `Paused at ${p.current} / ${formatAmount(p.total, p.unit)}` : formatAmount(p.total, p.unit)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => (started ? store.updateUserBookStatus(book.id, 'reading') : openStart(book))}
+                            className="btn-primary text-xs py-1.5 px-3"
+                          >
+                            <PlayCircle size={14} />
+                            <span>{started ? 'Continue reading' : 'Start reading'}</span>
+                          </button>
+                        </>
+                      }
+                    >
+                      {started && <ProgressBar value={p.percent} label={`Reading progress: ${p.percent}%`} tone="warning" />}
+                      <ClampedText text={book.description} />
+                    </BookCard>
+                  );
+                })}
+              </div>
+            ))}
+
+          {/* FINISHED */}
+          {activeTab === 'finished' &&
+            (shownFinished.length === 0 ? (
+              finishedBooks.length === 0 ? (
+                <EmptyState icon={CheckCircle2} title="No finished books yet" description="Finish a book to save what you learned from it." />
+              ) : (
+                <EmptyState size="sm" title="No books match" description="Try another search or category." />
+              )
+            ) : (
+              <div className="grid-cards-lg gap-4">
+                {shownFinished.map((book) => {
+                  const p = bookProgress(book);
+                  const bonus = bookBonus(book, pointsHistory);
+                  return (
+                    <BookCard
+                      key={book.id}
+                      title={book.title}
+                      author={book.author}
+                      category={book.category}
+                      tags={
+                        bonus > 0 ? (
+                          <Badge tone="purple" size="xs">
+                            <span className="figure">+{bonus}</span> bonus
+                          </Badge>
+                        ) : undefined
+                      }
+                      controls={
+                        <>
+                          <IconAction label="Edit book" onClick={() => openEdit(book)}>
+                            <Pencil size={15} />
+                          </IconAction>
+                          <IconAction label="Remove book" danger onClick={() => setDeleteBookId(book.id)}>
+                            <Trash2 size={15} />
+                          </IconAction>
+                        </>
+                      }
+                      footer={
+                        <>
+                          <span className="text-xs text-content-muted">
+                            {book.dateCompleted || book.completedAt
+                              ? `Finished ${formatDateLong(book.dateCompleted || book.completedAt)}`
+                              : 'Finished'}
+                            {' · '}
+                            <span className="figure">{formatAmount(p.total, p.unit)}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              store.restartBook(book.id);
+                              showSuccessToast('Reading again', `${book.title} is back in Reading.`, `book_reread_${book.id}`);
+                            }}
+                            className="btn-secondary text-xs py-1.5 px-3"
+                          >
+                            <RotateCcw size={14} />
+                            <span>Read again</span>
+                          </button>
+                        </>
+                      }
+                    >
+                      {book.reflection ? (
+                        <div className="rounded-xl border border-overlay-subtle bg-overlay-subtle/40 p-3.5">
+                          <span className="stat-label block mb-1">Key takeaway</span>
+                          <ClampedText text={book.reflection} lines={3} />
+                        </div>
+                      ) : (
+                        <p className="text-xs text-content-disabled">No takeaway saved.</p>
+                      )}
+                    </BookCard>
+                  );
+                })}
+              </div>
+            ))}
+
+          {/* DISCOVER: the curated list, never changed by what users add. */}
+          {activeTab === 'discover' &&
+            (shownCurated.length === 0 ? (
+              <EmptyState size="sm" title="No books match" description="Try another search or category." />
+            ) : (
+              <div className="grid-cards gap-4">
+                {shownCurated.map((curated) => {
+                  const owned = bookForCurated(curated);
+                  const statusLabel = owned
+                    ? owned.status === 'completed'
+                      ? 'Finished'
+                      : owned.status === 'reading'
+                        ? 'Reading'
+                        : 'In library'
+                    : null;
+                  return (
+                    <BookCard
+                      key={curated.id}
+                      title={curated.title}
+                      author={curated.author}
+                      category={curated.category}
+                      tags={
+                        statusLabel ? (
+                          <Badge tone={owned?.status === 'completed' ? 'emerald' : owned?.status === 'reading' ? 'warning' : 'neutral'} size="xs">
+                            {statusLabel}
+                          </Badge>
+                        ) : undefined
+                      }
+                      footer={
+                        <>
+                          <span className="figure text-xs text-content-muted">{formatAmount(curated.totalPages || 250, 'pages')}</span>
+                          {owned ? (
+                            <button
+                              type="button"
+                              onClick={() => changeTab(owned.status === 'completed' ? 'finished' : owned.status === 'reading' ? 'reading' : 'library')}
+                              className="text-xs font-medium text-content-tertiary hover:text-content-primary"
+                            >
+                              Open
+                            </button>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  store.addCuratedBookToLibrary(curated, 'to-read');
+                                  showSuccessToast('Saved to library', curated.title, `book_add_${curated.id}`);
+                                }}
+                                className="btn-secondary text-xs py-1.5 px-3"
+                              >
+                                <Plus size={14} />
+                                <span>Library</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  store.addCuratedBookToLibrary(curated, 'reading');
+                                  showSuccessToast('Started reading', curated.title, `book_add_${curated.id}`);
+                                }}
+                                className="btn-primary text-xs py-1.5 px-3"
+                              >
+                                <PlayCircle size={14} />
+                                <span>Start</span>
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      }
+                    >
+                      <ClampedText text={curated.description} lines={3} />
+                    </BookCard>
+                  );
+                })}
+              </div>
+            ))}
+        </TabPanel>
       </PageColumns>
 
       <BookFormDialog
