@@ -12,7 +12,7 @@ import { TemplateEditorModal } from './timeTracker/TemplateEditorModal';
 import { ApplyTemplateModal } from './timeTracker/ApplyTemplateModal';
 import { ActivityModal } from './timeTracker/ActivityModal';
 import { useToast } from '@/components/ui/Toast';
-import { Tabs } from '@/components/ui/primitives';
+import { TabPanel, Tabs } from '@/components/ui/primitives';
 import { CalendarClock, Layers, Tag } from 'lucide-react';
 import { View } from '@/components/AppShell';
 
@@ -22,12 +22,14 @@ interface TimeTrackerViewProps {
 }
 
 type TabType = 'day' | 'templates' | 'categories';
+const TIME_TRACKER_TABS: TabType[] = ['day', 'templates', 'categories'];
 
 export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
   const { showSuccessToast } = useToast();
   const today = useLocalDayKey();
 
   const [activeTab, setActiveTab] = useState<TabType>('day');
+  const changeTab = (id: string) => setActiveTab(id as TabType);
   const [selectedDateKey, setSelectedDateKey] = useState<string>(today);
 
   // Midnight with the page open: a page that was on "today" moves to the new today and fills it
@@ -158,12 +160,13 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         </div>
         <div className="max-w-full shrink-0 self-start md:self-auto">
           <Tabs
+            idBase="time-tracker"
             ariaLabel="Time Tracker sections"
             variant="segmented"
             size="sm"
             scrollable
             value={activeTab}
-            onChange={(id) => setActiveTab(id as TabType)}
+            onChange={changeTab}
             items={[
               { id: 'day', label: 'Day', icon: CalendarClock, badge: openToday || undefined },
               { id: 'templates', label: 'Templates', icon: Layers },
@@ -173,42 +176,44 @@ export function TimeTrackerView({ store, onNavigate }: TimeTrackerViewProps) {
         </div>
       </div>
 
-      {activeTab === 'day' && (
-        <DayTab
-          store={store}
-          activities={activities}
-          templates={templates}
-          today={today}
-          selectedDateKey={selectedDateKey}
-          planned={planned}
-          onSelectDateKey={setSelectedDateKey}
-          onAddBlock={openAddBlock}
-          onEditBlock={openEditBlock}
-          onApplyTemplate={() => openApply()}
-          onNavigate={onNavigate}
-        />
-      )}
+      <TabPanel idBase="time-tracker" ids={TIME_TRACKER_TABS} value={activeTab} onChange={changeTab}>
+        {activeTab === 'day' && (
+          <DayTab
+            store={store}
+            activities={activities}
+            templates={templates}
+            today={today}
+            selectedDateKey={selectedDateKey}
+            planned={planned}
+            onSelectDateKey={setSelectedDateKey}
+            onAddBlock={openAddBlock}
+            onEditBlock={openEditBlock}
+            onApplyTemplate={() => openApply()}
+            onNavigate={onNavigate}
+          />
+        )}
 
-      {activeTab === 'templates' && (
-        <TemplatesTab
-          store={store}
-          templates={templates}
-          activities={activities}
-          onCreateTemplate={() => openTemplateEditor(null)}
-          onEditTemplate={openTemplateEditor}
-          onApplyTemplate={openApply}
-        />
-      )}
+        {activeTab === 'templates' && (
+          <TemplatesTab
+            store={store}
+            templates={templates}
+            activities={activities}
+            onCreateTemplate={() => openTemplateEditor(null)}
+            onEditTemplate={openTemplateEditor}
+            onApplyTemplate={openApply}
+          />
+        )}
 
-      {activeTab === 'categories' && (
-        <ActivitiesTab
-          store={store}
-          activities={activities}
-          today={today}
-          onCreateCategory={() => openActivity(null)}
-          onEditCategory={openActivity}
-        />
-      )}
+        {activeTab === 'categories' && (
+          <ActivitiesTab
+            store={store}
+            activities={activities}
+            today={today}
+            onCreateCategory={() => openActivity(null)}
+            onEditCategory={openActivity}
+          />
+        )}
+      </TabPanel>
 
       <TimeBlockModal
         open={blockModalOpen}
