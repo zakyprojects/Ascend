@@ -952,7 +952,8 @@ export async function sendPartnerInviteSupabase(invite: PartnerInvite) {
   throw new Error(rpcErr?.message || "Couldn't send the invite. Try again.");
 }
 
-export async function fetchPartnerInvitesSupabase(userId: string, username: string): Promise<PartnerInvite[]> {
+/** Null when the fetch failed (the caller keeps what it already shows); [] means none. */
+export async function fetchPartnerInvitesSupabase(userId: string, username: string): Promise<PartnerInvite[] | null> {
   if (!isSupabaseConfigured) return [];
   try {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
@@ -969,7 +970,7 @@ export async function fetchPartnerInvitesSupabase(userId: string, username: stri
 
     if (error || !data) {
       if (error) console.warn('Supabase fetch partner invites warning:', error.message);
-      return [];
+      return null;
     }
 
     return data.map((row) => ({
@@ -984,7 +985,7 @@ export async function fetchPartnerInvitesSupabase(userId: string, username: stri
     }));
   } catch (e) {
     console.error('Error fetching partner invites from Supabase:', e);
-    return [];
+    return null;
   }
 }
 
@@ -1171,7 +1172,8 @@ export async function fetchPartnershipSupabase(userId: string, username?: string
   }
 }
 
-export async function fetchPartnershipsSupabase(userId: string): Promise<Partnership[]> {
+/** Null when the fetch failed (the caller keeps what it already shows); [] means none. */
+export async function fetchPartnershipsSupabase(userId: string): Promise<Partnership[] | null> {
   if (!isSupabaseConfigured || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) return [];
   try {
     const { data, error } = await supabase
@@ -1179,7 +1181,7 @@ export async function fetchPartnershipsSupabase(userId: string): Promise<Partner
       .select('*')
       .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
 
-    if (error || !data) return [];
+    if (error || !data) return null;
 
     const mapped = data.map((row) => ({
       id: row.id,
@@ -1204,7 +1206,7 @@ export async function fetchPartnershipsSupabase(userId: string): Promise<Partner
     return Array.from(dedupMap.values());
   } catch (e) {
     console.error('Error fetching partnerships from Supabase:', e);
-    return [];
+    return null;
   }
 }
 
@@ -1319,7 +1321,8 @@ export async function saveSharedChallengeSupabase(challenge: SharedChallenge) {
   }
 }
 
-export async function fetchSharedChallengesSupabase(partnershipIds: string | string[]): Promise<SharedChallenge[]> {
+/** Null when the fetch failed (the caller keeps what it already shows); [] means none. */
+export async function fetchSharedChallengesSupabase(partnershipIds: string | string[]): Promise<SharedChallenge[] | null> {
   if (!isSupabaseConfigured) return [];
   const ids = Array.isArray(partnershipIds) ? partnershipIds : [partnershipIds];
   if (ids.length === 0) return [];
@@ -1330,7 +1333,7 @@ export async function fetchSharedChallengesSupabase(partnershipIds: string | str
       .in('partnership_id', ids)
       .order('created_at', { ascending: false });
 
-    if (error || !data) return [];
+    if (error || !data) return null;
 
     const mapped = data
       .map((row) => ({
@@ -1370,7 +1373,7 @@ export async function fetchSharedChallengesSupabase(partnershipIds: string | str
     return Array.from(chalMap.values());
   } catch (e) {
     console.error('Error fetching shared challenges from Supabase:', e);
-    return [];
+    return null;
   }
 }
 
@@ -1403,17 +1406,28 @@ export async function deleteSharedChallengeSupabase(challengeId: string) {
    NOTIFICATION SYSTEM HELPERS
    ========================================== */
 
-export async function fetchNotificationsSupabase(recipientId: string): Promise<AppNotification[]> {
+/** The inbox window: the newest NOTIFICATION_WINDOW notices from the last NOTIFICATION_MAX_AGE_DAYS
+ *  days. The store's sanitize keeps the same window, so the list and the badge never change on reload. */
+export const NOTIFICATION_WINDOW = 50;
+export const NOTIFICATION_MAX_AGE_DAYS = 30;
+
+/** Null when the fetch failed (the caller keeps the list it already shows); [] means an empty inbox. */
+export async function fetchNotificationsSupabase(recipientId: string): Promise<AppNotification[] | null> {
   if (!isSupabaseConfigured || !recipientId) return [];
   try {
+    const since = new Date(trustedNowMs() - NOTIFICATION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
       .eq('recipient_id', recipientId)
+      .gte('created_at', since)
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(NOTIFICATION_WINDOW);
 
-    if (error || !data) return [];
+    if (error || !data) {
+      if (error) console.warn('Supabase fetch notifications warning:', error.message);
+      return null;
+    }
 
     return data.map((row) => ({
       id: row.id,
@@ -1430,7 +1444,7 @@ export async function fetchNotificationsSupabase(recipientId: string): Promise<A
     }));
   } catch (e) {
     console.error('Error fetching notifications from Supabase:', e);
-    return [];
+    return null;
   }
 }
 
@@ -1485,22 +1499,22 @@ export async function createNotificationSupabase(
   }
 }
 
+/** Throws when the row could not be updated, so the caller can put the unread state back. */
 export async function markNotificationReadSupabase(notificationId: string) {
   if (!isSupabaseConfigured || !notificationId) return;
-  try {
-    await supabase.from('notifications').update({ read: true }).eq('id', notificationId);
-  } catch (e) {
-    console.warn('markNotificationReadSupabase skipped:', e);
-  }
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('id', notificationId);
+  if (error) throw new Error(error.message || "Couldn't mark the notification as read.");
 }
 
+/** Throws when the rows could not be updated, so the caller can put the unread state back. */
 export async function markAllNotificationsReadSupabase(recipientId: string) {
   if (!isSupabaseConfigured || !recipientId) return;
-  try {
-    await supabase.from('notifications').update({ read: true }).eq('recipient_id', recipientId).eq('read', false);
-  } catch (e) {
-    console.warn('markAllNotificationsReadSupabase skipped:', e);
-  }
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read: true })
+    .eq('recipient_id', recipientId)
+    .eq('read', false);
+  if (error) throw new Error(error.message || "Couldn't mark notifications as read.");
 }
 
 /** Throws when the row could not be deleted, so the caller can put the notification back. */
@@ -1508,4 +1522,10 @@ export async function clearNotificationSupabase(notificationId: string) {
   if (!isSupabaseConfigured || !notificationId) return;
   const { error } = await supabase.from('notifications').delete().eq('id', notificationId);
   if (error) throw new Error(error.message || "Couldn't clear the notification.");
+}
+/** Deletes these (read) notices in one request. Throws on failure so the caller can put them back. */
+export async function clearNotificationsSupabase(notificationIds: string[]) {
+  if (!isSupabaseConfigured || notificationIds.length === 0) return;
+  const { error } = await supabase.from('notifications').delete().in('id', notificationIds);
+  if (error) throw new Error(error.message || "Couldn't clear notifications.");
 }

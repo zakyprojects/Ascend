@@ -184,6 +184,9 @@ import {
   markNotificationReadSupabase,
   markAllNotificationsReadSupabase,
   clearNotificationSupabase,
+  clearNotificationsSupabase,
+  NOTIFICATION_WINDOW,
+  NOTIFICATION_MAX_AGE_DAYS,
   storedAuthSession,
 } from './supabase';
 import { GuardBlockedError } from './errors';
@@ -871,9 +874,9 @@ export function sanitizeLoadedState(loaded: Partial<AppState>, profile: UserProf
       )
       .map((c) => reconcileSharedChallengeLifecycle(c)),
     notifications: (st.notifications ?? [])
-      .filter((n: any) => !n.createdAt || n.createdAt >= new Date(trustedNowMs() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      .filter((n: any) => !n.createdAt || n.createdAt >= new Date(trustedNowMs() - NOTIFICATION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString())
       .filter((n: any) => !sanitizedDeletedEntityIds.includes(n.id))
-      .slice(0, 50),
+      .slice(0, NOTIFICATION_WINDOW),
     deletedEntityIds: sanitizedDeletedEntityIds.slice(-500),
     restoredEntityIds: (st.restoredEntityIds ?? []).slice(-500),
     timeTracker: {
@@ -1776,6 +1779,10 @@ export function useAppState() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   // True while a sign-in made after the initial check (login, sign-up, guest) loads the user's data.
   const [isSessionLoading, setIsSessionLoading] = useState(false);
+  // The inbox's first fetch this session: 'loading' until it answers, 'failed' when it could not
+  // (offline or a server error; the list on screen stays), 'ready' after a good fetch.
+  const [notificationsStatus, setNotificationsStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const notificationsRefreshRef = useRef<(() => Promise<void>) | null>(null);
   // The initial check found no session while this device still holds a saved sign-in (a phone's
   // network not ready yet): the boot loader stays up until Supabase signs it in or drops it, rather
   // than flashing the sign-in page. 'failed' once that takes too long (offline).
@@ -2685,39 +2692,14 @@ export function useAppState() {
 
         if (event === 'PARTNER_INVITE_SENT') {
           const invite = payload.invite || payload;
-          const notif = payload.notification;
 
           if (
             invite.toUsername.toLowerCase() === prev.username.toLowerCase() ||
             (prev.currentUser?.id && invite.toUserId === prev.currentUser.id)
           ) {
-            const inviteExists = prev.partnerInvites.some((i) => i.id === invite.id);
-            const updatedInvites = inviteExists ? prev.partnerInvites : [invite, ...prev.partnerInvites];
-
-            let updatedNotifs = prev.notifications || [];
-            const notifObject: AppNotification = notif || {
-              id: crypto.randomUUID(),
-              recipientId: invite.toUserId,
-              actorId: invite.fromUserId,
-              actorUsername: invite.fromUsername,
-              actorAvatar: invite.fromAvatar || '🧑',
-              type: 'partner_invite',
-              title: 'New Partner Invite',
-              message: `${invite.fromUsername} sent you an accountability partner invite!`,
-              payload: { inviteId: invite.id },
-              read: false,
-              createdAt: trustedNow().toISOString(),
-            };
-
-            if (!updatedNotifs.some((n) => n.payload?.inviteId === invite.id || n.id === notifObject.id)) {
-              updatedNotifs = [notifObject, ...updatedNotifs];
-            }
-
-            return {
-              ...prev,
-              partnerInvites: updatedInvites,
-              notifications: updatedNotifs,
-            };
+            // Only the invite: its notice is the server's row, which arrives by realtime (N13).
+            if (prev.partnerInvites.some((i) => i.id === invite.id)) return prev;
+            return { ...prev, partnerInvites: [invite, ...prev.partnerInvites] };
           }
         }
 
@@ -2817,58 +2799,67 @@ export function useAppState() {
     if (!state.currentUser?.id) return;
     const userId = state.currentUser.id;
     const username = state.username;
+    // A new account (or a fresh sign-in) waits for its own first inbox fetch.
+    setNotificationsStatus('loading');
+
+    /** Keeps local "read" marks (a mark-read may still be on its way) and drops cleared rows. */
+    const mergeFetchedNotifications = (prev: AppState, fetched: AppNotification[]): AppNotification[] => {
+      const currentTombstones = new Set(prev.deletedEntityIds || []);
+      return fetched
+        .filter((fn) => !currentTombstones.has(fn.id))
+        .map((fn) => {
+          const local = prev.notifications?.find((n) => n.id === fn.id);
+          return local && local.read ? { ...fn, read: true } : fn;
+        });
+    };
+
+    const syncNotificationsLive = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setNotificationsStatus((s) => (s === 'ready' ? s : 'failed'));
+        return;
+      }
+      const fetchedNotifs = await fetchNotificationsSupabase(userId);
+      if (!fetchedNotifs) {
+        // A failed fetch keeps the list on screen; the panel says it couldn't refresh.
+        setNotificationsStatus('failed');
+        return;
+      }
+      setNotificationsStatus('ready');
+      setState((prev) => {
+        const merged = mergeFetchedNotifications(prev, fetchedNotifs);
+        if (JSON.stringify(prev.notifications ?? []) === JSON.stringify(merged)) return prev;
+        return { ...prev, notifications: merged };
+      });
+    };
+    notificationsRefreshRef.current = syncNotificationsLive;
 
     const syncPartnerDataLive = async () => {
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setNotificationsStatus((s) => (s === 'ready' ? s : 'failed'));
         return;
       }
       try {
+        // Each fetch gives null when it failed: that part keeps what is on screen (N1).
         const fetchedInvites = await fetchPartnerInvitesSupabase(userId, username);
         const activePartnerships = await fetchPartnershipsSupabase(userId);
-        const pIds = activePartnerships.map((p) => p.id);
-        const challenges = pIds.length > 0 ? await fetchSharedChallengesSupabase(pIds) : [];
+        const pIds = (activePartnerships ?? []).map((p) => p.id);
+        const challenges = activePartnerships
+          ? pIds.length > 0
+            ? await fetchSharedChallengesSupabase(pIds)
+            : []
+          : null;
         const fetchedNotifs = await fetchNotificationsSupabase(userId);
+        setNotificationsStatus(fetchedNotifs ? 'ready' : 'failed');
 
-        const tombstoneSet = new Set(state.deletedEntityIds || []);
-        
-        // Deduplicate partnerships by user pair
-        const dedupPartnershipsMap = new Map<string, Partnership>();
-        for (const p of activePartnerships) {
-          if (!p || tombstoneSet.has(p.id)) continue;
-          const u1 = (p.user1Username || '').toLowerCase();
-          const u2 = (p.user2Username || '').toLowerCase();
-          const key = [u1, u2].sort().join(':::');
-          if (!dedupPartnershipsMap.has(key)) {
-            dedupPartnershipsMap.set(key, p);
-          }
-        }
-        const filteredPartnerships = Array.from(dedupPartnershipsMap.values());
-
-        let validInvites = fetchedInvites.filter((inv) => !tombstoneSet.has(inv.id));
-        if (filteredPartnerships.length > 0) {
-          const activePartnerUsernames = new Set(
-            filteredPartnerships.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])
-          );
-          const activePartnerUserIds = new Set(
-            filteredPartnerships.flatMap((p) => [p.user1Id, p.user2Id])
-          );
-
-          validInvites = fetchedInvites.filter((inv) => {
-            if (inv.status !== 'pending' || tombstoneSet.has(inv.id)) return false;
-            const otherUserId = inv.fromUserId === userId ? inv.toUserId : inv.fromUserId;
-            const otherUsername = (
-              inv.fromUsername.toLowerCase() === username.toLowerCase() ? inv.toUsername : inv.fromUsername
-            ).toLowerCase();
-
-            const isAlreadyPartner =
-              (otherUserId && activePartnerUserIds.has(otherUserId)) ||
-              (otherUsername && activePartnerUsernames.has(otherUsername));
-
-            return !isAlreadyPartner;
-          });
-
+        if (activePartnerships && activePartnerships.length > 0) {
           // Clean up stale invites in Supabase DB for all active partnerships
-          for (const p of filteredPartnerships) {
+          const tombstoneSet = new Set(state.deletedEntityIds || []);
+          const seen = new Set<string>();
+          for (const p of activePartnerships) {
+            if (!p || tombstoneSet.has(p.id)) continue;
+            const key = [(p.user1Username || '').toLowerCase(), (p.user2Username || '').toLowerCase()].sort().join(':::');
+            if (seen.has(key)) continue;
+            seen.add(key);
             cleanupPendingInvitesBetweenUsersSupabase(p.user1Id, p.user1Username, p.user2Id, p.user2Username).catch(() => {});
           }
         }
@@ -2876,38 +2867,64 @@ export function useAppState() {
         setState((prev) => {
           const currentTombstones = new Set(prev.deletedEntityIds || []);
 
-          // 1. Reconcile notifications
-          const mergedNotifs = fetchedNotifs
-            .filter((fn) => !currentTombstones.has(fn.id))
-            .map((fn) => {
-              const local = prev.notifications?.find((n) => n.id === fn.id);
-              return local && local.read ? { ...fn, read: true } : fn;
-            });
+          // 1. Notifications
+          const mergedNotifs = fetchedNotifs ? mergeFetchedNotifications(prev, fetchedNotifs) : prev.notifications;
 
-          // 2. Reconcile partnerships (authoritative from DB, filtered by tombstones)
-          const mergedPartnershipsMap = new Map<string, Partnership>();
-          for (const p of filteredPartnerships) {
-            if (!p || currentTombstones.has(p.id)) continue;
-            const u1 = (p.user1Username || '').toLowerCase();
-            const u2 = (p.user2Username || '').toLowerCase();
-            const key = [u1, u2].sort().join(':::');
-            if (!mergedPartnershipsMap.has(key)) {
-              mergedPartnershipsMap.set(key, p);
+          // 2. Partnerships (authoritative from DB, filtered by tombstones), or the ones on screen
+          let finalPartnerships: Partnership[];
+          if (activePartnerships) {
+            const mergedPartnershipsMap = new Map<string, Partnership>();
+            for (const p of activePartnerships) {
+              if (!p || currentTombstones.has(p.id)) continue;
+              const u1 = (p.user1Username || '').toLowerCase();
+              const u2 = (p.user2Username || '').toLowerCase();
+              const key = [u1, u2].sort().join(':::');
+              if (!mergedPartnershipsMap.has(key)) {
+                mergedPartnershipsMap.set(key, p);
+              }
             }
+            finalPartnerships = Array.from(mergedPartnershipsMap.values());
+          } else {
+            finalPartnerships = prev.partnerships || [];
           }
-          const finalPartnerships = Array.from(mergedPartnershipsMap.values());
           const finalActivePartnershipIds = new Set(finalPartnerships.map((p) => p.id));
 
-          // 3. Reconcile shared challenges (authoritative active challenges from DB, merged lifecycle, filter tombstones)
-          const challengeMap = new Map<string, SharedChallenge>();
-          for (const c of challenges) {
-            if (!c || currentTombstones.has(c.id) || currentTombstones.has(c.partnershipId)) continue;
-            if (!finalActivePartnershipIds.has(c.partnershipId)) continue;
-            const existing = (prev.sharedChallenges || []).find((sc) => sc.id === c.id);
-            const merged = existing ? mergeSharedChallenge(existing, c) : c;
-            challengeMap.set(c.id, reconcileSharedChallengeLifecycle(merged));
+          // 3. Invites: pending ones with someone who is not already a partner
+          let validInvites = prev.partnerInvites;
+          if (fetchedInvites) {
+            validInvites = fetchedInvites.filter((inv) => !currentTombstones.has(inv.id));
+            if (finalPartnerships.length > 0) {
+              const activePartnerUsernames = new Set(
+                finalPartnerships.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])
+              );
+              const activePartnerUserIds = new Set(finalPartnerships.flatMap((p) => [p.user1Id, p.user2Id]));
+              validInvites = fetchedInvites.filter((inv) => {
+                if (inv.status !== 'pending' || currentTombstones.has(inv.id)) return false;
+                const otherUserId = inv.fromUserId === userId ? inv.toUserId : inv.fromUserId;
+                const otherUsername = (
+                  inv.fromUsername.toLowerCase() === username.toLowerCase() ? inv.toUsername : inv.fromUsername
+                ).toLowerCase();
+                const isAlreadyPartner =
+                  (otherUserId && activePartnerUserIds.has(otherUserId)) ||
+                  (otherUsername && activePartnerUsernames.has(otherUsername));
+                return !isAlreadyPartner;
+              });
+            }
           }
-          const finalSharedChallenges = Array.from(challengeMap.values());
+
+          // 4. Shared challenges (authoritative from DB, merged lifecycle), or the ones on screen
+          let finalSharedChallenges = prev.sharedChallenges || [];
+          if (challenges) {
+            const challengeMap = new Map<string, SharedChallenge>();
+            for (const c of challenges) {
+              if (!c || currentTombstones.has(c.id) || currentTombstones.has(c.partnershipId)) continue;
+              if (!finalActivePartnershipIds.has(c.partnershipId)) continue;
+              const existing = (prev.sharedChallenges || []).find((sc) => sc.id === c.id);
+              const merged = existing ? mergeSharedChallenge(existing, c) : c;
+              challengeMap.set(c.id, reconcileSharedChallengeLifecycle(merged));
+            }
+            finalSharedChallenges = Array.from(challengeMap.values());
+          }
 
           const next = {
             partnerInvites: validInvites,
@@ -3041,7 +3058,12 @@ export function useAppState() {
           }
           syncPartnerDataLive();
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => syncPartnerDataLive())
+        // Only this account's notices; they need only the inbox refetch, not the partner queries.
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${userId}` },
+          () => syncNotificationsLive()
+        )
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             isSubscribed = true;
@@ -7192,7 +7214,7 @@ export function useAppState() {
         throw new Error(`An invite between you and '${targetUsername}' is already pending.`);
       }
 
-      const existingDbInvites = await fetchPartnerInvitesSupabase(state.currentUser?.id || '', state.username);
+      const existingDbInvites = (await fetchPartnerInvitesSupabase(state.currentUser?.id || '', state.username)) ?? [];
       const alreadyPendingDb = existingDbInvites.some((i) => {
         if (i.status !== 'pending') return false;
         return (
@@ -7230,18 +7252,7 @@ export function useAppState() {
         createdAt: trustedNow().toISOString(),
       };
 
-      const notifData = {
-        recipientId: targetUserId,
-        actorId: state.currentUser?.id,
-        actorUsername: state.username,
-        actorAvatar: state.currentUser?.avatar || '🧑',
-        type: 'partner_invite' as const,
-        title: 'New Partner Invite',
-        message: `${state.username} sent you an accountability partner invite!`,
-        payload: { inviteId: invite.id, dedupKey: `partner_invite_${invite.id}` },
-      };
-
-      syncBroadcaster.broadcast('PARTNER_INVITE_SENT', { invite, notification: notifData });
+      syncBroadcaster.broadcast('PARTNER_INVITE_SENT', { invite });
 
       setState(
         (prev) => ({
@@ -7323,7 +7334,7 @@ export function useAppState() {
         (n) => n.type === 'partner_invite' && (n.payload?.inviteId === inviteId || n.actorId === fromId)
       );
       if (staleNotif) {
-        markNotificationReadSupabase(staleNotif.id);
+        markNotificationReadSupabase(staleNotif.id).catch(() => {});
       }
 
       setState(
@@ -7406,7 +7417,7 @@ export function useAppState() {
       (n) => n.type === 'partner_invite' && (n.payload?.inviteId === inviteId || (invite && n.actorId === invite.fromUserId))
     );
     if (staleNotif) {
-      markNotificationReadSupabase(staleNotif.id);
+      markNotificationReadSupabase(staleNotif.id).catch(() => {});
     }
 
     // The server sends the sender's "declined" notice in the same step.
@@ -7730,54 +7741,103 @@ export function useAppState() {
     [state.sharedChallenges, state.partnerships, state.partnership, state.currentUser, state.username]
   );
 
-  const markNotificationRead = useCallback((notificationId: string) => {
-    markNotificationReadSupabase(notificationId);
+  /** Marks these notices read at once; a failed save puts them back as unread with a toast (N7). */
+  const markNotificationsRead = useCallback((notificationIds: string[]) => {
+    const ids = new Set(notificationIds);
+    const wereUnread = (get().notifications || []).filter((n) => ids.has(n.id) && !n.read).map((n) => n.id);
+    if (wereUnread.length === 0) return;
     setState((prev) => ({
       ...prev,
-      notifications: (prev.notifications || []).map((n) =>
-        n.id === notificationId ? { ...n, read: true } : n
-      ),
+      notifications: (prev.notifications || []).map((n) => (ids.has(n.id) ? { ...n, read: true } : n)),
     }));
+    const revert = (err: unknown) => {
+      console.error('Failed to mark notifications read:', err);
+      const back = new Set(wereUnread);
+      setState((prev) => ({
+        ...prev,
+        notifications: (prev.notifications || []).map((n) => (back.has(n.id) ? { ...n, read: false } : n)),
+      }));
+      dispatchToastError("Couldn't mark as read", 'Check your connection and try again.');
+    };
+    Promise.all(wereUnread.map((id) => markNotificationReadSupabase(id))).catch(revert);
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const markNotificationRead = useCallback(
+    (notificationId: string) => markNotificationsRead([notificationId]),
+    [markNotificationsRead]
+  );
+
   const markAllNotificationsRead = useCallback(() => {
-    if (state.currentUser?.id) {
-      markAllNotificationsReadSupabase(state.currentUser.id);
-    }
+    const wereUnread = (get().notifications || []).filter((n) => !n.read).map((n) => n.id);
+    if (wereUnread.length === 0) return;
     setState((prev) => ({
       ...prev,
       notifications: (prev.notifications || []).map((n) => ({ ...n, read: true })),
     }));
+    if (!state.currentUser?.id) return;
+    markAllNotificationsReadSupabase(state.currentUser.id).catch((err) => {
+      console.error('Failed to mark all notifications read:', err);
+      const back = new Set(wereUnread);
+      setState((prev) => ({
+        ...prev,
+        notifications: (prev.notifications || []).map((n) => (back.has(n.id) ? { ...n, read: false } : n)),
+      }));
+      dispatchToastError("Couldn't mark all as read", 'Check your connection and try again.');
+    });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser?.id]);
 
-  const clearNotification = useCallback((notificationId: string) => {
-    const cleared = (get().notifications || []).find((n) => n.id === notificationId);
-    setState((prev) => {
-      const updatedDeletedEntityIds = [...(prev.deletedEntityIds || []), notificationId].slice(-500);
-      return {
-        ...prev,
-        notifications: (prev.notifications || []).filter((n) => n.id !== notificationId),
-        deletedEntityIds: updatedDeletedEntityIds,
-      };
-    });
+  /** Removes these notices here and on the server; a failed delete puts them back with a toast. */
+  const clearNotifications = useCallback((notificationIds: string[]) => {
+    const ids = new Set(notificationIds);
+    const cleared = (get().notifications || []).filter((n) => ids.has(n.id));
+    if (cleared.length === 0) return;
+    const clearedIds = cleared.map((n) => n.id);
+    setState((prev) => ({
+      ...prev,
+      notifications: (prev.notifications || []).filter((n) => !ids.has(n.id)),
+      deletedEntityIds: [...(prev.deletedEntityIds || []), ...clearedIds].slice(-500),
+    }));
     // The table row is the only record across devices, so a failed delete puts it back.
-    clearNotificationSupabase(notificationId).catch((err) => {
-      console.error('Failed to clear notification:', err);
-      if (!cleared) return;
-      setState((prev) => ({
-        ...prev,
-        notifications: (prev.notifications || []).some((n) => n.id === notificationId)
-          ? prev.notifications
-          : [cleared, ...(prev.notifications || [])],
-        deletedEntityIds: (prev.deletedEntityIds || []).filter((id) => id !== notificationId),
-      }));
+    const request = clearedIds.length === 1 ? clearNotificationSupabase(clearedIds[0]) : clearNotificationsSupabase(clearedIds);
+    request.catch((err) => {
+      console.error('Failed to clear notifications:', err);
+      setState((prev) => {
+        const present = new Set((prev.notifications || []).map((n) => n.id));
+        const restored = [...cleared.filter((n) => !present.has(n.id)), ...(prev.notifications || [])].sort((x, y) =>
+          y.createdAt.localeCompare(x.createdAt)
+        );
+        return {
+          ...prev,
+          notifications: restored,
+          deletedEntityIds: (prev.deletedEntityIds || []).filter((id) => !ids.has(id)),
+        };
+      });
+      dispatchToastError(clearedIds.length === 1 ? "Couldn't clear the notification" : "Couldn't clear notifications", 'Check your connection and try again.');
     });
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const clearNotification = useCallback(
+    (notificationId: string) => clearNotifications([notificationId]),
+    [clearNotifications]
+  );
+
+  /** Clears every read notice in the inbox window. */
+  const clearReadNotifications = useCallback(() => {
+    clearNotifications((get().notifications || []).filter((n) => n.read).map((n) => n.id));
+    // False positive: get is stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearNotifications]);
+
+  /** Fetches the inbox again (the panel's Retry). */
+  const refreshNotifications = useCallback(() => {
+    setNotificationsStatus((s) => (s === 'ready' ? s : 'loading'));
+    return notificationsRefreshRef.current?.() ?? Promise.resolve();
   }, []);
 
   // Multi-user Competitor League Helper
@@ -9074,8 +9134,13 @@ export function useAppState() {
     logSharedChallengeHabit,
     deleteSharedChallenge,
     markNotificationRead,
+    markNotificationsRead,
     markAllNotificationsRead,
     clearNotification,
+    clearNotifications,
+    clearReadNotifications,
+    refreshNotifications,
+    notificationsStatus,
     // Projects & Goals Module Actions
     createGoal,
     updateGoal,

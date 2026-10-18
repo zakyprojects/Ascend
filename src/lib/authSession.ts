@@ -291,26 +291,33 @@ export async function hydrateUserSession(
 
     const tombstoneSet = new Set(state.deletedEntityIds || []);
 
-    const dedupPartnershipsMap = new Map<string, Partnership>();
-    for (const p of activePartnerships) {
-      if (!p || tombstoneSet.has(p.id)) continue;
-      const u1 = (p.user1Username || '').toLowerCase();
-      const u2 = (p.user2Username || '').toLowerCase();
-      const key = [u1, u2].sort().join(':::');
-      if (!dedupPartnershipsMap.has(key)) {
-        dedupPartnershipsMap.set(key, p);
+    // A fetch that failed gives null: that part keeps what the state already holds (the device
+    // cache), instead of showing an empty inbox or no partners until the next good fetch.
+    if (activePartnerships) {
+      const dedupPartnershipsMap = new Map<string, Partnership>();
+      for (const p of activePartnerships) {
+        if (!p || tombstoneSet.has(p.id)) continue;
+        const u1 = (p.user1Username || '').toLowerCase();
+        const u2 = (p.user2Username || '').toLowerCase();
+        const key = [u1, u2].sort().join(':::');
+        if (!dedupPartnershipsMap.has(key)) {
+          dedupPartnershipsMap.set(key, p);
+        }
       }
+
+      state.partnerships = Array.from(dedupPartnershipsMap.values());
+      state.partnership = state.partnerships[0] || null;
     }
 
-    state.partnerships = Array.from(dedupPartnershipsMap.values());
-    state.partnership = state.partnerships[0] || null;
-
-    if (state.partnerships.length > 0) {
+    const partnershipsNow = state.partnerships || [];
+    if (!fetchedInvites) {
+      // Keep the invites already held.
+    } else if (partnershipsNow.length > 0) {
       const activePartnerUsernames = new Set(
-        state.partnerships.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])
+        partnershipsNow.flatMap((p) => [p.user1Username.toLowerCase(), p.user2Username.toLowerCase()])
       );
       const activePartnerUserIds = new Set(
-        state.partnerships.flatMap((p) => [p.user1Id, p.user2Id])
+        partnershipsNow.flatMap((p) => [p.user1Id, p.user2Id])
       );
 
       state.partnerInvites = fetchedInvites.filter((inv) => {
@@ -327,23 +334,32 @@ export async function hydrateUserSession(
         return !isAlreadyPartner;
       });
 
-      for (const p of state.partnerships) {
-        cleanupPendingInvitesBetweenUsersSupabase(p.user1Id, p.user1Username, p.user2Id, p.user2Username).catch(() => {});
+      if (activePartnerships) {
+        for (const p of partnershipsNow) {
+          cleanupPendingInvitesBetweenUsersSupabase(p.user1Id, p.user1Username, p.user2Id, p.user2Username).catch(() => {});
+        }
       }
     } else {
       state.partnerInvites = fetchedInvites.filter((inv) => !tombstoneSet.has(inv.id));
     }
 
-    if (state.partnerships.length > 0) {
-      const pIds = state.partnerships.map((p) => p.id);
-      state.sharedChallenges = (await fetchSharedChallengesSupabase(pIds))
-        .filter((c) => !tombstoneSet.has(c.id) && !tombstoneSet.has(c.partnershipId))
-        .map((c) => reconcileSharedChallengeLifecycle(c));
-    } else {
-      state.sharedChallenges = [];
+    if (activePartnerships) {
+      if (partnershipsNow.length > 0) {
+        const pIds = partnershipsNow.map((p) => p.id);
+        const fetchedChallenges = await fetchSharedChallengesSupabase(pIds);
+        if (fetchedChallenges) {
+          state.sharedChallenges = fetchedChallenges
+            .filter((c) => !tombstoneSet.has(c.id) && !tombstoneSet.has(c.partnershipId))
+            .map((c) => reconcileSharedChallengeLifecycle(c));
+        }
+      } else {
+        state.sharedChallenges = [];
+      }
     }
 
-    state.notifications = fetchedNotifs.filter((n) => !tombstoneSet.has(n.id));
+    if (fetchedNotifs) {
+      state.notifications = fetchedNotifs.filter((n) => !tombstoneSet.has(n.id));
+    }
 
     const { data: dbPlans, error: dbPlansErr } = dbPlansResult;
     // This device's copies (the blob no longer stores plans). A copy marked pending or failed holds
