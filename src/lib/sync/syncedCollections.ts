@@ -16,6 +16,7 @@ import type {
 } from '../../types';
 import { DEFAULT_TIME_TRACKER_STATE } from '../../types';
 import { isServerOwnedBadHabitLogId } from '../badHabitAwards';
+import { mergeTimeTrackerDays, type TimeTrackerDayDoc } from '../timeTracker';
 
 /**
  * Blob collections that also live in a relational table (DB normalization,
@@ -57,6 +58,18 @@ export interface SyncedCollection<K extends keyof AppState = keyof AppState> {
   read?: (state: AppState) => SyncedItem<K>[];
   /** The state with this collection's items replaced (default: state[stateKey] = items). */
   write?: (state: AppState, items: SyncedItem<K>[]) => AppState;
+  /**
+   * The time the item was really edited on its device, sent as updated_at for a changed row
+   * instead of the upload time (time tracker days only), so an offline edit uploaded later never
+   * beats a newer edit from another device just by arriving last.
+   */
+  editTimestamp?: (item: SyncedItem<K>) => string | undefined;
+  /**
+   * Merges a server row into a local copy that has its own unsent or pending change (time tracker
+   * days only), instead of keeping one side whole. `nowIso` stamps a merge result that must be
+   * uploaded, so it beats the row it was merged with.
+   */
+  mergeConflict?: (local: SyncedItem<K>, remote: SyncedItem<K>, nowIso: string, mustUpload: boolean) => SyncedItem<K>;
 }
 
 /** The table row id of a state item. */
@@ -350,12 +363,8 @@ const validIso = (value: unknown): string | undefined => {
 /** Created/updated time of an item without one: older than any real edit, so it never wins a conflict. */
 const EPOCH = '1970-01-01T00:00:00.000Z';
 
-/** One day of the time tracker: its blocks (absent = never set up) and whether it was cleared. */
-export interface TimeTrackerDay {
-  date: string;
-  blocks?: TimeTrackerBlock[];
-  cleared?: boolean;
-}
+/** One day of the time tracker: its blocks (absent = never set up), whether it was cleared, and its meta. */
+export type TimeTrackerDay = TimeTrackerDayDoc;
 
 const timeTrackerOf = (state: AppState): TimeTrackerState => state.timeTracker || DEFAULT_TIME_TRACKER_STATE;
 
@@ -424,31 +433,66 @@ function dayOwnTimestamp(day: TimeTrackerDay): string {
   return latest || dayStart(day);
 }
 
-// A day is one document: editing, clearing or applying a template rewrites the
-// whole day, last writer wins (Zakria, 2026-10-14). dailyLogs keeps "absent"
-// (auto-apply a template) apart from [] (deliberately empty).
-const timeTrackerDays = timeTrackerCollection<TimeTrackerDay>(
-  'days',
-  'time_tracker_days',
-  (tt) => {
-    const cleared = new Set(tt.clearedDates || []);
-    const dates = new Set([...Object.keys(tt.dailyLogs || {}), ...cleared]);
-    return Array.from(dates, (date) => ({
-      date,
-      ...(tt.dailyLogs?.[date] !== undefined ? { blocks: tt.dailyLogs[date] } : {}),
-      ...(cleared.has(date) ? { cleared: true } : {}),
-    }));
+// A day is one document (one row per date). dailyLogs keeps "absent" (auto-apply a template)
+// apart from [] (deliberately empty). Since 2026-10-18 a day carries its real edit time and the
+// ids of blocks removed from it, and two copies of a day are merged block by block
+// (mergeTimeTrackerDays) instead of the last upload winning whole.
+const timeTrackerDays: SyncedCollection<'timeTracker'> = {
+  ...timeTrackerCollection<TimeTrackerDay>(
+    'days',
+    'time_tracker_days',
+    (tt) => {
+      const cleared = new Set(tt.clearedDates || []);
+      const dates = new Set([...Object.keys(tt.dailyLogs || {}), ...cleared]);
+      return Array.from(dates, (date) => {
+        const meta = tt.dayMeta?.[date];
+        return {
+          date,
+          ...(tt.dailyLogs?.[date] !== undefined ? { blocks: tt.dailyLogs[date] } : {}),
+          ...(cleared.has(date) ? { cleared: true } : {}),
+          ...(meta?.updatedAt ? { updatedAt: meta.updatedAt } : {}),
+          ...(meta?.deletedBlockIds?.length ? { deletedBlockIds: meta.deletedBlockIds } : {}),
+        };
+      });
+    },
+    (tt, days) => {
+      const dayMeta: NonNullable<TimeTrackerState['dayMeta']> = {};
+      for (const d of days) {
+        if (d.updatedAt || d.deletedBlockIds?.length) {
+          dayMeta[d.date] = {
+            ...(d.updatedAt ? { updatedAt: d.updatedAt } : {}),
+            ...(d.deletedBlockIds?.length ? { deletedBlockIds: d.deletedBlockIds } : {}),
+          };
+        }
+      }
+      return {
+        ...tt,
+        dailyLogs: Object.fromEntries(days.filter((d) => d.blocks !== undefined).map((d) => [d.date, d.blocks!])),
+        clearedDates: days.filter((d) => d.cleared).map((d) => d.date),
+        dayMeta,
+      };
+    },
+    (d) => d.date,
+    dayStart,
+    (d) => validIso(d.updatedAt) ?? dayOwnTimestamp(d),
+    false
+  ),
+  editTimestamp: (item) => validIso((item as unknown as TimeTrackerDay).updatedAt),
+  mergeConflict: (local, remote, nowIso, mustUpload) => {
+    const mine = local as unknown as TimeTrackerDay;
+    const theirs = remote as unknown as TimeTrackerDay;
+    const merged = mergeTimeTrackerDays(theirs, mine);
+    // Equal to the server's copy and nothing pending: take it as is, nothing to upload.
+    if (merged === theirs && !mustUpload) return remote;
+    // Never older than either copy, so the server (newer updated_at wins) keeps the merge.
+    const after = (iso?: string) => {
+      const ms = Date.parse(iso || '');
+      return Number.isNaN(ms) ? '' : new Date(ms + 1).toISOString();
+    };
+    const stamp = [nowIso, after(theirs.updatedAt), after(mine.updatedAt)].sort().pop() || nowIso;
+    return { ...merged, updatedAt: stamp } as never;
   },
-  (tt, days) => ({
-    ...tt,
-    dailyLogs: Object.fromEntries(days.filter((d) => d.blocks !== undefined).map((d) => [d.date, d.blocks!])),
-    clearedDates: days.filter((d) => d.cleared).map((d) => d.date),
-  }),
-  (d) => d.date,
-  dayStart,
-  dayOwnTimestamp,
-  false
-);
+};
 
 /**
  * The sobriety tracker (batch H): one object in the state, one row per tracker id.

@@ -755,12 +755,15 @@ export interface TimeTrackerActivity {
   isSystemDefault: boolean;
   ascendModule?: string; // 'Exercise' | 'Reading' | 'Deep Focus' | 'Habits' | 'Skills' | 'Journal' | 'Recovery'
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TimeTrackerBlock {
   id: string;
   startTime: string; // "HH:mm" in 24h format (e.g. "09:30")
-  endTime: string;   // "HH:mm" in 24h format (e.g. "11:00")
+  endTime: string;   // "HH:mm" in 24h format (e.g. "11:00"); "24:00" = ends at midnight
+  /** Shared by the two halves of a block that crosses midnight (one on each day). */
+  splitPairId?: string;
   originalStartTime?: string; // Saved when pulled forward / started early
   originalEndTime?: string;   // Saved when shifted (early start)
   trimmedOriginalEndTime?: string; // Saved specifically when completed early and trimmed
@@ -788,6 +791,15 @@ export interface TimeTrackerTemplate {
   activeDays: string[]; // ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
   autoApplyDays?: string[];
   createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Sync bookkeeping for one day (travels with the day's row). */
+export interface TimeTrackerDayMeta {
+  /** When the day was last edited on a device (the real edit time, not the upload time). */
+  updatedAt?: string;
+  /** Blocks removed from the day, so a merge with another device's copy never brings them back. */
+  deletedBlockIds?: string[];
 }
 
 export interface TimeTrackerState {
@@ -795,13 +807,14 @@ export interface TimeTrackerState {
   templates: TimeTrackerTemplate[];
   dailyLogs: Record<string, TimeTrackerBlock[]>;
   clearedDates?: string[];
+  dayMeta?: Record<string, TimeTrackerDayMeta>;
 }
 
 export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-sleep',
     name: 'Sleep',
-    color: '#64748b', // Slate
+    color: '#6366f1', // Indigo
     icon: 'Moon',
     isSystemDefault: true,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -809,7 +822,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-deep-work',
     name: 'Deep Work',
-    color: '#0ea5e9', // Sky
+    color: '#10b981', // Emerald (brand)
     icon: 'BrainCircuit',
     isSystemDefault: true,
     ascendModule: 'Deep Focus',
@@ -818,7 +831,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-praying',
     name: 'Praying',
-    color: '#eab308', // Amber
+    color: '#a855f7', // Purple
     icon: 'HeartHandshake',
     isSystemDefault: true,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -835,7 +848,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-reading',
     name: 'Reading',
-    color: '#14b8a6', // Teal
+    color: '#3b82f6', // Blue
     icon: 'BookOpen',
     isSystemDefault: true,
     ascendModule: 'Reading',
@@ -844,7 +857,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-skills',
     name: 'Skills',
-    color: '#ec4899', // Pink
+    color: '#06b6d4', // Cyan
     icon: 'Sparkles',
     isSystemDefault: true,
     ascendModule: 'Skills',
@@ -853,7 +866,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-break',
     name: 'Break',
-    color: '#10b981', // Emerald
+    color: '#64748b', // Slate
     icon: 'Coffee',
     isSystemDefault: true,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -869,7 +882,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-entertainment',
     name: 'Entertainment',
-    color: '#84cc16', // Lime
+    color: '#ec4899', // Pink
     icon: 'Gamepad2',
     isSystemDefault: true,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -877,7 +890,7 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   {
     id: 'act-walking',
     name: 'Walking',
-    color: '#a8a29e', // Stone
+    color: '#22c55e', // Green
     icon: 'Footprints',
     isSystemDefault: true,
     ascendModule: 'Exercise',
@@ -885,86 +898,41 @@ export const DEFAULT_TIME_TRACKER_ACTIVITIES: TimeTrackerActivity[] = [
   },
 ];
 
+/**
+ * Ascend's recommended day (new accounts get it as their default template; existing users can add
+ * it from Templates). Sleep 23:00-07:00 is stored as its two halves so each day starts and ends
+ * with it: 00:00-07:00 in the morning and 23:00-24:00 at night. Gaps are free time on purpose.
+ */
+export const ASCEND_RECOMMENDED_DAY_TITLE = 'Ascend recommended day';
+export const ASCEND_RECOMMENDED_DAY_BLOCKS: TimeTrackerBlock[] = [
+  { id: 'tpl-rec-sleep-morning', startTime: '00:00', endTime: '07:00', activityId: 'act-sleep', customTitle: 'Sleep' },
+  { id: 'tpl-rec-morning-prayer', startTime: '07:00', endTime: '07:30', activityId: 'act-praying', customTitle: 'Morning prayer and routine' },
+  { id: 'tpl-rec-workout', startTime: '07:30', endTime: '08:15', activityId: 'act-exercise', customTitle: 'Workout' },
+  { id: 'tpl-rec-breakfast', startTime: '08:15', endTime: '08:45', activityId: 'act-meals', customTitle: 'Breakfast' },
+  { id: 'tpl-rec-deep-work-1', startTime: '09:00', endTime: '10:30', activityId: 'act-deep-work', customTitle: 'Deep work' },
+  { id: 'tpl-rec-break-1', startTime: '10:30', endTime: '10:45', activityId: 'act-break', customTitle: 'Short break' },
+  { id: 'tpl-rec-deep-work-2', startTime: '10:45', endTime: '12:15', activityId: 'act-deep-work', customTitle: 'Deep work' },
+  { id: 'tpl-rec-lunch', startTime: '12:15', endTime: '13:15', activityId: 'act-meals', customTitle: 'Lunch and rest' },
+  { id: 'tpl-rec-walk', startTime: '13:15', endTime: '13:45', activityId: 'act-walking', customTitle: 'Walk outside' },
+  { id: 'tpl-rec-deep-work-3', startTime: '14:00', endTime: '15:30', activityId: 'act-deep-work', customTitle: 'Deep work' },
+  { id: 'tpl-rec-break-2', startTime: '15:30', endTime: '15:45', activityId: 'act-break', customTitle: 'Short break' },
+  { id: 'tpl-rec-skills', startTime: '15:45', endTime: '16:45', activityId: 'act-skills', customTitle: 'Skill practice' },
+  { id: 'tpl-rec-dinner', startTime: '19:00', endTime: '20:00', activityId: 'act-meals', customTitle: 'Dinner with family' },
+  { id: 'tpl-rec-free-time', startTime: '20:00', endTime: '21:00', activityId: 'act-entertainment', customTitle: 'Free time' },
+  { id: 'tpl-rec-reading', startTime: '21:00', endTime: '21:45', activityId: 'act-reading', customTitle: 'Reading' },
+  { id: 'tpl-rec-wind-down', startTime: '22:30', endTime: '23:00', activityId: 'act-praying', customTitle: 'Night prayer and wind-down' },
+  { id: 'tpl-rec-sleep-night', startTime: '23:00', endTime: '24:00', activityId: 'act-sleep', customTitle: 'Sleep' },
+];
+
 export const DEFAULT_TIME_TRACKER_STATE: TimeTrackerState = {
   activities: DEFAULT_TIME_TRACKER_ACTIVITIES,
   templates: [
     {
       id: 'template-default-weekday',
-      title: 'Standard Productive Day',
+      title: ASCEND_RECOMMENDED_DAY_TITLE,
       activeDays: [],
       createdAt: '2026-01-01T00:00:00.000Z',
-      blocks: [
-        {
-          id: 'tpl-block-sleep',
-          startTime: '00:00',
-          endTime: '06:00',
-          activityId: 'act-sleep',
-          customTitle: 'Rest & Recovery',
-        },
-        {
-          id: 'tpl-block-pray-morning',
-          startTime: '06:00',
-          endTime: '06:30',
-          activityId: 'act-praying',
-          customTitle: 'Morning Prayer & Mindfulness',
-        },
-        {
-          id: 'tpl-block-exercise',
-          startTime: '06:30',
-          endTime: '07:30',
-          activityId: 'act-exercise',
-          customTitle: 'Morning Workout',
-        },
-        {
-          id: 'tpl-block-breakfast',
-          startTime: '07:30',
-          endTime: '08:30',
-          activityId: 'act-meals',
-          customTitle: 'Breakfast & Prep',
-        },
-        {
-          id: 'tpl-block-deep-work-1',
-          startTime: '09:00',
-          endTime: '12:00',
-          activityId: 'act-deep-work',
-          customTitle: 'Core Deep Work Session',
-        },
-        {
-          id: 'tpl-block-lunch',
-          startTime: '12:30',
-          endTime: '13:30',
-          activityId: 'act-meals',
-          customTitle: 'Lunch & Recharge',
-        },
-        {
-          id: 'tpl-block-reading',
-          startTime: '13:30',
-          endTime: '14:30',
-          activityId: 'act-reading',
-          customTitle: 'Growth Reading',
-        },
-        {
-          id: 'tpl-block-deep-work-2',
-          startTime: '15:00',
-          endTime: '18:00',
-          activityId: 'act-deep-work',
-          customTitle: 'Afternoon Focus Block',
-        },
-        {
-          id: 'tpl-block-dinner',
-          startTime: '19:00',
-          endTime: '20:00',
-          activityId: 'act-meals',
-          customTitle: 'Dinner & Family Time',
-        },
-        {
-          id: 'tpl-block-wind-down',
-          startTime: '22:00',
-          endTime: '23:59',
-          activityId: 'act-sleep',
-          customTitle: 'Night Wind Down & Sleep',
-        },
-      ],
+      blocks: ASCEND_RECOMMENDED_DAY_BLOCKS,
     },
   ],
   dailyLogs: {},

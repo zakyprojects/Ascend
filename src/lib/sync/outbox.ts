@@ -111,8 +111,11 @@ export function diffSyncedCollections(
         id,
         row,
         // A known row that changed is a local edit; a row new to this device keeps its own time,
-        // so re-uploading old data never beats a newer server edit.
-        updatedAt: id in prev ? nowIso : collection.ownTimestamp(item as never),
+        // so re-uploading old data never beats a newer server edit. Time tracker days carry their
+        // real edit time (editTimestamp), so an offline edit doesn't take the reconnect time.
+        updatedAt: id in prev
+          ? collection.editTimestamp?.(item as never) ?? nowIso
+          : collection.ownTimestamp(item as never),
       };
       changed = true;
     }

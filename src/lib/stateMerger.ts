@@ -23,7 +23,7 @@ import {
   DEFAULT_STATE,
 } from '@/types';
 import { mergeSharedChallenge } from './pactLifecycle';
-import { ensureDefaultActivities } from './timeTracker';
+import { ensureDefaultActivities, mergeTimeTrackerDays, type TimeTrackerDayDoc } from './timeTracker';
 import { parseDate } from './dates';
 import { calculateSeasonalTotal } from './leagues';
 import { leagueNow, getSeasonNumber, getSeasonStart } from './leagueTime';
@@ -1050,31 +1050,59 @@ function mergeAppStateInternal(
     tombstoneSet
   );
 
+  // Days merge block by block (mergeTimeTrackerDays): a block removed on either side stays
+  // removed (deletedBlockIds), so a dirty boot no longer brings back blocks another device deleted,
+  // replaced or cleared. Ties keep the base copy. A merge that changes the base copy is stamped
+  // with the merge time so the result uploads and wins over the row it came from.
+  const dayDoc = (tt: TimeTrackerState, date: string): TimeTrackerDayDoc | null => {
+    const blocks = tt.dailyLogs?.[date];
+    const cleared = (tt.clearedDates || []).includes(date);
+    const meta = tt.dayMeta?.[date];
+    if (blocks === undefined && !cleared && !meta) return null;
+    return {
+      date,
+      ...(blocks !== undefined ? { blocks: blocks.filter((b) => b && !tombstoneSet.has(b.id)) } : {}),
+      ...(cleared ? { cleared: true } : {}),
+      ...(meta?.updatedAt ? { updatedAt: meta.updatedAt } : {}),
+      ...(meta?.deletedBlockIds?.length ? { deletedBlockIds: meta.deletedBlockIds } : {}),
+    };
+  };
+
   const dailyLogsMap: Record<string, TimeTrackerBlock[]> = {};
+  const dayMetaMap: NonNullable<TimeTrackerState['dayMeta']> = {};
+  const clearedSet = new Set<string>();
   const allDateKeys = new Set([
     ...Object.keys(baseTT.dailyLogs || {}),
     ...Object.keys(incTT.dailyLogs || {}),
+    ...(baseTT.clearedDates || []),
+    ...(incTT.clearedDates || []),
+    ...Object.keys(baseTT.dayMeta || {}),
+    ...Object.keys(incTT.dayMeta || {}),
   ]);
+  const mergeStamp = trustedNow().toISOString();
 
   for (const dateKey of allDateKeys) {
-    const baseBlocks = baseTT.dailyLogs?.[dateKey] || [];
-    const incBlocks = incTT.dailyLogs?.[dateKey] || [];
-    const mergedBlocks = mergeEntityArrays(baseBlocks, incBlocks, tombstoneSet);
-    dailyLogsMap[dateKey] = mergedBlocks;
+    const baseDay = dayDoc(baseTT, dateKey);
+    const incDay = dayDoc(incTT, dateKey);
+    let day = baseDay && incDay ? mergeTimeTrackerDays(baseDay, incDay) : baseDay || incDay;
+    if (!day) continue;
+    if (baseDay && incDay && day !== baseDay && baseTT !== incTT) day = { ...day, updatedAt: mergeStamp };
+    if (day.blocks !== undefined) dailyLogsMap[dateKey] = day.blocks;
+    if (day.cleared) clearedSet.add(dateKey);
+    if (day.updatedAt || day.deletedBlockIds?.length) {
+      dayMetaMap[dateKey] = {
+        ...(day.updatedAt ? { updatedAt: day.updatedAt } : {}),
+        ...(day.deletedBlockIds?.length ? { deletedBlockIds: day.deletedBlockIds } : {}),
+      };
+    }
   }
-
-  const mergedClearedDates = Array.from(
-    new Set([
-      ...(baseTT.clearedDates || []),
-      ...(incTT.clearedDates || []),
-    ])
-  );
 
   const mergedTimeTracker: TimeTrackerState = {
     activities: mergedActivities,
     templates: mergedTemplates,
     dailyLogs: dailyLogsMap,
-    clearedDates: mergedClearedDates,
+    clearedDates: Array.from(clearedSet),
+    dayMeta: dayMetaMap,
   };
 
   const isIncomingGuest = incomingState.currentUser?.isAnonymous || (incomingState.currentUser as any)?.is_anonymous;

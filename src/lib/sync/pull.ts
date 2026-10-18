@@ -1,5 +1,5 @@
 import type { AppState } from '../../types';
-import { trustedNowMs } from '../clock';
+import { trustedNow, trustedNowMs } from '../clock';
 import { supabase } from '../supabase';
 import { DELETED, acceptServerRows, cursorKey, hashRow, knownHashes, lastFullPullKey, pendingOpIds } from './outbox';
 import { SYNCED_COLLECTIONS, itemsOf, rowIdOf, syncKeyOf, withItems, type SyncedCollection } from './syncedCollections';
@@ -23,6 +23,8 @@ export interface RemoteChange {
   baseHash?: string;
   /** Full pull only: every live server-owned id, so local copies the server never wrote are dropped. */
   serverOwnedLive?: string[];
+  /** A local op for this row is still waiting to be sent (only collections that merge conflicts get these rows). */
+  pending?: boolean;
 }
 
 /** Re-reads rows this close to the cursor, so a late-committing write is not skipped. */
@@ -64,7 +66,10 @@ export function prepareRemoteRows(
 
   for (const row of rows) {
     const id = typeof row.id === 'string' ? row.id : '';
-    if (!id || pending.has(id)) continue;
+    // A row with a pending local op is skipped, unless the collection merges the two (time tracker
+    // days): then the merge replaces the pending op, so neither side's edits are lost.
+    const isPending = Boolean(id) && pending.has(id);
+    if (!id || (isPending && !collection.mergeConflict)) continue;
     if (row.deleted_at) {
       // A delete this device already applied: a local copy is a re-award or restore
       // not yet saved (the diff runs after the debounced save) and must not be removed.
@@ -75,12 +80,12 @@ export function prepareRemoteRows(
     }
     const item = collection.fromRow(row) as { id: string };
     const hash = hashRow(collection.toRow(item as never));
-    if (known[id] === hash) {
+    if (known[id] === hash && !isPending) {
       if (full) changes.push({ key, id, item, missingOnly: true });
       continue;
     }
     hashes[id] = hash;
-    changes.push({ key, id, item, baseHash: known[id] });
+    changes.push({ key, id, item, baseHash: known[id], ...(isPending ? { pending: true } : {}) });
   }
 
   // stale (full pull only): a row this device once synced that the server no longer has was
@@ -114,6 +119,22 @@ function isUnsentEdit(collection: SyncedCollection, local: unknown, change: Remo
   if (!change.baseHash || !change.item || collection.serverOwnedId?.(change.id)) return false;
   const localHash = hashRow(collection.toRow(local as never));
   return localHash !== change.baseHash && localHash !== hashRow(collection.toRow(change.item as never));
+}
+
+/**
+ * The server row for an item the device holds, for a collection that merges conflicts (time
+ * tracker days). A local copy with its own unsent or pending change is merged with the row (the
+ * result is uploaded when it differs from the row); an unchanged local copy takes the row. With no
+ * baseline, only a copy edited on this device since the merge model (it has an edit stamp) is merged.
+ */
+function mergedRemoteItem(collection: SyncedCollection, local: unknown, change: RemoteChange): unknown {
+  const localHash = hashRow(collection.toRow(local as never));
+  const remoteHash = hashRow(collection.toRow(change.item as never));
+  if (localHash === remoteHash) return local;
+  const edited = Boolean(collection.editTimestamp?.(local as never));
+  const conflict = change.pending || (change.baseHash ? localHash !== change.baseHash : edited);
+  if (!conflict) return change.item;
+  return collection.mergeConflict!(local as never, change.item as never, trustedNow().toISOString(), Boolean(change.pending));
 }
 
 /** Pure: returns prev itself when nothing changes, so no save is triggered. */
@@ -150,7 +171,10 @@ export function applyRemoteChanges(prev: AppState, changes: RemoteChange[]): App
         // restore wins over this device's tombstone. Tombstones no longer sync between devices.
         if (tombstones.has(change.id)) revived.add(change.id);
         if (index === -1) items = [change.item, ...items];
-        else if (!change.missingOnly && !isUnsentEdit(collection, items[index], change)) {
+        else if (!change.missingOnly && collection.mergeConflict) {
+          const next = mergedRemoteItem(collection, items[index], change) as { id?: string };
+          if (next !== items[index]) items = items.map((item, i) => (i === index ? next : item));
+        } else if (!change.missingOnly && !isUnsentEdit(collection, items[index], change)) {
           items = items.map((item, i) => (i === index ? change.item! : item));
         }
       }
