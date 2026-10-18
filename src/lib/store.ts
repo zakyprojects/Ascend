@@ -1819,10 +1819,25 @@ export function useAppState() {
         if (points) setCachedLeaguePoints(points);
         setLeagueDataVersion((v) => v + 1);
       },
+      onStatusChange: () => setLeagueDataVersion((v) => v + 1),
     })
   );
   /** Refetches other members' standings; `full` skips the 15 s throttle (sign-in, new period). */
   const refreshLeagueStandings = leagueRefresher.refresh;
+  /**
+   * Whether other members' standings are in for this sign-in: 'ready' after a full fetch for the
+   * current member, 'failed' when the last attempt (or being offline) left none, else 'loading'.
+   * Read live each render; leagueDataVersion re-renders on every change.
+   */
+  const currentUserId = state.currentUser?.id ?? null;
+  const getLeagueStandingsStatus = useCallback((): 'loading' | 'ready' | 'failed' => {
+    const fetchedFor = leagueRefresher.fetchedUserId();
+    if (fetchedFor && fetchedFor === currentUserId) return 'ready';
+    if (leagueRefresher.isRefreshing()) return 'loading';
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    return offline || leagueRefresher.lastAttemptFailed() ? 'failed' : 'loading';
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueRefresher, currentUserId, leagueDataVersion]);
   /** Sign-out: the next account must not see this viewer's standings. */
   const clearLeagueStandings = useCallback(() => {
     leagueRefresher.reset();
@@ -8973,6 +8988,7 @@ export function useAppState() {
     toggleNotificationPreference,
     getLeagueData,
     refreshLeagueStandings,
+    getLeagueStandingsStatus,
     // New Module Actions
     logWorkout,
     deleteWorkout,

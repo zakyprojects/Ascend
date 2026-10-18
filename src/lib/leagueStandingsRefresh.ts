@@ -24,6 +24,8 @@ export interface LeagueStandingsDeps {
   now: () => Date;
   isOnline: () => boolean;
   apply: (result: LeagueStandingsResult) => void;
+  /** A refresh started or settled (so views can show loading / failed). */
+  onStatusChange?: () => void;
 }
 
 /**
@@ -36,13 +38,22 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
   let epoch = 0;
   let fetchedPeriodKey: string | null = null;
   let fetchedUserId: string | null = null;
+  /** The last attempt ended without a full result (no session, a fetch failed, or it threw). */
+  let lastAttemptFailed = false;
 
   function refresh({ full = false }: { full?: boolean } = {}): Promise<void> {
     if (inflight) return inflight;
-    if (!deps.isOnline()) return Promise.resolve();
+    if (!deps.isOnline()) {
+      if (!lastAttemptFailed) {
+        lastAttemptFailed = true;
+        deps.onStatusChange?.();
+      }
+      return Promise.resolve();
+    }
     if (!full && deps.now().getTime() - lastSuccessMs < MIN_GAP_MS) return Promise.resolve();
 
     const myEpoch = epoch;
+    let succeeded = false;
     const run = (async () => {
       const userId = await deps.sessionUserId();
       // The server returns no members without a session.
@@ -59,13 +70,20 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
       if (okProfiles && points) {
         lastSuccessMs = now.getTime();
         fetchedUserId = userId;
+        succeeded = true;
       }
     })()
       .catch((e) => console.error('Error refreshing league standings:', e))
       .finally(() => {
         if (inflight === run) inflight = null;
+        // A run from before a sign-out says nothing about the new session.
+        if (myEpoch === epoch) {
+          lastAttemptFailed = !succeeded;
+          deps.onStatusChange?.();
+        }
       });
     inflight = run;
+    deps.onStatusChange?.();
     return run;
   }
 
@@ -76,6 +94,7 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
     lastSuccessMs = -Infinity;
     fetchedPeriodKey = null;
     fetchedUserId = null;
+    lastAttemptFailed = false;
   }
 
   return {
@@ -85,5 +104,9 @@ export function createLeagueStandingsRefresher(deps: LeagueStandingsDeps) {
     fetchedPeriodKey: () => fetchedPeriodKey,
     /** Member the last full success was for (null before one). */
     fetchedUserId: () => fetchedUserId,
+    /** A request is running now. */
+    isRefreshing: () => inflight !== null,
+    /** The last attempt (or the device being offline) left no full result. */
+    lastAttemptFailed: () => lastAttemptFailed,
   };
 }
