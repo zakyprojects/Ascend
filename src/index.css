@@ -450,7 +450,14 @@
     }
   }
 
-  /* Custom scrollbar */
+  /* Custom scrollbar. Thumb colours come from the theme's overlay tokens, so light mode gets a
+     subtle grey thumb that steps a little darker on hover, and dark mode the same in white.
+     (bg-400 is a fixed dark value, which made the light thumb near-black and its hover lighter.) */
+  :root {
+    --scrollbar-thumb: var(--border-overlay-strong);
+    --scrollbar-thumb-hover: var(--border-overlay-heavy);
+  }
+
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -461,11 +468,20 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-bg-400 rounded-full;
+    @apply rounded-full;
+    background-color: var(--scrollbar-thumb);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-bg-500;
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  /* Firefox has no ::-webkit-scrollbar; give it the same default thumb. Kept out of Chrome,
+     where scrollbar-color would override the pseudo-elements above and drop the hover step. */
+  @supports not selector(::-webkit-scrollbar) {
+    html {
+      scrollbar-color: var(--scrollbar-thumb) rgb(var(--color-bg-900-rgb));
+    }
   }
 
   input[type='range'] {
