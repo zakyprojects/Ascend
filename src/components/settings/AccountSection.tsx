@@ -7,7 +7,7 @@ import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PasswordStaircase } from '@/components/ui/PasswordStaircase';
 import { GuestLogoutWarningModal } from '@/components/ui/GuestLogoutWarningModal';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
-import { Button, Form, FormAlert, Input, useFormController } from '@/components/ui/primitives';
+import { Button, Form, FormAlert, Input, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { AscendLoadingIndicator, AscendLoadingOverlay } from '@/components/ui/AscendLoadingIndicator';
 import { useAsyncAction } from '@/lib/useAsyncAction';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
@@ -35,6 +35,8 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
   const passwordForm = useFormController();
   const { isLoading: isPasswordSaving, executeFn: executePasswordSave } = useAsyncAction();
   const { confirmDiscard } = useUnsavedChanges(showPasswordForm, { currentPassword, newPassword, confirmPassword });
+  // The button goes away as the form opens: its first field takes focus instead of the page.
+  const focusNext = useFocusOnRender();
 
   const closePasswordForm = () => {
     setShowPasswordForm(false);
@@ -132,7 +134,14 @@ export function AccountSection({ store, onOpenAuth }: AccountSectionProps) {
             description="Change the password you log in with."
             control={
               !showPasswordForm && (
-                <Button variant="secondary" size="sm" onClick={() => setShowPasswordForm(true)}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setShowPasswordForm(true);
+                    focusNext('settings-current-password');
+                  }}
+                >
                   Change password
                 </Button>
               )

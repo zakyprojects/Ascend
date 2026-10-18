@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ImagePlus, X } from 'lucide-react';
 import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
-import { Button, Card, FieldErrorBubble, Form, FormAlert, Input, Select, Textarea, cx, useFormController } from '@/components/ui/primitives';
+import { Button, Card, FieldErrorBubble, Form, FormAlert, Input, Select, Textarea, cx, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { FOCUS_RING, TAP_TARGET } from '@/components/ui/primitives/shared';
 import { NAV_DASHBOARD, NAV_GROUPS, NAV_SETTINGS, getViewLabel } from '@/components/nav/navConfig';
 import { useUnsavedChanges } from '@/lib/unsavedChanges';
@@ -123,6 +123,8 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
   const fileInputRef = useRef<HTMLInputElement>(null);
   // After Send the form is replaced: focus (and screen readers) move to the "sent" heading.
   const sentHeadingRef = useRef<HTMLHeadingElement>(null);
+  // "Send another" brings the form back: its title takes focus instead of the page.
+  const focusNext = useFocusOnRender();
 
   const context = useMemo(
     () => feedbackContext(currentUser ? { uid: currentUser.uid, isAnonymous: currentUser.isAnonymous } : null),
@@ -212,6 +214,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
     setStartedAt(trustedNowMs());
     setReportRef(newFeedbackRef());
     setSentRef(null);
+    focusNext('feedback-title');
   };
 
   const backView: View = fromView === 'report-bug' || fromView === 'suggest-idea' ? 'dashboard' : fromView;
@@ -260,6 +263,7 @@ export function FeedbackView({ kind, store, fromView, onNavigate }: FeedbackView
         <Form onSubmit={handleSubmit} controller={sendIssues} alert="manual">
           <Card padding="lg" className="relative space-y-5">
             <Input
+              id="feedback-title"
               label="Title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}

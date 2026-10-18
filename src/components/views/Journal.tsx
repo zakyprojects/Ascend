@@ -12,7 +12,7 @@ import { useAsyncAction } from '@/lib/useAsyncAction';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
 import { CapMeterConnected } from '@/components/ui/CapMeterConnected';
 import { useToast } from '@/components/ui/Toast';
-import { Dialog, Disclosure, EmptyState, Form, FormAlert, PageColumns, Tabs, Textarea, useFormController } from '@/components/ui/primitives';
+import { Dialog, Disclosure, EmptyState, Form, FormAlert, PageColumns, Tabs, Textarea, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { TAP_TARGET, cx } from '@/components/ui/primitives/shared';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
@@ -51,6 +51,8 @@ export function Journal({ store }: { store: AppStore }) {
   });
   const entryForm = useUnsavedChanges(isEditingToday, [mood, content]);
   const entryIssues = useFormController();
+  // Edit swaps the saved entry for the editor: the notes take focus, caret at the end (not on page load).
+  const focusNext = useFocusOnRender();
 
   const toggleGuidedPrompt = (enabled: boolean) => {
     setShowGuidedPrompt(enabled);
@@ -324,7 +326,14 @@ export function Journal({ store }: { store: AppStore }) {
                     {existingToday.pointsAwarded && (
                       <span className="figure text-xs text-purple-hierarchy">+{JOURNAL_POINTS.entryCompleted} pts</span>
                     )}
-                    <button type="button" onClick={() => setIsEditingToday(true)} className="btn-secondary text-xs px-3 py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingToday(true);
+                        focusNext('journal-notes');
+                      }}
+                      className="btn-secondary text-xs px-3 py-1.5"
+                    >
                       <Edit3 size={14} />
                       <span>Edit</span>
                     </button>

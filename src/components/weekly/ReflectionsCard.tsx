@@ -5,7 +5,7 @@ import { AppStore, getWeeklyReflectionNetPoints, isWeeklyReflectionAwarded } fro
 import { WEEKLY_REFLECTION_POINTS } from '@/lib/pointsConfig';
 import { reflectionWindow } from '@/lib/weeklyAwards';
 import { getNow, parseDate } from '@/lib/dates';
-import { EmptyState, Form, Textarea, useFormController } from '@/components/ui/primitives';
+import { EmptyState, Form, Textarea, useFocusOnRender, useFormController } from '@/components/ui/primitives';
 import { TAP_TARGET_Y } from '@/components/ui/primitives/shared';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -57,6 +57,8 @@ export function ReflectionsCard({
   const [editing, setEditing] = useState<WeeklyGoalReflection | null>(null);
   const [editContent, setEditContent] = useState('');
   const [deleting, setDeleting] = useState<WeeklyGoalReflection | null>(null);
+  // Write / Edit replace their button with the editor: its text field takes focus (caret at the end).
+  const focusNext = useFocusOnRender();
   const newForm = useUnsavedChanges(adding, newContent);
   const editForm = useUnsavedChanges(editing?.id ?? null, editContent);
   const newIssues = useFormController();
@@ -113,6 +115,7 @@ export function ReflectionsCard({
             onClick={() => {
               setNewContent('');
               setAdding(true);
+              focusNext('new-reflection-content');
             }}
             className="btn-primary shrink-0 px-3 py-1.5 text-xs"
           >
@@ -138,7 +141,6 @@ export function ReflectionsCard({
             placeholder="What went well? What got in the way? What will you change next week?"
             className="min-h-[90px] leading-relaxed"
             maxLength={2000}
-            autoFocus
             required
           />
           <div className="dialog-actions">
@@ -167,7 +169,6 @@ export function ReflectionsCard({
                   onChange={(e) => setEditContent(e.target.value)}
                   className="min-h-[90px] leading-relaxed"
                   maxLength={2000}
-                  autoFocus
                   required
                 />
                 <div className="dialog-actions">
@@ -196,6 +197,7 @@ export function ReflectionsCard({
                           editForm.confirmDiscard(() => {
                             setEditing(ref);
                             setEditContent(ref.content);
+                            focusNext('edit-reflection-content');
                           })
                         }
                         className={`p-1.5 text-content-muted transition-colors hover:text-content-secondary ${TAP_TARGET_Y}`}
