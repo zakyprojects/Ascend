@@ -23,6 +23,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { useLeaguePeriodRollover } from '@/lib/useLeaguePeriodRollover';
 import { useLeagueStandingsRefresh } from '@/lib/useLeagueStandingsRefresh';
 import { CountUp, Reveal } from '@/components/ui/Motion';
+import { isPartnershipUser1 } from '@/lib/partnershipSide';
 
 const LEAGUE_TYPES: LeagueType[] = ['weekly', 'monthly', 'ninetyDay'];
 
@@ -142,6 +143,22 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const openArchive = openArchiveId ? store.state.leagueArchives.find((a) => a.id === openArchiveId) ?? null : null;
 
   const currentUser = store.state.currentUser;
+  // Partners see each other's stats in the profile dialog (same rule as the server, audit L19).
+  const partnerships = store.state.partnerships;
+  const { partnerIds, partnerNames } = useMemo(() => {
+    const ids = new Set<string>();
+    const names = new Set<string>();
+    const me = currentUser?.id;
+    for (const p of partnerships || []) {
+      if (!p) continue;
+      const mine = isPartnershipUser1(p, me, currentUser?.username || store.state.username);
+      const otherId = mine ? p.user2Id : p.user1Id;
+      const otherName = mine ? p.user2Username : p.user1Username;
+      if (otherId && otherId !== me) ids.add(otherId);
+      if (otherName) names.add(otherName.toLowerCase());
+    }
+    return { partnerIds: ids, partnerNames: names };
+  }, [partnerships, currentUser?.id, currentUser?.username, store.state.username]);
 
   const retry = async () => {
     setRetrying(true);
@@ -398,6 +415,7 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
         competitor={selectedCompetitor}
         seasonPoints={selectedCompetitor ? seasonPointsOf(selectedCompetitor) : 0}
         viewerIsPublic={currentUser ? (currentUser.isProfilePublic ?? true) : true}
+        isPartner={selectedCompetitor && !selectedCompetitor.isUser ? partnerIds.has(selectedCompetitor.id ?? '') || (!selectedCompetitor.id && partnerNames.has(selectedCompetitor.name.toLowerCase())) : false}
         open={!!selectedCompetitor}
         onClose={() => setSelectedCompetitor(null)}
       />

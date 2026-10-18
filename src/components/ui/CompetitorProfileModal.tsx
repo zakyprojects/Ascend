@@ -11,6 +11,8 @@ interface CompetitorProfileModalProps {
   /** The member's season points, which set their tier (competitor.points are the open tab's period points). */
   seasonPoints: number;
   viewerIsPublic?: boolean;
+  /** Partners always see each other's stats (the server sends them whatever the privacy setting). */
+  isPartner?: boolean;
   open: boolean;
   onClose: () => void;
 }
@@ -19,6 +21,7 @@ export function CompetitorProfileModal({
   competitor,
   seasonPoints,
   viewerIsPublic = true,
+  isPartner = false,
   open,
   onClose,
 }: CompetitorProfileModalProps) {
@@ -26,7 +29,7 @@ export function CompetitorProfileModal({
 
   const isSelf = competitor.isUser;
   const targetIsPublic = competitor.isProfilePublic ?? true;
-  const canViewDetailed = isSelf || (viewerIsPublic && targetIsPublic);
+  const canViewDetailed = isSelf || isPartner || (viewerIsPublic && targetIsPublic);
 
   const stats = competitor.stats;
   const seasonHistory = competitor.season_history;
@@ -53,7 +56,10 @@ export function CompetitorProfileModal({
                     You
                   </span>
                 )}
-                {competitor.isRealUser && !competitor.isUser && (
+                {isPartner && !competitor.isUser && (
+                  <span className="badge-sky text-2xs font-medium px-2 py-0.5 rounded-lg shrink-0">Partner</span>
+                )}
+                {competitor.isRealUser && !competitor.isUser && !isPartner && (
                   <span className="badge-emerald text-2xs font-medium px-2 py-0.5 rounded-lg shrink-0">
                     Member
                   </span>
@@ -85,7 +91,7 @@ export function CompetitorProfileModal({
         {/* Reciprocal Privacy Guard Notice */}
         {!canViewDetailed ? (
           <div className="rounded-xl border border-overlay-subtle p-6 text-center space-y-2.5">
-            <div className="flex items-center justify-center text-content-subtle">
+            <div className="flex items-center justify-center text-content-muted">
               {!viewerIsPublic ? <EyeOff size={18} className="text-warning-text" /> : <Lock size={18} />}
             </div>
 
