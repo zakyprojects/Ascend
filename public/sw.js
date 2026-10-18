@@ -110,7 +110,8 @@ self.addEventListener('push', (event) => {
       body: data.body || '',
       tag: data.id || undefined,
       icon: '/android-chrome-192x192.png',
-      badge: '/favicon-32x32.png',
+      // Android draws the badge from its alpha only: a white Streak silhouette on transparent.
+      badge: '/notification-badge.png',
       data: { url: data.url || '/' },
     })
   );

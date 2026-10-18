@@ -42,7 +42,7 @@ export async function showFocusNotification(title: string, body: string, onOpen:
   const options: NotificationOptions & { renotify?: boolean } = {
     body,
     icon: '/android-chrome-192x192.png',
-    badge: '/favicon-32x32.png',
+    badge: '/notification-badge.png',
     tag: 'ascend-focus',
     renotify: true,
     data: { url: PFC_PATH },
