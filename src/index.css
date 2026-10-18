@@ -1403,11 +1403,12 @@ html[data-page-hidden] *::after {
     scale 450ms cubic-bezier(0.25, 0.5, 0.3, 1);
 }
 
-/* Swipe rows (ui/SwipeRow.tsx): vertical pans stay with the browser, horizontal drags come to the
-   row; on release the row springs back to rest. The action icon swells once the drag passes the mark. */
+/* Swipe rows (ui/SwipeRow.tsx): vertical pans and pinch-zoom stay with the browser, horizontal drags
+   come to the row; on release the row springs back to rest. The action icon swells once the drag
+   passes the mark. */
 .swipe-row-surface {
   position: relative;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
 }
 .swipe-row-surface.is-settling {
   transition: translate 320ms var(--ease-emphasized);

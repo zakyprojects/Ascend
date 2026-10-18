@@ -75,6 +75,7 @@ export function Sparkline({
       ref={ref}
       role="img"
       aria-label={label}
+      data-no-swipe=""
       className={cx('relative w-full touch-pan-y cursor-crosshair', toneText[tone], className)}
       style={{ height }}
       onPointerMove={onPointer}

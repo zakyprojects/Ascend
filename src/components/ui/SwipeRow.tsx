@@ -1,5 +1,6 @@
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { nearScreenEdge, SLOP_PX } from '@/lib/gestures';
 import { hapticSuccess } from '@/lib/haptics';
 import { cx } from './primitives/shared';
 
@@ -22,11 +23,8 @@ export interface SwipeRowProps {
   className?: string;
 }
 
-// Movement before the gesture picks an axis; a mostly vertical start is left to the page scroll.
-const SLOP_PX = 10;
+// A mostly vertical start is left to the page scroll.
 const HORIZONTAL_BIAS = 1.2;
-// Touches starting this close to a screen edge belong to the system back gesture.
-const EDGE_PX = 24;
 // Commit distance: a third of the row, capped so wide rows don't need a long drag.
 const commitDistance = (width: number) => Math.min(width * 0.34, 120);
 // Past the commit point the row follows the finger at this rate (rubber band).
@@ -57,7 +55,7 @@ export function SwipeRow({ right, left, children, className }: SwipeRowProps) {
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType === 'mouse' || (!right && !left)) return;
-    if (e.clientX < EDGE_PX || e.clientX > window.innerWidth - EDGE_PX) return;
+    if (nearScreenEdge(e.clientX)) return;
     const width = rowRef.current?.offsetWidth ?? 0;
     gesture.current = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, width, armed: false };
   };
@@ -134,6 +132,7 @@ export function SwipeRow({ right, left, children, className }: SwipeRowProps) {
       )}
       <div
         ref={rowRef}
+        data-no-swipe=""
         className={cx('swipe-row-surface', !dragging && 'is-settling')}
         style={offset ? { translate: `${offset}px 0` } : undefined}
         onPointerDown={onPointerDown}

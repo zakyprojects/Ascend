@@ -50,7 +50,7 @@ export function BarChart({
   const max = maxProp ?? (Math.max(0, ...data.map((d) => d.value)) || 1);
 
   return (
-    <div ref={ref} role="group" aria-label={label} className={cx('w-full', toneText[tone], className)}>
+    <div ref={ref} role="group" aria-label={label} data-no-swipe="" className={cx('w-full', toneText[tone], className)}>
       <div className="relative flex items-end gap-1.5" style={{ height }} onPointerLeave={clear}>
         {data.map((datum, i) => {
           const percent = Math.min(100, Math.max(0, (datum.value / (max || 1)) * 100));

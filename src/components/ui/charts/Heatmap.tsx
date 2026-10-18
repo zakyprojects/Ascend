@@ -57,6 +57,7 @@ export function Heatmap({ cells, label, tone = 'brand', max, className }: Heatma
       ref={ref}
       role="img"
       aria-label={label}
+      data-no-swipe=""
       className={cx('relative w-full', toneText[tone], className)}
       onPointerMove={onPointer}
       onPointerDown={onPointer}

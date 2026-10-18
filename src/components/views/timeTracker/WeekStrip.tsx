@@ -33,7 +33,7 @@ export function WeekStrip({ timeTracker, today, selectedDateKey, onSelect }: Wee
   );
 
   return (
-    <nav className="space-y-2" aria-label="Choose day">
+    <nav className="space-y-2" aria-label="Choose day" data-no-swipe="">
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => onSelect(addDays(selectedDateKey, -7))} className={arrow} aria-label="Previous week">
           <ChevronLeft size={16} />
