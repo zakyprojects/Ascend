@@ -3,7 +3,8 @@ import type { LucideIcon } from 'lucide-react';
 import { useActiveBox } from '@/lib/useActiveBox';
 import { useHoverGlide } from '@/lib/useHoverGlide';
 import { useScrollFade } from '@/lib/useScrollFade';
-import { useTabSwipe } from '@/lib/useTabSwipe';
+import { PageSwipeContext } from '@/lib/pageSwipe';
+import { useTabSwipe, type SwipeDirection } from '@/lib/useTabSwipe';
 import { cx, FOCUS_RING, TRANSITION, TAP_TARGET } from './shared';
 import type { NavStatusTone } from '@/lib/navStatus';
 
@@ -233,10 +234,33 @@ export interface TabPanelProps {
 /**
  * The active tab's content: the tabpanel the strip points at, swiped sideways on touch screens to
  * reach the neighbouring tab (lib/useTabSwipe). Only the active panel is rendered by the page.
+ * Inside the app shell the swipe continues past the first/last tab to the neighbouring page
+ * (lib/pageSwipe); elsewhere it bounces.
  */
 export function TabPanel({ idBase, ids, value, onChange, className, children }: TabPanelProps) {
   const ref = React.useRef<HTMLDivElement>(null);
-  useTabSwipe(ref, { ids, value, onChange, stripId: stripDomId(idBase) });
+  const page = React.useContext(PageSwipeContext);
+  useTabSwipe(ref, { ids, value, onChange, stripId: stripDomId(idBase), edge: page?.edge, entry: page?.takeEntry });
+
+  // Lets a swipe on the page around the panel (its header) step through these tabs first.
+  const latest = React.useRef({ ids, value, onChange });
+  latest.current = { ids, value, onChange };
+  React.useLayoutEffect(() => {
+    if (!page) return;
+    const neighbour = (direction: SwipeDirection) => {
+      const { ids: list, value: current } = latest.current;
+      const index = list.indexOf(current);
+      const visible = !!document.getElementById(stripDomId(idBase))?.getClientRects().length;
+      return index === -1 || !visible ? undefined : list[index + (direction === 'next' ? 1 : -1)];
+    };
+    return page.register({
+      canMove: (direction) => neighbour(direction) !== undefined,
+      move: (direction) => {
+        const target = neighbour(direction);
+        if (target !== undefined) latest.current.onChange(target);
+      },
+    });
+  }, [page, idBase]);
   return (
     <div
       ref={ref}

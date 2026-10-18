@@ -80,6 +80,19 @@ function revealStrip(strip: HTMLElement): void {
   else window.scrollBy({ top, behavior });
 }
 
+/** The new content slides in from the side it lies on: step 1 from the right, -1 from the left.
+ *  Off with reduced motion. Web Animations, so it restarts on every change without a remount. */
+export function slideIn(el: HTMLElement, step: number): void {
+  if (!step || prefersReducedMotion() || typeof el.animate !== 'function') return;
+  el.animate(
+    [
+      { translate: `${step * ENTER_OFFSET_PX}px 0`, opacity: 0 },
+      { translate: '0 0', opacity: 1 },
+    ],
+    { duration: ENTER_MS, easing: ENTER_EASE }
+  );
+}
+
 /**
  * Swipe a panel sideways to reach the next (finger moves left) or previous item of its strip, on
  * touch screens only. Native listeners on the panel itself: React's synthetic events would also
@@ -271,13 +284,6 @@ export function useTabSwipe(
     panel.style.translate = '';
     panel.style.opacity = '';
     panel.style.willChange = '';
-    if (!step || (!wasSwiped && !animateTaps) || prefersReducedMotion() || typeof panel.animate !== 'function') return;
-    panel.animate(
-      [
-        { translate: `${step * ENTER_OFFSET_PX}px 0`, opacity: 0 },
-        { translate: '0 0', opacity: 1 },
-      ],
-      { duration: ENTER_MS, easing: ENTER_EASE }
-    );
+    if (wasSwiped || animateTaps) slideIn(panel, step);
   }, [value, panelRef, animateTaps]);
 }
