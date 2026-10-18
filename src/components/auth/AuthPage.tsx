@@ -226,7 +226,7 @@ export function AuthPage({ screen, search, guestState, onAuthSuccess, onDone, on
 
   return (
     <div
-      className="auth-page relative isolate min-h-dvh bg-bg-900 flex flex-col lg:block lg:h-dvh lg:overflow-hidden"
+      className="auth-page relative isolate flex-1 lg:min-h-0 bg-bg-900 flex flex-col lg:block lg:overflow-hidden"
       style={{ '--auth-panel-shift': panelShift, '--auth-form-shift': formShift } as React.CSSProperties}
     >
       {/* Brand panel: a band on top below lg; the desktop split's emerald side at lg+. */}

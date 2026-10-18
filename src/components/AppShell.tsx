@@ -228,7 +228,7 @@ export function AppShell({ currentView, navigationKind, pendingView = null, onVi
   ).length;
 
   return (
-    <div className="relative isolate min-h-screen lg:h-dvh bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div className="relative isolate flex-1 lg:min-h-0 bg-bg-900 flex lg:overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div aria-hidden="true" className="app-atmosphere" />
       {pendingView && <div aria-hidden="true" className="page-progress" />}
       {/* Desktop navigation: one column with every page, or its icon rail (nav/Sidebar). */}

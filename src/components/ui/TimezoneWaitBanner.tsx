@@ -13,8 +13,8 @@ function formatResume(resumesAt: Date): string {
   return `${resumesAt.toLocaleDateString([], { weekday: 'short' })} ${time}`;
 }
 
-/** Explains why today's ticks earn no points while a timezone change waits on the server. */
-export function TimezoneWaitBanner() {
+/** The server-side timezone wait, if any (re-read every 10 min, on focus, on auth change). */
+export function useTimezoneWait(): TimezoneWait | null {
   const [wait, setWait] = useState<TimezoneWait | null>(null);
 
   useEffect(() => {
@@ -54,11 +54,14 @@ export function TimezoneWaitBanner() {
     return () => clearTimeout(timer);
   }, [wait]);
 
-  if (!wait || (typeof navigator !== 'undefined' && navigator.onLine === false)) return null;
+  return wait;
+}
 
+/** Explains why today's ticks earn no points while a timezone change waits on the server. */
+export function TimezoneWaitBanner({ wait }: { wait: TimezoneWait }) {
   return (
     <div
-      className="fixed top-[calc(0.5rem_+_env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-popover max-w-lg w-[calc(100%-2rem)] bg-bg-700 border border-overlay-default px-4 py-2.5 rounded-2xl shadow-sm flex items-center gap-3 animate-slide-down"
+      className="w-full max-w-lg bg-bg-700 border border-overlay-default px-4 py-2.5 rounded-2xl shadow-sm flex items-center gap-3 animate-slide-down"
       role="status"
     >
       <div className="p-1.5 rounded-lg bg-overlay-subtle shrink-0 text-content-secondary">

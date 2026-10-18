@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 // Design v3 type: Geist for the interface, Instrument Serif for the big moments (page titles,
 // hero numbers), Geist Mono for small labels, timers and counters.
 import '@fontsource-variable/geist';
@@ -50,7 +51,10 @@ if (import.meta.env.DEV && devParams.has('splash-preview')) {
   installPagePrefetch();
   root.render(
     <StrictMode>
-      <App />
+      {/* A throw outside the page area (shell, nav, banners, sign-in page) gets a Reload card, not a blank screen. */}
+      <ErrorBoundary variant="page">
+        <App />
+      </ErrorBoundary>
     </StrictMode>
   );
 }

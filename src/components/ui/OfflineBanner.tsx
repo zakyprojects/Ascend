@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { WifiOff, Wifi } from 'lucide-react';
 import { trustedNowMs } from '@/lib/clock';
 
-export function OfflineBanner() {
+export type ConnectionStatus = 'online' | 'offline' | 'restored';
+
+/** Watches the connection (browser events + a light heartbeat). "restored" lasts 4 s after a return. */
+export function useConnectionStatus(): ConnectionStatus {
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
@@ -116,10 +119,17 @@ export function OfflineBanner() {
     };
   }, [performHeartbeatCheck]);
 
-  if (!isOnline) {
+  if (!isOnline) return 'offline';
+  if (showRestored) return 'restored';
+  return 'online';
+}
+
+/** One in-flow banner (BannerStack decides which one shows); never fixed over the header. */
+export function OfflineBanner({ status }: { status: Exclude<ConnectionStatus, 'online'> }) {
+  if (status === 'offline') {
     return (
       <div
-        className="fixed top-[calc(0.5rem_+_env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-popover max-w-lg w-[calc(100%-2rem)] bg-bg-700 border border-overlay-default px-4 py-2.5 rounded-2xl shadow-sm flex items-center gap-3 animate-slide-down"
+        className="w-full max-w-lg bg-bg-700 border border-overlay-default px-4 py-2.5 rounded-2xl shadow-sm flex items-center gap-3 animate-slide-down"
         role="alert"
         aria-live="assertive"
       >
@@ -134,19 +144,15 @@ export function OfflineBanner() {
     );
   }
 
-  if (showRestored) {
-    return (
-      <div
-        className="fixed top-[calc(0.5rem_+_env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-popover max-w-lg w-[calc(100%-2rem)] bg-bg-700 border border-emerald-500/30 px-4 py-2.5 rounded-2xl shadow-sm flex items-center gap-3 animate-slide-down"
-        role="status"
-      >
-        <div className="p-1.5 rounded-lg bg-emerald-500/15 shrink-0 text-success-text">
-          <Wifi size={16} aria-hidden="true" />
-        </div>
-        <p className="text-xs font-medium text-content-primary">Back online. Your changes are syncing.</p>
+  return (
+    <div
+      className="w-full max-w-lg bg-bg-700 border border-emerald-500/30 px-4 py-2.5 rounded-2xl shadow-sm flex items-center gap-3 animate-slide-down"
+      role="status"
+    >
+      <div className="p-1.5 rounded-lg bg-emerald-500/15 shrink-0 text-success-text">
+        <Wifi size={16} aria-hidden="true" />
       </div>
-    );
-  }
-
-  return null;
+      <p className="text-xs font-medium text-content-primary">Back online. Your changes are syncing.</p>
+    </div>
+  );
 }

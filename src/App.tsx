@@ -42,10 +42,8 @@ import { Button } from '@/components/ui/primitives';
 import { AscendLoadingOverlay, OVERLAY_EXIT_MS } from '@/components/ui/AscendLoadingIndicator';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
-import { OfflineBanner } from '@/components/ui/OfflineBanner';
-import { TimezoneWaitBanner } from '@/components/ui/TimezoneWaitBanner';
+import { BannerStack } from '@/components/ui/BannerStack';
 import { DiscardChangesDialog } from '@/components/ui/DiscardChangesDialog';
-import { UpdateBanner } from '@/components/ui/UpdateBanner';
 
 function App() {
   const store = useAppState();
@@ -210,10 +208,11 @@ function App() {
     <>
       {authReady && (
         <ToastProvider>
-          <UpdateBanner />
-          <OfflineBanner />
-          <TimezoneWaitBanner />
           <DiscardChangesDialog />
+          {/* One column: the banner slot in flow, then the sign-in page or the shell filling the rest
+              (so a banner never covers the header and never pushes the desktop shell off screen). */}
+          <div className="flex flex-col min-h-dvh lg:h-dvh">
+          <BannerStack />
           {authScreen && AuthPageView && (
             <AuthPageView
               screen={authScreen}
@@ -237,7 +236,7 @@ function App() {
               store={store}
               onOpenAuth={openAuth}
             >
-              <ErrorBoundary fallbackTitle="Section Error">
+              <ErrorBoundary>
                 <Suspense fallback={<PageSkeleton />}>
                   {view === 'dashboard' && <Dashboard store={store} onViewChange={setView} onOpenAuth={openAuth} />}
                   {view === 'habits' && <HabitTracker store={store} />}
@@ -277,6 +276,7 @@ function App() {
             </AppShell>
             </FocusSessionProvider>
           )}
+          </div>
 
           <ConfirmDeleteModal
             open={Boolean(store.destructiveWipeModal?.open)}

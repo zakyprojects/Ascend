@@ -1,10 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { APP_BUILD_ID } from '@/lib/version';
 import { trustedNowMs } from '@/lib/clock';
 
-export function UpdateBanner() {
+/** True once a newer build is live (version.json differs, or a service worker replaced the old one). */
+export function useUpdateAvailable(): boolean {
   const [hasUpdate, setHasUpdate] = useState(false);
+  // A page that had no controller (first visit, new device, cleared data) gets one through
+  // clients.claim(): that first controllerchange is not an update.
+  const hadControllerRef = useRef(
+    typeof navigator !== 'undefined' && 'serviceWorker' in navigator && Boolean(navigator.serviceWorker.controller)
+  );
 
   const checkForUpdate = useCallback(async () => {
     if (hasUpdate) return;
@@ -37,6 +43,10 @@ export function UpdateBanner() {
     let handleControllerChange: (() => void) | null = null;
     if ('serviceWorker' in navigator) {
       handleControllerChange = () => {
+        if (!hadControllerRef.current) {
+          hadControllerRef.current = true;
+          return;
+        }
         setHasUpdate(true);
       };
       navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
@@ -51,12 +61,14 @@ export function UpdateBanner() {
     };
   }, [checkForUpdate]);
 
-  if (!hasUpdate) return null;
+  return hasUpdate;
+}
 
+export function UpdateBanner() {
   return (
     <div
       role="status"
-      className="bg-primary-700 text-white text-xs pl-4 pr-2 py-1.5 flex items-center justify-between gap-3 shadow-sm relative z-50"
+      className="w-full max-w-lg bg-primary-700 text-white text-xs pl-4 pr-2 py-1.5 rounded-2xl flex items-center justify-between gap-3 shadow-sm"
     >
       <div className="flex items-center gap-2 min-w-0">
         <RefreshCw size={14} aria-hidden="true" className="shrink-0" />
