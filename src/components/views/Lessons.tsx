@@ -3,7 +3,7 @@ import { BookOpen, Check, Clock, Search } from 'lucide-react';
 import { AppStore } from '@/lib/store';
 import { LESSONS, LESSON_CATEGORIES } from '@/lib/lessons';
 import type { Lesson } from '@/types';
-import { cx, EmptyState, Switch, Tabs, ToolbarInput } from '@/components/ui/primitives';
+import { cx, EmptyState, Switch, TabPanel, Tabs, ToolbarInput } from '@/components/ui/primitives';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { PageHero } from '@/components/ui/PageHero';
 import { getSeasonNumber, leagueNow } from '@/lib/leagueTime';
@@ -11,6 +11,7 @@ import { isLessonReadInSeason } from '@/lib/lessonAwards';
 import { LessonReader, pointsLabel } from '@/components/lessons/LessonReader';
 
 const ALL = 'all';
+const CATEGORY_TABS = [ALL, ...LESSON_CATEGORIES];
 
 export function Lessons({ store }: { store: AppStore }) {
   const [category, setCategory] = useState<string>(ALL);
@@ -101,6 +102,7 @@ export function Lessons({ store }: { store: AppStore }) {
         />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Tabs
+            idBase="lessons"
             ariaLabel="Lesson categories"
             size="sm"
             scrollable
@@ -123,52 +125,54 @@ export function Lessons({ store }: { store: AppStore }) {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={BookOpen}
-          title={unreadOnly && searchMatches.length > 0 ? 'All read here' : 'No lessons found'}
-          description={unreadOnly && searchMatches.length > 0 ? 'Turn off Unread only to read one again.' : 'Try a different search or category.'}
-        />
-      ) : (
-        <div className="grid-cards-lg gap-2.5">
-          {filtered.map((lesson) => {
-            const read = isRead(lesson.id);
-            return (
-              <button
-                key={lesson.id}
-                type="button"
-                onClick={() => setOpenLesson(lesson)}
-                className="card card-hover enter-item flex w-full items-start gap-3 p-4 text-left"
-              >
-                <span
-                  className={cx(
-                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
-                    read ? 'bg-primary-500/15 text-brand-text' : 'bg-overlay-subtle text-content-muted'
-                  )}
+      <TabPanel idBase="lessons" ids={CATEGORY_TABS} value={category} onChange={setCategory}>
+        {filtered.length === 0 ? (
+          <EmptyState
+            icon={BookOpen}
+            title={unreadOnly && searchMatches.length > 0 ? 'All read here' : 'No lessons found'}
+            description={unreadOnly && searchMatches.length > 0 ? 'Turn off Unread only to read one again.' : 'Try a different search or category.'}
+          />
+        ) : (
+          <div className="grid-cards-lg gap-2.5">
+            {filtered.map((lesson) => {
+              const read = isRead(lesson.id);
+              return (
+                <button
+                  key={lesson.id}
+                  type="button"
+                  onClick={() => setOpenLesson(lesson)}
+                  className="card card-hover enter-item flex w-full items-start gap-3 p-4 text-left"
                 >
-                  {read ? <Check size={18} aria-hidden="true" /> : <BookOpen size={18} aria-hidden="true" />}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className={cx('item-name line-clamp-2 text-sm leading-snug', read ? 'text-content-tertiary' : 'text-content-primary')}>
-                    {lesson.title}
-                  </span>
-                  <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-content-muted">
-                    <span>{lesson.category}</span>
-                    <span className="figure flex items-center gap-0.5">
-                      <Clock size={11} aria-hidden="true" /> {lesson.readTime} min
-                    </span>
-                    {read ? (
-                      <span className="text-success-text">Read</span>
-                    ) : (
-                      <span className="figure text-brand-text">{pointsLabel(lesson.points)}</span>
+                  <span
+                    className={cx(
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
+                      read ? 'bg-primary-500/15 text-brand-text' : 'bg-overlay-subtle text-content-muted'
                     )}
+                  >
+                    {read ? <Check size={18} aria-hidden="true" /> : <BookOpen size={18} aria-hidden="true" />}
                   </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+                  <span className="min-w-0 flex-1">
+                    <span className={cx('item-name line-clamp-2 text-sm leading-snug', read ? 'text-content-tertiary' : 'text-content-primary')}>
+                      {lesson.title}
+                    </span>
+                    <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-content-muted">
+                      <span>{lesson.category}</span>
+                      <span className="figure flex items-center gap-0.5">
+                        <Clock size={11} aria-hidden="true" /> {lesson.readTime} min
+                      </span>
+                      {read ? (
+                        <span className="text-success-text">Read</span>
+                      ) : (
+                        <span className="figure text-brand-text">{pointsLabel(lesson.points)}</span>
+                      )}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </TabPanel>
 
       <LessonReader
         lesson={openLesson}
