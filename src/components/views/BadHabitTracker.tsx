@@ -14,7 +14,7 @@ import { getActiveBadHabitsOrdered, getPointEligibleHabitIds } from '@/lib/badHa
 import { getCapStatus } from '@/lib/capStatus';
 import { getEffectiveSeasonPoints, ptsText } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
-import { hapticSuccess } from '@/lib/haptics';
+import { actionFeedback } from '@/lib/actionFeedback';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { nameTaken } from '@/lib/uniqueNames';
 import { CountUp, Reveal } from '@/components/ui/Motion';
@@ -64,7 +64,7 @@ export function BadHabitTracker({ store }: { store: AppStore }) {
 
   const resist = (habit: BadHabit) => {
     setPopping(habit.id, true);
-    hapticSuccess();
+    actionFeedback('tick');
     // The day at the tap, not at the last render: just after midnight the store would refuse a stale date.
     store.logBadHabitDay(habit.id, todayKey(), 'resisted');
   };

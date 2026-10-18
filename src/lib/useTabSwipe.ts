@@ -1,6 +1,6 @@
 import { RefObject, useEffect, useLayoutEffect, useRef } from 'react';
 import { nearScreenEdge, SLOP_PX, startsInsideOwnGesture } from '@/lib/gestures';
-import { hapticSuccess } from '@/lib/haptics';
+import { actionFeedback } from '@/lib/actionFeedback';
 import { prefersReducedMotion } from '@/lib/motion';
 
 export type SwipeDirection = 'next' | 'prev';
@@ -205,7 +205,7 @@ export function useTabSwipe(
       const limit = commitDistance(g.width);
       const open = canGo(dx < 0 ? 'next' : 'prev');
       const armed = open && Math.abs(dx) >= limit;
-      if (armed && !g.armed) hapticSuccess();
+      if (armed && !g.armed) actionFeedback('swipe');
       g.armed = armed;
       if (prefersReducedMotion()) return;
       if (open) {
@@ -229,7 +229,7 @@ export function useTabSwipe(
       const direction: SwipeDirection = g.dx < 0 ? 'next' : 'prev';
       settle();
       if (!(g.armed || flick) || !canGo(direction)) return;
-      if (flick && !g.armed) hapticSuccess();
+      if (flick && !g.armed) actionFeedback('swipe');
       const target = neighbour(direction);
       if (target === undefined) return latest.current.edge?.go(direction);
       swiped.current = true;

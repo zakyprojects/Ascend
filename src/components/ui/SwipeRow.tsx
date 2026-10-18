@@ -1,7 +1,7 @@
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { nearScreenEdge, SLOP_PX } from '@/lib/gestures';
-import { hapticSuccess } from '@/lib/haptics';
+import { actionFeedback } from '@/lib/actionFeedback';
 import { cx } from './primitives/shared';
 
 export interface SwipeAction {
@@ -85,7 +85,7 @@ export function SwipeRow({ right, left, children, className }: SwipeRowProps) {
     const abs = Math.abs(dx);
     const shown = abs <= limit ? abs : limit + (abs - limit) * OVERDRAG_RATE;
     const armed = abs >= limit && !action.disabled;
-    if (armed && !g.armed) hapticSuccess();
+    if (armed && !g.armed) actionFeedback('swipe');
     g.armed = armed;
     setOffset(Math.sign(dx) * (action.disabled ? Math.min(shown, limit * 0.5) : shown));
   };

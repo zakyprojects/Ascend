@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { hapticSuccess } from '@/lib/haptics';
+import { actionFeedback } from '@/lib/actionFeedback';
 
 /**
  * Completion-check "pop", driven by the user's own click rather than by state.
@@ -9,14 +9,14 @@ import { hapticSuccess } from '@/lib/haptics';
  * device. Call `arm()` from the handler that marks the item complete; the pop
  * plays when `isDone` turns true. Un-checking and checking again replays it,
  * because the check icon remounts (or leaves display:none) each time.
- * The phone buzzes once each time the pop plays, so haptics follow the same rule.
+ * The tick feedback (vibration or sound, Settings) plays once each time the pop plays, so it follows the same rule.
  */
 export function useCompletionPop(isDone: boolean) {
   const [armed, setArmed] = useState(false);
   const arm = useCallback(() => setArmed(true), []);
   const popping = armed && isDone;
   useEffect(() => {
-    if (popping) hapticSuccess();
+    if (popping) actionFeedback('tick');
   }, [popping]);
   return { arm, popClass: popping ? 'animate-pop' : '' };
 }

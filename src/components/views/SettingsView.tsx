@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Eye, Info, KeyRound, Palette, User, type LucideIcon } from 'lucide-react';
+import { Bell, Eye, Info, KeyRound, Palette, User, Vibrate, type LucideIcon } from 'lucide-react';
 import { GuestSaveBanner } from '@/components/ui/GuestSaveBanner';
 import { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
@@ -18,6 +18,7 @@ import { ProfileSection } from '@/components/settings/ProfileSection';
 import { AccountSection } from '@/components/settings/AccountSection';
 import { NotificationsSection } from '@/components/settings/NotificationsSection';
 import { AboutSection, AppearanceSection, PrivacySection } from '@/components/settings/PreferenceSections';
+import { SoundVibrationSection } from '@/components/settings/SoundVibrationSection';
 
 interface SettingsViewProps {
   store: AppStore;
@@ -32,6 +33,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: LucideIcon }[] = [
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'privacy', label: 'Privacy', icon: Eye },
   { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'sound', label: 'Sound & vibration', icon: Vibrate },
   { id: 'about', label: 'About', icon: Info },
 ];
 const SECTION_IDS = SECTIONS.map(({ id }) => id);
@@ -141,6 +143,7 @@ export function SettingsView({ store, onOpenAuth, onNavigate }: SettingsViewProp
             {section === 'notifications' && <NotificationsSection store={store} />}
             {section === 'privacy' && <PrivacySection store={store} />}
             {section === 'appearance' && <AppearanceSection store={store} />}
+            {section === 'sound' && <SoundVibrationSection />}
             {section === 'about' && <AboutSection onNavigate={onNavigate} />}
           </Reveal>
         </TabPanel>

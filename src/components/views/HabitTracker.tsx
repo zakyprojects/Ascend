@@ -6,7 +6,7 @@ import { getNow, weekKey, formatWeekdayDate, formatWeekdayShort } from '@/lib/da
 import { getEffectiveSeasonPoints, ptsText } from '@/lib/leagues';
 import { leagueNow } from '@/lib/leagueTime';
 import { PRESET_HABIT_POINTS } from '@/lib/pointsConfig';
-import { hapticSuccess } from '@/lib/haptics';
+import { actionFeedback } from '@/lib/actionFeedback';
 import { useLocalDayKey } from '@/lib/useLocalDayKey';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useToast } from '@/components/ui/Toast';
@@ -69,7 +69,7 @@ export function HabitTracker({ store }: { store: AppStore }) {
       else next.add(habit.id);
       return next;
     });
-    if (!wasDone) hapticSuccess();
+    if (!wasDone) actionFeedback('tick');
     store.toggleHabit(habit.id);
   };
 
