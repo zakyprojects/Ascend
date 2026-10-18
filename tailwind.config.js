@@ -168,7 +168,6 @@ export default {
         // element's own `-translate-x-1/2` centering transform.
         'slide-down': 'slideDown var(--duration-enter) var(--ease-emphasized) both',
         'shake': 'shake 320ms var(--ease-standard)',
-        'rank-glow': 'rankGlow 1400ms var(--ease-standard) both',
         'slide-in-left': 'slideInLeft var(--duration-enter) var(--ease-emphasized) both',
         // Boot overlay (AscendLoadingOverlay): the entrance mirrors index.html's splash
         // (.sp-enter); exit durations are set inline from OVERLAY_EXIT_MS.
@@ -256,11 +255,6 @@ export default {
           '0%, 100%': { transform: 'translateX(0)' },
           '20%, 60%': { transform: 'translateX(-4px)' },
           '40%, 80%': { transform: 'translateX(4px)' },
-        },
-        rankGlow: {
-          '0%': { opacity: '0', transform: 'scale(0.85)' },
-          '30%': { opacity: '1', transform: 'scale(1.05)' },
-          '100%': { opacity: '0', transform: 'scale(1.1)' },
         },
       },
       transitionDuration: {

@@ -184,6 +184,43 @@ export function actionFeedback(kind: ActionFeedbackKind): void {
   else if (mode === 'sound') playSound(kind, prefs.soundVolume);
 }
 
+/** A celebration plays somewhat louder than a tick at the same volume step, never harsh. */
+const CELEBRATION_GAIN = 1.8;
+/** A sound that cannot start this soon (no tap yet to unlock audio) is skipped, not played late. */
+const CELEBRATION_LATE_MS = 400;
+
+/**
+ * A bigger moment the app shows (the rank-up), following the user's tick choice: `play` gets the
+ * audio and a peak gain for 'sound', `pattern` buzzes for 'vibration', 'none' stays silent.
+ * `forceSound` plays the sound whatever the choice (the gallery's audition).
+ */
+export function celebrationFeedback(
+  play: (ctx: AudioContext, peak: number) => void,
+  pattern: number[],
+  forceSound = false
+): void {
+  const prefs = getFeedbackPrefs();
+  if (prefs.tick === 'sound' || forceSound) {
+    const ctx = audioContext();
+    if (!ctx) return;
+    const peak = SOUND_GAIN[prefs.soundVolume] * CELEBRATION_GAIN;
+    if (ctx.state === 'running') return play(ctx, peak);
+    const askedAt = performance.now();
+    void ctx
+      .resume()
+      .then(() => {
+        if (performance.now() - askedAt < CELEBRATION_LATE_MS) play(ctx, peak);
+      })
+      .catch(() => undefined);
+  } else if (prefs.tick === 'vibration' && canVibrate()) {
+    try {
+      navigator.vibrate(pattern);
+    } catch {
+      /* blocked without a user gesture */
+    }
+  }
+}
+
 /** Plays a mode once so Settings can let the user feel or hear a choice as they make it. */
 export function previewFeedback(kind: ActionFeedbackKind, mode: FeedbackMode, prefs: FeedbackPrefs = getFeedbackPrefs()): void {
   if (mode === 'vibration') vibrate(prefs.vibrationStrength);

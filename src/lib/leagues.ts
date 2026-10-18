@@ -150,20 +150,6 @@ export function sortPointsNewestFirst(history: PointsEntry[]): PointsEntry[] {
   );
 }
 
-/** The newest ledger entry by timestamp (not by stored position). */
-export function getNewestPointsEntry(history: PointsEntry[] | undefined): PointsEntry | undefined {
-  let newest: PointsEntry | undefined;
-  let newestMs = -Infinity;
-  for (const entry of history ?? []) {
-    const ms = new Date(entry.timestamp).getTime();
-    if (ms > newestMs || (ms === newestMs && newest && entryIdOrder.compare(entry.id || '', newest.id || '') > 0)) {
-      newest = entry;
-      newestMs = ms;
-    }
-  }
-  return newest;
-}
-
 /** Returns milliseconds until the current period ends */
 export function getTimeUntilReset(type: LeagueType, now: Date): number {
   const end = getLeaguePeriodEnd(type, now);
