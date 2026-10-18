@@ -69,6 +69,30 @@ export const supabase = createClient(
 );
 
 /**
+ * Checks a password for the signed-in email without touching the app's own sign-in (D-S3): a
+ * separate client that keeps nothing, then a sign-out of just that check's session. The app's
+ * session, its events and the other devices are unaffected.
+ */
+export async function verifyAccountPassword(email: string, password: string): Promise<'ok' | 'wrong'> {
+  const checker = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storageKey: `${AUTH_STORAGE_KEY}-password-check`,
+    },
+  });
+  const { error } = await checker.auth.signInWithPassword({ email, password });
+  if (error) {
+    if (error.code === 'invalid_credentials' || /invalid login credentials/i.test(error.message || '')) return 'wrong';
+    throw new Error(error.message || "Couldn't check your password. Try again.");
+  }
+  // 'local' ends only the session this check just made.
+  await checker.auth.signOut({ scope: 'local' }).catch(() => undefined);
+  return 'ok';
+}
+
+/**
  * The sign-in this device still holds (a refresh token), or null. Supabase reports no session
  * when refreshing an expired one fails on the network (a phone waking up), yet keeps it saved and
  * signs it in again moments later; a dead sign-in is removed from storage instead.
@@ -472,15 +496,38 @@ const PRIVATE_PROFILE_COLUMNS = [
   'device_timezone',
 ];
 
-/** Upserts the public profile columns, then writes the private ones with a plain update. */
+/**
+ * Columns with their own writers (username: `ascend_change_username`; avatar: `updateUserAvatar`).
+ * A settings save sends them only when it has to create the row, so a device holding an old
+ * avatar can't put it back over one chosen on another device (S4). The row is normally created
+ * at sign-in (`insertInitialProfile`), before any save can run.
+ */
+const IDENTITY_PROFILE_COLUMNS = ['username', 'avatar'];
+
+/**
+ * Writes the public profile columns (an update; the full upsert, identity included, only when the
+ * row does not exist yet), then the private ones with a plain update.
+ */
 async function writeOwnProfile(userId: string, payload: Record<string, any>) {
   const publicPart: Record<string, any> = {};
   const privatePart: Record<string, any> = {};
   for (const [key, value] of Object.entries(payload)) {
     (PRIVATE_PROFILE_COLUMNS.includes(key) ? privatePart : publicPart)[key] = value;
   }
-  const { error } = await supabase.from('profiles').upsert(publicPart);
-  if (error || Object.keys(privatePart).length === 0) return error;
+  const updatePart = Object.fromEntries(
+    Object.entries(publicPart).filter(([key]) => key !== 'id' && !IDENTITY_PROFILE_COLUMNS.includes(key))
+  );
+  const { data: updatedRows, error: updateErr } = await supabase
+    .from('profiles')
+    .update(updatePart)
+    .eq('id', userId)
+    .select('id');
+  if (updateErr) return updateErr;
+  if (!updatedRows || updatedRows.length === 0) {
+    const { error } = await supabase.from('profiles').upsert(publicPart);
+    if (error) return error;
+  }
+  if (Object.keys(privatePart).length === 0) return null;
   const { error: privateErr } = await supabase.from('profiles').update(privatePart).eq('id', userId);
   return privateErr;
 }

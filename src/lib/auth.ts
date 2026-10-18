@@ -10,6 +10,7 @@ import {
   isSupabaseConfigured,
   clearUserDataWatermark,
   fetchMyPrivateProfile,
+  verifyAccountPassword,
 } from './supabase';
 import { trustedNow, trustedNowMs } from './clock';
 
@@ -100,7 +101,7 @@ export function getProfileSeasonPointsByUsername(
 export async function isUsernameAvailable(
   username: string,
   currentUserId?: string
-): Promise<{ available: boolean; reason?: string }> {
+): Promise<{ available: boolean; reason?: string; unknown?: boolean }> {
   const trimmed = username.trim();
   if (!trimmed) {
     return { available: false, reason: 'Username cannot be empty' };
@@ -125,7 +126,9 @@ export async function isUsernameAvailable(
         .ilike('username', trimmed);
 
       if (error) {
+        // Not known: the server still refuses a taken name when it is saved.
         console.warn('Username check query error:', error.message);
+        return { available: true, unknown: true };
       } else if (data && data.length > 0) {
         const taken = data.some((p) => p.id !== currentUserId && p.username.toLowerCase() === lower);
         if (taken) {
@@ -134,6 +137,7 @@ export async function isUsernameAvailable(
       }
     } catch (e) {
       console.warn('Username check failed:', e);
+      return { available: true, unknown: true };
     }
   }
 
@@ -449,13 +453,27 @@ export async function updateUserAvatar(userId: string, newAvatar: string): Promi
   });
 }
 
+/** The current password typed to confirm a change is not the account's. */
+export class WrongCurrentPasswordError extends Error {
+  constructor() {
+    super("That password isn't right.");
+    this.name = 'WrongCurrentPasswordError';
+  }
+}
+
 /**
- * Change current user password in Supabase Auth.
+ * Change current user password in Supabase Auth. With `current`, the current password is checked
+ * first (D-S3).
  */
-export async function changeUserPassword(newPassword: string): Promise<void> {
+export async function changeUserPassword(newPassword: string, current?: { email: string; password: string }): Promise<void> {
   const problem = newPasswordProblem(newPassword);
   if (problem) {
     throw new Error(`Password: ${problem.toLowerCase()}.`);
+  }
+  if (current) {
+    if ((await verifyAccountPassword(current.email, current.password)) === 'wrong') {
+      throw new WrongCurrentPasswordError();
+    }
   }
 
   const { error } = await supabase.auth.updateUser({ password: newPassword });
