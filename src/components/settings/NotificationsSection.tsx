@@ -51,12 +51,14 @@ export function NotificationsSection({ store }: { store: AppStore }) {
   const [pushStatus, setPushStatus] = useState<PushStatus>('off');
   const { isLoading: isPushSaving, executeFn: executePushToggle } = useAsyncAction();
 
+  const userId = currentUser?.id;
+
   // Read again when the user comes back to the tab: permission may have changed in the browser's
   // own settings meanwhile (S13).
   useEffect(() => {
     const refresh = () => {
       setPermission(browserPermission());
-      getPushStatus()
+      getPushStatus(userId)
         .then(setPushStatus)
         .catch(() => setPushStatus('off'));
     };
@@ -66,7 +68,7 @@ export function NotificationsSection({ store }: { store: AppStore }) {
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, []);
+  }, [userId]);
 
   const handlePushToggle = () =>
     executePushToggle(async () => {
@@ -75,12 +77,18 @@ export function NotificationsSection({ store }: { store: AppStore }) {
           await disablePush();
           setPushStatus('off');
         } else {
-          setPushStatus(await enablePush());
+          setPushStatus(await enablePush(userId));
           setPermission(browserPermission());
         }
       } catch (err) {
+        console.error('[push] toggle failed:', err);
         showErrorToast("Couldn't change push notifications", toUserMessage(err, 'Please try again.'));
-        setPushStatus(await getPushStatus().catch((): PushStatus => 'off'));
+        // Off at once (a service worker that never got ready must not keep the switch spinning),
+        // then the real state in the background.
+        setPushStatus('off');
+        getPushStatus(userId)
+          .then(setPushStatus)
+          .catch(() => undefined);
       }
     });
 

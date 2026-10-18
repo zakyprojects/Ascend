@@ -8,7 +8,13 @@ const STATIC_FILE = /\.(?:png|svg|ico|webp|jpg|jpeg|woff2|webmanifest)$|^\/manif
 // from this cache first. It keeps the newest ASSET_CACHE_LIMIT files; older builds' files go.
 const ASSET_CACHE_NAME = 'ascend-assets-v1';
 const ASSET_CACHE_LIMIT = 200;
-const CURRENT_CACHES = [PAGE_CACHE_NAME, STATIC_CACHE_NAME, ASSET_CACHE_NAME];
+// Push bookkeeping (not a page cache): the endpoint replaced in 'pushsubscriptionchange', kept
+// until the page removes it from the account (src/lib/push.ts reads the same names).
+const PUSH_CACHE_NAME = 'ascend-push-v1';
+const OLD_ENDPOINT_KEY = '/__ascend/push-old-endpoint';
+// Same public VAPID key as src/lib/push.ts (must match the send-push secret).
+const VAPID_PUBLIC_KEY = 'BCm0FKHm8dST6fMA1txExLaijZvgYrl20Zy_jmS9oCDazA7lyEVVsnrYiNxXTw829zeFvaDoEl_VzMSgkP8ydGU';
+const CURRENT_CACHES = [PAGE_CACHE_NAME, STATIC_CACHE_NAME, ASSET_CACHE_NAME, PUSH_CACHE_NAME];
 
 // Install event - skip waiting to activate immediately
 self.addEventListener('install', () => {
@@ -96,6 +102,38 @@ self.addEventListener('push', (event) => {
       badge: '/favicon-32x32.png',
       data: { url: data.url || '/' },
     })
+  );
+});
+
+// The browser replaced or expired this device's push subscription. Subscribe again with the same
+// key, remember the old endpoint, and tell any open window, which saves the new subscription to the
+// account and removes the old one (the service worker has no sign-in of its own). With no window
+// open, the next app start does the same (syncPushSubscription).
+function vapidKeyBytes() {
+  const base64 = (VAPID_PUBLIC_KEY + '='.repeat((4 - (VAPID_PUBLIC_KEY.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) bytes[i] = raw.charCodeAt(i);
+  return bytes;
+}
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  const oldEndpoint = event.oldSubscription ? event.oldSubscription.endpoint : null;
+  event.waitUntil(
+    (async () => {
+      if (oldEndpoint) {
+        const cache = await caches.open(PUSH_CACHE_NAME);
+        await cache.put(OLD_ENDPOINT_KEY, new Response(oldEndpoint));
+      }
+      const subscription =
+        event.newSubscription ||
+        (await self.registration.pushManager.getSubscription()) ||
+        (await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKeyBytes() }));
+      const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of clientList) {
+        client.postMessage({ type: 'ascend:push-subscription-changed', endpoint: subscription.endpoint });
+      }
+    })().catch(() => undefined)
   );
 });
 

@@ -7,6 +7,7 @@ import { consumeSignOutByUser, logoutUser } from '@/lib/auth';
 import type { View } from '@/lib/views';
 import { isSupabaseConfigured, storedAuthSession } from '@/lib/supabase';
 import { reloadOnceForStaleChunk } from '@/lib/chunkReload';
+import { syncPushSubscription } from '@/lib/push';
 import { AppShell } from '@/components/AppShell';
 import { FocusSessionProvider } from '@/components/pfc/FocusSessionProvider';
 import {
@@ -201,6 +202,23 @@ function App() {
   useEffect(() => {
     if (appVisible) prefetchAllViewsWhenIdle();
   }, [appVisible]);
+
+  // Push on this device: once per signed-in start (and account), save the browser's subscription to
+  // the account again, or subscribe afresh if the browser dropped it while push is on here. The
+  // service worker asks again when the browser replaces the subscription (pushsubscriptionchange).
+  const pushUserId = authReady && !store.isSessionLoading ? currentUser?.id : undefined;
+  useEffect(() => {
+    if (!pushUserId) return;
+    void syncPushSubscription(pushUserId);
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      if ((event.data as { type?: unknown } | null)?.type === 'ascend:push-subscription-changed') {
+        void syncPushSubscription(pushUserId);
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+  }, [pushUserId]);
 
   // In-app sign-in buttons: a guest saves progress on /signup, anyone else signs in on /login;
   // both come back to this page afterwards. Unsaved typing asks "Discard changes?" first, like any
