@@ -1,11 +1,12 @@
-import { BookOpen, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { NAV_GROUPS } from './navConfig';
 import { Dialog } from '@/components/ui/primitives';
-import { cx, FOCUS_RING, TAP_TARGET, TRANSITION } from '@/components/ui/primitives/shared';
+import { cx, FOCUS_RING, TRANSITION } from '@/components/ui/primitives/shared';
 import type { AppStore } from '@/lib/store';
 import type { View } from '@/lib/views';
 import type { NavStatuses } from '@/lib/navStatus';
 import { pageLinkProps } from '@/lib/pageLink';
+import { HabitCheck, isReadingLinked } from '@/components/habits/HabitCheck';
 
 /** Pages Quick log jumps to: their logging needs the page's own form. */
 const JUMPS: View[] = ['journal', 'exercise', 'reading', 'time-tracker'];
@@ -46,35 +47,15 @@ export function QuickLog({ open, onClose, store, statuses, onNavigate }: QuickLo
             <ul className="space-y-1.5">
               {habits.map((habit) => {
                 const done = store.isHabitDone(habit);
-                const isLinked = habit.isSystemLinked || habit.linkedModule === 'reading';
+                const isLinked = isReadingLinked(habit);
                 return (
                   <li key={habit.id} className="flex items-center gap-3 rounded-xl px-1 py-0.5">
-                    <button
-                      type="button"
-                      disabled={isLinked}
-                      aria-pressed={isLinked ? undefined : done}
-                      aria-label={isLinked ? `${habit.name} (log in Reading Hub)` : done ? `Undo ${habit.name}` : `Mark ${habit.name} done`}
-                      title={isLinked ? 'Log reading progress in Reading Hub' : undefined}
-                      onClick={() => store.toggleHabit(habit.id)}
-                      className={cx(
-                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border',
-                        isLinked
-                          ? 'cursor-default border-overlay-subtle bg-bg-600/60 text-content-subtle'
-                          : done
-                            ? 'border-primary-500/50 bg-primary-500 text-on-brand'
-                            : 'border-overlay-subtle bg-bg-600 text-content-disabled hover:bg-bg-500 hover:text-content-tertiary active:scale-90',
-                        TAP_TARGET,
-                        FOCUS_RING,
-                        TRANSITION
-                      )}
-                    >
-                      {isLinked ? <BookOpen size={15} aria-hidden="true" /> : <Check size={18} aria-hidden="true" />}
-                    </button>
+                    <HabitCheck habit={habit} done={done} size="sm" onToggle={() => store.toggleHabit(habit.id)} />
                     <span className={cx('min-w-0 flex-1 truncate text-sm', done ? 'text-content-muted line-through decoration-overlay-strong' : 'text-content-secondary')}>
                       {habit.name}
                     </span>
                     {habit.isPreset && habit.points > 0 && !isLinked && (
-                      <span className={cx('text-2xs font-medium tabular-nums', done ? 'text-content-subtle' : 'text-brand-text')}>+{habit.points}</span>
+                      <span className={cx('text-2xs font-medium tabular-nums', done ? 'text-content-muted' : 'text-brand-text')}>+{habit.points}</span>
                     )}
                   </li>
                 );
