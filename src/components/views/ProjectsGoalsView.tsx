@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownUp, CheckSquare, Filter, FolderKanban, HelpCircle, Plus, Search, Target, X } from 'lucide-react';
-import { cx, EmptyState as EmptyStateBase, SlidingPill, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
+import { cx, EmptyState as EmptyStateBase, SlidingPill, TabPanel, Tabs, ToolbarInput, ToolbarSelect } from '@/components/ui/primitives';
 import { TAP_TARGET } from '@/components/ui/primitives/shared';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/ui/Motion';
@@ -509,6 +509,7 @@ export function ProjectsGoalsView({
   // Render
   // --------------------------------------------------------------------------
   const orderedTabs = TAB_ORDER[tabOrder];
+  const changeTab = (id: string) => setActiveTab(id as SubViewTab);
   const tabCounts = { tasks: tasks.length, projects: projects.length, goals: goals.length };
   const primaryAction =
     activeTab === 'tasks'
@@ -582,11 +583,12 @@ export function ProjectsGoalsView({
 
       <div className="flex items-center gap-2">
         <Tabs
+          idBase="projects-goals"
           ariaLabel="Projects and goals sections"
           className="min-w-0 flex-1"
           scrollable
           value={activeTab}
-          onChange={(id) => setActiveTab(id as SubViewTab)}
+          onChange={changeTab}
           items={orderedTabs.map((id, index) => ({
             id,
             label: `${index + 1}. ${TAB_META[id].label}`,
@@ -612,259 +614,201 @@ export function ProjectsGoalsView({
         </button>
       </div>
 
-      {/* ------------------------------------------------------------------ GOALS */}
-      {activeTab === 'goals' && (
-        <div className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <ToolbarInput
-              type="search"
-              icon={Search}
-              aria-label="Search goals"
-              placeholder="Search goals"
-              value={goalSearch}
-              onChange={(e) => setGoalSearch(e.target.value)}
-              wrapperClassName="flex-1"
-            />
-            <FilterRow
-              label="Goal status"
-              value={goalStatusFilter}
-              onChange={setGoalStatusFilter}
-              activeClass={{
-                active: 'border-emerald-500/30 bg-emerald-500/15',
-                achieved: 'border-[var(--badge-purple-border)] bg-[var(--badge-purple-bg)]',
-              }}
-              options={[
-                { id: 'all', label: `All ${goalSearchMatches.length}` },
-                { id: 'active', label: `Active ${goalSearchMatches.filter((g) => g.status === 'active').length}` },
-                { id: 'achieved', label: `Achieved ${goalSearchMatches.filter((g) => g.status === 'achieved').length}` },
-                { id: 'abandoned', label: `Abandoned ${goalSearchMatches.filter((g) => g.status === 'abandoned').length}` },
-              ]}
-            />
-          </div>
-
-          {filteredGoals.length === 0 ? (
-            <EmptyState
-              tier="goals"
-              isFiltered={goals.length > 0}
-              onClearFilters={clearGoalFilters}
-              onCreate={() => setGoalForm({ key: nextKey(), editing: null })}
-            />
-          ) : (
-            <div className="grid-cards-xl items-start gap-3">
-              {filteredGoals.map((goal) => (
-                <GoalCard
-                  key={goal.id}
-                  goal={goal}
-                  prog={h.getGoalProgress(goal)}
-                  today={today}
-                  onStatusChange={(s) => changeGoalStatus(goal, s)}
-                  onOpenProjects={() => openGoalProjects(goal.id)}
-                  onAddProject={() => setProjectForm({ key: nextKey(), editing: null, goalId: goal.id })}
-                  onUpdateProgress={() =>
-                    setProgressUpdate({ kind: 'goal', id: goal.id, title: goal.title, current: h.getGoalProgress(goal).percent })
-                  }
-                  onEdit={() => setGoalForm({ key: nextKey(), editing: goal })}
-                  onDelete={() => setDeleteGoalTarget(goal)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------------ PROJECTS */}
-      {activeTab === 'projects' && (
-        <div className="space-y-4">
-          {filterGoal && (
-            <ScopeBar icon={Target} text="Projects of the goal" name={filterGoal.title} onClear={() => setFilterGoalId(null)} />
-          )}
-
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+      <TabPanel idBase="projects-goals" ids={orderedTabs} value={activeTab} onChange={changeTab}>
+        {/* ------------------------------------------------------------------ GOALS */}
+        {activeTab === 'goals' && (
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <ToolbarInput
                 type="search"
                 icon={Search}
-                aria-label="Search projects"
-                placeholder="Search projects"
-                value={projectSearch}
-                onChange={(e) => setProjectSearch(e.target.value)}
+                aria-label="Search goals"
+                placeholder="Search goals"
+                value={goalSearch}
+                onChange={(e) => setGoalSearch(e.target.value)}
                 wrapperClassName="flex-1"
               />
-              {!filterGoalId && (
-                <ToolbarSelect aria-label="Filter projects by goal" value={projectGoalFilter} onChange={(e) => setProjectGoalFilter(e.target.value)}>
-                  <option value="all">All goals</option>
-                  <option value="standalone">No goal</option>
-                  {goals.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.title}
-                    </option>
-                  ))}
-                </ToolbarSelect>
-              )}
+              <FilterRow
+                label="Goal status"
+                value={goalStatusFilter}
+                onChange={setGoalStatusFilter}
+                activeClass={{
+                  active: 'border-emerald-500/30 bg-emerald-500/15',
+                  achieved: 'border-[var(--badge-purple-border)] bg-[var(--badge-purple-bg)]',
+                }}
+                options={[
+                  { id: 'all', label: `All ${goalSearchMatches.length}` },
+                  { id: 'active', label: `Active ${goalSearchMatches.filter((g) => g.status === 'active').length}` },
+                  { id: 'achieved', label: `Achieved ${goalSearchMatches.filter((g) => g.status === 'achieved').length}` },
+                  { id: 'abandoned', label: `Abandoned ${goalSearchMatches.filter((g) => g.status === 'abandoned').length}` },
+                ]}
+              />
             </div>
-            <FilterRow
-              label="Project status"
-              value={projectStatusFilter}
-              onChange={setProjectStatusFilter}
-              activeClass={{
-                in_progress: 'border-[var(--badge-cyan-border)] bg-[var(--badge-cyan-bg)]',
-                completed: 'border-emerald-500/30 bg-emerald-500/15',
-              }}
-              options={[
-                { id: 'all', label: `All ${projectCounts.all}` },
-                { id: 'in_progress', label: `In progress ${projectCounts.in_progress}` },
-                { id: 'not_started', label: `Not started ${projectCounts.not_started}` },
-                { id: 'on_hold', label: `On hold ${projectCounts.on_hold}` },
-                { id: 'completed', label: `Completed ${projectCounts.completed}` },
-                ...(projectCounts.locked > 0 || projectStatusFilter === 'locked'
-                  ? [{ id: 'locked' as const, label: `Locked ${projectCounts.locked}` }]
-                  : []),
-              ]}
-            />
-          </div>
 
-          {filteredProjects.length === 0 ? (
-            <EmptyState
-              tier="projects"
-              isFiltered={projectsInScope.length > 0 || (!filterGoalId && projects.length > 0)}
-              onClearFilters={clearProjectFilters}
-              onCreate={() => setProjectForm({ key: nextKey(), editing: null, goalId: scopedGoal?.id })}
-            />
-          ) : (
-            <div className="grid-cards-xl items-start gap-3">
-              {filteredProjects.map((project) => {
-                const lock = h.getLockStatus(project);
-                const prog = h.getProjectProgress(project);
-                const index = showReorder ? filteredProjects.indexOf(project) : -1;
-                return (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    prog={prog}
-                    lock={lock}
-                    goalName={goalName(project.goalId)}
+            {filteredGoals.length === 0 ? (
+              <EmptyState
+                tier="goals"
+                isFiltered={goals.length > 0}
+                onClearFilters={clearGoalFilters}
+                onCreate={() => setGoalForm({ key: nextKey(), editing: null })}
+              />
+            ) : (
+              <div className="grid-cards-xl items-start gap-3">
+                {filteredGoals.map((goal) => (
+                  <GoalCard
+                    key={goal.id}
+                    goal={goal}
+                    prog={h.getGoalProgress(goal)}
                     today={today}
-                    reorder={
-                      showReorder
-                        ? {
-                            canUp: index > 0,
-                            canDown: index < filteredProjects.length - 1,
-                            onMove: (direction) => store.moveProjectOrder(project.id, direction),
-                          }
-                        : undefined
+                    onStatusChange={(s) => changeGoalStatus(goal, s)}
+                    onOpenProjects={() => openGoalProjects(goal.id)}
+                    onAddProject={() => setProjectForm({ key: nextKey(), editing: null, goalId: goal.id })}
+                    onUpdateProgress={() =>
+                      setProgressUpdate({ kind: 'goal', id: goal.id, title: goal.title, current: h.getGoalProgress(goal).percent })
                     }
-                    onStatusChange={(s) => changeProjectStatus(project, s)}
-                    onOpenGoal={() => project.goalId && openGoalProjects(project.goalId)}
-                    onOpenTasks={() => openProjectTasks(project.id)}
-                    onAddTask={() => startTaskForProject(project.id)}
-                    onUpdateProgress={() => setProgressUpdate({ kind: 'project', id: project.id, title: project.title, current: prog.percent })}
-                    onEdit={() => setProjectForm({ key: nextKey(), editing: project })}
-                    onDelete={() => setDeleteProjectTarget(project)}
+                    onEdit={() => setGoalForm({ key: nextKey(), editing: goal })}
+                    onDelete={() => setDeleteGoalTarget(goal)}
                   />
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* ------------------------------------------------------------------ TASKS */}
-      {activeTab === 'tasks' && (
-        <div className="space-y-4">
-          {filterProject && (
-            <div className="space-y-2">
-              <ScopeBar icon={FolderKanban} text="Tasks of the project" name={filterProject.title} onClear={() => setFilterProjectId(null)} />
-              {filterProjectLock?.isLocked && filterProjectLock.blockingProject && (
-                <p className="px-1 text-xs text-content-muted">
-                  These tasks unlock when "{filterProjectLock.blockingProject.title}" is done.
-                </p>
-              )}
-            </div>
-          )}
+        {/* ------------------------------------------------------------------ PROJECTS */}
+        {activeTab === 'projects' && (
+          <div className="space-y-4">
+            {filterGoal && (
+              <ScopeBar icon={Target} text="Projects of the goal" name={filterGoal.title} onClear={() => setFilterGoalId(null)} />
+            )}
 
-          <form onSubmit={handleQuickAddTask} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <ToolbarInput
-              ref={quickTaskInputRef}
-              id="input-quick-add-task"
-              type="text"
-              icon={CheckSquare}
-              aria-label="New task"
-              placeholder="e.g. Read 10 pages, do 50 pushups, drink 3L water"
-              value={quickTaskTitle}
-              onChange={(e) => setQuickTaskTitle(e.target.value)}
-              maxLength={120}
-              wrapperClassName="flex-1"
-            />
-            <div className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 sm:flex">
-              <ToolbarSelect aria-label="New task priority" value={quickTaskPriority} onChange={(e) => setQuickTaskPriority(e.target.value as TaskPriority)}>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </ToolbarSelect>
-              {filterProjectId ? (
-                <span aria-hidden="true" />
-              ) : (
-                <ToolbarSelect aria-label="New task project" value={quickTaskProjectId} onChange={(e) => setQuickTaskProjectId(e.target.value)} className="truncate">
-                  <option value="">No project</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title}
-                    </option>
-                  ))}
-                </ToolbarSelect>
-              )}
-              <button
-                id="btn-quick-add-task"
-                type="submit"
-                disabled={!quickTaskTitle.trim() || isKeyLoading('quick_add_task')}
-                className="btn-primary shrink-0 px-3.5 py-2 text-xs disabled:opacity-50"
-              >
-                {isKeyLoading('quick_add_task') ? <AscendLoadingIndicator size="sm" /> : <Plus size={14} aria-hidden="true" />}
-                <span>Add</span>
-              </button>
-            </div>
-          </form>
-
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              <div className="flex w-full flex-1 items-center gap-2">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <ToolbarInput
                   type="search"
                   icon={Search}
-                  aria-label="Search tasks"
-                  placeholder="Search tasks"
-                  value={taskSearch}
-                  onChange={(e) => setTaskSearch(e.target.value)}
+                  aria-label="Search projects"
+                  placeholder="Search projects"
+                  value={projectSearch}
+                  onChange={(e) => setProjectSearch(e.target.value)}
                   wrapperClassName="flex-1"
                 />
-                <button
-                  type="button"
-                  aria-expanded={taskFiltersOpen}
-                  aria-controls="task-filters-selects task-filters-status"
-                  onClick={() => setTaskFiltersOpen((open) => !open)}
-                  className={cx(
-                    'flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors sm:hidden',
-                    taskFiltersOpen || activeTaskFilterCount > 0
-                      ? 'border-emerald-500/30 bg-emerald-500/15 text-success-text'
-                      : 'border-overlay-default bg-bg-900 text-content-muted'
-                  )}
-                >
-                  <Filter size={14} aria-hidden="true" />
-                  <span>Filters</span>
-                  {activeTaskFilterCount > 0 && <span className="tabular-nums">{activeTaskFilterCount}</span>}
-                </button>
+                {!filterGoalId && (
+                  <ToolbarSelect aria-label="Filter projects by goal" value={projectGoalFilter} onChange={(e) => setProjectGoalFilter(e.target.value)}>
+                    <option value="all">All goals</option>
+                    <option value="standalone">No goal</option>
+                    {goals.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.title}
+                      </option>
+                    ))}
+                  </ToolbarSelect>
+                )}
               </div>
-              <div id="task-filters-selects" className={cx('grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto', !taskFiltersOpen && 'max-sm:hidden')}>
-                <ToolbarSelect aria-label="Filter tasks by priority" value={taskPriorityFilter} onChange={(e) => setTaskPriorityFilter(e.target.value as 'all' | TaskPriority)}>
-                  <option value="all">Any priority</option>
+              <FilterRow
+                label="Project status"
+                value={projectStatusFilter}
+                onChange={setProjectStatusFilter}
+                activeClass={{
+                  in_progress: 'border-[var(--badge-cyan-border)] bg-[var(--badge-cyan-bg)]',
+                  completed: 'border-emerald-500/30 bg-emerald-500/15',
+                }}
+                options={[
+                  { id: 'all', label: `All ${projectCounts.all}` },
+                  { id: 'in_progress', label: `In progress ${projectCounts.in_progress}` },
+                  { id: 'not_started', label: `Not started ${projectCounts.not_started}` },
+                  { id: 'on_hold', label: `On hold ${projectCounts.on_hold}` },
+                  { id: 'completed', label: `Completed ${projectCounts.completed}` },
+                  ...(projectCounts.locked > 0 || projectStatusFilter === 'locked'
+                    ? [{ id: 'locked' as const, label: `Locked ${projectCounts.locked}` }]
+                    : []),
+                ]}
+              />
+            </div>
+
+            {filteredProjects.length === 0 ? (
+              <EmptyState
+                tier="projects"
+                isFiltered={projectsInScope.length > 0 || (!filterGoalId && projects.length > 0)}
+                onClearFilters={clearProjectFilters}
+                onCreate={() => setProjectForm({ key: nextKey(), editing: null, goalId: scopedGoal?.id })}
+              />
+            ) : (
+              <div className="grid-cards-xl items-start gap-3">
+                {filteredProjects.map((project) => {
+                  const lock = h.getLockStatus(project);
+                  const prog = h.getProjectProgress(project);
+                  const index = showReorder ? filteredProjects.indexOf(project) : -1;
+                  return (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      prog={prog}
+                      lock={lock}
+                      goalName={goalName(project.goalId)}
+                      today={today}
+                      reorder={
+                        showReorder
+                          ? {
+                              canUp: index > 0,
+                              canDown: index < filteredProjects.length - 1,
+                              onMove: (direction) => store.moveProjectOrder(project.id, direction),
+                            }
+                          : undefined
+                      }
+                      onStatusChange={(s) => changeProjectStatus(project, s)}
+                      onOpenGoal={() => project.goalId && openGoalProjects(project.goalId)}
+                      onOpenTasks={() => openProjectTasks(project.id)}
+                      onAddTask={() => startTaskForProject(project.id)}
+                      onUpdateProgress={() => setProgressUpdate({ kind: 'project', id: project.id, title: project.title, current: prog.percent })}
+                      onEdit={() => setProjectForm({ key: nextKey(), editing: project })}
+                      onDelete={() => setDeleteProjectTarget(project)}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------------ TASKS */}
+        {activeTab === 'tasks' && (
+          <div className="space-y-4">
+            {filterProject && (
+              <div className="space-y-2">
+                <ScopeBar icon={FolderKanban} text="Tasks of the project" name={filterProject.title} onClear={() => setFilterProjectId(null)} />
+                {filterProjectLock?.isLocked && filterProjectLock.blockingProject && (
+                  <p className="px-1 text-xs text-content-muted">
+                    These tasks unlock when "{filterProjectLock.blockingProject.title}" is done.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <form onSubmit={handleQuickAddTask} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <ToolbarInput
+                ref={quickTaskInputRef}
+                id="input-quick-add-task"
+                type="text"
+                icon={CheckSquare}
+                aria-label="New task"
+                placeholder="e.g. Read 10 pages, do 50 pushups, drink 3L water"
+                value={quickTaskTitle}
+                onChange={(e) => setQuickTaskTitle(e.target.value)}
+                maxLength={120}
+                wrapperClassName="flex-1"
+              />
+              <div className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 sm:flex">
+                <ToolbarSelect aria-label="New task priority" value={quickTaskPriority} onChange={(e) => setQuickTaskPriority(e.target.value as TaskPriority)}>
                   <option value="high">High</option>
                   <option value="medium">Medium</option>
                   <option value="low">Low</option>
                 </ToolbarSelect>
-                {!filterProjectId && (
-                  <ToolbarSelect aria-label="Filter tasks by project" value={taskProjectFilter} onChange={(e) => setTaskProjectFilter(e.target.value)}>
-                    <option value="all">All projects</option>
-                    <option value="standalone">No project</option>
+                {filterProjectId ? (
+                  <span aria-hidden="true" />
+                ) : (
+                  <ToolbarSelect aria-label="New task project" value={quickTaskProjectId} onChange={(e) => setQuickTaskProjectId(e.target.value)} className="truncate">
+                    <option value="">No project</option>
                     {projects.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.title}
@@ -872,90 +816,150 @@ export function ProjectsGoalsView({
                     ))}
                   </ToolbarSelect>
                 )}
+                <button
+                  id="btn-quick-add-task"
+                  type="submit"
+                  disabled={!quickTaskTitle.trim() || isKeyLoading('quick_add_task')}
+                  className="btn-primary shrink-0 px-3.5 py-2 text-xs disabled:opacity-50"
+                >
+                  {isKeyLoading('quick_add_task') ? <AscendLoadingIndicator size="sm" /> : <Plus size={14} aria-hidden="true" />}
+                  <span>Add</span>
+                </button>
               </div>
-            </div>
-            <FilterRow
-              id="task-filters-status"
-              label="Task view"
-              value={taskView}
-              onChange={setTaskView}
-              className={cx(!taskFiltersOpen && 'max-sm:hidden')}
-              activeClass={{
-                active: 'border-emerald-500/30 bg-emerald-500/15',
-                today: 'border-emerald-500/30 bg-emerald-500/15',
-                overdue: 'border-rose-500/30 bg-rose-500/15',
-                next7: 'border-emerald-500/30 bg-emerald-500/15',
-                completed: 'border-emerald-500/30 bg-emerald-500/15',
-              }}
-              options={TASK_VIEWS}
-            />
-          </div>
+            </form>
 
-          {filteredTasks.length === 0 ? (
-            tasksInScope.length > 0 ? (
-              <EmptyState tier="tasks" isFiltered onClearFilters={clearTaskFilters} onCreate={() => setFocusQuickAdd(true)} />
-            ) : goals.length === 0 && tasks.length === 0 ? (
-              <EmptyStateBase
-                icon={Target}
-                iconClassName="badge-purple"
-                title="Start with a goal"
-                description="Tasks feel lighter when they lead somewhere. Set a goal first, or just add a task."
-                action={
-                  <div className="flex flex-col items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setGoalForm({ key: nextKey(), editing: null })}
-                      className="btn-primary inline-flex items-center gap-1.5 bg-purple-600 px-4 py-2 text-xs text-white hover:bg-purple-500"
-                    >
-                      <Plus size={14} aria-hidden="true" />
-                      <span>Create your first goal</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFocusQuickAdd(true)}
-                      className="text-xs text-content-muted underline-offset-2 hover:text-content-secondary hover:underline"
-                    >
-                      Or add a task without a goal
-                    </button>
-                  </div>
-                }
-              />
-            ) : (
-              <EmptyState tier="tasks" onCreate={() => setFocusQuickAdd(true)} />
-            )
-          ) : (
-            <div className="space-y-3">
-              {tasks.length <= 3 && taskView === 'all' && !taskSearch.trim() && !filterProjectId && (
-                <p className="px-1 text-xs text-content-muted">A few more small tasks will fill out your day.</p>
-              )}
-              <div className="card divide-y divide-overlay-subtle overflow-hidden p-0">
-                {filteredTasks.map((task) => {
-                  const project = projectById(task.projectId);
-                  const lock = project ? h.getLockStatus(project) : undefined;
-                  return (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      today={today}
-                      lockedBy={lock?.isLocked ? lock.blockingProject?.title : undefined}
-                      projectName={project?.title ?? null}
-                      goalName={goalName(project?.goalId)}
-                      onToggle={() => store.toggleTaskCompleted(task.id)}
-                      onToggleSubtask={(id) => store.toggleSubtask(task.id, id)}
-                      onAddSubtask={(title) => store.addSubtask(task.id, title)}
-                      onDeleteSubtask={(subtask) => setDeleteSubtaskTarget({ taskId: task.id, subtask })}
-                      onOpenProject={() => task.projectId && openProjectTasks(task.projectId)}
-                      onFocus={onStartFocusSession ? () => onStartFocusSession(task.title) : undefined}
-                      onEdit={() => setTaskForm({ key: nextKey(), editing: task })}
-                      onDelete={() => setDeleteTaskTarget(task)}
-                    />
-                  );
-                })}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <div className="flex w-full flex-1 items-center gap-2">
+                  <ToolbarInput
+                    type="search"
+                    icon={Search}
+                    aria-label="Search tasks"
+                    placeholder="Search tasks"
+                    value={taskSearch}
+                    onChange={(e) => setTaskSearch(e.target.value)}
+                    wrapperClassName="flex-1"
+                  />
+                  <button
+                    type="button"
+                    aria-expanded={taskFiltersOpen}
+                    aria-controls="task-filters-selects task-filters-status"
+                    onClick={() => setTaskFiltersOpen((open) => !open)}
+                    className={cx(
+                      'flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors sm:hidden',
+                      taskFiltersOpen || activeTaskFilterCount > 0
+                        ? 'border-emerald-500/30 bg-emerald-500/15 text-success-text'
+                        : 'border-overlay-default bg-bg-900 text-content-muted'
+                    )}
+                  >
+                    <Filter size={14} aria-hidden="true" />
+                    <span>Filters</span>
+                    {activeTaskFilterCount > 0 && <span className="tabular-nums">{activeTaskFilterCount}</span>}
+                  </button>
+                </div>
+                <div id="task-filters-selects" className={cx('grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto', !taskFiltersOpen && 'max-sm:hidden')}>
+                  <ToolbarSelect aria-label="Filter tasks by priority" value={taskPriorityFilter} onChange={(e) => setTaskPriorityFilter(e.target.value as 'all' | TaskPriority)}>
+                    <option value="all">Any priority</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </ToolbarSelect>
+                  {!filterProjectId && (
+                    <ToolbarSelect aria-label="Filter tasks by project" value={taskProjectFilter} onChange={(e) => setTaskProjectFilter(e.target.value)}>
+                      <option value="all">All projects</option>
+                      <option value="standalone">No project</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </ToolbarSelect>
+                  )}
+                </div>
               </div>
+              <FilterRow
+                id="task-filters-status"
+                label="Task view"
+                value={taskView}
+                onChange={setTaskView}
+                className={cx(!taskFiltersOpen && 'max-sm:hidden')}
+                activeClass={{
+                  active: 'border-emerald-500/30 bg-emerald-500/15',
+                  today: 'border-emerald-500/30 bg-emerald-500/15',
+                  overdue: 'border-rose-500/30 bg-rose-500/15',
+                  next7: 'border-emerald-500/30 bg-emerald-500/15',
+                  completed: 'border-emerald-500/30 bg-emerald-500/15',
+                }}
+                options={TASK_VIEWS}
+              />
             </div>
-          )}
-        </div>
-      )}
+
+            {filteredTasks.length === 0 ? (
+              tasksInScope.length > 0 ? (
+                <EmptyState tier="tasks" isFiltered onClearFilters={clearTaskFilters} onCreate={() => setFocusQuickAdd(true)} />
+              ) : goals.length === 0 && tasks.length === 0 ? (
+                <EmptyStateBase
+                  icon={Target}
+                  iconClassName="badge-purple"
+                  title="Start with a goal"
+                  description="Tasks feel lighter when they lead somewhere. Set a goal first, or just add a task."
+                  action={
+                    <div className="flex flex-col items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setGoalForm({ key: nextKey(), editing: null })}
+                        className="btn-primary inline-flex items-center gap-1.5 bg-purple-600 px-4 py-2 text-xs text-white hover:bg-purple-500"
+                      >
+                        <Plus size={14} aria-hidden="true" />
+                        <span>Create your first goal</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFocusQuickAdd(true)}
+                        className="text-xs text-content-muted underline-offset-2 hover:text-content-secondary hover:underline"
+                      >
+                        Or add a task without a goal
+                      </button>
+                    </div>
+                  }
+                />
+              ) : (
+                <EmptyState tier="tasks" onCreate={() => setFocusQuickAdd(true)} />
+              )
+            ) : (
+              <div className="space-y-3">
+                {tasks.length <= 3 && taskView === 'all' && !taskSearch.trim() && !filterProjectId && (
+                  <p className="px-1 text-xs text-content-muted">A few more small tasks will fill out your day.</p>
+                )}
+                <div className="card divide-y divide-overlay-subtle overflow-hidden p-0">
+                  {filteredTasks.map((task) => {
+                    const project = projectById(task.projectId);
+                    const lock = project ? h.getLockStatus(project) : undefined;
+                    return (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        today={today}
+                        lockedBy={lock?.isLocked ? lock.blockingProject?.title : undefined}
+                        projectName={project?.title ?? null}
+                        goalName={goalName(project?.goalId)}
+                        onToggle={() => store.toggleTaskCompleted(task.id)}
+                        onToggleSubtask={(id) => store.toggleSubtask(task.id, id)}
+                        onAddSubtask={(title) => store.addSubtask(task.id, title)}
+                        onDeleteSubtask={(subtask) => setDeleteSubtaskTarget({ taskId: task.id, subtask })}
+                        onOpenProject={() => task.projectId && openProjectTasks(task.projectId)}
+                        onFocus={onStartFocusSession ? () => onStartFocusSession(task.title) : undefined}
+                        onEdit={() => setTaskForm({ key: nextKey(), editing: task })}
+                        onDelete={() => setDeleteTaskTarget(task)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </TabPanel>
 
       {/* ------------------------------------------------------------------ DIALOGS */}
       <ProgressUpdateDialog
