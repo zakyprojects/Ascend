@@ -688,24 +688,6 @@ export function getRegisteredCompetitors(
 }
 
 /**
- * Get all public improvement plans created across all registered users.
- */
-export function getAllPublicImprovementPlans(plansOverride?: ImprovementPlan[]): ImprovementPlan[] {
-  const plans = plansOverride || cachedPublicPlans;
-  const plansMap = new Map<string, ImprovementPlan>();
-
-  for (const plan of plans) {
-    if (plan.isPublic) {
-      plansMap.set(plan.id, plan);
-    }
-  }
-
-  return Array.from(plansMap.values()).sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-}
-
-/**
  * Fetch profile by 6-digit numeric UID from Supabase profiles or SEED_ACCOUNTS.
  */
 export async function fetchProfileByUidFromSupabase(

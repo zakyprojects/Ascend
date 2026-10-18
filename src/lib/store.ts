@@ -103,7 +103,6 @@ import {
   updateProfilePrivacy,
   updateProfileAcceptPartnerInvites,
   updateProfileNotificationPreferences,
-  getAllPublicImprovementPlans,
   setCachedProfiles,
   setCachedLeaguePoints,
   setCachedPublicPlans,
@@ -2347,7 +2346,7 @@ export function useAppState() {
         ]);
 
         if (mounted) {
-          setCachedPublicPlans(publicPlans);
+          setCachedPublicPlans(publicPlans ?? []);
           if (!sessionRes.data?.session && !holdForStoredSession()) {
             setIsAuthChecking(false);
           }
@@ -6595,64 +6594,45 @@ export function useAppState() {
   }, []);
 
   const togglePlanVisibility = useCallback(async (planId: string, newVisibility?: boolean) => {
-    try {
-      console.log(`[Visibility Update] Initiating toggle for plan ID: ${planId}`);
+    // Sharing changes go to the table first, so "Only me" is true the moment the switch shows it.
+    // A plan whose first save hasn't landed yet (no row) changes here and goes out with its save.
+    // Errors reach the caller, which shows the toast.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) throw new Error('Log in and try again.');
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        throw new Error('Log in and try again.');
-      }
+    const local = stateRef.current?.improvementPlans.find((p) => p.id === planId);
+    const isPublic = newVisibility ?? !local?.isPublic;
 
-      let targetNewVisibility = newVisibility;
-      if (targetNewVisibility === undefined) {
-        const currentLocal = state.improvementPlans.find((p) => p.id === planId);
-        targetNewVisibility = currentLocal ? !currentLocal.isPublic : true;
-      }
+    const { data, error } = await supabase
+      .from('improvement_plans')
+      .update({ is_public: isPublic })
+      .eq('id', planId)
+      .eq('creator_id', session.user.id)
+      .select('id');
+    if (error) throw error;
+    const reachedTable = Boolean(data && data.length > 0);
+    const isUnconfirmed = local?.syncStatus === 'pending' || local?.syncStatus === 'failed';
+    if (!reachedTable && !isUnconfirmed) throw new Error('Try again in a moment.');
 
-      console.log(`[Visibility Update] Executing DB update for plan ${planId} to is_public = ${targetNewVisibility}`);
+    let updatedPlan: ImprovementPlan | null = null;
+    setState((prev) => {
+      const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
+      if (idx === -1) return prev;
+      updatedPlan = { ...prev.improvementPlans[idx], isPublic };
+      const updatedPlans = [...prev.improvementPlans];
+      updatedPlans[idx] = updatedPlan;
+      return { ...prev, improvementPlans: updatedPlans };
+    });
 
-      // 1. Force the database update FIRST
-      const { data, error } = await supabase
-        .from('improvement_plans')
-        .update({ is_public: targetNewVisibility })
-        .eq('id', planId)
-        .eq('creator_id', session.user.id)
-        .select();
-
-      if (error || !data || data.length === 0) {
-        console.error("[Visibility Update] DB Error or 0 rows modified:", error, data);
-        throw error ?? new Error('Try again in a moment.');
-      }
-
-      console.log(`[Visibility Update] DB Success! Updating local Zustand state...`);
-
-      // 2. DB Success! Now update Zustand/UI state safely
-      let updatedPlan: ImprovementPlan | null = null;
-      setState((prev) => {
-        const idx = prev.improvementPlans.findIndex((p) => p.id === planId);
-        if (idx === -1) return prev;
-        updatedPlan = {
-          ...prev.improvementPlans[idx],
-          isPublic: targetNewVisibility,
-          creatorPoints: prev.totalPoints,
-        };
-        const updatedPlans = [...prev.improvementPlans];
-        updatedPlans[idx] = updatedPlan;
-        return { ...prev, improvementPlans: updatedPlans };
-      });
-
-      if (updatedPlan) {
-        updateCachedPublicPlan(updatedPlan);
-        syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
-      }
-    } catch (err: any) {
-      console.error("[Visibility Update] Fatal error toggling visibility:", err);
-      // The caller shows the error toast.
-      throw err;
+    if (updatedPlan) {
+      updateCachedPublicPlan(updatedPlan);
+      syncBroadcaster.broadcast('PLAN_UPDATED', updatedPlan);
+      // An older save still queued would carry the old setting; this one goes after it.
+      if (!reachedTable || isUnconfirmed) handlePlanSyncExecution(updatedPlan);
     }
-    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // False positive: setState and stateRef are stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.improvementPlans]);
+  }, []);
 
   const updatePlanCopyCount = useCallback((planId: string, newCount: number) => {
     setState((prev) => {
@@ -6680,86 +6660,73 @@ export function useAppState() {
   }, []);
 
   const copyPublicPlan = useCallback(async (originalPlan: ImprovementPlan) => {
+    // Resolves true once the copy is added; false when it is the user's own plan or already copied.
+    // Throws when there is no session (the caller shows the one error toast).
     const planId = originalPlan.id;
-    try {
-      console.log(`[Copy Plan] Initiating copy for plan ID: ${planId}`);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) throw new Error('Log in and try again.');
 
-      // 1. Verify Session First
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        dispatchToastError("Couldn't copy plan", 'Log in and try again.');
-        return;
-      }
+    const isOwnPlan = originalPlan.creatorId === session.user.id;
+    const alreadyCopied = state.followedPlans.some((f) => f.originalPlanId === planId);
+    if (isOwnPlan || alreadyCopied) return false;
 
-      const isOwnPlan = (originalPlan.creatorUsername || '').toLowerCase() === (state.username || '').toLowerCase() || (originalPlan.creatorId && state.currentUser?.id && originalPlan.creatorId === state.currentUser.id);
-      const alreadyCopied = state.followedPlans.some((f) => f.originalPlanId === planId);
+    // Optimistic count; the trigger on user_plan_follows sets the real copy_count, which arrives by realtime.
+    updatePlanCopyCount(planId, (originalPlan.copyCount || 0) + 1);
 
-      if (isOwnPlan || alreadyCopied) {
-        return;
-      }
+    const stepsCopy: PlanStep[] = (originalPlan.steps || []).map((s) => ({
+      ...s,
+      id: uid(),
+      completed: false,
+    }));
 
-      // 2. Optimistic count; the server derives the real copy_count from user_plan_follows.
-      updatePlanCopyCount(planId, (originalPlan.copyCount || 0) + 1);
+    const copyReviewCadence = originalPlan.reviewCadence || (originalPlan.planType === 'vision' ? 'weekly' : null);
+    const createdFollow: UserPlanFollow = {
+      id: generateUUID(),
+      userId: session.user.id,
+      originalPlanId: planId,
+      sourceUsername: originalPlan.creatorUsername,
+      title: originalPlan.title,
+      description: originalPlan.description,
+      steps: stepsCopy,
+      isCompleted: false,
+      pointsAwarded: 0,
+      createdAt: trustedNow().toISOString(),
 
-      // 3. Create the follow record
-      console.log(`[Copy Plan] Inserting into user_plan_follows...`);
-      const stepsCopy: PlanStep[] = (originalPlan.steps || []).map((s) => ({
-        ...s,
-        id: uid(),
-        completed: false,
-      }));
+      // Phase B Plan Type Additions (fresh starting values for follower)
+      planType: originalPlan.planType || 'milestone',
+      targetValue: originalPlan.targetValue,
+      targetUnit: originalPlan.targetUnit,
+      currentProgress: 0, // Reset progress for copier
+      // A deadline the creator already passed means nothing to the copier.
+      targetDate: originalPlan.targetDate && originalPlan.targetDate >= todayKey() ? originalPlan.targetDate : undefined,
+      cadence: originalPlan.cadence,
+      duration: originalPlan.duration,
+      startDate: trustedNow().toISOString(),
+      streakCount: 0, // Reset streak for copier
+      lastCompletedDate: undefined,
+      targetReviewDate:
+        originalPlan.targetReviewDate && originalPlan.targetReviewDate >= todayKey() ? originalPlan.targetReviewDate : undefined,
+      reflectionNotes: [], // Reset reflections to empty for copier
 
-      const copyReviewCadence = originalPlan.reviewCadence || (originalPlan.planType === 'vision' ? 'weekly' : null);
-      const createdFollow: UserPlanFollow = {
-        id: generateUUID(),
-        userId: session.user.id,
-        originalPlanId: planId,
-        title: originalPlan.title,
-        description: originalPlan.description,
-        steps: stepsCopy,
-        isCompleted: false,
-        pointsAwarded: 0,
-        createdAt: trustedNow().toISOString(),
+      // The copier's first review is one cadence from now, never the creator's due date.
+      reviewCadence: copyReviewCadence,
+      nextReviewDueAt: copyReviewCadence
+        ? new Date(trustedNowMs() + (copyReviewCadence === 'weekly' ? 7 : 30) * 24 * 60 * 60 * 1000).toISOString()
+        : null,
+    };
 
-        // Phase B Plan Type Additions (fresh starting values for follower)
-        planType: originalPlan.planType || 'milestone',
-        targetValue: originalPlan.targetValue,
-        targetUnit: originalPlan.targetUnit,
-        currentProgress: 0, // Reset progress for copier
-        // A deadline the creator already passed means nothing to the copier.
-        targetDate: originalPlan.targetDate && originalPlan.targetDate >= todayKey() ? originalPlan.targetDate : undefined,
-        cadence: originalPlan.cadence,
-        duration: originalPlan.duration,
-        startDate: trustedNow().toISOString(),
-        streakCount: 0, // Reset streak for copier
-        lastCompletedDate: undefined,
-        targetReviewDate: originalPlan.targetReviewDate,
-        reflectionNotes: [], // Reset reflections to empty for copier
-
-        // Review loop cadence
-        // The copier's first review is one cadence from now, never the creator's due date.
-        reviewCadence: copyReviewCadence,
-        nextReviewDueAt: copyReviewCadence
-          ? new Date(trustedNowMs() + (copyReviewCadence === 'weekly' ? 7 : 30) * 24 * 60 * 60 * 1000).toISOString()
-          : null,
+    setState((prev) => {
+      return {
+        ...prev,
+        followedPlans: [createdFollow, ...prev.followedPlans],
       };
+    });
 
-      setState((prev) => {
-        return {
-          ...prev,
-          followedPlans: [createdFollow, ...prev.followedPlans],
-        };
-      });
-
-      handleFollowSyncExecution(createdFollow);
-    } catch (err: any) {
-      console.error("[Copy Plan] FATAL ERROR CATCH:", err);
-      dispatchToastError("Couldn't copy plan", toUserMessage(err, 'Try again in a moment.'));
-      throw err;
-    }
+    handleFollowSyncExecution(createdFollow);
+    return true;
     // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updatePlanCopyCount, state.username, state.currentUser?.id, state.followedPlans]);
+  }, [updatePlanCopyCount, state.followedPlans]);
 
   // --- FOLLOWED & COPIED PLANS INTERACTIVE ACTIONS ---
   const completeFollowedPlanStep = useCallback((followId: string, stepId: string) => {
@@ -7759,19 +7726,6 @@ export function useAppState() {
       leagueDataVersion,
     ]
   );
-
-  const getPublicImprovementPlans = useCallback(() => {
-    const allPublic = getAllPublicImprovementPlans();
-    const myPlans = state.improvementPlans.filter((p) => p.isPublic);
-
-    const mergedMap = new Map<string, ImprovementPlan>();
-    allPublic.forEach((p) => mergedMap.set(p.id, p));
-    myPlans.forEach((p) => mergedMap.set(p.id, p));
-
-    return Array.from(mergedMap.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [state.improvementPlans]);
 
   // ==========================================
   // TIME TRACKER MODULE ACTIONS
@@ -9134,7 +9088,6 @@ export function useAppState() {
     toggleNotificationPreference,
     getLeagueData,
     refreshLeagueStandings,
-    getPublicImprovementPlans,
     // New Module Actions
     logWorkout,
     deleteWorkout,

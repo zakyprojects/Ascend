@@ -700,6 +700,7 @@ async function upsertFollowRow(followedPlan: UserPlanFollow): Promise<boolean> {
       streakCount: followedPlan.streakCount ?? 0,
       lastCompletedDate: followedPlan.lastCompletedDate,
       previousCompletedDate: followedPlan.previousCompletedDate ?? null,
+      sourceUsername: followedPlan.sourceUsername ?? null,
       targetReviewDate: followedPlan.targetReviewDate,
       reviewCadence: followedPlan.reviewCadence ?? null,
       nextReviewDueAt: followedPlan.nextReviewDueAt ?? null,
@@ -821,6 +822,7 @@ export function mapRowToUserPlanFollow(row: any): UserPlanFollow {
     id: row?.id || '',
     userId: row?.user_id || '',
     originalPlanId: row?.original_plan_id || '',
+    sourceUsername: stepsMeta.sourceUsername || undefined,
     title: row?.title || 'Untitled Plan',
     description: row?.description || '',
     steps: Array.isArray(stepsList) ? stepsList : [],
@@ -854,68 +856,50 @@ export interface FetchPublicPlansParams {
   sortBy?: 'recent' | 'followed' | 'creator_rank';
 }
 
-export async function fetchPublicPlansFromSupabase(options?: FetchPublicPlansParams): Promise<ImprovementPlan[]> {
+/**
+ * Public plans for Discover, filtered and sorted on the server. Resolves null when the request
+ * fails, so the page can tell "no matches" from "couldn't load". copy_count is kept by the
+ * user_plan_follows trigger. 'creator_rank' comes back newest first; the page orders it by the
+ * creators' season points, the same numbers their tier badges show.
+ */
+export async function fetchPublicPlansFromSupabase(options?: FetchPublicPlansParams): Promise<ImprovementPlan[] | null> {
   if (!isSupabaseConfigured) return [];
   try {
-    let query = supabase
-      .from('improvement_plans')
-      .select('*, profiles:creator_id(total_points, username, avatar)')
-      .eq('is_public', true);
+    let query = supabase.from('improvement_plans').select('*').eq('is_public', true);
 
     if (options?.category && options.category !== 'All') {
       query = query.eq('category', options.category);
     }
 
+    // The type lives in the steps JSON; plans saved before types existed have none and are milestones.
     if (options?.planType && options.planType !== 'all') {
-      query = query.or(`plan_type.eq.${options.planType},steps->>planType.eq.${options.planType}`);
+      query =
+        options.planType === 'milestone'
+          ? query.or('steps->>planType.eq.milestone,steps->>planType.is.null')
+          : query.eq('steps->>planType', options.planType);
     }
 
-    if (options?.search && options.search.trim()) {
-      const term = `%${options.search.trim()}%`;
+    // Characters that would break the or() filter syntax are dropped from the search text.
+    const search = (options?.search || '').replace(/[,()*%\\]/g, ' ').trim();
+    if (search) {
+      const term = `%${search}%`;
       query = query.or(`title.ilike.${term},description.ilike.${term}`);
     }
 
-    if (options?.sortBy === 'followed') {
-      query = query.order('copy_count', { ascending: false });
-    } else if (options?.sortBy === 'creator_rank') {
-      query = query.order('profiles(total_points)', { ascending: false, foreignTable: 'profiles' });
-    } else {
-      query = query.order('created_at', { ascending: false });
-    }
+    query =
+      options?.sortBy === 'followed'
+        ? query.order('copy_count', { ascending: false }).order('created_at', { ascending: false })
+        : query.order('created_at', { ascending: false });
 
-    const { data: plansData, error } = await query;
-
-    if (error || !plansData) {
+    const { data, error } = await query;
+    if (error || !data) {
       console.warn('Error querying public plans from Supabase:', error);
-      return [];
+      return null;
     }
-
-    // Fetch follow counts directly from user_plan_follows table
-    const { data: followsData } = await supabase
-      .from('user_plan_follows')
-      .select('original_plan_id');
-
-    const followCounts: Record<string, number> = {};
-    if (followsData) {
-      followsData.forEach((f) => {
-        if (f.original_plan_id) {
-          followCounts[f.original_plan_id] = (followCounts[f.original_plan_id] || 0) + 1;
-        }
-      });
-    }
-
-    return plansData.map((row) => {
-      const plan = mapRowToImprovementPlan(row);
-      const actualFollows = followCounts[row.id] || 0;
-      plan.copyCount = Math.max(plan.copyCount || 0, actualFollows);
-      if (row.profiles && typeof row.profiles === 'object' && row.profiles?.total_points !== undefined) {
-        plan.creatorPoints = Number(row.profiles.total_points) || 0;
-      }
-      return plan;
-    });
+    return data.map((row) => mapRowToImprovementPlan(row));
   } catch (e) {
     console.error('Error fetching public plans from Supabase:', e);
-    return [];
+    return null;
   }
 }
 

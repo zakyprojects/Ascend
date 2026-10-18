@@ -536,6 +536,8 @@ export interface UserPlanFollow {
   id: string;
   userId: string;
   originalPlanId: string;
+  /** The creator's username when it was copied, for "Copied from @user". */
+  sourceUsername?: string;
   title: string;
   description: string;
   steps: PlanStep[];
