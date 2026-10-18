@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Brain, Calendar, CalendarDays, ChevronRight, Trophy, WifiOff } from 'lucide-react';
-import { Button, cx, Dialog, Disclosure, EmptyState, PageColumns, Skeleton, Tabs } from '@/components/ui/primitives';
+import { Button, cx, Dialog, Disclosure, EmptyState, PageColumns, Skeleton, TabPanel, Tabs } from '@/components/ui/primitives';
 import { AppStore } from '@/lib/store';
 import { LeagueArchive, LeagueCompetitor, LeagueType } from '@/types';
 import {
@@ -98,6 +98,7 @@ interface LeaguesProps {
 
 export function Leagues({ store, onOpenAuth }: LeaguesProps) {
   const [activeLeague, setActiveLeague] = useState<LeagueType>('weekly');
+  const changeLeague = (id: string) => setActiveLeague(id as LeagueType);
   const [openArchiveId, setOpenArchiveId] = useState<string | null>(null);
   const [selectedCompetitor, setSelectedCompetitor] = useState<LeagueCompetitor | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -185,9 +186,10 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
       )}
 
       <Tabs
+        idBase="leagues"
         ariaLabel="Leagues"
         value={activeLeague}
-        onChange={(id) => setActiveLeague(id as LeagueType)}
+        onChange={changeLeague}
         items={LEAGUE_TYPES.map((type) => ({
           id: type,
           label: LEAGUE_TAB_LABEL[type],
@@ -195,176 +197,178 @@ export function Leagues({ store, onOpenAuth }: LeaguesProps) {
         }))}
       />
 
-      <Reveal index={0}>
-        <PageHero
-          ariaLabel={`Your ${LEAGUE_TAB_LABEL[activeLeague].toLowerCase()} standing`}
-          lead={{
-            label: 'Your place',
-            value: hasPlace ? (
-              <>#<CountUp value={board.userRank} /></>
-            ) : (
-              <span aria-label="No place yet">—</span>
-            ),
-            hint: !loaded
-              ? failed
-                ? 'Table not loaded'
-                : 'Loading the table…'
-              : hasPlace
-                ? `of ${board.competitors.length} ${board.competitors.length === 1 ? 'member' : 'members'}`
-                : 'No points yet',
-          }}
-          stats={[
-            {
-              label: 'Points',
-              value: <CountUp value={board.userPoints} />,
-              hint: activeLeague === 'ninetyDay' ? 'this season' : activeLeague === 'monthly' ? 'this month' : 'this week',
-            },
-            {
-              label: activeLeague === 'ninetyDay' ? 'Season ends in' : 'Resets in',
-              value: <LeagueCountdown type={activeLeague} className="font-mono text-lg sm:text-2xl" />,
-              hint: getLocalResetDetail(activeLeague, now),
-            },
-          ]}
-        />
-      </Reveal>
-
-      {activeLeague === 'ninetyDay' && (
-        <Disclosure title="Why 90 days" icon={Brain}>
-          A new habit usually takes about 66–90 days of steady repetition to become automatic. This league
-          rewards that long-term consistency.
-        </Disclosure>
-      )}
-
-      <PageColumns
-        lead={
-          <Reveal index={1}>
-            <section aria-labelledby="leagues-standings" className="card overflow-hidden">
-              <div className="flex items-center gap-3 border-b border-overlay-subtle px-4 py-3.5 sm:px-5">
-                <span className={cx(LEAGUE_TONE_CLASS[activeLeague], 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg')}>
-                  <LeagueIcon size={15} aria-hidden="true" />
-                </span>
-                <div className="min-w-0">
-                  <h2 id="leagues-standings" className="section-title leading-tight">Standings</h2>
-                  <p className="text-xs text-content-muted">{getLeaguePeriodLabel(activeLeague, now)}</p>
-                </div>
-              </div>
-
-              {failed && !loaded ? (
-                <EmptyState
-                  surface={false}
-                  className="p-8"
-                  icon={WifiOff}
-                  iconClassName="bg-overlay-subtle text-content-muted ring-1 ring-inset ring-overlay-default"
-                  title="Couldn't load the table"
-                  description="Check your connection, then try again."
-                  action={
-                    <Button variant="secondary" size="sm" type="button" onClick={retry} loading={retrying}>
-                      Retry
-                    </Button>
-                  }
-                />
-              ) : !loaded ? (
-                <div aria-busy="true" className="divide-y divide-overlay-subtle">
-                  <span className="sr-only" role="status">Loading the table</span>
-                  {Array.from({ length: SKELETON_ROWS }, (_, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5">
-                      <Skeleton className="h-3 w-5" />
-                      <Skeleton className="h-9 w-9 rounded-lg" />
-                      <Skeleton className="h-3.5 flex-1 max-w-[10rem]" />
-                      <Skeleton className="ml-auto h-3.5 w-12" />
-                    </div>
-                  ))}
-                </div>
+      <TabPanel idBase="leagues" ids={LEAGUE_TYPES} value={activeLeague} onChange={changeLeague} className="space-y-6">
+        <Reveal index={0}>
+          <PageHero
+            ariaLabel={`Your ${LEAGUE_TAB_LABEL[activeLeague].toLowerCase()} standing`}
+            lead={{
+              label: 'Your place',
+              value: hasPlace ? (
+                <>#<CountUp value={board.userRank} /></>
               ) : (
-                <ol className="divide-y divide-overlay-subtle">
-                  {board.competitors.map((competitor, idx) => {
-                    const rank = idx + 1;
-                    const isUser = !!competitor.isUser;
-                    const seasonPoints = seasonPointsOf(competitor);
-                    const tierName = getCurrentTier(seasonPoints).name;
-                    return (
-                      <li key={competitor.id || idx}>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedCompetitor(competitor)}
-                          aria-label={`${ordinal(rank)}, ${competitor.name}${isUser ? ', you' : ''}, ${tierName}, ${pointsText(competitor.points)}`}
-                          className={cx(
-                            'group flex w-full items-center gap-2.5 px-3 py-3 text-left transition-colors sm:gap-4 sm:px-5',
-                            isUser ? 'bg-overlay-subtle hover:bg-overlay-default' : 'hover:bg-overlay-subtle'
-                          )}
-                        >
-                          <RankNumber rank={rank} />
-                          <span
-                            aria-hidden="true"
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-overlay-subtle text-base sm:h-10 sm:w-10 sm:text-lg"
+                <span aria-label="No place yet">—</span>
+              ),
+              hint: !loaded
+                ? failed
+                  ? 'Table not loaded'
+                  : 'Loading the table…'
+                : hasPlace
+                  ? `of ${board.competitors.length} ${board.competitors.length === 1 ? 'member' : 'members'}`
+                  : 'No points yet',
+            }}
+            stats={[
+              {
+                label: 'Points',
+                value: <CountUp value={board.userPoints} />,
+                hint: activeLeague === 'ninetyDay' ? 'this season' : activeLeague === 'monthly' ? 'this month' : 'this week',
+              },
+              {
+                label: activeLeague === 'ninetyDay' ? 'Season ends in' : 'Resets in',
+                value: <LeagueCountdown type={activeLeague} className="font-mono text-lg sm:text-2xl" />,
+                hint: getLocalResetDetail(activeLeague, now),
+              },
+            ]}
+          />
+        </Reveal>
+
+        {activeLeague === 'ninetyDay' && (
+          <Disclosure title="Why 90 days" icon={Brain}>
+            A new habit usually takes about 66–90 days of steady repetition to become automatic. This league
+            rewards that long-term consistency.
+          </Disclosure>
+        )}
+
+        <PageColumns
+          lead={
+            <Reveal index={1}>
+              <section aria-labelledby="leagues-standings" className="card overflow-hidden">
+                <div className="flex items-center gap-3 border-b border-overlay-subtle px-4 py-3.5 sm:px-5">
+                  <span className={cx(LEAGUE_TONE_CLASS[activeLeague], 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg')}>
+                    <LeagueIcon size={15} aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 id="leagues-standings" className="section-title leading-tight">Standings</h2>
+                    <p className="text-xs text-content-muted">{getLeaguePeriodLabel(activeLeague, now)}</p>
+                  </div>
+                </div>
+
+                {failed && !loaded ? (
+                  <EmptyState
+                    surface={false}
+                    className="p-8"
+                    icon={WifiOff}
+                    iconClassName="bg-overlay-subtle text-content-muted ring-1 ring-inset ring-overlay-default"
+                    title="Couldn't load the table"
+                    description="Check your connection, then try again."
+                    action={
+                      <Button variant="secondary" size="sm" type="button" onClick={retry} loading={retrying}>
+                        Retry
+                      </Button>
+                    }
+                  />
+                ) : !loaded ? (
+                  <div aria-busy="true" className="divide-y divide-overlay-subtle">
+                    <span className="sr-only" role="status">Loading the table</span>
+                    {Array.from({ length: SKELETON_ROWS }, (_, i) => (
+                      <div key={i} className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5">
+                        <Skeleton className="h-3 w-5" />
+                        <Skeleton className="h-9 w-9 rounded-lg" />
+                        <Skeleton className="h-3.5 flex-1 max-w-[10rem]" />
+                        <Skeleton className="ml-auto h-3.5 w-12" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <ol className="divide-y divide-overlay-subtle">
+                    {board.competitors.map((competitor, idx) => {
+                      const rank = idx + 1;
+                      const isUser = !!competitor.isUser;
+                      const seasonPoints = seasonPointsOf(competitor);
+                      const tierName = getCurrentTier(seasonPoints).name;
+                      return (
+                        <li key={competitor.id || idx}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCompetitor(competitor)}
+                            aria-label={`${ordinal(rank)}, ${competitor.name}${isUser ? ', you' : ''}, ${tierName}, ${pointsText(competitor.points)}`}
+                            className={cx(
+                              'group flex w-full items-center gap-2.5 px-3 py-3 text-left transition-colors sm:gap-4 sm:px-5',
+                              isUser ? 'bg-overlay-subtle hover:bg-overlay-default' : 'hover:bg-overlay-subtle'
+                            )}
                           >
-                            {competitor.avatar}
+                            <RankNumber rank={rank} />
+                            <span
+                              aria-hidden="true"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-overlay-subtle text-base sm:h-10 sm:w-10 sm:text-lg"
+                            >
+                              {competitor.avatar}
+                            </span>
+                            <span className="flex min-w-0 flex-1 items-center gap-2">
+                              <span className="item-name truncate text-sm !text-content-secondary">{competitor.name}</span>
+                              {isUser && <YouTag />}
+                            </span>
+                            <span aria-hidden="true" className="shrink-0">
+                              <TierBadge totalPoints={seasonPoints} size="sm" showName={false} />
+                            </span>
+                            <span className="min-w-[3.5rem] shrink-0 text-right sm:min-w-[4.5rem]">
+                              <span className="figure text-sm text-content-primary">{competitor.points.toLocaleString()}</span>
+                              <span className="ml-1 text-2xs text-content-muted">pts</span>
+                            </span>
+                            <ChevronRight
+                              size={15}
+                              aria-hidden="true"
+                              className="shrink-0 text-content-muted transition-colors group-hover:text-content-secondary"
+                            />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+              </section>
+            </Reveal>
+          }
+          aside={
+            <section aria-labelledby="leagues-past">
+              <h2 id="leagues-past" className="section-title mb-3">{PAST_HEADING[activeLeague]}</h2>
+              {archives.length === 0 ? (
+                <EmptyState
+                  size="sm"
+                  icon={Trophy}
+                  title={PAST_EMPTY[activeLeague]}
+                  description="Your finished standings show up here."
+                />
+              ) : (
+                <ul className="card divide-y divide-overlay-subtle overflow-hidden">
+                  {archives.map((archive) => (
+                    <li key={archive.id ?? archive.archivedAt}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenArchiveId(archive.id ?? null)}
+                        className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-overlay-subtle"
+                      >
+                        <span className={cx(LEAGUE_TONE_CLASS[archive.type], 'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg')}>
+                          <Trophy size={16} aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-content-secondary">{getArchivePeriodLabel(archive)}</span>
+                          <span className="block text-xs text-content-muted">
+                            Finished #{archive.userRank} · {archive.userPoints.toLocaleString()} pts
                           </span>
-                          <span className="flex min-w-0 flex-1 items-center gap-2">
-                            <span className="item-name truncate text-sm !text-content-secondary">{competitor.name}</span>
-                            {isUser && <YouTag />}
-                          </span>
-                          <span aria-hidden="true" className="shrink-0">
-                            <TierBadge totalPoints={seasonPoints} size="sm" showName={false} />
-                          </span>
-                          <span className="min-w-[3.5rem] shrink-0 text-right sm:min-w-[4.5rem]">
-                            <span className="figure text-sm text-content-primary">{competitor.points.toLocaleString()}</span>
-                            <span className="ml-1 text-2xs text-content-muted">pts</span>
-                          </span>
-                          <ChevronRight
-                            size={15}
-                            aria-hidden="true"
-                            className="shrink-0 text-content-muted transition-colors group-hover:text-content-secondary"
-                          />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ol>
+                          {isProvisional(archive) && (
+                            <span className="block text-2xs text-content-muted">Final standings in up to 2 days</span>
+                          )}
+                        </span>
+                        <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-content-muted" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
             </section>
-          </Reveal>
-        }
-        aside={
-          <section aria-labelledby="leagues-past">
-            <h2 id="leagues-past" className="section-title mb-3">{PAST_HEADING[activeLeague]}</h2>
-            {archives.length === 0 ? (
-              <EmptyState
-                size="sm"
-                icon={Trophy}
-                title={PAST_EMPTY[activeLeague]}
-                description="Your finished standings show up here."
-              />
-            ) : (
-              <ul className="card divide-y divide-overlay-subtle overflow-hidden">
-                {archives.map((archive) => (
-                  <li key={archive.id ?? archive.archivedAt}>
-                    <button
-                      type="button"
-                      onClick={() => setOpenArchiveId(archive.id ?? null)}
-                      className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-overlay-subtle"
-                    >
-                      <span className={cx(LEAGUE_TONE_CLASS[archive.type], 'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg')}>
-                        <Trophy size={16} aria-hidden="true" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-content-secondary">{getArchivePeriodLabel(archive)}</span>
-                        <span className="block text-xs text-content-muted">
-                          Finished #{archive.userRank} · {archive.userPoints.toLocaleString()} pts
-                        </span>
-                        {isProvisional(archive) && (
-                          <span className="block text-2xs text-content-muted">Final standings in up to 2 days</span>
-                        )}
-                      </span>
-                      <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-content-muted" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        }
-      />
+          }
+        />
+      </TabPanel>
 
       <Dialog
         open={!!openArchive}
