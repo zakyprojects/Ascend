@@ -130,13 +130,8 @@ export function AuthPage({ screen, search, guestState, onAuthSuccess, onDone, on
     document.title = DOCUMENT_TITLES[screen];
   }, [screen]);
 
-  // As the dialog did: with a mouse/keyboard the first text field takes focus so typing can start
-  // at once; touch skips it (the on-screen keyboard would cover the page before the user chose).
+  // First-field focus (mouse/trackpad) is AuthPanel's, on every screen it shows.
   const formRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (!window.matchMedia('(pointer: fine)').matches) return;
-    formRef.current?.querySelector<HTMLInputElement>('input:not([type="hidden"]):not([type="checkbox"]):not([disabled])')?.focus();
-  }, []);
 
   const [climb, setClimb] = useState<AuthClimbState | null>(null);
   const climbRef = useRef(climb);

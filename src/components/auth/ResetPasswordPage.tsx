@@ -8,7 +8,7 @@ import { settingsSectionPath } from '@/lib/settingsSections';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PasswordStaircase } from '@/components/ui/PasswordStaircase';
 import { AscendLoadingIndicator } from '@/components/ui/AscendLoadingIndicator';
-import { Form, FormAlert, useFormController } from '@/components/ui/primitives';
+import { Form, FormAlert, focusField, isFinePointer, useFormController } from '@/components/ui/primitives';
 
 export interface ResetPasswordPageProps {
   /** A real (not guest) account is signed in: the reset link's session, or one from before. */
@@ -81,6 +81,12 @@ export function ResetPasswordPage({ signedIn, onNavigate }: ResetPasswordPagePro
   };
 
   const canSetPassword = recovery && signedIn && !linkError;
+  // When the form appears, a mouse/trackpad user can type the new password at once (touch skips it).
+  useEffect(() => {
+    if (!canSetPassword || !isFinePointer()) return;
+    const field = document.getElementById('reset-new-password');
+    if (field) focusField(field);
+  }, [canSetPassword]);
 
   return (
     <main className="relative isolate flex-1 bg-bg-900 flex items-center justify-center px-4 py-10">

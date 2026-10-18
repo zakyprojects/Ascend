@@ -4,7 +4,7 @@ import { isUsernameAvailable, signUpUser, loginUser, signInAsGuest, upgradeAnony
 import { AppState, EMOJI_AVATARS } from '@/types';
 import { AscendLoadingIndicator } from './AscendLoadingIndicator';
 import { PasswordInput } from './PasswordInput';
-import { FieldErrorBubble, FieldMessage, Form, FormAlert, useFormController } from './primitives';
+import { FieldErrorBubble, FieldMessage, Form, FormAlert, focusField, isFinePointer, useFormController } from './primitives';
 import { PasswordStaircase } from './PasswordStaircase';
 import { newPasswordProblem } from '@/lib/passwordRules';
 import { toUserMessage } from '@/lib/userMessage';
@@ -306,6 +306,16 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
     setFocus(null);
     setErrorInputs(null);
   }, [screen]);
+
+  // With a mouse/trackpad each form screen (first shown, or switched to: log in, sign up, forgot,
+  // upgrade) puts focus in its first field; touch skips it (the keyboard would cover the page first).
+  const screenKey = forgot ? 'login-forgot' : screen;
+  const screenRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isFinePointer()) return;
+    const field = screenRef.current?.querySelector<HTMLInputElement>('input:not([type="hidden"]):not([type="checkbox"]):not([disabled])');
+    if (field) focusField(field, { preventScroll: true });
+  }, [screenKey]);
 
   const form = useFormController();
   const forgotForm = useFormController();
@@ -629,7 +639,7 @@ export function AuthPanel({ mode, onAuthSuccess, onDone, guestState, pageLinks, 
 
         {/* Sign in / sign up / save progress */}
         {!successTitle && (
-          <div key={forgot ? 'login-forgot' : screen} className={`space-y-4 ${slideClass}`}>
+          <div key={screenKey} ref={screenRef} className={`space-y-4 ${slideClass}`}>
             {/* The page's own h1 names the screen; this line says what it is for. */}
             <p className="text-sm text-content-muted">
               {forgot
