@@ -4175,6 +4175,23 @@ export function useAppState() {
           return lb;
         });
 
+        // The finish log is a reading day, so it ticks the linked Reading habit like logging pages does.
+        let updatedHabits = prev.habits;
+        const readingHabit = prev.habits.find((h) => h.linkedModule === 'reading');
+        if (readingHabit && unreadDelta > 0) {
+          const key = periodKey(readingHabit.frequency || 'daily');
+          const completions = Array.isArray(readingHabit.completions)
+            ? Object.fromEntries(readingHabit.completions.map((c) => [c, { done: true, updatedAt: readingHabit.updatedAt || now }]))
+            : readingHabit.completions || {};
+          if (completions[key]?.done !== true) {
+            updatedHabits = prev.habits.map((h) =>
+              h.id === readingHabit.id
+                ? { ...h, completions: { ...completions, [key]: { done: true, updatedAt: now } }, updatedAt: now }
+                : h
+            );
+          }
+        }
+
         // Recompute today: the finish log earns no page points (finish: true), as on the server.
         const awards = applyReadingAwardsInternal(prev, updatedReadingLogs, updatedLibraryBooks, today);
         const points =
@@ -4194,6 +4211,7 @@ export function useAppState() {
           ...prev,
           libraryBooks: updatedLibraryBooks,
           readingLogs: awards.readingLogs,
+          habits: updatedHabits,
           books: [],
           ...points,
         };
@@ -4367,10 +4385,13 @@ export function useAppState() {
     totalAmount: number = 250,
     unit: 'pages' | 'chapters' = 'pages',
     status: UserBookStatus = 'reading',
-    targetFinishDate?: string
+    targetFinishDate?: string,
+    reflection?: string
   ) => {
     setState((prev) => {
       const now = trustedNow().toISOString();
+      // A book added as already finished is read in full; no log is written, so it earns no points.
+      const finished = status === 'completed';
       const newBook: UserBook = {
         id: `custom-book-${trustedNowMs()}-${Math.random().toString(36).substring(2, 9)}`,
         title: title.trim(),
@@ -4384,14 +4405,18 @@ export function useAppState() {
         status,
         totalAmount,
         totalPages: totalAmount,
-        currentAmount: 0,
-        currentPage: 0,
+        currentAmount: finished ? totalAmount : 0,
+        currentPage: finished ? totalAmount : 0,
         unit,
-        targetFinishDate: targetFinishDate?.trim() || undefined,
+        targetFinishDate: finished ? undefined : targetFinishDate?.trim() || undefined,
+        reflection: finished ? reflection?.trim() || undefined : undefined,
+        isFinished: finished,
         addedAt: now,
         updatedAt: now,
-        dateStarted: status === 'reading' ? now : undefined,
-        startedAt: status === 'reading' ? now : undefined,
+        dateStarted: status === 'reading' || finished ? now : undefined,
+        startedAt: status === 'reading' || finished ? now : undefined,
+        dateCompleted: finished ? now : undefined,
+        completedAt: finished ? now : undefined,
       };
 
 
@@ -4448,6 +4473,56 @@ export function useAppState() {
     []
   );
 
+  const updateBookDetails = useCallback(
+    (
+      bookId: string,
+      details: {
+        title: string;
+        author: string;
+        category?: BookCategory | string;
+        description?: string;
+        totalAmount: number;
+        unit: 'pages' | 'chapters';
+        targetFinishDate?: string;
+        reflection?: string;
+      }
+    ) => {
+      setState((prev) => {
+        const now = trustedNow().toISOString();
+        return {
+          ...prev,
+          libraryBooks: prev.libraryBooks.map((b) => {
+            if (b.id !== bookId) return b;
+            const current = b.currentAmount ?? b.currentPage ?? 0;
+            const finished = b.status === 'completed';
+            // The form keeps the length at or above the progress; a finished book stays read in full.
+            const total = Math.max(1, Math.round(details.totalAmount), finished ? 0 : current);
+            const nextCurrent = finished ? total : current;
+            return {
+              ...b,
+              title: details.title.trim() || b.title,
+              author: details.author.trim() || 'Unknown Author',
+              category: details.category || undefined,
+              description: details.description?.trim() || undefined,
+              totalAmount: total,
+              totalPages: total,
+              currentAmount: nextCurrent,
+              currentPage: nextCurrent,
+              unit: details.unit,
+              targetFinishDate: finished ? b.targetFinishDate : details.targetFinishDate?.trim() || undefined,
+              reflection: finished ? details.reflection?.trim() || b.reflection : b.reflection,
+              updatedAt: now,
+            };
+          }),
+          books: [],
+        };
+      });
+    },
+    // False positive: setState/enqueuePersist/get are stable (useCallback with empty deps array)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   const restartBook = useCallback((bookId: string) => {
     setState(
       (prev) => {
@@ -4465,7 +4540,7 @@ export function useAppState() {
               startedAt: now,
               dateCompleted: undefined,
               completedAt: undefined,
-              reflection: undefined,
+              // The last takeaway stays until the book is finished again.
             };
           }
           return lb;
@@ -9135,6 +9210,7 @@ export function useAppState() {
     addCuratedBookToLibrary,
     addCustomBookToLibrary,
     updateUserBookStatus,
+    updateBookDetails,
     restartBook,
     removeBookFromLibrary,
     getUserBookStatus,
